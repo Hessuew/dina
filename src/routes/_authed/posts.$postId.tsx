@@ -1,10 +1,9 @@
 import { ErrorComponent, createFileRoute } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { NotFound } from "~/components/NotFound";
-import { fetchPost } from "~/utils/posts";
+import { trpc } from "../../router";
 
 export const Route = createFileRoute("/_authed/posts/$postId")({
-  loader: ({ params: { postId } }) => fetchPost({ data: postId }),
   errorComponent: ({ error }: ErrorComponentProps) => (
     <ErrorComponent error={error} />
   ),
@@ -15,7 +14,16 @@ export const Route = createFileRoute("/_authed/posts/$postId")({
 });
 
 function PostComponent() {
-  const post = Route.useLoaderData();
+  const { postId } = Route.useParams();
+  const { data: post, isLoading, error } = trpc.posts.byId.useQuery(postId);
+
+  if (isLoading) {
+    return <div className="p-2">Loading post...</div>;
+  }
+
+  if (error || !post) {
+    return <NotFound>Post not found</NotFound>;
+  }
 
   return (
     <div className="space-y-2">

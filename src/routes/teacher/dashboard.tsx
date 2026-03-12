@@ -1,59 +1,22 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
-import { getSupabaseServerClient } from '../../utils/supabase'
-import type { Course, Inquiry } from '../../types/database.types'
+import { createFileRoute } from "@tanstack/react-router";
+import { trpc } from "../../router";
 
-const getTeacherData = createServerFn({ method: 'GET' }).handler(async () => {
-  const supabase = getSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    throw new Error('Unauthorized')
-  }
-
-  const [coursesResult, inquiriesResult, enrollmentsResult] =
-    await Promise.all([
-      supabase
-        .from('courses')
-        .select('*')
-        .eq('teacher_id', user.id)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('inquiries')
-        .select('*')
-        .eq('teacher_id', user.id)
-        .eq('status', 'open')
-        .order('created_at', { ascending: false })
-        .limit(5),
-      supabase
-        .from('enrollments')
-        .select('*, courses!inner(*)')
-        .eq('courses.teacher_id', user.id),
-    ])
-
-  if (coursesResult.error) throw coursesResult.error
-  if (inquiriesResult.error) throw inquiriesResult.error
-  if (enrollmentsResult.error) throw enrollmentsResult.error
-
-  return {
-    courses: coursesResult.data as Course[],
-    inquiries: inquiriesResult.data as Inquiry[],
-    totalStudents: enrollmentsResult.data?.length || 0,
-  }
-})
-
-export const Route = createFileRoute('/teacher/dashboard')({
-  loader: async () => {
-    const data = await getTeacherData()
-    return data
-  },
+export const Route = createFileRoute("/teacher/dashboard")({
   component: TeacherDashboard,
-})
+});
 
 function TeacherDashboard() {
-  const { courses, inquiries, totalStudents } = Route.useLoaderData()
+  const { data, isLoading } = trpc.teacher.getDashboard.useQuery();
+
+  if (isLoading) {
+    return <div className="p-8">Loading...</div>;
+  }
+
+  if (!data) {
+    return <div className="p-8">No data available</div>;
+  }
+
+  const { courses, inquiries, totalStudents } = data;
 
   return (
     <div>
@@ -73,7 +36,7 @@ function TeacherDashboard() {
             Published Courses
           </h3>
           <p className="text-3xl font-bold text-green-600 mt-2">
-            {courses.filter((c) => c.is_published).length}
+            {courses.filter((c) => c.isPublished).length}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
@@ -120,12 +83,12 @@ function TeacherDashboard() {
                       </div>
                       <span
                         className={`ml-4 text-xs px-2 py-1 rounded-full ${
-                          course.is_published
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                          course.isPublished
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
                         }`}
                       >
-                        {course.is_published ? 'Published' : 'Draft'}
+                        {course.isPublished ? "Published" : "Draft"}
                       </span>
                     </div>
                   </div>
@@ -161,7 +124,7 @@ function TeacherDashboard() {
                     </p>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-xs text-gray-500">
-                        {new Date(inquiry.created_at).toLocaleDateString()}
+                        {new Date(inquiry.createdAt).toLocaleDateString()}
                       </span>
                       <button className="text-xs text-blue-600 hover:underline">
                         Respond
@@ -175,5 +138,5 @@ function TeacherDashboard() {
         </div>
       </div>
     </div>
-  )
+  );
 }

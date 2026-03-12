@@ -1,62 +1,53 @@
-import { useRouter } from '@tanstack/react-router'
-import { useServerFn } from '@tanstack/react-start'
-import { useMutation } from '../hooks/useMutation'
-import { loginFn } from '../routes/_authed'
-import { signupFn } from '../routes/signup'
-import { Auth } from './Auth'
+import { useRouter } from "@tanstack/react-router";
+import { trpc } from "../router";
+import { Auth } from "./Auth";
 
 export function Login() {
-  const router = useRouter()
+  const router = useRouter();
 
-  const loginMutation = useMutation({
-    fn: loginFn,
-    onSuccess: async (ctx) => {
-      if (!ctx.data?.error) {
-        await router.invalidate()
-        router.navigate({ to: '/' })
-        return
-      }
+  const loginMutation = trpc.auth.login.useMutation({
+    onSuccess: async () => {
+      await router.invalidate();
+      router.navigate({ to: "/" });
     },
-  })
+  });
 
-  const signupMutation = useMutation({
-    fn: useServerFn(signupFn),
-  })
+  const signupMutation = trpc.auth.signup.useMutation({
+    onSuccess: async () => {
+      await router.invalidate();
+      router.navigate({ to: "/" });
+    },
+  });
 
   return (
     <Auth
       actionText="Login"
       status={loginMutation.status}
       onSubmit={(e) => {
-        const formData = new FormData(e.target as HTMLFormElement)
+        const formData = new FormData(e.target as HTMLFormElement);
 
         loginMutation.mutate({
-          data: {
-            email: formData.get('email') as string,
-            password: formData.get('password') as string,
-          },
-        })
+          email: formData.get("email") as string,
+          password: formData.get("password") as string,
+        });
       }}
       afterSubmit={
-        loginMutation.data ? (
+        loginMutation.error ? (
           <>
-            <div className="text-red-400">{loginMutation.data.message}</div>
-            {loginMutation.data.error &&
-            loginMutation.data.message === 'Invalid login credentials' ? (
+            <div className="text-red-400">{loginMutation.error.message}</div>
+            {loginMutation.error.message === "Invalid login credentials" ? (
               <div>
                 <button
                   className="text-blue-500"
                   onClick={(e) => {
                     const formData = new FormData(
                       (e.target as HTMLButtonElement).form!,
-                    )
+                    );
 
                     signupMutation.mutate({
-                      data: {
-                        email: formData.get('email') as string,
-                        password: formData.get('password') as string,
-                      },
-                    })
+                      email: formData.get("email") as string,
+                      password: formData.get("password") as string,
+                    });
                   }}
                   type="button"
                 >
@@ -68,5 +59,5 @@ export function Login() {
         ) : null
       }
     />
-  )
+  );
 }

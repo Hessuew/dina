@@ -17,7 +17,6 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as TrpcChar91trpcChar93RouteImport } from './routes/trpc/[trpc]'
 import { Route as TeacherDashboardRouteImport } from './routes/teacher/dashboard'
 import { Route as StudentDashboardRouteImport } from './routes/student/dashboard'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
@@ -64,11 +63,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TrpcChar91trpcChar93Route = TrpcChar91trpcChar93RouteImport.update({
-  id: '/trpc/trpc',
-  path: '/trpc/trpc',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TeacherDashboardRoute = TeacherDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -112,7 +106,6 @@ export interface FileRoutesByFullPath {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/student/dashboard': typeof StudentDashboardRoute
   '/teacher/dashboard': typeof TeacherDashboardRoute
-  '/trpc/trpc': typeof TrpcChar91trpcChar93Route
   '/posts/$postId': typeof AuthedPostsPostIdRoute
   '/posts/': typeof AuthedPostsIndexRoute
 }
@@ -127,7 +120,6 @@ export interface FileRoutesByTo {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/student/dashboard': typeof StudentDashboardRoute
   '/teacher/dashboard': typeof TeacherDashboardRoute
-  '/trpc/trpc': typeof TrpcChar91trpcChar93Route
   '/posts/$postId': typeof AuthedPostsPostIdRoute
   '/posts': typeof AuthedPostsIndexRoute
 }
@@ -145,7 +137,6 @@ export interface FileRoutesById {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/student/dashboard': typeof StudentDashboardRoute
   '/teacher/dashboard': typeof TeacherDashboardRoute
-  '/trpc/trpc': typeof TrpcChar91trpcChar93Route
   '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute
   '/_authed/posts/': typeof AuthedPostsIndexRoute
 }
@@ -163,7 +154,6 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/student/dashboard'
     | '/teacher/dashboard'
-    | '/trpc/trpc'
     | '/posts/$postId'
     | '/posts/'
   fileRoutesByTo: FileRoutesByTo
@@ -178,7 +168,6 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/student/dashboard'
     | '/teacher/dashboard'
-    | '/trpc/trpc'
     | '/posts/$postId'
     | '/posts'
   id:
@@ -195,7 +184,6 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/student/dashboard'
     | '/teacher/dashboard'
-    | '/trpc/trpc'
     | '/_authed/posts/$postId'
     | '/_authed/posts/'
   fileRoutesById: FileRoutesById
@@ -209,7 +197,6 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   StudentRoute: typeof StudentRouteWithChildren
   TeacherRoute: typeof TeacherRouteWithChildren
-  TrpcChar91trpcChar93Route: typeof TrpcChar91trpcChar93Route
 }
 
 declare module '@tanstack/react-router' {
@@ -268,13 +255,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/trpc/trpc': {
-      id: '/trpc/trpc'
-      path: '/trpc/trpc'
-      fullPath: '/trpc/trpc'
-      preLoaderRoute: typeof TrpcChar91trpcChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/teacher/dashboard': {
@@ -388,17 +368,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   StudentRoute: StudentRouteWithChildren,
   TeacherRoute: TeacherRouteWithChildren,
-  TrpcChar91trpcChar93Route: TrpcChar91trpcChar93Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
