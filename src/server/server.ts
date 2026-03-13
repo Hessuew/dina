@@ -2,6 +2,7 @@ import path from "node:path";
 import url from "node:url";
 import * as fs from "node:fs";
 import express from "express";
+import cookieParser from "cookie-parser";
 import { config } from "dotenv";
 import { trpcMiddleWare } from "./trpc";
 
@@ -27,6 +28,9 @@ export const createServer = async (
   isProd = process.env.NODE_ENV === "production",
 ) => {
   const app = express();
+
+  // Parse cookies for session management
+  app.use(cookieParser());
 
   app.use("/trpc", trpcMiddleWare as any);
 

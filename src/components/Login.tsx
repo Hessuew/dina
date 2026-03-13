@@ -4,18 +4,35 @@ import { Auth } from "./Auth";
 
 export function Login() {
   const router = useRouter();
+  const utils = trpc.useUtils();
 
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: async () => {
       await router.invalidate();
-      router.navigate({ to: "/" });
+      console.log("🚀 ~ Login ~ onSuccess");
+
+      // Fetch user to determine role-based redirect
+      const user = await utils.auth.getCurrentUser.fetch();
+      console.log("🚀 ~ Login ~ user:", user);
+
+      if (user?.role === "admin") {
+        router.navigate({ to: "/admin/dashboard" });
+      } else if (user?.role === "teacher") {
+        router.navigate({ to: "/teacher/dashboard" });
+      } else if (user?.role === "student") {
+        router.navigate({ to: "/student/dashboard" });
+      } else {
+        router.navigate({ to: "/" });
+      }
     },
   });
 
   const signupMutation = trpc.auth.signup.useMutation({
     onSuccess: async () => {
       await router.invalidate();
-      router.navigate({ to: "/" });
+
+      // New users default to student role, redirect to student dashboard
+      router.navigate({ to: "/student/dashboard" });
     },
   });
 

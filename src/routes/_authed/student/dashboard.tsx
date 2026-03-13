@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { trpc } from "../../router";
+import { trpc } from "../../../router";
 
-export const Route = createFileRoute("/student/dashboard")({
+export const Route = createFileRoute("/_authed/student/dashboard")({
   component: StudentDashboard,
 });
 

@@ -9,7 +9,7 @@ import { profiles, courses, enrollments, inquiries } from "../db/schema";
 import { eq, count, and } from "drizzle-orm";
 
 const createTRPContext = async ({ req, res }: CreateExpressContextOptions) => {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerClient(req, res);
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -319,6 +319,18 @@ export const appRouter = t.router({
   }),
 
   auth: t.router({
+    getCurrentUser: publicProcedure.query(async ({ ctx }) => {
+      if (!ctx.user) {
+        return null;
+      }
+
+      const profile = await ctx.db.query.profiles.findFirst({
+        where: eq(profiles.id, ctx.user.id),
+      });
+
+      return profile;
+    }),
+
     login: publicProcedure
       .input(
         z.object({
@@ -350,17 +362,36 @@ export const appRouter = t.router({
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        const { error } = await ctx.supabase.auth.signUp({
+        // Create user in Supabase Auth
+        const { data, error } = await ctx.supabase.auth.signUp({
           email: input.email,
           password: input.password,
         });
 
         if (error) {
+          console.error("Supabase auth error:", error);
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: error.message,
           });
         }
+
+        if (!data.user) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "User creation failed",
+          });
+        }
+
+        console.log("User created in auth:", data.user.id);
+
+        // Create profile in database
+        await ctx.db.insert(profiles).values({
+          id: data.user.id,
+          email: data.user.email!,
+          fullName: "", // User can update this later
+          role: "student", // Default role
+        });
 
         return { success: true };
       }),
