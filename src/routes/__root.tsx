@@ -11,8 +11,12 @@ import * as React from 'react'
 import { DefaultCatchBoundary } from '@/components/DefaultCatchBoundary'
 import { Header } from '@/components/Header'
 import { NotFound } from '@/components/NotFound'
+import { Toaster } from '@/components/ui/sonner'
 import appCss from '@/styles/app.css?url'
 import { seo } from '@/utils/seo'
+
+import { db } from '@/db'
+import { profiles } from '@/db/schema'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
@@ -23,9 +27,22 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
     return null
   }
 
+  // Fetch user profile to get avatarUrl and fullName
+  const { eq } = await import('drizzle-orm')
+
+  const profile = await db.query.profiles.findFirst({
+    where: eq(profiles.id, data.user.id),
+    columns: {
+      fullName: true,
+      avatarUrl: true,
+    },
+  })
+
   return {
     id: data.user.id,
     email: data.user.email,
+    fullName: profile?.fullName,
+    avatarUrl: profile?.avatarUrl,
   }
 })
 
@@ -105,6 +122,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <Header user={user} />
         {children}
+        <Toaster />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
       </body>

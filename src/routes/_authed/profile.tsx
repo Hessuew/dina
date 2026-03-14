@@ -1,6 +1,9 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { useState } from 'react'
+import { UploadIcon } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { toast } from 'sonner'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -17,44 +20,27 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useMutation } from '@/hooks/useMutation'
+import { getCurrentUser, getUserProfile } from '@/utils/auth'
+import { db } from '@/db'
+import { profiles } from '@/db/schema'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 const getMyProfile = createServerFn({ method: 'GET' }).handler(async () => {
-  const { getUserProfile } = await import('@/utils/auth')
-  const supabase = getSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    throw new Error('Not authenticated')
-  }
-
+  const user = await getCurrentUser()
   const profile = await getUserProfile(user.id)
   return profile
 })
 
 const updateProfileFn = createServerFn({ method: 'POST' })
-  .inputValidator((d: { fullName: string; avatarUrl: string }) => d)
+  .inputValidator((d: { fullName: string }) => d)
   .handler(async ({ data }) => {
-    const { db } = await import('@/db')
-    const { profiles } = await import('@/db/schema')
     const { eq } = await import('drizzle-orm')
-    const supabase = getSupabaseServerClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      throw new Error('Not authenticated')
-    }
+    const user = await getCurrentUser()
 
     await db
       .update(profiles)
       .set({
         fullName: data.fullName,
-        avatarUrl: data.avatarUrl || null,
         updatedAt: new Date(),
       })
       .where(eq(profiles.id, user.id))
@@ -62,8 +48,118 @@ const updateProfileFn = createServerFn({ method: 'POST' })
     return { success: true }
   })
 
+const uploadAvatarFn = createServerFn({ method: 'POST' })
+  .inputValidator(
+    (d: {
+      fileData: string
+      fileName: string
+      fileType: string
+      fileSize: number
+    }) => d,
+  )
+  .handler(async ({ data }) => {
+    try {
+      const { eq } = await import('drizzle-orm')
+      const user = await getCurrentUser()
+      const supabase = getSupabaseServerClient()
+
+      // Validate file
+      const maxSize = 2 * 1024 * 1024 // 2MB
+      if (data.fileSize > maxSize) {
+        return {
+          error: true,
+          message: 'File size must be less than 2MB',
+        }
+      }
+
+      const allowedTypes = [
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+        'image/gif',
+      ]
+      if (!allowedTypes.includes(data.fileType)) {
+        return {
+          error: true,
+          message: 'Only JPEG, PNG, WebP, and GIF images are allowed',
+        }
+      }
+
+      // Get current profile to find old avatar
+      const currentProfile = await db.query.profiles.findFirst({
+        where: eq(profiles.id, user.id),
+      })
+
+      // Delete old avatar if exists
+      if (currentProfile?.avatarUrl) {
+        const oldPath = currentProfile.avatarUrl.split('/').pop()
+        if (oldPath && oldPath.startsWith(user.id)) {
+          const { error: deleteError } = await supabase.storage
+            .from('avatars')
+            .remove([oldPath])
+          if (deleteError) {
+            console.log('⚠️ Failed to delete old avatar', {
+              error: deleteError,
+            })
+          }
+        }
+      }
+
+      // Generate unique filename
+      const fileExt = data.fileName.split('.').pop()
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`
+
+      // Convert base64 to buffer
+      const base64Data = data.fileData.split(',')[1]
+      const buffer = Buffer.from(base64Data, 'base64')
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, buffer, {
+          contentType: data.fileType,
+          upsert: false,
+        })
+
+      if (uploadError) {
+        return {
+          error: true,
+          message: uploadError.message,
+        }
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName)
+
+      // Update profile with new avatar URL
+      await db
+        .update(profiles)
+        .set({
+          avatarUrl: urlData.publicUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(profiles.id, user.id))
+
+      return {
+        success: true,
+        avatarUrl: urlData.publicUrl,
+      }
+    } catch (error) {
+      console.error('❌ Unexpected error in uploadAvatar:', error)
+      return {
+        error: true,
+        message:
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred',
+      }
+    }
+  })
+
 const updatePasswordFn = createServerFn({ method: 'POST' })
-  .inputValidator((d: { currentPassword: string; newPassword: string }) => d)
+  .inputValidator((d: { newPassword: string }) => d)
   .handler(async ({ data }) => {
     const supabase = getSupabaseServerClient()
 
@@ -93,11 +189,36 @@ function ProfileComponent() {
   const { profile } = Route.useLoaderData()
   const router = useRouter()
   const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const initials = profile.fullName
+    ? profile.fullName
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : profile.email.slice(0, 2).toUpperCase()
 
   const updateProfileMutation = useMutation({
     fn: updateProfileFn,
     onSuccess: async (ctx) => {
-      if (ctx.data && 'success' in ctx.data && ctx.data.success) {
+      if ('success' in ctx.data) {
+        toast.success('Profile updated successfully')
+        // Invalidate the current route to refresh data
+        await router.invalidate()
+      }
+    },
+  })
+
+  const uploadAvatarMutation = useMutation({
+    fn: uploadAvatarFn,
+    onSuccess: async (ctx) => {
+      if ('error' in ctx.data && ctx.data.error) {
+        toast.error(ctx.data.message || 'Failed to upload avatar')
+      } else if ('success' in ctx.data) {
+        toast.success('Avatar uploaded successfully')
+        // Invalidate the current route to refresh data
         await router.invalidate()
       }
     },
@@ -106,7 +227,10 @@ function ProfileComponent() {
   const updatePasswordMutation = useMutation({
     fn: updatePasswordFn,
     onSuccess: (ctx) => {
-      if (ctx.data && 'success' in ctx.data && ctx.data.success) {
+      if ('error' in ctx.data && ctx.data.error) {
+        toast.error(ctx.data.message || 'Failed to update password')
+      } else if ('success' in ctx.data) {
+        toast.success('Password changed successfully')
         setShowPasswordForm(false)
       }
     },
@@ -119,12 +243,43 @@ function ProfileComponent() {
     updateProfileMutation.mutate({
       data: {
         fullName: formData.get('fullName') as string,
-        avatarUrl: formData.get('avatarUrl') as string,
       },
     })
   }
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Convert file to base64
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const fileData = reader.result as string
+
+      toast.loading('Uploading avatar...', { id: 'avatar-upload' })
+
+      uploadAvatarMutation.mutate({
+        data: {
+          fileData,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+        },
+      })
+
+      toast.dismiss('avatar-upload')
+
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+
+    reader.readAsDataURL(file)
+  }
+
   const handlePasswordSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    console.log(1)
     e.preventDefault()
     const formData = new FormData(e.target as HTMLFormElement)
 
@@ -132,12 +287,13 @@ function ProfileComponent() {
     const confirmPassword = formData.get('confirmPassword') as string
 
     if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match')
       return
     }
 
+    console.log(2)
     updatePasswordMutation.mutate({
       data: {
-        currentPassword: formData.get('currentPassword') as string,
         newPassword,
       },
     })
@@ -154,56 +310,75 @@ function ProfileComponent() {
             <CardDescription>Update your profile information</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleProfileSubmit}>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="email">Email</FieldLabel>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    defaultValue={profile.email}
-                    disabled
+            <div className="flex flex-col gap-6">
+              <div className="flex items-center gap-6">
+                <Avatar className="size-24">
+                  <AvatarImage src={profile.avatarUrl || undefined} />
+                  <AvatarFallback className="text-2xl">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleAvatarChange}
+                    className="hidden"
                   />
-                  <FieldDescription>Email cannot be changed</FieldDescription>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="fullName">Full Name</FieldLabel>
-                  <Input
-                    id="fullName"
-                    name="fullName"
-                    type="text"
-                    defaultValue={profile.fullName}
-                    required
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="avatarUrl">Avatar URL</FieldLabel>
-                  <Input
-                    id="avatarUrl"
-                    name="avatarUrl"
-                    type="url"
-                    defaultValue={profile.avatarUrl || ''}
-                    placeholder="https://example.com/avatar.jpg"
-                  />
-                </Field>
-                <Field>
                   <Button
-                    type="submit"
-                    disabled={updateProfileMutation.status === 'pending'}
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadAvatarMutation.status === 'pending'}
                   >
-                    {updateProfileMutation.status === 'pending'
-                      ? 'Saving...'
-                      : 'Save Changes'}
+                    <UploadIcon className="size-4" />
+                    {uploadAvatarMutation.status === 'pending'
+                      ? 'Uploading...'
+                      : 'Change Avatar'}
                   </Button>
-                  {updateProfileMutation.data?.success && (
-                    <FieldDescription className="text-green-600">
-                      Profile updated successfully!
-                    </FieldDescription>
-                  )}
-                </Field>
-              </FieldGroup>
-            </form>
+                  <p className="text-muted-foreground text-xs">
+                    JPG, PNG, WebP or GIF. Max 2MB.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleProfileSubmit}>
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="email">Email</FieldLabel>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      defaultValue={profile.email}
+                      disabled
+                    />
+                    <FieldDescription>Email cannot be changed</FieldDescription>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="fullName">Full Name</FieldLabel>
+                    <Input
+                      id="fullName"
+                      name="fullName"
+                      type="text"
+                      defaultValue={profile.fullName}
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <Button
+                      type="submit"
+                      disabled={updateProfileMutation.status === 'pending'}
+                    >
+                      {updateProfileMutation.status === 'pending'
+                        ? 'Saving...'
+                        : 'Save Changes'}
+                    </Button>
+                  </Field>
+                </FieldGroup>
+              </form>
+            </div>
           </CardContent>
         </Card>
 
@@ -222,17 +397,6 @@ function ProfileComponent() {
             ) : (
               <form onSubmit={handlePasswordSubmit}>
                 <FieldGroup>
-                  <Field>
-                    <FieldLabel htmlFor="currentPassword">
-                      Current Password
-                    </FieldLabel>
-                    <Input
-                      id="currentPassword"
-                      name="currentPassword"
-                      type="password"
-                      required
-                    />
-                  </Field>
                   <Field>
                     <FieldLabel htmlFor="newPassword">New Password</FieldLabel>
                     <Input
@@ -271,16 +435,6 @@ function ProfileComponent() {
                         Cancel
                       </Button>
                     </div>
-                    {updatePasswordMutation.data?.error && (
-                      <FieldDescription className="text-red-600">
-                        {updatePasswordMutation.data.message}
-                      </FieldDescription>
-                    )}
-                    {updatePasswordMutation.data?.success && (
-                      <FieldDescription className="text-green-600">
-                        Password updated successfully!
-                      </FieldDescription>
-                    )}
                   </Field>
                 </FieldGroup>
               </form>

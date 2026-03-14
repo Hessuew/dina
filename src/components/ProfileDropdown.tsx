@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { LogOutIcon, UserIcon } from 'lucide-react'
 import type { ReactElement } from 'react'
-import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '~/components/ui/dropdown-menu'
+} from '@/components/ui/dropdown-menu'
 
 type Props = {
   trigger: ReactElement
@@ -43,25 +43,27 @@ export function ProfileDropdown({
     <DropdownMenu defaultOpen={defaultOpen}>
       <DropdownMenuTrigger render={trigger} />
       <DropdownMenuContent className="w-80" align={align}>
-        <DropdownMenuLabel className="flex items-center gap-4 px-4 py-2.5 font-normal">
-          <div className="relative">
-            <Avatar className="size-10">
-              <AvatarImage
-                src={user.avatarUrl}
-                alt={user.fullName || user.email}
-              />
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
-          </div>
-          <div className="flex flex-1 flex-col items-start">
-            <span className="text-foreground text-lg font-semibold">
-              {user.fullName || 'User'}
-            </span>
-            <span className="text-muted-foreground text-base">
-              {user.email}
-            </span>
-          </div>
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="flex items-center gap-4 px-4 py-2.5 font-normal">
+            <div className="relative">
+              <Avatar className="size-10">
+                <AvatarImage
+                  src={user.avatarUrl}
+                  alt={user.fullName || user.email}
+                />
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+            </div>
+            <div className="flex flex-1 flex-col items-start">
+              <span className="text-foreground text-lg font-semibold">
+                {user.fullName || 'User'}
+              </span>
+              <span className="text-muted-foreground text-base">
+                {user.email}
+              </span>
+            </div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
 
         <DropdownMenuSeparator />
 
@@ -77,14 +79,16 @@ export function ProfileDropdown({
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem
-          variant="destructive"
-          className="px-4 py-2.5 text-base"
-          render={<Link to="/logout" />}
-        >
-          <LogOutIcon className="size-5" />
-          <span>Logout</span>
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            variant="destructive"
+            className="px-4 py-2.5 text-base"
+            render={<Link to="/logout" />}
+          >
+            <LogOutIcon className="size-5" />
+            <span>Logout</span>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

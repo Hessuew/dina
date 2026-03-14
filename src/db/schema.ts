@@ -82,23 +82,11 @@ export const courses = pgTable('courses', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-export const modules = pgTable('modules', {
+export const lessons = pgTable('lessons', {
   id: uuid('id').primaryKey().defaultRandom(),
   courseId: uuid('course_id')
     .notNull()
     .references(() => courses.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(),
-  description: text('description'),
-  orderIndex: integer('order_index').notNull().default(0),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
-
-export const lessons = pgTable('lessons', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  moduleId: uuid('module_id')
-    .notNull()
-    .references(() => modules.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   content: text('content'),
   videoUrl: text('video_url'),
@@ -281,7 +269,7 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
     fields: [courses.teacherId],
     references: [profiles.id],
   }),
-  modules: many(modules),
+  lessons: many(lessons),
   enrollments: many(enrollments),
   assignments: many(assignments),
   inquiries: many(inquiries),
@@ -290,18 +278,10 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
   calendarEvents: many(calendarEvents),
 }))
 
-export const modulesRelations = relations(modules, ({ one, many }) => ({
-  course: one(courses, {
-    fields: [modules.courseId],
-    references: [courses.id],
-  }),
-  lessons: many(lessons),
-}))
-
 export const lessonsRelations = relations(lessons, ({ one, many }) => ({
-  module: one(modules, {
-    fields: [lessons.moduleId],
-    references: [modules.id],
+  course: one(courses, {
+    fields: [lessons.courseId],
+    references: [courses.id],
   }),
   progress: many(lessonProgress),
 }))

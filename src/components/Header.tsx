@@ -9,7 +9,7 @@ type User = {
   id: string
   email: string
   fullName?: string
-  avatarUrl?: string
+  avatarUrl?: string | null
 }
 
 type HeaderProps = {
@@ -39,11 +39,14 @@ export function Header({ user }: HeaderProps) {
         <div className="flex items-center gap-1.5">
           {user ? (
             <ProfileDropdown
-              user={user}
+              user={{
+                ...user,
+                avatarUrl: user.avatarUrl ?? undefined,
+              }}
               trigger={
                 <Button variant="ghost" size="icon" className="size-9.5">
                   <Avatar className="size-9.5 rounded-md">
-                    <AvatarImage src={user.avatarUrl} />
+                    <AvatarImage src={user.avatarUrl ?? undefined} />
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                 </Button>

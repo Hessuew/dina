@@ -1,6 +1,25 @@
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { courses, enrollments, profiles } from '@/db/schema'
+import { getSupabaseServerClient } from '@/utils/supabase'
+
+/**
+ * Get the currently authenticated user from Supabase
+ * Throws an error if not authenticated
+ * @returns The authenticated user's ID and email
+ */
+export async function getCurrentUser() {
+  const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('Not authenticated')
+  }
+
+  return user
+}
 
 /**
  * Validate that a user ID is provided
