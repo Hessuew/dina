@@ -78,15 +78,15 @@ Live sessions and video content will use Zoom.
 
 ### 6. Email Service
 
-**Decision:** clerk Auth emails
+**Decision:** Supabase Auth emails
 
-Use clerk's built-in email functionality for authentication and notifications.
+Use Supabase's built-in email functionality for authentication and notifications.
 
 **Implementation Notes:**
 
-- Configure clerk email templates
-- Use clerk triggers for notification emails
-- Custom SMTP can be configured in clerk dashboard if needed
+- Configure Supabase email templates
+- Use Supabase triggers for notification emails
+- Custom SMTP can be configured in Supabase dashboard if needed
 - Email notifications for:
   - Account verification
   - Password reset

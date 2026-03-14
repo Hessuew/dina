@@ -1,38 +1,40 @@
 /// <reference types="vite/client" />
 import {
-  ClerkProvider,
-  Show,
-  SignInButton,
-  UserButton,
-} from '@clerk/tanstack-react-start'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { createServerFn } from '@tanstack/react-start'
-import { auth } from '@clerk/tanstack-react-start/server'
-import {
   HeadContent,
   Link,
   Outlet,
   Scripts,
   createRootRoute,
 } from '@tanstack/react-router'
-import appCss from '@/styles/app.css?url'
-import { NotFound } from '@/components/NotFound'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { createServerFn } from '@tanstack/react-start'
+import * as React from 'react'
 import { DefaultCatchBoundary } from '@/components/DefaultCatchBoundary'
+import { NotFound } from '@/components/NotFound'
+import appCss from '@/styles/app.css?url'
+import { seo } from '@/utils/seo'
+import { getSupabaseServerClient } from '@/utils/supabase'
 
-const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(async () => {
-  const { userId } = await auth()
+const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
+  const supabase = getSupabaseServerClient()
+  const { data, error: _error } = await supabase.auth.getUser()
+
+  if (!data.user?.email) {
+    return null
+  }
 
   return {
-    userId,
+    id: data.user.id,
+    email: data.user.email,
   }
 })
 
 export const Route = createRootRoute({
   beforeLoad: async () => {
-    const { userId } = await fetchClerkAuth()
+    const user = await fetchUser()
 
     return {
-      userId,
+      user,
     }
   },
   head: () => ({
@@ -44,6 +46,11 @@ export const Route = createRootRoute({
         name: 'viewport',
         content: 'width=device-width, initial-scale=1',
       },
+      ...seo({
+        title:
+          'TanStack Start | Type-Safe, Client-First, Full-Stack React Framework',
+        description: `TanStack Start is a type-safe, client-first, full-stack React framework. `,
+      }),
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
@@ -81,15 +88,15 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <ClerkProvider>
-      <RootDocument>
-        <Outlet />
-      </RootDocument>
-    </ClerkProvider>
+    <RootDocument>
+      <Outlet />
+    </RootDocument>
   )
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const { user } = Route.useRouteContext()
+
   return (
     <html>
       <head>
@@ -106,21 +113,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           >
             Home
           </Link>{' '}
-          {/* <Link
-            to="/posts"
-            activeProps={{
-              className: 'font-bold',
-            }}
-          >
-            Posts
-          </Link> */}
           <div className="ml-auto">
-            <Show when="signed-in">
-              <UserButton />
-            </Show>
-            <Show when="signed-out">
-              <SignInButton mode="modal" />
-            </Show>
+            {user ? (
+              <>
+                <span className="mr-2">{user.email}</span>
+                <Link to="/logout">Logout</Link>
+              </>
+            ) : (
+              <Link to="/login">Login</Link>
+            )}
           </div>
         </div>
         <hr />

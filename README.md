@@ -52,6 +52,54 @@ pnpm build
 This example demonstrates:
 
 - Authentication with Supabase Auth
-- Database queries with Supabase client
-- Real-time subscriptions
+- Database queries with Drizzle ORM
 - Server-side data fetching
+- Protected routes using root context
+
+## Authentication Patterns
+
+### Accessing User in Routes
+
+The authenticated user is available in the root router context:
+
+```typescript
+export const Route = createFileRoute('/some-route')({
+  beforeLoad: ({ context }) => {
+    if (!context.user) {
+      throw new Error('Not authenticated')
+    }
+    // User ID is available as context.user.id (Supabase UUID)
+    // Email is available as context.user.email
+  },
+})
+```
+
+### Accessing User in Server Functions
+
+In server functions, get the user from Supabase:
+
+```typescript
+const myServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('Not authenticated')
+  }
+
+  // Use user.id for database queries
+  const profile = await getUserProfile(user.id)
+  return profile
+})
+```
+
+### Protected Routes
+
+Use the `_authed` layout route to protect pages:
+
+```typescript
+// Routes under _authed/ require authentication
+// The beforeLoad checks context.user and shows login if not authenticated
+```
