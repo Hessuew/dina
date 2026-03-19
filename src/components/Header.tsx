@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { ProfileDropdown } from './ProfileDropdown'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ type HeaderProps = {
 }
 
 export function Header({ user }: HeaderProps) {
+  const router = useRouter()
   const initials = user?.fullName
     ? user.fullName
         .split(' ')
@@ -52,7 +53,15 @@ export function Header({ user }: HeaderProps) {
               }
             />
           ) : (
-            <Button render={<Link to="/login" />}>Sign In</Button>
+            <Button
+              onClick={() =>
+                router.navigate({
+                  to: '/login',
+                })
+              }
+            >
+              Sign In
+            </Button>
           )}
         </div>
       </div>

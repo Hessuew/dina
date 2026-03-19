@@ -43,6 +43,13 @@
       "when": 1773494800451,
       "tag": "0005_certain_impossible_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773955025369,
+      "tag": "0006_flaky_captain_flint",
+      "breakpoints": true
     }
   ]
 }

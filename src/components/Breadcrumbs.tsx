@@ -57,8 +57,8 @@ export function Breadcrumbs({ items }: BreadcrumbsProps = {}) {
     <Breadcrumb className="mb-6">
       <BreadcrumbList>
         <BreadcrumbItem>
-          <BreadcrumbLink render={<Link to="/dashboard" />}>
-            Dashboard
+          <BreadcrumbLink>
+            <Link to="/dashboard">Dashboard</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
         {breadcrumbs.map((crumb, index) => (
@@ -68,8 +68,8 @@ export function Breadcrumbs({ items }: BreadcrumbsProps = {}) {
               {index === breadcrumbs.length - 1 || !crumb.href ? (
                 <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
               ) : (
-                <BreadcrumbLink render={<Link to={crumb.href} />}>
-                  {crumb.label}
+                <BreadcrumbLink>
+                  <Link to={crumb.href}>{crumb.label}</Link>
                 </BreadcrumbLink>
               )}
             </BreadcrumbItem>

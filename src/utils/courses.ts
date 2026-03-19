@@ -41,25 +41,18 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
       }
     }
 
-    const studentEnrollments = await db.query.enrollments.findMany({
-      where: and(
-        eq(enrollments.studentId, user.id),
-        eq(enrollments.status, 'active'),
-      ),
+    const allCourses = await db.query.courses.findMany({
       with: {
-        course: {
-          with: {
-            teacher: true,
-            lessons: {
-              orderBy: (l, { asc }) => [asc(l.orderIndex)],
-            },
-          },
+        teacher: true,
+        lessons: {
+          orderBy: (l, { asc }) => [asc(l.orderIndex)],
         },
       },
+      orderBy: [desc(courses.createdAt)],
     })
 
     const coursesWithProgress = await Promise.all(
-      studentEnrollments.map(async (enrollment) => {
+      allCourses.map(async (course) => {
         const progress = await db.query.lessonProgress.findMany({
           where: and(
             eq(lessonProgress.studentId, user.id),
@@ -68,14 +61,14 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
         })
 
         const completedLessonIds = new Set(progress.map((p) => p.lessonId))
-        const completedCount = enrollment.course.lessons.filter((lesson) =>
+        const completedCount = course.lessons.filter((lesson) =>
           completedLessonIds.has(lesson.id),
         ).length
 
         return {
-          ...enrollment.course,
+          ...course,
           completedLessons: completedCount,
-          totalLessons: enrollment.course.lessons.length,
+          totalLessons: course.lessons.length,
         }
       }),
     )
@@ -141,11 +134,12 @@ export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
         id: assignments.id,
         title: assignments.title,
         dueDate: assignments.dueDate,
-        courseId: assignments.courseId,
+        courseId: lessons.courseId,
         courseName: courses.title,
       })
       .from(assignments)
-      .innerJoin(courses, eq(assignments.courseId, courses.id))
+      .innerJoin(lessons, eq(assignments.lessonId, lessons.id))
+      .innerJoin(courses, eq(lessons.courseId, courses.id))
       .where(inArray(courses.id, courseIds))
 
     const events = [
@@ -159,16 +153,14 @@ export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
           courseId: l.courseId,
           courseName: l.courseName,
         })),
-      ...upcomingAssignments
-        .filter((a) => a.dueDate)
-        .map((a) => ({
-          id: a.id,
-          title: a.title,
-          date: a.dueDate!,
-          type: 'assignment' as const,
-          courseId: a.courseId,
-          courseName: a.courseName,
-        })),
+      ...upcomingAssignments.map((a) => ({
+        id: a.id,
+        title: a.title,
+        date: a.dueDate,
+        type: 'assignment' as const,
+        courseId: a.courseId,
+        courseName: a.courseName,
+      })),
     ].sort((a, b) => a.date.getTime() - b.date.getTime())
 
     return { events }
@@ -263,6 +255,7 @@ export const createLesson = createServerFn({ method: 'POST' })
       scheduledTime?: Date
       duration?: number
       orderIndex: number
+      isPublished?: boolean
     }) => d,
   )
   .handler(async ({ data }) => {
@@ -282,6 +275,7 @@ export const createLesson = createServerFn({ method: 'POST' })
         scheduledTime: data.scheduledTime || null,
         duration: data.duration || null,
         orderIndex: data.orderIndex,
+        isPublished: data.isPublished ?? false,
       })
       .returning()
 
@@ -300,6 +294,7 @@ export const updateLesson = createServerFn({ method: 'POST' })
       scheduledTime?: Date
       duration?: number
       orderIndex?: number
+      isPublished?: boolean
     }) => d,
   )
   .handler(async ({ data }) => {
@@ -318,6 +313,7 @@ export const updateLesson = createServerFn({ method: 'POST' })
         scheduledTime: data.scheduledTime || null,
         duration: data.duration || null,
         orderIndex: data.orderIndex,
+        isPublished: data.isPublished,
         updatedAt: new Date(),
       })
       .where(eq(lessons.id, data.lessonId))

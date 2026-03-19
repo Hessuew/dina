@@ -47,6 +47,11 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'enrollment',
   'system',
 ])
+export const assignmentStatusEnum = pgEnum('assignment_status', [
+  'draft',
+  'published',
+  'closed',
+])
 
 // ============================================================================
 // TABLES
@@ -93,6 +98,7 @@ export const lessons = pgTable('lessons', {
   thumbnailUrl: text('thumbnail_url'),
   duration: integer('duration'),
   orderIndex: integer('order_index').notNull().default(0),
+  isPublished: boolean('is_published').default(false),
   zoomMeetingId: text('zoom_meeting_id'),
   zoomPassword: text('zoom_password'),
   scheduledTime: timestamp('scheduled_time'),
@@ -134,13 +140,14 @@ export const lessonProgress = pgTable('lesson_progress', {
 
 export const assignments = pgTable('assignments', {
   id: uuid('id').primaryKey().defaultRandom(),
-  courseId: uuid('course_id')
+  lessonId: uuid('lesson_id')
     .notNull()
-    .references(() => courses.id, { onDelete: 'cascade' }),
+    .references(() => lessons.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description'),
-  dueDate: timestamp('due_date'),
+  dueDate: timestamp('due_date').notNull(),
   maxGrade: integer('max_grade').default(100),
+  status: assignmentStatusEnum('status').notNull().default('draft'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -272,7 +279,6 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
   }),
   lessons: many(lessons),
   enrollments: many(enrollments),
-  assignments: many(assignments),
   inquiries: many(inquiries),
   announcements: many(announcements),
   mediaFiles: many(mediaLibrary),
@@ -285,6 +291,7 @@ export const lessonsRelations = relations(lessons, ({ one, many }) => ({
     references: [courses.id],
   }),
   progress: many(lessonProgress),
+  assignments: many(assignments),
 }))
 
 export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
@@ -314,9 +321,9 @@ export const lessonProgressRelations = relations(lessonProgress, ({ one }) => ({
 }))
 
 export const assignmentsRelations = relations(assignments, ({ one, many }) => ({
-  course: one(courses, {
-    fields: [assignments.courseId],
-    references: [courses.id],
+  lesson: one(lessons, {
+    fields: [assignments.lessonId],
+    references: [lessons.id],
   }),
   submissions: many(submissions),
 }))
