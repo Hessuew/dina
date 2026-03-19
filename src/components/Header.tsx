@@ -1,5 +1,4 @@
 import { Link } from '@tanstack/react-router'
-import { Breadcrumbs } from './Breadcrumbs'
 import { ProfileDropdown } from './ProfileDropdown'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -34,7 +33,7 @@ export function Header({ user }: HeaderProps) {
             Logo
           </Link>
           <Separator orientation="vertical" className="hidden h-4! sm:block" />
-          <Breadcrumbs />
+          {/* <Breadcrumbs /> */}
         </div>
         <div className="flex items-center gap-1.5">
           {user ? (

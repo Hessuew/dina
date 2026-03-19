@@ -14,12 +14,11 @@ import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiUploadImageRouteImport } from './routes/api.upload-image'
 import { Route as AuthedProfileRouteImport } from './routes/_authed/profile'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedCoursesRouteImport } from './routes/_authed/courses'
-import { Route as AuthedCoursesNewRouteImport } from './routes/_authed/courses.new'
 import { Route as AuthedCoursesCourseIdRouteImport } from './routes/_authed/courses.$courseId'
-import { Route as AuthedCoursesCourseIdEditRouteImport } from './routes/_authed/courses.$courseId.edit'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -45,6 +44,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiUploadImageRoute = ApiUploadImageRouteImport.update({
+  id: '/api/upload-image',
+  path: '/api/upload-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedProfileRoute = AuthedProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -60,22 +64,11 @@ const AuthedCoursesRoute = AuthedCoursesRouteImport.update({
   path: '/courses',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedCoursesNewRoute = AuthedCoursesNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => AuthedCoursesRoute,
-} as any)
 const AuthedCoursesCourseIdRoute = AuthedCoursesCourseIdRouteImport.update({
   id: '/$courseId',
   path: '/$courseId',
   getParentRoute: () => AuthedCoursesRoute,
 } as any)
-const AuthedCoursesCourseIdEditRoute =
-  AuthedCoursesCourseIdEditRouteImport.update({
-    id: '/edit',
-    path: '/edit',
-    getParentRoute: () => AuthedCoursesCourseIdRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -85,9 +78,8 @@ export interface FileRoutesByFullPath {
   '/courses': typeof AuthedCoursesRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
   '/profile': typeof AuthedProfileRoute
-  '/courses/$courseId': typeof AuthedCoursesCourseIdRouteWithChildren
-  '/courses/new': typeof AuthedCoursesNewRoute
-  '/courses/$courseId/edit': typeof AuthedCoursesCourseIdEditRoute
+  '/api/upload-image': typeof ApiUploadImageRoute
+  '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -97,9 +89,8 @@ export interface FileRoutesByTo {
   '/courses': typeof AuthedCoursesRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
   '/profile': typeof AuthedProfileRoute
-  '/courses/$courseId': typeof AuthedCoursesCourseIdRouteWithChildren
-  '/courses/new': typeof AuthedCoursesNewRoute
-  '/courses/$courseId/edit': typeof AuthedCoursesCourseIdEditRoute
+  '/api/upload-image': typeof ApiUploadImageRoute
+  '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -111,9 +102,8 @@ export interface FileRoutesById {
   '/_authed/courses': typeof AuthedCoursesRouteWithChildren
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/profile': typeof AuthedProfileRoute
-  '/_authed/courses/$courseId': typeof AuthedCoursesCourseIdRouteWithChildren
-  '/_authed/courses/new': typeof AuthedCoursesNewRoute
-  '/_authed/courses/$courseId/edit': typeof AuthedCoursesCourseIdEditRoute
+  '/api/upload-image': typeof ApiUploadImageRoute
+  '/_authed/courses/$courseId': typeof AuthedCoursesCourseIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -125,9 +115,8 @@ export interface FileRouteTypes {
     | '/courses'
     | '/dashboard'
     | '/profile'
+    | '/api/upload-image'
     | '/courses/$courseId'
-    | '/courses/new'
-    | '/courses/$courseId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -137,9 +126,8 @@ export interface FileRouteTypes {
     | '/courses'
     | '/dashboard'
     | '/profile'
+    | '/api/upload-image'
     | '/courses/$courseId'
-    | '/courses/new'
-    | '/courses/$courseId/edit'
   id:
     | '__root__'
     | '/'
@@ -150,9 +138,8 @@ export interface FileRouteTypes {
     | '/_authed/courses'
     | '/_authed/dashboard'
     | '/_authed/profile'
+    | '/api/upload-image'
     | '/_authed/courses/$courseId'
-    | '/_authed/courses/new'
-    | '/_authed/courses/$courseId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -161,6 +148,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
   SignupRoute: typeof SignupRoute
+  ApiUploadImageRoute: typeof ApiUploadImageRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -200,6 +188,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/upload-image': {
+      id: '/api/upload-image'
+      path: '/api/upload-image'
+      fullPath: '/api/upload-image'
+      preLoaderRoute: typeof ApiUploadImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authed/profile': {
       id: '/_authed/profile'
       path: '/profile'
@@ -221,13 +216,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedCoursesRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/courses/new': {
-      id: '/_authed/courses/new'
-      path: '/new'
-      fullPath: '/courses/new'
-      preLoaderRoute: typeof AuthedCoursesNewRouteImport
-      parentRoute: typeof AuthedCoursesRoute
-    }
     '/_authed/courses/$courseId': {
       id: '/_authed/courses/$courseId'
       path: '/$courseId'
@@ -235,37 +223,15 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedCoursesCourseIdRouteImport
       parentRoute: typeof AuthedCoursesRoute
     }
-    '/_authed/courses/$courseId/edit': {
-      id: '/_authed/courses/$courseId/edit'
-      path: '/edit'
-      fullPath: '/courses/$courseId/edit'
-      preLoaderRoute: typeof AuthedCoursesCourseIdEditRouteImport
-      parentRoute: typeof AuthedCoursesCourseIdRoute
-    }
   }
 }
 
-interface AuthedCoursesCourseIdRouteChildren {
-  AuthedCoursesCourseIdEditRoute: typeof AuthedCoursesCourseIdEditRoute
-}
-
-const AuthedCoursesCourseIdRouteChildren: AuthedCoursesCourseIdRouteChildren = {
-  AuthedCoursesCourseIdEditRoute: AuthedCoursesCourseIdEditRoute,
-}
-
-const AuthedCoursesCourseIdRouteWithChildren =
-  AuthedCoursesCourseIdRoute._addFileChildren(
-    AuthedCoursesCourseIdRouteChildren,
-  )
-
 interface AuthedCoursesRouteChildren {
-  AuthedCoursesCourseIdRoute: typeof AuthedCoursesCourseIdRouteWithChildren
-  AuthedCoursesNewRoute: typeof AuthedCoursesNewRoute
+  AuthedCoursesCourseIdRoute: typeof AuthedCoursesCourseIdRoute
 }
 
 const AuthedCoursesRouteChildren: AuthedCoursesRouteChildren = {
-  AuthedCoursesCourseIdRoute: AuthedCoursesCourseIdRouteWithChildren,
-  AuthedCoursesNewRoute: AuthedCoursesNewRoute,
+  AuthedCoursesCourseIdRoute: AuthedCoursesCourseIdRoute,
 }
 
 const AuthedCoursesRouteWithChildren = AuthedCoursesRoute._addFileChildren(
@@ -293,6 +259,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
   SignupRoute: SignupRoute,
+  ApiUploadImageRoute: ApiUploadImageRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
