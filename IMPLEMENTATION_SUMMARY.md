@@ -189,6 +189,3 @@ src/
 - ✅ All operations are properly authorized
 - ✅ UI is responsive and uses shadcn/ui components
 - ✅ Navigation flows smoothly between dashboard, courses, and lessons
-
-FOR FUTURE, NOT FOR NOW
-Great. Next lets plan the teacher pairs. Background: a course and its lessons are not held by a single teacher but a teacher pair. So this pair can edit the course, its lessons and assigments and grade submissions.
