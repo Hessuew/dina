@@ -80,6 +80,50 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
   },
 )
 
+export const getUpcomingLessons = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const user = await getCurrentUser()
+
+    const profile = await db.query.profiles.findFirst({
+      where: eq(profiles.id, user.id),
+    })
+
+    if (!profile) {
+      throw new Error('Profile not found')
+    }
+
+    const { gt } = await import('drizzle-orm')
+    const now = new Date()
+
+    // For both students and teachers, show ALL lessons from all courses
+    const upcomingLessons = await db
+      .select({
+        id: lessons.id,
+        title: lessons.title,
+        scheduledTime: lessons.scheduledTime,
+        thumbnailUrl: lessons.thumbnailUrl,
+        courseId: lessons.courseId,
+        courseName: courses.title,
+      })
+      .from(lessons)
+      .innerJoin(courses, eq(lessons.courseId, courses.id))
+      .where(and(gt(lessons.scheduledTime, now), eq(lessons.isPublished, true)))
+      .orderBy(lessons.scheduledTime)
+      .limit(5)
+
+    return {
+      lessons: upcomingLessons.map((l) => ({
+        id: l.id,
+        title: l.title,
+        scheduledTime: l.scheduledTime!,
+        thumbnailUrl: l.thumbnailUrl,
+        courseId: l.courseId,
+        courseName: l.courseName,
+      })),
+    }
+  },
+)
+
 export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await getCurrentUser()

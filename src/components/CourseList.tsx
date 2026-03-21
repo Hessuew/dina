@@ -2,7 +2,8 @@ import { useRouter } from '@tanstack/react-router'
 import { PlusIcon, UploadIcon, XIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { CourseCard } from './CourseCard'
+import { CourseCardVariant1 } from './CourseCardVariant1'
+import type { Assignment } from './AssignmentsView'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -18,6 +19,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { useMutation } from '@/hooks/useMutation'
 import { createCourse } from '@/utils/courses'
 import { fileToBase64, uploadImageFn } from '@/utils/imageUpload'
+import { UpcomingLessonsList } from '@/components/UpcomingLessonsList'
+import { UpcomingAssignmentsList } from '@/components/UpcomingAssignmentsList'
 
 type Course = {
   id: string
@@ -36,9 +39,21 @@ type Course = {
 type CourseListProps = {
   courses: Array<Course>
   role: 'student' | 'teacher' | 'admin'
+  assignments: Array<Assignment>
+  lessons: Array<{
+    id: string
+    title: string
+    scheduledTime: Date
+    thumbnailUrl: string | null
+    courseId: string
+    courseName: string
+  }>
 }
 
-export function CourseList({ courses, role }: CourseListProps) {
+function CourseListInternal({
+  courses,
+  role,
+}: Omit<CourseListProps, 'assignments' | 'lessons'>) {
   const router = useRouter()
   const isTeacher = role === 'teacher' || role === 'admin'
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -108,7 +123,7 @@ export function CourseList({ courses, role }: CourseListProps) {
     createCourseMutation.mutate({
       data: {
         title: formData.title,
-        description: formData.description || undefined,
+        description: formData.description,
         thumbnailUrl: formData.thumbnailUrl || undefined,
       },
     })
@@ -274,9 +289,13 @@ export function CourseList({ courses, role }: CourseListProps) {
             </Button>
           </div>
         )}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => (
-            <CourseCard key={course.id} course={course as any} role={role} />
+            <CourseCardVariant1
+              key={course.id}
+              course={course as any}
+              role={role}
+            />
           ))}
         </div>
       </div>
@@ -407,5 +426,25 @@ export function CourseList({ courses, role }: CourseListProps) {
         </Dialog>
       )}
     </>
+  )
+}
+
+export function CourseList({
+  courses,
+  role,
+  assignments,
+  lessons,
+}: CourseListProps) {
+  return (
+    <div className="grid gap-6 lg:grid-cols-3">
+      <div className="lg:col-span-2">
+        <CourseListInternal courses={courses} role={role} />
+      </div>
+
+      <div className="space-y-6">
+        <UpcomingLessonsList lessons={lessons} />
+        <UpcomingAssignmentsList assignments={assignments} role={role} />
+      </div>
+    </div>
   )
 }
