@@ -87,6 +87,17 @@ export const courses = pgTable('courses', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+export const courseTeachers = pgTable('course_teachers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  courseId: uuid('course_id')
+    .notNull()
+    .references(() => courses.id, { onDelete: 'cascade' }),
+  teacherId: uuid('teacher_id')
+    .notNull()
+    .references(() => profiles.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 export const lessons = pgTable('lessons', {
   id: uuid('id').primaryKey().defaultRandom(),
   courseId: uuid('course_id')
@@ -263,6 +274,7 @@ export const notifications = pgTable('notifications', {
 
 export const profilesRelations = relations(profiles, ({ many }) => ({
   coursesTeaching: many(courses),
+  courseTeachers: many(courseTeachers),
   enrollments: many(enrollments),
   submissions: many(submissions),
   inquiries: many(inquiries),
@@ -277,12 +289,24 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
     fields: [courses.teacherId],
     references: [profiles.id],
   }),
+  courseTeachers: many(courseTeachers),
   lessons: many(lessons),
   enrollments: many(enrollments),
   inquiries: many(inquiries),
   announcements: many(announcements),
   mediaFiles: many(mediaLibrary),
   calendarEvents: many(calendarEvents),
+}))
+
+export const courseTeachersRelations = relations(courseTeachers, ({ one }) => ({
+  course: one(courses, {
+    fields: [courseTeachers.courseId],
+    references: [courses.id],
+  }),
+  teacher: one(profiles, {
+    fields: [courseTeachers.teacherId],
+    references: [profiles.id],
+  }),
 }))
 
 export const lessonsRelations = relations(lessons, ({ one, many }) => ({

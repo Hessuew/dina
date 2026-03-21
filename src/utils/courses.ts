@@ -1,9 +1,10 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import z from 'zod'
 import { db } from '@/db'
 import {
   assignments,
+  courseTeachers,
   courses,
   enrollments,
   lessonProgress,
@@ -24,16 +25,51 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
       throw new Error('Profile not found')
     }
 
-    if (profile.role === 'teacher' || profile.role === 'admin') {
-      const teacherCourses = await db.query.courses.findMany({
-        where: eq(courses.teacherId, user.id),
+    if (profile.role === 'admin') {
+      // Admins see all courses
+      const allCourses = await db.query.courses.findMany({
         with: {
+          courseTeachers: {
+            with: {
+              teacher: true,
+            },
+          },
           lessons: {
             orderBy: (l, { asc }) => [asc(l.orderIndex)],
           },
         },
         orderBy: [desc(courses.createdAt)],
       })
+
+      return {
+        courses: allCourses,
+        role: profile.role,
+      }
+    }
+
+    if (profile.role === 'teacher') {
+      // Get courses where user is assigned as a teacher
+      const teacherAssignments = await db.query.courseTeachers.findMany({
+        where: eq(courseTeachers.teacherId, user.id),
+        with: {
+          course: {
+            with: {
+              lessons: {
+                orderBy: (l, { asc }) => [asc(l.orderIndex)],
+              },
+              courseTeachers: {
+                with: {
+                  teacher: true,
+                },
+              },
+            },
+          },
+        },
+      })
+
+      const teacherCourses = teacherAssignments.map(
+        (assignment) => assignment.course,
+      )
 
       return {
         courses: teacherCourses,
@@ -44,6 +80,11 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
     const allCourses = await db.query.courses.findMany({
       with: {
         teacher: true,
+        courseTeachers: {
+          with: {
+            teacher: true,
+          },
+        },
         lessons: {
           orderBy: (l, { asc }) => [asc(l.orderIndex)],
         },
@@ -139,11 +180,12 @@ export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
     let courseIds: Array<string> = []
 
     if (profile.role === 'teacher' || profile.role === 'admin') {
-      const teacherCourses = await db.query.courses.findMany({
-        where: eq(courses.teacherId, user.id),
-        columns: { id: true },
+      // Get courses where user is assigned as a teacher
+      const teacherAssignments = await db.query.courseTeachers.findMany({
+        where: eq(courseTeachers.teacherId, user.id),
+        columns: { courseId: true },
       })
-      courseIds = teacherCourses.map((c) => c.id)
+      courseIds = teacherAssignments.map((a) => a.courseId)
     } else {
       const studentEnrollments = await db.query.enrollments.findMany({
         where: and(
@@ -217,6 +259,8 @@ export const createCourse = createServerFn({ method: 'POST' })
       title: z.string().min(1),
       description: z.string().min(1),
       thumbnailUrl: z.string().url().optional(),
+      teacher1Id: z.string().uuid(),
+      teacher2Id: z.string().uuid(),
     }),
   )
   .handler(async ({ data }) => {
@@ -226,20 +270,58 @@ export const createCourse = createServerFn({ method: 'POST' })
       where: eq(profiles.id, user.id),
     })
 
-    if (!profile || (profile.role !== 'teacher' && profile.role !== 'admin')) {
-      throw new Error('Only teachers can create courses')
+    if (!profile || profile.role !== 'admin') {
+      throw new Error('Only admins can create courses')
     }
 
+    // Validate that exactly 2 different teachers are provided
+    if (data.teacher1Id === data.teacher2Id) {
+      throw new Error('Must assign 2 different teachers to a course')
+    }
+
+    // Verify both teachers exist and have teacher role
+    const { inArray } = await import('drizzle-orm')
+    const teachers = await db.query.profiles.findMany({
+      where: inArray(profiles.id, [data.teacher1Id, data.teacher2Id]),
+    })
+
+    if (teachers.length !== 2) {
+      throw new Error('One or both teachers not found')
+    }
+
+    const teacher1 = teachers.find((t) => t.id === data.teacher1Id)
+    const teacher2 = teachers.find((t) => t.id === data.teacher2Id)
+
+    if (teacher1?.role !== 'teacher') {
+      throw new Error(`${teacher1?.fullName || 'Teacher 1'} is not a teacher`)
+    }
+    if (teacher2?.role !== 'teacher') {
+      throw new Error(`${teacher2?.fullName || 'Teacher 2'} is not a teacher`)
+    }
+
+    // Create course with first teacher as legacy teacherId
     const [course] = await db
       .insert(courses)
       .values({
         title: data.title,
         description: data.description,
         thumbnailUrl: data.thumbnailUrl || null,
-        teacherId: user.id,
+        teacherId: data.teacher1Id,
         isPublished: false,
       })
       .returning()
+
+    // Assign both teachers to the course
+    await db.insert(courseTeachers).values([
+      {
+        courseId: course.id,
+        teacherId: data.teacher1Id,
+      },
+      {
+        courseId: course.id,
+        teacherId: data.teacher2Id,
+      },
+    ])
 
     return { course }
   })
@@ -252,14 +334,22 @@ export const updateCourse = createServerFn({ method: 'POST' })
       description: string
       thumbnailUrl?: string
       isPublished?: boolean
+      teacher1Id?: string
+      teacher2Id?: string
     }) => d,
   )
   .handler(async ({ data }) => {
-    const { requireTeacherOfCourse } = await import('@/utils/auth')
+    const { requireTeacherOfCourse, isAdmin } = await import('@/utils/auth')
     const user = await getCurrentUser()
 
-    await requireTeacherOfCourse(user.id, data.courseId)
+    const userIsAdmin = await isAdmin(user.id)
 
+    // Teachers can update their courses, admins can update any course
+    if (!userIsAdmin) {
+      await requireTeacherOfCourse(user.id, data.courseId)
+    }
+
+    // Update course basic info
     const [course] = await db
       .update(courses)
       .set({
@@ -272,16 +362,74 @@ export const updateCourse = createServerFn({ method: 'POST' })
       .where(eq(courses.id, data.courseId))
       .returning()
 
+    // If admin is updating teachers
+    if (userIsAdmin && data.teacher1Id && data.teacher2Id) {
+      // Validate that exactly 2 different teachers are provided
+      if (data.teacher1Id === data.teacher2Id) {
+        throw new Error('Must assign 2 different teachers to a course')
+      }
+
+      // Verify both teachers exist and have teacher role
+      const { inArray } = await import('drizzle-orm')
+      const teachers = await db.query.profiles.findMany({
+        where: inArray(profiles.id, [data.teacher1Id, data.teacher2Id]),
+      })
+
+      if (teachers.length !== 2) {
+        throw new Error('One or both teachers not found')
+      }
+
+      const teacher1 = teachers.find((t) => t.id === data.teacher1Id)
+      const teacher2 = teachers.find((t) => t.id === data.teacher2Id)
+
+      if (teacher1?.role !== 'teacher') {
+        throw new Error(`${teacher1?.fullName || 'Teacher 1'} is not a teacher`)
+      }
+      if (teacher2?.role !== 'teacher') {
+        throw new Error(`${teacher2?.fullName || 'Teacher 2'} is not a teacher`)
+      }
+
+      // Delete existing teacher assignments
+      await db
+        .delete(courseTeachers)
+        .where(eq(courseTeachers.courseId, data.courseId))
+
+      // Insert new teacher assignments
+      await db.insert(courseTeachers).values([
+        {
+          courseId: data.courseId,
+          teacherId: data.teacher1Id,
+        },
+        {
+          courseId: data.courseId,
+          teacherId: data.teacher2Id,
+        },
+      ])
+
+      // Update legacy teacherId field
+      await db
+        .update(courses)
+        .set({
+          teacherId: data.teacher1Id,
+        })
+        .where(eq(courses.id, data.courseId))
+    }
+
     return { course }
   })
 
 export const deleteCourse = createServerFn({ method: 'POST' })
   .inputValidator((d: { courseId: string }) => d)
   .handler(async ({ data }) => {
-    const { requireTeacherOfCourse } = await import('@/utils/auth')
+    const { requireTeacherOfCourse, isAdmin } = await import('@/utils/auth')
     const user = await getCurrentUser()
 
-    await requireTeacherOfCourse(user.id, data.courseId)
+    const userIsAdmin = await isAdmin(user.id)
+
+    // Teachers can delete their courses, admins can delete any course
+    if (!userIsAdmin) {
+      await requireTeacherOfCourse(user.id, data.courseId)
+    }
 
     await db.delete(courses).where(eq(courses.id, data.courseId))
 
@@ -377,4 +525,145 @@ export const deleteLesson = createServerFn({ method: 'POST' })
     await db.delete(lessons).where(eq(lessons.id, data.lessonId))
 
     return { success: true, lessonId: data.lessonId }
+  })
+
+export const getAllTeachers = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const user = await getCurrentUser()
+
+    const profile = await db.query.profiles.findFirst({
+      where: eq(profiles.id, user.id),
+    })
+
+    if (!profile || profile.role !== 'admin') {
+      throw new Error('Only admins can view all teachers')
+    }
+
+    const teachers = await db.query.profiles.findMany({
+      where: inArray(profiles.role, ['teacher', 'admin']),
+      columns: {
+        id: true,
+        fullName: true,
+        email: true,
+        avatarUrl: true,
+      },
+      orderBy: (p, { asc }) => [asc(p.fullName)],
+    })
+
+    return { teachers }
+  },
+)
+
+export const getCourseTeachers = createServerFn({ method: 'GET' })
+  .inputValidator(z.object({ courseId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+
+    const profile = await db.query.profiles.findFirst({
+      where: eq(profiles.id, user.id),
+    })
+
+    if (!profile) {
+      throw new Error('Profile not found')
+    }
+
+    const courseTeachersList = await db.query.courseTeachers.findMany({
+      where: eq(courseTeachers.courseId, data.courseId),
+      with: {
+        teacher: {
+          columns: {
+            id: true,
+            fullName: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    })
+
+    return {
+      teachers: courseTeachersList.map((ct) => ct.teacher),
+    }
+  })
+
+export const updateCourseTeachers = createServerFn({ method: 'POST' })
+  .inputValidator(
+    z.object({
+      courseId: z.string().uuid(),
+      teacher1Id: z.string().uuid(),
+      teacher2Id: z.string().uuid(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+
+    const profile = await db.query.profiles.findFirst({
+      where: eq(profiles.id, user.id),
+    })
+
+    if (!profile || profile.role !== 'admin') {
+      throw new Error('Only admins can update course teachers')
+    }
+
+    // Validate that exactly 2 different teachers are provided
+    if (data.teacher1Id === data.teacher2Id) {
+      throw new Error('Must assign 2 different teachers to a course')
+    }
+
+    // Verify both teachers exist and have teacher role
+    const { inArray } = await import('drizzle-orm')
+    const teachers = await db.query.profiles.findMany({
+      where: inArray(profiles.id, [data.teacher1Id, data.teacher2Id]),
+    })
+
+    if (teachers.length !== 2) {
+      throw new Error('One or both teachers not found')
+    }
+
+    const teacher1 = teachers.find((t) => t.id === data.teacher1Id)
+    const teacher2 = teachers.find((t) => t.id === data.teacher2Id)
+
+    if (teacher1?.role !== 'teacher') {
+      throw new Error(`${teacher1?.fullName || 'Teacher 1'} is not a teacher`)
+    }
+    if (teacher2?.role !== 'teacher') {
+      throw new Error(`${teacher2?.fullName || 'Teacher 2'} is not a teacher`)
+    }
+
+    // Verify course exists
+    const course = await db.query.courses.findFirst({
+      where: eq(courses.id, data.courseId),
+    })
+
+    if (!course) {
+      throw new Error('Course not found')
+    }
+
+    // Delete existing teacher assignments
+    await db
+      .delete(courseTeachers)
+      .where(eq(courseTeachers.courseId, data.courseId))
+
+    // Insert new teacher assignments
+    await db.insert(courseTeachers).values([
+      {
+        courseId: data.courseId,
+        teacherId: data.teacher1Id,
+      },
+      {
+        courseId: data.courseId,
+        teacherId: data.teacher2Id,
+      },
+    ])
+
+    // Update legacy teacherId field
+    await db
+      .update(courses)
+      .set({
+        teacherId: data.teacher1Id,
+        updatedAt: new Date(),
+      })
+      .where(eq(courses.id, data.courseId))
+
+    return { success: true }
   })

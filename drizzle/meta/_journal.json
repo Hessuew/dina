@@ -50,6 +50,13 @@
       "when": 1773955025369,
       "tag": "0006_flaky_captain_flint",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774130602358,
+      "tag": "0007_plain_blink",
+      "breakpoints": true
     }
   ]
 }

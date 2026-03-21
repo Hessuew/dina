@@ -177,6 +177,145 @@ src/
     └── schema.ts (updated - removed modules)
 ```
 
+## Teacher Assignment Architecture
+
+### Design Decisions
+
+**Model**: Each course has exactly 2 teachers assigned by admin. No separate "pairs" table - direct many-to-many relationship.
+
+**Key Constraints**:
+
+- No database-level constraint on teacher count (application validates)
+- Junction table pattern: `course_teachers(course_id, teacher_id)`
+- Course creation requires 2 teachers to be assigned immediately
+- Same 2 teachers can teach multiple courses together
+- A teacher can teach multiple courses (with different partners)
+
+**Permissions**:
+
+- Both teachers have equal permissions for their assigned courses
+- Teachers can edit course, lessons, assignments, and grade submissions
+- Last-write-wins for concurrent edits (no conflict resolution)
+- Either teacher can grade independently (final immediately)
+- Students don't see which teacher graded their work
+
+**Admin Management**:
+
+- Admin assigns 2 teachers when creating a course
+- No separate teacher pairs management UI needed (for now)
+- Teacher removal/deactivation not implemented yet
+
+### Database Schema
+
+```sql
+CREATE TABLE course_teachers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  teacher_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(course_id, teacher_id)
+);
+
+CREATE INDEX idx_course_teachers_course ON course_teachers(course_id);
+CREATE INDEX idx_course_teachers_teacher ON course_teachers(teacher_id);
+```
+
+### Implementation Checklist
+
+- [x] Create `course_teachers` junction table with migration
+- [x] Add RLS policies SQL file for `course_teachers` table (needs manual application via Supabase dashboard)
+- [x] Update course creation to accept 2 teacher IDs and validate
+- [x] Update course queries to join teacher data via `courseTeachers` relation
+- [x] Update authorization helpers to check `course_teachers` assignments
+- [x] Update UI to show teacher selection in course creation and edit modals
+- [x] Validate exactly 2 different teachers on course creation and update
+
+### Completed Backend Changes
+
+**Database Schema:**
+
+- Added `course_teachers` junction table with foreign keys to `courses` and `profiles`
+- Added relations: `courseTeachersRelations`, updated `profilesRelations` and `coursesRelations`
+- Migration: `drizzle/0007_plain_blink.sql` (applied)
+- RLS policies: Will be created later when needed
+
+**Authorization (`src/utils/auth.ts`):**
+
+- Updated `requireTeacherOfCourse()` to check `course_teachers` junction table
+- Updated `getCourseAccess()` to check `course_teachers` for teacher access
+- Both functions now support the 2-teacher model
+
+**Course Functions (`src/utils/courses.ts`):**
+
+_Query Functions:_
+
+- `getCourses()`:
+  - Admins now see ALL courses (not just their own)
+  - Teachers see only courses where they're assigned via `courseTeachers`
+  - Students see courses with progress tracking
+  - All queries include `courseTeachers` relation with teacher data
+- `getCalendarEvents()`: Updated to query via `courseTeachers` for teachers
+- `getAllTeachers()`: NEW - Returns all teachers for admin dropdowns
+- `getCourseTeachers()`: NEW - Returns the 2 teachers assigned to a specific course
+
+_Course Management:_
+
+- `createCourse()`:
+  - **Admin-only** (changed from teacher)
+  - Requires `teacher1Id` and `teacher2Id` parameters
+  - Validates 2 different teachers are provided
+  - Verifies both teachers exist and have teacher role
+  - Inserts records into `course_teachers` table for both teachers
+  - Better error messages with teacher names
+- `updateCourse()`:
+  - Teachers can update their assigned courses
+  - **Admins can update ANY course**
+  - Admins can optionally update teacher assignments via `teacher1Id` and `teacher2Id`
+  - Validates teacher changes same as creation
+  - Updates both `course_teachers` table and legacy `teacherId` field
+- `deleteCourse()`:
+  - Teachers can delete their assigned courses
+  - **Admins can delete ANY course**
+- `updateCourseTeachers()`: NEW - Dedicated endpoint for admins to change course teachers
+
+**Improvements Made:**
+
+- Optimized teacher validation using `inArray` for single query
+- Better error messages including teacher names
+- Consistent admin permission checks across all functions
+- Admins have full control over all courses and teacher assignments
+- Teachers maintain their existing permissions for assigned courses
+
+### UI Changes
+
+**Course Creation Modal (`src/components/CourseList.tsx`):**
+
+- Changed from teacher-accessible to **admin-only**
+- Added 2 teacher selection dropdowns (Teacher 1 and Teacher 2)
+- Fetches all teachers via `getAllTeachers()` when dialog opens
+- Teacher 2 dropdown filters out Teacher 1 selection to prevent duplicates
+- Validates 2 different teachers are selected before submission
+- Shows teacher names and emails in dropdowns for clarity
+- Loading state while fetching teachers
+
+**Course Edit Dialog (`src/routes/_authed/courses.$courseId.tsx`):**
+
+- Added teacher selection fields for **admins only**
+- Fetches current course teachers via `getCourseTeachers()` when dialog opens
+- Pre-populates teacher selections with current assignments
+- Allows admins to change teacher assignments
+- Teachers can still edit course details (just not teacher assignments)
+- Same validation as creation (2 different teachers required)
+- Fetches all available teachers for selection
+
+**Key UI Features:**
+
+- Teacher dropdowns show: "Full Name (email@example.com)"
+- Second teacher dropdown automatically excludes first teacher selection
+- Loading states for async teacher data fetching
+- Validation messages for missing or duplicate teacher selections
+- Scrollable dialog content for better UX with additional fields
+
 ## Success Criteria Met ✅
 
 - ✅ Modules table removed, lessons directly reference courses
@@ -189,3 +328,5 @@ src/
 - ✅ All operations are properly authorized
 - ✅ UI is responsive and uses shadcn/ui components
 - ✅ Navigation flows smoothly between dashboard, courses, and lessons
+- ✅ 2-teacher course assignment system implemented
+- ✅ Admins can manage all courses and teacher assignments
