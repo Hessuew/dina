@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { AssignmentsView } from '@/components/AssignmentsView'
 import { CourseList } from '@/components/CourseList'
+import { StudentsView } from '@/components/StudentsView'
 import { TeachersView } from '@/components/TeachersView'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -8,6 +9,7 @@ import {
   getAllAssignmentsForTeacher,
 } from '@/utils/assignments'
 import { getCourses, getUpcomingLessons } from '@/utils/courses'
+import { useStudents } from '@/hooks/useStudents'
 import { useTeachers } from '@/hooks/useTeachers'
 
 export const Route = createFileRoute('/_authed/dashboard')({
@@ -55,6 +57,12 @@ function DashboardComponent() {
     activeTab === 'teachers',
   )
 
+  const { students, isLoading: studentsLoading } = useStudents(
+    activeTab === 'students',
+  )
+
+  const isTeacherOrAdmin = role === 'teacher' || role === 'admin'
+
   const handleTabChange = (value: string) => {
     navigate({
       search: { activeTab: value },
@@ -82,6 +90,9 @@ function DashboardComponent() {
           <TabsTrigger value="courses">Courses</TabsTrigger>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="teachers">Teachers</TabsTrigger>
+          {isTeacherOrAdmin && (
+            <TabsTrigger value="students">Students</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="courses" className="space-y-6">
@@ -100,6 +111,12 @@ function DashboardComponent() {
         <TabsContent value="teachers" className="space-y-6">
           <TeachersView teachers={teachers} isLoading={teachersLoading} />
         </TabsContent>
+
+        {isTeacherOrAdmin && (
+          <TabsContent value="students" className="space-y-6">
+            <StudentsView students={students} isLoading={studentsLoading} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )
