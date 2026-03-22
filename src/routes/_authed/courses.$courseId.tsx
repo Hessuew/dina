@@ -478,12 +478,6 @@ function CourseDetailComponent() {
                       </span>
                       <span className="font-medium">{totalLessons}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Instructor</span>
-                      <span className="font-medium">
-                        {course?.teacher.fullName}
-                      </span>
-                    </div>
                   </div>
                 </div>
               </CardContent>

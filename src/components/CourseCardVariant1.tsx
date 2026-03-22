@@ -93,7 +93,7 @@ export function CourseCardVariant1({ course, role }: CourseCardProps) {
             )}
           </div>
 
-          <div className="absolute bottom-2 right-2">
+          <div className="absolute bottom-2 right-2 animate-in fade-in slide-in-from-bottom-2 duration-1000">
             {course.courseTeachers && course.courseTeachers.length > 0 ? (
               <div className="flex items-center gap-2">
                 <TeacherAvatars

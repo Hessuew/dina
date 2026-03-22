@@ -1,4 +1,5 @@
-import { Link, useRouter } from '@tanstack/react-router'
+import { Link, useRouter, useRouterState } from '@tanstack/react-router'
+import { LayoutDashboard } from 'lucide-react'
 import { ProfileDropdown } from './ProfileDropdown'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,9 @@ type HeaderProps = {
 
 export function Header({ user }: HeaderProps) {
   const router = useRouter()
+  const routerState = useRouterState()
+  const isRootPage = routerState.location.pathname === '/'
+
   const initials = user?.fullName
     ? user.fullName
         .split(' ')
@@ -38,20 +42,31 @@ export function Header({ user }: HeaderProps) {
         </div>
         <div className="flex items-center gap-1.5">
           {user ? (
-            <ProfileDropdown
-              user={{
-                ...user,
-                avatarUrl: user.avatarUrl ?? undefined,
-              }}
-              trigger={
-                <Button variant="ghost" size="icon" className="size-9.5">
-                  <Avatar className="size-9.5 rounded-md">
-                    <AvatarImage src={user.avatarUrl ?? undefined} />
-                    <AvatarFallback>{initials}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              }
-            />
+            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-1000">
+              {isRootPage && (
+                <Link to="/dashboard" search={{ activeTab: 'courses' }}>
+                  <div className="flex items-center gap-2 rounded-md bg-linear-to-r from-primary to-primary/80 px-2 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90">
+                    <LayoutDashboard className="size-4" />
+                    Dashboard
+                  </div>
+                </Link>
+              )}
+              <ProfileDropdown
+                user={{
+                  ...user,
+                  avatarUrl: user.avatarUrl ?? undefined,
+                }}
+                trigger={
+                  <Button variant="ghost" size="icon" className="size-9.5">
+                    <Avatar className="size-9.5 rounded-md">
+                      <AvatarImage src={user.avatarUrl ?? undefined} />
+                      <AvatarFallback>{initials}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                }
+                onProfileUpdate={() => router.invalidate()}
+              />
+            </div>
           ) : (
             <Button
               onClick={() =>

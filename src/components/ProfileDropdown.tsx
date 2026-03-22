@@ -1,5 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { LogOutIcon, UserIcon } from 'lucide-react'
+import { useState } from 'react'
+import { ProfileModal } from './ProfileModal'
 import type { ReactElement } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -22,6 +24,7 @@ type Props = {
   }
   defaultOpen?: boolean
   align?: 'start' | 'center' | 'end'
+  onProfileUpdate?: () => void
 }
 
 export function ProfileDropdown({
@@ -29,7 +32,9 @@ export function ProfileDropdown({
   user,
   defaultOpen,
   align = 'end',
+  onProfileUpdate,
 }: Props) {
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
   const initials = user.fullName
     ? user.fullName
         .split(' ')
@@ -68,31 +73,36 @@ export function ProfileDropdown({
         <DropdownMenuSeparator />
 
         <DropdownMenuGroup>
-          <DropdownMenuItem className="text-base p-0">
-            <Link
-              className="flex flex-row gap-2 size-full px-4 py-2.5"
-              to="/profile"
-            >
-              <UserIcon className="text-foreground size-5" />
-              <span>My Profile</span>
-            </Link>
+          <DropdownMenuItem
+            className="flex flex-row gap-2 p-4 py-2.5 size-full"
+            onClick={() => setProfileModalOpen(true)}
+          >
+            <UserIcon className="text-foreground size-5" />
+            <span>My Profile</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
 
         <DropdownMenuSeparator />
 
         <DropdownMenuGroup>
-          <DropdownMenuItem variant="destructive" className="p-0 text-base">
-            <Link
-              className="flex flex-row gap-2 p-4 py-2.5 size-full"
-              to="/logout"
+          <Link to="/logout" className="block">
+            <DropdownMenuItem
+              variant="destructive"
+              className="flex flex-row gap-2 p-4 pt-2.5 pb-2 text-base"
             >
               <LogOutIcon className="size-5" />
               <span>Logout</span>
-            </Link>
-          </DropdownMenuItem>
+            </DropdownMenuItem>
+          </Link>
         </DropdownMenuGroup>
       </DropdownMenuContent>
+
+      <ProfileModal
+        open={profileModalOpen}
+        onOpenChange={setProfileModalOpen}
+        user={user}
+        onProfileUpdate={onProfileUpdate}
+      />
     </DropdownMenu>
   )
 }
