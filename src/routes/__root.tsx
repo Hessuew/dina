@@ -5,9 +5,12 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/react-router'
+
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
+
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { DefaultCatchBoundary } from '@/components/DefaultCatchBoundary'
 import { Header } from '@/components/Header'
 import { NotFound } from '@/components/NotFound'
@@ -19,6 +22,7 @@ import { seo } from '@/utils/seo'
 import { db } from '@/db'
 import { profiles } from '@/db/schema'
 import { getSupabaseServerClient } from '@/utils/supabase'
+import { AppSidebar } from '@/components/AppSidebar'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = getSupabaseServerClient()
@@ -34,8 +38,9 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const profile = await db.query.profiles.findFirst({
     where: eq(profiles.id, data.user.id),
     columns: {
-      fullName: true,
       avatarUrl: true,
+      fullName: true,
+      role: true,
     },
   })
 
@@ -44,6 +49,7 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
     email: data.user.email,
     fullName: profile?.fullName,
     avatarUrl: profile?.avatarUrl,
+    role: profile?.role || 'student',
   }
 })
 
@@ -114,21 +120,28 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { user } = Route.useRouteContext()
+  const role = user?.role || 'student'
 
   return (
     <html>
       <head>
         <HeadContent />
       </head>
-      <body>
-        <TooltipProvider>
-          <Header user={user} />
-          {children}
-          <Toaster />
-          <TanStackRouterDevtools position="bottom-right" />
-          <Scripts />
-        </TooltipProvider>
-      </body>
+
+      <SidebarProvider defaultOpen={Boolean(user)}>
+        <AppSidebar user={user} role={role} />
+        <SidebarInset>
+          <body>
+            <TooltipProvider>
+              <Header user={user} />
+              {children}
+              <Toaster />
+              <TanStackRouterDevtools position="bottom-right" />
+              <Scripts />
+            </TooltipProvider>
+          </body>
+        </SidebarInset>
+      </SidebarProvider>
     </html>
   )
 }

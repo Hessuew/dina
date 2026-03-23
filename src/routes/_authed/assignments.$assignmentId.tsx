@@ -71,7 +71,6 @@ export const Route = createFileRoute('/_authed/assignments/$assignmentId')({
   validateSearch: (search: Record<string, unknown>) => {
     return {
       fromDashboard: search.fromDashboard === true,
-      activeTab: (search.activeTab as string) || undefined,
     }
   },
   loader: async ({ params }) => {
@@ -118,7 +117,7 @@ type SubmissionWithStudent = {
 function AssignmentDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
-  const { fromDashboard, activeTab } = Route.useSearch()
+  const { fromDashboard } = Route.useSearch()
   const { assignment, submission, role, allSubmissions } = loaderData
 
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -167,8 +166,7 @@ function AssignmentDetailComponent() {
       toast.success('Assignment deleted successfully!')
       if (fromDashboard) {
         await router.navigate({
-          to: '/dashboard',
-          search: activeTab ? { activeTab } : undefined,
+          to: '/assignments',
         })
       } else {
         await router.navigate({

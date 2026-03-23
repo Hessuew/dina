@@ -1,33 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { AssignmentsView } from '@/components/AssignmentsView'
 import { CourseList } from '@/components/CourseList'
-import { StudentsView } from '@/components/StudentsView'
-import { TeachersView } from '@/components/TeachersView'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   getAllAssignmentsForStudent,
   getAllAssignmentsForTeacher,
 } from '@/utils/assignments'
 import { getCourses, getUpcomingLessons } from '@/utils/courses'
-import { useStudents } from '@/hooks/useStudents'
-import { useTeachers } from '@/hooks/useTeachers'
 
 export const Route = createFileRoute('/_authed/dashboard')({
-  validateSearch: (search: Record<string, unknown>) => {
-    return {
-      activeTab: (search.activeTab as string) || 'courses',
-    }
-  },
   loader: async () => {
     const coursesData = await getCourses()
 
-    // Transform courses to handle null isPublished values
     const transformedCourses = coursesData.courses.map((course) => ({
       ...course,
       isPublished: course.isPublished ?? false,
     }))
 
-    // Fetch assignments based on role
     let assignmentsData
     if (coursesData.role === 'student') {
       assignmentsData = await getAllAssignmentsForStudent()
@@ -35,7 +22,6 @@ export const Route = createFileRoute('/_authed/dashboard')({
       assignmentsData = await getAllAssignmentsForTeacher()
     }
 
-    // Fetch upcoming lessons
     const upcomingLessonsData = await getUpcomingLessons()
 
     return {
@@ -50,24 +36,6 @@ export const Route = createFileRoute('/_authed/dashboard')({
 
 function DashboardComponent() {
   const { courses, role, assignments, upcomingLessons } = Route.useLoaderData()
-  const { activeTab } = Route.useSearch()
-  const navigate = Route.useNavigate()
-
-  const { teachers, isLoading: teachersLoading } = useTeachers(
-    activeTab === 'teachers',
-  )
-
-  const { students, isLoading: studentsLoading } = useStudents(
-    activeTab === 'students',
-  )
-
-  const isTeacherOrAdmin = role === 'teacher' || role === 'admin'
-
-  const handleTabChange = (value: string) => {
-    navigate({
-      search: { activeTab: value },
-    })
-  }
 
   return (
     <div className="mx-auto max-w-7xl p-6">
@@ -80,44 +48,12 @@ function DashboardComponent() {
         </p>
       </div>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={handleTabChange}
-        defaultValue="courses"
-        className="space-y-6"
-      >
-        <TabsList>
-          <TabsTrigger value="courses">Courses</TabsTrigger>
-          <TabsTrigger value="assignments">Assignments</TabsTrigger>
-          <TabsTrigger value="teachers">Teachers</TabsTrigger>
-          {isTeacherOrAdmin && (
-            <TabsTrigger value="students">Students</TabsTrigger>
-          )}
-        </TabsList>
-
-        <TabsContent value="courses" className="space-y-6">
-          <CourseList
-            courses={courses}
-            assignments={assignments}
-            lessons={upcomingLessons}
-            role={role}
-          />
-        </TabsContent>
-
-        <TabsContent value="assignments" className="space-y-6">
-          <AssignmentsView assignments={assignments} role={role} />
-        </TabsContent>
-
-        <TabsContent value="teachers" className="space-y-6">
-          <TeachersView teachers={teachers} isLoading={teachersLoading} />
-        </TabsContent>
-
-        {isTeacherOrAdmin && (
-          <TabsContent value="students" className="space-y-6">
-            <StudentsView students={students} isLoading={studentsLoading} />
-          </TabsContent>
-        )}
-      </Tabs>
+      <CourseList
+        courses={courses}
+        assignments={assignments}
+        lessons={upcomingLessons}
+        role={role}
+      />
     </div>
   )
 }

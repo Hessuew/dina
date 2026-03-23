@@ -169,8 +169,7 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                         to: '/assignments/$assignmentId',
                         params: { assignmentId: assignment.id },
                         search: {
-                          fromDashboard: true,
-                          activeTab: 'assignments',
+                          fromDashboard: false,
                         },
                       })
                     }

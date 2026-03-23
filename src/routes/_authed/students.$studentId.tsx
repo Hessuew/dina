@@ -16,7 +16,6 @@ export const Route = createFileRoute('/_authed/students/$studentId')({
   validateSearch: (search: Record<string, unknown>) => {
     return {
       fromDashboard: (search.fromDashboard as boolean) || false,
-      activeTab: (search.activeTab as string) || 'courses',
     }
   },
   loader: async ({ params }) => {
@@ -30,14 +29,13 @@ export const Route = createFileRoute('/_authed/students/$studentId')({
 
 function StudentDetailComponent() {
   const { student } = Route.useLoaderData()
-  const { fromDashboard, activeTab } = Route.useSearch()
+  const { fromDashboard } = Route.useSearch()
   const router = useRouter()
 
   const handleBack = () => {
     if (fromDashboard) {
       router.navigate({
-        to: '/dashboard',
-        search: { activeTab },
+        to: '/students',
       })
     } else {
       router.history.back()
@@ -50,7 +48,6 @@ function StudentDetailComponent() {
       params: { assignmentId },
       search: {
         fromDashboard: false,
-        activeTab: 'assignments',
       },
     })
   }

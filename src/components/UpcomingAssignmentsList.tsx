@@ -75,7 +75,7 @@ export function UpcomingAssignmentsList({
                   key={assignment.id}
                   to="/assignments/$assignmentId"
                   params={{ assignmentId: assignment.id }}
-                  search={{ fromDashboard: true, activeTab: 'courses' }}
+                  search={{ fromDashboard: false }}
                   className="block"
                 >
                   <div className="group rounded-lg border p-3 transition-colors hover:bg-muted/50">

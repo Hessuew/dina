@@ -458,7 +458,6 @@ function LessonDetailComponent() {
                                 },
                                 search: {
                                   fromDashboard: false,
-                                  activeTab: 'assignments',
                                 },
                               })
                             }
