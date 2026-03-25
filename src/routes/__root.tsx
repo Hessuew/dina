@@ -128,10 +128,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
 
-      <SidebarProvider defaultOpen={Boolean(user)}>
-        <AppSidebar user={user} role={role} />
-        <SidebarInset>
-          <body>
+      <body>
+        <SidebarProvider defaultOpen={Boolean(user)}>
+          <AppSidebar user={user} role={role} />
+          <SidebarInset>
             <TooltipProvider>
               <Header user={user} />
               {children}
@@ -139,9 +139,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               <TanStackRouterDevtools position="bottom-right" />
               <Scripts />
             </TooltipProvider>
-          </body>
-        </SidebarInset>
-      </SidebarProvider>
+          </SidebarInset>
+        </SidebarProvider>
+      </body>
     </html>
   )
 }

@@ -54,7 +54,18 @@ const getLessonData = createServerFn({ method: 'GET' })
     return await getLesson({ data })
   })
 
+type LessonSearch = {
+  fromCalendar?: boolean
+  calendarMonth?: string
+}
+
 export const Route = createFileRoute('/_authed/lessons/$lessonId')({
+  validateSearch: (search: Record<string, unknown>): LessonSearch => {
+    return {
+      fromCalendar: search.fromCalendar as boolean | undefined,
+      calendarMonth: search.calendarMonth as string | undefined,
+    }
+  },
   loader: async ({ params }) => {
     const data = await getLessonData({ data: { lessonId: params.lessonId } })
     return data
@@ -76,6 +87,7 @@ type Assignment = {
 function LessonDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
+  const search = Route.useSearch()
   const { lesson, role } = loaderData
 
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -293,16 +305,23 @@ function LessonDetailComponent() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() =>
-                router.navigate({
-                  to: '/courses/$courseId',
-                  params: { courseId: lesson.course.id },
-                })
-              }
+              onClick={() => {
+                if (search.fromCalendar && search.calendarMonth) {
+                  router.navigate({
+                    to: '/calendar',
+                    search: { month: search.calendarMonth },
+                  })
+                } else {
+                  router.navigate({
+                    to: '/courses/$courseId',
+                    params: { courseId: lesson.course.id },
+                  })
+                }
+              }}
               className="mb-2"
             >
               <ArrowLeftIcon className="mr-2 size-4" />
-              Back to Course
+              {search.fromCalendar ? 'Back to Calendar' : 'Back to Course'}
             </Button>
             <h1 className="text-3xl font-bold">{lesson.title}</h1>
             <p className="text-muted-foreground mt-1">
@@ -457,6 +476,8 @@ function LessonDetailComponent() {
                                   assignmentId: assignment.id,
                                 },
                                 search: {
+                                  calendarMonth: undefined,
+                                  fromCalendar: false,
                                   fromDashboard: false,
                                 },
                               })

@@ -71,6 +71,8 @@ export const Route = createFileRoute('/_authed/assignments/$assignmentId')({
   validateSearch: (search: Record<string, unknown>) => {
     return {
       fromDashboard: search.fromDashboard === true,
+      fromCalendar: search.fromCalendar === true,
+      calendarMonth: search.calendarMonth as string | undefined,
     }
   },
   loader: async ({ params }) => {
@@ -117,7 +119,7 @@ type SubmissionWithStudent = {
 function AssignmentDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
-  const { fromDashboard } = Route.useSearch()
+  const { fromDashboard, fromCalendar, calendarMonth } = Route.useSearch()
   const { assignment, submission, role, allSubmissions } = loaderData
 
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -277,11 +279,26 @@ function AssignmentDetailComponent() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.history.back()}
+            onClick={() => {
+              if (fromCalendar && calendarMonth) {
+                router.navigate({
+                  to: '/calendar',
+                  search: { month: calendarMonth },
+                })
+              } else if (fromDashboard) {
+                router.navigate({ to: '/dashboard' })
+              } else {
+                router.history.back()
+              }
+            }}
             className="mb-2"
           >
             <ArrowLeftIcon className="mr-2 size-4" />
-            {fromDashboard ? 'Back to Dashboard' : 'Back to Lesson'}
+            {fromCalendar
+              ? 'Back to Calendar'
+              : fromDashboard
+                ? 'Back to Dashboard'
+                : 'Back to Lesson'}
           </Button>
           <div className="flex items-start justify-between">
             <div>
@@ -369,7 +386,7 @@ function AssignmentDetailComponent() {
                       </span>
                     </div>
                     {isPastDue && (
-                      <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                      <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
                         This assignment is past due
                       </div>
                     )}
@@ -439,7 +456,7 @@ function AssignmentDetailComponent() {
                           />
                         </Field>
                         {submission && (
-                          <div className="rounded-md bg-muted p-3 text-sm">
+                          <div className="bg-muted rounded-md p-3 text-sm">
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground">
                                 Status
@@ -484,7 +501,7 @@ function AssignmentDetailComponent() {
                                     <span className="text-muted-foreground text-xs">
                                       Feedback
                                     </span>
-                                    <p className="mt-1 whitespace-pre-wrap text-sm">
+                                    <p className="mt-1 text-sm whitespace-pre-wrap">
                                       {submission.feedback}
                                     </p>
                                   </div>
@@ -536,7 +553,7 @@ function AssignmentDetailComponent() {
                             (sub) => (
                               <TableRow
                                 key={sub.id}
-                                className="cursor-pointer hover:bg-muted/50"
+                                className="hover:bg-muted/50 cursor-pointer"
                                 onClick={() => handleOpenGradingModal(sub)}
                               >
                                 <TableCell className="font-medium">
@@ -738,8 +755,8 @@ function AssignmentDetailComponent() {
           <div className="space-y-4">
             <div>
               <h4 className="mb-2 font-semibold">Student's Answer</h4>
-              <div className="rounded-md bg-muted p-4">
-                <p className="whitespace-pre-wrap text-sm">
+              <div className="bg-muted rounded-md p-4">
+                <p className="text-sm whitespace-pre-wrap">
                   {selectedSubmission?.content || 'No content provided'}
                 </p>
               </div>
@@ -751,7 +768,7 @@ function AssignmentDetailComponent() {
                   href={selectedSubmission.fileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary hover:underline text-sm"
+                  className="text-primary text-sm hover:underline"
                 >
                   {selectedSubmission.fileUrl}
                 </a>

@@ -6,7 +6,7 @@ import {
 } from '@/utils/assignments'
 import { getCourses } from '@/utils/courses'
 
-export const Route = createFileRoute('/_authed/assignments')({
+export const Route = createFileRoute('/_authed/assignments/')({
   loader: async () => {
     const coursesData = await getCourses()
 
