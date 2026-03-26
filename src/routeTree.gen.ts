@@ -17,6 +17,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiUploadImageRouteImport } from './routes/api.upload-image'
 import { Route as AuthedTeachersRouteImport } from './routes/_authed/teachers'
 import { Route as AuthedStudentsRouteImport } from './routes/_authed/students'
+import { Route as AuthedInvitationsRouteImport } from './routes/_authed/invitations'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedCoursesRouteImport } from './routes/_authed/courses'
 import { Route as AuthedCalendarRouteImport } from './routes/_authed/calendar'
@@ -63,6 +64,11 @@ const AuthedTeachersRoute = AuthedTeachersRouteImport.update({
 const AuthedStudentsRoute = AuthedStudentsRouteImport.update({
   id: '/students',
   path: '/students',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedInvitationsRoute = AuthedInvitationsRouteImport.update({
+  id: '/invitations',
+  path: '/invitations',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof AuthedCalendarRoute
   '/courses': typeof AuthedCoursesRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
+  '/invitations': typeof AuthedInvitationsRoute
   '/students': typeof AuthedStudentsRouteWithChildren
   '/teachers': typeof AuthedTeachersRoute
   '/api/upload-image': typeof ApiUploadImageRoute
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof AuthedCalendarRoute
   '/courses': typeof AuthedCoursesRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
+  '/invitations': typeof AuthedInvitationsRoute
   '/students': typeof AuthedStudentsRouteWithChildren
   '/teachers': typeof AuthedTeachersRoute
   '/api/upload-image': typeof ApiUploadImageRoute
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/_authed/calendar': typeof AuthedCalendarRoute
   '/_authed/courses': typeof AuthedCoursesRouteWithChildren
   '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/invitations': typeof AuthedInvitationsRoute
   '/_authed/students': typeof AuthedStudentsRouteWithChildren
   '/_authed/teachers': typeof AuthedTeachersRoute
   '/api/upload-image': typeof ApiUploadImageRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/courses'
     | '/dashboard'
+    | '/invitations'
     | '/students'
     | '/teachers'
     | '/api/upload-image'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/courses'
     | '/dashboard'
+    | '/invitations'
     | '/students'
     | '/teachers'
     | '/api/upload-image'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/_authed/calendar'
     | '/_authed/courses'
     | '/_authed/dashboard'
+    | '/_authed/invitations'
     | '/_authed/students'
     | '/_authed/teachers'
     | '/api/upload-image'
@@ -280,6 +292,13 @@ declare module '@tanstack/react-router' {
       path: '/students'
       fullPath: '/students'
       preLoaderRoute: typeof AuthedStudentsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/invitations': {
+      id: '/_authed/invitations'
+      path: '/invitations'
+      fullPath: '/invitations'
+      preLoaderRoute: typeof AuthedInvitationsRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/dashboard': {
@@ -369,6 +388,7 @@ interface AuthedRouteChildren {
   AuthedCalendarRoute: typeof AuthedCalendarRoute
   AuthedCoursesRoute: typeof AuthedCoursesRouteWithChildren
   AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedInvitationsRoute: typeof AuthedInvitationsRoute
   AuthedStudentsRoute: typeof AuthedStudentsRouteWithChildren
   AuthedTeachersRoute: typeof AuthedTeachersRoute
   AuthedAssignmentsAssignmentIdRoute: typeof AuthedAssignmentsAssignmentIdRoute
@@ -380,6 +400,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedCalendarRoute: AuthedCalendarRoute,
   AuthedCoursesRoute: AuthedCoursesRouteWithChildren,
   AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedInvitationsRoute: AuthedInvitationsRoute,
   AuthedStudentsRoute: AuthedStudentsRouteWithChildren,
   AuthedTeachersRoute: AuthedTeachersRoute,
   AuthedAssignmentsAssignmentIdRoute: AuthedAssignmentsAssignmentIdRoute,

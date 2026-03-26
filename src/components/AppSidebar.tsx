@@ -5,6 +5,7 @@ import {
   ClipboardList,
   GraduationCap,
   LayoutDashboard,
+  UserPlus,
   Users,
 } from 'lucide-react'
 import { NavUser } from './nav-user'
@@ -65,6 +66,14 @@ const teacherNavItems = [
   },
 ]
 
+const adminNavItems = [
+  {
+    title: 'User Management',
+    url: '/invitations',
+    icon: UserPlus,
+  },
+]
+
 function TeacherContent({ isTeacherOrAdmin }: { isTeacherOrAdmin: boolean }) {
   const routerState = useRouterState()
   if (!isTeacherOrAdmin) return null
@@ -79,7 +88,40 @@ function TeacherContent({ isTeacherOrAdmin }: { isTeacherOrAdmin: boolean }) {
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton
-                  className=" h-10"
+                  className="h-10"
+                  isActive={isActive}
+                  render={
+                    <Link to={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  }
+                  tooltip={item.title}
+                />
+              </SidebarMenuItem>
+            )
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </>
+  )
+}
+
+function AdminContent({ isAdmin }: { isAdmin: boolean }) {
+  const routerState = useRouterState()
+  if (!isAdmin) return null
+
+  return (
+    <>
+      <SidebarGroupLabel>For admins</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {adminNavItems.map((item) => {
+            const isActive = routerState.location.pathname === item.url
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton
+                  className="h-10"
                   isActive={isActive}
                   render={
                     <Link to={item.url}>
@@ -107,6 +149,7 @@ export function AppSidebar({
   const router = useRouter()
 
   const isTeacherOrAdmin = role === 'teacher' || role === 'admin'
+  const isAdmin = role === 'admin'
 
   return (
     <Sidebar
@@ -121,7 +164,7 @@ export function AppSidebar({
               size="lg"
               render={
                 <Link to="/">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                     <LayoutDashboard className="size-4" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
@@ -144,7 +187,7 @@ export function AppSidebar({
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
-                      className=" h-10"
+                      className="h-10"
                       isActive={isActive}
                       render={
                         <Link to={item.url}>
@@ -161,6 +204,7 @@ export function AppSidebar({
           </SidebarGroupContent>
 
           <TeacherContent isTeacherOrAdmin={isTeacherOrAdmin} />
+          <AdminContent isAdmin={isAdmin} />
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>

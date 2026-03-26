@@ -52,6 +52,11 @@ export const assignmentStatusEnum = pgEnum('assignment_status', [
   'published',
   'closed',
 ])
+export const invitationStatusEnum = pgEnum('invitation_status', [
+  'pending',
+  'accepted',
+  'revoked',
+])
 
 // ============================================================================
 // TABLES
@@ -268,6 +273,20 @@ export const notifications = pgTable('notifications', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+export const invitations = pgTable('invitations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  email: text('email').notNull().unique(),
+  role: userRoleEnum('role').notNull(),
+  status: invitationStatusEnum('status').notNull().default('pending'),
+  invitedBy: uuid('invited_by')
+    .notNull()
+    .references(() => profiles.id),
+  invitedAt: timestamp('invited_at').defaultNow().notNull(),
+  acceptedAt: timestamp('accepted_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 // ============================================================================
 // RELATIONS
 // ============================================================================
@@ -282,6 +301,7 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
   announcements: many(announcements),
   mediaUploads: many(mediaLibrary),
   notifications: many(notifications),
+  invitations: many(invitations),
 }))
 
 export const coursesRelations = relations(courses, ({ one, many }) => ({
@@ -421,6 +441,13 @@ export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(profiles, {
     fields: [notifications.userId],
+    references: [profiles.id],
+  }),
+}))
+
+export const invitationsRelations = relations(invitations, ({ one }) => ({
+  inviter: one(profiles, {
+    fields: [invitations.invitedBy],
     references: [profiles.id],
   }),
 }))
