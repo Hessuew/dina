@@ -1,12 +1,19 @@
+import crypto from 'node:crypto'
 import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
+import { Resend } from 'resend'
+import { render } from '@react-email/render'
 import { db } from '@/db'
 import { invitations, profiles } from '@/db/schema'
 import { env } from '@/env'
-import {
-  getSupabaseAdminClient,
-  getSupabaseServerClient,
-} from '@/utils/supabase'
+import { getSupabaseServerClient } from '@/utils/supabase'
+import { InvitationEmail } from '@/emails/InvitationEmail'
+
+const resend = new Resend(env.RESEND_API_KEY)
+
+function generateSecureToken(): string {
+  return crypto.randomBytes(32).toString('hex')
+}
 
 export const createInvitation = createServerFn({ method: 'POST' })
   .inputValidator((d: { email: string; role: 'student' | 'teacher' }) => d)
@@ -16,7 +23,6 @@ export const createInvitation = createServerFn({ method: 'POST' })
       data: { user },
     } = await supabase.auth.getUser()
 
-    console.log('User:', user)
     if (!user) {
       return { error: true, message: 'Unauthorized' }
     }
@@ -47,35 +53,119 @@ export const createInvitation = createServerFn({ method: 'POST' })
     if (existingProfile) {
       return { error: true, message: 'User already registered with this email' }
     }
-    console.log('No existing profile')
 
-    // Use Supabase's built-in invite system with admin client
-    const supabaseAdmin = getSupabaseAdminClient()
-    const { error: inviteError } =
-      await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
-        data: {
-          role: data.role,
-          invited_by: user.id,
-        },
-        redirectTo: `${env.APP_URL || 'http://localhost:3000'}/dashboard`,
-      })
+    // Generate secure token and expiry (7 days)
+    const token = generateSecureToken()
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 7)
 
-    if (inviteError) {
-      console.log('🚀 ~ inviteError:', inviteError)
-      return { error: true, message: inviteError.message }
-    }
-
-    // Store invitation record in our database for tracking
+    // Store invitation record in database
     const [invitation] = await db
       .insert(invitations)
       .values({
         email: data.email,
         role: data.role,
+        token,
+        expiresAt,
+        status: 'pending',
         invitedBy: user.id,
       })
       .returning()
 
+    // Generate invite link
+    const inviteLink = `${env.APP_URL || 'http://localhost:3000'}/signup?token=${token}`
+
+    // Send invitation email via Resend
+    const emailHtml = await render(
+      InvitationEmail({
+        invitedByName: profile.fullName || profile.email,
+        role: data.role,
+        inviteLink,
+      }),
+    )
+
+    const { error: emailError } = await resend.emails.send({
+      from: env.RESEND_FROM_EMAIL,
+      to: data.email,
+      subject: `You've been invited to join our Learning Platform`,
+      html: emailHtml,
+    })
+
+    if (emailError) {
+      // Delete the invitation if email fails
+      await db.delete(invitations).where(eq(invitations.id, invitation.id))
+      return { error: true, message: 'Failed to send invitation email' }
+    }
+
     return { error: false, invitation }
+  })
+
+export const checkInvitationByEmail = createServerFn({ method: 'GET' })
+  .inputValidator((d: { email: string }) => d)
+  .handler(async ({ data }) => {
+    const invitation = await db.query.invitations.findFirst({
+      where: eq(invitations.email, data.email),
+    })
+
+    if (!invitation) {
+      return { error: true, message: 'No invitation found for this email' }
+    }
+
+    if (invitation.status !== 'pending') {
+      return {
+        error: true,
+        message: 'This invitation has already been used or revoked',
+      }
+    }
+
+    // Check if expired
+    if (new Date() > invitation.expiresAt) {
+      return { error: true, message: 'This invitation has expired' }
+    }
+
+    return {
+      error: false,
+      invitation: {
+        email: invitation.email,
+        role: invitation.role,
+      },
+    }
+  })
+
+export const getInvitationByToken = createServerFn({ method: 'GET' })
+  .inputValidator((d: { token: string }) => d)
+  .handler(async ({ data }) => {
+    if (!data.token) {
+      return { error: true, message: 'No token provided' }
+    }
+
+    const invitation = await db.query.invitations.findFirst({
+      where: eq(invitations.token, data.token),
+    })
+
+    if (!invitation) {
+      return { error: true, message: 'Invalid invitation token' }
+    }
+
+    if (invitation.status !== 'pending') {
+      return {
+        error: true,
+        message: 'This invitation has already been used or revoked',
+      }
+    }
+
+    // Check if expired
+    if (new Date() > invitation.expiresAt) {
+      return { error: true, message: 'This invitation has expired' }
+    }
+
+    return {
+      error: false,
+      invitation: {
+        email: invitation.email,
+        role: invitation.role,
+      },
+    }
   })
 
 export const getInvitations = createServerFn({ method: 'GET' }).handler(
@@ -106,7 +196,7 @@ export const getInvitations = createServerFn({ method: 'GET' }).handler(
           },
         },
       },
-      orderBy: (invitations, { desc }) => [desc(invitations.invitedAt)],
+      orderBy: (inv, { desc }) => [desc(inv.invitedAt)],
     })
 
     return { error: false, invitations: allInvitations }
@@ -184,7 +274,7 @@ export const deleteInvitation = createServerFn({ method: 'POST' })
   })
 
 export const resendInvitation = createServerFn({ method: 'POST' })
-  .inputValidator((d: { id: string }) => d)
+  .inputValidator((d: { id: string; email?: string }) => d)
   .handler(async ({ data }) => {
     const supabase = getSupabaseServerClient()
     const {
@@ -211,27 +301,47 @@ export const resendInvitation = createServerFn({ method: 'POST' })
       return { error: true, message: 'Invitation not found' }
     }
 
-    // Resend using Supabase's invite system with admin client
-    const supabaseAdmin = getSupabaseAdminClient()
-    const { error: inviteError } =
-      await supabaseAdmin.auth.admin.inviteUserByEmail(invitation.email, {
-        data: {
-          role: invitation.role,
-          invited_by: user.id,
-        },
-        redirectTo: `${env.APP_URL || 'http://localhost:3000'}/dashboard`,
-      })
+    // Generate new token and extend expiry
+    const token = generateSecureToken()
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 7)
 
-    if (inviteError) {
-      return { error: true, message: inviteError.message }
-    }
+    // Update email if provided
+    const emailToUse = data.email || invitation.email
 
+    // Update invitation
     await db
       .update(invitations)
       .set({
+        email: emailToUse,
+        token,
+        expiresAt,
         updatedAt: new Date(),
       })
       .where(eq(invitations.id, data.id))
+
+    // Generate invite link
+    const inviteLink = `${env.APP_URL || 'http://localhost:3000'}/signup?token=${token}`
+
+    // Send invitation email via Resend
+    const emailHtml = await render(
+      InvitationEmail({
+        invitedByName: profile.fullName || profile.email,
+        role: invitation.role as 'student' | 'teacher',
+        inviteLink,
+      }),
+    )
+
+    const { error: emailError } = await resend.emails.send({
+      from: env.RESEND_FROM_EMAIL,
+      to: emailToUse,
+      subject: `You've been invited to join our Learning Platform`,
+      html: emailHtml,
+    })
+
+    if (emailError) {
+      return { error: true, message: 'Failed to send invitation email' }
+    }
 
     return { error: false }
   })

@@ -277,11 +277,13 @@ export const invitations = pgTable('invitations', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
   role: userRoleEnum('role').notNull(),
+  token: text('token').notNull().unique(),
   status: invitationStatusEnum('status').notNull().default('pending'),
   invitedBy: uuid('invited_by')
     .notNull()
     .references(() => profiles.id),
   invitedAt: timestamp('invited_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
   acceptedAt: timestamp('accepted_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
