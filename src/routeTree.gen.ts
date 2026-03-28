@@ -18,6 +18,7 @@ import { Route as ApiUploadImageRouteImport } from './routes/api.upload-image'
 import { Route as AuthedProfileRouteImport } from './routes/_authed/profile'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedCoursesRouteImport } from './routes/_authed/courses'
+import { Route as AuthedStudentsStudentIdRouteImport } from './routes/_authed/students.$studentId'
 import { Route as AuthedLessonsLessonIdRouteImport } from './routes/_authed/lessons.$lessonId'
 import { Route as AuthedCoursesCourseIdRouteImport } from './routes/_authed/courses.$courseId'
 import { Route as AuthedAssignmentsAssignmentIdRouteImport } from './routes/_authed/assignments.$assignmentId'
@@ -66,6 +67,11 @@ const AuthedCoursesRoute = AuthedCoursesRouteImport.update({
   path: '/courses',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedStudentsStudentIdRoute = AuthedStudentsStudentIdRouteImport.update({
+  id: '/students/$studentId',
+  path: '/students/$studentId',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedLessonsLessonIdRoute = AuthedLessonsLessonIdRouteImport.update({
   id: '/lessons/$lessonId',
   path: '/lessons/$lessonId',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/lessons/$lessonId': typeof AuthedLessonsLessonIdRoute
+  '/students/$studentId': typeof AuthedStudentsStudentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/lessons/$lessonId': typeof AuthedLessonsLessonIdRoute
+  '/students/$studentId': typeof AuthedStudentsStudentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/_authed/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/_authed/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/_authed/lessons/$lessonId': typeof AuthedLessonsLessonIdRoute
+  '/_authed/students/$studentId': typeof AuthedStudentsStudentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/assignments/$assignmentId'
     | '/courses/$courseId'
     | '/lessons/$lessonId'
+    | '/students/$studentId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/assignments/$assignmentId'
     | '/courses/$courseId'
     | '/lessons/$lessonId'
+    | '/students/$studentId'
   id:
     | '__root__'
     | '/'
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/_authed/assignments/$assignmentId'
     | '/_authed/courses/$courseId'
     | '/_authed/lessons/$lessonId'
+    | '/_authed/students/$studentId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -241,6 +253,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedCoursesRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/students/$studentId': {
+      id: '/_authed/students/$studentId'
+      path: '/students/$studentId'
+      fullPath: '/students/$studentId'
+      preLoaderRoute: typeof AuthedStudentsStudentIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/lessons/$lessonId': {
       id: '/_authed/lessons/$lessonId'
       path: '/lessons/$lessonId'
@@ -283,6 +302,7 @@ interface AuthedRouteChildren {
   AuthedProfileRoute: typeof AuthedProfileRoute
   AuthedAssignmentsAssignmentIdRoute: typeof AuthedAssignmentsAssignmentIdRoute
   AuthedLessonsLessonIdRoute: typeof AuthedLessonsLessonIdRoute
+  AuthedStudentsStudentIdRoute: typeof AuthedStudentsStudentIdRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
@@ -291,6 +311,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedProfileRoute: AuthedProfileRoute,
   AuthedAssignmentsAssignmentIdRoute: AuthedAssignmentsAssignmentIdRoute,
   AuthedLessonsLessonIdRoute: AuthedLessonsLessonIdRoute,
+  AuthedStudentsStudentIdRoute: AuthedStudentsStudentIdRoute,
 }
 
 const AuthedRouteWithChildren =
