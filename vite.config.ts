@@ -1,48 +1,35 @@
-import url from "node:url";
-import path from "node:path";
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import type { BuildEnvironmentOptions } from "vite";
+import { devtools } from "@tanstack/devtools-vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import viteTsConfigPaths from "vite-tsconfig-paths";
+import { fileURLToPath, URL } from "url";
+
 import tailwindcss from "@tailwindcss/vite";
+import { cloudflare } from "@cloudflare/vite-plugin";
 
-const __filename = url.fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Client Build Configuration
-const clientBuildConfig: BuildEnvironmentOptions = {
-  outDir: "dist/client",
-  emitAssets: true,
-  copyPublicDir: true,
-  emptyOutDir: true,
-};
-
-// Server Build Configuration
-const serverBuildConfig: BuildEnvironmentOptions = {
-  ssr: true,
-  outDir: "dist/server",
-  copyPublicDir: false,
-  emptyOutDir: true,
-  rollupOptions: {
-    input: path.resolve(__dirname, "src/server/server.ts"),
-    output: {
-      entryFileNames: "[name].js",
-      chunkFileNames: "assets/[name]-[hash].js",
-      assetFileNames: "assets/[name]-[hash][extname]",
+const config = defineConfig({
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-};
 
-export default defineConfig((configEnv) => {
-  return {
-    plugins: [
-      tailwindcss(),
-      tanstackRouter({
-        target: "react",
-        autoCodeSplitting: true,
-      }),
-      react(),
-    ],
-    build: configEnv.mode === "server" ? serverBuildConfig : clientBuildConfig,
-  };
+  plugins: [
+    devtools(),
+    cloudflare({ viteEnvironment: { name: "ssr" } }),
+    // this is the plugin that enables path aliases
+    viteTsConfigPaths({
+      projects: ["./tsconfig.json"],
+    }),
+    tailwindcss(),
+    tanstackStart(),
+    viteReact({
+      babel: {
+        plugins: ["babel-plugin-react-compiler"],
+      },
+    }),
+  ],
 });
+
+export default config;

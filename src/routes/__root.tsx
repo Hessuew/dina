@@ -1,67 +1,133 @@
+/// <reference types="vite/client" />
 import {
+  ClerkProvider,
+  Show,
+  SignInButton,
+  UserButton,
+} from '@clerk/tanstack-react-start'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { createServerFn } from '@tanstack/react-start'
+import { auth } from '@clerk/tanstack-react-start/server'
+import {
+  HeadContent,
   Link,
   Outlet,
-  createRootRouteWithContext,
-  useRouterState,
-} from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import type { QueryClient } from "@tanstack/react-query";
-import type { AppRouter } from "../server/trpc";
-import { trpc } from "../router";
+  Scripts,
+  createRootRoute,
+} from '@tanstack/react-router'
+import appCss from '@/styles/app.css?url'
+import { NotFound } from '@/components/NotFound'
+import { DefaultCatchBoundary } from '@/components/DefaultCatchBoundary'
 
-export interface RouterAppContext {
-  trpc: typeof trpc;
-  queryClient: QueryClient;
-}
+const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(async () => {
+  const { userId } = await auth()
 
-export const Route = createRootRouteWithContext<RouterAppContext>()({
+  return {
+    userId,
+  }
+})
+
+export const Route = createRootRoute({
+  beforeLoad: async () => {
+    const { userId } = await fetchClerkAuth()
+
+    return {
+      userId,
+    }
+  },
+  head: () => ({
+    meta: [
+      {
+        charSet: 'utf-8',
+      },
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1',
+      },
+    ],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      {
+        rel: 'apple-touch-icon',
+        sizes: '180x180',
+        href: '/apple-touch-icon.png',
+      },
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '32x32',
+        href: '/favicon-32x32.png',
+      },
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '16x16',
+        href: '/favicon-16x16.png',
+      },
+      { rel: 'manifest', href: '/site.webmanifest', color: '#fffff' },
+      { rel: 'icon', href: '/favicon.ico' },
+    ],
+  }),
+  errorComponent: (props) => {
+    return (
+      <RootDocument>
+        <DefaultCatchBoundary {...props} />
+      </RootDocument>
+    )
+  },
+  notFoundComponent: () => <NotFound />,
   component: RootComponent,
-});
+})
 
 function RootComponent() {
   return (
-    <>
+    <ClerkProvider>
       <RootDocument>
         <Outlet />
       </RootDocument>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </>
-  );
+    </ClerkProvider>
+  )
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const isFetching = useRouterState({ select: (s) => s.isLoading });
-
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="flex items-center border-b gap-2">
-        <h1 className="text-3xl p-2">Discipler's Institute for Nations</h1>
-        <div
-          className={`text-3xl duration-300 delay-0 opacity-0 ${
-            isFetching ? " duration-1000 opacity-40" : ""
-          }`}
-        >
-          <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-        </div>
-      </div>
-      <div className="flex-1 flex">
-        <div className="divide-y w-56">
-          <div>
-            <Link
-              to="/"
-              activeOptions={{ exact: true }}
-              preload="intent"
-              className="block py-2 px-3 text-blue-700"
-              activeProps={{ className: "font-bold" }}
-            >
-              Home
-            </Link>
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <div className="p-2 flex gap-2 text-lg">
+          <Link
+            to="/"
+            activeProps={{
+              className: 'font-bold',
+            }}
+            activeOptions={{ exact: true }}
+          >
+            Home
+          </Link>{' '}
+          {/* <Link
+            to="/posts"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Posts
+          </Link> */}
+          <div className="ml-auto">
+            <Show when="signed-in">
+              <UserButton />
+            </Show>
+            <Show when="signed-out">
+              <SignInButton mode="modal" />
+            </Show>
           </div>
         </div>
-        <div className="flex-1 border-l border-gray-200">{children}</div>
-      </div>
-      <TanStackRouterDevtools position="bottom-right" />
-    </div>
-  );
+        <hr />
+        {children}
+        <TanStackRouterDevtools position="bottom-right" />
+        <Scripts />
+      </body>
+    </html>
+  )
 }

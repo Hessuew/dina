@@ -9,36 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as LogoutRouteImport } from './routes/logout'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthedTeacherRouteImport } from './routes/_authed/teacher'
-import { Route as AuthedStudentRouteImport } from './routes/_authed/student'
-import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
-import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
-import { Route as AuthedPostsIndexRouteImport } from './routes/_authed/posts.index'
-import { Route as AuthedTeacherDashboardRouteImport } from './routes/_authed/teacher/dashboard'
-import { Route as AuthedStudentDashboardRouteImport } from './routes/_authed/student/dashboard'
-import { Route as AuthedPostsPostIdRouteImport } from './routes/_authed/posts.$postId'
-import { Route as AuthedAdminDashboardRouteImport } from './routes/_authed/admin/dashboard'
+import { Route as AuthedProfileSplatRouteImport } from './routes/_authed/profile.$'
 
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LogoutRoute = LogoutRouteImport.update({
-  id: '/logout',
-  path: '/logout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
@@ -48,177 +22,41 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedTeacherRoute = AuthedTeacherRouteImport.update({
-  id: '/teacher',
-  path: '/teacher',
+const AuthedProfileSplatRoute = AuthedProfileSplatRouteImport.update({
+  id: '/profile/$',
+  path: '/profile/$',
   getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedStudentRoute = AuthedStudentRouteImport.update({
-  id: '/student',
-  path: '/student',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedPostsRoute = AuthedPostsRouteImport.update({
-  id: '/posts',
-  path: '/posts',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedAdminRoute = AuthedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedPostsIndexRoute = AuthedPostsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthedPostsRoute,
-} as any)
-const AuthedTeacherDashboardRoute = AuthedTeacherDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthedTeacherRoute,
-} as any)
-const AuthedStudentDashboardRoute = AuthedStudentDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthedStudentRoute,
-} as any)
-const AuthedPostsPostIdRoute = AuthedPostsPostIdRouteImport.update({
-  id: '/$postId',
-  path: '/$postId',
-  getParentRoute: () => AuthedPostsRoute,
-} as any)
-const AuthedAdminDashboardRoute = AuthedAdminDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthedAdminRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/logout': typeof LogoutRoute
-  '/signup': typeof SignupRoute
-  '/admin': typeof AuthedAdminRouteWithChildren
-  '/posts': typeof AuthedPostsRouteWithChildren
-  '/student': typeof AuthedStudentRouteWithChildren
-  '/teacher': typeof AuthedTeacherRouteWithChildren
-  '/admin/dashboard': typeof AuthedAdminDashboardRoute
-  '/posts/$postId': typeof AuthedPostsPostIdRoute
-  '/student/dashboard': typeof AuthedStudentDashboardRoute
-  '/teacher/dashboard': typeof AuthedTeacherDashboardRoute
-  '/posts/': typeof AuthedPostsIndexRoute
+  '/profile/$': typeof AuthedProfileSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/logout': typeof LogoutRoute
-  '/signup': typeof SignupRoute
-  '/admin': typeof AuthedAdminRouteWithChildren
-  '/student': typeof AuthedStudentRouteWithChildren
-  '/teacher': typeof AuthedTeacherRouteWithChildren
-  '/admin/dashboard': typeof AuthedAdminDashboardRoute
-  '/posts/$postId': typeof AuthedPostsPostIdRoute
-  '/student/dashboard': typeof AuthedStudentDashboardRoute
-  '/teacher/dashboard': typeof AuthedTeacherDashboardRoute
-  '/posts': typeof AuthedPostsIndexRoute
+  '/profile/$': typeof AuthedProfileSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
-  '/login': typeof LoginRoute
-  '/logout': typeof LogoutRoute
-  '/signup': typeof SignupRoute
-  '/_authed/admin': typeof AuthedAdminRouteWithChildren
-  '/_authed/posts': typeof AuthedPostsRouteWithChildren
-  '/_authed/student': typeof AuthedStudentRouteWithChildren
-  '/_authed/teacher': typeof AuthedTeacherRouteWithChildren
-  '/_authed/admin/dashboard': typeof AuthedAdminDashboardRoute
-  '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute
-  '/_authed/student/dashboard': typeof AuthedStudentDashboardRoute
-  '/_authed/teacher/dashboard': typeof AuthedTeacherDashboardRoute
-  '/_authed/posts/': typeof AuthedPostsIndexRoute
+  '/_authed/profile/$': typeof AuthedProfileSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/login'
-    | '/logout'
-    | '/signup'
-    | '/admin'
-    | '/posts'
-    | '/student'
-    | '/teacher'
-    | '/admin/dashboard'
-    | '/posts/$postId'
-    | '/student/dashboard'
-    | '/teacher/dashboard'
-    | '/posts/'
+  fullPaths: '/' | '/profile/$'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/login'
-    | '/logout'
-    | '/signup'
-    | '/admin'
-    | '/student'
-    | '/teacher'
-    | '/admin/dashboard'
-    | '/posts/$postId'
-    | '/student/dashboard'
-    | '/teacher/dashboard'
-    | '/posts'
-  id:
-    | '__root__'
-    | '/'
-    | '/_authed'
-    | '/login'
-    | '/logout'
-    | '/signup'
-    | '/_authed/admin'
-    | '/_authed/posts'
-    | '/_authed/student'
-    | '/_authed/teacher'
-    | '/_authed/admin/dashboard'
-    | '/_authed/posts/$postId'
-    | '/_authed/student/dashboard'
-    | '/_authed/teacher/dashboard'
-    | '/_authed/posts/'
+  to: '/' | '/profile/$'
+  id: '__root__' | '/' | '/_authed' | '/_authed/profile/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
-  LoginRoute: typeof LoginRoute
-  LogoutRoute: typeof LogoutRoute
-  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/logout': {
-      id: '/logout'
-      path: '/logout'
-      fullPath: '/logout'
-      preLoaderRoute: typeof LogoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authed': {
       id: '/_authed'
       path: ''
@@ -233,134 +71,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authed/teacher': {
-      id: '/_authed/teacher'
-      path: '/teacher'
-      fullPath: '/teacher'
-      preLoaderRoute: typeof AuthedTeacherRouteImport
+    '/_authed/profile/$': {
+      id: '/_authed/profile/$'
+      path: '/profile/$'
+      fullPath: '/profile/$'
+      preLoaderRoute: typeof AuthedProfileSplatRouteImport
       parentRoute: typeof AuthedRoute
-    }
-    '/_authed/student': {
-      id: '/_authed/student'
-      path: '/student'
-      fullPath: '/student'
-      preLoaderRoute: typeof AuthedStudentRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/posts': {
-      id: '/_authed/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof AuthedPostsRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/admin': {
-      id: '/_authed/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthedAdminRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/posts/': {
-      id: '/_authed/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof AuthedPostsIndexRouteImport
-      parentRoute: typeof AuthedPostsRoute
-    }
-    '/_authed/teacher/dashboard': {
-      id: '/_authed/teacher/dashboard'
-      path: '/dashboard'
-      fullPath: '/teacher/dashboard'
-      preLoaderRoute: typeof AuthedTeacherDashboardRouteImport
-      parentRoute: typeof AuthedTeacherRoute
-    }
-    '/_authed/student/dashboard': {
-      id: '/_authed/student/dashboard'
-      path: '/dashboard'
-      fullPath: '/student/dashboard'
-      preLoaderRoute: typeof AuthedStudentDashboardRouteImport
-      parentRoute: typeof AuthedStudentRoute
-    }
-    '/_authed/posts/$postId': {
-      id: '/_authed/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof AuthedPostsPostIdRouteImport
-      parentRoute: typeof AuthedPostsRoute
-    }
-    '/_authed/admin/dashboard': {
-      id: '/_authed/admin/dashboard'
-      path: '/dashboard'
-      fullPath: '/admin/dashboard'
-      preLoaderRoute: typeof AuthedAdminDashboardRouteImport
-      parentRoute: typeof AuthedAdminRoute
     }
   }
 }
 
-interface AuthedAdminRouteChildren {
-  AuthedAdminDashboardRoute: typeof AuthedAdminDashboardRoute
-}
-
-const AuthedAdminRouteChildren: AuthedAdminRouteChildren = {
-  AuthedAdminDashboardRoute: AuthedAdminDashboardRoute,
-}
-
-const AuthedAdminRouteWithChildren = AuthedAdminRoute._addFileChildren(
-  AuthedAdminRouteChildren,
-)
-
-interface AuthedPostsRouteChildren {
-  AuthedPostsPostIdRoute: typeof AuthedPostsPostIdRoute
-  AuthedPostsIndexRoute: typeof AuthedPostsIndexRoute
-}
-
-const AuthedPostsRouteChildren: AuthedPostsRouteChildren = {
-  AuthedPostsPostIdRoute: AuthedPostsPostIdRoute,
-  AuthedPostsIndexRoute: AuthedPostsIndexRoute,
-}
-
-const AuthedPostsRouteWithChildren = AuthedPostsRoute._addFileChildren(
-  AuthedPostsRouteChildren,
-)
-
-interface AuthedStudentRouteChildren {
-  AuthedStudentDashboardRoute: typeof AuthedStudentDashboardRoute
-}
-
-const AuthedStudentRouteChildren: AuthedStudentRouteChildren = {
-  AuthedStudentDashboardRoute: AuthedStudentDashboardRoute,
-}
-
-const AuthedStudentRouteWithChildren = AuthedStudentRoute._addFileChildren(
-  AuthedStudentRouteChildren,
-)
-
-interface AuthedTeacherRouteChildren {
-  AuthedTeacherDashboardRoute: typeof AuthedTeacherDashboardRoute
-}
-
-const AuthedTeacherRouteChildren: AuthedTeacherRouteChildren = {
-  AuthedTeacherDashboardRoute: AuthedTeacherDashboardRoute,
-}
-
-const AuthedTeacherRouteWithChildren = AuthedTeacherRoute._addFileChildren(
-  AuthedTeacherRouteChildren,
-)
-
 interface AuthedRouteChildren {
-  AuthedAdminRoute: typeof AuthedAdminRouteWithChildren
-  AuthedPostsRoute: typeof AuthedPostsRouteWithChildren
-  AuthedStudentRoute: typeof AuthedStudentRouteWithChildren
-  AuthedTeacherRoute: typeof AuthedTeacherRouteWithChildren
+  AuthedProfileSplatRoute: typeof AuthedProfileSplatRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
-  AuthedAdminRoute: AuthedAdminRouteWithChildren,
-  AuthedPostsRoute: AuthedPostsRouteWithChildren,
-  AuthedStudentRoute: AuthedStudentRouteWithChildren,
-  AuthedTeacherRoute: AuthedTeacherRouteWithChildren,
+  AuthedProfileSplatRoute: AuthedProfileSplatRoute,
 }
 
 const AuthedRouteWithChildren =
@@ -369,10 +95,17 @@ const AuthedRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
-  LoginRoute: LoginRoute,
-  LogoutRoute: LogoutRoute,
-  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.tsx'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
