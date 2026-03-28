@@ -394,6 +394,11 @@ export const getAllAssignmentsForStudent = createServerFn({
     where: eq(assignments.status, 'published'),
     with: {
       lesson: {
+        columns: {
+          id: true,
+          scheduledTime: true,
+          title: true,
+        },
         with: {
           course: true,
         },
@@ -407,6 +412,13 @@ export const getAllAssignmentsForStudent = createServerFn({
 
   const assignmentsWithSubmission = allAssignments.map((assignment) => ({
     ...assignment,
+    lesson: {
+      ...assignment.lesson,
+      course: {
+        ...assignment.lesson.course,
+        startDate: assignment.lesson.scheduledTime || null,
+      },
+    },
     submission: assignment.submissions[0] || null,
     submissions: undefined,
   }))
@@ -455,6 +467,11 @@ export const getAllAssignmentsForTeacher = createServerFn({
     where: inArray(assignments.lessonId, lessonIds),
     with: {
       lesson: {
+        columns: {
+          id: true,
+          scheduledTime: true,
+          title: true,
+        },
         with: {
           course: true,
         },
@@ -475,6 +492,13 @@ export const getAllAssignmentsForTeacher = createServerFn({
 
     return {
       ...assignment,
+      lesson: {
+        ...assignment.lesson,
+        course: {
+          ...assignment.lesson.course,
+          startDate: assignment.lesson.scheduledTime || null,
+        },
+      },
       submissionStats: {
         total: totalSubmissions,
         submitted: submittedCount,

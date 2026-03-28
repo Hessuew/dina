@@ -6,7 +6,7 @@ import {
   getAllAssignmentsForStudent,
   getAllAssignmentsForTeacher,
 } from '@/utils/assignments'
-import { getCourses } from '@/utils/courses'
+import { getCourses, getUpcomingLessons } from '@/utils/courses'
 
 export const Route = createFileRoute('/_authed/dashboard')({
   validateSearch: (search: Record<string, unknown>) => {
@@ -31,17 +31,21 @@ export const Route = createFileRoute('/_authed/dashboard')({
       assignmentsData = await getAllAssignmentsForTeacher()
     }
 
+    // Fetch upcoming lessons
+    const upcomingLessonsData = await getUpcomingLessons()
+
     return {
       courses: transformedCourses,
       role: coursesData.role,
       assignments: assignmentsData.assignments,
+      upcomingLessons: upcomingLessonsData.lessons,
     }
   },
   component: DashboardComponent,
 })
 
 function DashboardComponent() {
-  const { courses, role, assignments } = Route.useLoaderData()
+  const { courses, role, assignments, upcomingLessons } = Route.useLoaderData()
   const { activeTab } = Route.useSearch()
   const navigate = Route.useNavigate()
 
@@ -74,7 +78,12 @@ function DashboardComponent() {
         </TabsList>
 
         <TabsContent value="courses" className="space-y-6">
-          <CourseList courses={courses} role={role} />
+          <CourseList
+            courses={courses}
+            assignments={assignments}
+            lessons={upcomingLessons}
+            role={role}
+          />
         </TabsContent>
 
         <TabsContent value="assignments" className="space-y-6">

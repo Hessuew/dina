@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-type Assignment = {
+export type Assignment = {
   id: string
   title: string
   description: string | null
@@ -35,7 +35,7 @@ type Assignment = {
   }
   submission?: {
     id: string
-    status: 'draft' | 'submitted' | 'graded'
+    status: 'draft' | 'submitted' | 'graded' | 'returned'
     grade: number | null
     submittedAt: Date | null
   } | null
@@ -53,7 +53,7 @@ type AssignmentsViewProps = {
 
 export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
   const router = useRouter()
-  const [selectedCourse, setSelectedCourse] = useState<string>('all')
+  const [selectedCourse, setSelectedCourse] = useState<string | null>('all')
 
   const courses = Array.from(
     new Map(
@@ -124,7 +124,12 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
         {assignments.length > 0 && (
           <Select value={selectedCourse} onValueChange={setSelectedCourse}>
             <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filter by course" />
+              <SelectValue placeholder="Filter by course">
+                {selectedCourse === 'all'
+                  ? 'All Courses'
+                  : courses.find((c) => c.id === selectedCourse)?.title ||
+                    'Select Course'}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Courses</SelectItem>
