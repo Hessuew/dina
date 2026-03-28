@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useAdminStats } from "../../hooks/useAdminStats";
+import { trpc } from "../../../router";
 
-export const Route = createFileRoute("/admin/dashboard")({
+export const Route = createFileRoute("/_authed/admin/dashboard")({
   component: AdminDashboard,
 });
 
 function AdminDashboard() {
-  const { data: stats, isLoading, error } = useAdminStats();
+  const { data: stats, isLoading, error } = trpc.admin.getStats.useQuery();
 
   if (isLoading) {
     return (

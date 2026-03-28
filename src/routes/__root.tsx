@@ -1,97 +1,21 @@
-/// <reference types="vite/client" />
 import {
-  HeadContent,
   Link,
   Outlet,
-  Scripts,
-  createRootRoute,
+  createRootRouteWithContext,
+  useRouterState,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { createServerFn } from "@tanstack/react-start";
-import * as React from "react";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { DefaultCatchBoundary } from "../components/DefaultCatchBoundary";
-import { NotFound } from "../components/NotFound";
-import appCss from "../styles/app.css?url";
-import { seo } from "../utils/seo";
-import { getSupabaseServerClient } from "../utils/supabase";
-import type { Profile } from "../types/database.types";
+import type { QueryClient } from "@tanstack/react-query";
+import type { AppRouter } from "../server/trpc";
+import { trpc } from "../router";
 
-const fetchUser = createServerFn({ method: "GET" }).handler(async () => {
-  const supabase = getSupabaseServerClient();
-  const { data, error: _error } = await supabase.auth.getUser();
+export interface RouterAppContext {
+  trpc: typeof trpc;
+  queryClient: QueryClient;
+}
 
-  if (!data.user?.id) {
-    return null;
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", data.user.id)
-    .single();
-
-  if (profileError || !profile) {
-    return null;
-  }
-
-  return profile as Profile;
-});
-
-export const Route = createRootRoute({
-  beforeLoad: async () => {
-    const user = await fetchUser();
-
-    return {
-      user,
-    };
-  },
-  head: () => ({
-    meta: [
-      {
-        charSet: "utf-8",
-      },
-      {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1",
-      },
-      ...seo({
-        title:
-          "TanStack Start | Type-Safe, Client-First, Full-Stack React Framework",
-        description: `TanStack Start is a type-safe, client-first, full-stack React framework. `,
-      }),
-    ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-      {
-        rel: "apple-touch-icon",
-        sizes: "180x180",
-        href: "/apple-touch-icon.png",
-      },
-      {
-        rel: "icon",
-        type: "image/png",
-        sizes: "32x32",
-        href: "/favicon-32x32.png",
-      },
-      {
-        rel: "icon",
-        type: "image/png",
-        sizes: "16x16",
-        href: "/favicon-16x16.png",
-      },
-      { rel: "manifest", href: "/site.webmanifest", color: "#fffff" },
-      { rel: "icon", href: "/favicon.ico" },
-    ],
-  }),
-  errorComponent: (props) => {
-    return (
-      <RootDocument>
-        <DefaultCatchBoundary {...props} />
-      </RootDocument>
-    );
-  },
-  notFoundComponent: () => <NotFound />,
+export const Route = createRootRouteWithContext<RouterAppContext>()({
   component: RootComponent,
 });
 
@@ -107,80 +31,37 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const { user } = Route.useRouteContext();
+  const isFetching = useRouterState({ select: (s) => s.isLoading });
 
   return (
-    <html>
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <div className="p-2 flex gap-2 text-lg border-b">
-          <Link
-            to="/"
-            activeProps={{
-              className: "font-bold",
-            }}
-            activeOptions={{ exact: true }}
-          >
-            Home
-          </Link>
-          {user && user.role === "student" && (
+    <div className="min-h-screen flex flex-col">
+      <div className="flex items-center border-b gap-2">
+        <h1 className="text-3xl p-2">Discipler's Institute for Nations</h1>
+        <div
+          className={`text-3xl duration-300 delay-0 opacity-0 ${
+            isFetching ? " duration-1000 opacity-40" : ""
+          }`}
+        >
+          <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+        </div>
+      </div>
+      <div className="flex-1 flex">
+        <div className="divide-y w-56">
+          <div>
             <Link
-              to="/student/dashboard"
-              activeProps={{
-                className: "font-bold",
-              }}
+              to="/"
+              activeOptions={{ exact: true }}
+              preload="intent"
+              className="block py-2 px-3 text-blue-700"
+              activeProps={{ className: "font-bold" }}
             >
-              My Dashboard
+              Home
             </Link>
-          )}
-          {user && user.role === "teacher" && (
-            <Link
-              to="/teacher/dashboard"
-              activeProps={{
-                className: "font-bold",
-              }}
-            >
-              Teacher Portal
-            </Link>
-          )}
-          {user && user.role === "admin" && (
-            <Link
-              to="/admin/dashboard"
-              activeProps={{
-                className: "font-bold",
-              }}
-            >
-              Admin Portal
-            </Link>
-          )}
-          <div className="ml-auto flex gap-2 items-center">
-            {user ? (
-              <>
-                <span className="text-sm text-gray-600">
-                  {user.full_name} ({user.role})
-                </span>
-                <Link to="/logout" className="text-blue-600 hover:underline">
-                  Logout
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="text-blue-600 hover:underline">
-                  Login
-                </Link>
-                <Link to="/signup" className="text-blue-600 hover:underline">
-                  Sign Up
-                </Link>
-              </>
-            )}
           </div>
         </div>
-        {children}
-        <TanStackRouterDevtools position="bottom-right" />
-        <Scripts />
-      </body>
-    </html>
+        <div className="flex-1 border-l border-gray-200">{children}</div>
+      </div>
+      <TanStackRouterDevtools position="bottom-right" />
+    </div>
   );
 }

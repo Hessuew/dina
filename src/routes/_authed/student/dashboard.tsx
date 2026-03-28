@@ -1,40 +1,22 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
-import { getSupabaseServerClient } from '../../utils/supabase'
-import type { EnrollmentWithCourse } from '../../types/database.types'
+import { createFileRoute } from "@tanstack/react-router";
+import { trpc } from "../../../router";
 
-const getStudentEnrollments = createServerFn({ method: 'GET' }).handler(
-  async () => {
-    const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      throw new Error('Unauthorized')
-    }
-
-    const { data, error } = await supabase
-      .from('enrollments')
-      .select('*, courses(*)')
-      .eq('student_id', user.id)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    return data as EnrollmentWithCourse[]
-  },
-)
-
-export const Route = createFileRoute('/student/dashboard')({
-  loader: async () => {
-    const enrollments = await getStudentEnrollments()
-    return { enrollments }
-  },
+export const Route = createFileRoute("/_authed/student/dashboard")({
   component: StudentDashboard,
-})
+});
 
 function StudentDashboard() {
-  const { enrollments } = Route.useLoaderData()
+  const { data, isLoading } = trpc.student.getDashboard.useQuery();
+
+  if (isLoading) {
+    return <div className="p-8">Loading...</div>;
+  }
+
+  if (!data) {
+    return <div className="p-8">No data available</div>;
+  }
+
+  const { enrollments } = data;
 
   return (
     <div>
@@ -42,7 +24,9 @@ function StudentDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-500">Enrolled Courses</h3>
+          <h3 className="text-sm font-medium text-gray-500">
+            Enrolled Courses
+          </h3>
           <p className="text-3xl font-bold text-blue-600 mt-2">
             {enrollments.length}
           </p>
@@ -50,13 +34,13 @@ function StudentDashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-sm font-medium text-gray-500">In Progress</h3>
           <p className="text-3xl font-bold text-yellow-600 mt-2">
-            {enrollments.filter((e) => e.status === 'active').length}
+            {enrollments.filter((e) => e.status === "active").length}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-sm font-medium text-gray-500">Completed</h3>
           <p className="text-3xl font-bold text-green-600 mt-2">
-            {enrollments.filter((e) => e.status === 'completed').length}
+            {enrollments.filter((e) => e.status === "completed").length}
           </p>
         </div>
       </div>
@@ -78,31 +62,19 @@ function StudentDashboard() {
                   className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                 >
                   <h3 className="font-semibold text-lg text-gray-900 mb-2">
-                    {enrollment.courses.title}
+                    {enrollment.course.title}
                   </h3>
                   <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                    {enrollment.courses.description}
+                    {enrollment.course.description}
                   </p>
-                  <div className="mb-3">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Progress</span>
-                      <span>{enrollment.progress_percentage}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full"
-                        style={{ width: `${enrollment.progress_percentage}%` }}
-                      />
-                    </div>
-                  </div>
                   <div className="flex items-center justify-between">
                     <span
                       className={`text-xs px-2 py-1 rounded-full ${
-                        enrollment.status === 'active'
-                          ? 'bg-green-100 text-green-800'
-                          : enrollment.status === 'completed'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
+                        enrollment.status === "active"
+                          ? "bg-green-100 text-green-800"
+                          : enrollment.status === "completed"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-800"
                       }`}
                     >
                       {enrollment.status}
@@ -118,5 +90,5 @@ function StudentDashboard() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,24 +1,30 @@
-import { getCookies, setCookie } from '@tanstack/react-start/server'
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import type { Request, Response } from "express";
 
-export function getSupabaseServerClient() {
+export function getSupabaseServerClient(req: Request, res: Response) {
   return createServerClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
-          return Object.entries(getCookies()).map(([name, value]) => ({
+          return Object.keys(req.cookies || {}).map((name) => ({
             name,
-            value,
-          }))
+            value: req.cookies[name],
+          }));
         },
-        setAll(cookies) {
-          cookies.forEach((cookie) => {
-            setCookie(cookie.name, cookie.value)
-          })
+        setAll(
+          cookiesToSet: Array<{
+            name: string;
+            value: string;
+            options: CookieOptions;
+          }>,
+        ) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            res.cookie(name, value, options);
+          });
         },
       },
     },
-  )
+  );
 }

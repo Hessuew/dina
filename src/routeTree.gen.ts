@@ -9,32 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TeacherRouteImport } from './routes/teacher'
-import { Route as StudentRouteImport } from './routes/student'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as TrpcChar91trpcChar93RouteImport } from './routes/trpc/[trpc]'
-import { Route as TeacherDashboardRouteImport } from './routes/teacher/dashboard'
-import { Route as StudentDashboardRouteImport } from './routes/student/dashboard'
-import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
+import { Route as AuthedTeacherRouteImport } from './routes/_authed/teacher'
+import { Route as AuthedStudentRouteImport } from './routes/_authed/student'
 import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
+import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
 import { Route as AuthedPostsIndexRouteImport } from './routes/_authed/posts.index'
+import { Route as AuthedTeacherDashboardRouteImport } from './routes/_authed/teacher/dashboard'
+import { Route as AuthedStudentDashboardRouteImport } from './routes/_authed/student/dashboard'
 import { Route as AuthedPostsPostIdRouteImport } from './routes/_authed/posts.$postId'
+import { Route as AuthedAdminDashboardRouteImport } from './routes/_authed/admin/dashboard'
 
-const TeacherRoute = TeacherRouteImport.update({
-  id: '/teacher',
-  path: '/teacher',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StudentRoute = StudentRouteImport.update({
-  id: '/student',
-  path: '/student',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -50,11 +39,6 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
@@ -64,29 +48,24 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TrpcChar91trpcChar93Route = TrpcChar91trpcChar93RouteImport.update({
-  id: '/trpc/trpc',
-  path: '/trpc/trpc',
-  getParentRoute: () => rootRouteImport,
+const AuthedTeacherRoute = AuthedTeacherRouteImport.update({
+  id: '/teacher',
+  path: '/teacher',
+  getParentRoute: () => AuthedRoute,
 } as any)
-const TeacherDashboardRoute = TeacherDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => TeacherRoute,
-} as any)
-const StudentDashboardRoute = StudentDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => StudentRoute,
-} as any)
-const AdminDashboardRoute = AdminDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AdminRoute,
+const AuthedStudentRoute = AuthedStudentRouteImport.update({
+  id: '/student',
+  path: '/student',
+  getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedPostsRoute = AuthedPostsRouteImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedAdminRoute = AuthedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedPostsIndexRoute = AuthedPostsIndexRouteImport.update({
@@ -94,140 +73,131 @@ const AuthedPostsIndexRoute = AuthedPostsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthedPostsRoute,
 } as any)
+const AuthedTeacherDashboardRoute = AuthedTeacherDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthedTeacherRoute,
+} as any)
+const AuthedStudentDashboardRoute = AuthedStudentDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthedStudentRoute,
+} as any)
 const AuthedPostsPostIdRoute = AuthedPostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => AuthedPostsRoute,
 } as any)
+const AuthedAdminDashboardRoute = AuthedAdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthedAdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/signup': typeof SignupRoute
-  '/student': typeof StudentRouteWithChildren
-  '/teacher': typeof TeacherRouteWithChildren
+  '/admin': typeof AuthedAdminRouteWithChildren
   '/posts': typeof AuthedPostsRouteWithChildren
-  '/admin/dashboard': typeof AdminDashboardRoute
-  '/student/dashboard': typeof StudentDashboardRoute
-  '/teacher/dashboard': typeof TeacherDashboardRoute
-  '/trpc/trpc': typeof TrpcChar91trpcChar93Route
+  '/student': typeof AuthedStudentRouteWithChildren
+  '/teacher': typeof AuthedTeacherRouteWithChildren
+  '/admin/dashboard': typeof AuthedAdminDashboardRoute
   '/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/student/dashboard': typeof AuthedStudentDashboardRoute
+  '/teacher/dashboard': typeof AuthedTeacherDashboardRoute
   '/posts/': typeof AuthedPostsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/signup': typeof SignupRoute
-  '/student': typeof StudentRouteWithChildren
-  '/teacher': typeof TeacherRouteWithChildren
-  '/admin/dashboard': typeof AdminDashboardRoute
-  '/student/dashboard': typeof StudentDashboardRoute
-  '/teacher/dashboard': typeof TeacherDashboardRoute
-  '/trpc/trpc': typeof TrpcChar91trpcChar93Route
+  '/admin': typeof AuthedAdminRouteWithChildren
+  '/student': typeof AuthedStudentRouteWithChildren
+  '/teacher': typeof AuthedTeacherRouteWithChildren
+  '/admin/dashboard': typeof AuthedAdminDashboardRoute
   '/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/student/dashboard': typeof AuthedStudentDashboardRoute
+  '/teacher/dashboard': typeof AuthedTeacherDashboardRoute
   '/posts': typeof AuthedPostsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
-  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/signup': typeof SignupRoute
-  '/student': typeof StudentRouteWithChildren
-  '/teacher': typeof TeacherRouteWithChildren
+  '/_authed/admin': typeof AuthedAdminRouteWithChildren
   '/_authed/posts': typeof AuthedPostsRouteWithChildren
-  '/admin/dashboard': typeof AdminDashboardRoute
-  '/student/dashboard': typeof StudentDashboardRoute
-  '/teacher/dashboard': typeof TeacherDashboardRoute
-  '/trpc/trpc': typeof TrpcChar91trpcChar93Route
+  '/_authed/student': typeof AuthedStudentRouteWithChildren
+  '/_authed/teacher': typeof AuthedTeacherRouteWithChildren
+  '/_authed/admin/dashboard': typeof AuthedAdminDashboardRoute
   '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/_authed/student/dashboard': typeof AuthedStudentDashboardRoute
+  '/_authed/teacher/dashboard': typeof AuthedTeacherDashboardRoute
   '/_authed/posts/': typeof AuthedPostsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
     | '/login'
     | '/logout'
     | '/signup'
+    | '/admin'
+    | '/posts'
     | '/student'
     | '/teacher'
-    | '/posts'
     | '/admin/dashboard'
+    | '/posts/$postId'
     | '/student/dashboard'
     | '/teacher/dashboard'
-    | '/trpc/trpc'
-    | '/posts/$postId'
     | '/posts/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/login'
     | '/logout'
     | '/signup'
+    | '/admin'
     | '/student'
     | '/teacher'
     | '/admin/dashboard'
+    | '/posts/$postId'
     | '/student/dashboard'
     | '/teacher/dashboard'
-    | '/trpc/trpc'
-    | '/posts/$postId'
     | '/posts'
   id:
     | '__root__'
     | '/'
     | '/_authed'
-    | '/admin'
     | '/login'
     | '/logout'
     | '/signup'
-    | '/student'
-    | '/teacher'
+    | '/_authed/admin'
     | '/_authed/posts'
-    | '/admin/dashboard'
-    | '/student/dashboard'
-    | '/teacher/dashboard'
-    | '/trpc/trpc'
+    | '/_authed/student'
+    | '/_authed/teacher'
+    | '/_authed/admin/dashboard'
     | '/_authed/posts/$postId'
+    | '/_authed/student/dashboard'
+    | '/_authed/teacher/dashboard'
     | '/_authed/posts/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
-  AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
   SignupRoute: typeof SignupRoute
-  StudentRoute: typeof StudentRouteWithChildren
-  TeacherRoute: typeof TeacherRouteWithChildren
-  TrpcChar91trpcChar93Route: typeof TrpcChar91trpcChar93Route
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/teacher': {
-      id: '/teacher'
-      path: '/teacher'
-      fullPath: '/teacher'
-      preLoaderRoute: typeof TeacherRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/student': {
-      id: '/student'
-      path: '/student'
-      fullPath: '/student'
-      preLoaderRoute: typeof StudentRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -249,13 +219,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authed': {
       id: '/_authed'
       path: ''
@@ -270,39 +233,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/trpc/trpc': {
-      id: '/trpc/trpc'
-      path: '/trpc/trpc'
-      fullPath: '/trpc/trpc'
-      preLoaderRoute: typeof TrpcChar91trpcChar93RouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authed/teacher': {
+      id: '/_authed/teacher'
+      path: '/teacher'
+      fullPath: '/teacher'
+      preLoaderRoute: typeof AuthedTeacherRouteImport
+      parentRoute: typeof AuthedRoute
     }
-    '/teacher/dashboard': {
-      id: '/teacher/dashboard'
-      path: '/dashboard'
-      fullPath: '/teacher/dashboard'
-      preLoaderRoute: typeof TeacherDashboardRouteImport
-      parentRoute: typeof TeacherRoute
-    }
-    '/student/dashboard': {
-      id: '/student/dashboard'
-      path: '/dashboard'
-      fullPath: '/student/dashboard'
-      preLoaderRoute: typeof StudentDashboardRouteImport
-      parentRoute: typeof StudentRoute
-    }
-    '/admin/dashboard': {
-      id: '/admin/dashboard'
-      path: '/dashboard'
-      fullPath: '/admin/dashboard'
-      preLoaderRoute: typeof AdminDashboardRouteImport
-      parentRoute: typeof AdminRoute
+    '/_authed/student': {
+      id: '/_authed/student'
+      path: '/student'
+      fullPath: '/student'
+      preLoaderRoute: typeof AuthedStudentRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/_authed/posts': {
       id: '/_authed/posts'
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof AuthedPostsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/admin': {
+      id: '/_authed/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthedAdminRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/posts/': {
@@ -312,6 +268,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedPostsIndexRouteImport
       parentRoute: typeof AuthedPostsRoute
     }
+    '/_authed/teacher/dashboard': {
+      id: '/_authed/teacher/dashboard'
+      path: '/dashboard'
+      fullPath: '/teacher/dashboard'
+      preLoaderRoute: typeof AuthedTeacherDashboardRouteImport
+      parentRoute: typeof AuthedTeacherRoute
+    }
+    '/_authed/student/dashboard': {
+      id: '/_authed/student/dashboard'
+      path: '/dashboard'
+      fullPath: '/student/dashboard'
+      preLoaderRoute: typeof AuthedStudentDashboardRouteImport
+      parentRoute: typeof AuthedStudentRoute
+    }
     '/_authed/posts/$postId': {
       id: '/_authed/posts/$postId'
       path: '/$postId'
@@ -319,8 +289,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedPostsPostIdRouteImport
       parentRoute: typeof AuthedPostsRoute
     }
+    '/_authed/admin/dashboard': {
+      id: '/_authed/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AuthedAdminDashboardRouteImport
+      parentRoute: typeof AuthedAdminRoute
+    }
   }
 }
+
+interface AuthedAdminRouteChildren {
+  AuthedAdminDashboardRoute: typeof AuthedAdminDashboardRoute
+}
+
+const AuthedAdminRouteChildren: AuthedAdminRouteChildren = {
+  AuthedAdminDashboardRoute: AuthedAdminDashboardRoute,
+}
+
+const AuthedAdminRouteWithChildren = AuthedAdminRoute._addFileChildren(
+  AuthedAdminRouteChildren,
+)
 
 interface AuthedPostsRouteChildren {
   AuthedPostsPostIdRoute: typeof AuthedPostsPostIdRoute
@@ -336,69 +325,54 @@ const AuthedPostsRouteWithChildren = AuthedPostsRoute._addFileChildren(
   AuthedPostsRouteChildren,
 )
 
+interface AuthedStudentRouteChildren {
+  AuthedStudentDashboardRoute: typeof AuthedStudentDashboardRoute
+}
+
+const AuthedStudentRouteChildren: AuthedStudentRouteChildren = {
+  AuthedStudentDashboardRoute: AuthedStudentDashboardRoute,
+}
+
+const AuthedStudentRouteWithChildren = AuthedStudentRoute._addFileChildren(
+  AuthedStudentRouteChildren,
+)
+
+interface AuthedTeacherRouteChildren {
+  AuthedTeacherDashboardRoute: typeof AuthedTeacherDashboardRoute
+}
+
+const AuthedTeacherRouteChildren: AuthedTeacherRouteChildren = {
+  AuthedTeacherDashboardRoute: AuthedTeacherDashboardRoute,
+}
+
+const AuthedTeacherRouteWithChildren = AuthedTeacherRoute._addFileChildren(
+  AuthedTeacherRouteChildren,
+)
+
 interface AuthedRouteChildren {
+  AuthedAdminRoute: typeof AuthedAdminRouteWithChildren
   AuthedPostsRoute: typeof AuthedPostsRouteWithChildren
+  AuthedStudentRoute: typeof AuthedStudentRouteWithChildren
+  AuthedTeacherRoute: typeof AuthedTeacherRouteWithChildren
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedAdminRoute: AuthedAdminRouteWithChildren,
   AuthedPostsRoute: AuthedPostsRouteWithChildren,
+  AuthedStudentRoute: AuthedStudentRouteWithChildren,
+  AuthedTeacherRoute: AuthedTeacherRouteWithChildren,
 }
 
 const AuthedRouteWithChildren =
   AuthedRoute._addFileChildren(AuthedRouteChildren)
 
-interface AdminRouteChildren {
-  AdminDashboardRoute: typeof AdminDashboardRoute
-}
-
-const AdminRouteChildren: AdminRouteChildren = {
-  AdminDashboardRoute: AdminDashboardRoute,
-}
-
-const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
-
-interface StudentRouteChildren {
-  StudentDashboardRoute: typeof StudentDashboardRoute
-}
-
-const StudentRouteChildren: StudentRouteChildren = {
-  StudentDashboardRoute: StudentDashboardRoute,
-}
-
-const StudentRouteWithChildren =
-  StudentRoute._addFileChildren(StudentRouteChildren)
-
-interface TeacherRouteChildren {
-  TeacherDashboardRoute: typeof TeacherDashboardRoute
-}
-
-const TeacherRouteChildren: TeacherRouteChildren = {
-  TeacherDashboardRoute: TeacherDashboardRoute,
-}
-
-const TeacherRouteWithChildren =
-  TeacherRoute._addFileChildren(TeacherRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
-  AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
   SignupRoute: SignupRoute,
-  StudentRoute: StudentRouteWithChildren,
-  TeacherRoute: TeacherRouteWithChildren,
-  TrpcChar91trpcChar93Route: TrpcChar91trpcChar93Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

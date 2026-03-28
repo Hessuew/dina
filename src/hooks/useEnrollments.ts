@@ -1,4 +1,4 @@
-import { trpc } from "../lib/trpc";
+import { trpc } from "../router";
 
 export function useStudentEnrollments(studentId: string) {
   return trpc.enrollment.list.useQuery({ studentId }, { enabled: !!studentId });
