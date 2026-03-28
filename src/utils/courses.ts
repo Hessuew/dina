@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, desc, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, gt, inArray } from 'drizzle-orm'
 import z from 'zod'
 import { db } from '@/db'
 import {
@@ -133,7 +133,6 @@ export const getUpcomingLessons = createServerFn({ method: 'GET' }).handler(
       throw new Error('Profile not found')
     }
 
-    const { gt } = await import('drizzle-orm')
     const now = new Date()
 
     // For both students and teachers, show ALL lessons from all courses
@@ -145,6 +144,7 @@ export const getUpcomingLessons = createServerFn({ method: 'GET' }).handler(
         thumbnailUrl: lessons.thumbnailUrl,
         courseId: lessons.courseId,
         courseName: courses.title,
+        isPublished: lessons.isPublished,
       })
       .from(lessons)
       .innerJoin(courses, eq(lessons.courseId, courses.id))
@@ -200,8 +200,6 @@ export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
     if (courseIds.length === 0) {
       return { events: [] }
     }
-
-    const { inArray } = await import('drizzle-orm')
 
     const upcomingLessons = await db
       .select({
@@ -280,7 +278,6 @@ export const createCourse = createServerFn({ method: 'POST' })
     }
 
     // Verify both teachers exist and have teacher role
-    const { inArray } = await import('drizzle-orm')
     const teachers = await db.query.profiles.findMany({
       where: inArray(profiles.id, [data.teacher1Id, data.teacher2Id]),
     })
@@ -370,7 +367,6 @@ export const updateCourse = createServerFn({ method: 'POST' })
       }
 
       // Verify both teachers exist and have teacher role
-      const { inArray } = await import('drizzle-orm')
       const teachers = await db.query.profiles.findMany({
         where: inArray(profiles.id, [data.teacher1Id, data.teacher2Id]),
       })
@@ -611,7 +607,6 @@ export const updateCourseTeachers = createServerFn({ method: 'POST' })
     }
 
     // Verify both teachers exist and have teacher role
-    const { inArray } = await import('drizzle-orm')
     const teachers = await db.query.profiles.findMany({
       where: inArray(profiles.id, [data.teacher1Id, data.teacher2Id]),
     })

@@ -31,6 +31,7 @@ export function NavUser({
     email: string
     fullName?: string
     avatarUrl?: string
+    bio?: string
   } | null
   onProfileUpdate?: () => void
 }) {

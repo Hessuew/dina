@@ -18,7 +18,7 @@ export function StudentCard({ student, onClick }: StudentCardProps) {
 
   return (
     <Card
-      className="cursor-pointer transition-colors hover:bg-muted/50"
+      className="hover:bg-muted/50 cursor-pointer transition-colors"
       onClick={onClick}
     >
       <CardHeader className="flex flex-row items-center gap-4 pb-3">
@@ -27,7 +27,7 @@ export function StudentCard({ student, onClick }: StudentCardProps) {
           <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
         <div className="flex-1 space-y-1">
-          <h3 className="font-semibold leading-none">{student.fullName}</h3>
+          <h3 className="leading-none font-semibold">{student.fullName}</h3>
           <p className="text-muted-foreground text-sm">{student.email}</p>
         </div>
       </CardHeader>
@@ -62,11 +62,6 @@ export function StudentCard({ student, onClick }: StudentCardProps) {
             </div>
           </div>
         )}
-
-        <div className="flex items-center justify-between border-t pt-3 text-sm">
-          <span className="text-muted-foreground">Enrolled Courses</span>
-          <span className="font-medium">{student.enrollmentCount}</span>
-        </div>
       </CardContent>
     </Card>
   )

@@ -112,9 +112,9 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between border-b pb-2">
+      <div className="pab-2 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Assignments</h2>
+          <h1 className="text-3xl font-bold">Assignments</h1>
           <p className="text-muted-foreground mt-1">
             {role === 'student'
               ? 'View and submit your assignments'
@@ -163,13 +163,15 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                 return (
                   <Card
                     key={assignment.id}
-                    className="cursor-pointer transition-colors hover:bg-muted/50"
+                    className="hover:bg-muted/50 cursor-pointer transition-colors"
                     onClick={() =>
                       router.navigate({
                         to: '/assignments/$assignmentId',
                         params: { assignmentId: assignment.id },
                         search: {
+                          calendarMonth: undefined,
                           fromDashboard: false,
+                          fromCalendar: false,
                         },
                       })
                     }
@@ -204,7 +206,7 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="flex items-center gap-2 text-sm">
-                        <CalendarIcon className="size-4 text-muted-foreground" />
+                        <CalendarIcon className="text-muted-foreground size-4" />
                         <span
                           className={
                             overdue ? 'text-destructive font-medium' : ''
