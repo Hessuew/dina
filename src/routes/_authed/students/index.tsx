@@ -3,7 +3,7 @@ import { StudentsView } from '@/components/StudentsView'
 import { getStudents } from '@/utils/students'
 import { getCourses } from '@/utils/courses'
 
-export const Route = createFileRoute('/_authed/students')({
+export const Route = createFileRoute('/_authed/students/')({
   beforeLoad: async () => {
     const coursesData = await getCourses()
     const isTeacherOrAdmin =
