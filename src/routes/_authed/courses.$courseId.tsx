@@ -233,7 +233,6 @@ function CourseDetailComponent() {
       toast.success('Course deleted successfully!')
       await router.navigate({
         to: '/dashboard',
-        search: { activeTab: 'courses' },
       })
     },
   })
@@ -383,7 +382,6 @@ function CourseDetailComponent() {
               onClick={() =>
                 router.navigate({
                   to: '/dashboard',
-                  search: { activeTab: 'courses' },
                 })
               }
               className="mb-2"
