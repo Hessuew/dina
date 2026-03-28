@@ -1,9 +1,9 @@
-import { Link } from '@tanstack/react-router'
-import { BookOpenIcon, CalendarIcon, EditIcon } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
+import { BookOpenIcon, CalendarIcon, EditIcon, MonitorPlay } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { TeacherAvatars } from '@/components/TeacherAvatars'
 
 type CourseCardProps = {
   course: {
@@ -21,6 +21,13 @@ type CourseCardProps = {
     teacher?: {
       fullName: string
     }
+    courseTeachers?: Array<{
+      teacher: {
+        id: string
+        fullName: string
+        avatarUrl?: string | null
+      }
+    }>
     completedLessons?: number
     totalLessons?: number
   }
@@ -28,6 +35,7 @@ type CourseCardProps = {
 }
 
 export function CourseCardVariant1({ course, role }: CourseCardProps) {
+  const navigate = useNavigate()
   const isTeacher = role === 'teacher'
   const lessonCount = course.lessons.length
   const progress =
@@ -53,7 +61,15 @@ export function CourseCardVariant1({ course, role }: CourseCardProps) {
   }
 
   return (
-    <Card className="group relative overflow-hidden border-0 bg-linear-to-br from-background via-background to-muted/30 shadow-sm transition-all hover:shadow-lg">
+    <Card
+      className="group relative cursor-pointer overflow-hidden border-0 bg-linear-to-br from-background via-background to-muted/30 shadow-sm transition-all hover:shadow-lg"
+      onClick={() => {
+        navigate({
+          to: '/courses/$courseId',
+          params: { courseId: course.id },
+        })
+      }}
+    >
       <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 
       {course.thumbnailUrl && (
@@ -76,6 +92,23 @@ export function CourseCardVariant1({ course, role }: CourseCardProps) {
               </div>
             )}
           </div>
+
+          <div className="absolute bottom-2 right-2">
+            {course.courseTeachers && course.courseTeachers.length > 0 ? (
+              <div className="flex items-center gap-2">
+                <TeacherAvatars
+                  teachers={course.courseTeachers.map((ct) => ct.teacher)}
+                  size="sm"
+                  showTooltip={true}
+                />
+              </div>
+            ) : course.teacher ? (
+              <div className="text-muted-foreground text-xs">
+                <span className="font-medium">by</span>{' '}
+                {course.teacher.fullName}
+              </div>
+            ) : null}
+          </div>
         </div>
       )}
 
@@ -83,6 +116,7 @@ export function CourseCardVariant1({ course, role }: CourseCardProps) {
         <h3 className="line-clamp-2 text-lg font-bold leading-tight">
           {course.title}
         </h3>
+
         {course.description && (
           <p className="text-muted-foreground line-clamp-2 text-xs leading-relaxed">
             {course.description}
@@ -90,13 +124,7 @@ export function CourseCardVariant1({ course, role }: CourseCardProps) {
         )}
       </CardHeader>
 
-      <CardContent className="relative space-y-3 pb-3">
-        {course.teacher && (
-          <div className="text-muted-foreground text-xs">
-            <span className="font-medium">by</span> {course.teacher.fullName}
-          </div>
-        )}
-
+      <CardContent className="relative space-y-3">
         <div className="flex flex-col gap-2 text-xs">
           <div className="flex items-center gap-2 rounded-md bg-linear-to-r from-primary/10 to-transparent px-2 py-1.5">
             <BookOpenIcon className="size-3.5 text-primary" />
@@ -126,28 +154,19 @@ export function CourseCardVariant1({ course, role }: CourseCardProps) {
       </CardContent>
 
       <CardFooter className="relative gap-2 pt-3">
-        {isTeacher ? (
-          <Button
-            size="sm"
-            className="flex-1 bg-linear-to-r from-primary to-primary/80 text-xs"
-            render={
-              <Link to="/courses/$courseId" params={{ courseId: course.id }} />
-            }
-          >
-            <EditIcon className="size-3.5" />
-            Edit
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            className="w-full bg-linear-to-r from-primary to-primary/80 text-xs font-semibold"
-            render={
-              <Link to="/courses/$courseId" params={{ courseId: course.id }} />
-            }
-          >
-            Continue Learning
-          </Button>
-        )}
+        <div className="flex w-full items-center justify-center gap-2 rounded-md bg-linear-to-r from-primary to-primary/80 px-3 py-2 text-xs font-medium text-white">
+          {isTeacher ? (
+            <>
+              <EditIcon className="size-3.5" />
+              Edit
+            </>
+          ) : (
+            <>
+              <MonitorPlay className="size-3.5" />
+              View
+            </>
+          )}
+        </div>
       </CardFooter>
     </Card>
   )

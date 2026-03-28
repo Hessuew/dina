@@ -33,12 +33,21 @@ import {
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { db } from '@/db'
 import { courses, enrollments, lessonProgress, profiles } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth'
 import { useMutation } from '@/hooks/useMutation'
+import { useAllTeachers } from '@/hooks/useAllTeachers'
+import { TeacherAvatars } from '@/components/TeacherAvatars'
 import {
   createLesson,
   deleteCourse,
@@ -57,6 +66,11 @@ const getCourseData = createServerFn({ method: 'GET' })
       where: eq(courses.id, data.courseId),
       with: {
         teacher: true,
+        courseTeachers: {
+          with: {
+            teacher: true,
+          },
+        },
         lessons: {
           orderBy: (lessons, { asc }) => [asc(lessons.orderIndex)],
         },
@@ -97,7 +111,11 @@ const getCourseData = createServerFn({ method: 'GET' })
     const completedLessonIds = new Set(progress.map((p) => p.lessonId))
 
     return {
-      course,
+      course: {
+        ...course,
+        teacher1Id: course.courseTeachers[0]?.teacherId,
+        teacher2Id: course.courseTeachers[1]?.teacherId,
+      },
       role: profile.role,
       isEnrolled: !!enrollment,
       completedLessonIds: Array.from(completedLessonIds),
@@ -125,7 +143,8 @@ type Lesson = {
 function CourseDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
-  const { course, role, isEnrolled, completedLessonIds } = loaderData
+  const { course: c, role, isEnrolled, completedLessonIds } = loaderData
+  const course = c as typeof loaderData.course | null
 
   const [showEditCourseDialog, setShowEditCourseDialog] = useState(false)
   const [showDeleteCourseDialog, setShowDeleteCourseDialog] = useState(false)
@@ -135,13 +154,25 @@ function CourseDetailComponent() {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const isAdmin = role === 'admin'
 
+  const { teachers, error: teachersError } = useAllTeachers(
+    showEditCourseDialog && isAdmin,
+  )
+
+  if (teachersError) {
+    console.error('Failed to load teachers:', teachersError)
+  }
+
+  const courseTeachersData = course?.courseTeachers || []
   const [courseFormData, setCourseFormData] = useState({
     title: course?.title || '',
     description: course?.description || '',
     thumbnailUrl: course?.thumbnailUrl || null,
     thumbnailFile: null as File | null,
     isPublished: course?.isPublished ?? false,
+    teacher1Id: courseTeachersData[0]?.teacher?.id || null,
+    teacher2Id: courseTeachersData[1]?.teacher?.id || null,
   })
 
   const [lessonFormData, setLessonFormData] = useState({
@@ -154,7 +185,7 @@ function CourseDetailComponent() {
 
   const canEdit = role === 'teacher' || role === 'admin'
   const completedCount = completedLessonIds.length
-  const totalLessons = course.lessons.length
+  const totalLessons = course?.lessons.length || 0
   const progress = totalLessons > 0 ? (completedCount / totalLessons) * 100 : 0
 
   const updateCourseMutation = useMutation({
@@ -173,12 +204,12 @@ function CourseDetailComponent() {
             },
           })
 
-          if (!result.error && result.imageUrl) {
+          if (!result.error && result.imageUrl && course) {
             await updateCourse({
               data: {
                 courseId: course.id,
                 title: courseFormData.title,
-                description: courseFormData.description || undefined,
+                description: courseFormData.description,
                 thumbnailUrl: result.imageUrl,
                 isPublished: courseFormData.isPublished,
               },
@@ -200,7 +231,10 @@ function CourseDetailComponent() {
     fn: deleteCourse,
     onSuccess: async () => {
       toast.success('Course deleted successfully!')
-      await router.navigate({ to: '/dashboard' })
+      await router.navigate({
+        to: '/dashboard',
+        search: { activeTab: 'courses' },
+      })
     },
   })
 
@@ -248,13 +282,22 @@ function CourseDetailComponent() {
 
     if (!course) return
 
+    if (isAdmin && courseFormData.teacher1Id && courseFormData.teacher2Id) {
+      if (courseFormData.teacher1Id === courseFormData.teacher2Id) {
+        toast.error('Please select 2 different teachers')
+        return
+      }
+    }
+
     updateCourseMutation.mutate({
       data: {
         courseId: course.id,
         title: courseFormData.title,
-        description: courseFormData.description || undefined,
+        description: courseFormData.description,
         thumbnailUrl: courseFormData.thumbnailUrl || undefined,
         isPublished: courseFormData.isPublished,
+        teacher1Id: courseFormData.teacher1Id || undefined,
+        teacher2Id: courseFormData.teacher2Id || undefined,
       },
     })
   }
@@ -337,20 +380,32 @@ function CourseDetailComponent() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.navigate({ to: '/dashboard' })}
+              onClick={() =>
+                router.navigate({
+                  to: '/dashboard',
+                  search: { activeTab: 'courses' },
+                })
+              }
               className="mb-2"
             >
               <ArrowLeftIcon className="mr-2 size-4" />
               Back to Dashboard
             </Button>
-            <h1 className="text-3xl font-bold">{course.title}</h1>
-            <p className="text-muted-foreground mt-1">
-              By {course.teacher.fullName}
-            </p>
+            <h1 className="text-3xl font-bold">{course?.title}</h1>
+            {course?.courseTeachers && course.courseTeachers.length > 0 && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-muted-foreground text-sm">Teachers:</span>
+                <TeacherAvatars
+                  teachers={course.courseTeachers.map((ct) => ct.teacher)}
+                  size="sm"
+                  showTooltip={true}
+                />
+              </div>
+            )}
           </div>
           {canEdit && (
-            <Badge variant={course.isPublished ? 'default' : 'secondary'}>
-              {course.isPublished ? 'Published' : 'Draft'}
+            <Badge variant={course?.isPublished ? 'default' : 'secondary'}>
+              {course?.isPublished ? 'Published' : 'Draft'}
             </Badge>
           )}
         </div>
@@ -369,13 +424,16 @@ function CourseDetailComponent() {
                         variant="ghost"
                         size="icon"
                         onClick={() => {
-                          setCourseFormData({
-                            title: course.title,
-                            description: course.description || '',
-                            thumbnailUrl: course.thumbnailUrl,
-                            thumbnailFile: null,
-                            isPublished: course.isPublished ?? false,
-                          })
+                          if (course)
+                            setCourseFormData({
+                              title: course.title,
+                              description: course.description || '',
+                              thumbnailUrl: course.thumbnailUrl,
+                              thumbnailFile: null,
+                              isPublished: course.isPublished ?? false,
+                              teacher1Id: course.teacher1Id,
+                              teacher2Id: course.teacher2Id,
+                            })
                           setShowEditCourseDialog(true)
                         }}
                       >
@@ -394,7 +452,7 @@ function CourseDetailComponent() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {course.thumbnailUrl && (
+                {course?.thumbnailUrl && (
                   <div className="aspect-video w-full overflow-hidden rounded-lg">
                     <img
                       src={course.thumbnailUrl}
@@ -403,7 +461,7 @@ function CourseDetailComponent() {
                     />
                   </div>
                 )}
-                {course.description && (
+                {course?.description && (
                   <div>
                     <h3 className="mb-2 font-semibold">Description</h3>
                     <p className="text-muted-foreground text-sm">
@@ -423,7 +481,7 @@ function CourseDetailComponent() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Instructor</span>
                       <span className="font-medium">
-                        {course.teacher.fullName}
+                        {course?.teacher.fullName}
                       </span>
                     </div>
                   </div>
@@ -431,7 +489,7 @@ function CourseDetailComponent() {
               </CardContent>
             </Card>
 
-            {!canEdit && role === 'student' && isEnrolled && (
+            {!canEdit && isEnrolled && (
               <Card>
                 <CardHeader>
                   <CardTitle>Your Progress</CardTitle>
@@ -462,7 +520,7 @@ function CourseDetailComponent() {
                       this course
                     </CardDescription>
                   </div>
-                  {canEdit && course.lessons.length < 3 && (
+                  {canEdit && course && course.lessons.length < 3 && (
                     <Button
                       size="sm"
                       onClick={() => {
@@ -483,7 +541,7 @@ function CourseDetailComponent() {
                 </div>
               </CardHeader>
               <CardContent>
-                {course.lessons.length === 0 ? (
+                {course?.lessons.length === 0 ? (
                   <div className="text-muted-foreground py-8 text-center">
                     <p className="mb-4">No lessons yet</p>
                     {canEdit && (
@@ -507,7 +565,7 @@ function CourseDetailComponent() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {course.lessons.map((lesson: any, index: number) => {
+                    {course?.lessons.map((lesson: any, index: number) => {
                       const isCompleted = completedLessonIds.includes(lesson.id)
                       const isPublished = lesson.isPublished ?? false
                       const showContent = isPublished || canEdit
@@ -663,6 +721,94 @@ function CourseDetailComponent() {
                 }
               />
             </Field>
+            {isAdmin && (
+              <>
+                <Field>
+                  <FieldLabel htmlFor="edit-teacher1">
+                    Teacher 1 <span className="text-destructive">*</span>
+                  </FieldLabel>
+                  <Select
+                    value={
+                      courseFormData.teacher1Id
+                        ? courseFormData.teacher1Id
+                        : undefined
+                    }
+                    onValueChange={(value) =>
+                      setCourseFormData({
+                        ...courseFormData,
+                        teacher1Id: value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id="edit-teacher1">
+                      <SelectValue placeholder="Select first teacher">
+                        {courseFormData.teacher1Id
+                          ? teachers.find(
+                              (t) => t.id === courseFormData.teacher1Id,
+                            )?.fullName || 'Select first teacher'
+                          : 'Select first teacher'}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teachers.length === 0 ? (
+                        <SelectItem value="none" disabled>
+                          No teachers available
+                        </SelectItem>
+                      ) : (
+                        teachers.map((teacher) => (
+                          <SelectItem key={teacher.id} value={teacher.id}>
+                            {teacher.fullName}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="edit-teacher2">
+                    Teacher 2 <span className="text-destructive">*</span>
+                  </FieldLabel>
+                  <Select
+                    value={
+                      courseFormData.teacher2Id
+                        ? courseFormData.teacher2Id
+                        : undefined
+                    }
+                    onValueChange={(value) =>
+                      setCourseFormData({
+                        ...courseFormData,
+                        teacher2Id: value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id="edit-teacher2">
+                      <SelectValue placeholder="Select second teacher">
+                        {courseFormData.teacher2Id
+                          ? teachers.find(
+                              (t) => t.id === courseFormData.teacher2Id,
+                            )?.fullName || 'Select second teacher'
+                          : 'Select second teacher'}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teachers.length === 0 ? (
+                        <SelectItem value="none" disabled>
+                          No teachers available
+                        </SelectItem>
+                      ) : (
+                        teachers
+                          .filter((t) => t.id !== courseFormData.teacher1Id)
+                          .map((teacher) => (
+                            <SelectItem key={teacher.id} value={teacher.id}>
+                              {teacher.fullName}
+                            </SelectItem>
+                          ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </>
+            )}
             <Field>
               <FieldLabel>Course Thumbnail</FieldLabel>
               <div className="space-y-2">

@@ -112,7 +112,7 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-b pb-2">
         <div>
           <h2 className="text-2xl font-bold">Assignments</h2>
           <p className="text-muted-foreground mt-1">

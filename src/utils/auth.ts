@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { courses, enrollments, profiles } from '@/db/schema'
+import { courseTeachers, enrollments, profiles } from '@/db/schema'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 /**
@@ -74,6 +74,7 @@ export async function requireTeacher(userId: string): Promise<void> {
 
 /**
  * Check if a user is the teacher of a specific course
+ * Checks both the legacy teacherId field and the course_teachers junction table
  * @param userId - The Supabase user ID (UUID)
  * @param courseId - The course ID to check
  */
@@ -81,11 +82,14 @@ export async function requireTeacherOfCourse(
   userId: string,
   courseId: string,
 ): Promise<void> {
-  const course = await db.query.courses.findFirst({
-    where: and(eq(courses.id, courseId), eq(courses.teacherId, userId)),
+  const isTeacher = await db.query.courseTeachers.findFirst({
+    where: and(
+      eq(courseTeachers.courseId, courseId),
+      eq(courseTeachers.teacherId, userId),
+    ),
   })
 
-  if (!course) {
+  if (!isTeacher) {
     throw new Error('Not authorized to access this course')
   }
 }
@@ -122,12 +126,15 @@ export async function getCourseAccess(
   userId: string,
   courseId: string,
 ): Promise<'teacher' | 'student'> {
-  // Check if teacher
-  const course = await db.query.courses.findFirst({
-    where: and(eq(courses.id, courseId), eq(courses.teacherId, userId)),
+  // Check if teacher via course_teachers junction table
+  const isTeacher = await db.query.courseTeachers.findFirst({
+    where: and(
+      eq(courseTeachers.courseId, courseId),
+      eq(courseTeachers.teacherId, userId),
+    ),
   })
 
-  if (course) {
+  if (isTeacher) {
     return 'teacher'
   }
 

@@ -12,6 +12,7 @@ import { DefaultCatchBoundary } from '@/components/DefaultCatchBoundary'
 import { Header } from '@/components/Header'
 import { NotFound } from '@/components/NotFound'
 import { Toaster } from '@/components/ui/sonner'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import appCss from '@/styles/app.css?url'
 import { seo } from '@/utils/seo'
 
@@ -120,11 +121,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <Header user={user} />
-        {children}
-        <Toaster />
-        <TanStackRouterDevtools position="bottom-right" />
-        <Scripts />
+        <TooltipProvider>
+          <Header user={user} />
+          {children}
+          <Toaster />
+          <TanStackRouterDevtools position="bottom-right" />
+          <Scripts />
+        </TooltipProvider>
       </body>
     </html>
   )
