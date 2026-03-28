@@ -1,8 +1,8 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import {
-  ArrowLeftIcon,
   CalendarIcon,
+  ChevronLeft,
   ClockIcon,
   PencilIcon,
   PlusIcon,
@@ -55,7 +55,7 @@ import {
   updateCourse,
   updateLesson,
 } from '@/utils/courses'
-import { fileToBase64, uploadImageFn } from '@/utils/imageUpload'
+import { fileToBase64, uploadCourseThumbnailFn } from '@/utils/imageUpload'
 
 const getCourseData = createServerFn({ method: 'GET' })
   .inputValidator((d: { courseId: string }) => d)
@@ -191,36 +191,6 @@ function CourseDetailComponent() {
   const updateCourseMutation = useMutation({
     fn: updateCourse,
     onSuccess: async () => {
-      if (courseFormData.thumbnailFile) {
-        setIsUploading(true)
-        try {
-          const result = await uploadImageFn({
-            data: {
-              fileData: await fileToBase64(courseFormData.thumbnailFile),
-              fileName: courseFormData.thumbnailFile.name,
-              fileType: courseFormData.thumbnailFile.type,
-              fileSize: courseFormData.thumbnailFile.size,
-              bucket: 'course-thumbnails',
-            },
-          })
-
-          if (!result.error && result.imageUrl && course) {
-            await updateCourse({
-              data: {
-                courseId: course.id,
-                title: courseFormData.title,
-                description: courseFormData.description,
-                thumbnailUrl: result.imageUrl,
-                isPublished: courseFormData.isPublished,
-              },
-            })
-          }
-        } catch (error) {
-          console.error('Thumbnail upload error:', error)
-        }
-        setIsUploading(false)
-      }
-
       toast.success('Course updated successfully!')
       setShowEditCourseDialog(false)
       await router.invalidate()
@@ -273,7 +243,7 @@ function CourseDetailComponent() {
     },
   })
 
-  const handleUpdateCourse = () => {
+  const handleUpdateCourse = async () => {
     if (!courseFormData.title) {
       toast.error('Title is required')
       return
@@ -288,12 +258,38 @@ function CourseDetailComponent() {
       }
     }
 
+    if (courseFormData.thumbnailFile) {
+      setIsUploading(true)
+      try {
+        const result = await uploadCourseThumbnailFn({
+          data: {
+            fileData: await fileToBase64(courseFormData.thumbnailFile),
+            fileName: courseFormData.thumbnailFile.name,
+            fileType: courseFormData.thumbnailFile.type,
+            fileSize: courseFormData.thumbnailFile.size,
+            courseId: course.id,
+          },
+        })
+
+        if ('error' in result && result.error) {
+          toast.error(result.message || 'Failed to upload thumbnail')
+          setIsUploading(false)
+          return
+        }
+      } catch (error) {
+        console.error('Thumbnail upload error:', error)
+        toast.error('Failed to upload thumbnail')
+        setIsUploading(false)
+        return
+      }
+      setIsUploading(false)
+    }
+
     updateCourseMutation.mutate({
       data: {
         courseId: course.id,
         title: courseFormData.title,
         description: courseFormData.description,
-        thumbnailUrl: courseFormData.thumbnailUrl || undefined,
         isPublished: courseFormData.isPublished,
         teacher1Id: courseFormData.teacher1Id || undefined,
         teacher2Id: courseFormData.teacher2Id || undefined,
@@ -374,38 +370,40 @@ function CourseDetailComponent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                router.navigate({
-                  to: '/dashboard',
-                })
-              }
-              className="mb-2"
-            >
-              <ArrowLeftIcon className="mr-2 size-4" />
-              Back to Dashboard
-            </Button>
-            <h1 className="text-3xl font-bold">{course?.title}</h1>
-            {course?.courseTeachers && course.courseTeachers.length > 0 && (
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-muted-foreground text-sm">Teachers:</span>
-                <TeacherAvatars
-                  teachers={course.courseTeachers.map((ct) => ct.teacher)}
-                  size="sm"
-                  showTooltip={true}
-                />
-              </div>
+        <div className="mb-6 flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() =>
+              router.navigate({
+                to: '/dashboard',
+              })
+            }
+          >
+            <ChevronLeft className="size-5" />
+          </Button>
+          <div className="flex flex-1 items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">{course?.title}</h1>
+              {course?.courseTeachers && course.courseTeachers.length > 0 && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-muted-foreground text-sm">
+                    Teachers:
+                  </span>
+                  <TeacherAvatars
+                    teachers={course.courseTeachers.map((ct) => ct.teacher)}
+                    size="sm"
+                    showTooltip={true}
+                  />
+                </div>
+              )}
+            </div>
+            {canEdit && (
+              <Badge variant={course?.isPublished ? 'default' : 'secondary'}>
+                {course?.isPublished ? 'Published' : 'Draft'}
+              </Badge>
             )}
           </div>
-          {canEdit && (
-            <Badge variant={course?.isPublished ? 'default' : 'secondary'}>
-              {course?.isPublished ? 'Published' : 'Draft'}
-            </Badge>
-          )}
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -596,12 +594,12 @@ function CourseDetailComponent() {
                                 )}
                               </div>
                               {showContent && lesson.content && (
-                                <p className="text-muted-foreground mt-1 text-sm line-clamp-2">
+                                <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
                                   {lesson.content}
                                 </p>
                               )}
                               {showContent && (
-                                <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
+                                <div className="text-muted-foreground mt-2 flex items-center gap-4 text-xs">
                                   {lesson.duration && (
                                     <div className="flex items-center gap-1">
                                       <ClockIcon className="size-3" />
@@ -837,7 +835,7 @@ function CourseDetailComponent() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="absolute right-2 top-2"
+                      className="absolute top-2 right-2"
                       onClick={() => {
                         setCourseFormData({
                           ...courseFormData,

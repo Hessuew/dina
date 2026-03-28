@@ -1,8 +1,8 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import {
-  ArrowLeftIcon,
   CalendarIcon,
+  ChevronLeft,
   PencilIcon,
   SaveIcon,
   SendIcon,
@@ -273,12 +273,12 @@ function AssignmentDetailComponent() {
   const isPastDue = new Date(assignment.dueDate) < new Date()
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="mx-auto max-w-7xl p-6">
-        <div className="mb-6">
+        <div className="mb-6 flex items-center gap-4">
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={() => {
               if (fromCalendar && calendarMonth) {
                 router.navigate({
@@ -291,16 +291,10 @@ function AssignmentDetailComponent() {
                 router.history.back()
               }
             }}
-            className="mb-2"
           >
-            <ArrowLeftIcon className="mr-2 size-4" />
-            {fromCalendar
-              ? 'Back to Calendar'
-              : fromDashboard
-                ? 'Back to Dashboard'
-                : 'Back to Lesson'}
+            <ChevronLeft className="size-5" />
           </Button>
-          <div className="flex items-start justify-between">
+          <div className="flex flex-1 items-start justify-between">
             <div>
               <h1 className="text-3xl font-bold">{assignment.title}</h1>
               <p className="text-muted-foreground mt-1">
