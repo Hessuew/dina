@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { Loader2 } from 'lucide-react'
+import { Loader2, RefreshCwIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,8 +18,14 @@ import {
   FieldLabel,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from '@/components/ui/input-otp'
 import { useMutation } from '@/hooks/useMutation'
-import { signupFn } from '@/routes/signup'
+import { resendOtpFn, signupFn, verifyOtpFn } from '@/routes/signup'
 import {
   checkInvitationByEmail,
   getInvitationByToken,
@@ -39,6 +45,10 @@ export function SignupForm({ token = '', ...props }: SignupFormProps) {
   const [invitationRole, setInvitationRole] = useState<string | null>(null)
   const [isLoadingToken, setIsLoadingToken] = useState(!!token)
 
+  const [showOtpInput, setShowOtpInput] = useState(false)
+  const [otpValue, setOtpValue] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
+
   const signupMutation = useMutation<
     {
       data: {
@@ -48,26 +58,88 @@ export function SignupForm({ token = '', ...props }: SignupFormProps) {
         token: string
       }
     },
-    { error: boolean; message: string }
+    { error: boolean; requiresOtp?: boolean; email?: string; message: string }
   >({
     fn: useServerFn(signupFn),
     onSuccess: (ctx) => {
       if (ctx.data.error) {
         toast.error(ctx.data.message)
-      } else {
+      } else if (ctx.data.requiresOtp) {
+        setShowOtpInput(true)
+        setResendCooldown(60)
         toast.success('Account created!', {
-          description:
-            'Check your email to verify your account and complete registration.',
+          description: ctx.data.message,
           duration: 6000,
         })
       }
     },
   })
 
+  const router = useRouter()
   const checkEmailFn = useServerFn(checkInvitationByEmail)
   const getTokenFn = useServerFn(getInvitationByToken)
 
-  const passwordStrength = password ? calculatePasswordStrength(password) : null
+  const passwordStrength = calculatePasswordStrength(password || '')
+
+  const verifyOtpMutation = useMutation<
+    {
+      data: {
+        email: string
+        password: string
+        otp: string
+        invitationToken: string
+      }
+    },
+    { success: boolean; loginFailed?: boolean; message: string }
+  >({
+    fn: useServerFn(verifyOtpFn),
+    onSuccess: async (ctx) => {
+      if (ctx.data.success) {
+        if (ctx.data.loginFailed) {
+          toast.success('Email verified!', {
+            description: 'Please log in to continue.',
+          })
+          router.navigate({ to: '/login', search: { verified: true } })
+          return
+        }
+
+        toast.success('Email verified!', {
+          description: 'Redirecting to dashboard...',
+        })
+
+        // Auto-login successful, redirect to dashboard
+        await router.invalidate()
+        router.navigate({ to: '/dashboard', search: { verified: true } })
+      } else {
+        toast.error(ctx.data.message)
+      }
+    },
+  })
+
+  const resendOtpMutation = useMutation<
+    { data: { email: string; invitationToken: string } },
+    { success: boolean; message: string }
+  >({
+    fn: useServerFn(resendOtpFn),
+    onSuccess: (ctx) => {
+      if (ctx.data.success) {
+        toast.success(ctx.data.message)
+        setResendCooldown(60)
+      } else {
+        toast.error(ctx.data.message)
+      }
+    },
+  })
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => {
+        setResendCooldown(resendCooldown - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [resendCooldown])
 
   // Auto-fill email from token on mount
   useEffect(() => {
@@ -158,6 +230,97 @@ export function SignupForm({ token = '', ...props }: SignupFormProps) {
     })
   }
 
+  const handleOtpComplete = (value: string) => {
+    setOtpValue(value)
+    if (value.length === 6) {
+      verifyOtpMutation.mutate({
+        data: {
+          email,
+          password,
+          otp: value,
+          invitationToken: token,
+        },
+      })
+    }
+  }
+
+  const handleResendOtp = () => {
+    if (resendCooldown > 0) return
+    resendOtpMutation.mutate({
+      data: {
+        email,
+        invitationToken: token,
+      },
+    })
+  }
+
+  if (showOtpInput) {
+    return (
+      <Card {...props}>
+        <CardHeader>
+          <CardTitle>Verify your email</CardTitle>
+          <CardDescription>
+            Enter the verification code we sent to:{' '}
+            <span className="font-medium">{email}</span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Field>
+            <div className="flex items-center justify-between">
+              <FieldLabel htmlFor="otp-verification">
+                Verification code
+              </FieldLabel>
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={handleResendOtp}
+                disabled={
+                  resendCooldown > 0 || resendOtpMutation.status === 'pending'
+                }
+                type="button"
+              >
+                <RefreshCwIcon className="h-3 w-3" />
+                {resendCooldown > 0
+                  ? `Resend (${resendCooldown}s)`
+                  : resendOtpMutation.status === 'pending'
+                    ? 'Sending...'
+                    : 'Resend Code'}
+              </Button>
+            </div>
+            <InputOTP
+              maxLength={6}
+              id="otp-verification"
+              value={otpValue}
+              onChange={handleOtpComplete}
+              disabled={verifyOtpMutation.status === 'pending'}
+            >
+              <InputOTPGroup className="*:data-[slot=input-otp-slot]:h-12 *:data-[slot=input-otp-slot]:w-11 *:data-[slot=input-otp-slot]:text-xl">
+                <InputOTPSlot index={0} />
+                <InputOTPSlot index={1} />
+                <InputOTPSlot index={2} />
+              </InputOTPGroup>
+              <InputOTPSeparator className="mx-2" />
+              <InputOTPGroup className="*:data-[slot=input-otp-slot]:h-12 *:data-[slot=input-otp-slot]:w-11 *:data-[slot=input-otp-slot]:text-xl">
+                <InputOTPSlot index={3} />
+                <InputOTPSlot index={4} />
+                <InputOTPSlot index={5} />
+              </InputOTPGroup>
+            </InputOTP>
+            {verifyOtpMutation.status === 'pending' && (
+              <FieldDescription className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Verifying code...
+              </FieldDescription>
+            )}
+            <FieldDescription className="text-muted-foreground text-sm">
+              The code will expire in 10 minutes.
+            </FieldDescription>
+          </Field>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card {...props}>
       <CardHeader>
@@ -234,35 +397,29 @@ export function SignupForm({ token = '', ...props }: SignupFormProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              {password && passwordStrength && (
-                <div className="mt-2">
-                  <div className="mb-1 flex items-center gap-2">
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-200">
-                      <div
-                        className={`h-full transition-all duration-300 ${passwordStrength.color}`}
-                        style={{
-                          width: `${(passwordStrength.score / 4) * 100}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="text-xs font-medium text-gray-700">
-                      {passwordStrength.label}
-                    </span>
+
+              <div className="mt-2">
+                <div className="mb-1 flex items-center gap-2">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className={`h-full transition-all duration-300 ${passwordStrength.color}`}
+                      style={{
+                        width: `${(passwordStrength.score / 4) * 100}%`,
+                      }}
+                    />
                   </div>
-                  {passwordStrength.suggestions.length > 0 && (
-                    <ul className="space-y-0.5 text-xs text-gray-600">
-                      {passwordStrength.suggestions.map((suggestion, i) => (
-                        <li key={i}>• {suggestion}</li>
-                      ))}
-                    </ul>
-                  )}
+                  <span className="text-xs font-medium text-gray-700">
+                    {passwordStrength.label}
+                  </span>
                 </div>
-              )}
-              {!password && (
-                <FieldDescription>
-                  Must be at least 8 characters long.
-                </FieldDescription>
-              )}
+                {passwordStrength.suggestions.length > 0 && (
+                  <ul className="space-y-0.5 text-xs text-gray-600">
+                    {passwordStrength.suggestions.map((suggestion, i) => (
+                      <li key={i}>• {suggestion}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </Field>
             <Field>
               <FieldLabel htmlFor="confirm-password">

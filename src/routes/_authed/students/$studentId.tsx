@@ -13,11 +13,6 @@ import {
 import { getStudentDetail } from '@/utils/students'
 
 export const Route = createFileRoute('/_authed/students/$studentId')({
-  validateSearch: (search: Record<string, unknown>) => {
-    return {
-      fromDashboard: (search.fromDashboard as boolean) || false,
-    }
-  },
   loader: async ({ params }) => {
     const result = await getStudentDetail({
       data: { studentId: params.studentId },
@@ -29,18 +24,7 @@ export const Route = createFileRoute('/_authed/students/$studentId')({
 
 function StudentDetailComponent() {
   const { student } = Route.useLoaderData()
-  const { fromDashboard } = Route.useSearch()
   const router = useRouter()
-
-  const handleBack = () => {
-    if (fromDashboard) {
-      router.navigate({
-        to: '/students',
-      })
-    } else {
-      router.history.back()
-    }
-  }
 
   const handleAssignmentClick = (assignmentId: string) => {
     router.navigate({
@@ -71,7 +55,11 @@ function StudentDetailComponent() {
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={handleBack}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.navigate({ to: '/students' })}
+        >
           <ChevronLeft className="size-5" />
         </Button>
         <div>

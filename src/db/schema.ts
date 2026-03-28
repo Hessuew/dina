@@ -285,6 +285,9 @@ export const invitations = pgTable('invitations', {
   invitedAt: timestamp('invited_at').defaultNow().notNull(),
   expiresAt: timestamp('expires_at').notNull(),
   acceptedAt: timestamp('accepted_at'),
+  otpHash: text('otp_hash'),
+  otpExpiresAt: timestamp('otp_expires_at'),
+  otpAttempts: integer('otp_attempts').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })

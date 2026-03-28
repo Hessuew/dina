@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from '@/utils/supabase'
 export const loginFn = createServerFn({ method: 'POST' })
   .inputValidator((d: { email: string; password: string }) => d)
   .handler(async ({ data }) => {
+    console.log('🚀 ~ data:', data)
     const supabase = getSupabaseServerClient()
     const { error } = await supabase.auth.signInWithPassword({
       email: data.email,
@@ -12,6 +13,7 @@ export const loginFn = createServerFn({ method: 'POST' })
     })
 
     if (error) {
+      console.log('🚀 ~ error:', error)
       return {
         error: true,
         message: error.message,
@@ -24,6 +26,9 @@ export const Route = createFileRoute('/_authed')({
     if (!context.user) {
       throw redirect({
         to: '/login',
+        search: {
+          verified: false,
+        },
       })
     }
   },
@@ -31,6 +36,9 @@ export const Route = createFileRoute('/_authed')({
     if (error.message === 'Not authenticated') {
       throw redirect({
         to: '/login',
+        search: {
+          verified: false,
+        },
       })
     }
 

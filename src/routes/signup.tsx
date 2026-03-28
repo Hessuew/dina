@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
@@ -6,11 +7,211 @@ import { render } from '@react-email/render'
 import { db } from '@/db'
 import { invitations, profiles } from '@/db/schema'
 import { env } from '@/env'
-import { getSupabaseAdminClient } from '@/utils/supabase'
+import {
+  getSupabaseAdminClient,
+  getSupabaseServerClient,
+} from '@/utils/supabase'
 import { SignupForm } from '@/components/signup-form'
-import { VerificationEmail } from '@/emails/VerificationEmail'
+import { OTPVerificationEmail } from '@/emails/OTPVerificationEmail'
 
 const resend = new Resend(env.RESEND_API_KEY)
+
+export const verifyOtpFn = createServerFn({ method: 'POST' })
+  .inputValidator(
+    (d: {
+      email: string
+      password: string
+      otp: string
+      invitationToken: string
+    }) => d,
+  )
+  .handler(async ({ data }) => {
+    const supabase = getSupabaseServerClient()
+    const supabaseAdmin = getSupabaseAdminClient()
+
+    // Find invitation by token
+    const invitation = await db.query.invitations.findFirst({
+      where: eq(invitations.token, data.invitationToken),
+    })
+
+    if (!invitation) {
+      return {
+        success: false,
+        message: 'Invalid invitation',
+      }
+    }
+
+    // Check if OTP exists
+    if (!invitation.otpHash || !invitation.otpExpiresAt) {
+      return {
+        success: false,
+        message: 'No verification code found. Please request a new one.',
+      }
+    }
+
+    // Check if OTP expired
+    if (new Date() > invitation.otpExpiresAt) {
+      return {
+        success: false,
+        message: 'Verification code has expired. Please request a new one.',
+      }
+    }
+
+    // Check max attempts
+    if (invitation.otpAttempts >= 5) {
+      return {
+        success: false,
+        message: 'Too many failed attempts. Please request a new code.',
+      }
+    }
+
+    // Hash submitted OTP and compare
+    const submittedOtpHash = crypto
+      .createHash('sha256')
+      .update(data.otp)
+      .digest('hex')
+
+    if (submittedOtpHash !== invitation.otpHash) {
+      // Increment attempts
+      await db
+        .update(invitations)
+        .set({
+          otpAttempts: invitation.otpAttempts + 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(invitations.id, invitation.id))
+
+      const attemptsLeft = 5 - (invitation.otpAttempts + 1)
+      return {
+        success: false,
+        message: `Invalid code. ${attemptsLeft} attempt${attemptsLeft !== 1 ? 's' : ''} remaining.`,
+      }
+    }
+
+    // OTP is valid - mark user as verified
+    const profile = await db.query.profiles.findFirst({
+      where: eq(profiles.email, data.email),
+    })
+
+    if (!profile) {
+      return {
+        success: false,
+        message: 'User not found',
+      }
+    }
+
+    // Update user email_confirm status
+    await supabaseAdmin.auth.admin.updateUserById(profile.id, {
+      email_confirm: true,
+    })
+
+    // Clear OTP data
+    await db
+      .update(invitations)
+      .set({
+        otpHash: null,
+        otpExpiresAt: null,
+        otpAttempts: 0,
+        updatedAt: new Date(),
+      })
+      .where(eq(invitations.id, invitation.id))
+
+    // Log in the user directly
+    const { error: loginError } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    })
+
+    if (loginError) {
+      console.error('Auto-login failed after OTP verification:', loginError)
+      return {
+        success: true,
+        loginFailed: true,
+        message: 'Email verified! Please log in to continue.',
+      }
+    }
+
+    return {
+      success: true,
+      loginFailed: false,
+      message: 'Email verified successfully!',
+    }
+  })
+
+export const resendOtpFn = createServerFn({ method: 'POST' })
+  .inputValidator((d: { email: string; invitationToken: string }) => d)
+  .handler(async ({ data }) => {
+    // Find invitation by token
+    const invitation = await db.query.invitations.findFirst({
+      where: eq(invitations.token, data.invitationToken),
+    })
+
+    if (!invitation) {
+      return {
+        success: false,
+        message: 'Invalid invitation',
+      }
+    }
+
+    // Check if last OTP was sent less than 60 seconds ago
+    if (invitation.otpExpiresAt) {
+      const lastSentAt = new Date(
+        invitation.otpExpiresAt.getTime() - 10 * 60 * 1000,
+      )
+      const timeSinceLastSend = Date.now() - lastSentAt.getTime()
+      if (timeSinceLastSend < 60 * 1000) {
+        const waitSeconds = Math.ceil((60 * 1000 - timeSinceLastSend) / 1000)
+        return {
+          success: false,
+          message: `Please wait ${waitSeconds} seconds before requesting a new code.`,
+        }
+      }
+    }
+
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString()
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex')
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000)
+
+    // Update invitation with new OTP
+    await db
+      .update(invitations)
+      .set({
+        otpHash,
+        otpExpiresAt,
+        otpAttempts: 0,
+        updatedAt: new Date(),
+      })
+      .where(eq(invitations.id, invitation.id))
+
+    // Send OTP via email
+    const emailHtml = await render(
+      OTPVerificationEmail({
+        otp,
+        expiryMinutes: 10,
+      }),
+    )
+
+    const { error: emailError } = await resend.emails.send({
+      from: env.RESEND_FROM_EMAIL,
+      to: data.email,
+      subject: 'Your verification code',
+      html: emailHtml,
+    })
+
+    if (emailError) {
+      console.error('Failed to send OTP email:', emailError)
+      return {
+        success: false,
+        message: 'Failed to send verification code. Please try again.',
+      }
+    }
+
+    return {
+      success: true,
+      message: 'New verification code sent!',
+    }
+  })
 
 export const signupFn = createServerFn({ method: 'POST' })
   .inputValidator(
@@ -104,57 +305,51 @@ export const signupFn = createServerFn({ method: 'POST' })
         })
         .where(eq(invitations.id, invitation.id))
 
-      // Generate verification link using Admin API
-      // Use 'magiclink' type since user already exists (created with admin.createUser)
-      const { data: linkData, error: linkError } =
-        await supabaseAdmin.auth.admin.generateLink({
-          type: 'magiclink',
-          email: data.email,
-          options: {
-            redirectTo: `${env.APP_URL || 'http://localhost:3000'}/auth/callback`,
-          },
+      // Generate 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString()
+      const otpHash = crypto.createHash('sha256').update(otp).digest('hex')
+      const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+
+      // Store OTP hash in invitation
+      await db
+        .update(invitations)
+        .set({
+          otpHash,
+          otpExpiresAt,
+          otpAttempts: 0,
+          updatedAt: new Date(),
         })
+        .where(eq(invitations.id, invitation.id))
 
-      if (linkError || !linkData.properties.action_link) {
-        console.error('Failed to generate verification link:', linkError)
-        throw new Error(
-          'Unable to send verification email. Please contact support.',
-        )
-      }
-
-      // Send custom verification email via Resend
-      const verificationLink = linkData.properties.action_link
-
-      // Also mark the user as needing email confirmation in metadata
-      await supabaseAdmin.auth.admin.updateUserById(authData.user.id, {
-        email_confirm: false,
-      })
-
+      // Send OTP via email
       const emailHtml = await render(
-        VerificationEmail({
-          verificationLink,
+        OTPVerificationEmail({
+          otp,
+          expiryMinutes: 10,
         }),
       )
 
       const { error: emailError } = await resend.emails.send({
         from: env.RESEND_FROM_EMAIL,
         to: data.email,
-        subject: 'Verify your email address',
+        subject: 'Your verification code',
         html: emailHtml,
       })
 
       if (emailError) {
-        console.error('Failed to send verification email:', emailError)
+        console.error('Failed to send OTP email:', emailError)
         throw new Error(
           'Unable to send verification email. Please contact support.',
         )
       }
 
-      // Return success
+      // Return success with requiresOtp flag
       return {
         error: false,
+        requiresOtp: true,
+        email: data.email,
         message:
-          'Account created successfully! Please check your email to verify your account.',
+          'Account created! Please check your email for the verification code.',
       }
     } catch (err) {
       // Log the technical error for debugging
