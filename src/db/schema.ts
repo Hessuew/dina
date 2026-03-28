@@ -90,6 +90,7 @@ export const lessons = pgTable('lessons', {
   title: text('title').notNull(),
   content: text('content'),
   videoUrl: text('video_url'),
+  thumbnailUrl: text('thumbnail_url'),
   duration: integer('duration'),
   orderIndex: integer('order_index').notNull().default(0),
   zoomMeetingId: text('zoom_meeting_id'),

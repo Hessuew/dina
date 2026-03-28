@@ -8,44 +8,67 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 
-export function Breadcrumbs() {
+type BreadcrumbsProps = {
+  items?: Array<{
+    label: string
+    href?: string
+  }>
+}
+
+export function Breadcrumbs({ items }: BreadcrumbsProps = {}) {
   const matches = useMatches()
 
-  const breadcrumbs = matches
-    .filter((match) => match.pathname !== '/')
-    .map((match) => {
-      const segments = match.pathname.split('/').filter(Boolean)
-      const lastSegment = segments[segments.length - 1]
+  // Use custom items if provided, otherwise generate from route matches
+  const breadcrumbs =
+    items ||
+    matches
+      .filter((match) => match.pathname !== '/')
+      .map((match) => {
+        const segments = match.pathname.split('/').filter(Boolean)
+        const lastSegment = segments[segments.length - 1]
 
-      const label = lastSegment
-        .split('-')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ')
+        // Custom labels for specific routes
+        const labelMap: Record<string, string> = {
+          dashboard: 'Dashboard',
+          courses: 'Courses',
+          new: 'Create Course',
+          edit: 'Edit Course',
+          profile: 'Profile',
+        }
 
-      return {
-        pathname: match.pathname,
-        label,
-      }
-    })
+        const label =
+          labelMap[lastSegment] ||
+          lastSegment
+            .split('-')
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ')
+
+        return {
+          label,
+          href: match.pathname,
+        }
+      })
 
   if (breadcrumbs.length === 0) {
     return null
   }
 
   return (
-    <Breadcrumb className="hidden sm:block">
+    <Breadcrumb className="mb-6">
       <BreadcrumbList>
         <BreadcrumbItem>
-          <BreadcrumbLink render={<Link to="/" />}>Home</BreadcrumbLink>
+          <BreadcrumbLink render={<Link to="/dashboard" />}>
+            Dashboard
+          </BreadcrumbLink>
         </BreadcrumbItem>
         {breadcrumbs.map((crumb, index) => (
-          <div key={crumb.pathname} className="flex items-center gap-1.5">
+          <div key={crumb.href || index} className="flex items-center gap-1.5">
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              {index === breadcrumbs.length - 1 ? (
+              {index === breadcrumbs.length - 1 || !crumb.href ? (
                 <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
               ) : (
-                <BreadcrumbLink render={<Link to={crumb.pathname} />}>
+                <BreadcrumbLink render={<Link to={crumb.href} />}>
                   {crumb.label}
                 </BreadcrumbLink>
               )}

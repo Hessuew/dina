@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { and, desc, eq } from 'drizzle-orm'
+import z from 'zod'
 import { db } from '@/db'
 import {
   assignments,
@@ -23,12 +24,12 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
       throw new Error('Profile not found')
     }
 
-    if (profile.role === 'teacher') {
+    if (profile.role === 'teacher' || profile.role === 'admin') {
       const teacherCourses = await db.query.courses.findMany({
         where: eq(courses.teacherId, user.id),
         with: {
           lessons: {
-            orderBy: (lessons, { asc }) => [asc(lessons.orderIndex)],
+            orderBy: (l, { asc }) => [asc(l.orderIndex)],
           },
         },
         orderBy: [desc(courses.createdAt)],
@@ -50,7 +51,7 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
           with: {
             teacher: true,
             lessons: {
-              orderBy: (lessons, { asc }) => [asc(lessons.orderIndex)],
+              orderBy: (l, { asc }) => [asc(l.orderIndex)],
             },
           },
         },
@@ -100,7 +101,7 @@ export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
 
     let courseIds: Array<string> = []
 
-    if (profile.role === 'teacher') {
+    if (profile.role === 'teacher' || profile.role === 'admin') {
       const teacherCourses = await db.query.courses.findMany({
         where: eq(courses.teacherId, user.id),
         columns: { id: true },
@@ -176,7 +177,11 @@ export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
 
 export const createCourse = createServerFn({ method: 'POST' })
   .inputValidator(
-    (d: { title: string; description: string; thumbnailUrl?: string }) => d,
+    z.object({
+      title: z.string().min(1),
+      description: z.string().min(1),
+      thumbnailUrl: z.string().url().optional(),
+    }),
   )
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
@@ -185,7 +190,7 @@ export const createCourse = createServerFn({ method: 'POST' })
       where: eq(profiles.id, user.id),
     })
 
-    if (!profile || profile.role !== 'teacher') {
+    if (!profile || (profile.role !== 'teacher' && profile.role !== 'admin')) {
       throw new Error('Only teachers can create courses')
     }
 
@@ -254,6 +259,7 @@ export const createLesson = createServerFn({ method: 'POST' })
       title: string
       content?: string
       videoUrl?: string
+      thumbnailUrl?: string
       scheduledTime?: Date
       duration?: number
       orderIndex: number
@@ -272,6 +278,7 @@ export const createLesson = createServerFn({ method: 'POST' })
         title: data.title,
         content: data.content || null,
         videoUrl: data.videoUrl || null,
+        thumbnailUrl: data.thumbnailUrl || null,
         scheduledTime: data.scheduledTime || null,
         duration: data.duration || null,
         orderIndex: data.orderIndex,
@@ -289,6 +296,7 @@ export const updateLesson = createServerFn({ method: 'POST' })
       title: string
       content?: string
       videoUrl?: string
+      thumbnailUrl?: string
       scheduledTime?: Date
       duration?: number
       orderIndex?: number
@@ -306,6 +314,7 @@ export const updateLesson = createServerFn({ method: 'POST' })
         title: data.title,
         content: data.content || null,
         videoUrl: data.videoUrl || null,
+        thumbnailUrl: data.thumbnailUrl || null,
         scheduledTime: data.scheduledTime || null,
         duration: data.duration || null,
         orderIndex: data.orderIndex,
@@ -327,5 +336,5 @@ export const deleteLesson = createServerFn({ method: 'POST' })
 
     await db.delete(lessons).where(eq(lessons.id, data.lessonId))
 
-    return { success: true }
+    return { success: true, lessonId: data.lessonId }
   })

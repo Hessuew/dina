@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { BookOpenIcon, EditIcon, EyeIcon } from 'lucide-react'
+import { BookOpenIcon, CalendarIcon, EditIcon, EyeIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,7 +19,12 @@ type CourseCardProps = {
     description: string | null
     thumbnailUrl: string | null
     isPublished: boolean
-    lessons: Array<{ id: string }>
+    lessons: Array<{
+      id: string
+      scheduledTime: Date | null
+      title: string
+      thumbnailUrl: string | null
+    }>
     teacher?: {
       fullName: string
     }
@@ -36,6 +41,23 @@ export function CourseCard({ course, role }: CourseCardProps) {
     course.completedLessons && course.totalLessons
       ? (course.completedLessons / course.totalLessons) * 100
       : 0
+
+  // Get the first lesson's scheduled time
+  const firstLesson = course.lessons[0]
+  const startTime = firstLesson?.scheduledTime
+    ? new Date(firstLesson.scheduledTime)
+    : null
+
+  const formatDateTime = (date: Date) => {
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
+  }
 
   return (
     <Card className="flex flex-col overflow-hidden transition-shadow hover:shadow-lg">
@@ -74,6 +96,12 @@ export function CourseCard({ course, role }: CourseCardProps) {
             <BookOpenIcon className="size-4" />
             <span>{lessonCount} lessons</span>
           </div>
+          {startTime && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CalendarIcon className="size-4" />
+              <span>Starts: {formatDateTime(startTime)}</span>
+            </div>
+          )}
           {!isTeacher && course.completedLessons !== undefined && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">

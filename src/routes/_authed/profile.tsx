@@ -23,6 +23,7 @@ import { useMutation } from '@/hooks/useMutation'
 import { getCurrentUser, getUserProfile } from '@/utils/auth'
 import { db } from '@/db'
 import { profiles } from '@/db/schema'
+import { uploadAvatarFn } from '@/utils/imageUpload'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 const getMyProfile = createServerFn({ method: 'GET' }).handler(async () => {
@@ -46,116 +47,6 @@ const updateProfileFn = createServerFn({ method: 'POST' })
       .where(eq(profiles.id, user.id))
 
     return { success: true }
-  })
-
-const uploadAvatarFn = createServerFn({ method: 'POST' })
-  .inputValidator(
-    (d: {
-      fileData: string
-      fileName: string
-      fileType: string
-      fileSize: number
-    }) => d,
-  )
-  .handler(async ({ data }) => {
-    try {
-      const { eq } = await import('drizzle-orm')
-      const user = await getCurrentUser()
-      const supabase = getSupabaseServerClient()
-
-      // Validate file
-      const maxSize = 2 * 1024 * 1024 // 2MB
-      if (data.fileSize > maxSize) {
-        return {
-          error: true,
-          message: 'File size must be less than 2MB',
-        }
-      }
-
-      const allowedTypes = [
-        'image/jpeg',
-        'image/png',
-        'image/webp',
-        'image/gif',
-      ]
-      if (!allowedTypes.includes(data.fileType)) {
-        return {
-          error: true,
-          message: 'Only JPEG, PNG, WebP, and GIF images are allowed',
-        }
-      }
-
-      // Get current profile to find old avatar
-      const currentProfile = await db.query.profiles.findFirst({
-        where: eq(profiles.id, user.id),
-      })
-
-      // Delete old avatar if exists
-      if (currentProfile?.avatarUrl) {
-        const oldPath = currentProfile.avatarUrl.split('/').pop()
-        if (oldPath && oldPath.startsWith(user.id)) {
-          const { error: deleteError } = await supabase.storage
-            .from('avatars')
-            .remove([oldPath])
-          if (deleteError) {
-            console.log('⚠️ Failed to delete old avatar', {
-              error: deleteError,
-            })
-          }
-        }
-      }
-
-      // Generate unique filename
-      const fileExt = data.fileName.split('.').pop()
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`
-
-      // Convert base64 to buffer
-      const base64Data = data.fileData.split(',')[1]
-      const buffer = Buffer.from(base64Data, 'base64')
-
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, buffer, {
-          contentType: data.fileType,
-          upsert: false,
-        })
-
-      if (uploadError) {
-        return {
-          error: true,
-          message: uploadError.message,
-        }
-      }
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName)
-
-      // Update profile with new avatar URL
-      await db
-        .update(profiles)
-        .set({
-          avatarUrl: urlData.publicUrl,
-          updatedAt: new Date(),
-        })
-        .where(eq(profiles.id, user.id))
-
-      return {
-        success: true,
-        avatarUrl: urlData.publicUrl,
-      }
-    } catch (error) {
-      console.error('❌ Unexpected error in uploadAvatar:', error)
-      return {
-        error: true,
-        message:
-          error instanceof Error
-            ? error.message
-            : 'An unexpected error occurred',
-      }
-    }
   })
 
 const updatePasswordFn = createServerFn({ method: 'POST' })
@@ -279,7 +170,6 @@ function ProfileComponent() {
   }
 
   const handlePasswordSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    console.log(1)
     e.preventDefault()
     const formData = new FormData(e.target as HTMLFormElement)
 
@@ -291,7 +181,6 @@ function ProfileComponent() {
       return
     }
 
-    console.log(2)
     updatePasswordMutation.mutate({
       data: {
         newPassword,
