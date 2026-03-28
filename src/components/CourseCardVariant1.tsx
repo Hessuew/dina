@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { BookOpenIcon, CalendarIcon, EditIcon, EyeIcon } from 'lucide-react'
+import { BookOpenIcon, CalendarIcon, EditIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
@@ -127,37 +127,19 @@ export function CourseCardVariant1({ course, role }: CourseCardProps) {
 
       <CardFooter className="relative gap-2 pt-3">
         {isTeacher ? (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 text-xs"
-              render={
-                <Link
-                  to="/courses/$courseId"
-                  params={{ courseId: course.id }}
-                />
-              }
-            >
-              <EyeIcon className="size-3.5" />
-              View
-            </Button>
-            <Button
-              size="sm"
-              className="flex-1 bg-linear-to-r from-primary to-primary/80 text-xs"
-              render={
-                <Link
-                  to="/courses/$courseId"
-                  params={{ courseId: course.id }}
-                />
-              }
-            >
-              <EditIcon className="size-3.5" />
-              Edit
-            </Button>
-          </>
+          <Button
+            size="sm"
+            className="flex-1 bg-linear-to-r from-primary to-primary/80 text-xs"
+            render={
+              <Link to="/courses/$courseId" params={{ courseId: course.id }} />
+            }
+          >
+            <EditIcon className="size-3.5" />
+            Edit
+          </Button>
         ) : (
           <Button
+            size="sm"
             className="w-full bg-linear-to-r from-primary to-primary/80 text-xs font-semibold"
             render={
               <Link to="/courses/$courseId" params={{ courseId: course.id }} />
