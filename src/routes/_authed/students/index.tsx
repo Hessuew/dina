@@ -12,6 +12,9 @@ export const Route = createFileRoute('/_authed/students/')({
     if (!isTeacherOrAdmin) {
       throw redirect({
         to: '/dashboard',
+        search: {
+          verified: false,
+        },
       })
     }
 
@@ -32,14 +35,7 @@ function StudentsComponent() {
   const { students } = Route.useLoaderData()
 
   return (
-    <div className="mx-auto max-w-7xl p-6 w-full">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Students</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your students and their progress
-        </p>
-      </div>
-
+    <div className="mx-auto w-full max-w-7xl p-6">
       <StudentsView students={students} />
     </div>
   )

@@ -8,7 +8,6 @@ import { db } from '@/db'
 import {
   assignments,
   courses,
-  enrollments,
   lessons,
   profiles,
   submissions,
@@ -23,15 +22,10 @@ export const getStudents = createServerFn({ method: 'GET' }).handler(
 
     const studentsWithStats: Array<StudentWithStats> = await Promise.all(
       students.map(async (student) => {
-        const studentEnrollments = await db.query.enrollments.findMany({
-          where: eq(enrollments.studentId, student.id),
-          with: {
-            course: {
-              columns: {
-                id: true,
-                title: true,
-              },
-            },
+        const studentEnrollments = await db.query.courses.findMany({
+          columns: {
+            id: true,
+            title: true,
           },
         })
 
@@ -66,17 +60,10 @@ export const getStudents = createServerFn({ method: 'GET' }).handler(
           .from(assignments)
           .innerJoin(lessons, eq(assignments.lessonId, lessons.id))
           .innerJoin(courses, eq(lessons.courseId, courses.id))
-          .innerJoin(
-            enrollments,
-            and(
-              eq(enrollments.courseId, courses.id),
-              eq(enrollments.studentId, student.id),
-            ),
-          )
 
         const averageGradeByCourse = studentEnrollments.map((enrollment) => {
           const courseSubmissions = studentSubmissions.filter(
-            (sub) => sub.assignment.lesson.course.id === enrollment.course.id,
+            (sub) => sub.assignment.lesson.course.id === enrollment.id,
           )
 
           const gradesInCourse = courseSubmissions
@@ -97,8 +84,8 @@ export const getStudents = createServerFn({ method: 'GET' }).handler(
           const maxGrade = 100
 
           return {
-            courseId: enrollment.course.id,
-            courseTitle: enrollment.course.title,
+            courseId: enrollment.id,
+            courseTitle: enrollment.title,
             averageGrade: Math.round(averageGrade),
             maxGrade,
           }
@@ -135,17 +122,12 @@ export const getStudentDetail = createServerFn({ method: 'POST' })
       throw new Error('Student not found')
     }
 
-    const studentEnrollments = await db.query.enrollments.findMany({
-      where: eq(enrollments.studentId, student.id),
-      with: {
-        course: {
-          columns: {
-            id: true,
-            title: true,
-          },
-        },
+    const studentEnrollments = await db.query.courses.findMany({
+      columns: {
+        id: true,
+        title: true,
       },
-      orderBy: (e, { desc }) => [desc(e.enrolledAt)],
+      orderBy: (c, { desc }) => [desc(c.createdAt)],
     })
 
     const allAssignmentsForStudent = await db
@@ -162,13 +144,6 @@ export const getStudentDetail = createServerFn({ method: 'POST' })
       .from(assignments)
       .innerJoin(lessons, eq(assignments.lessonId, lessons.id))
       .innerJoin(courses, eq(lessons.courseId, courses.id))
-      .innerJoin(
-        enrollments,
-        and(
-          eq(enrollments.courseId, courses.id),
-          eq(enrollments.studentId, student.id),
-        ),
-      )
       .orderBy(assignments.dueDate)
 
     const assignmentIds = allAssignmentsForStudent.map((a) => a.assignmentId)
@@ -223,10 +198,9 @@ export const getStudentDetail = createServerFn({ method: 'POST' })
       createdAt: student.createdAt,
       enrollments: studentEnrollments.map((e) => ({
         id: e.id,
-        status: e.status,
-        courseId: e.course.id,
-        courseTitle: e.course.title,
-        enrolledAt: e.enrolledAt,
+        status: 'active',
+        courseId: e.id,
+        courseTitle: e.title,
       })),
       assignments: assignmentsWithSubmissions,
     }

@@ -29,7 +29,6 @@ export type StudentDetailWithAssignments = {
     status: 'pending' | 'active' | 'completed' | 'dropped'
     courseId: string
     courseTitle: string
-    enrolledAt: Date
   }>
   assignments: Array<{
     id: string

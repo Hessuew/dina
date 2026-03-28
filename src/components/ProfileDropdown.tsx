@@ -21,6 +21,7 @@ type Props = {
     email: string
     fullName?: string
     avatarUrl?: string
+    bio?: string
   }
   defaultOpen?: boolean
   align?: 'start' | 'center' | 'end'
@@ -74,7 +75,7 @@ export function ProfileDropdown({
 
         <DropdownMenuGroup>
           <DropdownMenuItem
-            className="flex flex-row gap-2 p-4 py-2.5 size-full"
+            className="flex size-full flex-row gap-2 p-4 py-2.5"
             onClick={() => setProfileModalOpen(true)}
           >
             <UserIcon className="text-foreground size-5" />

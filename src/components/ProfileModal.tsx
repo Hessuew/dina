@@ -25,6 +25,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { useMutation } from '@/hooks/useMutation'
 import { db } from '@/db'
 import { profiles } from '@/db/schema'
@@ -33,14 +34,30 @@ import { uploadAvatarFn } from '@/utils/imageUpload'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 const updateProfileFn = createServerFn({ method: 'POST' })
-  .inputValidator((d: { fullName: string }) => d)
+  .inputValidator((d: { fullName: string; email: string; bio?: string }) => d)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const supabase = getSupabaseServerClient()
+
+    if (data.email !== user.email) {
+      const { error } = await supabase.auth.updateUser({
+        email: data.email,
+      })
+
+      if (error) {
+        return {
+          error: true,
+          message: error.message,
+        }
+      }
+    }
 
     await db
       .update(profiles)
       .set({
         fullName: data.fullName,
+        email: data.email,
+        bio: data.bio,
         updatedAt: new Date(),
       })
       .where(eq(profiles.id, user.id))
@@ -75,6 +92,7 @@ type ProfileModalProps = {
     email: string
     fullName?: string
     avatarUrl?: string
+    bio?: string
   }
   onProfileUpdate?: () => void
 }
@@ -100,7 +118,9 @@ export function ProfileModal({
   const updateProfileMutation = useMutation({
     fn: updateProfileFn,
     onSuccess: (ctx) => {
-      if ('success' in ctx.data) {
+      if ('error' in ctx.data && ctx.data.error) {
+        toast.error(ctx.data.message || 'Failed to update profile')
+      } else if ('success' in ctx.data) {
         toast.success('Profile updated successfully')
         onProfileUpdate?.()
       }
@@ -138,6 +158,8 @@ export function ProfileModal({
     updateProfileMutation.mutate({
       data: {
         fullName: formData.get('fullName') as string,
+        email: formData.get('email') as string,
+        bio: formData.get('bio') as string,
       },
     })
   }
@@ -245,10 +267,10 @@ export function ProfileModal({
                         name="email"
                         type="email"
                         defaultValue={user.email}
-                        disabled
+                        required
                       />
                       <FieldDescription>
-                        Email cannot be changed
+                        Changing your email will require verification
                       </FieldDescription>
                     </Field>
                     <Field>
@@ -259,6 +281,16 @@ export function ProfileModal({
                         type="text"
                         defaultValue={user.fullName}
                         required
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="bio">Bio</FieldLabel>
+                      <Textarea
+                        id="bio"
+                        name="bio"
+                        placeholder="Tell us about yourself..."
+                        defaultValue={user.bio || ''}
+                        rows={4}
                       />
                     </Field>
                     <Field>

@@ -28,7 +28,7 @@ export function TeachersView({ teachers }: TeachersViewProps) {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold">Teachers</h2>
+          <h2 className="text-3xl font-bold">Teachers</h2>
           <p className="text-muted-foreground mt-1">
             Browse all teachers in the system
           </p>
@@ -48,7 +48,7 @@ export function TeachersView({ teachers }: TeachersViewProps) {
     <>
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold">Teachers</h2>
+          <h2 className="text-3xl font-bold">Teachers</h2>
           <p className="text-muted-foreground mt-1">
             Browse all teachers in the system
           </p>

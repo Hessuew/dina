@@ -17,13 +17,6 @@ function TeachersComponent() {
 
   return (
     <div className="mx-auto max-w-7xl p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Teachers</h1>
-        <p className="text-muted-foreground mt-1">
-          View all teachers and their courses
-        </p>
-      </div>
-
       <TeachersView teachers={teachers} />
     </div>
   )
