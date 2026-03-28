@@ -1,179 +1,78 @@
-example sidebar
+example card
 
 ```tsx
 'use client'
 
-import * as React from 'react'
+import { useState } from 'react'
+
+import { HeartIcon } from 'lucide-react'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
-  AudioWaveform,
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  GalleryVerticalEnd,
-  Map,
-  PieChart,
-  Settings2,
-  SquareTerminal,
-} from 'lucide-react'
+  Card,
+  CardHeader,
+  CardDescription,
+  CardTitle,
+  CardFooter,
+  CardContent,
+} from '@/components/ui/card'
 
-import { NavMain } from '@/components/nav-main'
-import { NavProjects } from '@/components/nav-projects'
-import { NavUser } from '@/components/nav-user'
-import { TeamSwitcher } from '@/components/team-switcher'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail,
-} from '@/components/ui/sidebar'
+import { cn } from '@/lib/utils'
 
-// This is sample data.
-const data = {
-  user: {
-    name: 'shadcn',
-    email: 'm@example.com',
-    avatar: '/avatars/shadcn.jpg',
-  },
-  teams: [
-    {
-      name: 'Acme Inc',
-      logo: GalleryVerticalEnd,
-      plan: 'Enterprise',
-    },
-    {
-      name: 'Acme Corp.',
-      logo: AudioWaveform,
-      plan: 'Startup',
-    },
-    {
-      name: 'Evil Corp.',
-      logo: Command,
-      plan: 'Free',
-    },
-  ],
-  navMain: [
-    {
-      title: 'Playground',
-      url: '#',
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: 'History',
-          url: '#',
-        },
-        {
-          title: 'Starred',
-          url: '#',
-        },
-        {
-          title: 'Settings',
-          url: '#',
-        },
-      ],
-    },
-    {
-      title: 'Models',
-      url: '#',
-      icon: Bot,
-      items: [
-        {
-          title: 'Genesis',
-          url: '#',
-        },
-        {
-          title: 'Explorer',
-          url: '#',
-        },
-        {
-          title: 'Quantum',
-          url: '#',
-        },
-      ],
-    },
-    {
-      title: 'Documentation',
-      url: '#',
-      icon: BookOpen,
-      items: [
-        {
-          title: 'Introduction',
-          url: '#',
-        },
-        {
-          title: 'Get Started',
-          url: '#',
-        },
-        {
-          title: 'Tutorials',
-          url: '#',
-        },
-        {
-          title: 'Changelog',
-          url: '#',
-        },
-      ],
-    },
-    {
-      title: 'Settings',
-      url: '#',
-      icon: Settings2,
-      items: [
-        {
-          title: 'General',
-          url: '#',
-        },
-        {
-          title: 'Team',
-          url: '#',
-        },
-        {
-          title: 'Billing',
-          url: '#',
-        },
-        {
-          title: 'Limits',
-          url: '#',
-        },
-      ],
-    },
-  ],
-  projects: [
-    {
-      name: 'Design Engineering',
-      url: '#',
-      icon: Frame,
-    },
-    {
-      name: 'Sales & Marketing',
-      url: '#',
-      icon: PieChart,
-    },
-    {
-      name: 'Travel',
-      url: '#',
-      icon: Map,
-    },
-  ],
-}
+const CardProductDemo = () => {
+  const [liked, setLiked] = useState<boolean>(false)
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
-      </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={data.user} />
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
+    <div className="relative max-w-md rounded-xl bg-gradient-to-r from-neutral-600 to-violet-300 pt-0 shadow-lg">
+      <div className="flex h-60 items-center justify-center">
+        <img
+          src="https://cdn.shadcnstudio.com/ss-assets/components/card/image-11.png?width=300&format=auto"
+          alt="Shoes"
+          className="w-75"
+        />
+      </div>
+      <Button
+        size="icon"
+        onClick={() => setLiked(!liked)}
+        className="bg-primary/10 hover:bg-primary/20 absolute top-4 right-4 rounded-full"
+      >
+        <HeartIcon
+          className={cn(
+            liked ? 'fill-destructive stroke-destructive' : 'stroke-white',
+          )}
+        />
+        <span className="sr-only">Like</span>
+      </Button>
+      <Card className="border-none">
+        <CardHeader>
+          <CardTitle>Nike Jordan Air Rev</CardTitle>
+          <CardDescription className="flex items-center gap-2">
+            <Badge variant="outline" className="rounded-sm">
+              EU38
+            </Badge>
+            <Badge variant="outline" className="rounded-sm">
+              Black and White
+            </Badge>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p>
+            Crossing hardwood comfort with off-court flair. &apos;80s-Inspired
+            construction, bold details and nothin&apos;-but-net style.
+          </p>
+        </CardContent>
+        <CardFooter className="justify-between gap-3 max-sm:flex-col max-sm:items-stretch">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium uppercase">Price</span>
+            <span className="text-xl font-semibold">$69.99</span>
+          </div>
+          <Button size="lg">Add to cart</Button>
+        </CardFooter>
+      </Card>
+    </div>
   )
 }
+
+export default CardProductDemo
 ```

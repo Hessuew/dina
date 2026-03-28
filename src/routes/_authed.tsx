@@ -25,7 +25,6 @@ export const Route = createFileRoute('/_authed')({
       throw redirect({
         to: '/login',
       })
-      // throw new Error('Not authenticated')
     }
   },
   errorComponent: ({ error }) => {
