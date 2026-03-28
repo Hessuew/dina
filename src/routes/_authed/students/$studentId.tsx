@@ -47,6 +47,8 @@ function StudentDetailComponent() {
       to: '/assignments/$assignmentId',
       params: { assignmentId },
       search: {
+        calendarMonth: undefined,
+        fromCalendar: false,
         fromDashboard: false,
       },
     })
@@ -67,7 +69,7 @@ function StudentDetailComponent() {
   }))
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-6">
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={handleBack}>
           <ChevronLeft className="size-5" />
@@ -162,7 +164,7 @@ function StudentDetailComponent() {
                   return (
                     <Card
                       key={assignment.id}
-                      className="cursor-pointer transition-colors hover:bg-muted/50"
+                      className="hover:bg-muted/50 cursor-pointer transition-colors"
                       onClick={() => handleAssignmentClick(assignment.id)}
                     >
                       <CardHeader>
@@ -182,7 +184,7 @@ function StudentDetailComponent() {
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div className="flex items-center gap-2 text-sm">
-                          <CalendarIcon className="size-4 text-muted-foreground" />
+                          <CalendarIcon className="text-muted-foreground size-4" />
                           <span>
                             {new Date(assignment.dueDate).toLocaleDateString()}
                           </span>
