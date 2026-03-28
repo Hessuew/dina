@@ -68,25 +68,28 @@ export function ProfileDropdown({
         <DropdownMenuSeparator />
 
         <DropdownMenuGroup>
-          <DropdownMenuItem
-            className="px-4 py-2.5 text-base"
-            render={<Link to="/profile" />}
-          >
-            <UserIcon className="text-foreground size-5" />
-            <span>My Profile</span>
+          <DropdownMenuItem className="text-base p-0">
+            <Link
+              className="flex flex-row gap-2 size-full px-4 py-2.5"
+              to="/profile"
+            >
+              <UserIcon className="text-foreground size-5" />
+              <span>My Profile</span>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
 
         <DropdownMenuSeparator />
 
         <DropdownMenuGroup>
-          <DropdownMenuItem
-            variant="destructive"
-            className="px-4 py-2.5 text-base"
-            render={<Link to="/logout" />}
-          >
-            <LogOutIcon className="size-5" />
-            <span>Logout</span>
+          <DropdownMenuItem variant="destructive" className="p-0 text-base">
+            <Link
+              className="flex flex-row gap-2 p-4 py-2.5 size-full"
+              to="/logout"
+            >
+              <LogOutIcon className="size-5" />
+              <span>Logout</span>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
