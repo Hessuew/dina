@@ -64,6 +64,13 @@
       "when": 1774696393093,
       "tag": "0008_aromatic_energizer",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1774734932914,
+      "tag": "0009_skinny_the_stranger",
+      "breakpoints": true
     }
   ]
 }

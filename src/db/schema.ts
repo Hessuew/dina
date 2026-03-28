@@ -74,6 +74,10 @@ export const profiles = pgTable('profiles', {
   notifyNewAssignments: boolean('notify_new_assignments').default(true),
   notifyGrades: boolean('notify_grades').default(true),
   notifyInquiries: boolean('notify_inquiries').default(true),
+  resetTokenHash: text('reset_token_hash'),
+  resetTokenExpiresAt: timestamp('reset_token_expires_at'),
+  resetTokenAttempts: integer('reset_token_attempts').default(0).notNull(),
+  lastResetRequestAt: timestamp('last_reset_request_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
