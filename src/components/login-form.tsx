@@ -18,10 +18,15 @@ import { Input } from '@/components/ui/input'
 import { useMutation } from '@/hooks/useMutation'
 import { loginFn } from '@/routes/_authed'
 
+interface LoginFormProps extends React.ComponentProps<'div'> {
+  verified?: boolean
+}
+
 export function LoginForm({
   className,
+  verified = false,
   ...props
-}: React.ComponentProps<'div'>) {
+}: LoginFormProps) {
   const router = useRouter()
 
   const loginMutation = useMutation({
@@ -29,7 +34,7 @@ export function LoginForm({
     onSuccess: async (ctx) => {
       if (!ctx.data?.error) {
         await router.invalidate()
-        router.navigate({ to: '/dashboard' })
+        router.navigate({ to: '/dashboard', search: { verified: false } })
         return
       }
     },
@@ -57,6 +62,11 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {verified && (
+            <div className="mb-4 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+              ✓ Email verified successfully! You can now log in to your account.
+            </div>
+          )}
           <form onSubmit={handleSubmit}>
             <FieldGroup>
               <Field>
@@ -97,7 +107,11 @@ export function LoginForm({
                 )}
                 <FieldDescription className="text-center">
                   Don&apos;t have an account?{' '}
-                  <Link to="/signup" className="underline">
+                  <Link
+                    to="/signup"
+                    search={{ token: '' }}
+                    className="underline"
+                  >
                     Sign up
                   </Link>
                 </FieldDescription>
