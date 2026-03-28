@@ -1,25 +1,23 @@
-import { auth } from '@clerk/tanstack-react-start/server'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { courses, enrollments, profiles } from '@/db/schema'
 
 /**
- * Get the authenticated user's ID from Clerk
- * Throws an error if the user is not authenticated
+ * Validate that a user ID is provided
+ * Throws an error if the user ID is not provided
+ * @param userId - The Supabase user ID (UUID)
  */
-export async function requireAuth(): Promise<string> {
-  const { userId } = await auth()
-
+export function requireAuth(
+  userId: string | undefined,
+): asserts userId is string {
   if (!userId) {
     throw new Error('Authentication required')
   }
-
-  return userId
 }
 
 /**
  * Check if a user has a specific role
- * @param userId - The Clerk user ID
+ * @param userId - The Supabase user ID (UUID)
  * @param role - The required role ('student', 'teacher', or 'admin')
  */
 export async function requireRole(
@@ -41,7 +39,7 @@ export async function requireRole(
 
 /**
  * Verify that a user is an admin
- * @param userId - The Clerk user ID
+ * @param userId - The Supabase user ID (UUID)
  */
 export async function requireAdmin(userId: string): Promise<void> {
   await requireRole(userId, 'admin')
@@ -49,7 +47,7 @@ export async function requireAdmin(userId: string): Promise<void> {
 
 /**
  * Verify that a user is a teacher
- * @param userId - The Clerk user ID
+ * @param userId - The Supabase user ID (UUID)
  */
 export async function requireTeacher(userId: string): Promise<void> {
   await requireRole(userId, 'teacher')
@@ -57,7 +55,7 @@ export async function requireTeacher(userId: string): Promise<void> {
 
 /**
  * Check if a user is the teacher of a specific course
- * @param userId - The Clerk user ID
+ * @param userId - The Supabase user ID (UUID)
  * @param courseId - The course ID to check
  */
 export async function requireTeacherOfCourse(
@@ -75,7 +73,7 @@ export async function requireTeacherOfCourse(
 
 /**
  * Check if a user is enrolled in a specific course with active status
- * @param userId - The Clerk user ID
+ * @param userId - The Supabase user ID (UUID)
  * @param courseId - The course ID to check
  */
 export async function requireEnrolledInCourse(
@@ -97,7 +95,7 @@ export async function requireEnrolledInCourse(
 
 /**
  * Check if a user can access a course (either as teacher or enrolled student)
- * @param userId - The Clerk user ID
+ * @param userId - The Supabase user ID (UUID)
  * @param courseId - The course ID to check
  * @returns 'teacher' | 'student' - The user's role in the course
  */
@@ -132,7 +130,7 @@ export async function getCourseAccess(
 
 /**
  * Get user profile with role information
- * @param userId - The Clerk user ID
+ * @param userId - The Supabase user ID (UUID)
  */
 export async function getUserProfile(userId: string) {
   const user = await db.query.profiles.findFirst({
@@ -148,7 +146,7 @@ export async function getUserProfile(userId: string) {
 
 /**
  * Check if user is admin (returns boolean instead of throwing)
- * @param userId - The Clerk user ID
+ * @param userId - The Supabase user ID (UUID)
  */
 export async function isAdmin(userId: string): Promise<boolean> {
   const user = await db.query.profiles.findFirst({
