@@ -86,9 +86,6 @@ export const courses = pgTable('courses', {
   id: uuid('id').primaryKey().defaultRandom(),
   title: text('title').notNull(),
   description: text('description'),
-  teacherId: uuid('teacher_id')
-    .notNull()
-    .references(() => profiles.id),
   thumbnailUrl: text('thumbnail_url'),
   isPublished: boolean('is_published').default(false),
   orderIndex: integer('order_index').default(0),
@@ -301,7 +298,6 @@ export const invitations = pgTable('invitations', {
 // ============================================================================
 
 export const profilesRelations = relations(profiles, ({ many }) => ({
-  coursesTeaching: many(courses),
   courseTeachers: many(courseTeachers),
   enrollments: many(enrollments),
   submissions: many(submissions),
@@ -313,11 +309,7 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
   invitations: many(invitations),
 }))
 
-export const coursesRelations = relations(courses, ({ one, many }) => ({
-  teacher: one(profiles, {
-    fields: [courses.teacherId],
-    references: [profiles.id],
-  }),
+export const coursesRelations = relations(courses, ({ many }) => ({
   courseTeachers: many(courseTeachers),
   lessons: many(lessons),
   enrollments: many(enrollments),

@@ -75,6 +75,7 @@ function CourseListInternal({
     thumbnailFile: null as File | null,
     teacher1Id: null as string | null,
     teacher2Id: null as string | null,
+    orderIndex: 0,
   })
 
   const { teachers, error: teachersError } = useAllTeachers(
@@ -123,6 +124,7 @@ function CourseListInternal({
           thumbnailFile: null,
           teacher1Id: '',
           teacher2Id: '',
+          orderIndex: 0,
         })
         await router.invalidate()
       }
@@ -135,24 +137,26 @@ function CourseListInternal({
       return
     }
 
-    if (isAdmin) {
-      if (!formData.teacher1Id || !formData.teacher2Id) {
-        toast.error('Please select 2 teachers for this course')
-        return
-      }
+    // if (isAdmin) {
+    //   if (!formData.teacher1Id || !formData.teacher2Id) {
+    //     toast.error('Please select 2 teachers for this course')
+    //     return
+    //   }
 
-      if (formData.teacher1Id === formData.teacher2Id) {
-        toast.error('Please select 2 different teachers')
-        return
-      }
-    }
+    //   if (formData.teacher1Id === formData.teacher2Id) {
+    //     toast.error('Please select 2 different teachers')
+    //     return
+    //   }
+    // }
 
+    console.log(1)
     createCourseMutation.mutate({
       data: {
         title: formData.title,
         description: formData.description,
         teacher1Id: formData.teacher1Id as string,
         teacher2Id: formData.teacher2Id as string,
+        orderIndex: formData.orderIndex,
       },
     })
   }
@@ -262,6 +266,25 @@ function CourseListInternal({
                   )}
                 </SelectContent>
               </Select>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="orderIndex">Order Index</FieldLabel>
+              <Input
+                id="orderIndex"
+                type="number"
+                min="0"
+                placeholder="0"
+                value={formData.orderIndex}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    orderIndex: parseInt(e.target.value) || 0,
+                  })
+                }
+              />
+              <p className="text-muted-foreground text-xs">
+                Lower numbers appear first in the course list
+              </p>
             </Field>
             <Field>
               <FieldLabel>Course Thumbnail</FieldLabel>

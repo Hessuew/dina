@@ -18,15 +18,15 @@ export function Header({ user }: HeaderProps) {
   const router = useRouter()
 
   return (
-    <header className="flex h-12 bg-card shrink-0 items-center gap-2 border-b px-4 justify-between">
+    <header className="bg-card flex h-12 shrink-0 items-center justify-between gap-2 border-b px-4">
       {user ? (
         <SidebarTrigger className="-ml-1" />
       ) : (
         <Link
           to="/"
-          className="flex flex-row gap-4 animate-in fade-in slide-in-from-bottom-2 duration-1000"
+          className="animate-in fade-in slide-in-from-bottom-2 flex flex-row gap-4 duration-1000"
         >
-          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+          <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
             <LayoutDashboard className="size-4" />
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">

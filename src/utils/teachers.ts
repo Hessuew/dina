@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { eq, inArray } from 'drizzle-orm'
 import { db } from '@/db'
-import { courses, profiles } from '@/db/schema'
+import { courseTeachers, profiles } from '@/db/schema'
 
 export const getTeachers = createServerFn({ method: 'GET' }).handler(
   async () => {
@@ -12,16 +12,23 @@ export const getTeachers = createServerFn({ method: 'GET' }).handler(
 
     const teachersWithCourses = await Promise.all(
       teachers.map(async (teacher) => {
-        const teacherCourses = await db.query.courses.findMany({
-          where: eq(courses.teacherId, teacher.id),
-          columns: {
-            id: true,
-            title: true,
-            description: true,
-            isPublished: true,
+        const teacherAssignments = await db.query.courseTeachers.findMany({
+          where: eq(courseTeachers.teacherId, teacher.id),
+          with: {
+            course: {
+              columns: {
+                id: true,
+                title: true,
+                description: true,
+                isPublished: true,
+                createdAt: true,
+              },
+            },
           },
-          orderBy: (c, { desc }) => [desc(c.createdAt)],
+          orderBy: (ct, { desc }) => [desc(ct.createdAt)],
         })
+
+        const teacherCourses = teacherAssignments.map((ta) => ta.course)
 
         return {
           id: teacher.id,

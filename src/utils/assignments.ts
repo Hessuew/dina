@@ -4,7 +4,7 @@ import z from 'zod'
 import { db } from '@/db'
 import {
   assignments,
-  courses,
+  courseTeachers,
   lessons,
   profiles,
   submissions,
@@ -21,7 +21,11 @@ export const getLesson = createServerFn({ method: 'GET' })
       with: {
         course: {
           with: {
-            teacher: true,
+            courseTeachers: {
+              with: {
+                teacher: true,
+              },
+            },
           },
         },
         assignments: {
@@ -96,7 +100,11 @@ export const getAssignment = createServerFn({ method: 'GET' })
           with: {
             course: {
               with: {
-                teacher: true,
+                courseTeachers: {
+                  with: {
+                    teacher: true,
+                  },
+                },
               },
             },
           },
@@ -439,12 +447,12 @@ export const getAllAssignmentsForTeacher = createServerFn({
     throw new Error('Only teachers and admins can access this endpoint')
   }
 
-  const teacherCourses = await db.query.courses.findMany({
-    where: eq(courses.teacherId, user.id),
-    columns: { id: true },
+  const teacherAssignments = await db.query.courseTeachers.findMany({
+    where: eq(courseTeachers.teacherId, user.id),
+    columns: { courseId: true },
   })
 
-  const courseIds = teacherCourses.map((c) => c.id)
+  const courseIds = teacherAssignments.map((ta) => ta.courseId)
 
   if (courseIds.length === 0) {
     return { assignments: [] }
