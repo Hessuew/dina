@@ -6,9 +6,13 @@ import { db } from '@/db'
 import { profiles } from '@/db/schema'
 import { getSupabaseAdminClient } from '@/utils/supabase'
 import { ResetPasswordForm } from '@/components/reset-password-form'
+import {
+  resetPasswordSchema,
+  validateResetTokenSchema,
+} from '@/schemas/auth.schema'
 
 export const validateResetTokenFn = createServerFn({ method: 'POST' })
-  .inputValidator((d: { token: string }) => d)
+  .inputValidator(validateResetTokenSchema)
   .handler(async ({ data }) => {
     if (!data.token) {
       return {
@@ -61,7 +65,7 @@ export const validateResetTokenFn = createServerFn({ method: 'POST' })
   })
 
 export const resetPasswordFn = createServerFn({ method: 'POST' })
-  .inputValidator((d: { token: string; newPassword: string }) => d)
+  .inputValidator(resetPasswordSchema)
   .handler(async ({ data }) => {
     if (!data.token || !data.newPassword) {
       return {
@@ -116,12 +120,10 @@ export const resetPasswordFn = createServerFn({ method: 'POST' })
 
     const supabaseAdmin = getSupabaseAdminClient()
 
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      user.id,
-      {
+    const { error: updateError } =
+      await supabaseAdmin.auth.admin.updateUserById(user.id, {
         password: data.newPassword,
-      },
-    )
+      })
 
     if (updateError) {
       console.error('Failed to update password:', updateError)

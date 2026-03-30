@@ -3,6 +3,16 @@ import { and, eq } from 'drizzle-orm'
 import z from 'zod'
 import { db } from '@/db'
 import {
+  deleteAssignmentSchema,
+  getAssignmentSchema,
+  getAssignmentSubmissionCountSchema,
+  getAssignmentSubmissionsSchema,
+  getAssignmentsByLessonSchema,
+  getSubmissionSchema,
+  updateAssignmentSchema,
+} from '@/schemas/assignment.schema'
+import { getLessonSchema } from '@/schemas/lesson.schema'
+import {
   assignments,
   courseTeachers,
   lessons,
@@ -12,7 +22,7 @@ import {
 import { getCurrentUser } from '@/utils/auth'
 
 export const getLesson = createServerFn({ method: 'GET' })
-  .inputValidator((d: { lessonId: string }) => d)
+  .inputValidator(getLessonSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
 
@@ -53,7 +63,7 @@ export const getLesson = createServerFn({ method: 'GET' })
   })
 
 export const getAssignmentsByLesson = createServerFn({ method: 'GET' })
-  .inputValidator((d: { lessonId: string }) => d)
+  .inputValidator(getAssignmentsByLessonSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
 
@@ -89,7 +99,7 @@ export const getAssignmentsByLesson = createServerFn({ method: 'GET' })
   })
 
 export const getAssignment = createServerFn({ method: 'GET' })
-  .inputValidator((d: { assignmentId: string }) => d)
+  .inputValidator(getAssignmentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
 
@@ -188,16 +198,7 @@ export const createAssignment = createServerFn({ method: 'POST' })
   })
 
 export const updateAssignment = createServerFn({ method: 'POST' })
-  .inputValidator(
-    (d: {
-      assignmentId: string
-      title: string
-      description?: string
-      dueDate: string
-      maxGrade?: number
-      status?: 'draft' | 'published' | 'closed'
-    }) => d,
-  )
+  .inputValidator(updateAssignmentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
 
@@ -236,7 +237,7 @@ export const updateAssignment = createServerFn({ method: 'POST' })
   })
 
 export const getAssignmentSubmissionCount = createServerFn({ method: 'GET' })
-  .inputValidator((d: { assignmentId: string }) => d)
+  .inputValidator(getAssignmentSubmissionCountSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
 
@@ -263,7 +264,7 @@ export const getAssignmentSubmissionCount = createServerFn({ method: 'GET' })
   })
 
 export const deleteAssignment = createServerFn({ method: 'POST' })
-  .inputValidator((d: { assignmentId: string }) => d)
+  .inputValidator(deleteAssignmentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
 
@@ -298,7 +299,7 @@ export const deleteAssignment = createServerFn({ method: 'POST' })
   })
 
 export const getSubmission = createServerFn({ method: 'GET' })
-  .inputValidator((d: { assignmentId: string }) => d)
+  .inputValidator(getSubmissionSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
 
@@ -519,7 +520,7 @@ export const getAllAssignmentsForTeacher = createServerFn({
 })
 
 export const getAssignmentSubmissions = createServerFn({ method: 'GET' })
-  .inputValidator((d: { assignmentId: string }) => d)
+  .inputValidator(getAssignmentSubmissionsSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
 

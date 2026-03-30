@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import z from 'zod'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -49,7 +50,7 @@ import {
 import { deleteLesson, updateLesson } from '@/utils/courses'
 
 const getLessonData = createServerFn({ method: 'GET' })
-  .inputValidator((d: { lessonId: string }) => d)
+  .inputValidator(z.object({ lessonId: z.uuid() }))
   .handler(async ({ data }) => {
     return await getLesson({ data })
   })
@@ -324,7 +325,7 @@ function LessonDetailComponent() {
             <div>
               <h1 className="text-3xl font-bold">{lesson.title}</h1>
               <p className="text-muted-foreground mt-1">
-                {lesson.course.title} • By {lesson.course.teacher.fullName}
+                {lesson.course.title}
               </p>
             </div>
             {canEdit && (

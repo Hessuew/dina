@@ -12,6 +12,7 @@ import {
   profiles,
   submissions,
 } from '@/db/schema'
+import { getStudentDetailSchema } from '@/schemas/student.schema'
 
 export const getStudents = createServerFn({ method: 'GET' }).handler(
   async () => {
@@ -112,7 +113,7 @@ export const getStudents = createServerFn({ method: 'GET' }).handler(
 )
 
 export const getStudentDetail = createServerFn({ method: 'POST' })
-  .inputValidator((d: { studentId: string }) => d)
+  .inputValidator(getStudentDetailSchema)
   .handler(async ({ data }) => {
     const student = await db.query.profiles.findFirst({
       where: and(eq(profiles.id, data.studentId), eq(profiles.role, 'student')),

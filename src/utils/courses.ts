@@ -3,6 +3,16 @@ import { and, eq, gt, inArray } from 'drizzle-orm'
 import z from 'zod'
 import { db } from '@/db'
 import {
+  deleteCourseSchema,
+  updateCourseSchema,
+  updateCourseTeachersSchema,
+} from '@/schemas/course.schema'
+import {
+  createLessonSchema,
+  deleteLessonSchema,
+  updateLessonSchema,
+} from '@/schemas/lesson.schema'
+import {
   assignments,
   courseTeachers,
   courses,
@@ -324,18 +334,7 @@ export const createCourse = createServerFn({ method: 'POST' })
   })
 
 export const updateCourse = createServerFn({ method: 'POST' })
-  .inputValidator(
-    (d: {
-      courseId: string
-      title: string
-      description: string
-      thumbnailUrl?: string
-      isPublished?: boolean
-      teacher1Id?: string
-      teacher2Id?: string
-      orderIndex?: number
-    }) => d,
-  )
+  .inputValidator(updateCourseSchema)
   .handler(async ({ data }) => {
     const { requireTeacherOfCourse, isAdmin } = await import('@/utils/auth')
     const user = await getCurrentUser()
@@ -409,7 +408,7 @@ export const updateCourse = createServerFn({ method: 'POST' })
   })
 
 export const deleteCourse = createServerFn({ method: 'POST' })
-  .inputValidator((d: { courseId: string }) => d)
+  .inputValidator(deleteCourseSchema)
   .handler(async ({ data }) => {
     const { requireTeacherOfCourse, isAdmin } = await import('@/utils/auth')
     const user = await getCurrentUser()
@@ -427,19 +426,7 @@ export const deleteCourse = createServerFn({ method: 'POST' })
   })
 
 export const createLesson = createServerFn({ method: 'POST' })
-  .inputValidator(
-    (d: {
-      courseId: string
-      title: string
-      content?: string
-      videoUrl?: string
-      thumbnailUrl?: string
-      scheduledTime?: Date
-      duration?: number
-      orderIndex: number
-      isPublished?: boolean
-    }) => d,
-  )
+  .inputValidator(createLessonSchema)
   .handler(async ({ data }) => {
     const { requireTeacherOfCourse } = await import('@/utils/auth')
     const user = await getCurrentUser()
@@ -465,20 +452,7 @@ export const createLesson = createServerFn({ method: 'POST' })
   })
 
 export const updateLesson = createServerFn({ method: 'POST' })
-  .inputValidator(
-    (d: {
-      lessonId: string
-      courseId: string
-      title: string
-      content?: string
-      videoUrl?: string
-      thumbnailUrl?: string
-      scheduledTime?: Date
-      duration?: number
-      orderIndex?: number
-      isPublished?: boolean
-    }) => d,
-  )
+  .inputValidator(updateLessonSchema)
   .handler(async ({ data }) => {
     const { requireTeacherOfCourse } = await import('@/utils/auth')
     const user = await getCurrentUser()
@@ -505,7 +479,7 @@ export const updateLesson = createServerFn({ method: 'POST' })
   })
 
 export const deleteLesson = createServerFn({ method: 'POST' })
-  .inputValidator((d: { lessonId: string; courseId: string }) => d)
+  .inputValidator(deleteLessonSchema)
   .handler(async ({ data }) => {
     const { requireTeacherOfCourse } = await import('@/utils/auth')
     const user = await getCurrentUser()
@@ -545,7 +519,7 @@ export const getAllTeachers = createServerFn({ method: 'GET' }).handler(
 )
 
 export const getCourseTeachers = createServerFn({ method: 'GET' })
-  .inputValidator(z.object({ courseId: z.string().uuid() }))
+  .inputValidator(z.object({ courseId: z.uuid() }))
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
 
@@ -577,13 +551,7 @@ export const getCourseTeachers = createServerFn({ method: 'GET' })
   })
 
 export const updateCourseTeachers = createServerFn({ method: 'POST' })
-  .inputValidator(
-    z.object({
-      courseId: z.string().uuid(),
-      teacher1Id: z.string().uuid(),
-      teacher2Id: z.string().uuid(),
-    }),
-  )
+  .inputValidator(updateCourseTeachersSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
 

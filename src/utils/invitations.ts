@@ -1,13 +1,21 @@
 import crypto from 'node:crypto'
 import { createServerFn } from '@tanstack/react-start'
+import { render } from '@react-email/render'
 import { eq } from 'drizzle-orm'
 import { Resend } from 'resend'
-import { render } from '@react-email/render'
 import { db } from '@/db'
-import { invitations, profiles } from '@/db/schema'
 import { env } from '@/env'
-import { getSupabaseServerClient } from '@/utils/supabase'
+import { invitations, profiles } from '@/db/schema'
+import {
+  checkInvitationByEmailSchema,
+  createInvitationSchema,
+  deleteInvitationSchema,
+  getInvitationByTokenSchema,
+  resendInvitationSchema,
+  revokeInvitationSchema,
+} from '@/schemas/invitation.schema'
 import { InvitationEmail } from '@/emails/InvitationEmail'
+import { getSupabaseServerClient } from '@/utils/supabase'
 
 const resend = new Resend(env.RESEND_API_KEY)
 
@@ -16,7 +24,7 @@ function generateSecureToken(): string {
 }
 
 export const createInvitation = createServerFn({ method: 'POST' })
-  .inputValidator((d: { email: string; role: 'student' | 'teacher' }) => d)
+  .inputValidator(createInvitationSchema)
   .handler(async ({ data }) => {
     const supabase = getSupabaseServerClient()
     const {
@@ -101,7 +109,7 @@ export const createInvitation = createServerFn({ method: 'POST' })
   })
 
 export const checkInvitationByEmail = createServerFn({ method: 'GET' })
-  .inputValidator((d: { email: string }) => d)
+  .inputValidator(checkInvitationByEmailSchema)
   .handler(async ({ data }) => {
     const invitation = await db.query.invitations.findFirst({
       where: eq(invitations.email, data.email),
@@ -133,7 +141,7 @@ export const checkInvitationByEmail = createServerFn({ method: 'GET' })
   })
 
 export const getInvitationByToken = createServerFn({ method: 'GET' })
-  .inputValidator((d: { token: string }) => d)
+  .inputValidator(getInvitationByTokenSchema)
   .handler(async ({ data }) => {
     if (!data.token) {
       return { error: true, message: 'No token provided' }
@@ -204,7 +212,7 @@ export const getInvitations = createServerFn({ method: 'GET' }).handler(
 )
 
 export const getInvitationByEmail = createServerFn({ method: 'GET' })
-  .inputValidator((d: { email: string }) => d)
+  .inputValidator(checkInvitationByEmailSchema)
   .handler(async ({ data }) => {
     const invitation = await db.query.invitations.findFirst({
       where: eq(invitations.email, data.email),
@@ -218,7 +226,7 @@ export const getInvitationByEmail = createServerFn({ method: 'GET' })
   })
 
 export const revokeInvitation = createServerFn({ method: 'POST' })
-  .inputValidator((d: { id: string }) => d)
+  .inputValidator(revokeInvitationSchema)
   .handler(async ({ data }) => {
     const supabase = getSupabaseServerClient()
     const {
@@ -249,7 +257,7 @@ export const revokeInvitation = createServerFn({ method: 'POST' })
   })
 
 export const deleteInvitation = createServerFn({ method: 'POST' })
-  .inputValidator((d: { id: string }) => d)
+  .inputValidator(deleteInvitationSchema)
   .handler(async ({ data }) => {
     const supabase = getSupabaseServerClient()
     const {
@@ -274,7 +282,7 @@ export const deleteInvitation = createServerFn({ method: 'POST' })
   })
 
 export const resendInvitation = createServerFn({ method: 'POST' })
-  .inputValidator((d: { id: string; email?: string }) => d)
+  .inputValidator(resendInvitationSchema)
   .handler(async ({ data }) => {
     const supabase = getSupabaseServerClient()
     const {

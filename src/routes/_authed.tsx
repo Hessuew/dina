@@ -1,9 +1,10 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
+import { loginSchema } from '@/schemas/auth.schema'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 export const loginFn = createServerFn({ method: 'POST' })
-  .inputValidator((d: { email: string; password: string }) => d)
+  .inputValidator(loginSchema)
   .handler(async ({ data }) => {
     const supabase = getSupabaseServerClient()
     const { error } = await supabase.auth.signInWithPassword({

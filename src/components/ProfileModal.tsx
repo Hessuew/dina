@@ -32,9 +32,13 @@ import { profiles } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth'
 import { uploadAvatarFn } from '@/utils/imageUpload'
 import { getSupabaseServerClient } from '@/utils/supabase'
+import {
+  updatePasswordSchema,
+  updateProfileSchema,
+} from '@/schemas/profile.schema'
 
 const updateProfileFn = createServerFn({ method: 'POST' })
-  .inputValidator((d: { fullName: string; email: string; bio?: string }) => d)
+  .inputValidator(updateProfileSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     const supabase = getSupabaseServerClient()
@@ -66,7 +70,7 @@ const updateProfileFn = createServerFn({ method: 'POST' })
   })
 
 const updatePasswordFn = createServerFn({ method: 'POST' })
-  .inputValidator((d: { newPassword: string }) => d)
+  .inputValidator(updatePasswordSchema)
   .handler(async ({ data }) => {
     const supabase = getSupabaseServerClient()
 
