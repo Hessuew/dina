@@ -1,9 +1,8 @@
-import { BookOpenIcon, MailIcon } from 'lucide-react'
+import { BookOpenIcon } from 'lucide-react'
 import type { TeacherWithCourses } from '@/types/teacher'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -50,7 +49,7 @@ export function TeacherModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <div className="flex items-start gap-4">
             <div className="shrink-0">
@@ -58,11 +57,11 @@ export function TeacherModal({
                 <img
                   src={teacher.avatarUrl}
                   alt={teacher.fullName}
-                  className="size-20 rounded-full object-cover ring-2 ring-primary/20"
+                  className="ring-primary/20 size-20 rounded-full object-cover ring-2"
                 />
               ) : (
                 <div
-                  className={`flex size-20 items-center justify-center rounded-full ${avatarColor} text-xl font-bold text-white ring-2 ring-primary/20`}
+                  className={`flex size-20 items-center justify-center rounded-full ${avatarColor} ring-primary/20 text-xl font-bold text-white ring-2`}
                 >
                   {initials}
                 </div>
@@ -70,15 +69,6 @@ export function TeacherModal({
             </div>
             <div className="flex-1">
               <DialogTitle className="text-2xl">{teacher.fullName}</DialogTitle>
-              <DialogDescription className="mt-2 flex items-center gap-2">
-                <MailIcon className="size-4" />
-                <a
-                  href={`mailto:${teacher.email}`}
-                  className="hover:text-foreground transition-colors hover:underline"
-                >
-                  {teacher.email}
-                </a>
-              </DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -87,7 +77,7 @@ export function TeacherModal({
           {teacher.bio && (
             <div>
               <h3 className="mb-2 text-sm font-semibold">About</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
+              <p className="text-muted-foreground max-h-[calc(60vh-12rem)] overflow-y-auto text-sm leading-relaxed">
                 {teacher.bio}
               </p>
             </div>
@@ -106,7 +96,7 @@ export function TeacherModal({
                 {teacher.courses.map((course) => (
                   <div
                     key={course.id}
-                    className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3 transition-colors hover:bg-muted/50"
+                    className="bg-muted/30 hover:bg-muted/50 flex items-start gap-3 rounded-lg border p-3 transition-colors"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
