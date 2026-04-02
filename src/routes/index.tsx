@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { LandingAboutSection } from '@/components/landing/about'
 import { LandingCourseShowcase } from '@/components/landing/courses'
 import { LandingHeroEditorial } from '@/components/landing/hero'
 
@@ -23,50 +24,9 @@ function Home() {
       <ActiveLandingHero onLearnMore={() => scrollToSection('about')} />
 
       <LandingCourseShowcase />
+      <LandingAboutSection />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <section id="about" className="py-16">
-          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
-            <div>
-              <h2 className="mb-6 text-3xl font-bold text-gray-900 md:text-4xl">
-                About DINA
-              </h2>
-              <div className="space-y-4 text-gray-600">
-                <p className="text-lg leading-relaxed">
-                  Disciples Institute for Nations Academy (DINA) is a leading
-                  institution dedicated to equipping believers with biblical
-                  knowledge and practical skills to impact their communities and
-                  nations.
-                </p>
-                <div className="rounded-lg border-l-4 border-blue-600 bg-blue-50 p-6">
-                  <h3 className="mb-2 font-bold text-gray-900">Mission</h3>
-                  <p>
-                    To raise up disciples who are grounded in biblical truth,
-                    equipped with practical wisdom, and empowered to transform
-                    their spheres of influence for the glory of God.
-                  </p>
-                </div>
-                <div className="rounded-lg border-l-4 border-amber-600 bg-amber-50 p-6">
-                  <h3 className="mb-2 font-bold text-gray-900">Vision</h3>
-                  <p>
-                    A global network of biblically-grounded disciples actively
-                    transforming nations through faith, wisdom, and excellence
-                    in every sphere of society.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center justify-center rounded-2xl bg-linear-to-br from-blue-100 to-blue-50 p-8">
-              <div className="text-center">
-                <span className="mb-4 block text-8xl">👥</span>
-                <p className="font-medium text-gray-700">
-                  Empowering disciples worldwide
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
         <section id="testimonials" className="py-16">
           <h2 className="mb-12 text-center text-3xl font-bold text-gray-900 md:text-4xl">
             Testimonials
