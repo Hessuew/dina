@@ -25,9 +25,6 @@ export const Route = createFileRoute('/_authed')({
     if (!context.user) {
       throw redirect({
         to: '/login',
-        search: {
-          verified: false,
-        },
       })
     }
   },
@@ -35,9 +32,6 @@ export const Route = createFileRoute('/_authed')({
     if (error.message === 'Not authenticated') {
       throw redirect({
         to: '/login',
-        search: {
-          verified: false,
-        },
       })
     }
 

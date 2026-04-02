@@ -1,163 +1,375 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
+import { LandingHeroEditorial } from '@/components/landing/hero'
 
 export const Route = createFileRoute('/')({
   component: Home,
 })
 
+const landingHeroVariants = {
+  editorial: LandingHeroEditorial,
+}
+
+const ActiveLandingHero = landingHeroVariants.editorial
+
 function Home() {
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id)
+    element?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   return (
-    <div className="min-h-screen bg-linear-to-b from-blue-50 to-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <section className="pt-20 pb-16 text-center">
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Discipler's Institute for Nations
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Empowering disciples to transform nations through quality biblical
-            education and practical training
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Link
-              to="/signup"
-              className="px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              Get Started
-            </Link>
-            <Link
-              to="/login"
-              className="px-8 py-3 bg-white text-blue-600 border-2 border-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
-            >
-              Sign In
-            </Link>
-          </div>
-        </section>
+    <div className="min-h-screen">
+      <ActiveLandingHero onLearnMore={() => scrollToSection('about')} />
 
-        <section className="py-16">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            Our Platform Features
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                <svg
-                  className="w-6 h-6 text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Comprehensive Curriculum
-              </h3>
-              <p className="text-gray-600">
-                Access structured courses designed to deepen your understanding
-                and equip you for ministry
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-                <svg
-                  className="w-6 h-6 text-green-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Expert Teachers
-              </h3>
-              <p className="text-gray-600">
-                Learn from experienced instructors committed to your spiritual
-                and academic growth
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-                <svg
-                  className="w-6 h-6 text-purple-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Track Your Progress
-              </h3>
-              <p className="text-gray-600">
-                Monitor your learning journey with detailed progress tracking
-                and achievement milestones
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="py-16 bg-blue-600 rounded-2xl my-16">
-          <div className="text-center px-6">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Ready to Begin Your Journey?
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <section id="courses" className="py-16">
+          <div className="mb-12 text-center">
+            <h2 className="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">
+              Interactive Courses
             </h2>
-            <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-              Join our community of learners and start your transformation today
+            <p className="mx-auto max-w-2xl text-lg text-gray-600">
+              "Building a House" metaphor for the curriculum, for the temple,
+              mission, vision, values, life application.
             </p>
-            <Link
-              to="/signup"
-              className="inline-block px-8 py-3 bg-white text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
-            >
-              Enroll Now
-            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="overflow-hidden rounded-xl bg-white shadow-lg transition-shadow hover:shadow-xl">
+              <div className="flex h-48 items-center justify-center bg-linear-to-br from-stone-400 to-stone-600">
+                <span className="text-6xl">🏗️</span>
+              </div>
+              <div className="p-6">
+                <h3 className="mb-2 text-xl font-bold text-gray-900">
+                  Foundation
+                </h3>
+                <p className="mb-4 text-sm text-gray-600">Building a House</p>
+                <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <span>📚</span>
+                    <span>3 Lessons</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span>🎓</span>
+                    <span>5 Lectures</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-xl bg-white shadow-lg transition-shadow hover:shadow-xl">
+              <div className="flex h-48 items-center justify-center bg-linear-to-br from-blue-400 to-blue-600">
+                <span className="text-6xl">💧</span>
+              </div>
+              <div className="p-6">
+                <h3 className="mb-2 text-xl font-bold text-gray-900">Wells</h3>
+                <p className="mb-4 text-sm text-gray-600">Building a House</p>
+                <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <span>📚</span>
+                    <span>7 Intro</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span>🎓</span>
+                    <span>3 Lessons</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-xl bg-white shadow-lg transition-shadow hover:shadow-xl">
+              <div className="flex h-48 items-center justify-center bg-linear-to-br from-amber-400 to-amber-600">
+                <span className="text-6xl">🧱</span>
+              </div>
+              <div className="p-6">
+                <h3 className="mb-2 text-xl font-bold text-gray-900">
+                  Insulation
+                </h3>
+                <p className="mb-4 text-sm text-gray-600">Building a House</p>
+                <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <span>📚</span>
+                    <span>3 Lessons</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span>🎓</span>
+                    <span>5 Lectures</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-xl bg-white shadow-lg transition-shadow hover:shadow-xl">
+              <div className="flex h-48 items-center justify-center bg-linear-to-br from-orange-400 to-orange-600">
+                <span className="text-6xl">🔨</span>
+              </div>
+              <div className="p-6">
+                <h3 className="mb-2 text-xl font-bold text-gray-900">
+                  Framing
+                </h3>
+                <p className="mb-4 text-sm text-gray-600">Building a House</p>
+                <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <span>📚</span>
+                    <span>3 Lessons</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span>🎓</span>
+                    <span>5 Lectures</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-xl bg-white shadow-lg transition-shadow hover:shadow-xl">
+              <div className="flex h-48 items-center justify-center bg-linear-to-br from-red-400 to-red-600">
+                <span className="text-6xl">🏠</span>
+              </div>
+              <div className="p-6">
+                <h3 className="mb-2 text-xl font-bold text-gray-900">Roof</h3>
+                <p className="mb-4 text-sm text-gray-600">Building a House</p>
+                <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <span>📚</span>
+                    <span>7 Intro</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span>🎓</span>
+                    <span>3 Lessons</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section className="py-16">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            What Our Students Say
+        <section id="about" className="py-16">
+          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+            <div>
+              <h2 className="mb-6 text-3xl font-bold text-gray-900 md:text-4xl">
+                About DINA
+              </h2>
+              <div className="space-y-4 text-gray-600">
+                <p className="text-lg leading-relaxed">
+                  Disciples Institute for Nations Academy (DINA) is a leading
+                  institution dedicated to equipping believers with biblical
+                  knowledge and practical skills to impact their communities and
+                  nations.
+                </p>
+                <div className="rounded-lg border-l-4 border-blue-600 bg-blue-50 p-6">
+                  <h3 className="mb-2 font-bold text-gray-900">Mission</h3>
+                  <p>
+                    To raise up disciples who are grounded in biblical truth,
+                    equipped with practical wisdom, and empowered to transform
+                    their spheres of influence for the glory of God.
+                  </p>
+                </div>
+                <div className="rounded-lg border-l-4 border-amber-600 bg-amber-50 p-6">
+                  <h3 className="mb-2 font-bold text-gray-900">Vision</h3>
+                  <p>
+                    A global network of biblically-grounded disciples actively
+                    transforming nations through faith, wisdom, and excellence
+                    in every sphere of society.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-center rounded-2xl bg-linear-to-br from-blue-100 to-blue-50 p-8">
+              <div className="text-center">
+                <span className="mb-4 block text-8xl">👥</span>
+                <p className="font-medium text-gray-700">
+                  Empowering disciples worldwide
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="testimonials" className="py-16">
+          <h2 className="mb-12 text-center text-3xl font-bold text-gray-900 md:text-4xl">
+            Testimonials
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <p className="text-gray-600 mb-4 italic">
-                "The courses have transformed my understanding of ministry and
-                equipped me with practical tools to serve my community
-                effectively."
-              </p>
-              <p className="font-semibold text-gray-900">
-                - Student Testimonial
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+            <div className="rounded-xl border-t-4 border-amber-500 bg-amber-50 p-8 shadow-lg">
+              <div className="mb-4 flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-200">
+                  <span className="text-2xl">👤</span>
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900">Sarah Johnson</p>
+                  <p className="text-sm text-gray-600">Student</p>
+                </div>
+              </div>
+              <p className="text-gray-700 italic">
+                "This program has completely transformed my understanding of
+                biblical principles and how to apply them in daily life. The
+                'Building a House' approach is brilliant!"
               </p>
             </div>
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <p className="text-gray-600 mb-4 italic">
-                "The quality of teaching and the supportive community have made
-                this learning experience truly exceptional."
+
+            <div className="rounded-xl border-t-4 border-blue-500 bg-blue-50 p-8 shadow-lg">
+              <div className="mb-4 flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-200">
+                  <span className="text-2xl">👤</span>
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900">Michael Chen</p>
+                  <p className="text-sm text-gray-600">Graduate</p>
+                </div>
+              </div>
+              <p className="text-gray-700 italic">
+                "The practical wisdom and biblical depth I gained here has
+                equipped me to lead with confidence and integrity in my
+                community."
               </p>
-              <p className="font-semibold text-gray-900">
-                - Student Testimonial
+            </div>
+
+            <div className="rounded-xl border-t-4 border-green-500 bg-green-50 p-8 shadow-lg">
+              <div className="mb-4 flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-200">
+                  <span className="text-2xl">👤</span>
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900">Grace Okonkwo</p>
+                  <p className="text-sm text-gray-600">Ministry Leader</p>
+                </div>
+              </div>
+              <p className="text-gray-700 italic">
+                "DINA provided the foundation I needed to build a sustainable
+                ministry. The courses are comprehensive and life-changing."
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="faq" className="py-16">
+          <h2 className="mb-12 text-center text-3xl font-bold text-gray-900 md:text-4xl">
+            Frequently Asked Questions
+          </h2>
+          <div className="mx-auto max-w-3xl space-y-6">
+            <div className="rounded-lg bg-white p-6 shadow-md">
+              <h3 className="mb-3 text-xl font-bold text-gray-900">
+                What is the "Building a House" curriculum approach?
+              </h3>
+              <p className="text-gray-600">
+                Our curriculum uses the metaphor of building a house to teach
+                foundational biblical principles. Just as a house needs a solid
+                foundation, proper framing, and a protective roof, disciples
+                need core biblical knowledge, structural understanding, and
+                spiritual covering to thrive.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-white p-6 shadow-md">
+              <h3 className="mb-3 text-xl font-bold text-gray-900">
+                How long does it take to complete the courses?
+              </h3>
+              <p className="text-gray-600">
+                Each course is self-paced, allowing you to progress according to
+                your schedule. On average, students complete the full curriculum
+                in 6-12 months, depending on their commitment level and prior
+                knowledge.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-white p-6 shadow-md">
+              <h3 className="mb-3 text-xl font-bold text-gray-900">
+                Do I need any prerequisites to enroll?
+              </h3>
+              <p className="text-gray-600">
+                No formal prerequisites are required. We welcome all believers
+                who have a genuine desire to grow in their faith and
+                understanding of biblical principles. Our courses are designed
+                to meet you where you are.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-white p-6 shadow-md">
+              <h3 className="mb-3 text-xl font-bold text-gray-900">
+                Will I receive a certificate upon completion?
+              </h3>
+              <p className="text-gray-600">
+                Yes! Upon successful completion of each course, you will receive
+                a certificate of completion. Students who complete the entire
+                curriculum receive a DINA Diploma recognizing their achievement.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-white p-6 shadow-md">
+              <h3 className="mb-3 text-xl font-bold text-gray-900">
+                Is there community support during the courses?
+              </h3>
+              <p className="text-gray-600">
+                Absolutely! You'll have access to discussion forums, study
+                groups, and direct interaction with instructors. We believe
+                learning happens best in community, and we're committed to
+                supporting your journey.
               </p>
             </div>
           </div>
         </section>
       </div>
+
+      <footer id="contact" className="mt-20 bg-gray-900 text-white">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+            <div>
+              <h3 className="mb-4 text-2xl font-bold">🏛️ DINA</h3>
+              <p className="text-gray-400">
+                Disciples Institute for Nations Academy
+              </p>
+              <p className="mt-2 text-gray-400">
+                Building disciples who transform nations
+              </p>
+            </div>
+
+            <div>
+              <h4 className="mb-4 text-lg font-bold">Contact Us</h4>
+              <div className="space-y-2 text-gray-400">
+                <p>📧 info@dina.academy</p>
+                <p>📞 +1 (555) 123-4567</p>
+                <p>📍 123 Ministry Lane, Faith City, FC 12345</p>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="mb-4 text-lg font-bold">Follow Us</h4>
+              <div className="flex gap-4">
+                <a
+                  href="#"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 transition-colors hover:bg-blue-700"
+                >
+                  <span className="text-xl">f</span>
+                </a>
+                <a
+                  href="#"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-400 transition-colors hover:bg-blue-500"
+                >
+                  <span className="text-xl">𝕏</span>
+                </a>
+                <a
+                  href="#"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 transition-colors hover:bg-red-700"
+                >
+                  <span className="text-xl">▶</span>
+                </a>
+                <a
+                  href="#"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-600 transition-colors hover:bg-pink-700"
+                >
+                  <span className="text-xl">📷</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 border-t border-gray-800 pt-8 text-center text-gray-400">
+            <p>
+              &copy; {new Date().getFullYear()} DINA - Disciples Institute for
+              Nations Academy. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
