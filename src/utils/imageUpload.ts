@@ -2,20 +2,16 @@ import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { courses, profiles } from '@/db/schema'
+import {
+  uploadAvatarSchema,
+  uploadCourseThumbnailSchema,
+  uploadImageSchema,
+} from '@/schemas/image.schema'
 import { getCurrentUser } from '@/utils/auth'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 export const uploadImageFn = createServerFn({ method: 'POST' })
-  .inputValidator(
-    (d: {
-      fileData: string
-      fileName: string
-      fileType: string
-      fileSize: number
-      bucket: 'avatars' | 'course-thumbnails' | 'lesson-thumbnails'
-      oldUrl?: string
-    }) => d,
-  )
+  .inputValidator(uploadImageSchema)
   .handler(async ({ data }) => {
     try {
       const user = await getCurrentUser()
@@ -105,14 +101,7 @@ export const uploadImageFn = createServerFn({ method: 'POST' })
   })
 
 export const uploadAvatarFn = createServerFn({ method: 'POST' })
-  .inputValidator(
-    (d: {
-      fileData: string
-      fileName: string
-      fileType: string
-      fileSize: number
-    }) => d,
-  )
+  .inputValidator(uploadAvatarSchema)
   .handler(async ({ data }) => {
     try {
       const user = await getCurrentUser()
@@ -161,15 +150,7 @@ export const uploadAvatarFn = createServerFn({ method: 'POST' })
   })
 
 export const uploadCourseThumbnailFn = createServerFn({ method: 'POST' })
-  .inputValidator(
-    (d: {
-      fileData: string
-      fileName: string
-      fileType: string
-      fileSize: number
-      courseId: string
-    }) => d,
-  )
+  .inputValidator(uploadCourseThumbnailSchema)
   .handler(async ({ data }) => {
     try {
       await getCurrentUser()

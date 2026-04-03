@@ -1,8 +1,10 @@
 import * as React from 'react'
+import { toast } from 'sonner'
 
 export function useMutation<TVariables, TData, TError = Error>(opts: {
   fn: (variables: TVariables) => Promise<TData>
   onSuccess?: (ctx: { data: TData }) => void | Promise<void>
+  onError?: (ctx: { error: TError }) => void | Promise<void>
 }) {
   const [submittedAt, setSubmittedAt] = React.useState<number | undefined>()
   const [variables, setVariables] = React.useState<TVariables | undefined>()
@@ -17,20 +19,31 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
       setStatus('pending')
       setSubmittedAt(Date.now())
       setVariables(variables)
-      //
+      setError(undefined)
+
       try {
         const data = await opts.fn(variables)
         await opts.onSuccess?.({ data })
         setStatus('success')
-        setError(undefined)
         setData(data)
         return data
       } catch (err) {
+        const error = err as TError
         setStatus('error')
-        setError(err as TError)
+        setError(error)
+
+        if (opts.onError) {
+          await opts.onError({ error })
+        } else {
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : 'An unexpected error occurred'
+          toast.error(errorMessage)
+        }
       }
     },
-    [opts.fn],
+    [opts],
   )
 
   return {

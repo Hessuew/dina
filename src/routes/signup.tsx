@@ -13,18 +13,16 @@ import {
 } from '@/utils/supabase'
 import { SignupForm } from '@/components/signup-form'
 import { OTPVerificationEmail } from '@/emails/OTPVerificationEmail'
+import {
+  resendOtpSchema,
+  signupSchema,
+  verifyOtpSchema,
+} from '@/schemas/auth.schema'
 
 const resend = new Resend(env.RESEND_API_KEY)
 
 export const verifyOtpFn = createServerFn({ method: 'POST' })
-  .inputValidator(
-    (d: {
-      email: string
-      password: string
-      otp: string
-      invitationToken: string
-    }) => d,
-  )
+  .inputValidator(verifyOtpSchema)
   .handler(async ({ data }) => {
     const supabase = getSupabaseServerClient()
     const supabaseAdmin = getSupabaseAdminClient()
@@ -139,7 +137,7 @@ export const verifyOtpFn = createServerFn({ method: 'POST' })
   })
 
 export const resendOtpFn = createServerFn({ method: 'POST' })
-  .inputValidator((d: { email: string; invitationToken: string }) => d)
+  .inputValidator(resendOtpSchema)
   .handler(async ({ data }) => {
     // Find invitation by token
     const invitation = await db.query.invitations.findFirst({
@@ -214,15 +212,7 @@ export const resendOtpFn = createServerFn({ method: 'POST' })
   })
 
 export const signupFn = createServerFn({ method: 'POST' })
-  .inputValidator(
-    (d: {
-      email: string
-      password: string
-      fullName?: string
-      token: string
-      redirectUrl?: string
-    }) => d,
-  )
+  .inputValidator(signupSchema)
   .handler(async ({ data }) => {
     // Validate invitation token
     const invitation = await db.query.invitations.findFirst({

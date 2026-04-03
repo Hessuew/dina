@@ -9,11 +9,12 @@ import { profiles } from '@/db/schema'
 import { env } from '@/env'
 import { ForgotPasswordForm } from '@/components/forgot-password-form'
 import { PasswordResetEmail } from '@/emails/PasswordResetEmail'
+import { requestPasswordResetSchema } from '@/schemas/auth.schema'
 
 const resend = new Resend(env.RESEND_API_KEY)
 
 export const requestPasswordResetFn = createServerFn({ method: 'POST' })
-  .inputValidator((d: { email: string }) => d)
+  .inputValidator(requestPasswordResetSchema)
   .handler(async ({ data }) => {
     const email = data.email.toLowerCase().trim()
 
@@ -24,7 +25,8 @@ export const requestPasswordResetFn = createServerFn({ method: 'POST' })
 
     // Check 60s cooldown if user exists
     if (user?.lastResetRequestAt) {
-      const timeSinceLastRequest = Date.now() - user.lastResetRequestAt.getTime()
+      const timeSinceLastRequest =
+        Date.now() - user.lastResetRequestAt.getTime()
       if (timeSinceLastRequest < 60 * 1000) {
         const waitSeconds = Math.ceil((60 * 1000 - timeSinceLastRequest) / 1000)
         return {
@@ -38,7 +40,8 @@ export const requestPasswordResetFn = createServerFn({ method: 'POST' })
     if (!user) {
       return {
         success: true,
-        message: 'If an account exists with this email, you will receive a password reset link.',
+        message:
+          'If an account exists with this email, you will receive a password reset link.',
       }
     }
 
@@ -91,7 +94,8 @@ export const requestPasswordResetFn = createServerFn({ method: 'POST' })
 
     return {
       success: true,
-      message: 'If an account exists with this email, you will receive a password reset link.',
+      message:
+        'If an account exists with this email, you will receive a password reset link.',
     }
   })
 

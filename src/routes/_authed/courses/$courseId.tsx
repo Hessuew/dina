@@ -13,6 +13,7 @@ import {
 import { and, eq } from 'drizzle-orm'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
+import z from 'zod'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -58,7 +59,7 @@ import {
 import { fileToBase64, uploadCourseThumbnailFn } from '@/utils/imageUpload'
 
 const getCourseData = createServerFn({ method: 'GET' })
-  .inputValidator((d: { courseId: string }) => d)
+  .inputValidator(z.object({ courseId: z.uuid() }))
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
 
