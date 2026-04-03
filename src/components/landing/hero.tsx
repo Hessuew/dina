@@ -26,8 +26,8 @@ function LandingMark() {
 
 export function LandingPublicHeader() {
   return (
-    <header className="sticky top-0 z-50 border-b border-[#1A1A1A]/8 bg-[#FCFBF8]/96 px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto grid h-[4.75rem] max-w-[calc(100%-2rem)] grid-cols-[1fr_auto_1fr] items-center sm:max-w-[calc(100%-4rem)] lg:max-w-[calc(100%-8rem)]">
+    <header className="border-b border-[#1A1A1A]/8 bg-[#FCFBF8]/96 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto grid h-19 max-w-[calc(100%-2rem)] grid-cols-[1fr_auto_1fr] items-center sm:max-w-[calc(100%-4rem)] lg:max-w-[calc(100%-8rem)]">
         <div className="justify-self-start">
           <Link
             to="/login"

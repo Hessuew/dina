@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
-import graphiteBackground from '@/assets/images/bg3.png'
+import graphiteBackground from '@/assets/images/bg2_v1.png'
 
 type CourseShowcaseItem = {
   id: string
