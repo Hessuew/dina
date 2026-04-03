@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { LandingCourseShowcase } from '@/components/landing/courses'
 import { LandingHeroEditorial } from '@/components/landing/hero'
 
 export const Route = createFileRoute('/')({
@@ -21,127 +22,9 @@ function Home() {
     <div className="min-h-screen">
       <ActiveLandingHero onLearnMore={() => scrollToSection('about')} />
 
+      <LandingCourseShowcase />
+
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <section id="courses" className="py-16">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">
-              Interactive Courses
-            </h2>
-            <p className="mx-auto max-w-2xl text-lg text-gray-600">
-              "Building a House" metaphor for the curriculum, for the temple,
-              mission, vision, values, life application.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
-            <div className="overflow-hidden rounded-xl bg-white shadow-lg transition-shadow hover:shadow-xl">
-              <div className="flex h-48 items-center justify-center bg-linear-to-br from-stone-400 to-stone-600">
-                <span className="text-6xl">🏗️</span>
-              </div>
-              <div className="p-6">
-                <h3 className="mb-2 text-xl font-bold text-gray-900">
-                  Foundation
-                </h3>
-                <p className="mb-4 text-sm text-gray-600">Building a House</p>
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <span>📚</span>
-                    <span>3 Lessons</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span>🎓</span>
-                    <span>5 Lectures</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-hidden rounded-xl bg-white shadow-lg transition-shadow hover:shadow-xl">
-              <div className="flex h-48 items-center justify-center bg-linear-to-br from-blue-400 to-blue-600">
-                <span className="text-6xl">💧</span>
-              </div>
-              <div className="p-6">
-                <h3 className="mb-2 text-xl font-bold text-gray-900">Wells</h3>
-                <p className="mb-4 text-sm text-gray-600">Building a House</p>
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <span>📚</span>
-                    <span>7 Intro</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span>🎓</span>
-                    <span>3 Lessons</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-hidden rounded-xl bg-white shadow-lg transition-shadow hover:shadow-xl">
-              <div className="flex h-48 items-center justify-center bg-linear-to-br from-amber-400 to-amber-600">
-                <span className="text-6xl">🧱</span>
-              </div>
-              <div className="p-6">
-                <h3 className="mb-2 text-xl font-bold text-gray-900">
-                  Insulation
-                </h3>
-                <p className="mb-4 text-sm text-gray-600">Building a House</p>
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <span>📚</span>
-                    <span>3 Lessons</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span>🎓</span>
-                    <span>5 Lectures</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-hidden rounded-xl bg-white shadow-lg transition-shadow hover:shadow-xl">
-              <div className="flex h-48 items-center justify-center bg-linear-to-br from-orange-400 to-orange-600">
-                <span className="text-6xl">🔨</span>
-              </div>
-              <div className="p-6">
-                <h3 className="mb-2 text-xl font-bold text-gray-900">
-                  Framing
-                </h3>
-                <p className="mb-4 text-sm text-gray-600">Building a House</p>
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <span>📚</span>
-                    <span>3 Lessons</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span>🎓</span>
-                    <span>5 Lectures</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-hidden rounded-xl bg-white shadow-lg transition-shadow hover:shadow-xl">
-              <div className="flex h-48 items-center justify-center bg-linear-to-br from-red-400 to-red-600">
-                <span className="text-6xl">🏠</span>
-              </div>
-              <div className="p-6">
-                <h3 className="mb-2 text-xl font-bold text-gray-900">Roof</h3>
-                <p className="mb-4 text-sm text-gray-600">Building a House</p>
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <span>📚</span>
-                    <span>7 Intro</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span>🎓</span>
-                    <span>3 Lessons</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         <section id="about" className="py-16">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
             <div>
