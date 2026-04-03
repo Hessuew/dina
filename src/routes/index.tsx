@@ -2,16 +2,12 @@ import { createFileRoute } from '@tanstack/react-router'
 import { LandingAboutSection } from '@/components/landing/about'
 import { LandingCourseShowcase } from '@/components/landing/courses'
 import { LandingHeroEditorial } from '@/components/landing/hero'
+import { LandingTeacherSection } from '@/components/landing/teachers'
+import { LandingTestimonialsSection } from '@/components/landing/testimonials'
 
 export const Route = createFileRoute('/')({
   component: Home,
 })
-
-const landingHeroVariants = {
-  editorial: LandingHeroEditorial,
-}
-
-const ActiveLandingHero = landingHeroVariants.editorial
 
 function Home() {
   const scrollToSection = (id: string) => {
@@ -21,69 +17,14 @@ function Home() {
 
   return (
     <div className="min-h-screen">
-      <ActiveLandingHero onLearnMore={() => scrollToSection('about')} />
+      <LandingHeroEditorial onLearnMore={() => scrollToSection('about')} />
 
       <LandingCourseShowcase />
       <LandingAboutSection />
+      <LandingTeacherSection />
+      <LandingTestimonialsSection />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <section id="testimonials" className="py-16">
-          <h2 className="mb-12 text-center text-3xl font-bold text-gray-900 md:text-4xl">
-            Testimonials
-          </h2>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            <div className="rounded-xl border-t-4 border-amber-500 bg-amber-50 p-8 shadow-lg">
-              <div className="mb-4 flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-200">
-                  <span className="text-2xl">👤</span>
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Sarah Johnson</p>
-                  <p className="text-sm text-gray-600">Student</p>
-                </div>
-              </div>
-              <p className="text-gray-700 italic">
-                "This program has completely transformed my understanding of
-                biblical principles and how to apply them in daily life. The
-                'Building a House' approach is brilliant!"
-              </p>
-            </div>
-
-            <div className="rounded-xl border-t-4 border-blue-500 bg-blue-50 p-8 shadow-lg">
-              <div className="mb-4 flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-200">
-                  <span className="text-2xl">👤</span>
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Michael Chen</p>
-                  <p className="text-sm text-gray-600">Graduate</p>
-                </div>
-              </div>
-              <p className="text-gray-700 italic">
-                "The practical wisdom and biblical depth I gained here has
-                equipped me to lead with confidence and integrity in my
-                community."
-              </p>
-            </div>
-
-            <div className="rounded-xl border-t-4 border-green-500 bg-green-50 p-8 shadow-lg">
-              <div className="mb-4 flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-200">
-                  <span className="text-2xl">👤</span>
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">Grace Okonkwo</p>
-                  <p className="text-sm text-gray-600">Ministry Leader</p>
-                </div>
-              </div>
-              <p className="text-gray-700 italic">
-                "DINA provided the foundation I needed to build a sustainable
-                ministry. The courses are comprehensive and life-changing."
-              </p>
-            </div>
-          </div>
-        </section>
-
         <section id="faq" className="py-16">
           <h2 className="mb-12 text-center text-3xl font-bold text-gray-900 md:text-4xl">
             Frequently Asked Questions

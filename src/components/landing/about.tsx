@@ -33,11 +33,13 @@ const aboutPillars: Array<AboutPillar> = [
 const aboutHighlights: Array<AboutHighlight> = [
   {
     label: 'Mission',
-    value: 'Raise biblically grounded disciples who transform their spheres for the glory of God.',
+    value:
+      'Raise biblically grounded disciples who transform their spheres for the glory of God.',
   },
   {
     label: 'Vision',
-    value: 'See nations shaped by believers walking in faith, wisdom, and excellence.',
+    value:
+      'See nations shaped by believers walking in faith, wisdom, and excellence.',
   },
 ]
 
