@@ -14,7 +14,6 @@ import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as ApiUploadImageRouteImport } from './routes/api.upload-image'
 import { Route as AuthedTeachersRouteImport } from './routes/_authed/teachers'
 import { Route as AuthedInvitationsRouteImport } from './routes/_authed/invitations'
@@ -50,11 +49,6 @@ const AuthedRoute = AuthedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth/callback',
-  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiUploadImageRoute = ApiUploadImageRouteImport.update({
@@ -129,7 +123,6 @@ export interface FileRoutesByFullPath {
   '/invitations': typeof AuthedInvitationsRoute
   '/teachers': typeof AuthedTeachersRoute
   '/api/upload-image': typeof ApiUploadImageRoute
-  '/auth/callback': typeof AuthCallbackRoute
   '/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/lessons/$lessonId': typeof AuthedLessonsLessonIdRoute
@@ -148,7 +141,6 @@ export interface FileRoutesByTo {
   '/invitations': typeof AuthedInvitationsRoute
   '/teachers': typeof AuthedTeachersRoute
   '/api/upload-image': typeof ApiUploadImageRoute
-  '/auth/callback': typeof AuthCallbackRoute
   '/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/lessons/$lessonId': typeof AuthedLessonsLessonIdRoute
@@ -169,7 +161,6 @@ export interface FileRoutesById {
   '/_authed/invitations': typeof AuthedInvitationsRoute
   '/_authed/teachers': typeof AuthedTeachersRoute
   '/api/upload-image': typeof ApiUploadImageRoute
-  '/auth/callback': typeof AuthCallbackRoute
   '/_authed/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/_authed/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/_authed/lessons/$lessonId': typeof AuthedLessonsLessonIdRoute
@@ -190,7 +181,6 @@ export interface FileRouteTypes {
     | '/invitations'
     | '/teachers'
     | '/api/upload-image'
-    | '/auth/callback'
     | '/assignments/$assignmentId'
     | '/courses/$courseId'
     | '/lessons/$lessonId'
@@ -209,7 +199,6 @@ export interface FileRouteTypes {
     | '/invitations'
     | '/teachers'
     | '/api/upload-image'
-    | '/auth/callback'
     | '/assignments/$assignmentId'
     | '/courses/$courseId'
     | '/lessons/$lessonId'
@@ -229,7 +218,6 @@ export interface FileRouteTypes {
     | '/_authed/invitations'
     | '/_authed/teachers'
     | '/api/upload-image'
-    | '/auth/callback'
     | '/_authed/assignments/$assignmentId'
     | '/_authed/courses/$courseId'
     | '/_authed/lessons/$lessonId'
@@ -246,7 +234,6 @@ export interface RootRouteChildren {
   LogoutRoute: typeof LogoutRoute
   SignupRoute: typeof SignupRoute
   ApiUploadImageRoute: typeof ApiUploadImageRoute
-  AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -284,13 +271,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/callback': {
-      id: '/auth/callback'
-      path: '/auth/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/upload-image': {
@@ -418,7 +398,6 @@ const rootRouteChildren: RootRouteChildren = {
   LogoutRoute: LogoutRoute,
   SignupRoute: SignupRoute,
   ApiUploadImageRoute: ApiUploadImageRoute,
-  AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

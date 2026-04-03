@@ -1,78 +1,81 @@
 example card
 
 ```tsx
-'use client'
+import { RefreshCwIcon } from 'lucide-react'
 
-import { useState } from 'react'
-
-import { HeartIcon } from 'lucide-react'
-
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
-  CardHeader,
-  CardDescription,
-  CardTitle,
-  CardFooter,
   CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
 } from '@/components/ui/card'
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from '@/components/ui/input-otp'
 
-import { cn } from '@/lib/utils'
-
-const CardProductDemo = () => {
-  const [liked, setLiked] = useState<boolean>(false)
-
+export function InputOTPForm() {
   return (
-    <div className="relative max-w-md rounded-xl bg-gradient-to-r from-neutral-600 to-violet-300 pt-0 shadow-lg">
-      <div className="flex h-60 items-center justify-center">
-        <img
-          src="https://cdn.shadcnstudio.com/ss-assets/components/card/image-11.png?width=300&format=auto"
-          alt="Shoes"
-          className="w-75"
-        />
-      </div>
-      <Button
-        size="icon"
-        onClick={() => setLiked(!liked)}
-        className="bg-primary/10 hover:bg-primary/20 absolute top-4 right-4 rounded-full"
-      >
-        <HeartIcon
-          className={cn(
-            liked ? 'fill-destructive stroke-destructive' : 'stroke-white',
-          )}
-        />
-        <span className="sr-only">Like</span>
-      </Button>
-      <Card className="border-none">
-        <CardHeader>
-          <CardTitle>Nike Jordan Air Rev</CardTitle>
-          <CardDescription className="flex items-center gap-2">
-            <Badge variant="outline" className="rounded-sm">
-              EU38
-            </Badge>
-            <Badge variant="outline" className="rounded-sm">
-              Black and White
-            </Badge>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>
-            Crossing hardwood comfort with off-court flair. &apos;80s-Inspired
-            construction, bold details and nothin&apos;-but-net style.
-          </p>
-        </CardContent>
-        <CardFooter className="justify-between gap-3 max-sm:flex-col max-sm:items-stretch">
-          <div className="flex flex-col">
-            <span className="text-sm font-medium uppercase">Price</span>
-            <span className="text-xl font-semibold">$69.99</span>
+    <Card className="mx-auto max-w-md">
+      <CardHeader>
+        <CardTitle>Verify your login</CardTitle>
+        <CardDescription>
+          Enter the verification code we sent to your email address:{' '}
+          <span className="font-medium">m@example.com</span>.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Field>
+          <div className="flex items-center justify-between">
+            <FieldLabel htmlFor="otp-verification">
+              Verification code
+            </FieldLabel>
+            <Button variant="outline" size="xs">
+              <RefreshCwIcon />
+              Resend Code
+            </Button>
           </div>
-          <Button size="lg">Add to cart</Button>
-        </CardFooter>
-      </Card>
-    </div>
+          <InputOTP maxLength={6} id="otp-verification" required>
+            <InputOTPGroup className="*:data-[slot=input-otp-slot]:h-12 *:data-[slot=input-otp-slot]:w-11 *:data-[slot=input-otp-slot]:text-xl">
+              <InputOTPSlot index={0} />
+              <InputOTPSlot index={1} />
+              <InputOTPSlot index={2} />
+            </InputOTPGroup>
+            <InputOTPSeparator className="mx-2" />
+            <InputOTPGroup className="*:data-[slot=input-otp-slot]:h-12 *:data-[slot=input-otp-slot]:w-11 *:data-[slot=input-otp-slot]:text-xl">
+              <InputOTPSlot index={3} />
+              <InputOTPSlot index={4} />
+              <InputOTPSlot index={5} />
+            </InputOTPGroup>
+          </InputOTP>
+          <FieldDescription>
+            <a href="#">I no longer have access to this email address.</a>
+          </FieldDescription>
+        </Field>
+      </CardContent>
+      <CardFooter>
+        <Field>
+          <Button type="submit" className="w-full">
+            Verify
+          </Button>
+          <div className="text-muted-foreground text-sm">
+            Having trouble signing in?{' '}
+            <a
+              href="#"
+              className="hover:text-primary underline underline-offset-4 transition-colors"
+            >
+              Contact support
+            </a>
+          </div>
+        </Field>
+      </CardFooter>
+    </Card>
   )
 }
-
-export default CardProductDemo
 ```
