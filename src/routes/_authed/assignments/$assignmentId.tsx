@@ -598,7 +598,7 @@ function AssignmentDetailComponent() {
 
       {/* Edit Assignment Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Edit Assignment</DialogTitle>
             <DialogDescription>
@@ -606,26 +606,79 @@ function AssignmentDetailComponent() {
             </DialogDescription>
           </DialogHeader>
           <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="title">
-                Title <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="title"
-                value={assignmentFormData.title}
-                onChange={(e) =>
-                  setAssignmentFormData({
-                    ...assignmentFormData,
-                    title: e.target.value,
-                  })
-                }
-              />
-            </Field>
-            <Field>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="title">
+                  Title <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="title"
+                  value={assignmentFormData.title}
+                  onChange={(e) =>
+                    setAssignmentFormData({
+                      ...assignmentFormData,
+                      title: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="dueDate">
+                  Due Date <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="dueDate"
+                  type="datetime-local"
+                  value={assignmentFormData.dueDate}
+                  onChange={(e) =>
+                    setAssignmentFormData({
+                      ...assignmentFormData,
+                      dueDate: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="maxGrade">Maximum Grade</FieldLabel>
+                <Input
+                  id="maxGrade"
+                  type="number"
+                  value={assignmentFormData.maxGrade.toString()}
+                  onChange={(e) =>
+                    setAssignmentFormData({
+                      ...assignmentFormData,
+                      maxGrade: parseInt(e.target.value) || 100,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="status">Status</FieldLabel>
+                <Select
+                  value={assignmentFormData.status}
+                  onValueChange={(value) =>
+                    setAssignmentFormData({
+                      ...assignmentFormData,
+                      status: value as 'draft' | 'published' | 'closed',
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+            <Field className="sm:col-span-2">
               <FieldLabel htmlFor="description">Description</FieldLabel>
               <Textarea
                 id="description"
-                rows={4}
+                rows={10}
                 value={assignmentFormData.description}
                 onChange={(e) =>
                   setAssignmentFormData({
@@ -634,57 +687,6 @@ function AssignmentDetailComponent() {
                   })
                 }
               />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="dueDate">
-                Due Date <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="dueDate"
-                type="datetime-local"
-                value={assignmentFormData.dueDate}
-                onChange={(e) =>
-                  setAssignmentFormData({
-                    ...assignmentFormData,
-                    dueDate: e.target.value,
-                  })
-                }
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="maxGrade">Maximum Grade</FieldLabel>
-              <Input
-                id="maxGrade"
-                type="number"
-                value={assignmentFormData.maxGrade.toString()}
-                onChange={(e) =>
-                  setAssignmentFormData({
-                    ...assignmentFormData,
-                    maxGrade: parseInt(e.target.value) || 100,
-                  })
-                }
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="status">Status</FieldLabel>
-              <Select
-                value={assignmentFormData.status}
-                onValueChange={(value) =>
-                  setAssignmentFormData({
-                    ...assignmentFormData,
-                    status: value as 'draft' | 'published' | 'closed',
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
             </Field>
           </FieldGroup>
           <DialogFooter>
@@ -739,7 +741,7 @@ function AssignmentDetailComponent() {
 
       {/* Grading Dialog */}
       <Dialog open={showGradingDialog} onOpenChange={setShowGradingDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Grade Submission</DialogTitle>
             <DialogDescription>

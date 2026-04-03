@@ -39,16 +39,18 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
     where: eq(profiles.id, data.user.id),
     columns: {
       avatarUrl: true,
+      bio: true,
       fullName: true,
       role: true,
     },
   })
 
   return {
-    id: data.user.id,
-    email: data.user.email,
-    fullName: profile?.fullName,
     avatarUrl: profile?.avatarUrl,
+    bio: profile?.bio,
+    email: data.user.email,
+    id: data.user.id,
+    fullName: profile?.fullName,
     role: profile?.role || 'student',
   }
 })

@@ -551,7 +551,7 @@ function LessonDetailComponent() {
       </div>
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Create Assignment</DialogTitle>
             <DialogDescription>
@@ -559,55 +559,57 @@ function LessonDetailComponent() {
             </DialogDescription>
           </DialogHeader>
           <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="title">
-                Title <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="title"
-                placeholder="Assignment title"
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
-              />
-            </Field>
-            <Field>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="title">
+                  Title <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="title"
+                  placeholder="Assignment title"
+                  value={formData.title}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="dueDate">
+                  Due Date <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="dueDate"
+                  type="datetime-local"
+                  value={formData.dueDate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dueDate: e.target.value })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="maxGrade">Maximum Grade</FieldLabel>
+                <Input
+                  id="maxGrade"
+                  type="number"
+                  value={formData.maxGrade}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      maxGrade: parseInt(e.target.value) || 100,
+                    })
+                  }
+                />
+              </Field>
+            </div>
+            <Field className="sm:col-span-2">
               <FieldLabel htmlFor="description">Description</FieldLabel>
               <Textarea
                 id="description"
                 placeholder="Assignment description"
-                rows={3}
+                rows={10}
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
-                }
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="dueDate">
-                Due Date <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="dueDate"
-                type="datetime-local"
-                value={formData.dueDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, dueDate: e.target.value })
-                }
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="maxGrade">Maximum Grade</FieldLabel>
-              <Input
-                id="maxGrade"
-                type="number"
-                value={formData.maxGrade}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    maxGrade: parseInt(e.target.value) || 100,
-                  })
                 }
               />
             </Field>
@@ -636,31 +638,84 @@ function LessonDetailComponent() {
         open={showEditAssignmentDialog}
         onOpenChange={setShowEditAssignmentDialog}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Edit Assignment</DialogTitle>
             <DialogDescription>Update assignment details</DialogDescription>
           </DialogHeader>
           <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="editTitle">
-                Title <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="editTitle"
-                placeholder="Assignment title"
-                value={editFormData.title}
-                onChange={(e) =>
-                  setEditFormData({ ...editFormData, title: e.target.value })
-                }
-              />
-            </Field>
-            <Field>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="editTitle">
+                  Title <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="editTitle"
+                  placeholder="Assignment title"
+                  value={editFormData.title}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, title: e.target.value })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="editDueDate">
+                  Due Date <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="editDueDate"
+                  type="datetime-local"
+                  value={editFormData.dueDate}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      dueDate: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="editMaxGrade">Maximum Grade</FieldLabel>
+                <Input
+                  id="editMaxGrade"
+                  type="number"
+                  value={editFormData.maxGrade}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      maxGrade: parseInt(e.target.value) || 100,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="editStatus">Status</FieldLabel>
+                <Select
+                  value={editFormData.status}
+                  onValueChange={(value) =>
+                    setEditFormData({
+                      ...editFormData,
+                      status: value as 'draft' | 'published' | 'closed',
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+            <Field className="sm:col-span-2">
               <FieldLabel htmlFor="editDescription">Description</FieldLabel>
               <Textarea
                 id="editDescription"
                 placeholder="Assignment description"
-                rows={3}
+                rows={10}
                 value={editFormData.description}
                 onChange={(e) =>
                   setEditFormData({
@@ -669,54 +724,6 @@ function LessonDetailComponent() {
                   })
                 }
               />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="editDueDate">
-                Due Date <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="editDueDate"
-                type="datetime-local"
-                value={editFormData.dueDate}
-                onChange={(e) =>
-                  setEditFormData({ ...editFormData, dueDate: e.target.value })
-                }
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="editMaxGrade">Maximum Grade</FieldLabel>
-              <Input
-                id="editMaxGrade"
-                type="number"
-                value={editFormData.maxGrade}
-                onChange={(e) =>
-                  setEditFormData({
-                    ...editFormData,
-                    maxGrade: parseInt(e.target.value) || 100,
-                  })
-                }
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="editStatus">Status</FieldLabel>
-              <Select
-                value={editFormData.status}
-                onValueChange={(value) =>
-                  setEditFormData({
-                    ...editFormData,
-                    status: value as 'draft' | 'published' | 'closed',
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
             </Field>
           </FieldGroup>
           <DialogFooter>
@@ -795,34 +802,86 @@ function LessonDetailComponent() {
         open={showEditLessonDialog}
         onOpenChange={setShowEditLessonDialog}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Edit Lesson</DialogTitle>
             <DialogDescription>Update the lesson information</DialogDescription>
           </DialogHeader>
           <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="lesson-title">
-                Title <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="lesson-title"
-                placeholder="Lesson title"
-                value={lessonFormData.title}
-                onChange={(e) =>
-                  setLessonFormData({
-                    ...lessonFormData,
-                    title: e.target.value,
-                  })
-                }
-              />
-            </Field>
-            <Field>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="lesson-title">
+                  Title <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="lesson-title"
+                  placeholder="Lesson title"
+                  value={lessonFormData.title}
+                  onChange={(e) =>
+                    setLessonFormData({
+                      ...lessonFormData,
+                      title: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="lesson-time">
+                  Scheduled Time <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="lesson-time"
+                  type="datetime-local"
+                  value={lessonFormData.scheduledTime}
+                  onChange={(e) =>
+                    setLessonFormData({
+                      ...lessonFormData,
+                      scheduledTime: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="lesson-duration">
+                  Duration (minutes)
+                </FieldLabel>
+                <Input
+                  id="lesson-duration"
+                  type="number"
+                  placeholder="60"
+                  value={lessonFormData.duration}
+                  onChange={(e) =>
+                    setLessonFormData({
+                      ...lessonFormData,
+                      duration: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="lesson-published"
+                    checked={lessonFormData.isPublished}
+                    onCheckedChange={(checked) =>
+                      setLessonFormData({
+                        ...lessonFormData,
+                        isPublished: checked,
+                      })
+                    }
+                  />
+                  <FieldLabel htmlFor="lesson-published">
+                    Publish lesson
+                  </FieldLabel>
+                </div>
+              </Field>
+            </div>
+            <Field className="sm:col-span-2">
               <FieldLabel htmlFor="lesson-content">Content</FieldLabel>
               <Textarea
                 id="lesson-content"
                 placeholder="Lesson content or description"
-                rows={3}
+                rows={10}
                 value={lessonFormData.content}
                 onChange={(e) =>
                   setLessonFormData({
@@ -831,56 +890,6 @@ function LessonDetailComponent() {
                   })
                 }
               />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="lesson-duration">
-                Duration (minutes)
-              </FieldLabel>
-              <Input
-                id="lesson-duration"
-                type="number"
-                placeholder="60"
-                value={lessonFormData.duration}
-                onChange={(e) =>
-                  setLessonFormData({
-                    ...lessonFormData,
-                    duration: e.target.value,
-                  })
-                }
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="lesson-time">
-                Scheduled Time <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="lesson-time"
-                type="datetime-local"
-                value={lessonFormData.scheduledTime}
-                onChange={(e) =>
-                  setLessonFormData({
-                    ...lessonFormData,
-                    scheduledTime: e.target.value,
-                  })
-                }
-              />
-            </Field>
-            <Field>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="lesson-published"
-                  checked={lessonFormData.isPublished}
-                  onCheckedChange={(checked) =>
-                    setLessonFormData({
-                      ...lessonFormData,
-                      isPublished: checked,
-                    })
-                  }
-                />
-                <FieldLabel htmlFor="lesson-published">
-                  Publish lesson
-                </FieldLabel>
-              </div>
             </Field>
           </FieldGroup>
           <DialogFooter>

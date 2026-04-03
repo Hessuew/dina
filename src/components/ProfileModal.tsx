@@ -218,7 +218,7 @@ export function ProfileModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Profile Information</DialogTitle>
         </DialogHeader>
@@ -263,30 +263,32 @@ export function ProfileModal({
                 </div>
 
                 <form onSubmit={handleProfileSubmit}>
-                  <FieldGroup>
-                    <Field>
-                      <FieldLabel htmlFor="email">Email</FieldLabel>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        defaultValue={user.email}
-                        required
-                      />
-                      <FieldDescription>
-                        Changing your email will require verification
-                      </FieldDescription>
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="fullName">Full Name</FieldLabel>
-                      <Input
-                        id="fullName"
-                        name="fullName"
-                        type="text"
-                        defaultValue={user.fullName}
-                        required
-                      />
-                    </Field>
+                  <FieldGroup className="gap-8">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <Field>
+                        <FieldLabel htmlFor="email">Email</FieldLabel>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          defaultValue={user.email}
+                          required
+                        />
+                        <FieldDescription>
+                          Changing your email will require verification
+                        </FieldDescription>
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="fullName">Full Name</FieldLabel>
+                        <Input
+                          id="fullName"
+                          name="fullName"
+                          type="text"
+                          defaultValue={user.fullName}
+                          required
+                        />
+                      </Field>
+                    </div>
                     <Field>
                       <FieldLabel htmlFor="bio">Bio</FieldLabel>
                       <Textarea
@@ -294,7 +296,7 @@ export function ProfileModal({
                         name="bio"
                         placeholder="Tell us about yourself..."
                         defaultValue={user.bio || ''}
-                        rows={4}
+                        rows={10}
                       />
                     </Field>
                     <Field>

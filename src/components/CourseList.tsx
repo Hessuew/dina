@@ -166,192 +166,197 @@ function CourseListInternal({
 
     return (
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Create Course</DialogTitle>
             <DialogDescription>
               Add a new course and assign 2 teachers
             </DialogDescription>
           </DialogHeader>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="title">
-                Title <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="title"
-                placeholder="Introduction to Programming"
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="description">Description</FieldLabel>
-              <Textarea
-                id="description"
-                placeholder="Describe what students will learn in this course"
-                rows={4}
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="teacher1">
-                Teacher 1 <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Select
-                value={formData.teacher1Id ? formData.teacher1Id : undefined}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, teacher1Id: value })
-                }
-              >
-                <SelectTrigger id="teacher1">
-                  <SelectValue placeholder="Select first teacher">
-                    {formData.teacher1Id
-                      ? teachers.find((t) => t.id === formData.teacher1Id)
-                          ?.fullName || 'Select first teacher'
-                      : 'Select first teacher'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {teachers.length === 0 ? (
-                    <SelectItem value="none" disabled>
-                      No teachers available
-                    </SelectItem>
-                  ) : (
-                    teachers.map((teacher) => (
-                      <SelectItem key={teacher.id} value={teacher.id}>
-                        {teacher.fullName}
+          <FieldGroup className="gap-8">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Field className="sm:col-span-2">
+                <FieldLabel htmlFor="title">
+                  Title <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="title"
+                  placeholder="Introduction to Programming"
+                  value={formData.title}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
+                />
+              </Field>
+              <div className="sm:col-span-1"></div>
+              <Field>
+                <FieldLabel htmlFor="orderIndex">Order Index</FieldLabel>
+                <Input
+                  id="orderIndex"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={formData.orderIndex}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      orderIndex: parseInt(e.target.value) || 0,
+                    })
+                  }
+                />
+                <p className="text-muted-foreground text-xs">
+                  Lower numbers appear first in course list
+                </p>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="teacher1">
+                  Teacher 1 <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Select
+                  value={formData.teacher1Id ? formData.teacher1Id : undefined}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, teacher1Id: value })
+                  }
+                >
+                  <SelectTrigger className="w-full" id="teacher1">
+                    <SelectValue placeholder="Select first teacher">
+                      {formData.teacher1Id
+                        ? teachers.find((t) => t.id === formData.teacher1Id)
+                            ?.fullName || 'Select first teacher'
+                        : 'Select first teacher'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teachers.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        No teachers available
                       </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="teacher2">
-                Teacher 2 <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Select
-                value={formData.teacher2Id ? formData.teacher2Id : undefined}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, teacher2Id: value })
-                }
-              >
-                <SelectTrigger id="teacher2">
-                  <SelectValue placeholder="Select second teacher">
-                    {formData.teacher2Id
-                      ? teachers.find((t) => t.id === formData.teacher2Id)
-                          ?.fullName || 'Select second teacher'
-                      : 'Select second teacher'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {teachers.length === 0 ? (
-                    <SelectItem value="none" disabled>
-                      No teachers available
-                    </SelectItem>
-                  ) : (
-                    teachers
-                      .filter((t) => t.id !== formData.teacher1Id)
-                      .map((teacher) => (
+                    ) : (
+                      teachers.map((teacher) => (
                         <SelectItem key={teacher.id} value={teacher.id}>
                           {teacher.fullName}
                         </SelectItem>
                       ))
-                  )}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="orderIndex">Order Index</FieldLabel>
-              <Input
-                id="orderIndex"
-                type="number"
-                min="0"
-                placeholder="0"
-                value={formData.orderIndex}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    orderIndex: parseInt(e.target.value) || 0,
-                  })
-                }
-              />
-              <p className="text-muted-foreground text-xs">
-                Lower numbers appear first in the course list
-              </p>
-            </Field>
-            <Field>
-              <FieldLabel>Course Thumbnail</FieldLabel>
-              <div className="space-y-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-
-                    if (file.size > 2 * 1024 * 1024) {
-                      toast.error('File size must be less than 2MB')
-                      return
-                    }
-
-                    const fileData = await fileToBase64(file)
-                    setFormData({
-                      ...formData,
-                      thumbnailUrl: fileData,
-                      thumbnailFile: file,
-                    })
-                  }}
-                  className="hidden"
+                    )}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="teacher2">
+                  Teacher 2 <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Select
+                  value={formData.teacher2Id ? formData.teacher2Id : undefined}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, teacher2Id: value })
+                  }
+                >
+                  <SelectTrigger className="w-full" id="teacher2">
+                    <SelectValue placeholder="Select second teacher">
+                      {formData.teacher2Id
+                        ? teachers.find((t) => t.id === formData.teacher2Id)
+                            ?.fullName || 'Select second teacher'
+                        : 'Select second teacher'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teachers.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        No teachers available
+                      </SelectItem>
+                    ) : (
+                      teachers
+                        .filter((t) => t.id !== formData.teacher1Id)
+                        .map((teacher) => (
+                          <SelectItem key={teacher.id} value={teacher.id}>
+                            {teacher.fullName}
+                          </SelectItem>
+                        ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="description">Description</FieldLabel>
+                <Textarea
+                  id="description"
+                  placeholder="Describe what students will learn in this course"
+                  rows={10}
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                 />
-                {formData.thumbnailUrl ? (
-                  <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-                    <img
-                      src={formData.thumbnailUrl}
-                      alt="Course thumbnail"
-                      className="size-full object-cover"
-                    />
+              </Field>
+              <Field>
+                <FieldLabel>Course Thumbnail</FieldLabel>
+                <div className="space-y-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+
+                      if (file.size > 2 * 1024 * 1024) {
+                        toast.error('File size must be less than 2MB')
+                        return
+                      }
+
+                      const fileData = await fileToBase64(file)
+                      setFormData({
+                        ...formData,
+                        thumbnailUrl: fileData,
+                        thumbnailFile: file,
+                      })
+                    }}
+                    className="hidden"
+                  />
+                  {formData.thumbnailUrl ? (
+                    <div className="relative aspect-video w-full max-w-sm overflow-hidden rounded-lg">
+                      <img
+                        src={formData.thumbnailUrl}
+                        alt="Course thumbnail"
+                        className="size-full object-cover"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => {
+                          setFormData({
+                            ...formData,
+                            thumbnailUrl: null,
+                            thumbnailFile: null,
+                          })
+                          if (fileInputRef.current)
+                            fileInputRef.current.value = ''
+                        }}
+                      >
+                        <XIcon className="size-4" />
+                      </Button>
+                    </div>
+                  ) : (
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
-                      className="absolute top-2 right-2"
-                      onClick={() => {
-                        setFormData({
-                          ...formData,
-                          thumbnailUrl: null,
-                          thumbnailFile: null,
-                        })
-                        if (fileInputRef.current)
-                          fileInputRef.current.value = ''
-                      }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full max-w-sm"
                     >
-                      <XIcon className="size-4" />
+                      <UploadIcon className="mr-2 size-4" />
+                      Upload Thumbnail
                     </Button>
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full"
-                  >
-                    <UploadIcon className="mr-2 size-4" />
-                    Upload Thumbnail
-                  </Button>
-                )}
-                <p className="text-muted-foreground text-xs">
-                  JPG, PNG, WebP or GIF. Max 2MB.
-                </p>
-              </div>
-            </Field>
+                  )}
+                  <p className="text-muted-foreground text-xs">
+                    JPG, PNG, WebP or GIF. Max 2MB.
+                  </p>
+                </div>
+              </Field>
+            </div>
           </FieldGroup>
           <DialogFooter>
             <Button

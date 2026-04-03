@@ -479,17 +479,6 @@ function CourseDetailComponent() {
                     </p>
                   </div>
                 )}
-                <div>
-                  <h3 className="mb-2 font-semibold">Course Details</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">
-                        Total Lessons
-                      </span>
-                      <span className="font-medium">{totalLessons}</span>
-                    </div>
-                  </div>
-                </div>
               </CardContent>
             </Card>
 
@@ -688,217 +677,224 @@ function CourseDetailComponent() {
         open={showEditCourseDialog}
         onOpenChange={setShowEditCourseDialog}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Edit Course</DialogTitle>
             <DialogDescription>Update the course information</DialogDescription>
           </DialogHeader>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="course-title">
-                Title <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="course-title"
-                placeholder="Introduction to Programming"
-                value={courseFormData.title}
-                onChange={(e) =>
-                  setCourseFormData({
-                    ...courseFormData,
-                    title: e.target.value,
-                  })
-                }
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="course-description">Description</FieldLabel>
-              <Textarea
-                id="course-description"
-                placeholder="Describe what students will learn in this course"
-                rows={4}
-                value={courseFormData.description}
-                onChange={(e) =>
-                  setCourseFormData({
-                    ...courseFormData,
-                    description: e.target.value,
-                  })
-                }
-              />
-            </Field>
-            {isAdmin && (
-              <>
-                <Field>
-                  <FieldLabel htmlFor="edit-teacher1">
-                    Teacher 1 <span className="text-destructive">*</span>
-                  </FieldLabel>
-                  <Select
-                    value={
-                      courseFormData.teacher1Id
-                        ? courseFormData.teacher1Id
-                        : undefined
-                    }
-                    onValueChange={(value) =>
-                      setCourseFormData({
-                        ...courseFormData,
-                        teacher1Id: value,
-                      })
-                    }
-                  >
-                    <SelectTrigger id="edit-teacher1">
-                      <SelectValue placeholder="Select first teacher">
-                        {courseFormData.teacher1Id
-                          ? teachers.find(
-                              (t) => t.id === courseFormData.teacher1Id,
-                            )?.fullName || 'Select first teacher'
-                          : 'Select first teacher'}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teachers.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          No teachers available
-                        </SelectItem>
-                      ) : (
-                        teachers.map((teacher) => (
-                          <SelectItem key={teacher.id} value={teacher.id}>
-                            {teacher.fullName}
+          <FieldGroup className="gap-8">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Field className="sm:col-span-2">
+                <FieldLabel htmlFor="course-title">
+                  Title <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="course-title"
+                  placeholder="Introduction to Programming"
+                  value={courseFormData.title}
+                  onChange={(e) =>
+                    setCourseFormData({
+                      ...courseFormData,
+                      title: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <div className="sm:col-span-1"></div>
+              <Field>
+                <FieldLabel htmlFor="course-orderIndex">Order Index</FieldLabel>
+                <Input
+                  id="course-orderIndex"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={courseFormData.orderIndex}
+                  onChange={(e) =>
+                    setCourseFormData({
+                      ...courseFormData,
+                      orderIndex: parseInt(e.target.value) || 0,
+                    })
+                  }
+                />
+                <p className="text-muted-foreground text-xs">
+                  Lower numbers appear first in course list
+                </p>
+              </Field>
+              {isAdmin && (
+                <>
+                  <Field>
+                    <FieldLabel htmlFor="edit-teacher1">
+                      Teacher 1 <span className="text-destructive">*</span>
+                    </FieldLabel>
+                    <Select
+                      value={
+                        courseFormData.teacher1Id
+                          ? courseFormData.teacher1Id
+                          : undefined
+                      }
+                      onValueChange={(value) =>
+                        setCourseFormData({
+                          ...courseFormData,
+                          teacher1Id: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="w-full" id="edit-teacher1">
+                        <SelectValue placeholder="Select first teacher">
+                          {courseFormData.teacher1Id
+                            ? teachers.find(
+                                (t) => t.id === courseFormData.teacher1Id,
+                              )?.fullName || 'Select first teacher'
+                            : 'Select first teacher'}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teachers.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            No teachers available
                           </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="edit-teacher2">
-                    Teacher 2 <span className="text-destructive">*</span>
-                  </FieldLabel>
-                  <Select
-                    value={
-                      courseFormData.teacher2Id
-                        ? courseFormData.teacher2Id
-                        : undefined
-                    }
-                    onValueChange={(value) =>
-                      setCourseFormData({
-                        ...courseFormData,
-                        teacher2Id: value,
-                      })
-                    }
-                  >
-                    <SelectTrigger id="edit-teacher2">
-                      <SelectValue placeholder="Select second teacher">
-                        {courseFormData.teacher2Id
-                          ? teachers.find(
-                              (t) => t.id === courseFormData.teacher2Id,
-                            )?.fullName || 'Select second teacher'
-                          : 'Select second teacher'}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teachers.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          No teachers available
-                        </SelectItem>
-                      ) : (
-                        teachers
-                          .filter((t) => t.id !== courseFormData.teacher1Id)
-                          .map((teacher) => (
+                        ) : (
+                          teachers.map((teacher) => (
                             <SelectItem key={teacher.id} value={teacher.id}>
                               {teacher.fullName}
                             </SelectItem>
                           ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </>
-            )}
-            <Field>
-              <FieldLabel htmlFor="course-orderIndex">Order Index</FieldLabel>
-              <Input
-                id="course-orderIndex"
-                type="number"
-                min="0"
-                placeholder="0"
-                value={courseFormData.orderIndex}
-                onChange={(e) =>
-                  setCourseFormData({
-                    ...courseFormData,
-                    orderIndex: parseInt(e.target.value) || 0,
-                  })
-                }
-              />
-              <p className="text-muted-foreground text-xs">
-                Lower numbers appear first in the course list
-              </p>
-            </Field>
-            <Field>
-              <FieldLabel>Course Thumbnail</FieldLabel>
-              <div className="space-y-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-
-                    if (file.size > 2 * 1024 * 1024) {
-                      toast.error('File size must be less than 2MB')
-                      return
-                    }
-
-                    const fileData = await fileToBase64(file)
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="edit-teacher2">
+                      Teacher 2 <span className="text-destructive">*</span>
+                    </FieldLabel>
+                    <Select
+                      value={
+                        courseFormData.teacher2Id
+                          ? courseFormData.teacher2Id
+                          : undefined
+                      }
+                      onValueChange={(value) =>
+                        setCourseFormData({
+                          ...courseFormData,
+                          teacher2Id: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="w-full" id="edit-teacher2">
+                        <SelectValue placeholder="Select second teacher">
+                          {courseFormData.teacher2Id
+                            ? teachers.find(
+                                (t) => t.id === courseFormData.teacher2Id,
+                              )?.fullName || 'Select second teacher'
+                            : 'Select second teacher'}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teachers.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            No teachers available
+                          </SelectItem>
+                        ) : (
+                          teachers
+                            .filter((t) => t.id !== courseFormData.teacher1Id)
+                            .map((teacher) => (
+                              <SelectItem key={teacher.id} value={teacher.id}>
+                                {teacher.fullName}
+                              </SelectItem>
+                            ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </>
+              )}
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="course-description">
+                  Description
+                </FieldLabel>
+                <Textarea
+                  id="course-description"
+                  placeholder="Describe what students will learn in this course"
+                  rows={10}
+                  value={courseFormData.description}
+                  onChange={(e) =>
                     setCourseFormData({
                       ...courseFormData,
-                      thumbnailUrl: fileData,
-                      thumbnailFile: file,
+                      description: e.target.value,
                     })
-                  }}
-                  className="hidden"
+                  }
                 />
-                {courseFormData.thumbnailUrl ? (
-                  <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-                    <img
-                      src={courseFormData.thumbnailUrl}
-                      alt="Course thumbnail"
-                      className="size-full object-cover"
-                    />
+              </Field>
+              <Field className="sm:col-span-1">
+                <FieldLabel>Course Thumbnail</FieldLabel>
+                <div className="space-y-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+
+                      if (file.size > 2 * 1024 * 1024) {
+                        toast.error('File size must be less than 2MB')
+                        return
+                      }
+
+                      const fileData = await fileToBase64(file)
+                      setCourseFormData({
+                        ...courseFormData,
+                        thumbnailUrl: fileData,
+                        thumbnailFile: file,
+                      })
+                    }}
+                    className="hidden"
+                  />
+                  {courseFormData.thumbnailUrl ? (
+                    <div className="relative aspect-video w-full max-w-sm overflow-hidden rounded-lg">
+                      <img
+                        src={courseFormData.thumbnailUrl}
+                        alt="Course thumbnail"
+                        className="size-full object-cover"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => {
+                          setCourseFormData({
+                            ...courseFormData,
+                            thumbnailUrl: null,
+                            thumbnailFile: null,
+                          })
+                          if (fileInputRef.current)
+                            fileInputRef.current.value = ''
+                        }}
+                      >
+                        <XIcon className="size-4" />
+                      </Button>
+                    </div>
+                  ) : (
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
-                      className="absolute top-2 right-2"
-                      onClick={() => {
-                        setCourseFormData({
-                          ...courseFormData,
-                          thumbnailUrl: null,
-                          thumbnailFile: null,
-                        })
-                        if (fileInputRef.current)
-                          fileInputRef.current.value = ''
-                      }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full max-w-sm"
                     >
-                      <XIcon className="size-4" />
+                      <UploadIcon className="mr-2 size-4" />
+                      Upload Thumbnail
                     </Button>
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full"
-                  >
-                    <UploadIcon className="mr-2 size-4" />
-                    Upload Thumbnail
-                  </Button>
-                )}
-                <p className="text-muted-foreground text-xs">
-                  JPG, PNG, WebP or GIF. Max 2MB.
-                </p>
-              </div>
-            </Field>
-            <Field>
+                  )}
+                  <p className="text-muted-foreground text-xs">
+                    JPG, PNG, WebP or GIF. Max 2MB.
+                  </p>
+                </div>
+              </Field>
+            </div>
+            <Field className="sm:col-span-2">
               <div className="flex items-center gap-2">
                 <Switch
                   id="course-published"
@@ -981,7 +977,7 @@ function CourseDetailComponent() {
         open={showCreateLessonDialog}
         onOpenChange={setShowCreateLessonDialog}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Create Lesson</DialogTitle>
             <DialogDescription>
@@ -989,28 +985,80 @@ function CourseDetailComponent() {
             </DialogDescription>
           </DialogHeader>
           <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="lesson-title">
-                Title <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="lesson-title"
-                placeholder="Lesson title"
-                value={lessonFormData.title}
-                onChange={(e) =>
-                  setLessonFormData({
-                    ...lessonFormData,
-                    title: e.target.value,
-                  })
-                }
-              />
-            </Field>
-            <Field>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="lesson-title">
+                  Title <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="lesson-title"
+                  placeholder="Lesson title"
+                  value={lessonFormData.title}
+                  onChange={(e) =>
+                    setLessonFormData({
+                      ...lessonFormData,
+                      title: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="lesson-time">
+                  Scheduled Time <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="lesson-time"
+                  type="datetime-local"
+                  value={lessonFormData.scheduledTime}
+                  onChange={(e) =>
+                    setLessonFormData({
+                      ...lessonFormData,
+                      scheduledTime: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="lesson-duration">
+                  Duration (minutes)
+                </FieldLabel>
+                <Input
+                  id="lesson-duration"
+                  type="number"
+                  placeholder="60"
+                  value={lessonFormData.duration}
+                  onChange={(e) =>
+                    setLessonFormData({
+                      ...lessonFormData,
+                      duration: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="lesson-published"
+                    checked={lessonFormData.isPublished}
+                    onCheckedChange={(checked) =>
+                      setLessonFormData({
+                        ...lessonFormData,
+                        isPublished: checked,
+                      })
+                    }
+                  />
+                  <FieldLabel htmlFor="lesson-published">
+                    Publish lesson
+                  </FieldLabel>
+                </div>
+              </Field>
+            </div>
+            <Field className="sm:col-span-2">
               <FieldLabel htmlFor="lesson-content">Content</FieldLabel>
               <Textarea
                 id="lesson-content"
                 placeholder="Lesson content or description"
-                rows={3}
+                rows={10}
                 value={lessonFormData.content}
                 onChange={(e) =>
                   setLessonFormData({
@@ -1019,56 +1067,6 @@ function CourseDetailComponent() {
                   })
                 }
               />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="lesson-duration">
-                Duration (minutes)
-              </FieldLabel>
-              <Input
-                id="lesson-duration"
-                type="number"
-                placeholder="60"
-                value={lessonFormData.duration}
-                onChange={(e) =>
-                  setLessonFormData({
-                    ...lessonFormData,
-                    duration: e.target.value,
-                  })
-                }
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="lesson-time">
-                Scheduled Time <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="lesson-time"
-                type="datetime-local"
-                value={lessonFormData.scheduledTime}
-                onChange={(e) =>
-                  setLessonFormData({
-                    ...lessonFormData,
-                    scheduledTime: e.target.value,
-                  })
-                }
-              />
-            </Field>
-            <Field>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="lesson-published"
-                  checked={lessonFormData.isPublished}
-                  onCheckedChange={(checked) =>
-                    setLessonFormData({
-                      ...lessonFormData,
-                      isPublished: checked,
-                    })
-                  }
-                />
-                <FieldLabel htmlFor="lesson-published">
-                  Publish lesson
-                </FieldLabel>
-              </div>
             </Field>
           </FieldGroup>
           <DialogFooter>
@@ -1095,34 +1093,86 @@ function CourseDetailComponent() {
         open={showEditLessonDialog}
         onOpenChange={setShowEditLessonDialog}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Edit Lesson</DialogTitle>
             <DialogDescription>Update the lesson information</DialogDescription>
           </DialogHeader>
           <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="edit-lesson-title">
-                Title <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="edit-lesson-title"
-                placeholder="Lesson title"
-                value={lessonFormData.title}
-                onChange={(e) =>
-                  setLessonFormData({
-                    ...lessonFormData,
-                    title: e.target.value,
-                  })
-                }
-              />
-            </Field>
-            <Field>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="edit-lesson-title">
+                  Title <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="edit-lesson-title"
+                  placeholder="Lesson title"
+                  value={lessonFormData.title}
+                  onChange={(e) =>
+                    setLessonFormData({
+                      ...lessonFormData,
+                      title: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="edit-lesson-time">
+                  Scheduled Time <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="edit-lesson-time"
+                  type="datetime-local"
+                  value={lessonFormData.scheduledTime}
+                  onChange={(e) =>
+                    setLessonFormData({
+                      ...lessonFormData,
+                      scheduledTime: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="edit-lesson-duration">
+                  Duration (minutes)
+                </FieldLabel>
+                <Input
+                  id="edit-lesson-duration"
+                  type="number"
+                  placeholder="60"
+                  value={lessonFormData.duration}
+                  onChange={(e) =>
+                    setLessonFormData({
+                      ...lessonFormData,
+                      duration: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="edit-lesson-published"
+                    checked={lessonFormData.isPublished}
+                    onCheckedChange={(checked) =>
+                      setLessonFormData({
+                        ...lessonFormData,
+                        isPublished: checked,
+                      })
+                    }
+                  />
+                  <FieldLabel htmlFor="edit-lesson-published">
+                    Publish lesson
+                  </FieldLabel>
+                </div>
+              </Field>
+            </div>
+            <Field className="sm:col-span-2">
               <FieldLabel htmlFor="edit-lesson-content">Content</FieldLabel>
               <Textarea
                 id="edit-lesson-content"
                 placeholder="Lesson content or description"
-                rows={3}
+                rows={10}
                 value={lessonFormData.content}
                 onChange={(e) =>
                   setLessonFormData({
@@ -1131,56 +1181,6 @@ function CourseDetailComponent() {
                   })
                 }
               />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="edit-lesson-duration">
-                Duration (minutes)
-              </FieldLabel>
-              <Input
-                id="edit-lesson-duration"
-                type="number"
-                placeholder="60"
-                value={lessonFormData.duration}
-                onChange={(e) =>
-                  setLessonFormData({
-                    ...lessonFormData,
-                    duration: e.target.value,
-                  })
-                }
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="edit-lesson-time">
-                Scheduled Time <span className="text-destructive">*</span>
-              </FieldLabel>
-              <Input
-                id="edit-lesson-time"
-                type="datetime-local"
-                value={lessonFormData.scheduledTime}
-                onChange={(e) =>
-                  setLessonFormData({
-                    ...lessonFormData,
-                    scheduledTime: e.target.value,
-                  })
-                }
-              />
-            </Field>
-            <Field>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="edit-lesson-published"
-                  checked={lessonFormData.isPublished}
-                  onCheckedChange={(checked) =>
-                    setLessonFormData({
-                      ...lessonFormData,
-                      isPublished: checked,
-                    })
-                  }
-                />
-                <FieldLabel htmlFor="edit-lesson-published">
-                  Publish lesson
-                </FieldLabel>
-              </div>
             </Field>
           </FieldGroup>
           <DialogFooter>
