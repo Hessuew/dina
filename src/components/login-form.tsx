@@ -34,7 +34,7 @@ export function LoginForm({
     onSuccess: async (ctx) => {
       if (!ctx.data?.error) {
         await router.invalidate()
-        router.navigate({ to: '/dashboard', search: { verified: false } })
+        router.navigate({ to: '/dashboard' })
         return
       }
     },

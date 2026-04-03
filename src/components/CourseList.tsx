@@ -26,7 +26,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useMutation } from '@/hooks/useMutation'
 import { useAllTeachers } from '@/hooks/useAllTeachers'
 import { createCourse } from '@/utils/courses'
-import { fileToBase64, uploadImageFn } from '@/utils/imageUpload'
+import { fileToBase64, uploadCourseThumbnailFn } from '@/utils/imageUpload'
 import { UpcomingLessonsList } from '@/components/UpcomingLessonsList'
 import { UpcomingAssignmentsList } from '@/components/UpcomingAssignmentsList'
 
@@ -94,28 +94,22 @@ function CourseListInternal({
         if (formData.thumbnailFile) {
           setIsUploading(true)
           try {
-            const result = await uploadImageFn({
+            const result = await uploadCourseThumbnailFn({
               data: {
                 fileData: await fileToBase64(formData.thumbnailFile),
                 fileName: formData.thumbnailFile.name,
                 fileType: formData.thumbnailFile.type,
                 fileSize: formData.thumbnailFile.size,
-                bucket: 'course-thumbnails',
+                courseId,
               },
             })
 
-            if (!result.error && result.imageUrl) {
-              await fetch('/api/courses/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  courseId,
-                  thumbnailUrl: result.imageUrl,
-                }),
-              })
+            if ('error' in result && result.error) {
+              toast.error(result.message || 'Failed to upload thumbnail')
             }
           } catch (error) {
             console.error('Thumbnail upload error:', error)
+            toast.error('Failed to upload thumbnail')
           }
           setIsUploading(false)
         }
@@ -157,7 +151,6 @@ function CourseListInternal({
       data: {
         title: formData.title,
         description: formData.description,
-        thumbnailUrl: formData.thumbnailUrl || undefined,
         teacher1Id: formData.teacher1Id as string,
         teacher2Id: formData.teacher2Id as string,
       },
@@ -306,7 +299,7 @@ function CourseListInternal({
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="absolute right-2 top-2"
+                      className="absolute top-2 right-2"
                       onClick={() => {
                         setFormData({
                           ...formData,
@@ -421,7 +414,7 @@ export function CourseList({
   lessons,
 }: CourseListProps) {
   return (
-    <div className="grid lg:grid-cols-3 gap-12">
+    <div className="grid gap-12 lg:grid-cols-3">
       <div className="lg:col-span-2">
         <CourseListInternal courses={courses} role={role} />
       </div>

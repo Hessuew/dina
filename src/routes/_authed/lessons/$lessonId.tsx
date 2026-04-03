@@ -1,8 +1,8 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import {
-  ArrowLeftIcon,
   CalendarIcon,
+  ChevronLeft,
   ClockIcon,
   PencilIcon,
   PlusIcon,
@@ -300,39 +300,39 @@ function LessonDetailComponent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                if (search.fromCalendar && search.calendarMonth) {
-                  router.navigate({
-                    to: '/calendar',
-                    search: { month: search.calendarMonth },
-                  })
-                } else {
-                  router.navigate({
-                    to: '/courses/$courseId',
-                    params: { courseId: lesson.course.id },
-                  })
-                }
-              }}
-              className="mb-2"
-            >
-              <ArrowLeftIcon className="mr-2 size-4" />
-              {search.fromCalendar ? 'Back to Calendar' : 'Back to Course'}
-            </Button>
-            <h1 className="text-3xl font-bold">{lesson.title}</h1>
-            <p className="text-muted-foreground mt-1">
-              {lesson.course.title} • By {lesson.course.teacher.fullName}
-            </p>
+        <div className="mb-6 flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              if (search.fromCalendar && search.calendarMonth) {
+                router.navigate({
+                  to: '/calendar',
+                  search: { month: search.calendarMonth },
+                })
+              } else {
+                router.navigate({
+                  to: '/courses/$courseId',
+                  params: { courseId: lesson.course.id },
+                })
+              }
+            }}
+          >
+            <ChevronLeft className="size-5" />
+          </Button>
+          <div className="flex flex-1 items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">{lesson.title}</h1>
+              <p className="text-muted-foreground mt-1">
+                {lesson.course.title} • By {lesson.course.teacher.fullName}
+              </p>
+            </div>
+            {canEdit && (
+              <Badge variant={isPublished ? 'default' : 'secondary'}>
+                {isPublished ? 'Published' : 'Draft'}
+              </Badge>
+            )}
           </div>
-          {canEdit && (
-            <Badge variant={isPublished ? 'default' : 'secondary'}>
-              {isPublished ? 'Published' : 'Draft'}
-            </Badge>
-          )}
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -465,7 +465,7 @@ function LessonDetailComponent() {
                       .map((assignment: Assignment) => (
                         <div
                           key={assignment.id}
-                          className="flex items-start justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors"
+                          className="hover:bg-muted/50 flex items-start justify-between rounded-lg border p-4 transition-colors"
                         >
                           <div
                             className="flex-1 cursor-pointer"
@@ -496,11 +496,11 @@ function LessonDetailComponent() {
                               </Badge>
                             </div>
                             {assignment.description && (
-                              <p className="text-muted-foreground mt-1 text-sm line-clamp-2">
+                              <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
                                 {assignment.description}
                               </p>
                             )}
-                            <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
+                            <div className="text-muted-foreground mt-2 flex items-center gap-4 text-xs">
                               <div className="flex items-center gap-1">
                                 <CalendarIcon className="size-3" />
                                 <span>

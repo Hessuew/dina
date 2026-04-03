@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { profiles } from '@/db/schema'
+import { courses, profiles } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
@@ -148,6 +148,73 @@ export const uploadAvatarFn = createServerFn({ method: 'POST' })
       }
     } catch (error) {
       console.error('❌ Unexpected error in uploadAvatar:', error)
+      return {
+        error: true,
+        message:
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred',
+      }
+    }
+  })
+
+export const uploadCourseThumbnailFn = createServerFn({ method: 'POST' })
+  .inputValidator(
+    (d: {
+      fileData: string
+      fileName: string
+      fileType: string
+      fileSize: number
+      courseId: string
+    }) => d,
+  )
+  .handler(async ({ data }) => {
+    try {
+      await getCurrentUser()
+
+      // Get current course to find old thumbnail
+      const currentCourse = await db.query.courses.findFirst({
+        where: eq(courses.id, data.courseId),
+      })
+
+      if (!currentCourse) {
+        return {
+          error: true,
+          message: 'Course not found',
+        }
+      }
+
+      // Upload new image
+      const uploadResult = await uploadImageFn({
+        data: {
+          fileData: data.fileData,
+          fileName: data.fileName,
+          fileType: data.fileType,
+          fileSize: data.fileSize,
+          bucket: 'course-thumbnails',
+          oldUrl: currentCourse.thumbnailUrl || undefined,
+        },
+      })
+
+      if (uploadResult.error || !uploadResult.imageUrl) {
+        return uploadResult
+      }
+
+      // Update course with new thumbnail URL
+      await db
+        .update(courses)
+        .set({
+          thumbnailUrl: uploadResult.imageUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(courses.id, data.courseId))
+
+      return {
+        success: true,
+        thumbnailUrl: uploadResult.imageUrl,
+      }
+    } catch (error) {
+      console.error('❌ Unexpected error in uploadCourseThumbnail:', error)
       return {
         error: true,
         message:

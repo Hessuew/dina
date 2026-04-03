@@ -452,11 +452,7 @@ export function SignupForm({ token = '', ...props }: SignupFormProps) {
                 </Button>
                 <FieldDescription className="px-6 text-center">
                   Already have an account?{' '}
-                  <Link
-                    to="/login"
-                    search={{ verified: false }}
-                    className="underline"
-                  >
+                  <Link to="/login" className="underline">
                     Sign in
                   </Link>
                 </FieldDescription>
