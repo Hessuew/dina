@@ -65,7 +65,6 @@ const getCourseData = createServerFn({ method: 'GET' })
     const course = await db.query.courses.findFirst({
       where: eq(courses.id, data.courseId),
       with: {
-        teacher: true,
         courseTeachers: {
           with: {
             teacher: true,
@@ -173,6 +172,7 @@ function CourseDetailComponent() {
     isPublished: course?.isPublished ?? false,
     teacher1Id: courseTeachersData[0]?.teacher?.id || null,
     teacher2Id: courseTeachersData[1]?.teacher?.id || null,
+    orderIndex: course?.orderIndex ?? 0,
   })
 
   const [lessonFormData, setLessonFormData] = useState({
@@ -190,10 +190,47 @@ function CourseDetailComponent() {
 
   const updateCourseMutation = useMutation({
     fn: updateCourse,
-    onSuccess: async () => {
-      toast.success('Course updated successfully!')
-      setShowEditCourseDialog(false)
-      await router.invalidate()
+    onSuccess: async (ctx) => {
+      if ('course' in ctx.data) {
+        const courseId = ctx.data.course.id
+
+        if (courseFormData.thumbnailFile) {
+          setIsUploading(true)
+          try {
+            const result = await uploadCourseThumbnailFn({
+              data: {
+                fileData: await fileToBase64(courseFormData.thumbnailFile),
+                fileName: courseFormData.thumbnailFile.name,
+                fileType: courseFormData.thumbnailFile.type,
+                fileSize: courseFormData.thumbnailFile.size,
+                courseId,
+              },
+            })
+
+            if ('error' in result && result.error) {
+              toast.error(result.message || 'Failed to upload thumbnail')
+            }
+          } catch (error) {
+            console.error('Thumbnail upload error:', error)
+            toast.error('Failed to upload thumbnail')
+          }
+          setIsUploading(false)
+        }
+
+        toast.success('Course updated successfully!')
+        setShowEditCourseDialog(false)
+        setCourseFormData({
+          title: '',
+          description: '',
+          thumbnailUrl: null,
+          thumbnailFile: null,
+          isPublished: false,
+          teacher1Id: null,
+          teacher2Id: null,
+          orderIndex: 0,
+        })
+        await router.invalidate()
+      }
     },
   })
 
@@ -243,7 +280,7 @@ function CourseDetailComponent() {
     },
   })
 
-  const handleUpdateCourse = async () => {
+  const handleUpdateCourse = () => {
     if (!courseFormData.title) {
       toast.error('Title is required')
       return
@@ -258,33 +295,6 @@ function CourseDetailComponent() {
       }
     }
 
-    if (courseFormData.thumbnailFile) {
-      setIsUploading(true)
-      try {
-        const result = await uploadCourseThumbnailFn({
-          data: {
-            fileData: await fileToBase64(courseFormData.thumbnailFile),
-            fileName: courseFormData.thumbnailFile.name,
-            fileType: courseFormData.thumbnailFile.type,
-            fileSize: courseFormData.thumbnailFile.size,
-            courseId: course.id,
-          },
-        })
-
-        if ('error' in result && result.error) {
-          toast.error(result.message || 'Failed to upload thumbnail')
-          setIsUploading(false)
-          return
-        }
-      } catch (error) {
-        console.error('Thumbnail upload error:', error)
-        toast.error('Failed to upload thumbnail')
-        setIsUploading(false)
-        return
-      }
-      setIsUploading(false)
-    }
-
     updateCourseMutation.mutate({
       data: {
         courseId: course.id,
@@ -293,6 +303,8 @@ function CourseDetailComponent() {
         isPublished: courseFormData.isPublished,
         teacher1Id: courseFormData.teacher1Id || undefined,
         teacher2Id: courseFormData.teacher2Id || undefined,
+        thumbnailUrl: courseFormData.thumbnailUrl || undefined,
+        orderIndex: courseFormData.orderIndex,
       },
     })
   }
@@ -429,6 +441,7 @@ function CourseDetailComponent() {
                               isPublished: course.isPublished ?? false,
                               teacher1Id: course.teacher1Id,
                               teacher2Id: course.teacher2Id,
+                              orderIndex: course.orderIndex ?? 0,
                             })
                           setShowEditCourseDialog(true)
                         }}
@@ -799,6 +812,25 @@ function CourseDetailComponent() {
                 </Field>
               </>
             )}
+            <Field>
+              <FieldLabel htmlFor="course-orderIndex">Order Index</FieldLabel>
+              <Input
+                id="course-orderIndex"
+                type="number"
+                min="0"
+                placeholder="0"
+                value={courseFormData.orderIndex}
+                onChange={(e) =>
+                  setCourseFormData({
+                    ...courseFormData,
+                    orderIndex: parseInt(e.target.value) || 0,
+                  })
+                }
+              />
+              <p className="text-muted-foreground text-xs">
+                Lower numbers appear first in the course list
+              </p>
+            </Field>
             <Field>
               <FieldLabel>Course Thumbnail</FieldLabel>
               <div className="space-y-2">

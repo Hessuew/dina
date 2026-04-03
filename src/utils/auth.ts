@@ -74,7 +74,7 @@ export async function requireTeacher(userId: string): Promise<void> {
 
 /**
  * Check if a user is the teacher of a specific course
- * Checks both the legacy teacherId field and the course_teachers junction table
+ * Checks the course_teachers junction table
  * @param userId - The Supabase user ID (UUID)
  * @param courseId - The course ID to check
  */

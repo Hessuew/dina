@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, desc, eq, gt, inArray } from 'drizzle-orm'
+import { and, eq, gt, inArray } from 'drizzle-orm'
 import z from 'zod'
 import { db } from '@/db'
 import {
@@ -38,7 +38,7 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
             orderBy: (l, { asc }) => [asc(l.orderIndex)],
           },
         },
-        orderBy: [desc(courses.createdAt)],
+        orderBy: (c, { asc }) => [asc(c.orderIndex)],
       })
 
       return {
@@ -79,7 +79,6 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
 
     const allCourses = await db.query.courses.findMany({
       with: {
-        teacher: true,
         courseTeachers: {
           with: {
             teacher: true,
@@ -89,7 +88,7 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
           orderBy: (l, { asc }) => [asc(l.orderIndex)],
         },
       },
-      orderBy: [desc(courses.createdAt)],
+      orderBy: (c, { asc }) => [asc(c.orderIndex)],
     })
 
     const coursesWithProgress = await Promise.all(
@@ -256,9 +255,10 @@ export const createCourse = createServerFn({ method: 'POST' })
     z.object({
       title: z.string().min(1),
       description: z.string().min(1),
-      thumbnailUrl: z.string().url().optional(),
-      teacher1Id: z.string().uuid(),
-      teacher2Id: z.string().uuid(),
+      thumbnailUrl: z.url().optional(),
+      teacher1Id: z.uuid(),
+      teacher2Id: z.uuid(),
+      orderIndex: z.number().int().min(0).default(0),
     }),
   )
   .handler(async ({ data }) => {
@@ -296,15 +296,15 @@ export const createCourse = createServerFn({ method: 'POST' })
       throw new Error(`${teacher2?.fullName || 'Teacher 2'} is not a teacher`)
     }
 
-    // Create course with first teacher as legacy teacherId
+    // Create course
     const [course] = await db
       .insert(courses)
       .values({
         title: data.title,
         description: data.description,
         thumbnailUrl: data.thumbnailUrl || null,
-        teacherId: data.teacher1Id,
         isPublished: false,
+        orderIndex: data.orderIndex,
       })
       .returning()
 
@@ -333,6 +333,7 @@ export const updateCourse = createServerFn({ method: 'POST' })
       isPublished?: boolean
       teacher1Id?: string
       teacher2Id?: string
+      orderIndex?: number
     }) => d,
   )
   .handler(async ({ data }) => {
@@ -354,6 +355,7 @@ export const updateCourse = createServerFn({ method: 'POST' })
         description: data.description,
         thumbnailUrl: data.thumbnailUrl || null,
         isPublished: data.isPublished,
+        orderIndex: data.orderIndex,
         updatedAt: new Date(),
       })
       .where(eq(courses.id, data.courseId))
@@ -401,14 +403,6 @@ export const updateCourse = createServerFn({ method: 'POST' })
           teacherId: data.teacher2Id,
         },
       ])
-
-      // Update legacy teacherId field
-      await db
-        .update(courses)
-        .set({
-          teacherId: data.teacher1Id,
-        })
-        .where(eq(courses.id, data.courseId))
     }
 
     return { course }
@@ -650,15 +644,6 @@ export const updateCourseTeachers = createServerFn({ method: 'POST' })
         teacherId: data.teacher2Id,
       },
     ])
-
-    // Update legacy teacherId field
-    await db
-      .update(courses)
-      .set({
-        teacherId: data.teacher1Id,
-        updatedAt: new Date(),
-      })
-      .where(eq(courses.id, data.courseId))
 
     return { success: true }
   })
