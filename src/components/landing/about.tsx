@@ -61,24 +61,26 @@ export function LandingAboutSection() {
             'radial-gradient(circle at top left, rgba(197,160,89,0.15), transparent 28%), radial-gradient(circle at bottom right, rgba(127,154,180,0.14), transparent 26%)',
         }}
       />
-      <div className="absolute top-24 left-[8%] h-px w-20 bg-[#C5A059]/45 lg:w-28" />
       <div className="absolute right-[8%] bottom-24 h-px w-16 bg-white/12 lg:w-24" />
 
       <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-18 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,1.02fr)_minmax(22rem,0.98fr)] lg:gap-20">
           <div className="space-y-10">
             <div className="space-y-6">
-              <div className="inline-flex items-center gap-3 text-[0.72rem] font-medium tracking-[0.32em] text-[#D4B373] uppercase">
-                <span className="h-px w-10 bg-[#C5A059]/55" />
-                About DINA
+              <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+                <div className="h-px w-20 bg-[#C5A059]/50 lg:w-28" />
+                <div className="flex flex-row items-center gap-3">
+                  <span className="h-px w-10 bg-[#C5A059]/55" />
+                  About DINA
+                </div>
               </div>
 
               <h2 className="max-w-[12ch] font-serif text-[clamp(3rem,5vw,5.2rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
-                A Bible academy shaped for leaders, nations, and long obedience.
+                A Bible academy shaped for leaders, nations, and transformation.
               </h2>
 
               <p className="max-w-2xl text-base leading-8 font-light tracking-[0.04em] text-[#D2D8DF] sm:text-lg">
-                Disciples Institute for Nations Academy equips believers with
+                Disciplers Institute for Nations Academy equips believers with
                 biblical depth, disciplined character, and practical wisdom so
                 they can carry faithful influence into homes, churches,
                 communities, and nations.
