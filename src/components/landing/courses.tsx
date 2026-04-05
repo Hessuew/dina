@@ -17,78 +17,74 @@ const courseShowcaseItems: Array<CourseShowcaseItem> = [
     id: 'ground',
     number: '01',
     title: 'Ground',
-    eyebrow: 'House of truth',
+    eyebrow: 'The Mercy of God, Salvation & the Life of Jesus',
     description:
-      'Establish a life that is rooted in Scripture, identity in Christ, and disciplined obedience before anything else is built.',
-    lessons: [
-      'Authority of Scripture',
-      'Identity and repentance',
-      'Habits of hidden formation',
-    ],
+      "Before anything is built, the ground must be prepared. God's mercy, salvation, and Jesus' life on earth.",
+    lessons: ['The mercy of God', 'Salvation', 'The life of Jesus'],
   },
   {
     id: 'foundation',
     number: '02',
     title: 'Foundation',
-    eyebrow: 'Deep inner life',
+    eyebrow: 'The Foundation of the Believer',
     description:
-      'Recover the hidden sources that sustain long-term ministry: prayer, presence, purity of motive, and spiritual hunger.',
+      'Jesus came to turn people from sin to God. Faith (faithfulness) toward God. What it means to stand on Christ.',
     lessons: [
-      'Prayer that opens depth',
-      'Learning the presence of God',
-      'Drawing from living water',
+      'Build your life on Christ',
+      'From sin to God',
+      'Faith (faithfulness) toward God ',
     ],
   },
   {
     id: 'walls',
     number: '03',
     title: 'Walls',
-    eyebrow: 'Guarding the house',
+    eyebrow: 'The Death of Jesus',
     description:
-      'Build holy boundaries that preserve conviction, protect character, and keep the inner life from compromise.',
+      'How Jesus prepared his disciples for his death; how his life fulfilled OT prophecies. The cost and meaning of the cross.',
     lessons: [
-      'Holiness and separation',
-      'Guarding thought and desire',
-      'Discernment against mixture',
+      'The Death of Jesus',
+      'OT Prophecy Fulfilled',
+      'Preparing Disciples for the Cross',
     ],
   },
   {
     id: 'framing',
     number: '04',
     title: 'Framing',
-    eyebrow: 'Kingdom structure',
+    eyebrow: 'The Trinity — God, Jesus & the Holy Spirit',
     description:
-      'Give shape to calling through biblical order, leadership architecture, and a worldview strong enough to carry responsibility.',
+      'The characteristics & nature of God; the work and mission of Jesus; building intimacy with the Holy Spirit and the fruits of the Spirit.',
     lessons: [
-      'Biblical worldview and order',
-      'Leadership that carries weight',
-      'Alignment of life and mission',
+      'Nature of God',
+      'Work of Jesus',
+      'Intimacy with the Holy Spirit',
     ],
   },
   {
     id: 'interior',
     number: '05',
     title: 'Interior',
-    eyebrow: 'Covering and endurance',
+    eyebrow: "Peter's Encounter, Following & Transformation",
     description:
-      'Learn endurance, spiritual covering, and mature strength so what God builds in you can endure pressure and weather.',
+      'A personal case study in discipleship — from first encounter with Jesus to fully transformed character',
     lessons: [
-      'Perseverance under pressure',
-      'Honor, covering, and trust',
-      'Standing firm in adversity',
+      "Peter's Encounter",
+      'Following Jesus',
+      'Character Transformation',
     ],
   },
   {
     id: 'roof',
     number: '06',
     title: 'Roof',
-    eyebrow: 'Sent to the nations',
+    eyebrow: 'Living the Christian Life in the Modern World',
     description:
-      'Move from formation into mission with clarity, courage, and a Christ-centered vision for influence among people and nations.',
+      'Using biblical characters to show how believers live, understanding hardship, drawing out the nature of Jesus.',
     lessons: [
-      'Calling, assignment, and burden',
-      'Discipling culture and community',
-      'Being sent with authority',
+      'Living the Christian Life',
+      'Biblical Characters',
+      'Hardship & the Nature of Jesus',
     ],
   },
 ]
@@ -186,7 +182,7 @@ export function LandingCourseShowcase() {
                     className={`group flex items-center justify-between gap-4 border px-4 py-4 text-left transition-all ${
                       isActive
                         ? 'border-[#C5A059]/42 bg-white/8 shadow-[0_24px_44px_-34px_rgba(0,0,0,0.6)]'
-                        : 'border-white/10 bg-white/[0.03] hover:border-white/18 hover:bg-white/[0.05]'
+                        : 'border-white/10 bg-white/3 hover:border-white/18 hover:bg-white/5'
                     }`}
                   >
                     <div>
@@ -220,7 +216,7 @@ export function LandingCourseShowcase() {
               }}
             >
               <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_38%,rgba(197,160,89,0.14)_100%)]" />
-              <div className="relative flex min-h-[21rem] flex-col justify-between p-6 sm:p-8 lg:min-h-[25rem]">
+              <div className="relative flex min-h-84 flex-col justify-between p-6 sm:p-8 lg:min-h-100">
                 <div className="flex items-start justify-between gap-6">
                   <div>
                     <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
@@ -235,7 +231,7 @@ export function LandingCourseShowcase() {
                   </div>
                 </div>
 
-                <div className="max-w-[15rem] border border-white/12 bg-black/24 px-4 py-4 shadow-[0_24px_40px_-30px_rgba(0,0,0,0.55)] backdrop-blur-sm">
+                <div className="max-w-60 border border-white/12 bg-black/24 px-4 py-4 shadow-[0_24px_40px_-30px_rgba(0,0,0,0.55)] backdrop-blur-sm">
                   <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
                     Thumbnail
                   </div>

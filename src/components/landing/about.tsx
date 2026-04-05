@@ -1,5 +1,3 @@
-import { Link } from '@tanstack/react-router'
-import { ArrowRight } from 'lucide-react'
 import graniteBlueBackground from '@/assets/images/bg3_v1.png'
 
 type AboutPillar = {
@@ -95,7 +93,7 @@ export function LandingAboutSection() {
               {aboutPillars.map((pillar) => (
                 <div
                   key={pillar.label}
-                  className="border border-white/10 bg-white/[0.04] px-5 py-5 shadow-[0_24px_44px_-34px_rgba(0,0,0,0.55)] backdrop-blur-sm"
+                  className="border border-white/10 bg-white/4 px-5 py-5 shadow-[0_24px_44px_-34px_rgba(0,0,0,0.55)] backdrop-blur-sm"
                 >
                   <div className="text-[0.66rem] font-medium tracking-[0.28em] text-[#D4B373] uppercase">
                     {pillar.label}
@@ -105,17 +103,6 @@ export function LandingAboutSection() {
                   </p>
                 </div>
               ))}
-            </div>
-
-            <div className="pt-2">
-              <Link
-                to="/signup"
-                search={{ token: '' }}
-                className="inline-flex h-13 items-center justify-center gap-3 border border-[#C5A059]/45 bg-linear-to-b from-[#2A2A2A] to-[#111111] px-7 text-[0.74rem] font-medium tracking-[0.24em] text-[#E9D9B4] uppercase shadow-[0_28px_56px_-30px_rgba(0,0,0,0.72)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
-              >
-                Begin the journey
-                <ArrowRight className="h-4 w-4" />
-              </Link>
             </div>
           </div>
 
@@ -153,7 +140,7 @@ export function LandingAboutSection() {
             </div>
 
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
-              <div className="border border-white/10 bg-white/[0.04] px-4 py-4">
+              <div className="border border-white/10 bg-white/4 px-4 py-4">
                 <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
                   Emphasis
                 </div>
@@ -161,7 +148,7 @@ export function LandingAboutSection() {
                   Depth
                 </div>
               </div>
-              <div className="border border-white/10 bg-white/[0.04] px-4 py-4">
+              <div className="border border-white/10 bg-white/4 px-4 py-4">
                 <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
                   Posture
                 </div>
@@ -169,7 +156,7 @@ export function LandingAboutSection() {
                   Wisdom
                 </div>
               </div>
-              <div className="border border-white/10 bg-white/[0.04] px-4 py-4">
+              <div className="border border-white/10 bg-white/4 px-4 py-4">
                 <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
                   Horizon
                 </div>
