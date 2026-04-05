@@ -24,7 +24,7 @@ function LandingMark() {
 
 export function LandingPublicHeader() {
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6 lg:px-8">
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6 lg:px-6">
       <div className="mx-auto flex h-12 max-w-[calc(100%-2rem)] items-center justify-between sm:max-w-[calc(100%-4rem)] lg:max-w-full">
         <Link to="/" className="pointer-events-auto">
           <LandingMark />
@@ -101,8 +101,6 @@ export function LandingHeroEditorial({ onLearnMore }: LandingHeroProps) {
               </p>
 
               <p className="max-w-xl text-base leading-8 font-light tracking-[0.05em] text-[#4B443A] sm:text-lg">
-                {/* An elite, world-class Bible academy for global leaders—timeless,
-                authoritative, serene, and intellectually profound. */}
                 "Now when they saw the boldness of Peter and John, and perceived
                 that they were unlearned and ignorant men, they marvelled; and
                 they took knowledge of them, that they had been with Jesus."

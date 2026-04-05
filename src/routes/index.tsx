@@ -20,8 +20,8 @@ function Home() {
     <div className="min-h-screen">
       <LandingHeroEditorial onLearnMore={() => scrollToSection('about')} />
 
-      <LandingCourseShowcase />
       <LandingAboutSection />
+      <LandingCourseShowcase />
       <LandingTeacherSection />
       <LandingTestimonialsSection />
       <LandingMarksSection />
