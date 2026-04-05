@@ -81,6 +81,7 @@ export function LandingHeroEditorial({ onLearnMore }: LandingHeroProps) {
           <div className="max-w-xl space-y-11 text-left">
             <div className="space-y-6">
               <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+                {/* <div className="mb-1.5 h-px w-20 bg-[#C5A059]/50 lg:w-28" /> */}
                 <div className="h-px w-20 bg-[#C5A059]/50 lg:w-28" />
                 <div className="flex flex-row items-center gap-3">
                   <span className="h-px w-10 bg-[#C5A059]/55" />
@@ -100,8 +101,12 @@ export function LandingHeroEditorial({ onLearnMore }: LandingHeroProps) {
               </p>
 
               <p className="max-w-xl text-base leading-8 font-light tracking-[0.05em] text-[#4B443A] sm:text-lg">
-                An elite, world-class Bible academy for global leaders—timeless,
-                authoritative, serene, and intellectually profound.
+                {/* An elite, world-class Bible academy for global leaders—timeless,
+                authoritative, serene, and intellectually profound. */}
+                "Now when they saw the boldness of Peter and John, and perceived
+                that they were unlearned and ignorant men, they marvelled; and
+                they took knowledge of them, that they had been with Jesus."
+                Acts 4:13
               </p>
             </div>
 

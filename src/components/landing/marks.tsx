@@ -5,39 +5,63 @@ import marksBackground from '@/assets/images/bg6_v1.png'
 type MarkItem = {
   id: string
   title: string
+  quote: string
+  quote2?: string
   description: string
+  example: string
 }
 
 const marks: Array<MarkItem> = [
   {
     id: 'miracles',
     title: 'Miracles',
+    quote:
+      '"If I do not the works of my Father, believe me not. But if I do, though ye believe not me, believe the works." John 10:37–38.',
     description:
-      "We believe in the present-day power of God to heal, deliver, and transform lives through supernatural intervention. Miracles are not relics of the past but living expressions of Christ's authority today.",
+      'The gospel is confirmed by the works of Christ. In the church, miracles and gifts of the Spirit manifest; it is a buffet in the heavenly places.',
+    example:
+      "I had COVID-19 and was worn out. Juhani asked me to place my hand on the sickness, and I put it on my throat, which was on fire. Then he commanded the virus to die and my body to recover. Soon I sat up, which I could not do before, went to eat, started to clean, and finally said, “I'm surely healed.”",
   },
   {
     id: 'signs',
     title: 'Signs',
+    quote:
+      '"For as Jonas was a sign unto the Ninevites, so shall also the Son of man be to this generation." Luke 11:30',
     description:
-      'God confirms His word through signs that point beyond themselves to deeper realities. We teach students to recognize and steward the signs that authenticate the gospel and reveal the kingdom.',
+      'When the dove returned to Noah with a fresh olive leaf, it was a sign that the flood was ending. When the Holy Spirit is present, He brings fresh things from heaven as a sign of His activity.',
+    example:
+      '“The Holy Spirit is here, continue praying!” People continued praying. Two began to laugh uncontrollably, one man fell to the ground, and some cried. The scene settled after 15 minutes, and the man rose from the ground after 1.5 hours. God moved powerfully. We asked the man what happened to him, and he said, “God renewed my call.”',
   },
   {
     id: 'wonders',
     title: 'Wonders',
+    quote:
+      '"And immediately he arose, took up the bed, and went forth before them all; insomuch that they were all amazed, and glorified God, saying, We never saw it on this fashion." Mark 2:12',
     description:
-      'The awe-inspiring works of God that stir faith, provoke worship, and display His glory. We cultivate an expectation for the wonder-working power of the Holy Spirit in every sphere of ministry.',
+      'Wonders bring glory to God. Hallelujah! They make even doubters see that God is at work.',
+    example:
+      'While preaching, M started to shake under the power of God. “God, show more power!” M smashed to the ground, and the benches scattered. “Do you know God can put you over a country?” The power of God came upon M again, and she started to run like Elijah.',
   },
   {
     id: 'doctrine',
     title: 'Doctrine',
+    quote:
+      '"Jesus answered them, and said, My doctrine is not mine, but his that sent me. If any man will do his will, he shall know of the doctrine, whether it be of God, or whether I speak of myself." John 7:16-17',
     description:
-      'Sound doctrine is the anchor of formation. We hold to historic, biblical orthodoxy with clarity and conviction, refusing mixture while embracing the fullness of apostolic teaching.',
+      'Line-by-line doctrine, guided by the Holy Spirit, makes people strong. Genuine Bible study reveals mysteries.',
+    example:
+      'We have been studying the same verse in the Bible for two years, and we are still uncovering new insights. This is perhaps the fifth side journey we’ve taken along the way, yet each revelation has profoundly deepened and solidified our understanding.',
   },
   {
     id: 'revelation',
     title: 'Revelation',
-    description:
-      'The progressive unveiling of Christ through Scripture, the Spirit, and the community of faith. We train students to receive, test, and walk in the revelation that sustains mature discipleship.',
+    quote:
+      '"It is not expedient for me doubtless to glory. I will come to visions and revelations of the Lord." 2 Cor 12:1',
+    quote2:
+      '"But I certify you, brethren, that the gospel which was preached of me is not after man. For I neither received it of man, neither was I taught it, but by the revelation of Jesus Christ." Galatians 1:11-12',
+    description: '',
+    example:
+      "When a revelation comes from heaven, you will know it. Before that moment, it may seem dull, even if it is indeed the word and correct. But then, oh, it’s as if the heavens open, and you find yourself savoring oven-hot, fresh manna from heaven's bakery in the morning dew.",
   },
 ]
 
@@ -60,9 +84,9 @@ export function LandingMarksSection() {
   return (
     <section
       id="marks"
-      className="relative isolate overflow-hidden border-b border-[#C5A059]/14 text-[#F7F4EE]"
+      className="relative isolate min-h-screen overflow-hidden border-b border-[#C5A059]/14 text-[#F7F4EE]"
       style={{
-        backgroundImage: `linear-gradient(180deg, rgba(14,13,17,0.622), rgba(10,10,12,0.67)), url(${marksBackground})`,
+        backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${marksBackground})`,
         backgroundPosition: 'center',
         backgroundSize: 'cover',
       }}
@@ -79,18 +103,19 @@ export function LandingMarksSection() {
                 <div className="h-px w-20 bg-[#C5A059]/50 lg:w-28" />
                 <div className="flex flex-row items-center gap-3">
                   <span className="h-px w-10 bg-[#C5A059]/55" />
-                  Marks of Formation
+                  Presence of God
                 </div>
               </div>
 
               <h2 className="max-w-[14ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
-                Five convictions that shape everything.
+                Apostolic confirmations
               </h2>
 
               <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#D3CAC0] sm:text-lg">
-                These are not abstract ideas but lived realities that define the
-                DINA formation journey. Each mark is woven into our teaching,
-                worship, and community life.
+                "Ye men of Israel, hear these words; Jesus of Nazareth, a man
+                approved of God among you by miracles and wonders and signs,
+                which God did by him in the midst of you, as ye yourselves also
+                know" Acts 2:22
               </p>
             </div>
 
@@ -123,76 +148,74 @@ export function LandingMarksSection() {
                 </button>
               </div>
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              {marks.map((mark, index) => {
-                const isActive = index === activeIndex
-
-                return (
-                  <button
-                    key={mark.id}
-                    type="button"
-                    onClick={() => setActiveIndex(index)}
-                    className={`group flex items-start gap-3 border px-4 py-4 text-left transition-all ${
-                      isActive
-                        ? 'border-[#C5A059]/42 bg-white/8 shadow-[0_24px_44px_-34px_rgba(0,0,0,0.6)]'
-                        : 'border-white/10 bg-white/3 hover:border-white/18 hover:bg-white/5'
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="font-serif text-xl text-[#F8F4EC]">
-                        {mark.title}
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
           </div>
 
           <div
             key={activeMark.id}
-            className="relative flex min-h-112 flex-col justify-center space-y-8 border border-white/10 bg-[#151311]/70 px-6 py-10 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.84)] backdrop-blur-sm sm:px-10 sm:py-12 lg:min-h-128"
+            className="relative border border-white/10 bg-[#171717]/72 p-4 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:p-6"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.08),transparent_32%)]" />
-
-            <div className="relative space-y-8">
-              <div
-                className="animate-[fadeInSlideUp_0.7s_ease-out_forwards] opacity-0"
-                style={{ animationDelay: '0.1s' }}
-              >
-                <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
-                  Mark {activeIndex + 1} of {marks.length}
+            <div
+              className="relative overflow-hidden border border-white/10"
+              style={{
+                backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.26), rgba(7,7,8,0.72)), url(${marksBackground})`,
+                backgroundPosition: 'center',
+                backgroundSize: 'cover',
+              }}
+            >
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_38%,rgba(197,160,89,0.14)_100%)]" />
+              <div className="relative min-h-84 space-y-8 p-6 sm:p-8 lg:h-100">
+                <div>
+                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                    Mark {activeIndex + 1} of {marks.length}
+                  </div>
+                  <div
+                    className="animate-[fadeInSlideRight_0.7s_ease-out_forwards] opacity-0"
+                    style={{ animationDelay: '0.1s' }}
+                  >
+                    <h3 className="mt-3 max-w-[12ch] font-serif text-[clamp(2.4rem,4vw,4rem)] leading-[0.94] tracking-[-0.045em] text-white">
+                      {activeMark.title}
+                    </h3>
+                  </div>
                 </div>
-                <h3 className="mt-3 max-w-[10ch] font-serif text-[clamp(3.2rem,5vw,5.5rem)] leading-[0.9] tracking-[-0.055em] text-white">
-                  {activeMark.title}
-                </h3>
-              </div>
 
-              <div
-                className="animate-[fadeInSlideUp_0.7s_ease-out_forwards] opacity-0"
-                style={{ animationDelay: '0.4s' }}
-              >
-                <p className="max-w-2xl text-base leading-8 text-[#D8D0C7] sm:text-lg">
+                <p
+                  className="mt-4 max-w-2xl animate-[fadeInSlideRight_0.7s_ease-out_forwards] text-base leading-8 text-[#D6CCBE] opacity-0 sm:text-lg"
+                  style={{ animationDelay: '0.3s' }}
+                >
+                  {activeMark.quote}
+                </p>
+                {activeMark.quote2 && (
+                  <p
+                    className="mt-4 max-w-2xl animate-[fadeInSlideRight_0.7s_ease-out_forwards] text-base leading-8 text-[#D6CCBE] opacity-0 sm:text-lg"
+                    style={{ animationDelay: '0.3s' }}
+                  >
+                    {activeMark.quote2}
+                  </p>
+                )}
+
+                <p
+                  className="mt-4 max-w-2xl animate-[fadeInSlideRight_0.7s_ease-out_forwards] text-base leading-8 text-[#D6CCBE] opacity-0 sm:text-lg"
+                  style={{ animationDelay: '0.3s' }}
+                >
                   {activeMark.description}
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {marks.map((mark, index) => (
-                <button
-                  key={`indicator-${mark.id}`}
-                  type="button"
-                  onClick={() => setActiveIndex(index)}
-                  aria-label={`Show ${mark.title}`}
-                  className={`h-1.5 transition-all duration-500 ease-out ${
-                    index === activeIndex
-                      ? 'w-10 bg-white'
-                      : 'w-5 bg-white/18 hover:bg-[#C5A059]/44'
-                  }`}
-                />
-              ))}
+            <div className="border-x border-b border-white/10 bg-[#151515]/88 px-6 py-7 sm:px-8 sm:py-8">
+              {activeMark.example && (
+                <div
+                  className="animate-[fadeInSlideRight_0.7s_ease-out_forwards] opacity-0"
+                  style={{ animationDelay: '0.5s' }}
+                >
+                  <div className="mt-6 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                    Testimony
+                  </div>
+                  <p className="mt-4 max-w-2xl text-base leading-8 text-[#D6CCBE] italic sm:text-lg">
+                    {activeMark.example}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
