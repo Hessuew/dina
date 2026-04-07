@@ -1,5 +1,4 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowRight } from 'lucide-react'
 import marbleTexture from '@/assets/images/bg.jpg'
 import heroEmblem from '@/assets/images/DINA_v3-Photoroom.png'
 
@@ -106,17 +105,6 @@ export function LandingHeroEditorial({ onLearnMore }: LandingHeroProps) {
                 they took knowledge of them, that they had been with Jesus."
                 Acts 4:13
               </p>
-            </div>
-
-            <div className="pt-2">
-              <Link
-                to="/signup"
-                search={{ token: '' }}
-                className="group inline-flex h-14 items-center justify-center gap-3 border border-[#C5A059]/55 bg-linear-to-b from-[#2A2A2A] to-[#111111] px-8 font-serif text-base tracking-[0.12em] text-[#E9D9B4] shadow-[0_28px_60px_-28px_rgba(0,0,0,0.7)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
-              >
-                Enrollment
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </Link>
             </div>
           </div>
 

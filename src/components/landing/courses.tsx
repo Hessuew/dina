@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from '@tanstack/react-router'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import graphiteBackground from '@/assets/images/bg2_v1.png'
 
@@ -284,14 +283,7 @@ export function LandingCourseShowcase() {
                 Move through the six-course journey with the next and previous
                 controls or select any course directly.
               </div>
-              <Link
-                to="/signup"
-                search={{ token: '' }}
-                className="inline-flex h-12 items-center justify-center gap-3 border border-[#C5A059]/40 bg-linear-to-b from-[#2A2A2A] to-[#111111] px-6 text-[0.74rem] font-medium tracking-[0.24em] text-[#E9D9B4] uppercase shadow-[0_26px_50px_-30px_rgba(0,0,0,0.7)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
-              >
-                Explore enrollment
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              <div className="w-1/2" />
             </div>
           </div>
         </div>
