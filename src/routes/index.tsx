@@ -5,6 +5,7 @@ import { LandingHeroEditorial } from '@/components/landing/hero'
 import { LandingMarksSection } from '@/components/landing/marks'
 import { LandingTeacherSection } from '@/components/landing/teachers'
 import { LandingTestimonialsSection } from '@/components/landing/testimonials'
+import { LandingQASection } from '@/components/landing/qa'
 import { LandingFooter } from '@/components/landing/footer'
 
 export const Route = createFileRoute('/')({
@@ -26,6 +27,7 @@ function Home() {
       <LandingTeacherSection />
       <LandingTestimonialsSection />
       <LandingMarksSection />
+      <LandingQASection />
 
       <LandingFooter />
     </div>
