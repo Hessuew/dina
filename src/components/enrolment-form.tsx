@@ -61,12 +61,12 @@ export function EnrolmentForm() {
                 <div className="h-px w-20 bg-[#C5A059]/50 lg:w-28" />
                 <div className="flex flex-row items-center gap-3">
                   <span className="h-px w-10 bg-[#C5A059]/55" />
-                  {submitted ? 'Application received' : 'Apply for enrolment'}
+                  Enrolment 2027
                 </div>
               </div>
 
               <h1 className="max-w-[12ch] font-serif text-[clamp(3rem,5vw,5.2rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
-                Enrolment 2027
+                Apply for enrolment
               </h1>
 
               <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#CFC6B7] sm:text-lg">

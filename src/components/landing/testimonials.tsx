@@ -278,9 +278,9 @@ export function LandingTestimonialsSection() {
                         <div className="mt-2 font-serif text-[1.3rem] text-white">
                           {item.name}
                         </div>
-                        <div className="mt-1 text-sm leading-6 text-[#D8D0C7]">
+                        {/* <div className="mt-1 text-sm leading-6 text-[#D8D0C7]">
                           {item.role}
-                        </div>
+                        </div> */}
                       </div>
                     </div>
                   </button>

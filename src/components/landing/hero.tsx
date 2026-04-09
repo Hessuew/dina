@@ -103,7 +103,10 @@ export function LandingHeroEditorial({ onLearnMore }: LandingHeroProps) {
                 "Now when they saw the boldness of Peter and John, and perceived
                 that they were unlearned and ignorant men, they marvelled; and
                 they took knowledge of them, that they had been with Jesus."
-                Acts 4:13
+                <br />
+                <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
+                  Acts 4:13
+                </span>
               </p>
             </div>
           </div>
