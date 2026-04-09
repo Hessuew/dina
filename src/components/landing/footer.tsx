@@ -31,8 +31,7 @@ export function LandingFooter() {
                   Enrollment Open for 2027
                 </div>
                 <Link
-                  to="/signup"
-                  search={{ token: '' }}
+                  to="/enrolment"
                   className="group inline-flex h-14 items-center justify-center gap-3 border border-[#C5A059]/55 bg-linear-to-b from-[#2A2A2A] to-[#111111] px-8 font-serif text-base tracking-[0.12em] text-[#E9D9B4] shadow-[0_28px_60px_-28px_rgba(0,0,0,0.7)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
                 >
                   Apply Now
