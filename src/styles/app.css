@@ -184,13 +184,13 @@
   }
 }
 
-  @keyframes fadeInSlideUp {
+  @keyframes fadeInSlideRight {
     from {
       opacity: 0;
-      transform: translateY(1.5rem);
+      transform: translateX(2rem);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateX(0);
     }
   }
