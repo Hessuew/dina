@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { LandingAboutSection } from '@/components/landing/about'
 import { LandingCourseShowcase } from '@/components/landing/courses'
 import { LandingHeroEditorial } from '@/components/landing/hero'
+import { LandingMarksSection } from '@/components/landing/marks'
 import { LandingTeacherSection } from '@/components/landing/teachers'
 import { LandingTestimonialsSection } from '@/components/landing/testimonials'
 
@@ -23,6 +24,7 @@ function Home() {
       <LandingAboutSection />
       <LandingTeacherSection />
       <LandingTestimonialsSection />
+      <LandingMarksSection />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <section id="faq" className="py-16">
