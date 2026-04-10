@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
-import facultyBackground from '@/assets/images/bg7.png'
+import facultyBackground from '@/assets/images/bg1d.png'
 
 type Lecturer = {
   name: string
@@ -13,7 +13,6 @@ type LecturerPair = {
   number: string
   course: string
   theme: string
-  summary: string
   lecturers: [Lecturer, Lecturer]
 }
 
@@ -23,17 +22,15 @@ const lecturerPairs: Array<LecturerPair> = [
     number: '01',
     course: 'The Mercy of God, Salvation & the Life of Jesus',
     theme: 'Ground',
-    summary:
-      'A paired teaching rhythm that grounds students in Scripture, identity, and the theological weight of discipleship.',
     lecturers: [
       {
-        name: 'Lecturer One',
-        title: 'Senior Lecturer in Biblical Foundations',
+        name: 'Andrew A.',
+        title: '',
         bio: 'Guides students into biblical clarity, disciplined reading, and a Christ-centered understanding of truth.',
       },
       {
-        name: 'Lecturer Two',
-        title: 'Lecturer in Spiritual Formation',
+        name: 'Ella',
+        title: '',
         bio: 'Focuses on inner life, repentance, and practices that shape hidden faithfulness over time.',
       },
     ],
@@ -43,17 +40,15 @@ const lecturerPairs: Array<LecturerPair> = [
     number: '02',
     course: 'The Foundation of the Believer',
     theme: 'Foundation',
-    summary:
-      'A teaching pair devoted to prayer, intimacy with God, and the cultivation of a deep inner life that sustains leadership.',
     lecturers: [
       {
-        name: 'Lecturer Three',
-        title: 'Lecturer in Prayer and Devotion',
+        name: 'Juhani J.',
+        title: '',
         bio: 'Teaches students how to build rhythms of prayer that produce depth, attentiveness, and endurance.',
       },
       {
-        name: 'Lecturer Four',
-        title: 'Lecturer in Presence and Worship',
+        name: 'Akosua O.',
+        title: '',
         bio: 'Leads formation around reverence, worship, and the practice of remaining near to the presence of God.',
       },
     ],
@@ -63,17 +58,15 @@ const lecturerPairs: Array<LecturerPair> = [
     number: '03',
     course: 'The Death of Jesus',
     theme: 'Walls',
-    summary:
-      'A formation-centered pair shaping conviction, holiness, discernment, and the moral architecture of trustworthy leaders.',
     lecturers: [
       {
-        name: 'Lecturer Five',
-        title: 'Lecturer in Character Formation',
+        name: 'Emmanuel E.',
+        title: '',
         bio: 'Strengthens integrity, maturity, and resilience so leadership is carried with credibility and weight.',
       },
       {
-        name: 'Lecturer Six',
-        title: 'Lecturer in Holiness and Discernment',
+        name: 'Ezinne',
+        title: '',
         bio: 'Equips students to guard desire, reject mixture, and live with holy clarity in complex times.',
       },
     ],
@@ -83,17 +76,15 @@ const lecturerPairs: Array<LecturerPair> = [
     number: '04',
     course: 'The Trinity — God, Jesus & the Holy Spirit',
     theme: 'Framing',
-    summary:
-      'A structured teaching duo shaping students in biblical order, leadership design, and the stewardship of responsibility.',
     lecturers: [
       {
-        name: 'Lecturer Seven',
-        title: 'Lecturer in Kingdom Leadership',
+        name: 'Sade',
+        title: '',
         bio: 'Forms leaders who can carry responsibility with wisdom, courage, and servant-hearted authority.',
       },
       {
-        name: 'Lecturer Eight',
-        title: 'Lecturer in Biblical Order',
+        name: 'Blessing',
+        title: '',
         bio: 'Clarifies patterns of alignment, governance, and structure that help callings mature into lasting work.',
       },
     ],
@@ -103,17 +94,15 @@ const lecturerPairs: Array<LecturerPair> = [
     number: '05',
     course: "Peter's Encounter, Following & Transformation",
     theme: 'Interior',
-    summary:
-      'A missional pair preparing students to disciple communities, read culture wisely, and influence nations with conviction.',
     lecturers: [
       {
-        name: 'Lecturer Nine',
-        title: 'Lecturer in Mission and Public Witness',
+        name: 'Kene',
+        title: '',
         bio: 'Develops a theology of witness that helps students carry Christ faithfully into public life and society.',
       },
       {
-        name: 'Lecturer Ten',
-        title: 'Lecturer in Culture and Discipleship',
+        name: 'Mahidere A.',
+        title: '',
         bio: 'Explores how biblical formation can shape families, churches, and wider communities with wisdom.',
       },
     ],
@@ -123,17 +112,15 @@ const lecturerPairs: Array<LecturerPair> = [
     number: '06',
     course: 'Living the Christian Life in the Modern World',
     theme: 'Roof',
-    summary:
-      'A final pair focused on perseverance, spiritual covering, and the courage required to be sent with mature authority.',
     lecturers: [
       {
-        name: 'Lecturer Eleven',
-        title: 'Lecturer in Endurance and Covering',
+        name: 'Obi',
+        title: '',
         bio: 'Teaches perseverance under pressure and the strength that grows through faithful submission and trust.',
       },
       {
-        name: 'Lecturer Twelve',
-        title: 'Lecturer in Commission and Influence',
+        name: 'Ugo',
+        title: '',
         bio: 'Helps students discern calling, embrace assignment, and move toward the nations with clarity and boldness.',
       },
     ],
@@ -161,7 +148,7 @@ export function LandingTeacherSection() {
       id="teachers"
       className="relative isolate overflow-hidden border-b border-[#1A1A1A]/10 text-[#1C1815]"
       style={{
-        backgroundImage: `url(${facultyBackground})`,
+        backgroundImage: `linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url(${facultyBackground})`,
         backgroundPosition: 'center',
         backgroundSize: 'cover',
       }}
@@ -173,22 +160,26 @@ export function LandingTeacherSection() {
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.82fr)_minmax(24rem,1.18fr)] lg:gap-20">
           <div className="space-y-10">
             <div className="space-y-6">
-              <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#6e562d] uppercase">
-                <div className="h-px w-20 bg-[#6e562d]/50 lg:w-28" />
+              <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+                <div className="h-px w-20 bg-[#9B7A41]/50 lg:w-28" />
                 <div className="flex flex-row items-center gap-3">
-                  <span className="h-px w-10 bg-[#6e562d]/55" />
+                  <span className="h-px w-10 bg-[#9B7A41]/55" />
                   Teaching Faculty
                 </div>
               </div>
 
-              <h2 className="max-w-[11ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] text-[#1C1815]">
-                Six lecturer pairs, moving in harmony.
+              <h2 className="block max-w-[14ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] whitespace-nowrap text-[#1C1815]">
+                Six lecturer pairs
               </h2>
 
               <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#4E463D] sm:text-lg">
-                Each part of the curriculum is carried by a teaching pair,
-                bringing complementary strengths, clear doctrine, and pastoral
-                depth to the formation journey.
+                "As they ministered to the Lord, and fasted, the Holy Ghost
+                said, Separate me Barnabas and Saul for the work whereunto I
+                have called them." Acts 13:2
+                <br />
+                <br />
+                "After these things the Lord appointed other seventy also, and
+                sent them two and two before his face." Luke 10:1
               </p>
             </div>
 
@@ -233,15 +224,23 @@ export function LandingTeacherSection() {
                     onClick={() => setActiveIndex(index)}
                     className={`group flex items-center justify-between gap-4 border px-4 py-4 text-left transition-all ${
                       isActive
-                        ? 'border-[#C5A059]/42 bg-white/80 shadow-[0_24px_44px_-34px_rgba(0,0,0,0.24)]'
-                        : 'border-[#1A1A1A]/10 bg-white/50 hover:border-[#1A1A1A]/18 hover:bg-white/60'
+                        ? 'border-[#C5A059]/42 bg-[#1A1716] shadow-[0_24px_44px_-34px_rgba(0,0,0,0.6)]'
+                        : 'border-[#1A1A1A]/10 bg-[#1A1716]/80 hover:border-[#C5A059]/30 hover:bg-[#1A1716]/90'
                     }`}
                   >
                     <div>
-                      <div className="text-[0.65rem] font-medium tracking-[0.28em] text-[#8A7B68] uppercase">
+                      <div
+                        className={`text-[0.65rem] font-medium tracking-[0.28em] uppercase ${
+                          isActive ? 'text-[#D4B373]' : 'text-[#8A7B68]'
+                        }`}
+                      >
                         {pair.number}
                       </div>
-                      <div className="mt-2 font-serif text-xl text-[#1C1815]">
+                      <div
+                        className={`mt-2 font-serif text-xl ${
+                          isActive ? 'text-[#F8F4EC]' : 'text-[#F8F4EC]/70'
+                        }`}
+                      >
                         {pair.theme}
                       </div>
                     </div>
@@ -258,78 +257,78 @@ export function LandingTeacherSection() {
             </div>
           </div>
 
-          <div className="relative border border-[#1A1A1A]/10 bg-white/54 p-4 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.24)] backdrop-blur-sm sm:p-6">
+          <div className="relative border border-white/10 bg-[#171717]/72 p-4 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:p-6">
             <div
-              className="border border-[#1A1A1A]/10 px-6 py-7 sm:px-8 sm:py-8"
+              className="relative overflow-hidden border border-white/10"
               style={{
-                backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.72), rgba(250,247,241,0.82)), url(${facultyBackground})`,
+                backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.26), rgba(7,7,8,0.72)), url(${facultyBackground})`,
                 backgroundPosition: 'center',
                 backgroundSize: 'cover',
               }}
             >
-              <div className="flex items-start justify-between gap-6 lg:min-h-48">
-                <div>
-                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-                    Pair theme
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_38%,rgba(197,160,89,0.14)_100%)]" />
+              <div className="relative flex min-h-84 flex-col justify-between p-6 sm:p-8 lg:min-h-100">
+                <div className="flex items-start justify-between gap-6">
+                  <div>
+                    <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+                      Pair {activePair.number}
+                    </div>
+                    <div className="mt-3 max-w-[14ch] font-serif text-[clamp(2.4rem,4vw,4rem)] leading-[0.94] tracking-[-0.045em] text-white">
+                      {activePair.course}
+                    </div>
                   </div>
-                  <div className="mt-3 max-w-[14ch] font-serif text-[clamp(2.4rem,4vw,4rem)] leading-[0.94] tracking-[-0.045em] text-[#1C1815]">
-                    {activePair.course}
+                  <div className="border border-white/12 bg-black/18 px-4 py-3 text-[0.9rem] font-medium tracking-[0.26em] text-[#E9D9B4] uppercase">
+                    {activePair.number}
                   </div>
                 </div>
-                <div className="border border-[#1A1A1A]/12 bg-white/38 px-4 py-3 text-[0.9rem] font-medium tracking-[0.26em] text-[#9B7A41] uppercase">
-                  {activePair.number}
+
+                <div className="max-w-60 border border-white/12 bg-black/24 px-4 py-4 shadow-[0_24px_40px_-30px_rgba(0,0,0,0.55)] backdrop-blur-sm">
+                  <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
+                    Theme
+                  </div>
+                  <div className="mt-2 font-serif text-xl leading-tight text-[#F8F4EC]">
+                    {activePair.theme}
+                  </div>
                 </div>
               </div>
-
-              <p className="mt-6 max-w-2xl text-base leading-8 text-[#4E463D] sm:text-lg">
-                {activePair.summary}
-              </p>
             </div>
 
-            <div className="grid gap-5 border-x border-b border-[#1A1A1A]/10 bg-white/68 px-6 py-7 sm:px-8 sm:py-8 lg:min-h-100 lg:grid-cols-2">
+            <div className="grid gap-5 border-x border-b border-white/10 bg-[#151515]/88 px-6 py-7 sm:px-8 sm:py-8 lg:grid-cols-2">
               {activePair.lecturers.map((lecturer, index) => (
                 <div
                   key={`${activePair.id}-${lecturer.name}`}
-                  className="border border-[#1A1A1A]/10 bg-white/54 p-4 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.18)]"
+                  className="min-h-88 border border-white/10 bg-white/3 p-5 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.4)]"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex h-22 w-20 shrink-0 items-center justify-center border border-[#C5A059]/22 bg-linear-to-b from-white/68 to-white/42 text-center">
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-black/24 text-center backdrop-blur-sm">
                       <div>
-                        <div className="text-[0.6rem] font-medium tracking-[0.26em] text-[#8A7B68] uppercase">
+                        <div className="text-[0.58rem] font-medium tracking-[0.24em] text-[#9B8A73] uppercase">
                           Image
                         </div>
-                        <div className="mt-2 text-[0.58rem] tracking-[0.18em] text-[#6B5F52] uppercase">
-                          Coming later
+                        <div className="mt-1.5 text-[0.56rem] tracking-[0.16em] text-[#8E816D] uppercase">
+                          Soon
                         </div>
                       </div>
                     </div>
 
                     <div className="min-w-0">
-                      <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#9B7A41] uppercase">
+                      <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#D4B373] uppercase">
                         Lecturer {index + 1}
                       </div>
-                      <div className="mt-2 font-serif text-[1.45rem] leading-tight text-[#1C1815]">
+                      <div className="mt-2 font-serif text-[1.45rem] leading-tight text-[#F8F4EC]">
                         {lecturer.name}
                       </div>
-                      <div className="mt-2 text-sm leading-6 text-[#544C42]">
+                      <div className="mt-2 text-sm leading-6 text-[#C9C0B6]">
                         {lecturer.title}
                       </div>
                     </div>
                   </div>
 
-                  <p className="mt-5 text-sm leading-7 text-[#5E5549] sm:text-[0.96rem]">
+                  <p className="mt-5 text-sm leading-7 text-[#D8D0C7] sm:text-[0.96rem]">
                     {lecturer.bio}
                   </p>
                 </div>
               ))}
-            </div>
-
-            <div className="mt-6 flex flex-col gap-5 border-t border-[#1A1A1A]/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm leading-7 text-[#6B5F52]">
-                Navigate through six teaching pairs now, then replace the image
-                placeholders with lecturer portraits later.
-              </div>
-              <div className="w-48" />
             </div>
           </div>
         </div>

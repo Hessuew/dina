@@ -80,78 +80,84 @@ const testimonials: Array<TestimonialItem> = [
     name: 'Kene',
     role: 'Pastor, -',
     quote:
-      'The mission framework was expansive without becoming abstract. I began to see culture, family, and community as places where Christ can truly reign.',
-    theme: 'Interior',
+      'The teaching on worship recentered my entire posture before God. I now approach ministry from a place of adoration, not just duty.',
+    theme: 'Covering',
   },
   {
-    id: 'mahidere-a',
+    id: 'mahi',
     name: 'Mahidere A.',
     role: 'Pastor, -',
     quote:
-      'I came in with zeal but little structure. I left with conviction, perspective, and a clearer sense of how to serve my city faithfully.',
-    theme: 'Interior',
+      "I learned that spiritual authority is not about control; it is about carrying the weight of God's purposes with humility and strength.",
+    theme: 'Covering',
   },
   {
     id: 'obi',
     name: 'Obi',
     role: 'Pastor, -',
     quote:
-      'This teaching gave me endurance for the long road. It taught me how to stand steady under pressure without losing tenderness or faith.',
-    theme: 'Roof',
+      'The formation journey taught me that maturity is not measured by gifting but by how deeply Christ has shaped my character.',
+    theme: 'Rooftop',
   },
   {
     id: 'ugo',
     name: 'Ugo',
     role: 'Pastor, -',
     quote:
-      'The final formation was not about ambition but faithfulness. I now feel sent with greater humility, clarity, and Christ-centered courage.',
-    theme: 'Roof',
+      'DINA gave me a vision for discipleship that is both tender and uncompromising. I now lead with more clarity and far more love.',
+    theme: 'Rooftop',
   },
 ]
 
-function getRelativeOffset(activeIndex: number, index: number): number {
-  const forwardDistance =
-    (index - activeIndex + testimonials.length) % testimonials.length
-  const backwardDistance = forwardDistance - testimonials.length
+function getRelativeOffset(activeIndex: number, itemIndex: number): number {
+  const totalItems = testimonials.length
+  let offset = itemIndex - activeIndex
 
-  return Math.abs(forwardDistance) <= Math.abs(backwardDistance)
-    ? forwardDistance
-    : backwardDistance
+  if (offset > totalItems / 2) {
+    offset -= totalItems
+  } else if (offset < -totalItems / 2) {
+    offset += totalItems
+  }
+
+  return offset
 }
 
 function getCardMotionStyle(offset: number) {
-  if (offset === 0) {
+  const absOffset = Math.abs(offset)
+  const direction = offset > 0 ? 1 : -1
+
+  if (absOffset === 0) {
     return {
+      transform: 'translateX(-50%) translateY(0) scale(1)',
       opacity: 1,
       zIndex: 30,
       filter: 'blur(0px)',
-      transform: 'translate3d(-50%, 0, 0) scale(1)',
     }
   }
 
-  if (Math.abs(offset) === 1) {
+  if (absOffset === 1) {
     return {
-      opacity: 0.58,
+      transform: `translateX(calc(-50% + ${direction * 62}%)) translateY(4%) scale(0.92)`,
+      opacity: 0.72,
       zIndex: 20,
-      filter: 'blur(0px)',
-      transform: `translate3d(calc(-50% + ${offset * 23}rem), 0, 0) scale(0.84)`,
+      filter: 'blur(0.5px)',
     }
   }
 
-  if (Math.abs(offset) === 2) {
+  if (absOffset === 2) {
     return {
-      opacity: 0.22,
+      transform: `translateX(calc(-50% + ${direction * 88}%)) translateY(6%) scale(0.84)`,
+      opacity: 0.32,
       zIndex: 10,
       filter: 'blur(1.5px)',
-      transform: `translate3d(calc(-50% + ${offset * 38}rem), 0, 0) scale(0.72)`,
     }
   }
 
   return {
+    transform: `translateX(calc(-50% + ${direction * 100}%)) translateY(8%) scale(0.76)`,
     opacity: 0,
     zIndex: 0,
-    filter: 'blur(6px)',
-    transform: `translate3d(calc(-50% + ${offset < 0 ? -48 : 48}rem), 0, 0) scale(0.68)`,
+    filter: 'blur(3px)',
   }
 }
 
@@ -180,48 +186,51 @@ export function LandingTestimonialsSection() {
         backgroundSize: 'cover',
       }}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.14),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.06),transparent_22%)]" />
-      <div className="absolute right-[8%] bottom-24 h-px w-16 bg-white/12 lg:w-24" />
+      {/* <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `url(${testimonialBackground})`,
+          backgroundPosition: 'center',
+          backgroundSize: 'cover',
+        }}
+      />
+      <div className="absolute inset-0 bg-linear-to-b from-[#0A0807] via-[#0C0A09]/95 to-[#0A0807]" />
+      <div className="absolute inset-0 bg-linear-to-b from-[#0A0807] via-[#0C0A09]/5 to-[#0A0807]" />
 
-      <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-18 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24">
-        <div className="space-y-14">
-          <div className="grid items-end gap-10 lg:grid-cols-[minmax(0,1fr)_auto]">
-            <div className="space-y-6">
-              <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-                <div className="h-px w-20 bg-[#C5A059]/50 lg:w-28" />
-                <div className="flex flex-row items-center gap-3">
-                  <span className="h-px w-10 bg-[#C5A059]/55" />
-                  Testimonies of formation
-                </div>
-              </div>
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(26,23,22,0.88),transparent_28%,rgba(10,8,7,0.92)_100%)]" /> */}
 
-              <h2 className="max-w-[12ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
-                Voices shaped by
-                <span className="block sm:whitespace-nowrap">
-                  faithful discipleship.
-                </span>
-              </h2>
-
-              <p className="max-w-2xl text-base leading-8 font-light tracking-[0.04em] text-[#D3CAC0] sm:text-lg">
-                Twelve testimonies from people formed under these lecturers,
-                each reflecting the depth, gentleness, and authority of the DINA
-                journey.
-              </p>
+      <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-18 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-28">
+        <div className="space-y-16">
+          <div className="mx-auto max-w-3xl space-y-8 text-center">
+            <div className="inline-flex flex-col items-center gap-3 text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+              <div className="h-px w-16 bg-[#C5A059]/50" />
+              Formation of pillars
             </div>
 
-            <div className="flex items-center gap-3 justify-self-start lg:justify-self-end">
+            <h2 className="font-serif text-[clamp(3.2rem,6vw,5.5rem)] leading-[0.9] tracking-[-0.055em] text-white">
+              Discipleship experiences
+            </h2>
+
+            <blockquote className="text-[0.6rem] font-medium tracking-[0.3em] text-[#D4B373] italic">
+              "And when James, Cephas, and John, who seemed to be pillars"
+            </blockquote>
+
+            <div className="flex items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={goToPrevious}
-                className="inline-flex h-12 w-12 items-center justify-center border border-white/12 bg-white/6 text-[#F8F4EC] transition-all duration-500 ease-out hover:-translate-y-0.5 hover:border-[#C5A059]/50 hover:bg-white/10"
+                className="inline-flex h-11 w-11 items-center justify-center border border-white/12 bg-white/6 text-[#F8F4EC] transition-all duration-500 ease-out hover:border-[#C5A059]/50 hover:bg-white/10"
                 aria-label="Show previous testimony"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
+              <div className="text-sm font-medium tracking-[0.2em] text-[#9B8A73] uppercase">
+                {activeIndex + 1} / {testimonials.length}
+              </div>
               <button
                 type="button"
                 onClick={goToNext}
-                className="inline-flex h-12 w-12 items-center justify-center border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_26px_40px_-28px_rgba(0,0,0,0.4)] transition-all duration-500 ease-out hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
+                className="inline-flex h-11 w-11 items-center justify-center border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_26px_40px_-28px_rgba(0,0,0,0.4)] transition-all duration-500 ease-out hover:border-[#D6B16E] hover:text-white"
                 aria-label="Show next testimony"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -230,7 +239,7 @@ export function LandingTestimonialsSection() {
           </div>
 
           <div className="space-y-8">
-            <div className="relative h-104 overflow-hidden sm:h-108 lg:h-112">
+            <div className="relative h-104 overflow-hidden sm:h-108 lg:h-116">
               {testimonials.map((item, index) => {
                 const offset = getRelativeOffset(activeIndex, index)
                 const isFocused = offset === 0
@@ -243,44 +252,34 @@ export function LandingTestimonialsSection() {
                     onClick={() => setActiveIndex(index)}
                     aria-hidden={!isVisible}
                     tabIndex={isVisible ? 0 : -1}
-                    className={`absolute top-0 left-1/2 flex h-full w-76 flex-col justify-between overflow-hidden rounded-xl border px-5 py-6 text-left shadow-[0_34px_72px_-44px_rgba(0,0,0,0.62)] backdrop-blur-[3px] transition-[transform,opacity,filter,background-color,border-color] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-92 lg:w-116 xl:w-124 ${
+                    className={`absolute top-0 left-1/2 flex h-full w-76 flex-col justify-between overflow-hidden border px-6 py-7 text-left shadow-[0_34px_72px_-44px_rgba(0,0,0,0.72)] backdrop-blur-sm transition-[transform,opacity,filter,background-color,border-color] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-92 lg:w-116 xl:w-124 ${
                       isFocused
-                        ? 'cursor-default border-[#C5A059]/55 bg-[#1A1716]/82'
-                        : 'cursor-pointer border-[#C5A059]/30 bg-black/54 hover:border-[#C5A059]/50 hover:bg-black/68'
+                        ? 'cursor-default border-[#C5A059]/50 bg-[#0F0D0C]/92'
+                        : 'cursor-pointer border-[#C5A059]/20 bg-black/60 hover:border-[#C5A059]/35 hover:bg-black/75'
                     }`}
                     style={getCardMotionStyle(offset)}
                   >
-                    <div className="absolute inset-0 bg-linear-to-b from-white/8 via-transparent to-black/12" />
-                    <div className="relative flex min-h-full flex-col justify-between gap-8">
-                      <div className="space-y-5">
-                        <div className="inline-flex items-center gap-3 text-[0.62rem] font-medium tracking-[0.28em] text-[#9B7A41] uppercase">
-                          <span className="h-px w-8 bg-[#C5A059]/45" />
+                    <div className="relative flex min-h-full flex-col justify-between gap-10">
+                      <div className="space-y-6">
+                        <div className="inline-flex items-center gap-3 text-[0.6rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                          <span className="h-px w-6 bg-[#C5A059]/45" />
                           {item.theme}
                         </div>
 
-                        <blockquote
-                          className={`font-serif leading-[1.55] text-[#F8F4EC] ${
-                            isFocused
-                              ? 'text-[1.28rem] sm:text-[1.5rem]'
-                              : 'text-[1.28rem] sm:text-[1.5rem]'
-                            // : 'text-[1rem] lg:text-[1.08rem]'
-                          }`}
-                        >
+                        <blockquote className="font-serif text-[1.32rem] leading-[1.6] text-white sm:text-[1.55rem]">
                           "{item.quote}"
                         </blockquote>
                       </div>
 
-                      <div className="space-y-4 border-t border-white/10 pt-5">
-                        <div>
-                          <div className="text-[0.64rem] font-medium tracking-[0.28em] text-[#9B8A73] uppercase">
-                            Testimony
-                          </div>
-                          <div className="mt-2 font-serif text-[1.22rem] text-[#F8F4EC]">
-                            {item.name}
-                          </div>
-                          <div className="mt-1 text-sm leading-6 text-[#D2C8BC]">
-                            {item.role}
-                          </div>
+                      <div className="border-t border-white/8 pt-6">
+                        <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
+                          Testimony
+                        </div>
+                        <div className="mt-2 font-serif text-[1.3rem] text-white">
+                          {item.name}
+                        </div>
+                        <div className="mt-1 text-sm leading-6 text-[#D8D0C7]">
+                          {item.role}
                         </div>
                       </div>
                     </div>
@@ -305,7 +304,11 @@ export function LandingTestimonialsSection() {
               ))}
             </div>
 
-            <div className="flex flex-col gap-5 border-t border-white/10 pt-6 lg:flex-row lg:items-center lg:justify-between"></div>
+            <div className="text-end">
+              <blockquote className="text-[0.6rem] font-medium tracking-[0.3em] text-[#D4B373] italic">
+                "Make disciples of all nations"
+              </blockquote>
+            </div>
           </div>
         </div>
       </div>

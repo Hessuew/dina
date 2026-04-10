@@ -131,12 +131,17 @@ export function LandingCourseShowcase() {
               </div>
 
               <h2 className="max-w-[12ch] font-serif text-[clamp(3rem,5vw,5.2rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
-                Six courses, revealed one by one
+                Six courses
               </h2>
 
               <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#CFC6B7] sm:text-lg">
-                A premium formation journey shaped like a house: each course
-                adds one structural layer, from foundation to fully made house.
+                Spiritual life should not stand upon a school of theology but
+                upon Christ. It must be founded on a real revelation of the Son
+                of God, full of grace and truth, revealed from heavenly places.
+                <br />
+                <br />
+                "For every house is builded by some man; but he that built all
+                things is God." Hebrews 3:4
               </p>
             </div>
 

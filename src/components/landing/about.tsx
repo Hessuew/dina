@@ -1,43 +1,31 @@
-import graniteBlueBackground from '@/assets/images/bg3_v1.png'
+import aboutBackground from '@/assets/images/bg3_v1.png'
 
-type AboutPillar = {
+type TimelineEvent = {
+  month: string
   label: string
   description: string
 }
 
-type AboutHighlight = {
-  label: string
-  value: string
-}
-
-const aboutPillars: Array<AboutPillar> = [
+const timeline: Array<TimelineEvent> = [
   {
-    label: 'Scripture',
-    description:
-      'Forming disciples who are grounded in biblical truth before public influence.',
+    month: 'June',
+    label: 'School Begins',
+    description: 'Formation journey starts with foundational teaching',
   },
   {
-    label: 'Wisdom',
-    description:
-      'Developing practical judgment, maturity, and disciplined character for real leadership.',
+    month: 'September',
+    label: 'First Semester Exam',
+    description: 'Assessment of biblical foundations and early formation',
   },
   {
-    label: 'Nations',
-    description:
-      'Preparing believers to carry Christ-centered influence into communities and societies.',
-  },
-]
-
-const aboutHighlights: Array<AboutHighlight> = [
-  {
-    label: 'Mission',
-    value:
-      'Raise biblically grounded disciples who transform their spheres for the glory of God.',
+    month: 'December',
+    label: 'Second Semester Exam',
+    description: 'Evaluation of growth, discipleship practice, and maturity',
   },
   {
-    label: 'Vision',
-    value:
-      'See nations shaped by believers walking in faith, wisdom, and excellence.',
+    month: 'February',
+    label: 'Graduation',
+    description: 'Oral examination, defense, and award ceremony',
   },
 ]
 
@@ -47,122 +35,191 @@ export function LandingAboutSection() {
       id="about"
       className="relative isolate overflow-hidden border-b border-[#C5A059]/14 text-[#F7F4EE]"
       style={{
-        backgroundImage: `linear-gradient(180deg, rgba(10,14,20,0.9), rgba(12,16,22,0.95)), url(${graniteBlueBackground})`,
+        backgroundImage: `linear-gradient(180deg, rgba(10,14,20,0.9), rgba(12,16,22,0.95)), url(${aboutBackground})`,
         backgroundPosition: 'center',
         backgroundSize: 'cover',
       }}
     >
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at top left, rgba(197,160,89,0.15), transparent 28%), radial-gradient(circle at bottom right, rgba(127,154,180,0.14), transparent 26%)',
-        }}
-      />
-      <div className="absolute right-[8%] bottom-24 h-px w-16 bg-white/12 lg:w-24" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.06),transparent_22%)]" />
 
       <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-18 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24">
-        <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,1.02fr)_minmax(22rem,0.98fr)] lg:gap-20">
+        <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.88fr)_minmax(24rem,1.12fr)] lg:gap-20">
           <div className="space-y-10">
             <div className="space-y-6">
               <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
                 <div className="h-px w-20 bg-[#C5A059]/50 lg:w-28" />
                 <div className="flex flex-row items-center gap-3">
                   <span className="h-px w-10 bg-[#C5A059]/55" />
-                  About DINA
+                  Program Overview
                 </div>
               </div>
 
-              <h2 className="max-w-[12ch] font-serif text-[clamp(3rem,5vw,5.2rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
-                A Bible academy shaped for leaders, nations, and transformation.
+              <h2 className="max-w-[14ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
+                Discipleship Training School
               </h2>
 
-              <p className="max-w-2xl text-base leading-8 font-light tracking-[0.04em] text-[#D2D8DF] sm:text-lg">
-                Disciplers Institute for Nations Academy equips believers with
-                biblical depth, disciplined character, and practical wisdom so
-                they can carry faithful influence into homes, churches,
-                communities, and nations.
-              </p>
-
-              <p className="max-w-xl font-serif text-[1.28rem] leading-8 text-[#E5D9C1] sm:text-[1.48rem]">
-                Formation before platform. Christ before visibility.
+              <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#D3CAC0] sm:text-lg">
+                Building new believers from infancy to adulthood — Foundation to
+                Rooftop
+                <br />
+                <br />
+                <span className="tracking-[0.02em]">
+                  "For when for the time ye ought to be teachers, ye have need
+                  that one teach you again which be the first principles of the
+                  oracles of God; and are become such as have need of milk, and
+                  not of strong meat." Hebrews 5:12
+                </span>
               </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
-              {aboutPillars.map((pillar) => (
-                <div
-                  key={pillar.label}
-                  className="border border-white/10 bg-white/4 px-5 py-5 shadow-[0_24px_44px_-34px_rgba(0,0,0,0.55)] backdrop-blur-sm"
-                >
-                  <div className="text-[0.66rem] font-medium tracking-[0.28em] text-[#D4B373] uppercase">
-                    {pillar.label}
+            <div className="space-y-6 border-y border-white/10 py-8">
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div>
+                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
+                    Duration
                   </div>
-                  <p className="mt-3 text-sm leading-7 text-[#CDD5DE]">
-                    {pillar.description}
-                  </p>
+                  <div className="mt-2 font-serif text-3xl text-[#F8F4EC]">
+                    9 Months
+                  </div>
                 </div>
-              ))}
+                <div>
+                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
+                    Total Lessons
+                  </div>
+                  <div className="mt-2 font-serif text-3xl text-[#F8F4EC]">
+                    18 Lessons
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
+                    Cadence
+                  </div>
+                  <div className="mt-2 font-serif text-3xl text-[#F8F4EC]">
+                    3 / Month
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
+                    Class Length
+                  </div>
+                  <div className="mt-2 font-serif text-3xl text-[#F8F4EC]">
+                    2 Hours
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div>
+                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
+                    Teaching Faculty
+                  </div>
+                  <div className="mt-2 font-serif text-3xl text-[#F8F4EC]">
+                    6 Lecturer Pairs
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                    Tuition
+                  </div>
+                  <div className="mt-2 font-serif text-3xl text-[#E9D9B4]">
+                    Free
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                  Additional Curriculum
+                </div>
+                <p className="mt-3 text-base leading-8 text-[#D3CAC0]">
+                  How to disciple others, explain beliefs clearly, and think,
+                  respond & ask questions like Jesus did
+                </p>
+              </div>
+
+              <div className="border-l-2 border-[#C5A059]/40 pl-5">
+                <p className="text-base leading-8 text-[#D8D0C7]">
+                  Each student needs to disciple at least one person during the
+                  9 month period
+                </p>
+              </div>
+
+              {/* <div className="border-l-2 border-[#C5A059]/40 pl-5">
+                <p className="text-base leading-8 text-[#D8D0C7]">
+                  Every lesson has assignment/s
+                </p>
+              </div> */}
+            </div>
+
+            <div className="mt-6 border border-[#C5A059]/30 bg-[#1A1716]/60 px-5 py-4">
+              <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                Excellence Award
+              </div>
+              <p className="mt-2 font-serif text-xl text-[#E9D9B4]">
+                Best students receive €500 at graduation
+              </p>
             </div>
           </div>
 
-          <div className="relative border border-white/10 bg-[#101720]/56 p-4 shadow-[0_46px_110px_-56px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:p-5">
+          <div className="relative border border-white/10 bg-[#171717]/72 p-4 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:p-6">
             <div
-              className="border border-white/10 px-6 py-7 sm:px-8 sm:py-8"
+              className="relative overflow-hidden border border-white/10"
               style={{
-                backgroundImage:
-                  'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
+                backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.26), rgba(7,7,8,0.72)), url(${aboutBackground})`,
+                backgroundPosition: 'center',
+                backgroundSize: 'cover',
               }}
             >
-              <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
-                The mandate
-              </div>
-              <div className="mt-4 max-w-[16ch] font-serif text-[clamp(2.2rem,4vw,3.7rem)] leading-[0.96] tracking-[-0.05em] text-[#F8F4EC]">
-                Form disciples who can carry truth with weight.
-              </div>
-              <div className="mt-8 h-px w-16 bg-[#C5A059]/45" />
-
-              <div className="mt-8 space-y-4">
-                {aboutHighlights.map((item) => (
-                  <div
-                    key={item.label}
-                    className="border border-white/10 bg-black/18 px-5 py-5"
-                  >
-                    <div className="text-[0.65rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
-                      {item.label}
-                    </div>
-                    <p className="mt-3 text-sm leading-7 text-[#D2D8DF] sm:text-[0.96rem]">
-                      {item.value}
-                    </p>
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_38%,rgba(197,160,89,0.14)_100%)]" />
+              <div className="relative flex min-h-84 flex-col justify-between p-6 sm:p-8 lg:min-h-100">
+                <div>
+                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                    9-Month Journey
                   </div>
-                ))}
+                  <h3 className="mt-3 font-serif text-[clamp(2.4rem,4vw,4rem)] leading-[0.94] tracking-[-0.045em] text-white">
+                    Formation Timeline
+                  </h3>
+                </div>
+
+                <div className="max-w-60 border border-white/12 bg-black/24 px-4 py-4 shadow-[0_24px_40px_-30px_rgba(0,0,0,0.55)] backdrop-blur-sm">
+                  <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
+                    Duration
+                  </div>
+                  <div className="mt-2 font-serif text-xl leading-tight text-[#F8F4EC]">
+                    June - February
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-3">
-              <div className="border border-white/10 bg-white/4 px-4 py-4">
-                <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
-                  Emphasis
-                </div>
-                <div className="mt-2 font-serif text-xl text-[#F8F4EC]">
-                  Depth
-                </div>
+            <div className="border-x border-b border-white/10 bg-[#151515]/88 px-6 py-7 sm:px-8 sm:py-8">
+              <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                Academic Calendar
               </div>
-              <div className="border border-white/10 bg-white/4 px-4 py-4">
-                <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
-                  Posture
-                </div>
-                <div className="mt-2 font-serif text-xl text-[#F8F4EC]">
-                  Wisdom
-                </div>
-              </div>
-              <div className="border border-white/10 bg-white/4 px-4 py-4">
-                <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
-                  Horizon
-                </div>
-                <div className="mt-2 font-serif text-xl text-[#F8F4EC]">
-                  Nations
-                </div>
+              <div className="mt-6 space-y-5">
+                {timeline.map((event, index) => (
+                  <div
+                    key={event.month}
+                    className="flex items-start gap-5 border-b border-white/8 pb-5 last:border-b-0 last:pb-0"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-[#C5A059]/50 bg-[#1A1716] font-serif text-sm text-[#E9D9B4]">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-[0.68rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
+                        {event.month}
+                      </div>
+                      <div className="mt-1 font-serif text-lg text-[#F8F4EC]">
+                        {event.label}
+                      </div>
+                      <p className="mt-2 text-sm leading-7 text-[#C9C0B6]">
+                        {event.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
