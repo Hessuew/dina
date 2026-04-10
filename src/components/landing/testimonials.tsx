@@ -208,7 +208,7 @@ export function LandingTestimonialsSection() {
             </div>
 
             <h2 className="font-serif text-[clamp(3.2rem,6vw,5.5rem)] leading-[0.9] tracking-[-0.055em] text-white">
-              Discipleship experiences
+              Experiences
             </h2>
 
             <blockquote className="text-[0.6rem] font-medium tracking-[0.3em] text-[#D4B373] italic">
