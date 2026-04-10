@@ -136,7 +136,7 @@ export function LandingMarksSection() {
                     className={`group flex items-start gap-3 border px-4 py-4 text-left transition-all ${
                       isActive
                         ? 'border-[#C5A059]/42 bg-white/8 shadow-[0_24px_44px_-34px_rgba(0,0,0,0.6)]'
-                        : 'border-white/10 bg-white/[0.03] hover:border-white/18 hover:bg-white/[0.05]'
+                        : 'border-white/10 bg-white/3 hover:border-white/18 hover:bg-white/5'
                     }`}
                   >
                     <div className="min-w-0 flex-1">
@@ -152,7 +152,7 @@ export function LandingMarksSection() {
 
           <div
             key={activeMark.id}
-            className="relative flex min-h-[28rem] flex-col justify-center space-y-8 border border-white/10 bg-[#151311]/70 px-6 py-10 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.84)] backdrop-blur-sm sm:px-10 sm:py-12 lg:min-h-[32rem]"
+            className="relative flex min-h-112 flex-col justify-center space-y-8 border border-white/10 bg-[#151311]/70 px-6 py-10 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.84)] backdrop-blur-sm sm:px-10 sm:py-12 lg:min-h-128"
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.08),transparent_32%)]" />
 

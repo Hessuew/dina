@@ -8,117 +8,104 @@ type TestimonialItem = {
   role: string
   quote: string
   theme: string
-  discipledBy: string
 }
 
 const testimonials: Array<TestimonialItem> = [
   {
-    id: 'anna-k',
-    name: 'Anna K.',
-    role: 'Discipleship Apprentice',
+    id: 'andrew-a',
+    name: 'Andrew A.',
+    role: 'Apostle, Professor',
     quote:
       'The teaching did not merely inform me; it reordered my inner life. I left with a deeper love for Scripture and a steadier walk with Christ.',
-    theme: 'Apostolic Foundations',
-    discipledBy: 'Lecturer One & Lecturer Two',
+    theme: 'Ground',
   },
   {
-    id: 'daniel-m',
-    name: 'Daniel M.',
-    role: 'Church Leadership Resident',
+    id: 'ella',
+    name: 'Ella',
+    role: 'Pastor, -',
     quote:
       'For the first time, doctrine felt weighty, beautiful, and profoundly livable. The clarity I received now shapes every decision I make in ministry.',
-    theme: 'Apostolic Foundations',
-    discipledBy: 'Lecturer One & Lecturer Two',
+    theme: 'Ground',
   },
   {
-    id: 'ruth-a',
-    name: 'Ruth A.',
-    role: 'Prayer Community Coordinator',
+    id: 'juhani-j',
+    name: 'Juhani J.',
+    role: 'Bishop, Programmer',
     quote:
       'This formation renewed my prayer life from the inside out. I learned how to stay before God long enough for my motives to be purified.',
-    theme: 'Prayer and Presence',
-    discipledBy: 'Lecturer Three & Lecturer Four',
+    theme: 'Foundation',
   },
   {
-    id: 'michael-o',
-    name: 'Michael O.',
-    role: 'Worship Team Leader',
+    id: 'akosua-o',
+    name: 'Akosua O.',
+    role: 'Pastor, Junior programmer',
     quote:
       'The lectures gave language to what my spirit had long desired: nearness, reverence, and a life arranged around the presence of God.',
-    theme: 'Prayer and Presence',
-    discipledBy: 'Lecturer Three & Lecturer Four',
+    theme: 'Foundation',
   },
   {
-    id: 'grace-t',
-    name: 'Grace T.',
-    role: 'Young Adults Mentor',
+    id: 'emmanuel-e',
+    name: 'Emmanuel E.',
+    role: 'Pastor, -',
     quote:
       'I was confronted lovingly, formed deeply, and strengthened practically. My character has become far more anchored than my gifting alone ever allowed.',
-    theme: 'Character and Holiness',
-    discipledBy: 'Lecturer Five & Lecturer Six',
+    theme: 'Walls',
   },
   {
-    id: 'samuel-j',
-    name: 'Samuel J.',
-    role: 'Bible Study Facilitator',
+    id: 'ezinne',
+    name: 'Ezinne',
+    role: 'Pastor, -',
     quote:
       'The emphasis on holiness and discernment gave me courage to live with conviction. It helped me guard what God is building in me.',
-    theme: 'Character and Holiness',
-    discipledBy: 'Lecturer Five & Lecturer Six',
+    theme: 'Walls',
   },
   {
-    id: 'esther-n',
-    name: 'Esther N.',
-    role: 'Ministry Operations Lead',
+    id: 'sade',
+    name: 'Sade',
+    role: 'Pastor, -',
     quote:
       'DINA showed me that order is not cold structure; it is how wisdom protects calling. I lead now with more peace and greater precision.',
-    theme: 'Leadership and Order',
-    discipledBy: 'Lecturer Seven & Lecturer Eight',
+    theme: 'Framing',
   },
   {
-    id: 'jonah-b',
-    name: 'Jonah B.',
-    role: 'Community Pastor',
+    id: 'blessing',
+    name: 'Blessing',
+    role: 'Pastor, -',
     quote:
       'The leadership pair helped me understand responsibility as stewardship. Their teaching made authority feel both weighty and deeply pastoral.',
-    theme: 'Leadership and Order',
-    discipledBy: 'Lecturer Seven & Lecturer Eight',
+    theme: 'Framing',
   },
   {
-    id: 'lina-p',
-    name: 'Lina P.',
-    role: 'Family Discipleship Worker',
+    id: 'kene',
+    name: 'Kene',
+    role: 'Pastor, -',
     quote:
       'The mission framework was expansive without becoming abstract. I began to see culture, family, and community as places where Christ can truly reign.',
-    theme: 'Mission and Culture',
-    discipledBy: 'Lecturer Nine & Lecturer Ten',
+    theme: 'Interior',
   },
   {
-    id: 'isaac-d',
-    name: 'Isaac D.',
-    role: 'Urban Outreach Fellow',
+    id: 'mahidere-a',
+    name: 'Mahidere A.',
+    role: 'Pastor, -',
     quote:
       'I came in with zeal but little structure. I left with conviction, perspective, and a clearer sense of how to serve my city faithfully.',
-    theme: 'Mission and Culture',
-    discipledBy: 'Lecturer Nine & Lecturer Ten',
+    theme: 'Interior',
   },
   {
-    id: 'miriam-s',
-    name: 'Miriam S.',
-    role: 'Church Plant Resident',
+    id: 'obi',
+    name: 'Obi',
+    role: 'Pastor, -',
     quote:
       'This teaching gave me endurance for the long road. It taught me how to stand steady under pressure without losing tenderness or faith.',
-    theme: 'Endurance and Commission',
-    discipledBy: 'Lecturer Eleven & Lecturer Twelve',
+    theme: 'Roof',
   },
   {
-    id: 'caleb-r',
-    name: 'Caleb R.',
-    role: 'Cross-Cultural Ministry Apprentice',
+    id: 'ugo',
+    name: 'Ugo',
+    role: 'Pastor, -',
     quote:
       'The final formation was not about ambition but faithfulness. I now feel sent with greater humility, clarity, and Christ-centered courage.',
-    theme: 'Endurance and Commission',
-    discipledBy: 'Lecturer Eleven & Lecturer Twelve',
+    theme: 'Roof',
   },
 ]
 
@@ -259,7 +246,7 @@ export function LandingTestimonialsSection() {
                     className={`absolute top-0 left-1/2 flex h-full w-76 flex-col justify-between overflow-hidden rounded-xl border px-5 py-6 text-left shadow-[0_34px_72px_-44px_rgba(0,0,0,0.62)] backdrop-blur-[3px] transition-[transform,opacity,filter,background-color,border-color] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-92 lg:w-116 xl:w-124 ${
                       isFocused
                         ? 'cursor-default border-[#C5A059]/55 bg-[#1A1716]/82'
-                        : 'cursor-pointer border-[#C5A059]/50 bg-black/54 hover:border-[#C5A059]/30 hover:bg-black/68'
+                        : 'cursor-pointer border-[#C5A059]/30 bg-black/54 hover:border-[#C5A059]/50 hover:bg-black/68'
                     }`}
                     style={getCardMotionStyle(offset)}
                   >
@@ -275,7 +262,8 @@ export function LandingTestimonialsSection() {
                           className={`font-serif leading-[1.55] text-[#F8F4EC] ${
                             isFocused
                               ? 'text-[1.28rem] sm:text-[1.5rem]'
-                              : 'text-[1rem] lg:text-[1.08rem]'
+                              : 'text-[1.28rem] sm:text-[1.5rem]'
+                            // : 'text-[1rem] lg:text-[1.08rem]'
                           }`}
                         >
                           "{item.quote}"
@@ -293,10 +281,6 @@ export function LandingTestimonialsSection() {
                           <div className="mt-1 text-sm leading-6 text-[#D2C8BC]">
                             {item.role}
                           </div>
-                        </div>
-
-                        <div className="text-[0.72rem] leading-6 tracking-[0.08em] text-[#C9C0B6] uppercase">
-                          Discipled by {item.discipledBy}
                         </div>
                       </div>
                     </div>

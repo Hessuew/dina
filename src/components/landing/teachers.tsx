@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from '@tanstack/react-router'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import facultyBackground from '@/assets/images/bg7.png'
 
@@ -12,6 +11,7 @@ type Lecturer = {
 type LecturerPair = {
   id: string
   number: string
+  course: string
   theme: string
   summary: string
   lecturers: [Lecturer, Lecturer]
@@ -21,7 +21,8 @@ const lecturerPairs: Array<LecturerPair> = [
   {
     id: 'apostolic-foundations',
     number: '01',
-    theme: 'Apostolic Foundations',
+    course: 'The Mercy of God, Salvation & the Life of Jesus',
+    theme: 'Ground',
     summary:
       'A paired teaching rhythm that grounds students in Scripture, identity, and the theological weight of discipleship.',
     lecturers: [
@@ -40,7 +41,8 @@ const lecturerPairs: Array<LecturerPair> = [
   {
     id: 'prayer-and-presence',
     number: '02',
-    theme: 'Prayer and Presence',
+    course: 'The Foundation of the Believer',
+    theme: 'Foundation',
     summary:
       'A teaching pair devoted to prayer, intimacy with God, and the cultivation of a deep inner life that sustains leadership.',
     lecturers: [
@@ -59,7 +61,8 @@ const lecturerPairs: Array<LecturerPair> = [
   {
     id: 'character-and-holiness',
     number: '03',
-    theme: 'Character and Holiness',
+    course: 'The Death of Jesus',
+    theme: 'Walls',
     summary:
       'A formation-centered pair shaping conviction, holiness, discernment, and the moral architecture of trustworthy leaders.',
     lecturers: [
@@ -78,7 +81,8 @@ const lecturerPairs: Array<LecturerPair> = [
   {
     id: 'leadership-and-order',
     number: '04',
-    theme: 'Leadership and Order',
+    course: 'The Trinity — God, Jesus & the Holy Spirit',
+    theme: 'Framing',
     summary:
       'A structured teaching duo shaping students in biblical order, leadership design, and the stewardship of responsibility.',
     lecturers: [
@@ -97,7 +101,8 @@ const lecturerPairs: Array<LecturerPair> = [
   {
     id: 'mission-and-culture',
     number: '05',
-    theme: 'Mission and Culture',
+    course: "Peter's Encounter, Following & Transformation",
+    theme: 'Interior',
     summary:
       'A missional pair preparing students to disciple communities, read culture wisely, and influence nations with conviction.',
     lecturers: [
@@ -116,7 +121,8 @@ const lecturerPairs: Array<LecturerPair> = [
   {
     id: 'endurance-and-commission',
     number: '06',
-    theme: 'Endurance and Commission',
+    course: 'Living the Christian Life in the Modern World',
+    theme: 'Roof',
     summary:
       'A final pair focused on perseverance, spiritual covering, and the courage required to be sent with mature authority.',
     lecturers: [
@@ -227,8 +233,8 @@ export function LandingTeacherSection() {
                     onClick={() => setActiveIndex(index)}
                     className={`group flex items-center justify-between gap-4 border px-4 py-4 text-left transition-all ${
                       isActive
-                        ? 'border-[#C5A059]/42 bg-white/54 shadow-[0_24px_44px_-34px_rgba(0,0,0,0.24)]'
-                        : 'border-[#1A1A1A]/10 bg-white/24 hover:border-[#1A1A1A]/18 hover:bg-white/38'
+                        ? 'border-[#C5A059]/42 bg-white/80 shadow-[0_24px_44px_-34px_rgba(0,0,0,0.24)]'
+                        : 'border-[#1A1A1A]/10 bg-white/50 hover:border-[#1A1A1A]/18 hover:bg-white/60'
                     }`}
                   >
                     <div>
@@ -261,13 +267,13 @@ export function LandingTeacherSection() {
                 backgroundSize: 'cover',
               }}
             >
-              <div className="flex items-start justify-between gap-6">
+              <div className="flex items-start justify-between gap-6 lg:min-h-48">
                 <div>
                   <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
                     Pair theme
                   </div>
-                  <div className="mt-3 max-w-[12ch] font-serif text-[clamp(2.4rem,4vw,4rem)] leading-[0.94] tracking-[-0.045em] text-[#1C1815]">
-                    {activePair.theme}
+                  <div className="mt-3 max-w-[14ch] font-serif text-[clamp(2.4rem,4vw,4rem)] leading-[0.94] tracking-[-0.045em] text-[#1C1815]">
+                    {activePair.course}
                   </div>
                 </div>
                 <div className="border border-[#1A1A1A]/12 bg-white/38 px-4 py-3 text-[0.9rem] font-medium tracking-[0.26em] text-[#9B7A41] uppercase">
@@ -280,7 +286,7 @@ export function LandingTeacherSection() {
               </p>
             </div>
 
-            <div className="grid gap-5 border-x border-b border-[#1A1A1A]/10 bg-white/68 px-6 py-7 sm:px-8 sm:py-8 lg:grid-cols-2">
+            <div className="grid gap-5 border-x border-b border-[#1A1A1A]/10 bg-white/68 px-6 py-7 sm:px-8 sm:py-8 lg:min-h-100 lg:grid-cols-2">
               {activePair.lecturers.map((lecturer, index) => (
                 <div
                   key={`${activePair.id}-${lecturer.name}`}
@@ -323,14 +329,7 @@ export function LandingTeacherSection() {
                 Navigate through six teaching pairs now, then replace the image
                 placeholders with lecturer portraits later.
               </div>
-              <Link
-                to="/signup"
-                search={{ token: '' }}
-                className="inline-flex h-12 items-center justify-center gap-3 border border-[#C5A059]/40 bg-linear-to-b from-[#2A2A2A] to-[#111111] px-6 text-[0.74rem] font-medium tracking-[0.24em] text-[#E9D9B4] uppercase shadow-[0_26px_50px_-30px_rgba(0,0,0,0.7)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
-              >
-                Meet the faculty
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              <div className="w-48" />
             </div>
           </div>
         </div>
