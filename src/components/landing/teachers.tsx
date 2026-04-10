@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
-import facultyBackground from '@/assets/images/bg4_v1.png'
+import facultyBackground from '@/assets/images/bg7.png'
 
 type Lecturer = {
   name: string
@@ -153,43 +153,45 @@ export function LandingTeacherSection() {
   return (
     <section
       id="teachers"
-      className="relative isolate overflow-hidden border-b border-[#C5A059]/14 text-[#F7F4EE]"
+      className="relative isolate overflow-hidden border-b border-[#1A1A1A]/10 text-[#1C1815]"
       style={{
-        backgroundImage: `linear-gradient(180deg, rgba(14,13,17,0.922), rgba(10,10,12,0.97)), url(${facultyBackground})`,
+        backgroundImage: `url(${facultyBackground})`,
         backgroundPosition: 'center',
         backgroundSize: 'cover',
       }}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.14),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.06),transparent_22%)]" />
-      <div className="absolute top-24 left-[8%] h-px w-20 bg-[#C5A059]/45 lg:w-28" />
-      <div className="absolute right-[8%] bottom-24 h-px w-16 bg-white/12 lg:w-24" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.12),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.28),transparent_22%)]" />
+      <div className="absolute right-[8%] bottom-24 h-px w-16 bg-[#1A1A1A]/12 lg:w-24" />
 
       <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-18 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.82fr)_minmax(24rem,1.18fr)] lg:gap-20">
           <div className="space-y-10">
             <div className="space-y-6">
-              <div className="inline-flex items-center gap-3 text-[0.72rem] font-medium tracking-[0.32em] text-[#D4B373] uppercase">
-                <span className="h-px w-10 bg-[#C5A059]/55" />
-                Teaching Faculty
+              <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#6e562d] uppercase">
+                <div className="h-px w-20 bg-[#6e562d]/50 lg:w-28" />
+                <div className="flex flex-row items-center gap-3">
+                  <span className="h-px w-10 bg-[#6e562d]/55" />
+                  Teaching Faculty
+                </div>
               </div>
 
-              <h2 className="max-w-[11ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
+              <h2 className="max-w-[11ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] text-[#1C1815]">
                 Six lecturer pairs, moving in harmony.
               </h2>
 
-              <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#D3CAC0] sm:text-lg">
+              <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#4E463D] sm:text-lg">
                 Each part of the curriculum is carried by a teaching pair,
                 bringing complementary strengths, clear doctrine, and pastoral
                 depth to the formation journey.
               </p>
             </div>
 
-            <div className="flex items-center justify-between gap-6 border-y border-white/10 py-5">
+            <div className="flex items-center justify-between gap-6 border-y border-[#1A1A1A]/10 py-5">
               <div>
-                <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
+                <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#6e562d] uppercase">
                   Active pair
                 </div>
-                <div className="mt-2 font-serif text-2xl text-[#F8F4EC]">
+                <div className="mt-2 font-serif text-2xl text-[#1C1815]">
                   {activePair.number}. {activePair.theme}
                 </div>
               </div>
@@ -198,7 +200,7 @@ export function LandingTeacherSection() {
                 <button
                   type="button"
                   onClick={goToPrevious}
-                  className="inline-flex h-12 w-12 items-center justify-center border border-white/12 bg-white/6 text-[#F8F4EC] transition-all hover:-translate-y-0.5 hover:border-[#C5A059]/50 hover:bg-white/10"
+                  className="inline-flex h-12 w-12 items-center justify-center border border-[#1A1A1A]/10 bg-[#FCFBF8]/74 text-[#1C1815] shadow-[0_22px_34px_-30px_rgba(0,0,0,0.24)] backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-[#C5A059]/50 hover:bg-white/80"
                   aria-label="Show previous lecturer pair"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -206,7 +208,7 @@ export function LandingTeacherSection() {
                 <button
                   type="button"
                   onClick={goToNext}
-                  className="inline-flex h-12 w-12 items-center justify-center border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
+                  className="inline-flex h-12 w-12 items-center justify-center border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_26px_40px_-28px_rgba(0,0,0,0.4)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
                   aria-label="Show next lecturer pair"
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -225,15 +227,15 @@ export function LandingTeacherSection() {
                     onClick={() => setActiveIndex(index)}
                     className={`group flex items-center justify-between gap-4 border px-4 py-4 text-left transition-all ${
                       isActive
-                        ? 'border-[#C5A059]/42 bg-white/8 shadow-[0_24px_44px_-34px_rgba(0,0,0,0.6)]'
-                        : 'border-white/10 bg-white/[0.03] hover:border-white/18 hover:bg-white/[0.05]'
+                        ? 'border-[#C5A059]/42 bg-white/54 shadow-[0_24px_44px_-34px_rgba(0,0,0,0.24)]'
+                        : 'border-[#1A1A1A]/10 bg-white/24 hover:border-[#1A1A1A]/18 hover:bg-white/38'
                     }`}
                   >
                     <div>
-                      <div className="text-[0.65rem] font-medium tracking-[0.28em] text-[#9B8A73] uppercase">
+                      <div className="text-[0.65rem] font-medium tracking-[0.28em] text-[#8A7B68] uppercase">
                         {pair.number}
                       </div>
-                      <div className="mt-2 font-serif text-xl text-[#F8F4EC]">
+                      <div className="mt-2 font-serif text-xl text-[#1C1815]">
                         {pair.theme}
                       </div>
                     </div>
@@ -250,74 +252,74 @@ export function LandingTeacherSection() {
             </div>
           </div>
 
-          <div className="relative border border-white/10 bg-[#151311]/70 p-4 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.84)] backdrop-blur-sm sm:p-6">
+          <div className="relative border border-[#1A1A1A]/10 bg-white/54 p-4 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.24)] backdrop-blur-sm sm:p-6">
             <div
-              className="border border-white/10 px-6 py-7 sm:px-8 sm:py-8"
+              className="border border-[#1A1A1A]/10 px-6 py-7 sm:px-8 sm:py-8"
               style={{
-                backgroundImage: `linear-gradient(180deg, rgba(22,20,20,0.44), rgba(7,7,8,0.7)), url(${facultyBackground})`,
+                backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.72), rgba(250,247,241,0.82)), url(${facultyBackground})`,
                 backgroundPosition: 'center',
                 backgroundSize: 'cover',
               }}
             >
               <div className="flex items-start justify-between gap-6">
                 <div>
-                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
                     Pair theme
                   </div>
-                  <div className="mt-3 max-w-[12ch] font-serif text-[clamp(2.4rem,4vw,4rem)] leading-[0.94] tracking-[-0.045em] text-white">
+                  <div className="mt-3 max-w-[12ch] font-serif text-[clamp(2.4rem,4vw,4rem)] leading-[0.94] tracking-[-0.045em] text-[#1C1815]">
                     {activePair.theme}
                   </div>
                 </div>
-                <div className="border border-white/12 bg-black/18 px-4 py-3 text-[0.9rem] font-medium tracking-[0.26em] text-[#E9D9B4] uppercase">
+                <div className="border border-[#1A1A1A]/12 bg-white/38 px-4 py-3 text-[0.9rem] font-medium tracking-[0.26em] text-[#9B7A41] uppercase">
                   {activePair.number}
                 </div>
               </div>
 
-              <p className="mt-6 max-w-2xl text-base leading-8 text-[#D8D0C7] sm:text-lg">
+              <p className="mt-6 max-w-2xl text-base leading-8 text-[#4E463D] sm:text-lg">
                 {activePair.summary}
               </p>
             </div>
 
-            <div className="grid gap-5 border-x border-b border-white/10 bg-[#141211]/88 px-6 py-7 sm:px-8 sm:py-8 lg:grid-cols-2">
+            <div className="grid gap-5 border-x border-b border-[#1A1A1A]/10 bg-white/68 px-6 py-7 sm:px-8 sm:py-8 lg:grid-cols-2">
               {activePair.lecturers.map((lecturer, index) => (
                 <div
                   key={`${activePair.id}-${lecturer.name}`}
-                  className="border border-white/10 bg-white/[0.04] p-4 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.45)]"
+                  className="border border-[#1A1A1A]/10 bg-white/54 p-4 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.18)]"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex h-22 w-20 shrink-0 items-center justify-center border border-[#C5A059]/22 bg-linear-to-b from-white/10 to-white/4 text-center">
+                    <div className="flex h-22 w-20 shrink-0 items-center justify-center border border-[#C5A059]/22 bg-linear-to-b from-white/68 to-white/42 text-center">
                       <div>
-                        <div className="text-[0.6rem] font-medium tracking-[0.26em] text-[#AFA28F] uppercase">
+                        <div className="text-[0.6rem] font-medium tracking-[0.26em] text-[#8A7B68] uppercase">
                           Image
                         </div>
-                        <div className="mt-2 text-[0.58rem] tracking-[0.18em] text-[#CFC6B7] uppercase">
+                        <div className="mt-2 text-[0.58rem] tracking-[0.18em] text-[#6B5F52] uppercase">
                           Coming later
                         </div>
                       </div>
                     </div>
 
                     <div className="min-w-0">
-                      <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#D4B373] uppercase">
+                      <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#9B7A41] uppercase">
                         Lecturer {index + 1}
                       </div>
-                      <div className="mt-2 font-serif text-[1.45rem] leading-tight text-[#F8F4EC]">
+                      <div className="mt-2 font-serif text-[1.45rem] leading-tight text-[#1C1815]">
                         {lecturer.name}
                       </div>
-                      <div className="mt-2 text-sm leading-6 text-[#D2C8BC]">
+                      <div className="mt-2 text-sm leading-6 text-[#544C42]">
                         {lecturer.title}
                       </div>
                     </div>
                   </div>
 
-                  <p className="mt-5 text-sm leading-7 text-[#C9C0B6] sm:text-[0.96rem]">
+                  <p className="mt-5 text-sm leading-7 text-[#5E5549] sm:text-[0.96rem]">
                     {lecturer.bio}
                   </p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-6 flex flex-col gap-5 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm leading-7 text-[#AFA28F]">
+            <div className="mt-6 flex flex-col gap-5 border-t border-[#1A1A1A]/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm leading-7 text-[#6B5F52]">
                 Navigate through six teaching pairs now, then replace the image
                 placeholders with lecturer portraits later.
               </div>

@@ -74,16 +74,18 @@ export function LandingHeroEditorial({ onLearnMore }: LandingHeroProps) {
         backgroundSize: 'cover',
       }}
     >
-      <div className="absolute top-24 left-[8%] h-px w-20 bg-[#C5A059]/50 lg:top-36 lg:w-28" />
       <div className="absolute bottom-24 left-[8%] h-px w-16 bg-[#1A1A1A]/10 lg:w-24" />
 
       <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 pt-28 pb-20 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:pt-32 sm:pb-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:pt-36 lg:pb-24">
         <div className="grid min-h-[calc(100svh-14rem)] grid-cols-1 items-start gap-14 lg:grid-cols-[minmax(0,1.02fr)_minmax(24rem,0.98fr)] lg:gap-20">
           <div className="max-w-xl space-y-11 text-left">
             <div className="space-y-6">
-              <div className="inline-flex items-center gap-3 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-                <span className="h-px w-10 bg-[#C5A059]/55" />
-                DINA
+              <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+                <div className="h-px w-20 bg-[#C5A059]/50 lg:w-28" />
+                <div className="flex flex-row items-center gap-3">
+                  <span className="h-px w-10 bg-[#C5A059]/55" />
+                  DINA
+                </div>
               </div>
 
               <h1 className="max-w-[12ch] font-serif text-[clamp(3.9rem,7vw,6.7rem)] leading-[0.88] tracking-[-0.06em] text-[#1C1815]">
