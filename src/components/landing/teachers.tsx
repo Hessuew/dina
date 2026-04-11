@@ -175,11 +175,17 @@ export function LandingTeacherSection() {
               <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#4E463D] sm:text-lg">
                 "As they ministered to the Lord, and fasted, the Holy Ghost
                 said, Separate me Barnabas and Saul for the work whereunto I
-                have called them." Acts 13:2
+                have called them."
+                <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
+                  &nbsp;Acts 13:2
+                </span>
                 <br />
                 <br />
                 "After these things the Lord appointed other seventy also, and
-                sent them two and two before his face." Luke 10:1
+                sent them two and two before his face."
+                <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
+                  &nbsp;Luke 10:1
+                </span>
               </p>
             </div>
 

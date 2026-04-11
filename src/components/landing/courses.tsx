@@ -140,7 +140,10 @@ export function LandingCourseShowcase() {
                 <br />
                 <br />
                 "For every house is builded by some man; but he that built all
-                things is God." Hebrews 3:4
+                things is God."
+                <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
+                  &nbsp;Hebrews 3:4
+                </span>
               </p>
             </div>
 

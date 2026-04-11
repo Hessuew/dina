@@ -67,7 +67,10 @@ export function LandingAboutSection() {
                   "For when for the time ye ought to be teachers, ye have need
                   that one teach you again which be the first principles of the
                   oracles of God; and are become such as have need of milk, and
-                  not of strong meat." Hebrews 5:12
+                  not of strong meat."
+                  <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
+                    &nbsp;Hebrews 5:12
+                  </span>
                 </span>
               </p>
             </div>

@@ -115,7 +115,11 @@ export function LandingMarksSection() {
                 "Ye men of Israel, hear these words; Jesus of Nazareth, a man
                 approved of God among you by miracles and wonders and signs,
                 which God did by him in the midst of you, as ye yourselves also
-                know" Acts 2:22
+                know"
+                <br />
+                <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
+                  Acts 2:22
+                </span>
               </p>
             </div>
 
