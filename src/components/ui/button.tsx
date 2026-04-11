@@ -20,6 +20,10 @@ const buttonVariants = cva(
           'bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40',
         link: 'text-primary underline-offset-4 hover:underline',
       },
+      theme: {
+        light: '',
+        dark: 'rounded-none border-[#C5A059]/55 bg-gradient-to-b from-[#2A2A2A] to-[#111111] font-serif tracking-[0.12em] text-[#E9D9B4] shadow-[0_28px_60px_-28px_rgba(0,0,0,0.7)] hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white focus-visible:border-[#C5A059]/80 focus-visible:ring-[#C5A059]/20',
+      },
       size: {
         default:
           'h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
@@ -36,6 +40,7 @@ const buttonVariants = cva(
     },
     defaultVariants: {
       variant: 'default',
+      theme: 'light',
       size: 'default',
     },
   },
@@ -44,13 +49,14 @@ const buttonVariants = cva(
 function Button({
   className,
   variant = 'default',
+  theme = 'light',
   size = 'default',
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, theme, size, className }))}
       {...props}
     />
   )

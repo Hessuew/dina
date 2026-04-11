@@ -5,11 +5,7 @@ const FieldGroup = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn('flex flex-col gap-4', className)}
-    {...props}
-  />
+  <div ref={ref} className={cn('flex flex-col gap-4', className)} {...props} />
 ))
 FieldGroup.displayName = 'FieldGroup'
 
@@ -23,11 +19,16 @@ Field.displayName = 'Field'
 
 const FieldLabel = React.forwardRef<
   HTMLLabelElement,
-  React.LabelHTMLAttributes<HTMLLabelElement>
->(({ className, ...props }, ref) => (
+  React.LabelHTMLAttributes<HTMLLabelElement> & { theme?: 'light' | 'dark' }
+>(({ className, theme = 'light', ...props }, ref) => (
   <label
     ref={ref}
-    className={cn('text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70', className)}
+    className={cn(
+      theme === 'dark'
+        ? 'text-[0.68rem] font-medium tracking-[0.06em] text-[#C5A059]/70 uppercase'
+        : 'text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
+      className,
+    )}
     {...props}
   />
 ))
@@ -35,11 +36,16 @@ FieldLabel.displayName = 'FieldLabel'
 
 const FieldDescription = React.forwardRef<
   HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLParagraphElement> & { theme?: 'light' | 'dark' }
+>(({ className, theme = 'light', ...props }, ref) => (
   <p
     ref={ref}
-    className={cn('text-sm text-muted-foreground', className)}
+    className={cn(
+      theme === 'dark'
+        ? 'text-[0.7rem] leading-none tracking-[0.06em] text-[#C5A059]/70'
+        : 'text-muted-foreground text-sm',
+      className,
+    )}
     {...props}
   />
 ))
