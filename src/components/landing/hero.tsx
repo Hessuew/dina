@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
-import marbleTexture from '@/assets/images/bg.jpg'
-import heroEmblem from '@/assets/images/DINA_v3-Photoroom.png'
+import marbleTexture from '@/assets/images/bg/bg_hero.webp'
+import heroEmblem from '@/assets/images/bg/logo.webp'
 
 type LandingHeroProps = {
   onLearnMore?: () => void

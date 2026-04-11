@@ -1,5 +1,5 @@
 import { ArrowRight } from 'lucide-react'
-import marbleTexture from '@/assets/images/bg.jpg'
+import marbleTexture from '@/assets/images/bg/bg_hero.webp'
 
 type QAItem = {
   id: string
