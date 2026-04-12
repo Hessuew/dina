@@ -1,5 +1,5 @@
 import { Link, useRouter } from '@tanstack/react-router'
-import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
+import facultyBackground from '@/assets/images/bg/bg_hero.webp'
 import {
   Field,
   FieldDescription,
@@ -145,6 +145,7 @@ export function LoginForm({ verified = false }: LoginFormProps) {
                         type="email"
                         placeholder="your@email.com"
                         required
+                        theme="dark"
                       />
                     </Field>
 
@@ -165,7 +166,7 @@ export function LoginForm({ verified = false }: LoginFormProps) {
                         name="password"
                         type="password"
                         required
-                        theme="light"
+                        theme="dark"
                       />
                     </Field>
 
@@ -177,7 +178,7 @@ export function LoginForm({ verified = false }: LoginFormProps) {
                           (loginMutation.data !== undefined &&
                             !loginMutation.data.error)
                         }
-                        className="group inline-flex h-11 items-center justify-center gap-3 border border-[#C5A059]/55 bg-linear-to-b from-[#2A2A2A] to-[#111111] px-8 font-serif text-base tracking-[0.12em] text-[#E9D9B4] shadow-[0_28px_60px_-28px_rgba(0,0,0,0.7)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[#C5A059]/55 disabled:hover:text-[#E9D9B4]"
+                        className="group inline-flex h-11 cursor-pointer items-center justify-center gap-3 border border-[#C5A059]/55 bg-linear-to-b from-[#2A2A2A] to-[#111111] px-8 font-serif text-base tracking-[0.12em] text-[#E9D9B4] shadow-[0_28px_60px_-28px_rgba(0,0,0,0.7)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[#C5A059]/55 disabled:hover:text-[#E9D9B4]"
                       >
                         {loginMutation.status === 'pending'
                           ? 'Signing in...'
