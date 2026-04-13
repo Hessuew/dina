@@ -23,7 +23,7 @@ export const getStudents = createServerFn({ method: 'GET' }).handler(
 
     const studentsWithStats: Array<StudentWithStats> = await Promise.all(
       students.map(async (student) => {
-        const studentEnrollments = await db.query.courses.findMany({
+        const studentCourses = await db.query.courses.findMany({
           columns: {
             id: true,
             title: true,
@@ -62,7 +62,7 @@ export const getStudents = createServerFn({ method: 'GET' }).handler(
           .innerJoin(lessons, eq(assignments.lessonId, lessons.id))
           .innerJoin(courses, eq(lessons.courseId, courses.id))
 
-        const averageGradeByCourse = studentEnrollments.map((enrollment) => {
+        const averageGradeByCourse = studentCourses.map((enrollment) => {
           const courseSubmissions = studentSubmissions.filter(
             (sub) => sub.assignment.lesson.course.id === enrollment.id,
           )
@@ -98,7 +98,7 @@ export const getStudents = createServerFn({ method: 'GET' }).handler(
           email: student.email,
           avatarUrl: student.avatarUrl,
           createdAt: student.createdAt,
-          enrollmentCount: studentEnrollments.length,
+          enrollmentCount: studentCourses.length,
           assignmentStats: {
             totalAssignments: allAssignmentsForStudent.length,
             submittedAssignments: studentSubmissions.length,

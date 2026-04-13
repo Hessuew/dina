@@ -14,12 +14,6 @@ import { relations } from 'drizzle-orm'
 // ============================================================================
 
 export const userRoleEnum = pgEnum('user_role', ['student', 'teacher', 'admin'])
-export const enrollmentStatusEnum = pgEnum('enrollment_status', [
-  'pending',
-  'active',
-  'completed',
-  'dropped',
-])
 export const submissionStatusEnum = pgEnum('submission_status', [
   'draft',
   'submitted',
@@ -70,7 +64,6 @@ export const profiles = pgTable('profiles', {
   bio: text('bio'),
   avatarUrl: text('avatar_url'),
   emailNotifications: boolean('email_notifications').default(true),
-  notifyEnrollmentStatus: boolean('notify_enrollment_status').default(true),
   notifyNewAssignments: boolean('notify_new_assignments').default(true),
   notifyGrades: boolean('notify_grades').default(true),
   notifyInquiries: boolean('notify_inquiries').default(true),
@@ -119,24 +112,6 @@ export const lessons = pgTable('lessons', {
   zoomMeetingId: text('zoom_meeting_id'),
   zoomPassword: text('zoom_password'),
   scheduledTime: timestamp('scheduled_time'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
-
-export const enrollments = pgTable('enrollments', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  studentId: uuid('student_id')
-    .notNull()
-    .references(() => profiles.id, { onDelete: 'cascade' }),
-  courseId: uuid('course_id')
-    .notNull()
-    .references(() => courses.id, { onDelete: 'cascade' }),
-  status: enrollmentStatusEnum('status').notNull().default('pending'),
-  approvedBy: uuid('approved_by').references(() => profiles.id),
-  approvedAt: timestamp('approved_at'),
-  rejectionReason: text('rejection_reason'),
-  enrolledAt: timestamp('enrolled_at').defaultNow().notNull(),
-  completedAt: timestamp('completed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -299,7 +274,6 @@ export const invitations = pgTable('invitations', {
 
 export const profilesRelations = relations(profiles, ({ many }) => ({
   courseTeachers: many(courseTeachers),
-  enrollments: many(enrollments),
   submissions: many(submissions),
   inquiries: many(inquiries),
   inquiryResponses: many(inquiryResponses),
@@ -312,7 +286,6 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
 export const coursesRelations = relations(courses, ({ many }) => ({
   courseTeachers: many(courseTeachers),
   lessons: many(lessons),
-  enrollments: many(enrollments),
   inquiries: many(inquiries),
   announcements: many(announcements),
   mediaFiles: many(mediaLibrary),
@@ -337,21 +310,6 @@ export const lessonsRelations = relations(lessons, ({ one, many }) => ({
   }),
   progress: many(lessonProgress),
   assignments: many(assignments),
-}))
-
-export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
-  student: one(profiles, {
-    fields: [enrollments.studentId],
-    references: [profiles.id],
-  }),
-  course: one(courses, {
-    fields: [enrollments.courseId],
-    references: [courses.id],
-  }),
-  approver: one(profiles, {
-    fields: [enrollments.approvedBy],
-    references: [profiles.id],
-  }),
 }))
 
 export const lessonProgressRelations = relations(lessonProgress, ({ one }) => ({

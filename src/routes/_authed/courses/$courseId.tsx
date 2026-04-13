@@ -44,7 +44,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { db } from '@/db'
-import { courses, enrollments, lessonProgress, profiles } from '@/db/schema'
+import { courses, lessonProgress, profiles } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth'
 import { useMutation } from '@/hooks/useMutation'
 import { useAllTeachers } from '@/hooks/useAllTeachers'
@@ -89,17 +89,9 @@ const getCourseData = createServerFn({ method: 'GET' })
       throw new Error('Profile not found')
     }
 
-    let enrollment = null
     let progress: Array<any> = []
 
     if (profile.role === 'student') {
-      enrollment = await db.query.enrollments.findFirst({
-        where: and(
-          eq(enrollments.studentId, user.id),
-          eq(enrollments.courseId, data.courseId),
-        ),
-      })
-
       progress = await db.query.lessonProgress.findMany({
         where: and(
           eq(lessonProgress.studentId, user.id),
@@ -117,7 +109,6 @@ const getCourseData = createServerFn({ method: 'GET' })
         teacher2Id: course.courseTeachers[1]?.teacherId,
       },
       role: profile.role,
-      isEnrolled: !!enrollment,
       completedLessonIds: Array.from(completedLessonIds),
     }
   })
@@ -143,7 +134,7 @@ type Lesson = {
 function CourseDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
-  const { course: c, role, isEnrolled, completedLessonIds } = loaderData
+  const { course: c, role, completedLessonIds } = loaderData
   const course = c as typeof loaderData.course | null
 
   const [showEditCourseDialog, setShowEditCourseDialog] = useState(false)
@@ -482,7 +473,7 @@ function CourseDetailComponent() {
               </CardContent>
             </Card>
 
-            {!canEdit && isEnrolled && (
+            {!canEdit && (
               <Card>
                 <CardHeader>
                   <CardTitle>Your Progress</CardTitle>
@@ -623,17 +614,15 @@ function CourseDetailComponent() {
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              {role === 'student' &&
-                                isEnrolled &&
-                                isPublished && (
-                                  <div>
-                                    {isCompleted ? (
-                                      <Badge variant="default">Completed</Badge>
-                                    ) : (
-                                      <Button size="sm">Start</Button>
-                                    )}
-                                  </div>
-                                )}
+                              {role === 'student' && isPublished && (
+                                <div>
+                                  {isCompleted ? (
+                                    <Badge variant="default">Completed</Badge>
+                                  ) : (
+                                    <Button size="sm">Start</Button>
+                                  )}
+                                </div>
+                              )}
                               {canEdit && (
                                 <div className="flex gap-1">
                                   <Button

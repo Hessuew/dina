@@ -16,7 +16,6 @@ import {
   assignments,
   courseTeachers,
   courses,
-  enrollments,
   lessonProgress,
   lessons,
   profiles,
@@ -186,25 +185,11 @@ export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
       throw new Error('Profile not found')
     }
 
-    let courseIds: Array<string> = []
-
-    if (profile.role === 'teacher' || profile.role === 'admin') {
-      // Get courses where user is assigned as a teacher
-      const teacherAssignments = await db.query.courseTeachers.findMany({
-        where: eq(courseTeachers.teacherId, user.id),
-        columns: { courseId: true },
+    const courseIds = (
+      await db.query.courses.findMany({
+        columns: { id: true },
       })
-      courseIds = teacherAssignments.map((a) => a.courseId)
-    } else {
-      const studentEnrollments = await db.query.enrollments.findMany({
-        where: and(
-          eq(enrollments.studentId, user.id),
-          eq(enrollments.status, 'active'),
-        ),
-        columns: { courseId: true },
-      })
-      courseIds = studentEnrollments.map((e) => e.courseId)
-    }
+    ).map((c) => c.id)
 
     if (courseIds.length === 0) {
       return { events: [] }
