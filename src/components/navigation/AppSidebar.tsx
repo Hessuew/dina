@@ -138,7 +138,7 @@ function TeacherContent({
 export function AppSidebar({
   user,
   role,
-  sidebarVariant = 'light',
+  sidebarVariant = 'dark',
   ...props
 }: AppSidebarProps & React.ComponentProps<typeof Sidebar>) {
   const router = useRouter()
@@ -149,7 +149,9 @@ export function AppSidebar({
     <Sidebar
       collapsible={user ? 'icon' : 'offcanvas'}
       variant="inset"
-      className={sidebarVariant === 'dark' ? 'dina-dark' : 'dina-light'}
+      className={
+        sidebarVariant === 'dark' ? 'dina-dark py-0 pl-0' : 'dina-light'
+      }
       {...props}
     >
       <SidebarHeader>
@@ -158,7 +160,7 @@ export function AppSidebar({
             <SidebarMenuButton
               size="lg"
               render={
-                <Link to="/" className="flex items-center gap-3">
+                <Link to="/" className="mt-2 flex items-center gap-3">
                   <div className="flex size-8 shrink-0 items-center justify-center">
                     <img
                       src={heroEmblem}
