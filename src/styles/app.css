@@ -35,7 +35,7 @@
 
   html,
   body {
-    @apply text-gray-900 bg-gray-50 dark:bg-gray-950 dark:text-gray-200;
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-200;
   }
 
   .using-mouse * {
@@ -176,7 +176,7 @@
 
   html,
   body {
-    @apply text-gray-900 bg-gray-50 dark:bg-gray-950 dark:text-gray-200;
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-200;
   }
 
   .using-mouse * {
@@ -184,13 +184,35 @@
   }
 }
 
-  @keyframes fadeInSlideRight {
-    from {
-      opacity: 0;
-      transform: translateX(2rem);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
+@keyframes fadeInSlideRight {
+  from {
+    opacity: 0;
+    transform: translateX(2rem);
   }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.dina-dark {
+  --sidebar: #121212;
+  --sidebar-foreground: #f8f4ec;
+  --sidebar-primary: #c5a059;
+  --sidebar-primary-foreground: #1c1815;
+  --sidebar-accent: #1a1716;
+  --sidebar-accent-foreground: #f8f4ec;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: rgba(197, 160, 89, 0.5);
+}
+
+.dina-light {
+  --sidebar: #f8f4ec;
+  --sidebar-foreground: #1c1815;
+  --sidebar-primary: #9b7a41;
+  --sidebar-primary-foreground: #f8f4ec;
+  --sidebar-accent: #ede8de;
+  --sidebar-accent-foreground: #1c1815;
+  --sidebar-border: rgba(26, 26, 26, 0.1);
+  --sidebar-ring: rgba(197, 160, 89, 0.45);
+}

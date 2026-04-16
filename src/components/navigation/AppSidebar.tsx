@@ -8,7 +8,7 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react'
-import { NavUser } from './nav-user'
+import { NavUser } from '@/components/navigation/nav-user'
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +22,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar'
+import { cn } from '@/lib/utils'
 import heroEmblem from '@/assets/images/bg/logo.webp'
 
 type User = {
@@ -31,9 +32,12 @@ type User = {
   avatarUrl?: string | null
 }
 
+type SidebarVariant = 'light' | 'dark'
+
 type AppSidebarProps = {
   user: User | null
   role: 'student' | 'teacher' | 'admin'
+  sidebarVariant?: SidebarVariant
 }
 
 const navItems = [
@@ -65,9 +69,6 @@ const teacherNavItems = [
     url: '/students',
     icon: GraduationCap,
   },
-]
-
-const adminNavItems = [
   {
     title: 'User Management',
     url: '/invitations',
@@ -75,67 +76,60 @@ const adminNavItems = [
   },
 ]
 
-function TeacherContent({ isTeacherOrAdmin }: { isTeacherOrAdmin: boolean }) {
+function NavItemList({
+  items,
+  variant,
+}: {
+  items: typeof navItems
+  variant: SidebarVariant
+}) {
   const routerState = useRouterState()
-  if (!isTeacherOrAdmin) return null
+  return (
+    <SidebarMenu>
+      {items.map((item) => {
+        const isActive = routerState.location.pathname === item.url
+        return (
+          <SidebarMenuItem key={item.title}>
+            <SidebarMenuButton
+              className={cn(
+                'h-10 rounded-none transition-all',
+                isActive
+                  ? variant === 'dark'
+                    ? 'border-l-2 border-[#C5A059]/60 bg-[#1A1716] text-[#F8F4EC] hover:bg-[#1A1716] hover:text-[#F8F4EC]'
+                    : 'border-l-2 border-[#9B7A41]/60 bg-[#EDE8DE] text-[#1C1815] hover:bg-[#EDE8DE] hover:text-[#1C1815]'
+                  : variant === 'dark'
+                    ? 'border-l-2 border-transparent text-[#AFA28F] hover:border-[#C5A059]/30 hover:bg-[#1A1716]/60 hover:text-[#F8F4EC]'
+                    : 'border-l-2 border-transparent text-[#4E463D] hover:border-[#9B7A41]/30 hover:bg-[#EDE8DE]/60 hover:text-[#1C1815]',
+              )}
+              isActive={isActive}
+              render={
+                <Link to={item.url}>
+                  <item.icon />
+                  <span>{item.title}</span>
+                </Link>
+              }
+              tooltip={item.title}
+            />
+          </SidebarMenuItem>
+        )
+      })}
+    </SidebarMenu>
+  )
+}
 
+function TeacherContent({
+  isTeacherOrAdmin,
+  variant,
+}: {
+  isTeacherOrAdmin: boolean
+  variant: SidebarVariant
+}) {
+  if (!isTeacherOrAdmin) return null
   return (
     <>
       <SidebarGroupLabel>For teachers</SidebarGroupLabel>
       <SidebarGroupContent>
-        <SidebarMenu>
-          {teacherNavItems.map((item) => {
-            const isActive = routerState.location.pathname === item.url
-            return (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton
-                  className="h-10"
-                  isActive={isActive}
-                  render={
-                    <Link to={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  }
-                  tooltip={item.title}
-                />
-              </SidebarMenuItem>
-            )
-          })}
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </>
-  )
-}
-
-function AdminContent({ isAdmin }: { isAdmin: boolean }) {
-  const routerState = useRouterState()
-  if (!isAdmin) return null
-
-  return (
-    <>
-      <SidebarGroupLabel>For admins</SidebarGroupLabel>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {adminNavItems.map((item) => {
-            const isActive = routerState.location.pathname === item.url
-            return (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton
-                  className="h-10"
-                  isActive={isActive}
-                  render={
-                    <Link to={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  }
-                  tooltip={item.title}
-                />
-              </SidebarMenuItem>
-            )
-          })}
-        </SidebarMenu>
+        <NavItemList items={teacherNavItems} variant={variant} />
       </SidebarGroupContent>
     </>
   )
@@ -144,18 +138,18 @@ function AdminContent({ isAdmin }: { isAdmin: boolean }) {
 export function AppSidebar({
   user,
   role,
+  sidebarVariant = 'light',
   ...props
 }: AppSidebarProps & React.ComponentProps<typeof Sidebar>) {
-  const routerState = useRouterState()
   const router = useRouter()
 
   const isTeacherOrAdmin = role === 'teacher' || role === 'admin'
-  const isAdmin = role === 'admin'
 
   return (
     <Sidebar
       collapsible={user ? 'icon' : 'offcanvas'}
       variant="inset"
+      className={sidebarVariant === 'dark' ? 'dina-dark' : 'dina-light'}
       {...props}
     >
       <SidebarHeader>
@@ -164,8 +158,8 @@ export function AppSidebar({
             <SidebarMenuButton
               size="lg"
               render={
-                <Link to="/">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
+                <Link to="/" className="flex items-center gap-3">
+                  <div className="flex size-8 shrink-0 items-center justify-center">
                     <img
                       src={heroEmblem}
                       alt="DINA emblem"
@@ -173,8 +167,10 @@ export function AppSidebar({
                     />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">DINA</span>
-                    <span className="truncate text-xs">
+                    <span className="truncate text-[0.72rem] font-medium tracking-[0.3em] text-[#C5A059] uppercase sm:text-[0.78rem]">
+                      DINA
+                    </span>
+                    <span className="truncate text-xs font-medium text-[#8E816D]">
                       Discipleship Training School
                     </span>
                   </div>
@@ -188,36 +184,20 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupLabel>Platform</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => {
-                const isActive = routerState.location.pathname === item.url
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      className="h-10"
-                      isActive={isActive}
-                      render={
-                        <Link to={item.url}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </Link>
-                      }
-                      tooltip={item.title}
-                    />
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
+            <NavItemList items={navItems} variant={sidebarVariant} />
           </SidebarGroupContent>
 
-          <TeacherContent isTeacherOrAdmin={isTeacherOrAdmin} />
-          <AdminContent isAdmin={isAdmin} />
+          <TeacherContent
+            isTeacherOrAdmin={isTeacherOrAdmin}
+            variant={sidebarVariant}
+          />
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
         <NavUser
           user={user as any}
           onProfileUpdate={() => router.invalidate()}
+          variant={sidebarVariant}
         />
       </SidebarFooter>
       <SidebarRail />

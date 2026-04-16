@@ -21,11 +21,9 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { cn } from '@/lib/utils'
 
-export function NavUser({
-  user,
-  onProfileUpdate,
-}: {
+type NavUserProps = {
   user: {
     id: string
     email: string
@@ -34,7 +32,14 @@ export function NavUser({
     bio?: string
   } | null
   onProfileUpdate?: () => void
-}) {
+  variant?: 'light' | 'dark'
+}
+
+export function NavUser({
+  user,
+  onProfileUpdate,
+  variant = 'dark',
+}: NavUserProps) {
   const { isMobile, setOpen } = useSidebar()
   const [profileModalOpen, setProfileModalOpen] = useState(false)
 
@@ -51,6 +56,8 @@ export function NavUser({
         .slice(0, 2)
     : user.email.slice(0, 2).toUpperCase()
 
+  const isDark = variant === 'dark'
+
   return (
     <>
       <SidebarMenu>
@@ -60,56 +67,135 @@ export function NavUser({
               render={
                 <SidebarMenuButton
                   size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                  className={cn(
+                    'rounded-none border transition-all',
+                    isDark
+                      ? 'border-white/8 bg-[#1A1716]/60 text-[#D6CCBE] hover:border-[#C5A059]/30 hover:bg-[#1A1716] hover:text-[#F8F4EC] data-[state=open]:border-[#C5A059]/40 data-[state=open]:bg-[#1A1716]'
+                      : 'border-[#1A1A1A]/10 bg-[#EDE8DE]/60 text-[#4E463D] hover:border-[#9B7A41]/30 hover:bg-[#EDE8DE] hover:text-[#1C1815] data-[state=open]:border-[#9B7A41]/40 data-[state=open]:bg-[#EDE8DE]',
+                  )}
                 >
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user.avatarUrl} alt={user.fullName} />
-                    <AvatarFallback className="rounded-lg">
+                  <Avatar
+                    className={cn(
+                      'h-8 w-8',
+                      user.avatarUrl ? 'rounded-full' : 'rounded-none',
+                    )}
+                  >
+                    <AvatarImage
+                      src={user.avatarUrl}
+                      alt={user.fullName}
+                      className="rounded-none"
+                    />
+                    <AvatarFallback
+                      className={cn(
+                        'rounded-none text-xs font-medium tracking-[0.08em]',
+                        isDark
+                          ? 'bg-[#1A1716] text-[#C5A059]'
+                          : 'bg-[#EDE8DE] text-[#9B7A41]',
+                      )}
+                    >
                       {initials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">
+                    <span className="truncate font-medium">
                       {user.fullName || user.email}
                     </span>
-                    <span className="truncate text-xs">{user.email}</span>
+                    <span
+                      className={cn(
+                        'truncate text-[0.68rem] tracking-[0.04em]',
+                        isDark ? 'text-[#8E816D]' : 'text-[#5E5549]',
+                      )}
+                    >
+                      {user.email}
+                    </span>
                   </div>
-                  <ChevronsUpDown className="ml-auto size-4" />
+                  <ChevronsUpDown
+                    className={cn(
+                      'ml-auto size-4',
+                      isDark ? 'text-[#8E816D]' : 'text-[#5E5549]',
+                    )}
+                  />
                 </SidebarMenuButton>
               }
             />
             <DropdownMenuContent
-              className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+              className={cn(
+                'w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-none border shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]',
+                isDark
+                  ? 'border-white/10 bg-[#151515] text-[#F8F4EC]'
+                  : 'border-[#1A1A1A]/12 bg-[#F8F4EC] text-[#1C1815]',
+              )}
               side={isMobile ? 'bottom' : 'right'}
               align="end"
               sideOffset={4}
             >
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="p-0 font-normal">
-                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                    <Avatar className="h-8 w-8 rounded-lg">
+                  <div className="flex items-center gap-2 px-3 py-3">
+                    <Avatar
+                      className={cn(
+                        'h-8 w-8',
+                        user.avatarUrl ? 'rounded-full' : 'rounded-none',
+                      )}
+                    >
                       <AvatarImage src={user.avatarUrl} alt={user.fullName} />
-                      <AvatarFallback className="rounded-lg">
+                      <AvatarFallback
+                        className={cn(
+                          'rounded-none text-xs font-medium tracking-[0.08em]',
+                          isDark
+                            ? 'bg-[#1A1716] text-[#C5A059]'
+                            : 'bg-[#EDE8DE] text-[#9B7A41]',
+                        )}
+                      >
                         {initials}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">
+                    <div className="grid flex-1 text-left leading-tight">
+                      <span
+                        className={cn(
+                          'truncate text-sm font-medium',
+                          isDark ? 'text-[#F8F4EC]' : 'text-[#1C1815]',
+                        )}
+                      >
                         {user.fullName || user.email}
                       </span>
-                      <span className="truncate text-xs">{user.email}</span>
+                      <span
+                        className={cn(
+                          'truncate text-[0.68rem] tracking-[0.04em]',
+                          isDark ? 'text-[#8E816D]' : 'text-[#5E5549]',
+                        )}
+                      >
+                        {user.email}
+                      </span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setProfileModalOpen(true)}>
-                  <BadgeCheck />
+                <DropdownMenuSeparator
+                  className={isDark ? 'bg-white/8' : 'bg-[#1A1A1A]/10'}
+                />
+                <DropdownMenuItem
+                  className={cn(
+                    'mx-0 rounded-none px-3 py-2.5 text-sm transition-all',
+                    isDark
+                      ? 'text-[#D6CCBE] hover:bg-[#1A1716] hover:text-[#F8F4EC] focus:bg-[#1A1716]'
+                      : 'text-[#4E463D] hover:bg-[#EDE8DE] hover:text-[#1C1815] focus:bg-[#EDE8DE]',
+                  )}
+                  onClick={() => setProfileModalOpen(true)}
+                >
+                  <BadgeCheck
+                    className={cn(
+                      'size-4',
+                      isDark ? 'text-[#C5A059]' : 'text-[#9B7A41]',
+                    )}
+                  />
                   My Profile
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator
+                  className={isDark ? 'bg-white/8' : 'bg-[#1A1A1A]/10'}
+                />
                 <Link onClick={() => setOpen(false)} to="/logout">
-                  <DropdownMenuItem variant="destructive">
-                    <LogOut />
+                  <DropdownMenuItem className="mx-0 rounded-none px-3 py-2.5 text-sm text-[#C5A059]/80 transition-all hover:bg-[#C5A059]/8 hover:text-[#C5A059] focus:bg-[#C5A059]/8">
+                    <LogOut className="size-4" />
                     Log out
                   </DropdownMenuItem>
                 </Link>
