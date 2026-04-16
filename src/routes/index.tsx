@@ -6,6 +6,8 @@ import { LandingMarksSection } from '@/components/landing/marks'
 import { LandingTeacherSection } from '@/components/landing/teachers'
 import { LandingTestimonialsSection } from '@/components/landing/testimonials'
 import { LandingQASection } from '@/components/landing/qa'
+import { LandingLeadershipSection } from '@/components/landing/leadership'
+import { LandingOfficialInfo } from '@/components/landing/official-info'
 import { LandingFooter } from '@/components/landing/footer'
 
 export const Route = createFileRoute('/')({
@@ -28,7 +30,9 @@ function Home() {
       <LandingTestimonialsSection />
       <LandingMarksSection />
       <LandingQASection />
+      <LandingLeadershipSection />
 
+      <LandingOfficialInfo />
       <LandingFooter />
     </div>
   )
