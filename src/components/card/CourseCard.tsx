@@ -147,7 +147,7 @@ export function CourseCard({
         {course.description && (
           <p
             className={cn(
-              'mt-2 line-clamp-2 text-sm leading-6',
+              'mt-2 line-clamp-2 text-sm leading-6 whitespace-pre-wrap',
               isDark ? 'text-[#CFC6B7]' : 'text-[#4E463D]',
             )}
           >

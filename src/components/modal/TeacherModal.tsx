@@ -77,7 +77,7 @@ export function TeacherModal({
           {teacher.bio && (
             <div>
               <h3 className="mb-2 text-sm font-semibold">About</h3>
-              <p className="text-muted-foreground max-h-[calc(60vh-12rem)] overflow-y-auto text-sm leading-relaxed">
+              <p className="text-muted-foreground max-h-[calc(60vh-12rem)] overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap">
                 {teacher.bio}
               </p>
             </div>
@@ -109,7 +109,7 @@ export function TeacherModal({
                         </Badge>
                       </div>
                       {course.description && (
-                        <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
+                        <p className="text-muted-foreground mt-1 line-clamp-2 text-sm whitespace-pre-wrap">
                           {course.description}
                         </p>
                       )}

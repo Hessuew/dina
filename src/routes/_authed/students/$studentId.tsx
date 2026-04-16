@@ -83,7 +83,9 @@ function StudentDetailComponent() {
                 {student.email}
               </CardDescription>
               {student.bio && (
-                <p className="text-muted-foreground text-sm">{student.bio}</p>
+                <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+                  {student.bio}
+                </p>
               )}
               <div className="flex items-center gap-2 pt-2">
                 <Badge variant="secondary">
