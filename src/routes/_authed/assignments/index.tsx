@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { AssignmentsView } from '@/components/AssignmentsView'
+import { AssignmentsView } from '@/components/view/AssignmentsView'
 import {
   getAllAssignmentsForStudent,
   getAllAssignmentsForTeacher,

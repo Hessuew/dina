@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { StudentsView } from '@/components/StudentsView'
+import { StudentsView } from '@/components/view/StudentsView'
 import { getStudents } from '@/utils/students'
 import { getCourses } from '@/utils/courses'
 

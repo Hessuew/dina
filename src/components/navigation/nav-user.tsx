@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { BadgeCheck, ChevronsUpDown, LogOut } from 'lucide-react'
 
-import { ProfileModal } from './ProfileModal'
+import { ProfileModal } from '../modal/ProfileModal'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,

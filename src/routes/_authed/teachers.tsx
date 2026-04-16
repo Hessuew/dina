@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { TeachersView } from '@/components/TeachersView'
+import { TeachersView } from '@/components/view/TeachersView'
 import { getTeachers } from '@/utils/teachers'
 
 export const Route = createFileRoute('/_authed/teachers')({

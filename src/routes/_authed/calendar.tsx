@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import type { CalendarEvent } from '@/utils/calendar'
-import { CalendarView } from '@/components/CalendarView'
-import { EventPreviewModal } from '@/components/EventPreviewModal'
+import { CalendarView } from '@/components/view/CalendarView'
+import { EventPreviewModal } from '@/components/modal/EventPreviewModal'
 import {
   Select,
   SelectContent,

@@ -2,8 +2,8 @@ import { useRouter } from '@tanstack/react-router'
 import { PlusIcon, UploadIcon, XIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { CourseCardVariant1 } from './CourseCardVariant1'
-import type { Assignment } from './AssignmentsView'
+import { CourseCardVariant1 } from '../card/CourseCardVariant1'
+import type { Assignment } from '../view/AssignmentsView'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -27,8 +27,8 @@ import { useMutation } from '@/hooks/useMutation'
 import { useAllTeachers } from '@/hooks/useAllTeachers'
 import { createCourse } from '@/utils/courses'
 import { fileToBase64, uploadCourseThumbnailFn } from '@/utils/imageUpload'
-import { UpcomingLessonsList } from '@/components/UpcomingLessonsList'
-import { UpcomingAssignmentsList } from '@/components/UpcomingAssignmentsList'
+import { UpcomingLessonsList } from '@/components/list/UpcomingLessonsList'
+import { UpcomingAssignmentsList } from '@/components/list/UpcomingAssignmentsList'
 
 type Course = {
   id: string

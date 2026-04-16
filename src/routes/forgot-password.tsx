@@ -7,7 +7,7 @@ import { Resend } from 'resend'
 import { db } from '@/db'
 import { profiles } from '@/db/schema'
 import { env } from '@/env'
-import { ForgotPasswordForm } from '@/components/forgot-password-form'
+import { ForgotPasswordForm } from '@/components/auth/forgot-password-form'
 import { PasswordResetEmail } from '@/emails/PasswordResetEmail'
 import { requestPasswordResetSchema } from '@/schemas/auth.schema'
 

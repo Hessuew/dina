@@ -48,7 +48,7 @@ import { courses, lessonProgress, profiles } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth'
 import { useMutation } from '@/hooks/useMutation'
 import { useAllTeachers } from '@/hooks/useAllTeachers'
-import { TeacherAvatars } from '@/components/TeacherAvatars'
+import { TeacherAvatars } from '@/components/avarats/TeacherAvatars'
 import {
   createLesson,
   deleteCourse,

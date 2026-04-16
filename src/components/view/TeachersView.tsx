@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { TeacherCard } from './TeacherCard'
-import { TeacherModal } from './TeacherModal'
 import type { TeacherWithCourses } from '@/types/teacher'
+import { TeacherCard } from '@/components/card/TeacherCard'
+import { TeacherModal } from '@/components/modal/TeacherModal'
 
 type TeachersViewProps = {
   teachers: Array<TeacherWithCourses>
