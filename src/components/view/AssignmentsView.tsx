@@ -1,6 +1,7 @@
 import { useRouter } from '@tanstack/react-router'
-import { CalendarIcon } from 'lucide-react'
+import { ArrowRight, CalendarIcon } from 'lucide-react'
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -108,7 +109,7 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
           <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">
             Assignments
           </h1>
-          <p className="mt-1 text-sm text-[#8E816D]">
+          <p className="mt-2 text-[0.72rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
             {role === 'student'
               ? 'View and submit your assignments'
               : 'Manage assignments and grade submissions'}
@@ -160,20 +161,9 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                 return (
                   <div
                     key={assignment.id}
-                    className="group cursor-pointer border border-[#1A1A1A]/10 bg-[#F8F4EC] shadow-[0_8px_20px_-16px_rgba(0,0,0,0.12)] transition-all hover:border-[#C5A059]/30 hover:shadow-[0_12px_28px_-16px_rgba(197,160,89,0.20)]"
-                    onClick={() =>
-                      router.navigate({
-                        to: '/assignments/$assignmentId',
-                        params: { assignmentId: assignment.id },
-                        search: {
-                          calendarMonth: undefined,
-                          fromDashboard: false,
-                          fromCalendar: false,
-                        },
-                      })
-                    }
+                    className="group border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] transition-all hover:border-[#C5A059]/30"
                   >
-                    <div className="px-5 pt-5 pb-4">
+                    <div className="bg-[#151515]/88 px-5 pt-5 pb-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="mt-1 h-px w-6 shrink-0 bg-[#C5A059]/40" />
                         <span
@@ -190,25 +180,25 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                               assignment.status.slice(1)}
                         </span>
                       </div>
-                      <h4 className="mt-2 font-serif text-base leading-snug text-[#1C1815] group-hover:text-[#9B7A41]">
+                      <h4 className="mt-2 font-serif text-base leading-snug text-[#F8F4EC]">
                         {assignment.title}
                       </h4>
-                      <p className="mt-1 text-[0.72rem] text-[#8E816D]">
+                      <p className="mt-1 text-[0.72rem] text-[#AFA28F]">
                         {assignment.lesson.title}
                       </p>
                     </div>
 
-                    <div className="border-t border-[#1A1A1A]/8 px-5 py-3">
-                      <div className="flex items-center gap-1.5 text-[0.68rem] text-[#9B8C7C]">
+                    <div className="border-t border-white/8 bg-[#151515]/88 px-5 py-3 pb-2">
+                      <div className="flex items-center gap-1.5 text-[0.68rem] text-[#8E816D]">
                         <CalendarIcon className="size-3" />
                         <span
-                          className={cn(overdue && 'font-medium text-red-500')}
+                          className={cn(overdue && 'font-medium text-red-400')}
                         >
                           Due{' '}
                           {new Date(assignment.dueDate).toLocaleDateString()}
                         </span>
                         {overdue && (
-                          <span className="ml-auto border border-red-300/60 px-1.5 py-0.5 text-[0.52rem] font-medium tracking-[0.15em] text-red-500 uppercase">
+                          <span className="ml-auto border border-red-400/50 px-1.5 py-0.5 text-[0.52rem] font-medium tracking-[0.15em] text-red-400 uppercase">
                             Overdue
                           </span>
                         )}
@@ -221,7 +211,7 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                             <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
                               Grade
                             </span>
-                            <span className="font-serif text-sm text-[#1C1815]">
+                            <span className="font-serif text-sm text-[#E9D9B4]">
                               {assignment.submission.grade} /{' '}
                               {assignment.maxGrade ?? 100}
                             </span>
@@ -234,7 +224,7 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                               <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
                                 Submitted
                               </span>
-                              <span className="text-[0.72rem] font-medium text-[#4E463D]">
+                              <span className="text-[0.72rem] font-medium text-[#CFC6B7]">
                                 {assignment.submissionStats.submitted} /{' '}
                                 {assignment.submissionStats.total}
                               </span>
@@ -243,13 +233,40 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                               <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
                                 Graded
                               </span>
-                              <span className="text-[0.72rem] font-medium text-[#4E463D]">
+                              <span className="text-[0.72rem] font-medium text-[#CFC6B7]">
                                 {assignment.submissionStats.graded}
                               </span>
                             </div>
                           </div>
                         )
                       )}
+
+                      {/* Footer action row */}
+                      <div className="mt-3 flex items-center justify-between border-t border-white/8 pt-3">
+                        <span className="text-[0.68rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
+                          View assignment
+                        </span>
+
+                        <Button
+                          className={cn(
+                            'flex size-8 cursor-pointer items-center justify-center border transition-all',
+                            'border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4]',
+                          )}
+                          onClick={() =>
+                            router.navigate({
+                              to: '/assignments/$assignmentId',
+                              params: { assignmentId: assignment.id },
+                              search: {
+                                calendarMonth: undefined,
+                                fromDashboard: false,
+                                fromCalendar: false,
+                              },
+                            })
+                          }
+                        >
+                          <ArrowRight className="size-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )
@@ -261,10 +278,10 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
 
       {filteredAssignments.length === 0 && (
         <div className="py-16 text-center">
-          <p className="font-serif text-lg text-[#8E816D]">
+          <p className="font-serif text-lg text-[#AFA28F]">
             No assignments found
           </p>
-          <p className="mt-1 text-sm text-[#9B8C7C]">
+          <p className="mt-1 text-sm text-[#8E816D]">
             {selectedCourse === 'all'
               ? 'There are no assignments yet'
               : 'This course has no assignments'}

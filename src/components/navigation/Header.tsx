@@ -18,7 +18,7 @@ export function Header({ user }: HeaderProps) {
   }
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 px-4">
+    <header className="top-0 z-40 flex h-12 shrink-0 items-center gap-2 border-b border-white/8 bg-transparent px-4 backdrop-blur-md">
       <SidebarTrigger className="-ml-1 text-[#C5A059] hover:text-[#D6B16E]" />
     </header>
   )

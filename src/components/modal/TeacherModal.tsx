@@ -1,12 +1,7 @@
-import { BookOpenIcon } from 'lucide-react'
+import { BookOpenIcon, XIcon } from 'lucide-react'
 import type { TeacherWithCourses } from '@/types/teacher'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
 
 type TeacherModalProps = {
   teacher: TeacherWithCourses | null
@@ -16,25 +11,8 @@ type TeacherModalProps = {
 
 function getInitials(fullName: string): string {
   const names = fullName.trim().split(' ')
-  if (names.length === 1) {
-    return names[0].substring(0, 2).toUpperCase()
-  }
+  if (names.length === 1) return names[0].substring(0, 2).toUpperCase()
   return (names[0][0] + names[names.length - 1][0]).toUpperCase()
-}
-
-function getAvatarColor(id: string): string {
-  const colors = [
-    'bg-blue-500',
-    'bg-green-500',
-    'bg-purple-500',
-    'bg-pink-500',
-    'bg-orange-500',
-    'bg-teal-500',
-    'bg-indigo-500',
-    'bg-rose-500',
-  ]
-  const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  return colors[hash % colors.length]
 }
 
 export function TeacherModal({
@@ -45,71 +23,103 @@ export function TeacherModal({
   if (!teacher) return null
 
   const initials = getInitials(teacher.fullName)
-  const avatarColor = getAvatarColor(teacher.id)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
-          <div className="flex items-start gap-4">
-            <div className="shrink-0">
-              {teacher.avatarUrl ? (
-                <img
-                  src={teacher.avatarUrl}
-                  alt={teacher.fullName}
-                  className="ring-primary/20 size-20 rounded-full object-cover ring-2"
-                />
-              ) : (
-                <div
-                  className={`flex size-20 items-center justify-center rounded-full ${avatarColor} ring-primary/20 text-xl font-bold text-white ring-2`}
-                >
-                  {initials}
-                </div>
-              )}
-            </div>
-            <div className="flex-1">
-              <DialogTitle className="text-2xl">{teacher.fullName}</DialogTitle>
-            </div>
-          </div>
-        </DialogHeader>
+      <DialogContent
+        className="overflow-y-auto rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-2xl"
+        style={{
+          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+        showCloseButton={false}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
 
-        <div className="space-y-6">
+        <div className="relative">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-4 pb-6">
+            <div className="flex items-center gap-5">
+              <div className="shrink-0">
+                {teacher.avatarUrl ? (
+                  <img
+                    src={teacher.avatarUrl}
+                    alt={teacher.fullName}
+                    className="size-16 border border-white/10 object-cover"
+                  />
+                ) : (
+                  <div className="flex size-16 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-xl text-[#E9D9B4]">
+                    {initials}
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="h-px w-8 bg-[#C5A059]/40" />
+                <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                  Teacher
+                </div>
+                <h2 className="mt-1 font-serif text-2xl text-[#F8F4EC]">
+                  {teacher.fullName}
+                </h2>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="mt-1 flex size-8 shrink-0 items-center justify-center border border-white/10 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#D4B373]"
+              onClick={() => onOpenChange(false)}
+            >
+              <XIcon className="size-3.5" />
+            </button>
+          </div>
+
+          {/* Bio */}
           {teacher.bio && (
-            <div>
-              <h3 className="mb-2 text-sm font-semibold">About</h3>
-              <p className="text-muted-foreground max-h-[calc(60vh-12rem)] overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap">
+            <div className="mb-6">
+              <div className="h-px w-8 bg-[#C5A059]/40" />
+              <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                About
+              </div>
+              <p className="mt-3 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
                 {teacher.bio}
               </p>
             </div>
           )}
 
+          {/* Courses */}
           <div>
-            <div className="mb-3 flex items-center gap-2">
-              <BookOpenIcon className="size-4" />
-              <h3 className="text-sm font-semibold">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="h-px w-8 bg-[#C5A059]/40" />
+              <span className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                 Courses ({teacher.courseCount})
-              </h3>
+              </span>
             </div>
 
             {teacher.courses.length > 0 ? (
-              <div className="space-y-2">
+              <div className="divide-y divide-white/8 border border-white/10">
                 {teacher.courses.map((course) => (
                   <div
                     key={course.id}
-                    className="bg-muted/30 hover:bg-muted/50 flex items-start gap-3 rounded-lg border p-3 transition-colors"
+                    className="flex items-start gap-4 px-5 py-4"
                   >
-                    <div className="flex-1">
+                    <BookOpenIcon className="mt-0.5 size-3.5 shrink-0 text-[#C5A059]/60" />
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <h4 className="font-medium">{course.title}</h4>
-                        <Badge
-                          variant={course.isPublished ? 'default' : 'secondary'}
-                          className="text-xs"
+                        <span className="text-sm text-[#F8F4EC]">
+                          {course.title}
+                        </span>
+                        <span
+                          className={`border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase ${
+                            course.isPublished
+                              ? 'border-[#C5A059]/40 text-[#9B7A41]'
+                              : 'border-white/12 text-[#8E816D]'
+                          }`}
                         >
                           {course.isPublished ? 'Published' : 'Draft'}
-                        </Badge>
+                        </span>
                       </div>
                       {course.description && (
-                        <p className="text-muted-foreground mt-1 line-clamp-2 text-sm whitespace-pre-wrap">
+                        <p className="mt-1 line-clamp-2 text-xs whitespace-pre-wrap text-[#8E816D]">
                           {course.description}
                         </p>
                       )}
@@ -118,7 +128,7 @@ export function TeacherModal({
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-[#8E816D] italic">
                 No courses available yet
               </p>
             )}

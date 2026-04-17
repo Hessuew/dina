@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import type { CalendarEvent } from '@/utils/calendar'
+import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { CalendarView } from '@/components/view/CalendarView'
 import { EventPreviewModal } from '@/components/modal/EventPreviewModal'
 import {
@@ -81,64 +82,77 @@ function CalendarComponent() {
   }, [search.month])
 
   return (
-    <div className="mx-auto w-full max-w-7xl p-6">
-      <div className="mb-6">
-        <div className="flex items-center justify-between pb-2">
-          <div>
-            <h1 className="text-3xl font-bold">Calendar</h1>
-            <p className="text-muted-foreground mt-1">
-              View all published lessons and assignments
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Select
-              value={selectedType}
-              onValueChange={(value) => setSelectedType(value ?? 'all')}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Event type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Events</SelectItem>
-                <SelectItem value="lesson">Lessons</SelectItem>
-                <SelectItem value="assignment">Assignments</SelectItem>
-              </SelectContent>
-            </Select>
-            {courses.length > 0 && (
+    <div
+      className="relative isolate min-h-screen overflow-hidden"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(255,255,255,0.92), rgba(255,255,255,0.92)), url(${facultyBackground})`,
+        backgroundPosition: 'center',
+        backgroundSize: 'cover',
+      }}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.10),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.22),transparent_22%)]" />
+      <div className="relative mx-auto max-w-7xl px-6 py-10 sm:px-8 sm:py-12">
+        <div className="mb-10">
+          <div className="flex items-end justify-between gap-6">
+            <div>
+              <div className="h-px w-10 bg-[#C5A059]/50" />
+              <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">
+                Calendar
+              </h1>
+              <p className="mt-2 text-[0.72rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
+                View all published lessons and assignments
+              </p>
+            </div>
+            <div className="flex gap-2">
               <Select
-                value={selectedCourse}
-                onValueChange={(value) => setSelectedCourse(value ?? 'all')}
+                value={selectedType}
+                onValueChange={(value) => setSelectedType(value ?? 'all')}
               >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Filter by course" />
+                <SelectTrigger className="w-[150px] rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40">
+                  <SelectValue placeholder="Event type" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Courses</SelectItem>
-                  {courses.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.name}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="rounded-none">
+                  <SelectItem value="all">All Events</SelectItem>
+                  <SelectItem value="lesson">Lessons</SelectItem>
+                  <SelectItem value="assignment">Assignments</SelectItem>
                 </SelectContent>
               </Select>
-            )}
+              {courses.length > 0 && (
+                <Select
+                  value={selectedCourse}
+                  onValueChange={(value) => setSelectedCourse(value ?? 'all')}
+                >
+                  <SelectTrigger className="w-[200px] rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40">
+                    <SelectValue placeholder="Filter by course" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-none">
+                    <SelectItem value="all">All Courses</SelectItem>
+                    {courses.map((course) => (
+                      <SelectItem key={course.id} value={course.id}>
+                        {course.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
         </div>
+
+        <CalendarView
+          events={filteredEvents}
+          onEventClick={handleEventClick}
+          initialDate={currentMonth}
+          onDateChange={handleDateChange}
+        />
+
+        <EventPreviewModal
+          event={selectedEvent}
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          currentMonth={currentMonth}
+        />
       </div>
-
-      <CalendarView
-        events={filteredEvents}
-        onEventClick={handleEventClick}
-        initialDate={currentMonth}
-        onDateChange={handleDateChange}
-      />
-
-      <EventPreviewModal
-        event={selectedEvent}
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        currentMonth={currentMonth}
-      />
     </div>
   )
 }
