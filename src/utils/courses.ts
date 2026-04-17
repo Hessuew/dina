@@ -252,7 +252,7 @@ export const createCourse = createServerFn({ method: 'POST' })
       description: z.string().min(1),
       thumbnailUrl: z.url().optional(),
       teacher1Id: z.uuid(),
-      teacher2Id: z.uuid(),
+      // teacher2Id: z.uuid(),
       orderIndex: z.number().int().min(0).default(0),
     }),
   )
@@ -267,29 +267,29 @@ export const createCourse = createServerFn({ method: 'POST' })
       throw new Error('Only admins can create courses')
     }
 
-    // Validate that exactly 2 different teachers are provided
-    if (data.teacher1Id === data.teacher2Id) {
-      throw new Error('Must assign 2 different teachers to a course')
-    }
+    // // Validate that exactly 2 different teachers are provided
+    // if (data.teacher1Id === data.teacher2Id) {
+    //   throw new Error('Must assign 2 different teachers to a course')
+    // }
 
-    // Verify both teachers exist and have teacher role
-    const teachers = await db.query.profiles.findMany({
-      where: inArray(profiles.id, [data.teacher1Id, data.teacher2Id]),
-    })
+    // // Verify both teachers exist and have teacher role
+    // const teachers = await db.query.profiles.findMany({
+    //   where: inArray(profiles.id, [data.teacher1Id, data.teacher2Id]),
+    // })
 
-    if (teachers.length !== 2) {
-      throw new Error('One or both teachers not found')
-    }
+    // if (teachers.length !== 2) {
+    //   throw new Error('One or both teachers not found')
+    // }
 
-    const teacher1 = teachers.find((t) => t.id === data.teacher1Id)
-    const teacher2 = teachers.find((t) => t.id === data.teacher2Id)
+    // const teacher1 = teachers.find((t) => t.id === data.teacher1Id)
+    // const teacher2 = teachers.find((t) => t.id === data.teacher2Id)
 
-    if (teacher1?.role !== 'teacher') {
-      throw new Error(`${teacher1?.fullName || 'Teacher 1'} is not a teacher`)
-    }
-    if (teacher2?.role !== 'teacher') {
-      throw new Error(`${teacher2?.fullName || 'Teacher 2'} is not a teacher`)
-    }
+    // if (teacher1?.role !== 'teacher') {
+    //   throw new Error(`${teacher1?.fullName || 'Teacher 1'} is not a teacher`)
+    // }
+    // if (teacher2?.role !== 'teacher') {
+    //   throw new Error(`${teacher2?.fullName || 'Teacher 2'} is not a teacher`)
+    // }
 
     // Create course
     const [course] = await db
@@ -309,10 +309,10 @@ export const createCourse = createServerFn({ method: 'POST' })
         courseId: course.id,
         teacherId: data.teacher1Id,
       },
-      {
-        courseId: course.id,
-        teacherId: data.teacher2Id,
-      },
+      // {
+      //   courseId: course.id,
+      //   teacherId: data.teacher2Id,
+      // },
     ])
 
     return { course }

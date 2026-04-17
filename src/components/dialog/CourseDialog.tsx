@@ -26,7 +26,7 @@ import { useMutation } from '@/hooks/useMutation'
 import { useAllTeachers } from '@/hooks/useAllTeachers'
 import { createCourse, updateCourse } from '@/utils/courses'
 import { fileToBase64, uploadCourseThumbnailFn } from '@/utils/imageUpload'
-import marbleTexture from '@/assets/images/bg/bg_hero.webp'
+import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
 
 type CourseFormData = {
   title: string
@@ -228,15 +228,15 @@ export function CourseDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="overflow-y-auto rounded-none border border-[#C5A059]/20 text-[#1C1815] shadow-[0_28px_60px_-32px_rgba(0,0,0,0.22)] sm:max-w-3xl"
+        className="overflow-y-auto rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
         style={{
-          backgroundImage: `linear-gradient(180deg, rgba(247,244,238,0.97), rgba(247,244,238,0.99)), url(${marbleTexture})`,
+          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
         showCloseButton={false}
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.08),transparent_40%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
 
         <div className="relative">
           <DialogHeader>
@@ -246,10 +246,10 @@ export function CourseDialog({
                 {mode === 'create' ? 'New course' : 'Edit course'}
               </div>
             </div>
-            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#1C1815]">
+            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
               {mode === 'create' ? 'Create Course' : 'Edit Course'}
             </DialogTitle>
-            <DialogDescription className="text-[#4E463D]">
+            <DialogDescription className="text-[#AFA28F]">
               {mode === 'create'
                 ? 'Add a new course and assign teachers'
                 : 'Update the course information'}
@@ -269,7 +269,7 @@ export function CourseDialog({
                   id="course-title"
                   placeholder="Introduction to Programming"
                   value={formData.title}
-                  className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] placeholder:text-[#9B8C7C] focus:border-[#C5A059]/50"
+                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
                   }
@@ -289,7 +289,7 @@ export function CourseDialog({
                   min="0"
                   placeholder="0"
                   value={formData.orderIndex}
-                  className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] placeholder:text-[#9B8C7C] focus:border-[#C5A059]/50"
+                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -297,7 +297,7 @@ export function CourseDialog({
                     })
                   }
                 />
-                <p className="text-xs text-[#6B5F4D]">
+                <p className="text-xs text-[#8E816D]">
                   Lower numbers appear first in course list
                 </p>
               </Field>
@@ -317,7 +317,7 @@ export function CourseDialog({
                       }
                     >
                       <SelectTrigger
-                        className="w-full rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815]"
+                        className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
                         id="course-teacher1"
                       >
                         <SelectValue placeholder="Select first teacher">
@@ -327,7 +327,7 @@ export function CourseDialog({
                             : 'Select first teacher'}
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent className="rounded-none border-[#1A1A1A]/12 bg-[#FDFAF5]">
+                      <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
                         {teachers.length === 0 ? (
                           <SelectItem value="none" disabled>
                             No teachers available
@@ -356,7 +356,7 @@ export function CourseDialog({
                       }
                     >
                       <SelectTrigger
-                        className="w-full rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815]"
+                        className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
                         id="course-teacher2"
                       >
                         <SelectValue placeholder="Select second teacher">
@@ -366,7 +366,7 @@ export function CourseDialog({
                             : 'Select second teacher'}
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent className="rounded-none border-[#1A1A1A]/12 bg-[#FDFAF5]">
+                      <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
                         {teachers.length === 0 ? (
                           <SelectItem value="none" disabled>
                             No teachers available
@@ -400,7 +400,7 @@ export function CourseDialog({
                   placeholder="Describe what students will learn in this course"
                   rows={10}
                   value={formData.description}
-                  className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] placeholder:text-[#9B8C7C] focus:border-[#C5A059]/50"
+                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
@@ -445,16 +445,17 @@ export function CourseDialog({
                     </div>
                   ) : (
                     <Button
+                      theme="dark"
                       type="button"
                       variant="outline"
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full max-w-sm rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40 hover:bg-white"
+                      className="w-full max-w-sm rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
                     >
                       <UploadIcon className="mr-2 size-4" />
                       Upload Thumbnail
                     </Button>
                   )}
-                  <p className="text-xs text-[#6B5F4D]">
+                  <p className="text-xs text-[#8E816D]">
                     JPG, PNG, WebP or GIF. Max 2MB.
                   </p>
                 </div>
@@ -473,7 +474,7 @@ export function CourseDialog({
                   />
                   <FieldLabel
                     htmlFor="course-published"
-                    className="text-sm text-[#4E463D]"
+                    className="text-sm text-[#AFA28F]"
                   >
                     Publish course
                   </FieldLabel>
@@ -482,15 +483,15 @@ export function CourseDialog({
             )}
           </FieldGroup>
 
-          <DialogFooter className="mt-6 rounded-none border-[#C5A059]/15 bg-[#F0EBE1]/60">
+          <DialogFooter className="mt-6 rounded-none border-white/8 bg-white/3">
             <Button
               variant="outline"
-              className="rounded-none border-[#1A1A1A]/12 bg-transparent text-[#6B5F4D] hover:border-[#1A1A1A]/20 hover:bg-white/50 hover:text-[#1C1815]"
+              theme="dark"
               onClick={() => onOpenChange(false)}
             >
               Cancel
             </Button>
-            <Button theme="light" onClick={handleSubmit} disabled={isPending}>
+            <Button theme="dark" onClick={handleSubmit} disabled={isPending}>
               {isUploading
                 ? 'Uploading...'
                 : isPending

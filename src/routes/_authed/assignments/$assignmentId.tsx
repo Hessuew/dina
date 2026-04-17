@@ -147,8 +147,8 @@ function AssignmentDetailComponent() {
 
   const statusColors: Record<string, string> = {
     published: 'border-[#C5A059]/40 bg-[#C5A059]/8 text-[#9B7A41]',
-    closed: 'border-red-300/60 bg-red-50 text-red-600',
-    draft: 'border-[#1A1A1A]/12 bg-[#1A1A1A]/4 text-[#8E816D]',
+    closed: 'border-red-400/50 bg-red-900/10 text-red-400',
+    draft: 'border-white/12 bg-white/4 text-[#8E816D]',
   }
 
   return (
@@ -177,10 +177,10 @@ function AssignmentDetailComponent() {
           <div className="flex items-start justify-between gap-6">
             <div>
               <div className="h-px w-10 bg-[#C5A059]/50" />
-              <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
+              <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-black sm:text-4xl">
                 {assignment.title}
               </h1>
-              <div className="mt-3 flex items-center gap-4 text-[0.68rem] text-[#9B8C7C]">
+              <div className="mt-3 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
                 <span className="tracking-wides">
                   {assignment.lesson.course.title}
                 </span>
@@ -223,14 +223,14 @@ function AssignmentDetailComponent() {
                 <>
                   <button
                     type="button"
-                    className="flex size-8 items-center justify-center border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] transition-all hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
+                    className="flex size-8 items-center justify-center border border-white/12 bg-white/6 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#D4B373]"
                     onClick={() => setDialogMode('edit')}
                   >
                     <PencilIcon className="size-3.5" />
                   </button>
                   <button
                     type="button"
-                    className="flex size-8 items-center justify-center border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] transition-all hover:border-red-300 hover:text-red-600"
+                    className="flex size-8 items-center justify-center border border-white/12 bg-white/6 text-[#8E816D] transition-all hover:border-red-400/50 hover:text-red-400"
                     onClick={() => setDialogMode('delete')}
                   >
                     <TrashIcon className="size-3.5" />
@@ -242,37 +242,37 @@ function AssignmentDetailComponent() {
         </div>
 
         {/* Main grid */}
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
           {/* Left — assignment details */}
-          <div className="border border-[#1A1A1A]/10 bg-[#F8F4EC] shadow-[0_16px_28px_-24px_rgba(0,0,0,0.10)]">
-            <div className="px-6 py-6">
+          <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
+            <div className="bg-[#151515]/88 px-6 py-6">
               <div className="h-px w-8 bg-[#C5A059]/40" />
               <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                 About this assignment
               </div>
               {assignment.description ? (
-                <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#4E463D]">
+                <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
                   {assignment.description}
                 </p>
               ) : (
-                <p className="mt-4 text-sm text-[#9B8C7C] italic">
+                <p className="mt-4 text-sm text-[#8E816D] italic">
                   No description provided.
                 </p>
               )}
             </div>
 
-            <div className="border-t border-[#1A1A1A]/8 px-6 py-5">
+            <div className="border-t border-white/8 bg-[#151515]/88 px-6 py-5">
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
                     Maximum Grade
                   </span>
-                  <span className="font-serif text-base text-[#1C1815]">
+                  <span className="font-serif text-base text-[#F8F4EC]">
                     {assignment.maxGrade ?? 100} pts
                   </span>
                 </div>
                 {isPastDue && (
-                  <div className="border border-red-200 bg-red-50/60 px-4 py-3 text-xs text-red-600">
+                  <div className="border border-red-400/30 bg-red-900/20 px-4 py-3 text-xs text-red-400">
                     This assignment is past due
                   </div>
                 )}
@@ -281,13 +281,13 @@ function AssignmentDetailComponent() {
           </div>
 
           {/* Right — submission / submissions list */}
-          <div className="border border-[#1A1A1A]/10 bg-[#F8F4EC] shadow-[0_16px_28px_-24px_rgba(0,0,0,0.10)]">
-            <div className="border-b border-[#1A1A1A]/8 px-6 py-5">
+          <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
+            <div className="border-b border-white/8 px-6 py-5">
               <div className="h-px w-8 bg-[#C5A059]/40" />
               <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                 {isStudent ? 'Your Submission' : 'Submissions'}
               </div>
-              <div className="mt-1 font-serif text-xl text-[#1C1815]">
+              <div className="mt-1 font-serif text-xl text-[#F8F4EC]">
                 {isStudent
                   ? canSubmit
                     ? 'Submit before the due date'
@@ -301,7 +301,7 @@ function AssignmentDetailComponent() {
             {isStudent ? (
               <div className="px-6 py-6">
                 {assignment.status !== 'published' ? (
-                  <p className="py-8 text-center text-sm text-[#9B8C7C] italic">
+                  <p className="py-8 text-center text-sm text-[#8E816D] italic">
                     This assignment is not yet available.
                   </p>
                 ) : (
@@ -318,7 +318,7 @@ function AssignmentDetailComponent() {
                         rows={8}
                         placeholder="Enter your answer here..."
                         value={submissionFormData.content}
-                        className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] placeholder:text-[#9B8C7C] focus:border-[#C5A059]/50"
+                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                         onChange={(e) =>
                           setSubmissionFormData({
                             ...submissionFormData,
@@ -340,7 +340,7 @@ function AssignmentDetailComponent() {
                         type="url"
                         placeholder="https://..."
                         value={submissionFormData.fileUrl}
-                        className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] placeholder:text-[#9B8C7C] focus:border-[#C5A059]/50"
+                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                         onChange={(e) =>
                           setSubmissionFormData({
                             ...submissionFormData,
@@ -352,7 +352,7 @@ function AssignmentDetailComponent() {
                     </Field>
 
                     {submission && (
-                      <div className="border border-[#1A1A1A]/10 bg-white/50 px-4 py-4 text-sm">
+                      <div className="border border-white/10 bg-white/4 px-4 py-4 text-sm">
                         <div className="flex items-center justify-between">
                           <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
                             Status
@@ -362,7 +362,7 @@ function AssignmentDetailComponent() {
                               'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
                               submission.status === 'submitted'
                                 ? 'border-[#C5A059]/40 text-[#9B7A41]'
-                                : 'border-[#1A1A1A]/12 text-[#8E816D]',
+                                : 'border-white/12 text-[#8E816D]',
                             )}
                           >
                             {submission.status === 'submitted'
@@ -375,7 +375,7 @@ function AssignmentDetailComponent() {
                             <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
                               Submitted
                             </span>
-                            <span className="text-xs text-[#4E463D]">
+                            <span className="text-xs text-[#AFA28F]">
                               {new Date(
                                 submission.submittedAt,
                               ).toLocaleString()}
@@ -388,7 +388,7 @@ function AssignmentDetailComponent() {
                               <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
                                 Grade
                               </span>
-                              <span className="font-serif text-base text-[#1C1815]">
+                              <span className="font-serif text-base text-[#F8F4EC]">
                                 {submission.grade} /{' '}
                                 {assignment.maxGrade ?? 100}
                               </span>
@@ -398,7 +398,7 @@ function AssignmentDetailComponent() {
                                 <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
                                   Feedback
                                 </span>
-                                <p className="mt-2 text-sm whitespace-pre-wrap text-[#4E463D]">
+                                <p className="mt-2 text-sm whitespace-pre-wrap text-[#CFC6B7]">
                                   {submission.feedback}
                                 </p>
                               </div>
@@ -412,7 +412,7 @@ function AssignmentDetailComponent() {
                       <div className="flex gap-3">
                         <Button
                           variant="outline"
-                          className="rounded-none border-[#1A1A1A]/15 text-[#6B5F4D] hover:border-[#1A1A1A]/25 hover:bg-white/60"
+                          theme="dark"
                           onClick={() => handleSaveSubmission(false)}
                           disabled={submissionMutation.status === 'pending'}
                         >
@@ -420,7 +420,7 @@ function AssignmentDetailComponent() {
                           Save Draft
                         </Button>
                         <Button
-                          theme="light"
+                          theme="dark"
                           onClick={() => handleSaveSubmission(true)}
                           disabled={submissionMutation.status === 'pending'}
                         >
@@ -437,14 +437,14 @@ function AssignmentDetailComponent() {
                 {(allSubmissions as Array<SubmissionWithStudent>).length ===
                 0 ? (
                   <div className="py-16 text-center">
-                    <p className="text-sm text-[#9B8C7C] italic">
+                    <p className="text-sm text-[#AFA28F] italic">
                       No submissions yet
                     </p>
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-[#1A1A1A]/8 hover:bg-transparent">
+                      <TableRow className="border-white/8 hover:bg-transparent">
                         <TableHead className="text-[0.62rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
                           Student
                         </TableHead>
@@ -464,13 +464,13 @@ function AssignmentDetailComponent() {
                         (sub) => (
                           <TableRow
                             key={sub.id}
-                            className="cursor-pointer border-[#1A1A1A]/6 transition-colors hover:bg-[#EDE8DE]/60"
+                            className="cursor-pointer border-white/6 transition-colors hover:bg-white/5"
                             onClick={() => {
                               setSelectedSubmission(sub)
                               setDialogMode('grade')
                             }}
                           >
-                            <TableCell className="font-serif text-sm text-[#1C1815]">
+                            <TableCell className="font-serif text-sm text-[#F8F4EC]">
                               {sub.student.fullName}
                             </TableCell>
                             <TableCell>
@@ -491,12 +491,12 @@ function AssignmentDetailComponent() {
                                     : 'Draft'}
                               </span>
                             </TableCell>
-                            <TableCell className="text-sm text-[#4E463D]">
+                            <TableCell className="text-sm text-[#AFA28F]">
                               {sub.grade !== null
                                 ? `${sub.grade} / ${assignment.maxGrade ?? 100}`
                                 : '—'}
                             </TableCell>
-                            <TableCell className="text-sm text-[#9B8C7C]">
+                            <TableCell className="text-sm text-[#8E816D]">
                               {sub.submittedAt
                                 ? new Date(sub.submittedAt).toLocaleDateString()
                                 : '—'}

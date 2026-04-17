@@ -27,7 +27,7 @@ import {
   gradeSubmission,
   updateAssignment,
 } from '@/utils/assignments'
-import marbleTexture from '@/assets/images/bg/bg_hero.webp'
+import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
 
 type AssignmentDialogProps = {
   open: boolean
@@ -162,7 +162,7 @@ export function AssignmentDialog({
     gradeMutation.status === 'pending'
 
   const dialogStyle = {
-    backgroundImage: `linear-gradient(180deg, rgba(247,244,238,0.97), rgba(247,244,238,0.99)), url(${marbleTexture})`,
+    backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
   }
@@ -171,11 +171,11 @@ export function AssignmentDialog({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="rounded-none border border-[#C5A059]/20 shadow-[0_28px_60px_-32px_rgba(0,0,0,0.22)]"
+          className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
           style={dialogStyle}
           showCloseButton={false}
         >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.08),transparent_40%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
           <div className="relative">
             <DialogHeader>
               <div className="mb-1">
@@ -184,10 +184,10 @@ export function AssignmentDialog({
                   Confirm action
                 </div>
               </div>
-              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#1C1815]">
+              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
                 Delete Assignment
               </DialogTitle>
-              <DialogDescription className="text-[#4E463D]">
+              <DialogDescription className="text-[#AFA28F]">
                 {submissionCount > 0 ? (
                   <>
                     This assignment has {submissionCount} submission
@@ -202,10 +202,10 @@ export function AssignmentDialog({
                 )}
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="mt-6">
+            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
               <Button
                 variant="outline"
-                className="rounded-none border-[#1A1A1A]/12 bg-transparent text-[#6B5F4D] hover:border-[#1A1A1A]/20 hover:bg-white/50"
+                theme="dark"
                 onClick={() => onOpenChange(false)}
               >
                 Cancel
@@ -236,11 +236,11 @@ export function AssignmentDialog({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="rounded-none border border-[#C5A059]/20 shadow-[0_28px_60px_-32px_rgba(0,0,0,0.22)]"
+          className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
           style={dialogStyle}
           showCloseButton={false}
         >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.08),transparent_40%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
           <div className="relative">
             <DialogHeader>
               <div className="mb-1">
@@ -249,7 +249,7 @@ export function AssignmentDialog({
                   Grade submission
                 </div>
               </div>
-              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#1C1815]">
+              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
                 {submission?.student.fullName}
               </DialogTitle>
             </DialogHeader>
@@ -259,8 +259,8 @@ export function AssignmentDialog({
                 <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                   Student's Answer
                 </div>
-                <div className="mt-2 border border-[#1A1A1A]/10 bg-white/50 px-4 py-3">
-                  <p className="text-sm whitespace-pre-wrap text-[#4E463D]">
+                <div className="mt-2 border border-white/10 bg-white/4 px-4 py-3">
+                  <p className="text-sm whitespace-pre-wrap text-[#AFA28F]">
                     {submission?.content || 'No content provided'}
                   </p>
                 </div>
@@ -294,7 +294,7 @@ export function AssignmentDialog({
                     min="0"
                     max={assignment?.maxGrade ?? 100}
                     value={gradingData.grade}
-                    className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] focus:border-[#C5A059]/50"
+                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50"
                     onChange={(e) =>
                       setGradingData({
                         ...gradingData,
@@ -315,7 +315,7 @@ export function AssignmentDialog({
                     rows={4}
                     placeholder="Provide feedback to the student..."
                     value={gradingData.feedback}
-                    className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] placeholder:text-[#9B8C7C] focus:border-[#C5A059]/50"
+                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                     onChange={(e) =>
                       setGradingData({
                         ...gradingData,
@@ -327,16 +327,16 @@ export function AssignmentDialog({
               </FieldGroup>
             </div>
 
-            <DialogFooter className="mt-6">
+            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
               <Button
                 variant="outline"
-                className="rounded-none border-[#1A1A1A]/12 bg-transparent text-[#6B5F4D] hover:border-[#1A1A1A]/20 hover:bg-white/50"
+                theme="dark"
                 onClick={() => onOpenChange(false)}
               >
                 Cancel
               </Button>
               <Button
-                theme="light"
+                theme="dark"
                 onClick={() => {
                   if (!submission) return
                   gradeMutation.mutate({
@@ -362,11 +362,11 @@ export function AssignmentDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="overflow-y-auto rounded-none border border-[#C5A059]/20 shadow-[0_28px_60px_-32px_rgba(0,0,0,0.22)] sm:max-w-3xl"
+        className="overflow-y-auto rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
         style={dialogStyle}
         showCloseButton={false}
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.08),transparent_40%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
         <div className="relative">
           <DialogHeader>
             <div className="mb-1">
@@ -375,10 +375,10 @@ export function AssignmentDialog({
                 {mode === 'create' ? 'New assignment' : 'Edit assignment'}
               </div>
             </div>
-            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#1C1815]">
+            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
               {mode === 'create' ? 'Create Assignment' : 'Edit Assignment'}
             </DialogTitle>
-            <DialogDescription className="text-[#4E463D]">
+            <DialogDescription className="text-[#AFA28F]">
               {mode === 'create'
                 ? 'Add a new assignment for this lesson'
                 : 'Update the assignment information'}
@@ -397,7 +397,7 @@ export function AssignmentDialog({
                 <Input
                   id="title"
                   value={formData.title}
-                  className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] focus:border-[#C5A059]/50"
+                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50"
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
                   }
@@ -414,7 +414,7 @@ export function AssignmentDialog({
                   id="dueDate"
                   type="datetime-local"
                   value={formData.dueDate}
-                  className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] focus:border-[#C5A059]/50"
+                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50"
                   onChange={(e) =>
                     setFormData({ ...formData, dueDate: e.target.value })
                   }
@@ -431,7 +431,7 @@ export function AssignmentDialog({
                   id="maxGrade"
                   type="number"
                   value={formData.maxGrade.toString()}
-                  className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] focus:border-[#C5A059]/50"
+                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50"
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -456,10 +456,10 @@ export function AssignmentDialog({
                     })
                   }
                 >
-                  <SelectTrigger className="rounded-none border-[#1A1A1A]/15 bg-white/70">
+                  <SelectTrigger className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
                     <SelectItem value="draft">Draft</SelectItem>
                     <SelectItem value="published">Published</SelectItem>
                     <SelectItem value="closed">Closed</SelectItem>
@@ -477,7 +477,7 @@ export function AssignmentDialog({
                   id="description"
                   rows={8}
                   value={formData.description}
-                  className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] placeholder:text-[#9B8C7C] focus:border-[#C5A059]/50"
+                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
@@ -486,16 +486,16 @@ export function AssignmentDialog({
             </div>
           </FieldGroup>
 
-          <DialogFooter className="mt-6">
+          <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
             <Button
               variant="outline"
-              className="rounded-none border-[#1A1A1A]/12 bg-transparent text-[#6B5F4D] hover:border-[#1A1A1A]/20 hover:bg-white/50"
+              theme="dark"
               onClick={() => onOpenChange(false)}
             >
               Cancel
             </Button>
             <Button
-              theme="light"
+              theme="dark"
               onClick={() => {
                 if (!formData.title || !formData.dueDate) {
                   toast.error('Title and due date are required')

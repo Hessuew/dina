@@ -15,6 +15,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import z from 'zod'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
+import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
 import { Button } from '@/components/ui/button'
 import { db } from '@/db'
 import { courses, lessonProgress, profiles } from '@/db/schema'
@@ -252,32 +253,34 @@ function CourseDetailComponent() {
         </div>
 
         {/* Main grid */}
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           {/* Left column — course info + progress */}
           <div className="space-y-6">
             {/* Course info card */}
-            <div className="border border-[#1A1A1A]/10 bg-[#F8F4EC] shadow-[0_16px_28px_-24px_rgba(0,0,0,0.10)]">
+            <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
               {course?.thumbnailUrl && (
-                <div className="relative overflow-hidden border-b border-[#1A1A1A]/8">
+                <div className="relative overflow-hidden border-b border-white/10">
                   <div
-                    className="min-h-48 bg-cover bg-center"
+                    className="relative min-h-48 bg-cover bg-center sm:min-h-56"
                     style={{
-                      backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.10), rgba(7,7,8,0.50)), url(${course.thumbnailUrl})`,
+                      backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.18), rgba(7,7,8,0.68)), url(${course.thumbnailUrl})`,
                     }}
-                  />
+                  >
+                    <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_38%,rgba(197,160,89,0.10)_100%)]" />
+                  </div>
                 </div>
               )}
-              <div className="px-6 py-6">
+              <div className="bg-[#151515]/88 px-6 py-6">
                 <div className="h-px w-8 bg-[#C5A059]/40" />
                 <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                   About this course
                 </div>
                 {course?.description ? (
-                  <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#4E463D]">
+                  <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
                     {course.description}
                   </p>
                 ) : (
-                  <p className="mt-4 text-sm text-[#9B8C7C] italic">
+                  <p className="mt-4 text-sm text-[#8E816D] italic">
                     No description provided.
                   </p>
                 )}
@@ -286,48 +289,47 @@ function CourseDetailComponent() {
 
             {/* Progress card — students only */}
             {!canEdit && (
-              <div className="border border-[#1A1A1A]/10 bg-[#F8F4EC] px-6 py-6 shadow-[0_16px_28px_-24px_rgba(0,0,0,0.10)]">
-                <div className="h-px w-8 bg-[#C5A059]/40" />
-                <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Your Progress
-                </div>
-                <div className="mt-5 flex items-baseline justify-between">
-                  <span className="font-serif text-2xl text-[#1C1815]">
-                    {completedCount}
-                  </span>
-                  <span className="text-sm text-[#8E816D]">
-                    of {totalLessons} lesson{totalLessons !== 1 ? 's' : ''}{' '}
-                    completed
-                  </span>
-                </div>
-                <div className="mt-3 h-1 w-full overflow-hidden bg-[#1A1A1A]/8">
-                  <div
-                    className="h-full bg-[#C5A059] transition-all"
-                    style={{ width: `${progressPct}%` }}
-                  />
+              <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
+                <div className="bg-[#151515]/88 px-6 py-6">
+                  <div className="h-px w-8 bg-[#C5A059]/40" />
+                  <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                    Your Progress
+                  </div>
+                  <div className="mt-5 flex items-baseline justify-between">
+                    <span className="font-serif text-2xl text-[#E9D9B4]">
+                      {completedCount}
+                    </span>
+                    <span className="text-[0.68rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
+                      of {totalLessons} lesson{totalLessons !== 1 ? 's' : ''}{' '}
+                      completed
+                    </span>
+                  </div>
+                  <div className="mt-3 h-1 w-full overflow-hidden bg-white/8">
+                    <div
+                      className="h-full bg-[#C5A059] transition-all"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
           {/* Right column — lessons */}
-          <div className="border border-[#1A1A1A]/10 bg-[#F8F4EC] shadow-[0_16px_28px_-24px_rgba(0,0,0,0.10)]">
+          <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
             {/* Lessons header */}
-            <div className="flex items-center justify-between border-b border-[#1A1A1A]/8 px-6 py-5">
+            <div className="flex items-center justify-between border-b border-white/8 px-6 py-5">
               <div>
                 <div className="h-px w-8 bg-[#C5A059]/40" />
                 <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                   Lessons
                 </div>
-                <div className="mt-1 font-serif text-xl text-[#1C1815]">
+                <div className="mt-1 font-serif text-xl text-[#F8F4EC]">
                   {totalLessons} {totalLessons === 1 ? 'Lesson' : 'Lessons'}
                 </div>
               </div>
               {canEdit && course && course.lessons.length < 3 && (
-                <Button
-                  theme="light"
-                  onClick={() => openLessonDialog('create')}
-                >
+                <Button theme="dark" onClick={() => openLessonDialog('create')}>
                   <PlusIcon className="size-3.5" />
                   Add Lesson
                 </Button>
@@ -338,10 +340,10 @@ function CourseDetailComponent() {
             {course?.lessons.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <BookOpenIcon className="mb-4 size-10 text-[#C5A059]/30" />
-                <p className="text-sm text-[#8E816D]">No lessons yet</p>
+                <p className="text-sm text-[#AFA28F]">No lessons yet</p>
                 {canEdit && (
                   <Button
-                    theme="light"
+                    theme="dark"
                     className="mt-4"
                     onClick={() => openLessonDialog('create')}
                   >
@@ -351,7 +353,7 @@ function CourseDetailComponent() {
                 )}
               </div>
             ) : (
-              <div className="divide-y divide-[#1A1A1A]/6">
+              <div className="divide-y divide-white/8">
                 {course?.lessons.map((lesson: Lesson, index: number) => {
                   const isCompleted = completedLessonIds.includes(lesson.id)
                   const isPublished = lesson.isPublished ?? false
@@ -363,8 +365,8 @@ function CourseDetailComponent() {
                       className={cn(
                         'group flex items-start gap-4 px-6 py-5 transition-all',
                         showContent
-                          ? 'cursor-pointer hover:bg-[#EDE8DE]/60'
-                          : 'opacity-50',
+                          ? 'cursor-pointer hover:bg-white/5'
+                          : 'opacity-40',
                       )}
                       onClick={() => {
                         if (showContent) {
@@ -382,7 +384,7 @@ function CourseDetailComponent() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-serif text-base text-[#1C1815] group-hover:text-[#9B7A41]">
+                          <span className="text-[0.62rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
                             {lesson.title}
                           </span>
                           {canEdit && (
@@ -391,7 +393,7 @@ function CourseDetailComponent() {
                                 'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
                                 isPublished
                                   ? 'border-[#C5A059]/40 text-[#9B7A41]'
-                                  : 'border-[#1A1A1A]/12 text-[#8E816D]',
+                                  : 'border-white/12 text-[#8E816D]',
                               )}
                             >
                               {isPublished ? 'Published' : 'Draft'}
@@ -400,13 +402,13 @@ function CourseDetailComponent() {
                         </div>
 
                         {showContent && lesson.content && (
-                          <p className="mt-1 line-clamp-2 text-sm whitespace-pre-wrap text-[#6B5F4D]">
+                          <p className="mt-1 line-clamp-2 text-sm whitespace-pre-wrap text-[#CFC6B7]">
                             {lesson.content}
                           </p>
                         )}
 
                         {showContent && (
-                          <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#9B8C7C]">
+                          <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
                             {lesson.duration && (
                               <div className="flex items-center gap-1">
                                 <ClockIcon className="size-3" />
@@ -456,14 +458,14 @@ function CourseDetailComponent() {
                           <>
                             <button
                               type="button"
-                              className="flex size-7 items-center justify-center border border-[#1A1A1A]/10 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
+                              className="flex size-7 items-center justify-center border border-white/10 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#D4B373]"
                               onClick={() => openLessonDialog('edit', lesson)}
                             >
                               <PencilIcon className="size-3" />
                             </button>
                             <button
                               type="button"
-                              className="flex size-7 items-center justify-center border border-[#1A1A1A]/10 text-[#8E816D] transition-all hover:border-red-300 hover:text-red-500"
+                              className="flex size-7 items-center justify-center border border-white/10 text-[#8E816D] transition-all hover:border-red-400/50 hover:text-red-400"
                               onClick={() => openLessonDialog('delete', lesson)}
                             >
                               <TrashIcon className="size-3" />
@@ -495,41 +497,57 @@ function CourseDetailComponent() {
         onOpenChange={setShowDeleteCourseDialog}
       >
         <DialogContent
-          className="rounded-none border border-[#C5A059]/20 shadow-[0_28px_60px_-32px_rgba(0,0,0,0.22)]"
+          className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
+          style={{
+            backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
           showCloseButton={false}
         >
-          <DialogHeader>
-            <DialogTitle className="font-serif text-xl text-[#1C1815]">
-              Delete Course
-            </DialogTitle>
-            <DialogDescription className="text-[#4E463D]">
-              Are you sure you want to delete "{course?.title}"? This action
-              cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="rounded-none"
-              onClick={() => setShowDeleteCourseDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              className="rounded-none"
-              onClick={() => {
-                if (course) {
-                  deleteCourseMutation.mutate({ data: { courseId: course.id } })
-                }
-              }}
-              disabled={deleteCourseMutation.status === 'pending'}
-            >
-              {deleteCourseMutation.status === 'pending'
-                ? 'Deleting...'
-                : 'Delete'}
-            </Button>
-          </DialogFooter>
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
+          <div className="relative">
+            <DialogHeader>
+              <div className="mb-1">
+                <div className="h-px w-8 bg-[#C5A059]/40" />
+                <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                  Confirm action
+                </div>
+              </div>
+              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
+                Delete Course
+              </DialogTitle>
+              <DialogDescription className="text-[#AFA28F]">
+                Are you sure you want to delete "{course?.title}"? This action
+                cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
+              <Button
+                variant="outline"
+                theme="dark"
+                onClick={() => setShowDeleteCourseDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="rounded-none"
+                onClick={() => {
+                  if (course) {
+                    deleteCourseMutation.mutate({
+                      data: { courseId: course.id },
+                    })
+                  }
+                }}
+                disabled={deleteCourseMutation.status === 'pending'}
+              >
+                {deleteCourseMutation.status === 'pending'
+                  ? 'Deleting...'
+                  : 'Delete'}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

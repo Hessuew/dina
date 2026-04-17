@@ -183,21 +183,21 @@ function LessonDetailComponent() {
                     'border px-3 py-1.5 text-[0.62rem] font-medium tracking-[0.22em] uppercase',
                     isPublished
                       ? 'border-[#C5A059]/40 bg-[#C5A059]/8 text-[#9B7A41]'
-                      : 'border-[#1A1A1A]/12 bg-[#1A1A1A]/4 text-[#8E816D]',
+                      : 'border-white/12 bg-white/4 text-[#8E816D]',
                   )}
                 >
                   {isPublished ? 'Published' : 'Draft'}
                 </div>
                 <button
                   type="button"
-                  className="flex size-8 items-center justify-center border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] transition-all hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
+                  className="flex size-8 items-center justify-center border border-white/12 bg-white/6 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#D4B373]"
                   onClick={() => setLessonDialogMode('edit')}
                 >
                   <PencilIcon className="size-3.5" />
                 </button>
                 <button
                   type="button"
-                  className="flex size-8 items-center justify-center border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] transition-all hover:border-red-300 hover:text-red-600"
+                  className="flex size-8 items-center justify-center border border-white/12 bg-white/6 text-[#8E816D] transition-all hover:border-red-400/50 hover:text-red-400"
                   onClick={() => setLessonDialogMode('delete')}
                 >
                   <TrashIcon className="size-3.5" />
@@ -208,26 +208,26 @@ function LessonDetailComponent() {
         </div>
 
         {/* Main grid */}
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
           {/* Left — lesson content */}
-          <div className="border border-[#1A1A1A]/10 bg-[#F8F4EC] shadow-[0_16px_28px_-24px_rgba(0,0,0,0.10)]">
-            <div className="px-6 py-6">
+          <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
+            <div className="bg-[#151515]/88 px-6 py-6">
               <div className="h-px w-8 bg-[#C5A059]/40" />
               <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                 Lesson Content
               </div>
               {!showContent ? (
                 <div className="mt-8 text-center">
-                  <p className="text-sm text-[#9B8C7C] italic">
+                  <p className="text-sm text-[#8E816D] italic">
                     This lesson is not yet available.
                   </p>
                 </div>
               ) : lesson.content ? (
-                <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#4E463D]">
+                <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
                   {lesson.content}
                 </p>
               ) : (
-                <p className="mt-4 text-sm text-[#9B8C7C] italic">
+                <p className="mt-4 text-sm text-[#8E816D] italic">
                   No content provided.
                 </p>
               )}
@@ -235,14 +235,14 @@ function LessonDetailComponent() {
           </div>
 
           {/* Right — assignments */}
-          <div className="border border-[#1A1A1A]/10 bg-[#F8F4EC] shadow-[0_16px_28px_-24px_rgba(0,0,0,0.10)]">
-            <div className="flex items-center justify-between border-b border-[#1A1A1A]/8 px-6 py-5">
+          <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
+            <div className="flex items-center justify-between border-b border-white/8 px-6 py-5">
               <div>
                 <div className="h-px w-8 bg-[#C5A059]/40" />
                 <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                   Assignments
                 </div>
-                <div className="mt-1 font-serif text-xl text-[#1C1815]">
+                <div className="mt-1 font-serif text-xl text-[#F8F4EC]">
                   {lesson.assignments.length}{' '}
                   {lesson.assignments.length === 1
                     ? 'Assignment'
@@ -251,7 +251,7 @@ function LessonDetailComponent() {
               </div>
               {canEdit && (
                 <Button
-                  theme="light"
+                  theme="dark"
                   onClick={() => setAssignmentDialogMode('create')}
                 >
                   <PlusIcon className="size-3.5" />
@@ -262,10 +262,10 @@ function LessonDetailComponent() {
 
             {lesson.assignments.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <p className="text-sm text-[#8E816D]">No assignments yet</p>
+                <p className="text-sm text-[#AFA28F]">No assignments yet</p>
                 {canEdit && (
                   <Button
-                    theme="light"
+                    theme="dark"
                     className="mt-4"
                     onClick={() => setAssignmentDialogMode('create')}
                   >
@@ -275,7 +275,7 @@ function LessonDetailComponent() {
                 )}
               </div>
             ) : (
-              <div className="divide-y divide-[#1A1A1A]/6">
+              <div className="divide-y divide-white/8">
                 {lesson.assignments
                   .filter((a: Assignment) =>
                     role === 'student' ? a.status === 'published' : true,
@@ -283,13 +283,13 @@ function LessonDetailComponent() {
                   .map((assignment: Assignment) => {
                     const statusColors = {
                       published: 'border-[#C5A059]/40 text-[#9B7A41]',
-                      closed: 'border-red-300 text-red-500',
-                      draft: 'border-[#1A1A1A]/12 text-[#8E816D]',
+                      closed: 'border-red-400/50 text-red-400',
+                      draft: 'border-white/12 text-[#8E816D]',
                     }
                     return (
                       <div
                         key={assignment.id}
-                        className="group flex items-start gap-4 px-6 py-5 transition-all hover:bg-[#EDE8DE]/60"
+                        className="group flex items-start gap-4 px-6 py-5 transition-all hover:bg-white/5"
                       >
                         <div
                           className="min-w-0 flex-1 cursor-pointer"
@@ -306,7 +306,7 @@ function LessonDetailComponent() {
                           }
                         >
                           <div className="flex items-center gap-2.5">
-                            <span className="font-serif text-base text-[#1C1815] group-hover:text-[#9B7A41]">
+                            <span className="text-[0.62rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
                               {assignment.title}
                             </span>
                             <span
@@ -319,11 +319,11 @@ function LessonDetailComponent() {
                             </span>
                           </div>
                           {assignment.description && (
-                            <p className="mt-1 line-clamp-2 text-sm text-[#6B5F4D]">
+                            <p className="mt-1 line-clamp-2 text-sm text-[#CFC6B7]">
                               {assignment.description}
                             </p>
                           )}
-                          <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#9B8C7C]">
+                          <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
                             <div className="flex items-center gap-1">
                               <CalendarIcon className="size-3" />
                               <span>
@@ -340,7 +340,7 @@ function LessonDetailComponent() {
                           <div className="flex shrink-0 items-center gap-2">
                             <button
                               type="button"
-                              className="flex size-7 items-center justify-center border border-[#1A1A1A]/10 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
+                              className="flex size-7 items-center justify-center border border-white/10 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#D4B373]"
                               onClick={() => {
                                 setAssignmentToAct(assignment)
                                 setAssignmentDialogMode('edit')
@@ -350,7 +350,7 @@ function LessonDetailComponent() {
                             </button>
                             <button
                               type="button"
-                              className="flex size-7 items-center justify-center border border-[#1A1A1A]/10 text-[#8E816D] transition-all hover:border-red-300 hover:text-red-500"
+                              className="flex size-7 items-center justify-center border border-white/10 text-[#8E816D] transition-all hover:border-red-400/50 hover:text-red-400"
                               onClick={() =>
                                 handleDeleteAssignmentClick(assignment)
                               }
