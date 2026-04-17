@@ -252,7 +252,7 @@ function CourseDetailComponent() {
         </div>
 
         {/* Main grid */}
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           {/* Left column — course info + progress */}
           <div className="space-y-6">
             {/* Course info card */}

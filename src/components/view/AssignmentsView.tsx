@@ -1,14 +1,6 @@
 import { useRouter } from '@tanstack/react-router'
 import { CalendarIcon } from 'lucide-react'
 import { useState } from 'react'
-import { Badge } from '@/components/ui/badge'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -16,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 
 export type Assignment = {
   id: string
@@ -86,36 +79,36 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
     return 'Draft'
   }
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'Graded':
-        return 'default'
-      case 'Submitted':
-        return 'default'
-      case 'Draft':
-        return 'secondary'
-      default:
-        return 'secondary'
+  const submissionStatusToken = (assignment: Assignment) => {
+    const label = getSubmissionStatus(assignment)
+    const colorMap: Record<string, string> = {
+      Graded: 'border-[#C5A059]/40 text-[#9B7A41]',
+      Submitted: 'border-blue-300/60 text-blue-600',
+      Draft: 'border-[#1A1A1A]/12 text-[#8E816D]',
+      'Not Submitted': 'border-[#1A1A1A]/10 text-[#9B8C7C]',
     }
+    return { label, color: colorMap[label] ?? colorMap['Not Submitted'] }
   }
 
-  const getAssignmentStatusVariant = (status: string) => {
-    switch (status) {
-      case 'published':
-        return 'default'
-      case 'closed':
-        return 'destructive'
-      default:
-        return 'secondary'
+  const assignmentStatusToken = (status: string) => {
+    const colorMap: Record<string, string> = {
+      published: 'border-[#C5A059]/40 text-[#9B7A41]',
+      closed: 'border-red-300/60 text-red-600',
+      draft: 'border-[#1A1A1A]/12 text-[#8E816D]',
     }
+    return colorMap[status] ?? colorMap.draft
   }
 
   return (
-    <div className="space-y-6">
-      <div className="pab-2 flex items-center justify-between">
+    <div className="space-y-10">
+      {/* Header */}
+      <div className="flex items-end justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold">Assignments</h1>
-          <p className="text-muted-foreground mt-1">
+          <div className="h-px w-10 bg-[#C5A059]/50" />
+          <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">
+            Assignments
+          </h1>
+          <p className="mt-1 text-sm text-[#8E816D]">
             {role === 'student'
               ? 'View and submit your assignments'
               : 'Manage assignments and grade submissions'}
@@ -123,7 +116,7 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
         </div>
         {assignments.length > 0 && (
           <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[200px] rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40">
               <SelectValue placeholder="Filter by course">
                 {selectedCourse === 'all'
                   ? 'All Courses'
@@ -131,7 +124,7 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                     'Select Course'}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-none">
               <SelectItem value="all">All Courses</SelectItem>
               {courses.map((course) => (
                 <SelectItem key={course.id} value={course.id}>
@@ -143,27 +136,31 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
         )}
       </div>
 
+      {/* Course groups */}
       {groupedByCourse.map(({ course, assignments: courseAssignments }) => {
         if (courseAssignments.length === 0) return null
 
         return (
           <div key={course.id} className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold">{course.title}</h3>
-              <p className="text-muted-foreground text-sm">
-                {courseAssignments.length} assignment
-                {courseAssignments.length !== 1 ? 's' : ''}
-              </p>
+            <div className="flex items-baseline gap-4">
+              <h3 className="font-serif text-xl text-[#1C1815]">
+                {course.title}
+              </h3>
+              <span className="text-[0.68rem] tracking-[0.18em] text-[#8E816D] uppercase">
+                {courseAssignments.length}{' '}
+                {courseAssignments.length === 1 ? 'assignment' : 'assignments'}
+              </span>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {courseAssignments.map((assignment) => {
                 const overdue = isOverdue(assignment.dueDate)
+                const subToken = submissionStatusToken(assignment)
 
                 return (
-                  <Card
+                  <div
                     key={assignment.id}
-                    className="hover:bg-muted/50 cursor-pointer transition-colors"
+                    className="group cursor-pointer border border-[#1A1A1A]/10 bg-[#F8F4EC] shadow-[0_8px_20px_-16px_rgba(0,0,0,0.12)] transition-all hover:border-[#C5A059]/30 hover:shadow-[0_12px_28px_-16px_rgba(197,160,89,0.20)]"
                     onClick={() =>
                       router.navigate({
                         to: '/assignments/$assignmentId',
@@ -176,92 +173,85 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                       })
                     }
                   >
-                    <CardHeader>
+                    <div className="px-5 pt-5 pb-4">
                       <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-base">
-                          {assignment.title}
-                        </CardTitle>
-                        {role === 'student' ? (
-                          <Badge
-                            variant={getStatusBadgeVariant(
-                              getSubmissionStatus(assignment),
-                            )}
-                          >
-                            {getSubmissionStatus(assignment)}
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant={getAssignmentStatusVariant(
-                              assignment.status,
-                            )}
-                          >
-                            {assignment.status.charAt(0).toUpperCase() +
-                              assignment.status.slice(1)}
-                          </Badge>
-                        )}
-                      </div>
-                      <CardDescription className="line-clamp-2">
-                        {assignment.lesson.title}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <CalendarIcon className="text-muted-foreground size-4" />
+                        <div className="mt-1 h-px w-6 shrink-0 bg-[#C5A059]/40" />
                         <span
-                          className={
-                            overdue ? 'text-destructive font-medium' : ''
-                          }
+                          className={cn(
+                            'shrink-0 border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
+                            role === 'student'
+                              ? subToken.color
+                              : assignmentStatusToken(assignment.status),
+                          )}
                         >
+                          {role === 'student'
+                            ? subToken.label
+                            : assignment.status.charAt(0).toUpperCase() +
+                              assignment.status.slice(1)}
+                        </span>
+                      </div>
+                      <h4 className="mt-2 font-serif text-base leading-snug text-[#1C1815] group-hover:text-[#9B7A41]">
+                        {assignment.title}
+                      </h4>
+                      <p className="mt-1 text-[0.72rem] text-[#8E816D]">
+                        {assignment.lesson.title}
+                      </p>
+                    </div>
+
+                    <div className="border-t border-[#1A1A1A]/8 px-5 py-3">
+                      <div className="flex items-center gap-1.5 text-[0.68rem] text-[#9B8C7C]">
+                        <CalendarIcon className="size-3" />
+                        <span
+                          className={cn(overdue && 'font-medium text-red-500')}
+                        >
+                          Due{' '}
                           {new Date(assignment.dueDate).toLocaleDateString()}
                         </span>
                         {overdue && (
-                          <Badge variant="destructive" className="ml-auto">
+                          <span className="ml-auto border border-red-300/60 px-1.5 py-0.5 text-[0.52rem] font-medium tracking-[0.15em] text-red-500 uppercase">
                             Overdue
-                          </Badge>
+                          </span>
                         )}
                       </div>
 
                       {role === 'student' ? (
-                        <>
-                          {assignment.submission?.grade !== null && (
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">
-                                Grade
-                              </span>
-                              <span className="font-semibold">
-                                {assignment.submission?.grade} /{' '}
-                                {assignment.maxGrade ?? 100}
-                              </span>
-                            </div>
-                          )}
-                        </>
+                        assignment.submission?.grade !== null &&
+                        assignment.submission?.grade !== undefined ? (
+                          <div className="mt-2 flex items-center justify-between">
+                            <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
+                              Grade
+                            </span>
+                            <span className="font-serif text-sm text-[#1C1815]">
+                              {assignment.submission.grade} /{' '}
+                              {assignment.maxGrade ?? 100}
+                            </span>
+                          </div>
+                        ) : null
                       ) : (
-                        <>
-                          {assignment.submissionStats && (
-                            <div className="space-y-1 text-sm">
-                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground">
-                                  Submitted
-                                </span>
-                                <span className="font-medium">
-                                  {assignment.submissionStats.submitted} /{' '}
-                                  {assignment.submissionStats.total}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground">
-                                  Graded
-                                </span>
-                                <span className="font-medium">
-                                  {assignment.submissionStats.graded}
-                                </span>
-                              </div>
+                        assignment.submissionStats && (
+                          <div className="mt-2 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
+                                Submitted
+                              </span>
+                              <span className="text-[0.72rem] font-medium text-[#4E463D]">
+                                {assignment.submissionStats.submitted} /{' '}
+                                {assignment.submissionStats.total}
+                              </span>
                             </div>
-                          )}
-                        </>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
+                                Graded
+                              </span>
+                              <span className="text-[0.72rem] font-medium text-[#4E463D]">
+                                {assignment.submissionStats.graded}
+                              </span>
+                            </div>
+                          </div>
+                        )
                       )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 )
               })}
             </div>
@@ -270,9 +260,11 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
       })}
 
       {filteredAssignments.length === 0 && (
-        <div className="text-muted-foreground py-12 text-center">
-          <p className="mb-2 text-lg font-medium">No assignments found</p>
-          <p className="text-sm">
+        <div className="py-16 text-center">
+          <p className="font-serif text-lg text-[#8E816D]">
+            No assignments found
+          </p>
+          <p className="mt-1 text-sm text-[#9B8C7C]">
             {selectedCourse === 'all'
               ? 'There are no assignments yet'
               : 'This course has no assignments'}
