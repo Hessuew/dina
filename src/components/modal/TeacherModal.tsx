@@ -1,5 +1,6 @@
 import { BookOpenIcon, XIcon } from 'lucide-react'
 import type { TeacherWithCourses } from '@/types/teacher'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
 
@@ -64,13 +65,15 @@ export function TeacherModal({
                 </h2>
               </div>
             </div>
-            <button
-              type="button"
-              className="mt-1 flex size-8 shrink-0 items-center justify-center border border-white/10 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#D4B373]"
+            <Button
+              variant="ghost"
+              theme="dark"
+              size="icon"
+              className="mt-1 shrink-0"
               onClick={() => onOpenChange(false)}
             >
               <XIcon className="size-3.5" />
-            </button>
+            </Button>
           </div>
 
           {/* Bio */}

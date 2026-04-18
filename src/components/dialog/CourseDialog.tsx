@@ -26,7 +26,7 @@ import { useMutation } from '@/hooks/useMutation'
 import { useAllTeachers } from '@/hooks/useAllTeachers'
 import { createCourse, updateCourse } from '@/utils/courses'
 import { fileToBase64, uploadCourseThumbnailFn } from '@/utils/imageUpload'
-import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
+import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 
 type CourseFormData = {
   title: string
@@ -230,7 +230,7 @@ export function CourseDialog({
       <DialogContent
         className="overflow-y-auto rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
         style={{
-          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
+          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}

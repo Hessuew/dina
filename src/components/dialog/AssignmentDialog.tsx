@@ -27,7 +27,7 @@ import {
   gradeSubmission,
   updateAssignment,
 } from '@/utils/assignments'
-import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
+import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 
 type AssignmentDialogProps = {
   open: boolean
@@ -162,7 +162,7 @@ export function AssignmentDialog({
     gradeMutation.status === 'pending'
 
   const dialogStyle = {
-    backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
+    backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
   }

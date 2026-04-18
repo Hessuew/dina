@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
+import houseGround from '@/assets/images/house/house_ground.webp'
+import houseFoundation from '@/assets/images/house/house_foundation.webp'
+import houseWalls from '@/assets/images/house/house_walls.webp'
+import houseFraming from '@/assets/images/house/house_framing.webp'
+import houseInterior from '@/assets/images/house/house_interior.webp'
+import houseRoof from '@/assets/images/house/house_roof.webp'
 
 type CourseShowcaseItem = {
   id: string
@@ -9,6 +15,7 @@ type CourseShowcaseItem = {
   eyebrow: string
   description: string
   lessons: [string, string, string]
+  image: string
 }
 
 const courseShowcaseItems: Array<CourseShowcaseItem> = [
@@ -20,6 +27,7 @@ const courseShowcaseItems: Array<CourseShowcaseItem> = [
     description:
       "Before anything is built, the ground must be prepared. God's mercy, salvation, and Jesus' life on earth.",
     lessons: ['The mercy of God', 'Salvation', 'The life of Jesus'],
+    image: houseGround,
   },
   {
     id: 'foundation',
@@ -33,6 +41,7 @@ const courseShowcaseItems: Array<CourseShowcaseItem> = [
       'From sin to God',
       'Faith (faithfulness) toward God ',
     ],
+    image: houseFoundation,
   },
   {
     id: 'walls',
@@ -46,6 +55,7 @@ const courseShowcaseItems: Array<CourseShowcaseItem> = [
       'OT Prophecy Fulfilled',
       'Preparing Disciples for the Cross',
     ],
+    image: houseWalls,
   },
   {
     id: 'framing',
@@ -59,6 +69,7 @@ const courseShowcaseItems: Array<CourseShowcaseItem> = [
       'Work of Jesus',
       'Intimacy with the Holy Spirit',
     ],
+    image: houseFraming,
   },
   {
     id: 'interior',
@@ -72,6 +83,7 @@ const courseShowcaseItems: Array<CourseShowcaseItem> = [
       'Following Jesus',
       'Character Transformation',
     ],
+    image: houseInterior,
   },
   {
     id: 'roof',
@@ -85,6 +97,7 @@ const courseShowcaseItems: Array<CourseShowcaseItem> = [
       'Biblical Characters',
       'Hardship & the Nature of Jesus',
     ],
+    image: houseRoof,
   },
 ]
 
@@ -239,12 +252,7 @@ export function LandingCourseShowcase() {
                 </div>
 
                 <div className="max-w-60 border border-white/12 bg-black/24 px-4 py-4 shadow-[0_24px_40px_-30px_rgba(0,0,0,0.55)] backdrop-blur-sm">
-                  <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
-                    Thumbnail
-                  </div>
-                  <div className="mt-2 font-serif text-xl leading-tight text-[#F8F4EC]">
-                    House of Formation
-                  </div>
+                  <img src={activeCourse.image} alt={activeCourse.title} />
                 </div>
               </div>
             </div>

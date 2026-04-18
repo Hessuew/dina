@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { ArrowRight, CalendarIcon, ChevronLeft } from 'lucide-react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
+import { Button } from '@/components/ui/button'
 import { getStudentDetail } from '@/utils/students'
 
 export const Route = createFileRoute('/_authed/students/$studentId')({
@@ -56,14 +57,16 @@ function StudentDetailComponent() {
       <div className="relative mx-auto max-w-7xl px-6 py-10 sm:px-8 sm:py-12">
         {/* Page header */}
         <div className="mb-10">
-          <button
-            type="button"
-            className="mb-6 flex items-center gap-1.5 text-[0.72rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase transition-colors hover:text-[#C5A059]"
+          <Button
+            variant="ghost"
+            theme="light"
+            size="sm"
+            className="mb-6 gap-1"
             onClick={() => router.navigate({ to: '/students' })}
           >
             <ChevronLeft className="size-3.5" />
             All Students
-          </button>
+          </Button>
           <div className="h-px w-10 bg-[#C5A059]/50" />
           <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">
             {student.fullName}
@@ -219,15 +222,15 @@ function StudentDetailComponent() {
                             <span className="text-[0.68rem] font-medium tracking-[0.2em] text-[#5E5549] uppercase">
                               View assignment
                             </span>
-                            <button
-                              type="button"
-                              className="flex size-8 cursor-pointer items-center justify-center border border-[#9B7A41]/35 bg-[#EDE8DE] text-[#9B7A41] transition-all group-hover:translate-x-0.5 group-hover:border-[#C5A059]"
+                            <Button
+                              theme="light"
+                              size="icon"
                               onClick={() =>
                                 handleAssignmentClick(assignment.id)
                               }
                             >
                               <ArrowRight className="size-3.5" />
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </div>

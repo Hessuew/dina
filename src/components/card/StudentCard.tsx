@@ -80,10 +80,7 @@ export function StudentCard({ student, onClick }: StudentCardProps) {
           <span className="text-[0.68rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
             View student
           </span>
-          <Button
-            className="flex size-8 cursor-pointer items-center justify-center border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4]"
-            onClick={onClick}
-          >
+          <Button theme="dark" size="icon" onClick={onClick}>
             <ArrowRight className="size-3.5" />
           </Button>
         </div>
