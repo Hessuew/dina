@@ -13,32 +13,8 @@ import { toast } from 'sonner'
 import z from 'zod'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { useMutation } from '@/hooks/useMutation'
-import {
-  createAssignment,
-  deleteAssignment,
-  getAssignmentSubmissionCount,
-  getLesson,
-  updateAssignment,
-} from '@/utils/assignments'
+import { getAssignmentSubmissionCount, getLesson } from '@/utils/assignments'
+import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { LessonDialog } from '@/components/dialog/LessonDialog'
 import { cn } from '@/lib/utils'
 
@@ -87,136 +63,29 @@ function LessonDetailComponent() {
   const [lessonDialogMode, setLessonDialogMode] = useState<
     'edit' | 'delete' | null
   >(null)
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [showEditAssignmentDialog, setShowEditAssignmentDialog] =
-    useState(false)
-  const [showDeleteAssignmentDialog, setShowDeleteAssignmentDialog] =
-    useState(false)
-  const [assignmentToEdit, setAssignmentToEdit] = useState<Assignment | null>(
+  const [assignmentDialogMode, setAssignmentDialogMode] = useState<
+    'create' | 'edit' | 'delete' | null
+  >(null)
+  const [assignmentToAct, setAssignmentToAct] = useState<Assignment | null>(
     null,
   )
-  const [assignmentToDelete, setAssignmentToDelete] =
-    useState<Assignment | null>(null)
   const [submissionCount, setSubmissionCount] = useState(0)
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    dueDate: '',
-    maxGrade: 100,
-  })
-  const [editFormData, setEditFormData] = useState({
-    title: '',
-    description: '',
-    dueDate: '',
-    maxGrade: 100,
-    status: 'draft' as 'draft' | 'published' | 'closed',
-  })
   const canEdit = role === 'teacher' || role === 'admin'
   const isPublished = lesson.isPublished ?? false
   const showContent = isPublished || canEdit
 
-  const createAssignmentMutation = useMutation({
-    fn: createAssignment,
-    onSuccess: async () => {
-      toast.success('Assignment created successfully!')
-      setShowCreateDialog(false)
-      setFormData({
-        title: '',
-        description: '',
-        dueDate: '',
-        maxGrade: 100,
-      })
-      await router.invalidate()
-    },
-  })
-
-  const deleteAssignmentMutation = useMutation({
-    fn: deleteAssignment,
-    onSuccess: async () => {
-      toast.success('Assignment deleted successfully!')
-      setAssignmentToDelete(null)
-      setShowDeleteAssignmentDialog(false)
-      await router.invalidate()
-    },
-  })
-
-  const updateAssignmentMutation = useMutation({
-    fn: updateAssignment,
-    onSuccess: async () => {
-      toast.success('Assignment updated successfully!')
-      setShowEditAssignmentDialog(false)
-      setAssignmentToEdit(null)
-      await router.invalidate()
-    },
-  })
-
-  const handleCreateAssignment = () => {
-    if (!formData.title || !formData.dueDate) {
-      toast.error('Title and due date are required')
-      return
-    }
-
-    createAssignmentMutation.mutate({
-      data: {
-        lessonId: lesson.id,
-        title: formData.title,
-        description: formData.description,
-        dueDate: formData.dueDate,
-        maxGrade: formData.maxGrade,
-      },
-    })
-  }
-
-  const handleEditAssignment = (assignment: Assignment) => {
-    setAssignmentToEdit(assignment)
-    setEditFormData({
-      title: assignment.title,
-      description: assignment.description || '',
-      dueDate: new Date(assignment.dueDate).toISOString().slice(0, 16),
-      maxGrade: assignment.maxGrade ?? 100,
-      status: assignment.status,
-    })
-    setShowEditAssignmentDialog(true)
-  }
-
-  const handleUpdateAssignment = () => {
-    if (!assignmentToEdit || !editFormData.title || !editFormData.dueDate) {
-      toast.error('Title and due date are required')
-      return
-    }
-
-    updateAssignmentMutation.mutate({
-      data: {
-        assignmentId: assignmentToEdit.id,
-        title: editFormData.title,
-        description: editFormData.description,
-        dueDate: editFormData.dueDate,
-        maxGrade: editFormData.maxGrade,
-        status: editFormData.status,
-      },
-    })
-  }
-
   const handleDeleteAssignmentClick = async (assignment: Assignment) => {
-    setAssignmentToDelete(assignment)
+    setAssignmentToAct(assignment)
 
     try {
       const result = await getAssignmentSubmissionCount({
         data: { assignmentId: assignment.id },
       })
       setSubmissionCount(result.count)
-      setShowDeleteAssignmentDialog(true)
+      setAssignmentDialogMode('delete')
     } catch (error: any) {
       toast.error(error.message || 'Failed to check submissions')
     }
-  }
-
-  const handleConfirmDeleteAssignment = () => {
-    if (!assignmentToDelete) return
-
-    deleteAssignmentMutation.mutate({
-      data: { assignmentId: assignmentToDelete.id },
-    })
   }
 
   const getStatusLabel = (status: string) => {
@@ -381,7 +250,10 @@ function LessonDetailComponent() {
                 </div>
               </div>
               {canEdit && (
-                <Button theme="light" onClick={() => setShowCreateDialog(true)}>
+                <Button
+                  theme="light"
+                  onClick={() => setAssignmentDialogMode('create')}
+                >
                   <PlusIcon className="size-3.5" />
                   Add Assignment
                 </Button>
@@ -395,7 +267,7 @@ function LessonDetailComponent() {
                   <Button
                     theme="light"
                     className="mt-4"
-                    onClick={() => setShowCreateDialog(true)}
+                    onClick={() => setAssignmentDialogMode('create')}
                   >
                     <PlusIcon className="size-3.5" />
                     Create First Assignment
@@ -440,8 +312,7 @@ function LessonDetailComponent() {
                             <span
                               className={cn(
                                 'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
-                                statusColors[assignment.status] ??
-                                  statusColors.draft,
+                                statusColors[assignment.status],
                               )}
                             >
                               {getStatusLabel(assignment.status)}
@@ -470,7 +341,10 @@ function LessonDetailComponent() {
                             <button
                               type="button"
                               className="flex size-7 items-center justify-center border border-[#1A1A1A]/10 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
-                              onClick={() => handleEditAssignment(assignment)}
+                              onClick={() => {
+                                setAssignmentToAct(assignment)
+                                setAssignmentDialogMode('edit')
+                              }}
                             >
                               <PencilIcon className="size-3" />
                             </button>
@@ -494,274 +368,23 @@ function LessonDetailComponent() {
         </div>
       </div>
 
-      {/* Create Assignment Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent
-          className="rounded-none border border-[#C5A059]/20 sm:max-w-3xl"
-          showCloseButton={false}
-        >
-          <DialogHeader>
-            <DialogTitle className="font-serif text-xl text-[#1C1815]">
-              Create Assignment
-            </DialogTitle>
-            <DialogDescription className="text-[#4E463D]">
-              Add a new assignment for this lesson
-            </DialogDescription>
-          </DialogHeader>
-          <FieldGroup>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="title">
-                  Title <span className="text-destructive">*</span>
-                </FieldLabel>
-                <Input
-                  id="title"
-                  placeholder="Assignment title"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="dueDate">
-                  Due Date <span className="text-destructive">*</span>
-                </FieldLabel>
-                <Input
-                  id="dueDate"
-                  type="datetime-local"
-                  value={formData.dueDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, dueDate: e.target.value })
-                  }
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="maxGrade">Maximum Grade</FieldLabel>
-                <Input
-                  id="maxGrade"
-                  type="number"
-                  value={formData.maxGrade}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      maxGrade: parseInt(e.target.value) || 100,
-                    })
-                  }
-                />
-              </Field>
-            </div>
-            <Field className="sm:col-span-2">
-              <FieldLabel htmlFor="description">Description</FieldLabel>
-              <Textarea
-                id="description"
-                placeholder="Assignment description"
-                rows={8}
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-              />
-            </Field>
-          </FieldGroup>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="rounded-none"
-              onClick={() => setShowCreateDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateAssignment}
-              disabled={createAssignmentMutation.status === 'pending'}
-            >
-              {createAssignmentMutation.status === 'pending'
-                ? 'Creating...'
-                : 'Create Assignment'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Assignment Dialog */}
-      <Dialog
-        open={showEditAssignmentDialog}
-        onOpenChange={setShowEditAssignmentDialog}
-      >
-        <DialogContent
-          className="rounded-none border border-[#C5A059]/20 sm:max-w-3xl"
-          showCloseButton={false}
-        >
-          <DialogHeader>
-            <DialogTitle className="font-serif text-xl text-[#1C1815]">
-              Edit Assignment
-            </DialogTitle>
-            <DialogDescription className="text-[#4E463D]">
-              Update assignment details
-            </DialogDescription>
-          </DialogHeader>
-          <FieldGroup>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="editTitle">
-                  Title <span className="text-destructive">*</span>
-                </FieldLabel>
-                <Input
-                  id="editTitle"
-                  placeholder="Assignment title"
-                  value={editFormData.title}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, title: e.target.value })
-                  }
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="editDueDate">
-                  Due Date <span className="text-destructive">*</span>
-                </FieldLabel>
-                <Input
-                  id="editDueDate"
-                  type="datetime-local"
-                  value={editFormData.dueDate}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      dueDate: e.target.value,
-                    })
-                  }
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="editMaxGrade">Maximum Grade</FieldLabel>
-                <Input
-                  id="editMaxGrade"
-                  type="number"
-                  value={editFormData.maxGrade}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      maxGrade: parseInt(e.target.value) || 100,
-                    })
-                  }
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="editStatus">Status</FieldLabel>
-                <Select
-                  value={editFormData.status}
-                  onValueChange={(value) =>
-                    setEditFormData({
-                      ...editFormData,
-                      status: value as 'draft' | 'published' | 'closed',
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
-            <Field className="sm:col-span-2">
-              <FieldLabel htmlFor="editDescription">Description</FieldLabel>
-              <Textarea
-                id="editDescription"
-                placeholder="Assignment description"
-                rows={8}
-                value={editFormData.description}
-                onChange={(e) =>
-                  setEditFormData({
-                    ...editFormData,
-                    description: e.target.value,
-                  })
-                }
-              />
-            </Field>
-          </FieldGroup>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="rounded-none"
-              onClick={() => {
-                setShowEditAssignmentDialog(false)
-                setAssignmentToEdit(null)
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdateAssignment}
-              disabled={updateAssignmentMutation.status === 'pending'}
-            >
-              {updateAssignmentMutation.status === 'pending'
-                ? 'Updating...'
-                : 'Update Assignment'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Assignment Dialog */}
-      <Dialog
-        open={showDeleteAssignmentDialog}
-        onOpenChange={setShowDeleteAssignmentDialog}
-      >
-        <DialogContent
-          className="rounded-none border border-[#C5A059]/20"
-          showCloseButton={false}
-        >
-          <DialogHeader>
-            <DialogTitle className="font-serif text-xl text-[#1C1815]">
-              Delete Assignment
-            </DialogTitle>
-            <DialogDescription className="text-[#4E463D]">
-              {submissionCount > 0 ? (
-                <>
-                  This assignment has {submissionCount} submission
-                  {submissionCount !== 1 ? 's' : ''}. Assignments with
-                  submissions cannot be deleted.
-                </>
-              ) : (
-                <>
-                  Are you sure you want to delete "{assignmentToDelete?.title}"?
-                  This action cannot be undone.
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="rounded-none"
-              onClick={() => {
-                setShowDeleteAssignmentDialog(false)
-                setAssignmentToDelete(null)
-                setSubmissionCount(0)
-              }}
-            >
-              Cancel
-            </Button>
-            {submissionCount === 0 && (
-              <Button
-                variant="destructive"
-                className="rounded-none"
-                onClick={handleConfirmDeleteAssignment}
-                disabled={deleteAssignmentMutation.status === 'pending'}
-              >
-                {deleteAssignmentMutation.status === 'pending'
-                  ? 'Deleting...'
-                  : 'Delete'}
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Assignment Dialog (create / edit / delete) */}
+      {assignmentDialogMode !== null && (
+        <AssignmentDialog
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) {
+              setAssignmentDialogMode(null)
+              setAssignmentToAct(null)
+              setSubmissionCount(0)
+            }
+          }}
+          mode={assignmentDialogMode}
+          lessonId={lesson.id}
+          assignment={assignmentToAct ?? undefined}
+          submissionCount={submissionCount}
+        />
+      )}
 
       {/* Lesson Dialog (edit / delete) */}
       {lessonDialogMode !== null && (
@@ -781,7 +404,7 @@ function LessonDetailComponent() {
               : null,
             duration: lesson.duration,
             isPublished: lesson.isPublished ?? false,
-            orderIndex: lesson.orderIndex ?? 0,
+            orderIndex: lesson.orderIndex,
           }}
         />
       )}
