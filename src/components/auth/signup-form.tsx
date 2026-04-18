@@ -23,7 +23,7 @@ import {
   getInvitationByToken,
 } from '@/utils/invitations'
 import { calculatePasswordStrength } from '@/utils/password'
-import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
+import graphiteBackground from '@/assets/images/bg/bg_about.webp'
 
 interface SignupFormProps {
   token?: string
@@ -387,7 +387,7 @@ export function SignupForm({ token = '' }: SignupFormProps) {
           disabled={
             resendCooldown > 0 || resendOtpMutation.status === 'pending'
           }
-          className="mt-4 inline-flex items-center gap-2 text-[0.68rem] font-medium tracking-[0.14em] text-[#9B8A73] uppercase transition-colors hover:text-[#C5A059] disabled:opacity-40"
+          className="mt-4 inline-flex cursor-pointer items-center gap-2 text-[0.68rem] font-medium tracking-[0.14em] text-[#9B8A73] uppercase transition-colors hover:text-[#C5A059] disabled:opacity-40"
         >
           <RefreshCwIcon className="h-3 w-3" />
           {resendCooldown > 0

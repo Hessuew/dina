@@ -261,7 +261,7 @@ export function EnrolmentForm() {
               <button
                 type="submit"
                 disabled={!canSubmit || isSubmitting}
-                className="h-11 w-full border border-[#C5A059]/55 bg-linear-to-b from-[#2A2A2A] to-[#111111] font-serif tracking-[0.12em] text-[#E9D9B4] transition-opacity hover:opacity-80 disabled:opacity-40"
+                className="h-11 w-full cursor-pointer border border-[#C5A059]/55 bg-linear-to-b from-[#2A2A2A] to-[#111111] font-serif tracking-[0.12em] text-[#E9D9B4] transition-opacity hover:opacity-80 disabled:opacity-40"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Application'}
               </button>
