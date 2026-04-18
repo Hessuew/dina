@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import marksBackground from '@/assets/images/bg6_v1.png'
+import marksBackground from '@/assets/images/bg/bg_marks.webp'
 
 type MarkItem = {
   id: string

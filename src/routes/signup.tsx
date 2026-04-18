@@ -11,7 +11,7 @@ import {
   getSupabaseAdminClient,
   getSupabaseServerClient,
 } from '@/utils/supabase'
-import { SignupForm } from '@/components/signup-form'
+import { SignupForm } from '@/components/auth/signup-form'
 import { OTPVerificationEmail } from '@/emails/OTPVerificationEmail'
 import {
   resendOtpSchema,

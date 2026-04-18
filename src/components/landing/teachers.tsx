@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
-import facultyBackground from '@/assets/images/bg1d.png'
+import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 
 type Lecturer = {
   name: string

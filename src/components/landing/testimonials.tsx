@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import testimonialBackground from '@/assets/images/bg4_v1.png'
+import testimonialBackground from '@/assets/images/bg/bg_testimonials.webp'
 
 type TestimonialItem = {
   id: string

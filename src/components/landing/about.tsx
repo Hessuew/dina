@@ -1,4 +1,4 @@
-import aboutBackground from '@/assets/images/bg3_v1.png'
+import aboutBackground from '@/assets/images/bg/bg_about.webp'
 
 type TimelineEvent = {
   month: string

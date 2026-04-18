@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
-import graphiteBackground from '@/assets/images/bg2_v1.png'
+import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
 
 type CourseShowcaseItem = {
   id: string
