@@ -1,6 +1,6 @@
 import { useRouter } from '@tanstack/react-router'
-import { StudentCard } from './StudentCard'
 import type { StudentWithStats } from '@/types/student'
+import { StudentCard } from '@/components/card/StudentCard'
 
 type StudentsViewProps = {
   students: Array<StudentWithStats>

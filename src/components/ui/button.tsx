@@ -21,7 +21,8 @@ const buttonVariants = cva(
         link: 'text-primary underline-offset-4 hover:underline',
       },
       theme: {
-        light: '',
+        light:
+          'rounded-none border-[#C5A059]/35 bg-gradient-to-b from-[#F8F4EC] to-[#EDE8DE] font-serif tracking-[0.12em] text-[#1C1815] shadow-[0_16px_28px_-24px_rgba(0,0,0,0.18)] hover:-translate-y-0.5 hover:border-[#C5A059]/60 hover:shadow-[0_20px_36px_-24px_rgba(0,0,0,0.24)] focus-visible:border-[#C5A059]/80 focus-visible:ring-[#C5A059]/20',
         dark: 'rounded-none border-[#C5A059]/55 bg-gradient-to-b from-[#2A2A2A] to-[#111111] font-serif tracking-[0.12em] text-[#E9D9B4] shadow-[0_28px_60px_-28px_rgba(0,0,0,0.7)] hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white focus-visible:border-[#C5A059]/80 focus-visible:ring-[#C5A059]/20',
       },
       size: {

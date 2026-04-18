@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { TeacherAvatars } from '@/components/TeacherAvatars'
+import { TeacherAvatars } from '@/components/avarats/TeacherAvatars'
 
 type CourseCardProps = {
   course: {

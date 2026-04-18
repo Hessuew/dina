@@ -11,9 +11,9 @@ import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
 
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { DefaultCatchBoundary } from '@/components/DefaultCatchBoundary'
-import { Header } from '@/components/Header'
-import { NotFound } from '@/components/NotFound'
+import { DefaultCatchBoundary } from '@/components/navigation/DefaultCatchBoundary'
+import { Header } from '@/components/navigation/Header'
+import { NotFound } from '@/components/navigation/NotFound'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import appCss from '@/styles/app.css?url'
@@ -22,7 +22,7 @@ import { seo } from '@/utils/seo'
 import { db } from '@/db'
 import { profiles } from '@/db/schema'
 import { getSupabaseServerClient } from '@/utils/supabase'
-import { AppSidebar } from '@/components/AppSidebar'
+import { AppSidebar } from '@/components/navigation/AppSidebar'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = getSupabaseServerClient()

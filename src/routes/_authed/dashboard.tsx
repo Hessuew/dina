@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { CourseList } from '@/components/CourseList'
+import { CourseList } from '@/components/list/CourseList'
 import {
   getAllAssignmentsForStudent,
   getAllAssignmentsForTeacher,

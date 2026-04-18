@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { LogOutIcon, UserIcon } from 'lucide-react'
 import { useState } from 'react'
-import { ProfileModal } from './ProfileModal'
+import { ProfileModal } from './modal/ProfileModal'
 import type { ReactElement } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {

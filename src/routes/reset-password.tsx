@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { profiles } from '@/db/schema'
 import { getSupabaseAdminClient } from '@/utils/supabase'
-import { ResetPasswordForm } from '@/components/reset-password-form'
+import { ResetPasswordForm } from '@/components/auth/reset-password-form'
 import {
   resetPasswordSchema,
   validateResetTokenSchema,
