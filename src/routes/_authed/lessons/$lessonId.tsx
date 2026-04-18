@@ -11,15 +11,8 @@ import {
 import { useState } from 'react'
 import { toast } from 'sonner'
 import z from 'zod'
-import { Badge } from '@/components/ui/badge'
+import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -37,7 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useMutation } from '@/hooks/useMutation'
 import {
@@ -47,7 +39,8 @@ import {
   getLesson,
   updateAssignment,
 } from '@/utils/assignments'
-import { deleteLesson, updateLesson } from '@/utils/courses'
+import { LessonDialog } from '@/components/dialog/LessonDialog'
+import { cn } from '@/lib/utils'
 
 const getLessonData = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ lessonId: z.uuid() }))
@@ -91,9 +84,10 @@ function LessonDetailComponent() {
   const search = Route.useSearch()
   const { lesson, role } = loaderData
 
+  const [lessonDialogMode, setLessonDialogMode] = useState<
+    'edit' | 'delete' | null
+  >(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [showEditLessonDialog, setShowEditLessonDialog] = useState(false)
-  const [showDeleteLessonDialog, setShowDeleteLessonDialog] = useState(false)
   const [showEditAssignmentDialog, setShowEditAssignmentDialog] =
     useState(false)
   const [showDeleteAssignmentDialog, setShowDeleteAssignmentDialog] =
@@ -117,16 +111,6 @@ function LessonDetailComponent() {
     maxGrade: 100,
     status: 'draft' as 'draft' | 'published' | 'closed',
   })
-  const [lessonFormData, setLessonFormData] = useState({
-    title: lesson.title,
-    content: lesson.content || '',
-    scheduledTime: lesson.scheduledTime
-      ? new Date(lesson.scheduledTime).toISOString().slice(0, 16)
-      : '',
-    duration: lesson.duration?.toString() || '',
-    isPublished: lesson.isPublished ?? false,
-  })
-
   const canEdit = role === 'teacher' || role === 'admin'
   const isPublished = lesson.isPublished ?? false
   const showContent = isPublished || canEdit
@@ -166,26 +150,6 @@ function LessonDetailComponent() {
     },
   })
 
-  const updateLessonMutation = useMutation({
-    fn: updateLesson,
-    onSuccess: async () => {
-      toast.success('Lesson updated successfully!')
-      setShowEditLessonDialog(false)
-      await router.invalidate()
-    },
-  })
-
-  const deleteLessonMutation = useMutation({
-    fn: deleteLesson,
-    onSuccess: async () => {
-      toast.success('Lesson deleted successfully!')
-      await router.navigate({
-        to: '/courses/$courseId',
-        params: { courseId: lesson.course.id },
-      })
-    },
-  })
-
   const handleCreateAssignment = () => {
     if (!formData.title || !formData.dueDate) {
       toast.error('Title and due date are required')
@@ -199,27 +163,6 @@ function LessonDetailComponent() {
         description: formData.description,
         dueDate: formData.dueDate,
         maxGrade: formData.maxGrade,
-      },
-    })
-  }
-
-  const handleUpdateLesson = () => {
-    if (!lessonFormData.title || !lessonFormData.scheduledTime) {
-      toast.error('Title and scheduled time are required')
-      return
-    }
-
-    updateLessonMutation.mutate({
-      data: {
-        lessonId: lesson.id,
-        courseId: lesson.course.id,
-        title: lessonFormData.title,
-        content: lessonFormData.content || undefined,
-        scheduledTime: new Date(lessonFormData.scheduledTime),
-        duration: lessonFormData.duration
-          ? parseInt(lessonFormData.duration)
-          : undefined,
-        isPublished: lessonFormData.isPublished,
       },
     })
   }
@@ -276,17 +219,6 @@ function LessonDetailComponent() {
     })
   }
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'published':
-        return 'default'
-      case 'closed':
-        return 'destructive'
-      default:
-        return 'secondary'
-    }
-  }
-
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'published':
@@ -298,263 +230,281 @@ function LessonDetailComponent() {
     }
   }
 
+  const goBack = () => {
+    if (search.fromCalendar && search.calendarMonth) {
+      router.navigate({
+        to: '/calendar',
+        search: { month: search.calendarMonth },
+      })
+    } else {
+      router.navigate({
+        to: '/courses/$courseId',
+        params: { courseId: lesson.course.id },
+      })
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-7xl p-6">
-        <div className="mb-6 flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              if (search.fromCalendar && search.calendarMonth) {
-                router.navigate({
-                  to: '/calendar',
-                  search: { month: search.calendarMonth },
-                })
-              } else {
-                router.navigate({
-                  to: '/courses/$courseId',
-                  params: { courseId: lesson.course.id },
-                })
-              }
-            }}
+    <div
+      className="relative isolate min-h-screen overflow-hidden"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(255,255,255,0.92), rgba(255,255,255,0.92)), url(${facultyBackground})`,
+        backgroundPosition: 'center',
+        backgroundSize: 'cover',
+      }}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.10),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.22),transparent_22%)]" />
+
+      <div className="relative mx-auto max-w-7xl px-6 py-10 sm:px-8 sm:py-12">
+        {/* Page header */}
+        <div className="mb-10">
+          <button
+            type="button"
+            onClick={goBack}
+            className="mb-6 flex items-center gap-2 text-[0.72rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase transition-colors hover:text-[#C5A059]"
           >
-            <ChevronLeft className="size-5" />
-          </Button>
-          <div className="flex flex-1 items-center justify-between">
+            <ChevronLeft className="size-3.5" />
+            {lesson.course.title}
+          </button>
+
+          <div className="flex items-start justify-between gap-6">
             <div>
-              <h1 className="text-3xl font-bold">{lesson.title}</h1>
-              <p className="text-muted-foreground mt-1">
-                {lesson.course.title}
-              </p>
+              <div className="h-px w-10 bg-[#C5A059]/50" />
+              <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
+                {lesson.title}
+              </h1>
+              <div className="mt-3 flex items-center gap-4 text-[0.68rem] text-[#9B8C7C]">
+                {lesson.scheduledTime && (
+                  <div className="flex items-center gap-1.5">
+                    <CalendarIcon className="size-3" />
+                    <span>
+                      {new Date(lesson.scheduledTime).toLocaleDateString(
+                        'en-US',
+                        {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                        },
+                      )}{' '}
+                      at{' '}
+                      {new Date(lesson.scheduledTime).toLocaleTimeString(
+                        'en-US',
+                        {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true,
+                        },
+                      )}
+                    </span>
+                  </div>
+                )}
+                {lesson.duration && (
+                  <div className="flex items-center gap-1.5">
+                    <ClockIcon className="size-3" />
+                    <span>{lesson.duration} min</span>
+                  </div>
+                )}
+              </div>
             </div>
+
             {canEdit && (
-              <Badge variant={isPublished ? 'default' : 'secondary'}>
-                {isPublished ? 'Published' : 'Draft'}
-              </Badge>
+              <div className="flex items-center gap-3 pt-4">
+                <div
+                  className={cn(
+                    'border px-3 py-1.5 text-[0.62rem] font-medium tracking-[0.22em] uppercase',
+                    isPublished
+                      ? 'border-[#C5A059]/40 bg-[#C5A059]/8 text-[#9B7A41]'
+                      : 'border-[#1A1A1A]/12 bg-[#1A1A1A]/4 text-[#8E816D]',
+                  )}
+                >
+                  {isPublished ? 'Published' : 'Draft'}
+                </div>
+                <button
+                  type="button"
+                  className="flex size-8 items-center justify-center border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] transition-all hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
+                  onClick={() => setLessonDialogMode('edit')}
+                >
+                  <PencilIcon className="size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  className="flex size-8 items-center justify-center border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] transition-all hover:border-red-300 hover:text-red-600"
+                  onClick={() => setLessonDialogMode('delete')}
+                >
+                  <TrashIcon className="size-3.5" />
+                </button>
+              </div>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div>
-            <Card>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle>Lesson Information</CardTitle>
-                  </div>
-                  {canEdit && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setLessonFormData({
-                            title: lesson.title,
-                            content: lesson.content || '',
-                            scheduledTime: lesson.scheduledTime
-                              ? new Date(lesson.scheduledTime)
-                                  .toISOString()
-                                  .slice(0, 16)
-                              : '',
-                            duration: lesson.duration?.toString() || '',
-                            isPublished: lesson.isPublished ?? false,
-                          })
-                          setShowEditLessonDialog(true)
-                        }}
-                      >
-                        <PencilIcon className="size-4" />
-                      </Button>
-                      <Button
-                        className="hover:bg-destructive/10 hover:text-destructive"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowDeleteLessonDialog(true)}
-                      >
-                        <TrashIcon className="size-4" />
-                      </Button>
-                    </div>
-                  )}
+        {/* Main grid */}
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+          {/* Left — lesson content */}
+          <div className="border border-[#1A1A1A]/10 bg-[#F8F4EC] shadow-[0_16px_28px_-24px_rgba(0,0,0,0.10)]">
+            <div className="px-6 py-6">
+              <div className="h-px w-8 bg-[#C5A059]/40" />
+              <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                Lesson Content
+              </div>
+              {!showContent ? (
+                <div className="mt-8 text-center">
+                  <p className="text-sm text-[#9B8C7C] italic">
+                    This lesson is not yet available.
+                  </p>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!showContent && (role as string) === 'student' ? (
-                  <div className="text-muted-foreground py-8 text-center">
-                    <p>This lesson is not yet available</p>
-                  </div>
-                ) : (
-                  <>
-                    {lesson.content && (
-                      <div>
-                        <h3 className="mb-2 font-semibold">Description</h3>
-                        <p className="text-muted-foreground text-sm whitespace-pre-wrap">
-                          {lesson.content}
-                        </p>
-                      </div>
-                    )}
-                    <div>
-                      <h3 className="mb-2 font-semibold">Details</h3>
-                      <div className="space-y-2 text-sm">
-                        {lesson.duration && (
-                          <div className="flex items-center gap-2">
-                            <ClockIcon className="text-muted-foreground size-4" />
-                            <span>{lesson.duration} minutes</span>
-                          </div>
-                        )}
-                        {lesson.scheduledTime && (
-                          <div className="flex items-center gap-2">
-                            <CalendarIcon className="text-muted-foreground size-4" />
-                            <span>
-                              {new Date(
-                                lesson.scheduledTime,
-                              ).toLocaleDateString()}{' '}
-                              at{' '}
-                              {new Date(
-                                lesson.scheduledTime,
-                              ).toLocaleTimeString()}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+              ) : lesson.content ? (
+                <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#4E463D]">
+                  {lesson.content}
+                </p>
+              ) : (
+                <p className="mt-4 text-sm text-[#9B8C7C] italic">
+                  No content provided.
+                </p>
+              )}
+            </div>
           </div>
 
-          <div>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Assignments</CardTitle>
-                    <CardDescription>
-                      {lesson.assignments.length} assignment
-                      {lesson.assignments.length !== 1 ? 's' : ''}
-                    </CardDescription>
-                  </div>
-                  {canEdit && (
-                    <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-                      <PlusIcon className="mr-2 size-4" />
-                      Add Assignment
-                    </Button>
-                  )}
+          {/* Right — assignments */}
+          <div className="border border-[#1A1A1A]/10 bg-[#F8F4EC] shadow-[0_16px_28px_-24px_rgba(0,0,0,0.10)]">
+            <div className="flex items-center justify-between border-b border-[#1A1A1A]/8 px-6 py-5">
+              <div>
+                <div className="h-px w-8 bg-[#C5A059]/40" />
+                <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                  Assignments
                 </div>
-              </CardHeader>
-              <CardContent>
-                {lesson.assignments.length === 0 ? (
-                  <div className="text-muted-foreground py-8 text-center">
-                    <p className="mb-4">No assignments yet</p>
-                    {canEdit && (
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowCreateDialog(true)}
+                <div className="mt-1 font-serif text-xl text-[#1C1815]">
+                  {lesson.assignments.length}{' '}
+                  {lesson.assignments.length === 1
+                    ? 'Assignment'
+                    : 'Assignments'}
+                </div>
+              </div>
+              {canEdit && (
+                <Button theme="light" onClick={() => setShowCreateDialog(true)}>
+                  <PlusIcon className="size-3.5" />
+                  Add Assignment
+                </Button>
+              )}
+            </div>
+
+            {lesson.assignments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <p className="text-sm text-[#8E816D]">No assignments yet</p>
+                {canEdit && (
+                  <Button
+                    theme="light"
+                    className="mt-4"
+                    onClick={() => setShowCreateDialog(true)}
+                  >
+                    <PlusIcon className="size-3.5" />
+                    Create First Assignment
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="divide-y divide-[#1A1A1A]/6">
+                {lesson.assignments
+                  .filter((a: Assignment) =>
+                    role === 'student' ? a.status === 'published' : true,
+                  )
+                  .map((assignment: Assignment) => {
+                    const statusColors = {
+                      published: 'border-[#C5A059]/40 text-[#9B7A41]',
+                      closed: 'border-red-300 text-red-500',
+                      draft: 'border-[#1A1A1A]/12 text-[#8E816D]',
+                    }
+                    return (
+                      <div
+                        key={assignment.id}
+                        className="group flex items-start gap-4 px-6 py-5 transition-all hover:bg-[#EDE8DE]/60"
                       >
-                        <PlusIcon className="mr-2 size-4" />
-                        Create Your First Assignment
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {lesson.assignments
-                      .filter((a: Assignment) =>
-                        role === 'student' ? a.status === 'published' : true,
-                      )
-                      .map((assignment: Assignment) => (
                         <div
-                          key={assignment.id}
-                          className="hover:bg-muted/50 flex items-start justify-between rounded-lg border p-4 transition-colors"
+                          className="min-w-0 flex-1 cursor-pointer"
+                          onClick={() =>
+                            router.navigate({
+                              to: '/assignments/$assignmentId',
+                              params: { assignmentId: assignment.id },
+                              search: {
+                                calendarMonth: undefined,
+                                fromCalendar: false,
+                                fromDashboard: false,
+                              },
+                            })
+                          }
                         >
-                          <div
-                            className="flex-1 cursor-pointer"
-                            onClick={() =>
-                              router.navigate({
-                                to: '/assignments/$assignmentId',
-                                params: {
-                                  assignmentId: assignment.id,
-                                },
-                                search: {
-                                  calendarMonth: undefined,
-                                  fromCalendar: false,
-                                  fromDashboard: false,
-                                },
-                              })
-                            }
-                          >
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-semibold">
-                                {assignment.title}
-                              </h4>
-                              <Badge
-                                variant={getStatusBadgeVariant(
-                                  assignment.status,
-                                )}
-                              >
-                                {getStatusLabel(assignment.status)}
-                              </Badge>
-                            </div>
-                            {assignment.description && (
-                              <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
-                                {assignment.description}
-                              </p>
-                            )}
-                            <div className="text-muted-foreground mt-2 flex items-center gap-4 text-xs">
-                              <div className="flex items-center gap-1">
-                                <CalendarIcon className="size-3" />
-                                <span>
-                                  Due{' '}
-                                  {new Date(
-                                    assignment.dueDate,
-                                  ).toLocaleDateString()}
-                                </span>
-                              </div>
+                          <div className="flex items-center gap-2.5">
+                            <span className="font-serif text-base text-[#1C1815] group-hover:text-[#9B7A41]">
+                              {assignment.title}
+                            </span>
+                            <span
+                              className={cn(
+                                'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
+                                statusColors[assignment.status] ??
+                                  statusColors.draft,
+                              )}
+                            >
+                              {getStatusLabel(assignment.status)}
+                            </span>
+                          </div>
+                          {assignment.description && (
+                            <p className="mt-1 line-clamp-2 text-sm text-[#6B5F4D]">
+                              {assignment.description}
+                            </p>
+                          )}
+                          <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#9B8C7C]">
+                            <div className="flex items-center gap-1">
+                              <CalendarIcon className="size-3" />
                               <span>
-                                Max: {assignment.maxGrade ?? 100} points
+                                Due{' '}
+                                {new Date(
+                                  assignment.dueDate,
+                                ).toLocaleDateString()}
                               </span>
                             </div>
+                            <span>Max: {assignment.maxGrade ?? 100} pts</span>
                           </div>
-                          {canEdit && (
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleEditAssignment(assignment)
-                                }}
-                              >
-                                <PencilIcon className="size-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDeleteAssignmentClick(assignment)
-                                }}
-                              >
-                                <TrashIcon className="size-4" />
-                              </Button>
-                            </div>
-                          )}
                         </div>
-                      ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                        {canEdit && (
+                          <div className="flex shrink-0 items-center gap-2">
+                            <button
+                              type="button"
+                              className="flex size-7 items-center justify-center border border-[#1A1A1A]/10 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
+                              onClick={() => handleEditAssignment(assignment)}
+                            >
+                              <PencilIcon className="size-3" />
+                            </button>
+                            <button
+                              type="button"
+                              className="flex size-7 items-center justify-center border border-[#1A1A1A]/10 text-[#8E816D] transition-all hover:border-red-300 hover:text-red-500"
+                              onClick={() =>
+                                handleDeleteAssignmentClick(assignment)
+                              }
+                            >
+                              <TrashIcon className="size-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Create Assignment Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent
+          className="rounded-none border border-[#C5A059]/20 sm:max-w-3xl"
+          showCloseButton={false}
+        >
           <DialogHeader>
-            <DialogTitle>Create Assignment</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="font-serif text-xl text-[#1C1815]">
+              Create Assignment
+            </DialogTitle>
+            <DialogDescription className="text-[#4E463D]">
               Add a new assignment for this lesson
             </DialogDescription>
           </DialogHeader>
@@ -606,7 +556,7 @@ function LessonDetailComponent() {
               <Textarea
                 id="description"
                 placeholder="Assignment description"
-                rows={10}
+                rows={8}
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
@@ -617,6 +567,7 @@ function LessonDetailComponent() {
           <DialogFooter>
             <Button
               variant="outline"
+              className="rounded-none"
               onClick={() => setShowCreateDialog(false)}
             >
               Cancel
@@ -638,10 +589,17 @@ function LessonDetailComponent() {
         open={showEditAssignmentDialog}
         onOpenChange={setShowEditAssignmentDialog}
       >
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent
+          className="rounded-none border border-[#C5A059]/20 sm:max-w-3xl"
+          showCloseButton={false}
+        >
           <DialogHeader>
-            <DialogTitle>Edit Assignment</DialogTitle>
-            <DialogDescription>Update assignment details</DialogDescription>
+            <DialogTitle className="font-serif text-xl text-[#1C1815]">
+              Edit Assignment
+            </DialogTitle>
+            <DialogDescription className="text-[#4E463D]">
+              Update assignment details
+            </DialogDescription>
           </DialogHeader>
           <FieldGroup>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -715,7 +673,7 @@ function LessonDetailComponent() {
               <Textarea
                 id="editDescription"
                 placeholder="Assignment description"
-                rows={10}
+                rows={8}
                 value={editFormData.description}
                 onChange={(e) =>
                   setEditFormData({
@@ -729,6 +687,7 @@ function LessonDetailComponent() {
           <DialogFooter>
             <Button
               variant="outline"
+              className="rounded-none"
               onClick={() => {
                 setShowEditAssignmentDialog(false)
                 setAssignmentToEdit(null)
@@ -753,10 +712,15 @@ function LessonDetailComponent() {
         open={showDeleteAssignmentDialog}
         onOpenChange={setShowDeleteAssignmentDialog}
       >
-        <DialogContent>
+        <DialogContent
+          className="rounded-none border border-[#C5A059]/20"
+          showCloseButton={false}
+        >
           <DialogHeader>
-            <DialogTitle>Delete Assignment</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="font-serif text-xl text-[#1C1815]">
+              Delete Assignment
+            </DialogTitle>
+            <DialogDescription className="text-[#4E463D]">
               {submissionCount > 0 ? (
                 <>
                   This assignment has {submissionCount} submission
@@ -774,6 +738,7 @@ function LessonDetailComponent() {
           <DialogFooter>
             <Button
               variant="outline"
+              className="rounded-none"
               onClick={() => {
                 setShowDeleteAssignmentDialog(false)
                 setAssignmentToDelete(null)
@@ -785,6 +750,7 @@ function LessonDetailComponent() {
             {submissionCount === 0 && (
               <Button
                 variant="destructive"
+                className="rounded-none"
                 onClick={handleConfirmDeleteAssignment}
                 disabled={deleteAssignmentMutation.status === 'pending'}
               >
@@ -797,159 +763,28 @@ function LessonDetailComponent() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Lesson Dialog */}
-      <Dialog
-        open={showEditLessonDialog}
-        onOpenChange={setShowEditLessonDialog}
-      >
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Edit Lesson</DialogTitle>
-            <DialogDescription>Update the lesson information</DialogDescription>
-          </DialogHeader>
-          <FieldGroup>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="lesson-title">
-                  Title <span className="text-destructive">*</span>
-                </FieldLabel>
-                <Input
-                  id="lesson-title"
-                  placeholder="Lesson title"
-                  value={lessonFormData.title}
-                  onChange={(e) =>
-                    setLessonFormData({
-                      ...lessonFormData,
-                      title: e.target.value,
-                    })
-                  }
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="lesson-time">
-                  Scheduled Time <span className="text-destructive">*</span>
-                </FieldLabel>
-                <Input
-                  id="lesson-time"
-                  type="datetime-local"
-                  value={lessonFormData.scheduledTime}
-                  onChange={(e) =>
-                    setLessonFormData({
-                      ...lessonFormData,
-                      scheduledTime: e.target.value,
-                    })
-                  }
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="lesson-duration">
-                  Duration (minutes)
-                </FieldLabel>
-                <Input
-                  id="lesson-duration"
-                  type="number"
-                  placeholder="60"
-                  value={lessonFormData.duration}
-                  onChange={(e) =>
-                    setLessonFormData({
-                      ...lessonFormData,
-                      duration: e.target.value,
-                    })
-                  }
-                />
-              </Field>
-              <Field>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="lesson-published"
-                    checked={lessonFormData.isPublished}
-                    onCheckedChange={(checked) =>
-                      setLessonFormData({
-                        ...lessonFormData,
-                        isPublished: checked,
-                      })
-                    }
-                  />
-                  <FieldLabel htmlFor="lesson-published">
-                    Publish lesson
-                  </FieldLabel>
-                </div>
-              </Field>
-            </div>
-            <Field className="sm:col-span-2">
-              <FieldLabel htmlFor="lesson-content">Content</FieldLabel>
-              <Textarea
-                id="lesson-content"
-                placeholder="Lesson content or description"
-                rows={10}
-                value={lessonFormData.content}
-                onChange={(e) =>
-                  setLessonFormData({
-                    ...lessonFormData,
-                    content: e.target.value,
-                  })
-                }
-              />
-            </Field>
-          </FieldGroup>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowEditLessonDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdateLesson}
-              disabled={updateLessonMutation.status === 'pending'}
-            >
-              {updateLessonMutation.status === 'pending'
-                ? 'Saving...'
-                : 'Save Changes'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Lesson Dialog */}
-      <Dialog
-        open={showDeleteLessonDialog}
-        onOpenChange={setShowDeleteLessonDialog}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Lesson</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this lesson? This action cannot be
-              undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteLessonDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                deleteLessonMutation.mutate({
-                  data: {
-                    lessonId: lesson.id,
-                    courseId: lesson.course.id,
-                  },
-                })
-              }}
-              disabled={deleteLessonMutation.status === 'pending'}
-            >
-              {deleteLessonMutation.status === 'pending'
-                ? 'Deleting...'
-                : 'Delete'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Lesson Dialog (edit / delete) */}
+      {lessonDialogMode !== null && (
+        <LessonDialog
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setLessonDialogMode(null)
+          }}
+          mode={lessonDialogMode}
+          courseId={lesson.course.id}
+          initialData={{
+            lessonId: lesson.id,
+            title: lesson.title,
+            content: lesson.content,
+            scheduledTime: lesson.scheduledTime
+              ? new Date(lesson.scheduledTime)
+              : null,
+            duration: lesson.duration,
+            isPublished: lesson.isPublished ?? false,
+            orderIndex: lesson.orderIndex ?? 0,
+          }}
+        />
+      )}
     </div>
   )
 }

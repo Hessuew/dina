@@ -1,12 +1,12 @@
 import { FileText, Mail, MapPin, Phone } from 'lucide-react'
-import footerBackground from '@/assets/images/bg/bg_footer.webp'
+import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 
 export function LandingOfficialInfo() {
   return (
     <section
-      className="relative isolate min-h-screen overflow-hidden text-[#F7F4EE]"
+      className="relative isolate overflow-hidden text-[#1C1815]"
       style={{
-        backgroundImage: `linear-gradient(180deg, rgba(8,6,5,0.65), rgba(10,8,7,0.75)), url(${footerBackground})`,
+        backgroundImage: `linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url(${facultyBackground})`,
         backgroundPosition: 'center',
         backgroundSize: 'cover',
       }}
@@ -16,16 +16,16 @@ export function LandingOfficialInfo() {
       <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-16 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-20 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 text-center">
-            <div className="mx-auto mb-6 h-px w-16 bg-[#C5A059]/50" />
-            <h2 className="font-serif text-[clamp(2rem,4vw,3rem)] leading-tight tracking-[-0.04em] text-white">
+            <div className="mx-auto mb-6 h-px w-16 bg-[#9B8A73]/50" />
+            <h2 className="font-serif text-[clamp(2rem,4vw,3rem)] leading-tight tracking-[-0.04em] text-[#1C1815]">
               Official Information
             </h2>
-            <div className="mx-auto mt-6 h-px w-16 bg-[#C5A059]/50" />
+            <div className="mx-auto mt-6 h-px w-16 bg-[#9B8A73]/50" />
           </div>
 
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="group space-y-4 border border-white/10 bg-linear-to-b from-[#1A1816]/60 to-[#0F0D0C]/60 p-6 backdrop-blur-sm transition-all hover:border-[#C5A059]/30">
-              <div className="flex h-12 w-12 items-center justify-center rounded-sm border border-[#C5A059]/30 bg-[#C5A059]/10">
+            <div className="group space-y-4 border border-white/10 bg-linear-to-b from-[#1A1816]/60 to-[#0F0D0C]/60 p-6 backdrop-blur-sm transition-all hover:border-[#9B8A73]/30">
+              <div className="flex h-12 w-12 items-center justify-center rounded-sm border border-[#9B8A73]/30 bg-[#9B8A73]/10">
                 <Mail className="h-5 w-5 text-[#D4B373]" />
               </div>
               <div>
@@ -41,8 +41,8 @@ export function LandingOfficialInfo() {
               </div>
             </div>
 
-            <div className="group space-y-4 border border-white/10 bg-linear-to-b from-[#1A1816]/60 to-[#0F0D0C]/60 p-6 backdrop-blur-sm transition-all hover:border-[#C5A059]/30">
-              <div className="flex h-12 w-12 items-center justify-center rounded-sm border border-[#C5A059]/30 bg-[#C5A059]/10">
+            <div className="group space-y-4 border border-white/10 bg-linear-to-b from-[#1A1816]/60 to-[#0F0D0C]/60 p-6 backdrop-blur-sm transition-all hover:border-[#9B8A73]/30">
+              <div className="flex h-12 w-12 items-center justify-center rounded-sm border border-[#9B8A73]/30 bg-[#9B8A73]/10">
                 <Phone className="h-5 w-5 text-[#D4B373]" />
               </div>
               <div>
@@ -58,8 +58,8 @@ export function LandingOfficialInfo() {
               </div>
             </div>
 
-            <div className="group space-y-4 border border-white/10 bg-linear-to-b from-[#1A1816]/60 to-[#0F0D0C]/60 p-6 backdrop-blur-sm transition-all hover:border-[#C5A059]/30">
-              <div className="flex h-12 w-12 items-center justify-center rounded-sm border border-[#C5A059]/30 bg-[#C5A059]/10">
+            <div className="group space-y-4 border border-white/10 bg-linear-to-b from-[#1A1816]/60 to-[#0F0D0C]/60 p-6 backdrop-blur-sm transition-all hover:border-[#9B8A73]/30">
+              <div className="flex h-12 w-12 items-center justify-center rounded-sm border border-[#9B8A73]/30 bg-[#9B8A73]/10">
                 <MapPin className="h-5 w-5 text-[#D4B373]" />
               </div>
               <div>
@@ -76,8 +76,8 @@ export function LandingOfficialInfo() {
               </div>
             </div>
 
-            <div className="group space-y-4 border border-white/10 bg-linear-to-b from-[#1A1816]/60 to-[#0F0D0C]/60 p-6 backdrop-blur-sm transition-all hover:border-[#C5A059]/30">
-              <div className="flex h-12 w-12 items-center justify-center rounded-sm border border-[#C5A059]/30 bg-[#C5A059]/10">
+            <div className="group space-y-4 border border-white/10 bg-linear-to-b from-[#1A1816]/60 to-[#0F0D0C]/60 p-6 backdrop-blur-sm transition-all hover:border-[#9B8A73]/30">
+              <div className="flex h-12 w-12 items-center justify-center rounded-sm border border-[#9B8A73]/30 bg-[#9B8A73]/10">
                 <FileText className="h-5 w-5 text-[#D4B373]" />
               </div>
               <div>
