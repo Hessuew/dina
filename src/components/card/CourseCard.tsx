@@ -207,7 +207,7 @@ export function CourseCard({
           </span>
           <Button
             className={cn(
-              'flex size-8 cursor-pointer items-center justify-center border transition-all group-hover:translate-x-0.5',
+              'flex size-8 cursor-pointer items-center justify-center border',
               isDark
                 ? 'border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] group-hover:border-[#D6B16E]'
                 : 'border-[#9B7A41]/35 bg-[#EDE8DE] text-[#9B7A41] group-hover:border-[#C5A059]',
