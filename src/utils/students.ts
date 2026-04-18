@@ -31,10 +31,7 @@ export const getStudents = createServerFn({ method: 'GET' }).handler(
         })
 
         const studentSubmissions = await db.query.submissions.findMany({
-          where: and(
-            eq(submissions.studentId, student.id),
-            eq(submissions.status, 'submitted'),
-          ),
+          where: and(eq(submissions.studentId, student.id)),
           with: {
             assignment: {
               with: {
@@ -74,21 +71,19 @@ export const getStudents = createServerFn({ method: 'GET' }).handler(
               maxGrade: sub.assignment.maxGrade ?? 100,
             }))
 
-          const averageGrade =
-            gradesInCourse.length > 0
-              ? gradesInCourse.reduce(
-                  (sum, g) => sum + (g.grade / g.maxGrade) * 100,
-                  0,
-                ) / gradesInCourse.length
-              : 0
+          if (gradesInCourse.length === 0) return null
 
-          const maxGrade = 100
+          const averageGrade =
+            gradesInCourse.reduce(
+              (sum, g) => sum + (g.grade / g.maxGrade) * 100,
+              0,
+            ) / gradesInCourse.length
 
           return {
             courseId: enrollment.id,
             courseTitle: enrollment.title,
             averageGrade: Math.round(averageGrade),
-            maxGrade,
+            maxGrade: 100,
           }
         })
 
@@ -101,8 +96,12 @@ export const getStudents = createServerFn({ method: 'GET' }).handler(
           enrollmentCount: studentCourses.length,
           assignmentStats: {
             totalAssignments: allAssignmentsForStudent.length,
-            submittedAssignments: studentSubmissions.length,
-            averageGradeByCourse,
+            submittedAssignments: studentSubmissions.filter(
+              (s) => s.status !== 'draft',
+            ).length,
+            averageGradeByCourse: averageGradeByCourse.filter(
+              (g): g is NonNullable<typeof g> => g !== null,
+            ),
           },
         }
       }),

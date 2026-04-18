@@ -65,7 +65,7 @@ const lecturerPairs: Array<LecturerPair> = [
         bio: 'Strengthens integrity, maturity, and resilience so leadership is carried with credibility and weight.',
       },
       {
-        name: 'Ezinne',
+        name: 'Ezinne O.',
         title: '',
         bio: 'Equips students to guard desire, reject mixture, and live with holy clarity in complex times.',
       },
@@ -78,7 +78,7 @@ const lecturerPairs: Array<LecturerPair> = [
     theme: 'Framing',
     lecturers: [
       {
-        name: 'Sade',
+        name: 'Sade P.',
         title: '',
         bio: 'Forms leaders who can carry responsibility with wisdom, courage, and servant-hearted authority.',
       },
@@ -96,7 +96,7 @@ const lecturerPairs: Array<LecturerPair> = [
     theme: 'Interior',
     lecturers: [
       {
-        name: 'Kene',
+        name: 'Kene O.',
         title: '',
         bio: 'Develops a theology of witness that helps students carry Christ faithfully into public life and society.',
       },
@@ -114,12 +114,12 @@ const lecturerPairs: Array<LecturerPair> = [
     theme: 'Roof',
     lecturers: [
       {
-        name: 'Obi',
+        name: 'Obi C.',
         title: '',
         bio: 'Teaches perseverance under pressure and the strength that grows through faithful submission and trust.',
       },
       {
-        name: 'Ugo',
+        name: 'Ugo O.',
         title: '',
         bio: 'Helps students discern calling, embrace assignment, and move toward the nations with clarity and boldness.',
       },

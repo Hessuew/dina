@@ -165,14 +165,16 @@ function AssignmentDetailComponent() {
       <div className="relative mx-auto max-w-7xl px-6 py-10 sm:px-8 sm:py-12">
         {/* Page header */}
         <div className="mb-10">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            theme="light"
+            size="sm"
+            className="mb-6 gap-1"
             onClick={goBack}
-            className="mb-6 flex items-center gap-2 text-[0.72rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase transition-colors hover:text-[#C5A059]"
           >
             <ChevronLeft className="size-3.5" />
             {assignment.lesson.title}
-          </button>
+          </Button>
 
           <div className="flex items-start justify-between gap-6">
             <div>

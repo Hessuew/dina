@@ -2,7 +2,7 @@ import { BookOpenIcon, XIcon } from 'lucide-react'
 import type { TeacherWithCourses } from '@/types/teacher'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
+import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 
 type TeacherModalProps = {
   teacher: TeacherWithCourses | null
@@ -30,7 +30,7 @@ export function TeacherModal({
       <DialogContent
         className="overflow-y-auto rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-2xl"
         style={{
-          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
+          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
@@ -83,14 +83,16 @@ export function TeacherModal({
               <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                 About
               </div>
-              <p className="mt-3 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
-                {teacher.bio}
-              </p>
+              <div className="max-h-[40vh] overflow-y-auto">
+                <p className="mt-3 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
+                  {teacher.bio}
+                </p>
+              </div>
             </div>
           )}
 
           {/* Courses */}
-          <div>
+          <div className="mb-6">
             <div className="mb-4 flex items-center gap-2">
               <div className="h-px w-8 bg-[#C5A059]/40" />
               <span className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
@@ -98,43 +100,45 @@ export function TeacherModal({
               </span>
             </div>
 
-            {teacher.courses.length > 0 ? (
-              <div className="divide-y divide-white/8 border border-white/10">
-                {teacher.courses.map((course) => (
-                  <div
-                    key={course.id}
-                    className="flex items-start gap-4 px-5 py-4"
-                  >
-                    <BookOpenIcon className="mt-0.5 size-3.5 shrink-0 text-[#C5A059]/60" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-[#F8F4EC]">
-                          {course.title}
-                        </span>
-                        <span
-                          className={`border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase ${
-                            course.isPublished
-                              ? 'border-[#C5A059]/40 text-[#9B7A41]'
-                              : 'border-white/12 text-[#8E816D]'
-                          }`}
-                        >
-                          {course.isPublished ? 'Published' : 'Draft'}
-                        </span>
+            <div className="max-h-[30vh] overflow-y-auto">
+              {teacher.courses.length > 0 ? (
+                <div className="divide-y divide-white/8 border border-white/10">
+                  {teacher.courses.map((course) => (
+                    <div
+                      key={course.id}
+                      className="flex items-start gap-4 px-5 py-4"
+                    >
+                      <BookOpenIcon className="mt-0.5 size-3.5 shrink-0 text-[#C5A059]/60" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-[#F8F4EC]">
+                            {course.title}
+                          </span>
+                          <span
+                            className={`border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase ${
+                              course.isPublished
+                                ? 'border-[#C5A059]/40 text-[#9B7A41]'
+                                : 'border-white/12 text-[#8E816D]'
+                            }`}
+                          >
+                            {course.isPublished ? 'Published' : 'Draft'}
+                          </span>
+                        </div>
+                        {course.description && (
+                          <p className="mt-1 line-clamp-2 text-xs whitespace-pre-wrap text-[#8E816D]">
+                            {course.description}
+                          </p>
+                        )}
                       </div>
-                      {course.description && (
-                        <p className="mt-1 line-clamp-2 text-xs whitespace-pre-wrap text-[#8E816D]">
-                          {course.description}
-                        </p>
-                      )}
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-[#8E816D] italic">
-                No courses available yet
-              </p>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-[#8E816D] italic">
+                  No courses available yet
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </DialogContent>
