@@ -16,7 +16,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useMutation } from '@/hooks/useMutation'
 import { createLesson, deleteLesson, updateLesson } from '@/utils/courses'
-import marbleTexture from '@/assets/images/bg/bg_hero.webp'
+import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
 
 type LessonFormData = {
   title: string
@@ -161,15 +161,15 @@ export function LessonDialog({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="rounded-none border border-[#C5A059]/20 text-[#1C1815] shadow-[0_28px_60px_-32px_rgba(0,0,0,0.22)]"
+          className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
           style={{
-            backgroundImage: `linear-gradient(180deg, rgba(247,244,238,0.97), rgba(247,244,238,0.99)), url(${marbleTexture})`,
+            backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
           showCloseButton={false}
         >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.08),transparent_40%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
           <div className="relative">
             <DialogHeader>
               <div className="mb-1">
@@ -178,19 +178,19 @@ export function LessonDialog({
                   Confirm action
                 </div>
               </div>
-              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#1C1815]">
+              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
                 Delete Lesson
               </DialogTitle>
-              <DialogDescription className="text-[#4E463D]">
+              <DialogDescription className="text-[#AFA28F]">
                 Are you sure you want to delete "
                 {initialData?.title ?? 'this lesson'}"? This action cannot be
                 undone.
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="mt-6">
+            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
               <Button
                 variant="outline"
-                className="rounded-none border-[#1A1A1A]/12 bg-transparent text-[#6B5F4D] hover:border-[#1A1A1A]/20 hover:bg-white/50 hover:text-[#1C1815]"
+                theme="dark"
                 onClick={() => onOpenChange(false)}
               >
                 Cancel
@@ -213,15 +213,15 @@ export function LessonDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="overflow-y-auto rounded-none border border-[#C5A059]/20 text-[#1C1815] shadow-[0_28px_60px_-32px_rgba(0,0,0,0.22)] sm:max-w-3xl"
+        className="overflow-y-auto rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
         style={{
-          backgroundImage: `linear-gradient(180deg, rgba(247,244,238,0.97), rgba(247,244,238,0.99)), url(${marbleTexture})`,
+          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
         showCloseButton={false}
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.08),transparent_40%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
 
         <div className="relative">
           <DialogHeader>
@@ -231,10 +231,10 @@ export function LessonDialog({
                 {mode === 'create' ? 'New lesson' : 'Edit lesson'}
               </div>
             </div>
-            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#1C1815]">
+            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
               {mode === 'create' ? 'Create Lesson' : 'Edit Lesson'}
             </DialogTitle>
-            <DialogDescription className="text-[#4E463D]">
+            <DialogDescription className="text-[#AFA28F]">
               {mode === 'create'
                 ? 'Add a new lesson to this course'
                 : 'Update the lesson information'}
@@ -254,7 +254,7 @@ export function LessonDialog({
                   id="lesson-title"
                   placeholder="Lesson title"
                   value={formData.title}
-                  className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] placeholder:text-[#9B8C7C] focus:border-[#C5A059]/50"
+                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
                   }
@@ -271,7 +271,7 @@ export function LessonDialog({
                   id="lesson-time"
                   type="datetime-local"
                   value={formData.scheduledTime}
-                  className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] focus:border-[#C5A059]/50"
+                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50"
                   onChange={(e) =>
                     setFormData({ ...formData, scheduledTime: e.target.value })
                   }
@@ -289,7 +289,7 @@ export function LessonDialog({
                   type="number"
                   placeholder="60"
                   value={formData.duration}
-                  className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] placeholder:text-[#9B8C7C] focus:border-[#C5A059]/50"
+                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                   onChange={(e) =>
                     setFormData({ ...formData, duration: e.target.value })
                   }
@@ -307,7 +307,7 @@ export function LessonDialog({
                   placeholder="Lesson content or description"
                   rows={8}
                   value={formData.content}
-                  className="rounded-none border-[#1A1A1A]/15 bg-white/70 text-[#1C1815] placeholder:text-[#9B8C7C] focus:border-[#C5A059]/50"
+                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                   onChange={(e) =>
                     setFormData({ ...formData, content: e.target.value })
                   }
@@ -324,7 +324,7 @@ export function LessonDialog({
                   />
                   <FieldLabel
                     htmlFor="lesson-published"
-                    className="text-sm text-[#4E463D]"
+                    className="text-sm text-[#AFA28F]"
                   >
                     Publish lesson
                   </FieldLabel>
@@ -333,15 +333,15 @@ export function LessonDialog({
             </div>
           </FieldGroup>
 
-          <DialogFooter className="mt-6 rounded-none border-[#C5A059]/15 bg-[#F0EBE1]/60">
+          <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
             <Button
               variant="outline"
-              className="rounded-none border-[#1A1A1A]/12 bg-transparent text-[#6B5F4D] hover:border-[#1A1A1A]/20 hover:bg-white/50 hover:text-[#1C1815]"
+              theme="dark"
               onClick={() => onOpenChange(false)}
             >
               Cancel
             </Button>
-            <Button theme="light" onClick={handleSubmit} disabled={isPending}>
+            <Button theme="dark" onClick={handleSubmit} disabled={isPending}>
               {isPending
                 ? mode === 'create'
                   ? 'Creating...'
