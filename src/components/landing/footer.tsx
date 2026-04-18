@@ -1,13 +1,14 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
-import footerBackground from '@/assets/images/bg/bg_footer.webp'
+// import footerBackground from '@/assets/images/bg/bg_footer.webp'
+import marbleTexture from '@/assets/images/bg/bg_hero.webp'
 
 export function LandingFooter() {
   return (
     <section
-      className="relative isolate overflow-hidden text-[#F7F4EE]"
+      className="relative isolate overflow-hidden text-[#1C1815]"
       style={{
-        backgroundImage: `linear-gradient(180deg, rgba(8,6,5,0.65), rgba(10,8,7,0.75)), url(${footerBackground})`,
+        backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.45) 22%, rgba(248,244,236,0.9) 100%), url(${marbleTexture})`,
         backgroundPosition: 'center',
         backgroundSize: 'cover',
       }}
@@ -18,16 +19,16 @@ export function LandingFooter() {
         <div className="flex min-h-[70vh] flex-col justify-between text-center lg:min-h-[80vh]">
           <div className="flex flex-1 items-center justify-center">
             <div className="space-y-8">
-              <div className="mx-auto h-px w-24 bg-[#C5A059]/50" />
+              <div className="mx-auto h-px w-24 bg-[#9B8A73]/50" />
 
-              <h2 className="mx-auto max-w-5xl font-serif text-[clamp(3.5rem,8vw,8rem)] leading-[0.88] tracking-[-0.06em] text-white">
+              <h2 className="mx-auto max-w-5xl font-serif text-[clamp(3.5rem,8vw,8rem)] leading-[0.88] tracking-[-0.06em] text-[#1C1815]">
                 Disciplers of Nations Academy
               </h2>
 
-              <div className="mx-auto h-px w-24 bg-[#C5A059]/50" />
+              <div className="mx-auto h-px w-24 bg-[#9B8A73]/50" />
 
               <div className="space-y-4 pt-6">
-                <div className="text-[0.7rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                <div className="text-[0.7rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
                   Enrollment Open for 2027
                 </div>
                 <Link
@@ -50,7 +51,7 @@ export function LandingFooter() {
               href="https://cherubim-it.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#D4B373] transition-colors hover:text-white"
+              className="text-[#9B8A73] transition-colors hover:text-white"
             >
               Designed and developed by Cherubim IT
             </a>

@@ -269,6 +269,7 @@ export const signupFn = createServerFn({ method: 'POST' })
 
     try {
       // Create user profile in database with role from invitation
+      // We do this onConflict because of trigger `public.handle_new_user`
       await db
         .insert(profiles)
         .values({

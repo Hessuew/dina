@@ -22,6 +22,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar'
+import heroEmblem from '@/assets/images/bg/logo.webp'
 
 type User = {
   id: string
@@ -164,12 +165,18 @@ export function AppSidebar({
               size="lg"
               render={
                 <Link to="/">
-                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                    <LayoutDashboard className="size-4" />
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
+                    <img
+                      src={heroEmblem}
+                      alt="DINA emblem"
+                      className="relative w-full object-contain drop-shadow-[0_46px_54px_rgba(0,0,0,0.62)]"
+                    />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Logo</span>
-                    <span className="truncate text-xs">Learning Platform</span>
+                    <span className="truncate font-semibold">DINA</span>
+                    <span className="truncate text-xs">
+                      Discipleship Training School
+                    </span>
                   </div>
                 </Link>
               }

@@ -19,7 +19,7 @@ export function Header({ user }: HeaderProps) {
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 px-4">
-      <SidebarTrigger className="-ml-1" />
+      <SidebarTrigger className="-ml-1 text-[#C5A059] hover:text-[#D6B16E]" />
     </header>
   )
 }

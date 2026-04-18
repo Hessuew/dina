@@ -33,7 +33,7 @@ export function LandingPublicHeader() {
           <Link
             to="/login"
             search={{ verified: false }}
-            className="bg-[# ]/76 inline-flex h-10 items-center justify-center border border-[#1A1A1A]/10 px-4 text-[0.7rem] font-medium tracking-[0.24em] text-[#1A1A1A] uppercase shadow-[0_16px_28px_-24px_rgba(0,0,0,0.28)] backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-[#C5A059]/45 hover:text-[#1A1A1A]"
+            className="inline-flex h-10 items-center justify-center border border-[#1A1A1A]/10 px-4 text-[0.7rem] font-medium tracking-[0.24em] text-[#1A1A1A] uppercase shadow-[0_16px_28px_-24px_rgba(0,0,0,0.28)] backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-[#C5A059]/45 hover:text-[#1A1A1A]"
           >
             Sign In
           </Link>
@@ -80,7 +80,6 @@ export function LandingHeroEditorial({ onLearnMore }: LandingHeroProps) {
           <div className="max-w-xl space-y-11 text-left">
             <div className="space-y-6">
               <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-                {/* <div className="mb-1.5 h-px w-20 bg-[#C5A059]/50 lg:w-28" /> */}
                 <div className="h-px w-20 bg-[#C5A059]/50 lg:w-28" />
                 <div className="flex flex-row items-center gap-3">
                   <span className="h-px w-10 bg-[#C5A059]/55" />
@@ -103,10 +102,7 @@ export function LandingHeroEditorial({ onLearnMore }: LandingHeroProps) {
                 "Now when they saw the boldness of Peter and John, and perceived
                 that they were unlearned and ignorant men, they marvelled; and
                 they took knowledge of them, that they had been with Jesus."
-                <br />
-                <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
-                  Acts 4:13
-                </span>
+                Acts 4:13
               </p>
             </div>
           </div>

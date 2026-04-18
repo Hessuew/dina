@@ -160,13 +160,49 @@ export function LandingAboutSection() {
               </div>
             </div>
 
-            <div className="mt-6 border border-[#C5A059]/30 bg-[#1A1716]/60 px-5 py-4">
+            <div className="mt-6 border border-[#C5A059]/30 bg-[#1A1716]/60 px-5 py-5">
               <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
-                Excellence Award
+                Excellence Awards
               </div>
-              <p className="mt-2 font-serif text-xl text-[#E9D9B4]">
-                Best students receive €500 at graduation
-              </p>
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-[#C5A059]/20 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center border border-[#C5A059]/50 bg-[#0A0908] font-serif text-sm text-[#E9D9B4]">
+                      1
+                    </div>
+                    <span className="text-base text-[#D8D0C7]">
+                      Best Student
+                    </span>
+                  </div>
+                  <span className="font-serif text-xl text-[#E9D9B4]">
+                    €500
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border-b border-[#C5A059]/20 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center border border-[#C5A059]/40 bg-[#0A0908] font-serif text-sm text-[#D3CAC0]">
+                      2
+                    </div>
+                    <span className="text-base text-[#D8D0C7]">
+                      Second Best
+                    </span>
+                  </div>
+                  <span className="font-serif text-xl text-[#E9D9B4]">
+                    €300
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pb-1">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center border border-[#C5A059]/30 bg-[#0A0908] font-serif text-sm text-[#C9C0B6]">
+                      3
+                    </div>
+                    <span className="text-base text-[#D8D0C7]">Third Best</span>
+                  </div>
+                  <span className="font-serif text-xl text-[#E9D9B4]">
+                    €200
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
