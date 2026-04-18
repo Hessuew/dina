@@ -7,11 +7,9 @@ import {
   PencilIcon,
   PlusIcon,
   TrashIcon,
-  UploadIcon,
-  XIcon,
 } from 'lucide-react'
 import { and, eq } from 'drizzle-orm'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import z from 'zod'
 import { Badge } from '@/components/ui/badge'
@@ -34,29 +32,20 @@ import {
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { db } from '@/db'
 import { courses, lessonProgress, profiles } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth'
 import { useMutation } from '@/hooks/useMutation'
-import { useAllTeachers } from '@/hooks/useAllTeachers'
 import { TeacherAvatars } from '@/components/avarats/TeacherAvatars'
 import {
   createLesson,
   deleteCourse,
   deleteLesson,
-  updateCourse,
   updateLesson,
 } from '@/utils/courses'
-import { fileToBase64, uploadCourseThumbnailFn } from '@/utils/imageUpload'
+import { CourseDialog } from '@/components/dialog/CourseDialog'
 
 const getCourseData = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ courseId: z.uuid() }))
@@ -138,34 +127,27 @@ function CourseDetailComponent() {
   const course = c as typeof loaderData.course | null
 
   const [showEditCourseDialog, setShowEditCourseDialog] = useState(false)
+  const [editCourseInitialData, setEditCourseInitialData] = useState<
+    | {
+        courseId: string
+        title: string
+        description: string
+        thumbnailUrl: string | null
+        isPublished: boolean
+        teacher1Id: string | null
+        teacher2Id: string | null
+        orderIndex: number
+      }
+    | undefined
+  >(undefined)
   const [showDeleteCourseDialog, setShowDeleteCourseDialog] = useState(false)
   const [showCreateLessonDialog, setShowCreateLessonDialog] = useState(false)
   const [showEditLessonDialog, setShowEditLessonDialog] = useState(false)
   const [showDeleteLessonDialog, setShowDeleteLessonDialog] = useState(false)
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const isAdmin = role === 'admin'
 
-  const { teachers, error: teachersError } = useAllTeachers(
-    showEditCourseDialog && isAdmin,
-  )
-
-  if (teachersError) {
-    console.error('Failed to load teachers:', teachersError)
-  }
-
   const courseTeachersData = course?.courseTeachers || []
-  const [courseFormData, setCourseFormData] = useState({
-    title: course?.title || '',
-    description: course?.description || '',
-    thumbnailUrl: course?.thumbnailUrl || null,
-    thumbnailFile: null as File | null,
-    isPublished: course?.isPublished ?? false,
-    teacher1Id: courseTeachersData[0]?.teacher?.id || null,
-    teacher2Id: courseTeachersData[1]?.teacher?.id || null,
-    orderIndex: course?.orderIndex ?? 0,
-  })
 
   const [lessonFormData, setLessonFormData] = useState({
     title: '',
@@ -179,52 +161,6 @@ function CourseDetailComponent() {
   const completedCount = completedLessonIds.length
   const totalLessons = course?.lessons.length || 0
   const progress = totalLessons > 0 ? (completedCount / totalLessons) * 100 : 0
-
-  const updateCourseMutation = useMutation({
-    fn: updateCourse,
-    onSuccess: async (ctx) => {
-      if ('course' in ctx.data) {
-        const courseId = ctx.data.course.id
-
-        if (courseFormData.thumbnailFile) {
-          setIsUploading(true)
-          try {
-            const result = await uploadCourseThumbnailFn({
-              data: {
-                fileData: await fileToBase64(courseFormData.thumbnailFile),
-                fileName: courseFormData.thumbnailFile.name,
-                fileType: courseFormData.thumbnailFile.type,
-                fileSize: courseFormData.thumbnailFile.size,
-                courseId,
-              },
-            })
-
-            if ('error' in result && result.error) {
-              toast.error(result.message || 'Failed to upload thumbnail')
-            }
-          } catch (error) {
-            console.error('Thumbnail upload error:', error)
-            toast.error('Failed to upload thumbnail')
-          }
-          setIsUploading(false)
-        }
-
-        toast.success('Course updated successfully!')
-        setShowEditCourseDialog(false)
-        setCourseFormData({
-          title: '',
-          description: '',
-          thumbnailUrl: null,
-          thumbnailFile: null,
-          isPublished: false,
-          teacher1Id: null,
-          teacher2Id: null,
-          orderIndex: 0,
-        })
-        await router.invalidate()
-      }
-    },
-  })
 
   const deleteCourseMutation = useMutation({
     fn: deleteCourse,
@@ -271,35 +207,6 @@ function CourseDetailComponent() {
       await router.invalidate()
     },
   })
-
-  const handleUpdateCourse = () => {
-    if (!courseFormData.title) {
-      toast.error('Title is required')
-      return
-    }
-
-    if (!course) return
-
-    if (isAdmin && courseFormData.teacher1Id && courseFormData.teacher2Id) {
-      if (courseFormData.teacher1Id === courseFormData.teacher2Id) {
-        toast.error('Please select 2 different teachers')
-        return
-      }
-    }
-
-    updateCourseMutation.mutate({
-      data: {
-        courseId: course.id,
-        title: courseFormData.title,
-        description: courseFormData.description,
-        isPublished: courseFormData.isPublished,
-        teacher1Id: courseFormData.teacher1Id || undefined,
-        teacher2Id: courseFormData.teacher2Id || undefined,
-        thumbnailUrl: courseFormData.thumbnailUrl || undefined,
-        orderIndex: courseFormData.orderIndex,
-      },
-    })
-  }
 
   const handleCreateLesson = () => {
     if (!course) return
@@ -424,17 +331,20 @@ function CourseDetailComponent() {
                         variant="ghost"
                         size="icon"
                         onClick={() => {
-                          if (course)
-                            setCourseFormData({
+                          if (course) {
+                            setEditCourseInitialData({
+                              courseId: course.id,
                               title: course.title,
                               description: course.description || '',
                               thumbnailUrl: course.thumbnailUrl,
-                              thumbnailFile: null,
                               isPublished: course.isPublished ?? false,
-                              teacher1Id: course.teacher1Id,
-                              teacher2Id: course.teacher2Id,
+                              teacher1Id:
+                                courseTeachersData[0]?.teacher?.id || null,
+                              teacher2Id:
+                                courseTeachersData[1]?.teacher?.id || null,
                               orderIndex: course.orderIndex ?? 0,
                             })
+                          }
                           setShowEditCourseDialog(true)
                         }}
                       >
@@ -662,267 +572,13 @@ function CourseDetailComponent() {
       </div>
 
       {/* Edit Course Dialog */}
-      <Dialog
+      <CourseDialog
         open={showEditCourseDialog}
         onOpenChange={setShowEditCourseDialog}
-      >
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Edit Course</DialogTitle>
-            <DialogDescription>Update the course information</DialogDescription>
-          </DialogHeader>
-          <FieldGroup className="gap-8">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Field className="sm:col-span-2">
-                <FieldLabel htmlFor="course-title">
-                  Title <span className="text-destructive">*</span>
-                </FieldLabel>
-                <Input
-                  id="course-title"
-                  placeholder="Introduction to Programming"
-                  value={courseFormData.title}
-                  onChange={(e) =>
-                    setCourseFormData({
-                      ...courseFormData,
-                      title: e.target.value,
-                    })
-                  }
-                />
-              </Field>
-              <div className="sm:col-span-1"></div>
-              <Field>
-                <FieldLabel htmlFor="course-orderIndex">Order Index</FieldLabel>
-                <Input
-                  id="course-orderIndex"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={courseFormData.orderIndex}
-                  onChange={(e) =>
-                    setCourseFormData({
-                      ...courseFormData,
-                      orderIndex: parseInt(e.target.value) || 0,
-                    })
-                  }
-                />
-                <p className="text-muted-foreground text-xs">
-                  Lower numbers appear first in course list
-                </p>
-              </Field>
-              {isAdmin && (
-                <>
-                  <Field>
-                    <FieldLabel htmlFor="edit-teacher1">
-                      Teacher 1 <span className="text-destructive">*</span>
-                    </FieldLabel>
-                    <Select
-                      value={
-                        courseFormData.teacher1Id
-                          ? courseFormData.teacher1Id
-                          : undefined
-                      }
-                      onValueChange={(value) =>
-                        setCourseFormData({
-                          ...courseFormData,
-                          teacher1Id: value,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="w-full" id="edit-teacher1">
-                        <SelectValue placeholder="Select first teacher">
-                          {courseFormData.teacher1Id
-                            ? teachers.find(
-                                (t) => t.id === courseFormData.teacher1Id,
-                              )?.fullName || 'Select first teacher'
-                            : 'Select first teacher'}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teachers.length === 0 ? (
-                          <SelectItem value="none" disabled>
-                            No teachers available
-                          </SelectItem>
-                        ) : (
-                          teachers.map((teacher) => (
-                            <SelectItem key={teacher.id} value={teacher.id}>
-                              {teacher.fullName}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="edit-teacher2">
-                      Teacher 2 <span className="text-destructive">*</span>
-                    </FieldLabel>
-                    <Select
-                      value={
-                        courseFormData.teacher2Id
-                          ? courseFormData.teacher2Id
-                          : undefined
-                      }
-                      onValueChange={(value) =>
-                        setCourseFormData({
-                          ...courseFormData,
-                          teacher2Id: value,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="w-full" id="edit-teacher2">
-                        <SelectValue placeholder="Select second teacher">
-                          {courseFormData.teacher2Id
-                            ? teachers.find(
-                                (t) => t.id === courseFormData.teacher2Id,
-                              )?.fullName || 'Select second teacher'
-                            : 'Select second teacher'}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teachers.length === 0 ? (
-                          <SelectItem value="none" disabled>
-                            No teachers available
-                          </SelectItem>
-                        ) : (
-                          teachers
-                            .filter((t) => t.id !== courseFormData.teacher1Id)
-                            .map((teacher) => (
-                              <SelectItem key={teacher.id} value={teacher.id}>
-                                {teacher.fullName}
-                              </SelectItem>
-                            ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                </>
-              )}
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="course-description">
-                  Description
-                </FieldLabel>
-                <Textarea
-                  id="course-description"
-                  placeholder="Describe what students will learn in this course"
-                  rows={10}
-                  value={courseFormData.description}
-                  onChange={(e) =>
-                    setCourseFormData({
-                      ...courseFormData,
-                      description: e.target.value,
-                    })
-                  }
-                />
-              </Field>
-              <Field className="sm:col-span-1">
-                <FieldLabel>Course Thumbnail</FieldLabel>
-                <div className="space-y-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-
-                      if (file.size > 2 * 1024 * 1024) {
-                        toast.error('File size must be less than 2MB')
-                        return
-                      }
-
-                      const fileData = await fileToBase64(file)
-                      setCourseFormData({
-                        ...courseFormData,
-                        thumbnailUrl: fileData,
-                        thumbnailFile: file,
-                      })
-                    }}
-                    className="hidden"
-                  />
-                  {courseFormData.thumbnailUrl ? (
-                    <div className="relative aspect-video w-full max-w-sm overflow-hidden rounded-lg">
-                      <img
-                        src={courseFormData.thumbnailUrl}
-                        alt="Course thumbnail"
-                        className="size-full object-cover"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                        onClick={() => {
-                          setCourseFormData({
-                            ...courseFormData,
-                            thumbnailUrl: null,
-                            thumbnailFile: null,
-                          })
-                          if (fileInputRef.current)
-                            fileInputRef.current.value = ''
-                        }}
-                      >
-                        <XIcon className="size-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full max-w-sm"
-                    >
-                      <UploadIcon className="mr-2 size-4" />
-                      Upload Thumbnail
-                    </Button>
-                  )}
-                  <p className="text-muted-foreground text-xs">
-                    JPG, PNG, WebP or GIF. Max 2MB.
-                  </p>
-                </div>
-              </Field>
-            </div>
-            <Field className="sm:col-span-2">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="course-published"
-                  checked={courseFormData.isPublished}
-                  onCheckedChange={(checked) =>
-                    setCourseFormData({
-                      ...courseFormData,
-                      isPublished: checked,
-                    })
-                  }
-                />
-                <FieldLabel htmlFor="course-published">
-                  Publish course
-                </FieldLabel>
-              </div>
-            </Field>
-          </FieldGroup>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowEditCourseDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdateCourse}
-              disabled={
-                updateCourseMutation.status === 'pending' || isUploading
-              }
-            >
-              {isUploading
-                ? 'Uploading...'
-                : updateCourseMutation.status === 'pending'
-                  ? 'Saving...'
-                  : 'Save Changes'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        mode="edit"
+        isAdmin={isAdmin}
+        initialData={editCourseInitialData}
+      />
 
       {/* Delete Course Dialog */}
       <Dialog

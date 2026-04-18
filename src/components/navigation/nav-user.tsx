@@ -175,17 +175,17 @@ export function NavUser({
                 />
                 <DropdownMenuItem
                   className={cn(
-                    'mx-0 rounded-none px-3 py-2.5 text-sm transition-all',
+                    'group/button mx-0 rounded-none px-3 py-2.5 text-sm transition-all',
                     isDark
-                      ? 'text-[#D6CCBE] hover:bg-[#1A1716] hover:text-[#F8F4EC] focus:bg-[#1A1716]'
-                      : 'text-[#4E463D] hover:bg-[#EDE8DE] hover:text-[#1C1815] focus:bg-[#EDE8DE]',
+                      ? 'text-[#D6CCBE] hover:bg-white/8 hover:text-[#F8F4EC] focus:bg-white/8 focus:text-[#F8F4EC]'
+                      : 'text-[#4E463D] hover:bg-[#EDE8DE] hover:text-[#1C1815] focus:bg-[#EDE8DE] focus:text-[#1C1815]',
                   )}
                   onClick={() => setProfileModalOpen(true)}
                 >
                   <BadgeCheck
                     className={cn(
-                      'size-4',
-                      isDark ? 'text-[#C5A059]' : 'text-[#9B7A41]',
+                      'size-4 shrink-0 group-hover/button:text-[#C5A059] group-focus/button:text-[#C5A059]',
+                      isDark ? 'text-[#C5A059]!' : 'text-[#9B7A41]!',
                     )}
                   />
                   My Profile
@@ -194,8 +194,20 @@ export function NavUser({
                   className={isDark ? 'bg-white/8' : 'bg-[#1A1A1A]/10'}
                 />
                 <Link onClick={() => setOpen(false)} to="/logout">
-                  <DropdownMenuItem className="mx-0 rounded-none px-3 py-2.5 text-sm text-[#C5A059]/80 transition-all hover:bg-[#C5A059]/8 hover:text-[#C5A059] focus:bg-[#C5A059]/8">
-                    <LogOut className="size-4" />
+                  <DropdownMenuItem
+                    className={cn(
+                      'mx-0 rounded-none px-3 py-2.5 text-sm transition-all hover:text-[#F8F4EC] focus:text-[#F8F4EC]',
+                      isDark
+                        ? 'text-[#D6CCBE] hover:bg-white/8 focus:bg-white/8'
+                        : 'text-[#4E463D] hover:bg-[#EDE8DE] focus:bg-[#EDE8DE]',
+                    )}
+                  >
+                    <LogOut
+                      className={cn(
+                        'size-4 shrink-0',
+                        isDark ? 'text-[#C5A059]!' : 'text-[#9B7A41]!',
+                      )}
+                    />
                     Log out
                   </DropdownMenuItem>
                 </Link>

@@ -1,6 +1,5 @@
 import { Link } from '@tanstack/react-router'
 import { CalendarIcon, ClockIcon } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 type UpcomingLesson = {
   id: string
@@ -32,18 +31,22 @@ export function UpcomingLessonsList({ lessons }: UpcomingLessonsListProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Upcoming Lessons</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
+      <div className="px-5 py-4">
+        <div className="h-px w-8 bg-[#C5A059]/40" />
+        <h3 className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+          Upcoming Lessons
+        </h3>
+      </div>
+
+      <div className="px-5 pb-5">
         {lessons.length === 0 ? (
-          <div className="text-muted-foreground py-8 text-center text-sm">
+          <div className="py-6 text-center text-sm text-[#AFA28F]">
             No upcoming lessons scheduled
           </div>
         ) : (
-          <div className="space-y-3">
-            {lessons.map((lesson) => {
+          <div className="space-y-6">
+            {lessons.map((lesson, idx) => {
               const { date, time } = formatDateTime(lesson.scheduledTime)
               return (
                 <Link
@@ -52,24 +55,18 @@ export function UpcomingLessonsList({ lessons }: UpcomingLessonsListProps) {
                   params={{ lessonId: lesson.id }}
                   className="block"
                 >
-                  <div className="group flex gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50">
-                    {lesson.thumbnailUrl && (
-                      <div className="h-12 w-16 shrink-0 overflow-hidden rounded bg-muted">
-                        <img
-                          src={lesson.thumbnailUrl}
-                          alt={lesson.title}
-                          className="size-full object-cover"
-                        />
-                      </div>
-                    )}
+                  <div className="group flex items-start gap-4 border-b border-white/8 py-5 transition-all first:pt-0 last:border-b-0 last:pb-0 hover:bg-white/8">
+                    <div className="flex size-8 shrink-0 items-center justify-center border border-[#C5A059]/50 bg-[#1A1716] font-serif text-xs text-[#E9D9B4]">
+                      {idx + 1}
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-muted-foreground mb-1 truncate text-xs">
+                      <div className="text-[0.62rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
                         {lesson.courseName}
                       </div>
-                      <div className="mb-1 truncate font-medium text-sm group-hover:text-primary">
+                      <div className="mt-1 truncate font-serif text-base text-[#F8F4EC] group-hover:text-white">
                         {lesson.title}
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <div className="mt-1.5 flex items-center gap-3 text-xs text-[#8E816D]">
                         <div className="flex items-center gap-1">
                           <CalendarIcon className="size-3" />
                           <span>{date}</span>
@@ -86,7 +83,7 @@ export function UpcomingLessonsList({ lessons }: UpcomingLessonsListProps) {
             })}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
