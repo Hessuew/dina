@@ -23,31 +23,33 @@ export function PasswordResetEmail({
         </Link>
       </Section>
 
-      <Text style={paragraph}>
+      <Text style={alternativeText}>
         Or copy and paste this link into your browser:
       </Text>
 
       <Text style={linkText}>{resetLink}</Text>
 
-      <Text style={paragraph}>
-        This link will expire in <strong>{expiryMinutes} minutes</strong> for
-        security reasons.
-      </Text>
-
-      <Text style={warningText}>
-        ⚠️ If you didn't request a password reset, please ignore this email.
-        Your password will remain unchanged.
-      </Text>
+      <Section style={infoBox}>
+        <Text style={infoLabel}>Security Notice</Text>
+        <Text style={infoText}>
+          This link will expire in{' '}
+          <strong style={strongText}>{expiryMinutes} minutes</strong> for your
+          security.
+        </Text>
+      </Section>
     </BaseEmail>
   )
 }
 
 const paragraph = {
-  color: '#525f7f',
+  color: '#4E463D',
   fontSize: '16px',
-  lineHeight: '24px',
+  lineHeight: '28px',
   textAlign: 'left' as const,
-  marginBottom: '16px',
+  margin: '0 0 24px 0',
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  letterSpacing: '0.01em',
 }
 
 const buttonContainer = {
@@ -56,35 +58,71 @@ const buttonContainer = {
 }
 
 const button = {
-  backgroundColor: '#2563eb',
-  borderRadius: '6px',
-  color: '#fff',
+  backgroundColor: '#1A1716',
+  border: '1px solid rgba(197,160,89,0.6)',
+  color: '#FFFFFF',
   fontSize: '16px',
-  fontWeight: '600',
+  fontWeight: '400',
+  fontFamily: 'Georgia, "Times New Roman", Times, serif',
+  letterSpacing: '0.08em',
   textDecoration: 'none',
   textAlign: 'center' as const,
   display: 'inline-block',
-  padding: '12px 32px',
+  padding: '16px 40px',
+  boxShadow: '0 12px 24px -12px rgba(0,0,0,0.3)',
+}
+
+const alternativeText = {
+  color: '#5E5549',
+  fontSize: '14px',
+  lineHeight: '22px',
+  textAlign: 'center' as const,
+  margin: '24px 0 12px 0',
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
 }
 
 const linkText = {
-  color: '#2563eb',
-  fontSize: '14px',
+  color: '#6e562d',
+  fontSize: '13px',
+  lineHeight: '20px',
   wordBreak: 'break-all' as const,
-  backgroundColor: '#f8f9fa',
-  padding: '12px',
-  borderRadius: '4px',
+  backgroundColor: '#F8F4EC',
+  border: '1px solid rgba(197,160,89,0.2)',
+  padding: '16px',
   fontFamily: 'monospace',
-  marginBottom: '16px',
+  margin: '0 0 24px 0',
+  display: 'block',
 }
 
-const warningText = {
-  color: '#dc2626',
+const infoBox = {
+  backgroundColor: 'rgba(197,160,89,0.08)',
+  border: '1px solid rgba(197,160,89,0.25)',
+  padding: '20px',
+  margin: '0 0 24px 0',
+}
+
+const infoLabel = {
+  color: '#9B7A41',
+  fontSize: '11px',
+  fontWeight: '500',
+  letterSpacing: '0.15em',
+  textTransform: 'uppercase' as const,
+  margin: '0 0 8px 0',
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+}
+
+const infoText = {
+  color: '#4E463D',
   fontSize: '14px',
-  lineHeight: '20px',
-  marginTop: '24px',
-  padding: '12px',
-  backgroundColor: '#fef2f2',
-  borderRadius: '4px',
-  borderLeft: '4px solid #dc2626',
+  lineHeight: '22px',
+  margin: '0',
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+}
+
+const strongText = {
+  color: '#1C1815',
+  fontWeight: '500',
 }

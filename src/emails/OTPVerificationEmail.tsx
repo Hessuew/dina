@@ -1,4 +1,4 @@
-import { Text } from '@react-email/components'
+import { Section, Text } from '@react-email/components'
 import { BaseEmail } from './BaseEmail'
 
 interface OTPVerificationEmailProps {
@@ -11,61 +11,96 @@ export function OTPVerificationEmail({
   expiryMinutes = 10,
 }: OTPVerificationEmailProps) {
   return (
-    <BaseEmail
-      preview="Your verification code"
-      heading="Verify Your Email"
-    >
+    <BaseEmail preview="Your verification code" heading="Verify Your Email">
       <Text style={paragraph}>
-        Thank you for creating an account! To complete your registration,
-        please use the verification code below:
+        Thank you for joining the Disciplers of Nations Academy. To complete
+        your registration, please use the verification code below:
       </Text>
 
-      <div style={otpContainer}>
+      <Section style={otpContainer}>
+        <Text style={otpLabel}>Verification Code</Text>
         <Text style={otpCode}>{otp}</Text>
-      </div>
+      </Section>
 
-      <Text style={paragraph}>
-        This code will expire in <strong>{expiryMinutes} minutes</strong> for
-        security reasons.
-      </Text>
-
-      <Text style={noteText}>
-        If you didn't request this code, you can safely ignore this email.
-      </Text>
+      <Section style={infoBox}>
+        <Text style={infoLabel}>Security Notice</Text>
+        <Text style={infoText}>
+          This code will expire in{' '}
+          <strong style={strongText}>{expiryMinutes} minutes</strong> for your
+          security.
+        </Text>
+      </Section>
     </BaseEmail>
   )
 }
 
 const paragraph = {
-  color: '#525f7f',
+  color: '#4E463D',
   fontSize: '16px',
-  lineHeight: '24px',
+  lineHeight: '28px',
   textAlign: 'left' as const,
-  marginBottom: '16px',
+  margin: '0 0 32px 0',
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  letterSpacing: '0.01em',
 }
 
 const otpContainer = {
-  backgroundColor: '#f8f9fa',
-  borderRadius: '8px',
-  padding: '32px',
-  margin: '32px 0',
+  backgroundColor: '#FCFBF8',
+  border: '1px solid rgba(197,160,89,0.3)',
+  padding: '40px 32px',
+  margin: '0 0 32px 0',
   textAlign: 'center' as const,
-  border: '2px dashed #e0e0e0',
+}
+
+const otpLabel = {
+  color: '#9B7A41',
+  fontSize: '11px',
+  fontWeight: '500',
+  letterSpacing: '0.15em',
+  textTransform: 'uppercase' as const,
+  margin: '0 0 16px 0',
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
 }
 
 const otpCode = {
   fontSize: '48px',
-  fontWeight: '700',
-  letterSpacing: '8px',
-  color: '#2563eb',
+  fontWeight: '400',
+  letterSpacing: '12px',
+  color: '#1C1815',
   margin: '0',
-  fontFamily: 'monospace',
+  fontFamily: 'Georgia, "Times New Roman", Times, serif',
 }
 
-const noteText = {
-  color: '#8898aa',
+const infoBox = {
+  backgroundColor: 'rgba(197,160,89,0.08)',
+  border: '1px solid rgba(197,160,89,0.25)',
+  padding: '20px',
+  margin: '0 0 24px 0',
+}
+
+const infoLabel = {
+  color: '#9B7A41',
+  fontSize: '11px',
+  fontWeight: '500',
+  letterSpacing: '0.15em',
+  textTransform: 'uppercase' as const,
+  margin: '0 0 8px 0',
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+}
+
+const infoText = {
+  color: '#4E463D',
   fontSize: '14px',
-  lineHeight: '20px',
-  marginTop: '24px',
-  fontStyle: 'italic',
+  lineHeight: '22px',
+  margin: '0',
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+}
+
+const strongText = {
+  color: '#1C1815',
+  fontWeight: '500',
 }
