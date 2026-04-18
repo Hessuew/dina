@@ -1,5 +1,4 @@
 export type UserRole = 'student' | 'teacher' | 'admin'
-export type EnrollmentStatus = 'pending' | 'active' | 'completed' | 'dropped'
 export type InquiryStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
 export type AssignmentStatus = 'draft' | 'published' | 'archived'
 export type SubmissionStatus = 'pending' | 'submitted' | 'graded' | 'late'
@@ -26,7 +25,6 @@ export interface Course {
   teacher_id: string
   thumbnail_url?: string
   is_published: boolean
-  enrollment_limit?: number
   start_date?: string
   end_date?: string
   created_at: string
@@ -58,22 +56,6 @@ export interface Lesson {
   is_published: boolean
   created_at: string
   updated_at: string
-}
-
-export interface Enrollment {
-  id: string
-  student_id: string
-  course_id: string
-  status: EnrollmentStatus
-  enrolled_at: string
-  completed_at?: string
-  progress_percentage: number
-  created_at: string
-  updated_at: string
-}
-
-export interface EnrollmentWithCourse extends Enrollment {
-  courses: Course
 }
 
 export interface LessonProgress {
@@ -249,15 +231,12 @@ export interface Database {
         Insert: Omit<Lesson, 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Omit<Lesson, 'id' | 'created_at' | 'updated_at'>>
       }
-      enrollments: {
-        Row: Enrollment
-        Insert: Omit<Enrollment, 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Omit<Enrollment, 'id' | 'created_at' | 'updated_at'>>
-      }
       lesson_progress: {
         Row: LessonProgress
         Insert: Omit<LessonProgress, 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Omit<LessonProgress, 'id' | 'created_at' | 'updated_at'>>
+        Update: Partial<
+          Omit<LessonProgress, 'id' | 'created_at' | 'updated_at'>
+        >
       }
       assignments: {
         Row: Assignment

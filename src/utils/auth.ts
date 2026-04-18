@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { courseTeachers, enrollments, profiles } from '@/db/schema'
+import { courseTeachers, profiles } from '@/db/schema'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 /**
@@ -95,28 +95,6 @@ export async function requireTeacherOfCourse(
 }
 
 /**
- * Check if a user is enrolled in a specific course with active status
- * @param userId - The Supabase user ID (UUID)
- * @param courseId - The course ID to check
- */
-export async function requireEnrolledInCourse(
-  userId: string,
-  courseId: string,
-): Promise<void> {
-  const enrollment = await db.query.enrollments.findFirst({
-    where: and(
-      eq(enrollments.studentId, userId),
-      eq(enrollments.courseId, courseId),
-      eq(enrollments.status, 'active'),
-    ),
-  })
-
-  if (!enrollment) {
-    throw new Error('Not enrolled in this course')
-  }
-}
-
-/**
  * Check if a user can access a course (either as teacher or enrolled student)
  * @param userId - The Supabase user ID (UUID)
  * @param courseId - The course ID to check
@@ -138,20 +116,7 @@ export async function getCourseAccess(
     return 'teacher'
   }
 
-  // Check if enrolled student
-  const enrollment = await db.query.enrollments.findFirst({
-    where: and(
-      eq(enrollments.studentId, userId),
-      eq(enrollments.courseId, courseId),
-      eq(enrollments.status, 'active'),
-    ),
-  })
-
-  if (enrollment) {
-    return 'student'
-  }
-
-  throw new Error('Not authorized to access this course')
+  return 'student'
 }
 
 /**

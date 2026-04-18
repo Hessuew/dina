@@ -41,9 +41,7 @@ export const uploadImageFn = createServerFn({ method: 'POST' })
 
       // Delete old image if exists
       if (data.oldUrl) {
-        console.log('🚀 ~ oldUrl:', data.oldUrl)
         const oldPath = data.oldUrl.split('/').pop()
-        console.log('🚀 ~ oldPath:', oldPath)
         if (oldPath) {
           const { error: deleteError } = await supabase.storage
             .from(data.bucket)

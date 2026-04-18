@@ -4,13 +4,6 @@ export const USER_ROLES = {
   ADMIN: 'admin',
 } as const
 
-export const ENROLLMENT_STATUS = {
-  PENDING: 'pending',
-  ACTIVE: 'active',
-  COMPLETED: 'completed',
-  DROPPED: 'dropped',
-} as const
-
 export const INQUIRY_STATUS = {
   OPEN: 'open',
   IN_PROGRESS: 'in_progress',
@@ -49,7 +42,7 @@ export const ROUTES = {
   LOGIN: '/login',
   SIGNUP: '/signup',
   LOGOUT: '/logout',
-  
+
   STUDENT: {
     DASHBOARD: '/student/dashboard',
     COURSES: '/student/courses',
@@ -59,7 +52,7 @@ export const ROUTES = {
     CALENDAR: '/student/calendar',
     PROFILE: '/student/profile',
   },
-  
+
   TEACHER: {
     DASHBOARD: '/teacher/dashboard',
     COURSES: '/teacher/courses',
@@ -69,7 +62,7 @@ export const ROUTES = {
     STUDENTS: '/teacher/students',
     ANALYTICS: '/teacher/analytics',
   },
-  
+
   ADMIN: {
     DASHBOARD: '/admin/dashboard',
     USERS: '/admin/users',
