@@ -353,7 +353,7 @@ function AssignmentDetailComponent() {
                 {assignment.description && (
                   <div>
                     <h3 className="mb-2 font-semibold">Description</h3>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-muted-foreground text-sm whitespace-pre-wrap">
                       {assignment.description}
                     </p>
                   </div>

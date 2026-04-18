@@ -375,7 +375,7 @@ function CourseDetailComponent() {
                 {course?.description && (
                   <div>
                     <h3 className="mb-2 font-semibold">Description</h3>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-muted-foreground text-sm whitespace-pre-wrap">
                       {course.description}
                     </p>
                   </div>
@@ -498,7 +498,7 @@ function CourseDetailComponent() {
                                 )}
                               </div>
                               {showContent && lesson.content && (
-                                <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
+                                <p className="text-muted-foreground mt-1 line-clamp-2 text-sm whitespace-pre-wrap">
                                   {lesson.content}
                                 </p>
                               )}

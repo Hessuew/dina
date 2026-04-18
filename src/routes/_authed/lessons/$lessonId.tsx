@@ -388,7 +388,7 @@ function LessonDetailComponent() {
                     {lesson.content && (
                       <div>
                         <h3 className="mb-2 font-semibold">Description</h3>
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-muted-foreground text-sm whitespace-pre-wrap">
                           {lesson.content}
                         </p>
                       </div>
