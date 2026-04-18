@@ -2,12 +2,14 @@ import {
   boolean,
   integer,
   pgEnum,
+  pgPolicy,
   pgTable,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
+import { authenticatedRole } from 'drizzle-orm/supabase'
 
 // ============================================================================
 // ENUMS
@@ -56,217 +58,894 @@ export const invitationStatusEnum = pgEnum('invitation_status', [
 // TABLES
 // ============================================================================
 
-export const profiles = pgTable('profiles', {
-  id: uuid('id').primaryKey(),
-  email: text('email').notNull().unique(),
-  fullName: text('full_name').notNull(),
-  role: userRoleEnum('role').notNull().default('student'),
-  bio: text('bio'),
-  avatarUrl: text('avatar_url'),
-  emailNotifications: boolean('email_notifications').default(true),
-  notifyNewAssignments: boolean('notify_new_assignments').default(true),
-  notifyGrades: boolean('notify_grades').default(true),
-  notifyInquiries: boolean('notify_inquiries').default(true),
-  resetTokenHash: text('reset_token_hash'),
-  resetTokenExpiresAt: timestamp('reset_token_expires_at'),
-  resetTokenAttempts: integer('reset_token_attempts').default(0).notNull(),
-  lastResetRequestAt: timestamp('last_reset_request_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+export const profiles = pgTable(
+  'profiles',
+  {
+    id: uuid('id').primaryKey(),
+    email: text('email').notNull().unique(),
+    fullName: text('full_name').notNull(),
+    role: userRoleEnum('role').notNull().default('student'),
+    bio: text('bio'),
+    avatarUrl: text('avatar_url'),
+    emailNotifications: boolean('email_notifications').default(true),
+    notifyNewAssignments: boolean('notify_new_assignments').default(true),
+    notifyGrades: boolean('notify_grades').default(true),
+    notifyInquiries: boolean('notify_inquiries').default(true),
+    resetTokenHash: text('reset_token_hash'),
+    resetTokenExpiresAt: timestamp('reset_token_expires_at'),
+    resetTokenAttempts: integer('reset_token_attempts').default(0).notNull(),
+    lastResetRequestAt: timestamp('last_reset_request_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // Users can view their own profile
+    pgPolicy('users_view_own_profile', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`id = auth.uid()`,
+    }),
+    // Teachers can view all profiles (need to see student info)
+    pgPolicy('teachers_view_all_profiles', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'teacher'`,
+    }),
+    // Admins can view all profiles
+    pgPolicy('admins_view_all_profiles', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Users can update their own profile
+    pgPolicy('users_update_own_profile', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`id = auth.uid()`,
+      withCheck: sql`id = auth.uid()`,
+    }),
+    // Admins can update all profiles
+    pgPolicy('admins_update_all_profiles', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Users can insert their own profile (for signup)
+    pgPolicy('users_insert_own_profile', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`id = auth.uid()`,
+    }),
+    // Admins can insert profiles
+    pgPolicy('admins_insert_profiles', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+  ],
+)
 
-export const courses = pgTable('courses', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  title: text('title').notNull(),
-  description: text('description'),
-  thumbnailUrl: text('thumbnail_url'),
-  isPublished: boolean('is_published').default(false),
-  orderIndex: integer('order_index').default(0),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+export const courses = pgTable(
+  'courses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    title: text('title').notNull(),
+    description: text('description'),
+    thumbnailUrl: text('thumbnail_url'),
+    isPublished: boolean('is_published').default(false),
+    orderIndex: integer('order_index').default(0),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // All authenticated users can view courses
+    pgPolicy('authenticated_view_courses', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`true`,
+    }),
+    // Teachers can only update courses they're assigned to
+    pgPolicy('teachers_update_assigned_courses', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`
+        id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+      withCheck: sql`
+        id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Admins can update all courses
+    pgPolicy('admins_update_all_courses', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Teachers can only insert courses they're assigned to
+    pgPolicy('teachers_insert_assigned_courses', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`
+        id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Admins can insert courses
+    pgPolicy('admins_insert_courses', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+  ],
+)
 
-export const courseTeachers = pgTable('course_teachers', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  courseId: uuid('course_id')
-    .notNull()
-    .references(() => courses.id, { onDelete: 'cascade' }),
-  teacherId: uuid('teacher_id')
-    .notNull()
-    .references(() => profiles.id, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+export const courseTeachers = pgTable(
+  'course_teachers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    courseId: uuid('course_id')
+      .notNull()
+      .references(() => courses.id, { onDelete: 'cascade' }),
+    teacherId: uuid('teacher_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // Teachers can view their own course assignments
+    pgPolicy('teachers_view_own_assignments', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`teacher_id = auth.uid()`,
+    }),
+    // Admins can view all course assignments
+    pgPolicy('admins_view_all_assignments', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Teachers can only update their own assignments
+    pgPolicy('teachers_update_own_assignments', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`teacher_id = auth.uid()`,
+      withCheck: sql`teacher_id = auth.uid()`,
+    }),
+    // Admins can update all assignments
+    pgPolicy('admins_update_all_assignments', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Admins can insert assignments
+    pgPolicy('admins_insert_assignments', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+  ],
+)
 
-export const lessons = pgTable('lessons', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  courseId: uuid('course_id')
-    .notNull()
-    .references(() => courses.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(),
-  content: text('content'),
-  videoUrl: text('video_url'),
-  thumbnailUrl: text('thumbnail_url'),
-  duration: integer('duration'),
-  orderIndex: integer('order_index').notNull().default(0),
-  isPublished: boolean('is_published').default(false),
-  zoomMeetingId: text('zoom_meeting_id'),
-  zoomPassword: text('zoom_password'),
-  scheduledTime: timestamp('scheduled_time'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+export const lessons = pgTable(
+  'lessons',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    courseId: uuid('course_id')
+      .notNull()
+      .references(() => courses.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    content: text('content'),
+    videoUrl: text('video_url'),
+    thumbnailUrl: text('thumbnail_url'),
+    duration: integer('duration'),
+    orderIndex: integer('order_index').notNull().default(0),
+    isPublished: boolean('is_published').default(false),
+    zoomMeetingId: text('zoom_meeting_id'),
+    zoomPassword: text('zoom_password'),
+    scheduledTime: timestamp('scheduled_time'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // All authenticated users can view lessons
+    pgPolicy('authenticated_view_lessons', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`true`,
+    }),
+    // Teachers can only update lessons in their assigned courses
+    pgPolicy('teachers_update_assigned_lessons', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`
+        course_id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+      withCheck: sql`
+        course_id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Admins can update all lessons
+    pgPolicy('admins_update_all_lessons', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Teachers can only insert lessons in their assigned courses
+    pgPolicy('teachers_insert_assigned_lessons', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`
+        course_id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Admins can insert lessons
+    pgPolicy('admins_insert_lessons', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+  ],
+)
 
-export const lessonProgress = pgTable('lesson_progress', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  studentId: uuid('student_id')
-    .notNull()
-    .references(() => profiles.id, { onDelete: 'cascade' }),
-  lessonId: uuid('lesson_id')
-    .notNull()
-    .references(() => lessons.id, { onDelete: 'cascade' }),
-  completed: boolean('completed').default(false),
-  completedAt: timestamp('completed_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+export const lessonProgress = pgTable(
+  'lesson_progress',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    studentId: uuid('student_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    lessonId: uuid('lesson_id')
+      .notNull()
+      .references(() => lessons.id, { onDelete: 'cascade' }),
+    completed: boolean('completed').default(false),
+    completedAt: timestamp('completed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // Students can view their own progress
+    pgPolicy('students_view_own_progress', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`student_id = auth.uid()`,
+    }),
+    // Teachers can view progress for students in their courses
+    pgPolicy('teachers_view_course_progress', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`
+        lesson_id IN (
+          SELECT l.id FROM lessons l
+          JOIN course_teachers ct ON l.course_id = ct.course_id
+          WHERE ct.teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Admins can view all progress
+    pgPolicy('admins_view_all_progress', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Students can update their own progress
+    pgPolicy('students_update_own_progress', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`student_id = auth.uid()`,
+      withCheck: sql`student_id = auth.uid()`,
+    }),
+    // Students can insert their own progress
+    pgPolicy('students_insert_own_progress', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`student_id = auth.uid()`,
+    }),
+  ],
+)
 
-export const assignments = pgTable('assignments', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  lessonId: uuid('lesson_id')
-    .notNull()
-    .references(() => lessons.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(),
-  description: text('description'),
-  dueDate: timestamp('due_date').notNull(),
-  maxGrade: integer('max_grade').default(100),
-  status: assignmentStatusEnum('status').notNull().default('draft'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+export const assignments = pgTable(
+  'assignments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    lessonId: uuid('lesson_id')
+      .notNull()
+      .references(() => lessons.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description'),
+    dueDate: timestamp('due_date').notNull(),
+    maxGrade: integer('max_grade').default(100),
+    status: assignmentStatusEnum('status').notNull().default('draft'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // All authenticated users can view assignments
+    pgPolicy('authenticated_view_assignments', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`true`,
+    }),
+    // Teachers can only update assignments in their assigned courses
+    pgPolicy('teachers_update_assigned_assignments', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`
+        lesson_id IN (
+          SELECT l.id FROM lessons l
+          JOIN course_teachers ct ON l.course_id = ct.course_id
+          WHERE ct.teacher_id = auth.uid()
+        )
+      `,
+      withCheck: sql`
+        lesson_id IN (
+          SELECT l.id FROM lessons l
+          JOIN course_teachers ct ON l.course_id = ct.course_id
+          WHERE ct.teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Admins can update all assignments
+    pgPolicy('admins_update_all_assignments', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Teachers can only insert assignments in their assigned courses
+    pgPolicy('teachers_insert_assigned_assignments', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`
+        lesson_id IN (
+          SELECT l.id FROM lessons l
+          JOIN course_teachers ct ON l.course_id = ct.course_id
+          WHERE ct.teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Admins can insert assignments
+    pgPolicy('admins_insert_assignments', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+  ],
+)
 
-export const submissions = pgTable('submissions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  assignmentId: uuid('assignment_id')
-    .notNull()
-    .references(() => assignments.id, { onDelete: 'cascade' }),
-  studentId: uuid('student_id')
-    .notNull()
-    .references(() => profiles.id, { onDelete: 'cascade' }),
-  content: text('content'),
-  fileUrl: text('file_url'),
-  status: submissionStatusEnum('status').notNull().default('draft'),
-  grade: integer('grade'),
-  feedback: text('feedback'),
-  submittedAt: timestamp('submitted_at'),
-  gradedAt: timestamp('graded_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+export const submissions = pgTable(
+  'submissions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    assignmentId: uuid('assignment_id')
+      .notNull()
+      .references(() => assignments.id, { onDelete: 'cascade' }),
+    studentId: uuid('student_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    content: text('content'),
+    fileUrl: text('file_url'),
+    status: submissionStatusEnum('status').notNull().default('draft'),
+    grade: integer('grade'),
+    feedback: text('feedback'),
+    submittedAt: timestamp('submitted_at'),
+    gradedAt: timestamp('graded_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // Students can view their own submissions
+    pgPolicy('students_view_own_submissions', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`student_id = auth.uid()`,
+    }),
+    // Teachers can view submissions in their courses
+    pgPolicy('teachers_view_course_submissions', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`
+        assignment_id IN (
+          SELECT a.id FROM assignments a
+          JOIN lessons l ON a.lesson_id = l.id
+          JOIN course_teachers ct ON l.course_id = ct.course_id
+          WHERE ct.teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Admins can view all submissions
+    pgPolicy('admins_view_all_submissions', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Students can update their own submissions
+    pgPolicy('students_update_own_submissions', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`student_id = auth.uid()`,
+      withCheck: sql`student_id = auth.uid()`,
+    }),
+    // Teachers can grade submissions in their courses
+    pgPolicy('teachers_grade_course_submissions', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`
+        assignment_id IN (
+          SELECT a.id FROM assignments a
+          JOIN lessons l ON a.lesson_id = l.id
+          JOIN course_teachers ct ON l.course_id = ct.course_id
+          WHERE ct.teacher_id = auth.uid()
+        )
+      `,
+      withCheck: sql`
+        assignment_id IN (
+          SELECT a.id FROM assignments a
+          JOIN lessons l ON a.lesson_id = l.id
+          JOIN course_teachers ct ON l.course_id = ct.course_id
+          WHERE ct.teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Students can insert their own submissions
+    pgPolicy('students_insert_own_submissions', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`student_id = auth.uid()`,
+    }),
+  ],
+)
 
-export const inquiries = pgTable('inquiries', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  studentId: uuid('student_id')
-    .notNull()
-    .references(() => profiles.id, { onDelete: 'cascade' }),
-  courseId: uuid('course_id')
-    .notNull()
-    .references(() => courses.id, { onDelete: 'cascade' }),
-  subject: text('subject').notNull(),
-  message: text('message').notNull(),
-  status: inquiryStatusEnum('status').notNull().default('open'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+export const inquiries = pgTable(
+  'inquiries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    studentId: uuid('student_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    courseId: uuid('course_id')
+      .notNull()
+      .references(() => courses.id, { onDelete: 'cascade' }),
+    subject: text('subject').notNull(),
+    message: text('message').notNull(),
+    status: inquiryStatusEnum('status').notNull().default('open'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // Students can view their own inquiries
+    pgPolicy('students_view_own_inquiries', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`student_id = auth.uid()`,
+    }),
+    // Teachers can view inquiries in their courses
+    pgPolicy('teachers_view_course_inquiries', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`
+        course_id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Admins can view all inquiries
+    pgPolicy('admins_view_all_inquiries', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Students can update their own inquiries
+    pgPolicy('students_update_own_inquiries', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`student_id = auth.uid()`,
+      withCheck: sql`student_id = auth.uid()`,
+    }),
+    // Teachers can respond to inquiries in their courses
+    pgPolicy('teachers_respond_course_inquiries', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`
+        course_id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+      withCheck: sql`
+        course_id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Students can insert their own inquiries
+    pgPolicy('students_insert_own_inquiries', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`student_id = auth.uid()`,
+    }),
+  ],
+)
 
-export const inquiryResponses = pgTable('inquiry_responses', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  inquiryId: uuid('inquiry_id')
-    .notNull()
-    .references(() => inquiries.id, { onDelete: 'cascade' }),
-  responderId: uuid('responder_id')
-    .notNull()
-    .references(() => profiles.id),
-  message: text('message').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+export const inquiryResponses = pgTable(
+  'inquiry_responses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    inquiryId: uuid('inquiry_id')
+      .notNull()
+      .references(() => inquiries.id, { onDelete: 'cascade' }),
+    responderId: uuid('responder_id')
+      .notNull()
+      .references(() => profiles.id),
+    message: text('message').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // Users can view responses to their own inquiries
+    pgPolicy('users_view_own_inquiry_responses', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`
+        inquiry_id IN (
+          SELECT id FROM inquiries 
+          WHERE student_id = auth.uid()
+        )
+      `,
+    }),
+    // Teachers can view responses in their courses
+    pgPolicy('teachers_view_course_responses', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`
+        inquiry_id IN (
+          SELECT i.id FROM inquiries i
+          WHERE i.course_id IN (
+            SELECT course_id FROM course_teachers 
+            WHERE teacher_id = auth.uid()
+          )
+        )
+      `,
+    }),
+    // Admins can view all responses
+    pgPolicy('admins_view_all_responses', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Users can update their own responses
+    pgPolicy('users_update_own_responses', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`responder_id = auth.uid()`,
+      withCheck: sql`responder_id = auth.uid()`,
+    }),
+    // Teachers can insert responses in their courses
+    pgPolicy('teachers_insert_course_responses', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`
+        inquiry_id IN (
+          SELECT i.id FROM inquiries i
+          WHERE i.course_id IN (
+            SELECT course_id FROM course_teachers 
+            WHERE teacher_id = auth.uid()
+          )
+        )
+      `,
+    }),
+    // Admins can insert responses
+    pgPolicy('admins_insert_responses', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+  ],
+)
 
-export const announcements = pgTable('announcements', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  courseId: uuid('course_id').references(() => courses.id, {
-    onDelete: 'cascade',
-  }),
-  authorId: uuid('author_id')
-    .notNull()
-    .references(() => profiles.id),
-  title: text('title').notNull(),
-  content: text('content').notNull(),
-  isGlobal: boolean('is_global').default(false),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+export const announcements = pgTable(
+  'announcements',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    courseId: uuid('course_id').references(() => courses.id, {
+      onDelete: 'cascade',
+    }),
+    authorId: uuid('author_id')
+      .notNull()
+      .references(() => profiles.id),
+    title: text('title').notNull(),
+    content: text('content').notNull(),
+    isGlobal: boolean('is_global').default(false),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // All authenticated users can view announcements
+    pgPolicy('authenticated_view_announcements', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`true`,
+    }),
+    // Users can update their own announcements
+    pgPolicy('users_update_own_announcements', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`author_id = auth.uid()`,
+      withCheck: sql`author_id = auth.uid()`,
+    }),
+    // Teachers can create announcements for their courses
+    pgPolicy('teachers_insert_course_announcements', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`
+        (is_global = false AND course_id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )) OR (is_global = true AND (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin')
+      `,
+    }),
+    // Admins can create global announcements
+    pgPolicy('admins_insert_global_announcements', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+  ],
+)
 
-export const mediaLibrary = pgTable('media_library', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  uploaderId: uuid('uploader_id')
-    .notNull()
-    .references(() => profiles.id),
-  courseId: uuid('course_id').references(() => courses.id, {
-    onDelete: 'cascade',
-  }),
-  title: text('title').notNull(),
-  description: text('description'),
-  fileUrl: text('file_url').notNull(),
-  fileType: mediaTypeEnum('file_type').notNull(),
-  fileSize: integer('file_size'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+export const mediaLibrary = pgTable(
+  'media_library',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    uploaderId: uuid('uploader_id')
+      .notNull()
+      .references(() => profiles.id),
+    courseId: uuid('course_id').references(() => courses.id, {
+      onDelete: 'cascade',
+    }),
+    title: text('title').notNull(),
+    description: text('description'),
+    fileUrl: text('file_url').notNull(),
+    fileType: mediaTypeEnum('file_type').notNull(),
+    fileSize: integer('file_size'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // All authenticated users can view media
+    pgPolicy('authenticated_view_media', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`true`,
+    }),
+    // Uploaders can update their own media
+    pgPolicy('uploaders_update_own_media', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`uploader_id = auth.uid()`,
+      withCheck: sql`uploader_id = auth.uid()`,
+    }),
+    // Teachers can update media in their courses
+    pgPolicy('teachers_update_course_media', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`
+        course_id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+      withCheck: sql`
+        course_id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Admins can update all media
+    pgPolicy('admins_update_all_media', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Users can upload their own media
+    pgPolicy('users_upload_own_media', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`uploader_id = auth.uid()`,
+    }),
+    // Teachers can upload media for their courses
+    pgPolicy('teachers_upload_course_media', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`
+        course_id IS NULL OR course_id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+    }),
+  ],
+)
 
-export const calendarEvents = pgTable('calendar_events', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  courseId: uuid('course_id').references(() => courses.id, {
-    onDelete: 'cascade',
-  }),
-  title: text('title').notNull(),
-  description: text('description'),
-  startTime: timestamp('start_time').notNull(),
-  endTime: timestamp('end_time').notNull(),
-  location: text('location'),
-  zoomLink: text('zoom_link'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+export const calendarEvents = pgTable(
+  'calendar_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    courseId: uuid('course_id').references(() => courses.id, {
+      onDelete: 'cascade',
+    }),
+    title: text('title').notNull(),
+    description: text('description'),
+    startTime: timestamp('start_time').notNull(),
+    endTime: timestamp('end_time').notNull(),
+    location: text('location'),
+    zoomLink: text('zoom_link'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // All authenticated users can view events
+    pgPolicy('authenticated_view_events', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`true`,
+    }),
+    // Teachers can update events in their courses
+    pgPolicy('teachers_update_course_events', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`
+        course_id IS NULL OR course_id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+      withCheck: sql`
+        course_id IS NULL OR course_id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Admins can update all events
+    pgPolicy('admins_update_all_events', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Teachers can create events in their courses
+    pgPolicy('teachers_create_course_events', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`
+        course_id IS NULL OR course_id IN (
+          SELECT course_id FROM course_teachers 
+          WHERE teacher_id = auth.uid()
+        )
+      `,
+    }),
+    // Admins can create events
+    pgPolicy('admins_create_events', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+  ],
+)
 
-export const notifications = pgTable('notifications', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => profiles.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(),
-  message: text('message').notNull(),
-  type: notificationTypeEnum('type').notNull(),
-  link: text('link'),
-  isRead: boolean('is_read').default(false),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    message: text('message').notNull(),
+    type: notificationTypeEnum('type').notNull(),
+    link: text('link'),
+    isRead: boolean('is_read').default(false),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // Users can view their own notifications
+    pgPolicy('users_view_own_notifications', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`user_id = auth.uid()`,
+    }),
+    // Users can update their own notifications
+    pgPolicy('users_update_own_notifications', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`user_id = auth.uid()`,
+      withCheck: sql`user_id = auth.uid()`,
+    }),
+    // Teachers and admins can create notifications
+    pgPolicy('staff_create_notifications', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'teacher')`,
+    }),
+  ],
+)
 
-export const invitations = pgTable('invitations', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  email: text('email').notNull().unique(),
-  role: userRoleEnum('role').notNull(),
-  token: text('token').notNull().unique(),
-  status: invitationStatusEnum('status').notNull().default('pending'),
-  invitedBy: uuid('invited_by')
-    .notNull()
-    .references(() => profiles.id),
-  invitedAt: timestamp('invited_at').defaultNow().notNull(),
-  expiresAt: timestamp('expires_at').notNull(),
-  acceptedAt: timestamp('accepted_at'),
-  otpHash: text('otp_hash'),
-  otpExpiresAt: timestamp('otp_expires_at'),
-  otpAttempts: integer('otp_attempts').default(0).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+export const invitations = pgTable(
+  'invitations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    email: text('email').notNull().unique(),
+    role: userRoleEnum('role').notNull(),
+    token: text('token').notNull().unique(),
+    status: invitationStatusEnum('status').notNull().default('pending'),
+    invitedBy: uuid('invited_by')
+      .notNull()
+      .references(() => profiles.id),
+    invitedAt: timestamp('invited_at').defaultNow().notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+    acceptedAt: timestamp('accepted_at'),
+    otpHash: text('otp_hash'),
+    otpExpiresAt: timestamp('otp_expires_at'),
+    otpAttempts: integer('otp_attempts').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    // Public access for invitation token lookup during signup
+    pgPolicy('public_view_invitation_by_token', {
+      for: 'select',
+      to: 'public',
+      using: sql`token IS NOT NULL AND status = 'pending' AND expires_at > NOW()`,
+    }),
+    // Public access for OTP verification during signup
+    pgPolicy('public_update_otp_verification', {
+      for: 'update',
+      to: 'public',
+      using: sql`token IS NOT NULL AND status = 'pending' AND expires_at > NOW()`,
+      withCheck: sql`token IS NOT NULL AND status = 'pending' AND expires_at > NOW()`,
+    }),
+    // Authenticated users can view invitations they created
+    pgPolicy('users_view_own_invitations', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`invited_by = auth.uid()`,
+    }),
+    // Admins can view all invitations
+    pgPolicy('admins_view_all_invitations', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Admins can update all invitations
+    pgPolicy('admins_update_all_invitations', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    // Admins and teachers can insert invitations
+    pgPolicy('staff_insert_invitations', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'teacher')`,
+    }),
+  ],
+)
 
 // ============================================================================
 // RELATIONS
