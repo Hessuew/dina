@@ -1,9 +1,9 @@
 import { createServerFn } from '@tanstack/react-start'
 import { and, eq, isNotNull } from 'drizzle-orm'
 import { db } from '@/db'
-import { assignments, courses, lessons } from '@/db/schema'
+import { assignments, calendarEvents, courses, lessons } from '@/db/schema'
 
-export type SpecialEventCategory = 'exam' | 'chapel' | 'personal'
+export type SpecialEventCategory = 'exam' | 'chapel' | 'personal' | 'other'
 
 export type CalendarEvent = {
   id: string
@@ -17,63 +17,6 @@ export type CalendarEvent = {
   maxGrade?: number | null
   specialCategory?: SpecialEventCategory
 }
-
-const SPECIAL_EVENTS: Array<CalendarEvent> = [
-  {
-    id: 'special-1',
-    title: 'Chaplain Prayer Hour',
-    date: new Date('2026-04-25T09:00:00'),
-    type: 'special',
-    courseId: '',
-    courseName: '',
-    description:
-      'Weekly prayer hour led by the chaplain. All students welcome.',
-    specialCategory: 'chapel',
-  },
-  {
-    id: 'special-2',
-    title: 'First Semester Exam',
-    date: new Date('2026-05-12T08:00:00'),
-    type: 'special',
-    courseId: '',
-    courseName: '',
-    description:
-      'Comprehensive first semester examination. Covers all published courses.',
-    specialCategory: 'exam',
-  },
-  {
-    id: 'special-3',
-    title: 'Personal Reflection & Assignment',
-    date: new Date('2026-05-05T10:00:00'),
-    type: 'special',
-    courseId: '',
-    courseName: '',
-    description:
-      'Scheduled personal reflection time. Submit your reflection journal by end of day.',
-    specialCategory: 'personal',
-  },
-  {
-    id: 'special-4',
-    title: 'Chaplain Prayer Hour',
-    date: new Date('2026-05-16T09:00:00'),
-    type: 'special',
-    courseId: '',
-    courseName: '',
-    description:
-      'Weekly prayer hour led by the chaplain. All students welcome.',
-    specialCategory: 'chapel',
-  },
-  {
-    id: 'special-5',
-    title: 'Second Semester Exam',
-    date: new Date('2026-06-10T08:00:00'),
-    type: 'special',
-    courseId: '',
-    courseName: '',
-    description: 'Comprehensive second semester examination.',
-    specialCategory: 'exam',
-  },
-]
 
 export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
   async () => {
@@ -135,10 +78,23 @@ export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
       }),
     )
 
+    const dbSpecialEvents = await db.select().from(calendarEvents)
+
+    const specialEvents: Array<CalendarEvent> = dbSpecialEvents.map((e) => ({
+      id: e.id,
+      title: e.title,
+      date: e.startTime,
+      type: 'special' as const,
+      courseId: e.courseId ?? '',
+      courseName: '',
+      description: e.description,
+      specialCategory: e.category ?? undefined,
+    }))
+
     const allEvents = [
       ...lessonEvents,
       ...assignmentEvents,
-      ...SPECIAL_EVENTS,
+      ...specialEvents,
     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
     return { events: allEvents }

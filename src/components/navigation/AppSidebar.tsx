@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Link, useRouter, useRouterState } from '@tanstack/react-router'
 import {
   Calendar,
+  CalendarDays,
   ClipboardList,
   GraduationCap,
   LayoutDashboard,
@@ -68,6 +69,11 @@ const teacherNavItems = [
     title: 'Students',
     url: '/students',
     icon: GraduationCap,
+  },
+  {
+    title: 'Events',
+    url: '/events',
+    icon: CalendarDays,
   },
   {
     title: 'User Management',
