@@ -248,124 +248,127 @@ export function ProfileModal({
           </DialogHeader>
 
           {/* Profile section */}
-          <div className="mt-8">
-            <div className="mb-4 flex items-center gap-2">
-              <div className="h-px w-8 bg-[#C5A059]/40" />
-              <span className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                Profile
-              </span>
-            </div>
 
-            <div className="mb-6 flex items-center gap-5">
-              <div className="shrink-0">
-                {user.avatarUrl ? (
-                  <img
-                    src={user.avatarUrl}
-                    alt={user.fullName || user.email}
-                    className="size-16 border border-white/10 object-cover"
-                  />
-                ) : (
-                  <div className="flex size-16 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-xl text-[#E9D9B4]">
-                    {initials}
-                  </div>
-                )}
+          {!showPasswordForm && (
+            <div className="mt-8">
+              <div className="mb-4 flex items-center gap-2">
+                <div className="h-px w-8 bg-[#C5A059]/40" />
+                <span className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                  Profile
+                </span>
               </div>
-              <div className="flex flex-col gap-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  onChange={handleAvatarChange}
-                  className="hidden"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  theme="dark"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadAvatarMutation.status === 'pending'}
-                >
-                  <UploadIcon className="size-3.5" />
-                  {uploadAvatarMutation.status === 'pending'
-                    ? 'Uploading...'
-                    : 'Change Avatar'}
-                </Button>
-                <p className="text-[0.68rem] text-[#8E816D]">
-                  JPG, PNG, WebP or GIF. Max 2MB.
-                </p>
-              </div>
-            </div>
 
-            <form onSubmit={handleProfileSubmit}>
-              <FieldGroup className="gap-5">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field>
-                    <FieldLabel
-                      htmlFor="email"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Email
-                    </FieldLabel>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      defaultValue={user.email}
-                      required
-                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+              <div className="mb-6 flex items-center gap-5">
+                <div className="shrink-0">
+                  {user.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.fullName || user.email}
+                      className="size-16 border border-white/10 object-cover"
                     />
-                    <FieldDescription className="text-[#8E816D]">
-                      Changing your email will require verification
-                    </FieldDescription>
-                  </Field>
-                  <Field>
-                    <FieldLabel
-                      htmlFor="fullName"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Full Name
-                    </FieldLabel>
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      type="text"
-                      defaultValue={user.fullName}
-                      required
-                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                    />
-                  </Field>
+                  ) : (
+                    <div className="flex size-16 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-xl text-[#E9D9B4]">
+                      {initials}
+                    </div>
+                  )}
                 </div>
-                <Field>
-                  <FieldLabel
-                    htmlFor="bio"
-                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                  >
-                    Bio
-                  </FieldLabel>
-                  <Textarea
-                    id="bio"
-                    name="bio"
-                    placeholder="Tell us about yourself..."
-                    defaultValue={user.bio || ''}
-                    rows={8}
-                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleAvatarChange}
+                    className="hidden"
                   />
-                </Field>
-                <div className="flex justify-end">
                   <Button
-                    type="submit"
+                    type="button"
+                    variant="outline"
                     theme="dark"
-                    disabled={updateProfileMutation.status === 'pending'}
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadAvatarMutation.status === 'pending'}
                   >
-                    {updateProfileMutation.status === 'pending'
-                      ? 'Saving...'
-                      : 'Save Changes'}
+                    <UploadIcon className="size-3.5" />
+                    {uploadAvatarMutation.status === 'pending'
+                      ? 'Uploading...'
+                      : 'Change Avatar'}
                   </Button>
+                  <p className="text-[0.68rem] text-[#8E816D]">
+                    JPG, PNG, WebP or GIF. Max 2MB.
+                  </p>
                 </div>
-              </FieldGroup>
-            </form>
-          </div>
+              </div>
+
+              <form onSubmit={handleProfileSubmit}>
+                <FieldGroup className="gap-5">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field>
+                      <FieldLabel
+                        htmlFor="email"
+                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                      >
+                        Email
+                      </FieldLabel>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        defaultValue={user.email}
+                        required
+                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                      />
+                      <FieldDescription className="text-[#8E816D]">
+                        Changing your email will require verification
+                      </FieldDescription>
+                    </Field>
+                    <Field>
+                      <FieldLabel
+                        htmlFor="fullName"
+                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                      >
+                        Full Name
+                      </FieldLabel>
+                      <Input
+                        id="fullName"
+                        name="fullName"
+                        type="text"
+                        defaultValue={user.fullName}
+                        required
+                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                      />
+                    </Field>
+                  </div>
+                  <Field>
+                    <FieldLabel
+                      htmlFor="bio"
+                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                    >
+                      Bio
+                    </FieldLabel>
+                    <Textarea
+                      id="bio"
+                      name="bio"
+                      placeholder="Tell us about yourself..."
+                      defaultValue={user.bio || ''}
+                      rows={8}
+                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                    />
+                  </Field>
+                  <div className="flex justify-end">
+                    <Button
+                      type="submit"
+                      theme="dark"
+                      disabled={updateProfileMutation.status === 'pending'}
+                    >
+                      {updateProfileMutation.status === 'pending'
+                        ? 'Saving...'
+                        : 'Save Changes'}
+                    </Button>
+                  </div>
+                </FieldGroup>
+              </form>
+            </div>
+          )}
 
           {/* Password section */}
           <div className="mt-10 border-t border-white/8 pt-8">

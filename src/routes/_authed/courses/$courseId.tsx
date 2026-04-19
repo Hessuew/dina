@@ -181,7 +181,7 @@ function CourseDetailComponent() {
             onClick={() => router.navigate({ to: '/dashboard' })}
           >
             <ChevronLeft className="size-3.5" />
-            Dashboard
+            Back
           </Button>
 
           <div className="flex items-start justify-between gap-6">
