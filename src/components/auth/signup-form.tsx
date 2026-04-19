@@ -25,6 +25,53 @@ import {
 import { calculatePasswordStrength } from '@/utils/password'
 import graphiteBackground from '@/assets/images/bg/bg_about.webp'
 
+function getUserFriendlyError(message: string): string {
+  const lowerMessage = message.toLowerCase()
+
+  if (
+    lowerMessage.includes('email already exists') ||
+    lowerMessage.includes('duplicate')
+  ) {
+    return 'An account with this email already exists. Please try logging in instead.'
+  }
+  if (
+    lowerMessage.includes('invalid email') ||
+    lowerMessage.includes('email format')
+  ) {
+    return 'Please enter a valid email address.'
+  }
+  if (
+    lowerMessage.includes('password too short') ||
+    lowerMessage.includes('password too weak')
+  ) {
+    return 'Your password is too weak. Please use a stronger password.'
+  }
+  if (lowerMessage.includes('invitation') || lowerMessage.includes('invited')) {
+    return 'You need a valid invitation to sign up. Please check your invitation link.'
+  }
+  if (
+    lowerMessage.includes('otp') ||
+    lowerMessage.includes('verification code') ||
+    lowerMessage.includes('code')
+  ) {
+    return 'The verification code you entered is incorrect. Please try again.'
+  }
+  if (lowerMessage.includes('expired') || lowerMessage.includes('timeout')) {
+    return 'The verification code has expired. Please request a new one.'
+  }
+  if (
+    lowerMessage.includes('rate limit') ||
+    lowerMessage.includes('too many')
+  ) {
+    return 'Too many attempts. Please wait a moment and try again.'
+  }
+  if (lowerMessage.includes('network') || lowerMessage.includes('connection')) {
+    return 'Network error. Please check your connection and try again.'
+  }
+
+  return 'Something went wrong. Please try again later.'
+}
+
 interface SignupFormProps {
   token?: string
 }
@@ -56,7 +103,7 @@ export function SignupForm({ token = '' }: SignupFormProps) {
     fn: useServerFn(signupFn),
     onSuccess: (ctx) => {
       if (ctx.data.error) {
-        toast.error(ctx.data.message)
+        toast.error(getUserFriendlyError(ctx.data.message))
       } else if (ctx.data.requiresOtp) {
         setShowOtpInput(true)
         setResendCooldown(60)
@@ -104,7 +151,7 @@ export function SignupForm({ token = '' }: SignupFormProps) {
         await router.invalidate()
         router.navigate({ to: '/dashboard', search: { verified: true } })
       } else {
-        toast.error(ctx.data.message)
+        toast.error(getUserFriendlyError(ctx.data.message))
       }
     },
   })
@@ -119,7 +166,7 @@ export function SignupForm({ token = '' }: SignupFormProps) {
         toast.success(ctx.data.message)
         setResendCooldown(60)
       } else {
-        toast.error(ctx.data.message)
+        toast.error(getUserFriendlyError(ctx.data.message))
       }
     },
   })
@@ -147,7 +194,7 @@ export function SignupForm({ token = '' }: SignupFormProps) {
           } else {
             setInvitationError(result.message)
             toast.error('Invalid invitation', {
-              description: result.message,
+              description: getUserFriendlyError(result.message),
             })
           }
         })
@@ -176,7 +223,7 @@ export function SignupForm({ token = '' }: SignupFormProps) {
         setInvitationError(result.message)
         setInvitationValid(false)
         toast.error('Email not invited', {
-          description: result.message,
+          description: getUserFriendlyError(result.message),
         })
       } else {
         setInvitationValid(true)
