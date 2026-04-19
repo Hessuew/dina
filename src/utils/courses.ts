@@ -251,8 +251,8 @@ export const createCourse = createServerFn({ method: 'POST' })
       title: z.string().min(1),
       description: z.string().min(1),
       thumbnailUrl: z.url().optional(),
-      teacher1Id: z.uuid(),
-      teacher2Id: z.uuid(),
+      teacher1Id: z.uuid().optional(),
+      teacher2Id: z.uuid().optional(),
       orderIndex: z.number().int().min(0).default(0),
     }),
   )
@@ -267,30 +267,6 @@ export const createCourse = createServerFn({ method: 'POST' })
       throw new Error('Only admins can create courses')
     }
 
-    // Validate that exactly 2 different teachers are provided
-    if (data.teacher1Id === data.teacher2Id) {
-      throw new Error('Must assign 2 different teachers to a course')
-    }
-
-    // Verify both teachers exist and have teacher role
-    const teachers = await db.query.profiles.findMany({
-      where: inArray(profiles.id, [data.teacher1Id, data.teacher2Id]),
-    })
-
-    if (teachers.length !== 2) {
-      throw new Error('One or both teachers not found')
-    }
-
-    const teacher1 = teachers.find((t) => t.id === data.teacher1Id)
-    const teacher2 = teachers.find((t) => t.id === data.teacher2Id)
-
-    if (teacher1?.role !== 'teacher') {
-      throw new Error(`${teacher1?.fullName || 'Teacher 1'} is not a teacher`)
-    }
-    if (teacher2?.role !== 'teacher') {
-      throw new Error(`${teacher2?.fullName || 'Teacher 2'} is not a teacher`)
-    }
-
     // Create course
     const [course] = await db
       .insert(courses)
@@ -303,17 +279,37 @@ export const createCourse = createServerFn({ method: 'POST' })
       })
       .returning()
 
-    // Assign both teachers to the course
-    await db.insert(courseTeachers).values([
-      {
-        courseId: course.id,
-        teacherId: data.teacher1Id,
-      },
-      {
-        courseId: course.id,
-        teacherId: data.teacher2Id,
-      },
-    ])
+    // Optionally assign teachers if provided
+    if (data.teacher1Id && data.teacher2Id) {
+      if (data.teacher1Id === data.teacher2Id) {
+        throw new Error('Must assign 2 different teachers to a course')
+      }
+
+      const teachers = await db.query.profiles.findMany({
+        where: inArray(profiles.id, [data.teacher1Id, data.teacher2Id]),
+      })
+
+      if (teachers.length !== 2) {
+        throw new Error('One or both teachers not found')
+      }
+
+      const teacher1 = teachers.find((t) => t.id === data.teacher1Id)
+      const teacher2 = teachers.find((t) => t.id === data.teacher2Id)
+
+      if (teacher1?.role !== 'teacher') {
+        throw new Error(`${teacher1?.fullName || 'Teacher 1'} is not a teacher`)
+      }
+      if (teacher2?.role !== 'teacher') {
+        throw new Error(`${teacher2?.fullName || 'Teacher 2'} is not a teacher`)
+      }
+
+      await db.insert(courseTeachers).values([
+        { courseId: course.id, teacherId: data.teacher1Id },
+        { courseId: course.id, teacherId: data.teacher2Id },
+      ])
+    } else if (data.teacher1Id || data.teacher2Id) {
+      throw new Error('Please assign either both teachers or neither')
+    }
 
     return { course }
   })

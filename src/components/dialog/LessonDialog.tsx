@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import { createLessonSchema, updateLessonSchema } from '@/schemas/lesson.schema'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -61,9 +62,11 @@ export function LessonDialog({
 }: LessonDialogProps) {
   const router = useRouter()
   const [formData, setFormData] = useState<LessonFormData>({ ...emptyFormData })
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (open) {
+      setFieldErrors({})
       if (initialData && mode !== 'create') {
         setFormData({
           title: initialData.title,
@@ -121,10 +124,32 @@ export function LessonDialog({
       return
     }
 
-    if (!formData.title || !formData.scheduledTime) {
-      toast.error('Title and scheduled time are required')
+    const schema = mode === 'create' ? createLessonSchema : updateLessonSchema
+    const parseData = {
+      lessonId: initialData?.lessonId ?? '',
+      courseId,
+      title: formData.title,
+      content: formData.content || undefined,
+      scheduledTime: formData.scheduledTime
+        ? new Date(formData.scheduledTime)
+        : undefined,
+      duration: formData.duration ? parseInt(formData.duration) : undefined,
+      orderIndex: lessonCount,
+      isPublished: formData.isPublished,
+    }
+
+    const parseResult = schema.safeParse(parseData)
+    if (!parseResult.success) {
+      const errors: Record<string, string> = {}
+      for (const issue of parseResult.error.issues) {
+        const key = issue.path[0] as string
+        if (!errors[key]) errors[key] = issue.message
+      }
+      setFieldErrors(errors)
       return
     }
+
+    setFieldErrors({})
 
     if (mode === 'create') {
       if (lessonCount >= 3) {
@@ -254,11 +279,18 @@ export function LessonDialog({
                   id="lesson-title"
                   placeholder="Lesson title"
                   value={formData.title}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
+                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
+                  onChange={(e) => {
                     setFormData({ ...formData, title: e.target.value })
-                  }
+                    if (fieldErrors.title)
+                      setFieldErrors({ ...fieldErrors, title: '' })
+                  }}
                 />
+                {fieldErrors.title && (
+                  <p className="text-[0.68rem] text-red-400">
+                    {fieldErrors.title}
+                  </p>
+                )}
               </Field>
               <Field>
                 <FieldLabel
@@ -271,11 +303,18 @@ export function LessonDialog({
                   id="lesson-time"
                   type="datetime-local"
                   value={formData.scheduledTime}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
+                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.scheduledTime ? 'border-red-500/60' : ''}`}
+                  onChange={(e) => {
                     setFormData({ ...formData, scheduledTime: e.target.value })
-                  }
+                    if (fieldErrors.scheduledTime)
+                      setFieldErrors({ ...fieldErrors, scheduledTime: '' })
+                  }}
                 />
+                {fieldErrors.scheduledTime && (
+                  <p className="text-[0.68rem] text-red-400">
+                    {fieldErrors.scheduledTime}
+                  </p>
+                )}
               </Field>
               <Field>
                 <FieldLabel
@@ -289,11 +328,18 @@ export function LessonDialog({
                   type="number"
                   placeholder="60"
                   value={formData.duration}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
+                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.duration ? 'border-red-500/60' : ''}`}
+                  onChange={(e) => {
                     setFormData({ ...formData, duration: e.target.value })
-                  }
+                    if (fieldErrors.duration)
+                      setFieldErrors({ ...fieldErrors, duration: '' })
+                  }}
                 />
+                {fieldErrors.duration && (
+                  <p className="text-[0.68rem] text-red-400">
+                    {fieldErrors.duration}
+                  </p>
+                )}
               </Field>
               <Field className="sm:col-span-2">
                 <FieldLabel
