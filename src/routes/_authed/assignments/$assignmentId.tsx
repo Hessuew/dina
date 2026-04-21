@@ -223,20 +223,24 @@ function AssignmentDetailComponent() {
               </div>
               {canEdit && (
                 <>
-                  <button
-                    type="button"
-                    className="flex size-8 items-center justify-center border border-white/12 bg-white/6 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#D4B373]"
+                  <Button
+                    variant="ghost"
+                    theme="light"
+                    size="icon"
+                    className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
                     onClick={() => setDialogMode('edit')}
                   >
                     <PencilIcon className="size-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    className="flex size-8 items-center justify-center border border-white/12 bg-white/6 text-[#8E816D] transition-all hover:border-red-400/50 hover:text-red-400"
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    theme="light"
+                    size="icon"
+                    className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-red-300 hover:text-red-600"
                     onClick={() => setDialogMode('delete')}
                   >
                     <TrashIcon className="size-3.5" />
-                  </button>
+                  </Button>
                 </>
               )}
             </div>

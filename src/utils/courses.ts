@@ -16,9 +16,9 @@ import {
   assignments,
   courseTeachers,
   courses,
-  lessonProgress,
   lessons,
   profiles,
+  submissions,
 } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth'
 
@@ -34,58 +34,7 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
       throw new Error('Profile not found')
     }
 
-    if (profile.role === 'admin') {
-      // Admins see all courses
-      const allCourses = await db.query.courses.findMany({
-        with: {
-          courseTeachers: {
-            with: {
-              teacher: true,
-            },
-          },
-          lessons: {
-            orderBy: (l, { asc }) => [asc(l.orderIndex)],
-          },
-        },
-        orderBy: (c, { asc }) => [asc(c.orderIndex)],
-      })
-
-      return {
-        courses: allCourses,
-        role: profile.role,
-      }
-    }
-
-    if (profile.role === 'teacher') {
-      // Get courses where user is assigned as a teacher
-      const teacherAssignments = await db.query.courseTeachers.findMany({
-        where: eq(courseTeachers.teacherId, user.id),
-        with: {
-          course: {
-            with: {
-              lessons: {
-                orderBy: (l, { asc }) => [asc(l.orderIndex)],
-              },
-              courseTeachers: {
-                with: {
-                  teacher: true,
-                },
-              },
-            },
-          },
-        },
-      })
-
-      const teacherCourses = teacherAssignments.map(
-        (assignment) => assignment.course,
-      )
-
-      return {
-        courses: teacherCourses,
-        role: profile.role,
-      }
-    }
-
+    // Admins and teachers see all courses
     const allCourses = await db.query.courses.findMany({
       with: {
         courseTeachers: {
@@ -100,24 +49,49 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
       orderBy: (c, { asc }) => [asc(c.orderIndex)],
     })
 
+    if (profile.role === 'admin' || profile.role === 'teacher') {
+      return {
+        courses: allCourses,
+        role: profile.role,
+      }
+    }
+
     const coursesWithProgress = await Promise.all(
       allCourses.map(async (course) => {
-        const progress = await db.query.lessonProgress.findMany({
-          where: and(
-            eq(lessonProgress.studentId, user.id),
-            eq(lessonProgress.completed, true),
-          ),
-        })
+        const lessonIds = course.lessons.map((l) => l.id)
 
-        const completedLessonIds = new Set(progress.map((p) => p.lessonId))
-        const completedCount = course.lessons.filter((lesson) =>
-          completedLessonIds.has(lesson.id),
+        const courseAssignments =
+          lessonIds.length > 0
+            ? await db.query.assignments.findMany({
+                where: inArray(assignments.lessonId, lessonIds),
+              })
+            : []
+
+        const assignmentIds = courseAssignments.map((a) => a.id)
+
+        const studentSubmissions =
+          assignmentIds.length > 0
+            ? await db.query.submissions.findMany({
+                where: and(
+                  eq(submissions.studentId, user.id),
+                  inArray(submissions.assignmentId, assignmentIds),
+                ),
+              })
+            : []
+
+        const totalAssignments = courseAssignments.length
+        const submittedCount = studentSubmissions.filter(
+          (s) => s.status === 'submitted',
+        ).length
+        const gradedCount = studentSubmissions.filter(
+          (s) => s.status === 'graded',
         ).length
 
         return {
           ...course,
-          completedLessons: completedCount,
-          totalLessons: course.lessons.length,
+          submittedAssignments: submittedCount,
+          gradedAssignments: gradedCount,
+          totalAssignments,
         }
       }),
     )

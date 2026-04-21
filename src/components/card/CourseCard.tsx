@@ -22,8 +22,9 @@ type CourseCardProps = {
         avatarUrl?: string | null
       }
     }>
-    completedLessons?: number
-    totalLessons?: number
+    submittedAssignments?: number
+    gradedAssignments?: number
+    totalAssignments?: number
     orderIndex: number | null
   }
   role: 'student' | 'teacher' | 'admin'
@@ -38,10 +39,9 @@ export function CourseCard({
   const navigate = useNavigate()
   const isTeacher = role === 'teacher' || role === 'admin'
   const lessonCount = course.lessons.length
-  const progress =
-    course.completedLessons && course.totalLessons
-      ? Math.round((course.completedLessons / course.totalLessons) * 100)
-      : 0
+  const submittedCount = course.submittedAssignments ?? 0
+  const gradedCount = course.gradedAssignments ?? 0
+  const totalAssignments = course.totalAssignments ?? 0
   const isDark = variant === 'dark'
 
   return (
@@ -156,7 +156,7 @@ export function CourseCard({
         )}
 
         {/* Progress bar for students */}
-        {!isTeacher && course.completedLessons !== undefined && (
+        {!isTeacher && course.totalAssignments !== undefined && (
           <div className="mt-4 space-y-2">
             <div className="flex items-center justify-between">
               <span
@@ -173,7 +173,8 @@ export function CourseCard({
                   isDark ? 'text-[#E9D9B4]' : 'text-[#9B7A41]',
                 )}
               >
-                {course.completedLessons}/{course.totalLessons}
+                <span className="text-xs text-[#8E816D]">Assignments:</span>{' '}
+                {submittedCount + gradedCount}/{totalAssignments}
               </span>
             </div>
             <div
@@ -182,11 +183,31 @@ export function CourseCard({
                 isDark ? 'bg-white/8' : 'bg-[#1A1A1A]/8',
               )}
             >
-              <div
-                className="h-full bg-[#C5A059] transition-all"
-                style={{ width: `${progress}%` }}
-              />
+              <div className="flex h-full">
+                <div
+                  className="h-full bg-blue-500 transition-all"
+                  style={{
+                    width: `${totalAssignments > 0 ? (submittedCount / totalAssignments) * 100 : 0}%`,
+                  }}
+                />
+                <div
+                  className="h-full bg-yellow-500 transition-all"
+                  style={{
+                    width: `${totalAssignments > 0 ? (gradedCount / totalAssignments) * 100 : 0}%`,
+                  }}
+                />
+              </div>
             </div>
+
+            <p
+              className={cn(
+                'text-[0.65rem] font-medium tracking-[0.12em]',
+                isDark ? 'text-[#8E816D]' : 'text-[#5E5549]',
+              )}
+            >
+              {/* {submittedCount} submitted, {gradedCount} graded ({progress}%) of{' '}
+              {totalAssignments} assignments */}
+            </p>
           </div>
         )}
 

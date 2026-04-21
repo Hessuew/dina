@@ -24,8 +24,9 @@ type Course = {
       avatarUrl?: string | null
     }
   }>
-  completedLessons?: number
-  totalLessons?: number
+  submittedAssignments?: number
+  gradedAssignments?: number
+  totalAssignments?: number
   orderIndex: number | null
 }
 
