@@ -55,7 +55,7 @@ export function UpcomingLessonsList({ lessons }: UpcomingLessonsListProps) {
                   params={{ lessonId: lesson.id }}
                   className="block"
                 >
-                  <div className="group flex items-start gap-4 border-b border-white/8 py-5 transition-all first:pt-0 last:border-b-0 last:pb-0 hover:bg-white/8">
+                  <div className="group flex items-start gap-4 border-b border-white/8 py-5 pl-1 transition-all first:pt-1 last:border-b-0 last:pb-0 hover:bg-white/8">
                     <div className="flex size-8 shrink-0 items-center justify-center border border-[#C5A059]/50 bg-[#1A1716] font-serif text-xs text-[#E9D9B4]">
                       {idx + 1}
                     </div>

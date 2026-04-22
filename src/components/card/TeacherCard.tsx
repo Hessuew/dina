@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpenIcon } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import type { TeacherWithCourses } from '@/types/teacher'
 import { Button } from '@/components/ui/button'
 
@@ -30,18 +30,11 @@ export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
             }}
           >
             <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_38%,rgba(197,160,89,0.10)_100%)]" />
-            <div className="relative flex min-h-48 flex-col justify-between p-5 sm:min-h-56 sm:p-6">
-              {/* Top: index badge */}
-              <div className="flex items-start justify-between">
-                <div className="border border-[#C5A059]/40 bg-black/20 px-3 py-1.5 text-[0.62rem] font-medium tracking-[0.22em] text-[#D4B373] uppercase backdrop-blur-sm">
-                  The Ground
-                </div>
-              </div>
+            <div className="relative flex min-h-48 flex-col justify-end p-5 sm:min-h-56 sm:p-6">
               {/* Bottom: courses chip */}
               <div className="flex items-end justify-between gap-3">
-                <div className="flex items-center gap-1.5 text-[0.62rem] font-medium tracking-[0.22em] text-[#AFA28F] uppercase">
-                  <BookOpenIcon className="size-3" />
-                  {teacher.courseCount} courses
+                <div className="border border-[#C5A059]/40 bg-black/20 px-3 py-1.5 text-[0.62rem] font-medium tracking-[0.22em] text-[#D4B373] uppercase backdrop-blur-sm">
+                  The Ground
                 </div>
               </div>
             </div>
