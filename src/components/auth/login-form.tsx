@@ -1,4 +1,5 @@
 import { Link, useRouter } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import facultyBackground from '@/assets/images/bg/bg_hero.webp'
 import {
   Field,
@@ -9,6 +10,41 @@ import {
 import { Input } from '@/components/ui/input'
 import { useMutation } from '@/hooks/useMutation'
 import { loginFn } from '@/routes/_authed'
+
+function getUserFriendlyError(message: string): string {
+  const lowerMessage = message.toLowerCase()
+
+  if (
+    lowerMessage.includes('invalid credentials') ||
+    lowerMessage.includes('wrong password') ||
+    lowerMessage.includes('incorrect')
+  ) {
+    return 'Invalid email or password. Please check your credentials and try again.'
+  }
+  if (
+    lowerMessage.includes('email not found') ||
+    lowerMessage.includes('user not found')
+  ) {
+    return 'No account found with this email. Please sign up first.'
+  }
+  if (
+    lowerMessage.includes('email not verified') ||
+    lowerMessage.includes('not verified')
+  ) {
+    return 'Please verify your email before logging in. Check your inbox for the verification link.'
+  }
+  if (
+    lowerMessage.includes('account locked') ||
+    lowerMessage.includes('locked')
+  ) {
+    return 'Your account has been locked. Please contact support for assistance.'
+  }
+  if (lowerMessage.includes('network') || lowerMessage.includes('connection')) {
+    return 'Network error. Please check your connection and try again.'
+  }
+
+  return 'Unable to sign in. Please try again later.'
+}
 
 interface LoginFormProps {
   verified?: boolean
@@ -24,6 +60,9 @@ export function LoginForm({ verified = false }: LoginFormProps) {
         await router.invalidate()
         router.navigate({ to: '/dashboard' })
         return
+      }
+      if (ctx.data.message) {
+        toast.error(getUserFriendlyError(ctx.data.message))
       }
     },
   })
@@ -184,12 +223,6 @@ export function LoginForm({ verified = false }: LoginFormProps) {
                           ? 'Signing in...'
                           : 'Sign In'}
                       </button>
-
-                      {loginMutation.data?.error && (
-                        <p className="text-sm text-red-600">
-                          {loginMutation.data.message}
-                        </p>
-                      )}
 
                       <FieldDescription
                         theme="dark"
