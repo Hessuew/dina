@@ -15,7 +15,6 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import z from 'zod'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
-import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
 import { Button } from '@/components/ui/button'
 import { db } from '@/db'
 import { courses, lessonProgress, profiles } from '@/db/schema'
@@ -499,7 +498,7 @@ function CourseDetailComponent() {
         <DialogContent
           className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
           style={{
-            backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
+            backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}

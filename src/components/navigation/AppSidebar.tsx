@@ -156,7 +156,7 @@ export function AppSidebar({
     >
       <SidebarHeader>
         <SidebarMenu>
-          <SidebarMenuItem>
+          <SidebarMenuItem className="pl-0.5">
             <SidebarMenuButton
               size="lg"
               render={
@@ -195,7 +195,7 @@ export function AppSidebar({
           />
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="pl-3">
         <NavUser
           user={user as any}
           onProfileUpdate={() => router.invalidate()}

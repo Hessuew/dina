@@ -1,9 +1,10 @@
 import { Link } from '@tanstack/react-router'
 import marbleTexture from '@/assets/images/bg/bg_hero.webp'
 import heroEmblem from '@/assets/images/bg/logo.webp'
+import { cn } from '@/lib/utils'
 
 type LandingHeroProps = {
-  onLearnMore?: () => void
+  user?: any
 }
 
 function LandingMark() {
@@ -61,12 +62,11 @@ function HeroVisual() {
   )
 }
 
-export function LandingHeroEditorial({ onLearnMore }: LandingHeroProps) {
+export function LandingHeroEditorial({ user }: LandingHeroProps) {
   return (
     <section
       id="home"
       className="relative isolate overflow-hidden border-b border-[#1A1A1A]/10"
-      data-has-secondary={Boolean(onLearnMore)}
       style={{
         backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.45) 22%, rgba(248,244,236,0.9) 100%), url(${marbleTexture})`,
         backgroundPosition: 'center',
@@ -89,7 +89,7 @@ export function LandingHeroEditorial({ onLearnMore }: LandingHeroProps) {
 
               <h1 className="max-w-[12ch] font-serif text-[clamp(3.9rem,7vw,6.7rem)] leading-[0.88] tracking-[-0.06em] text-[#1C1815]">
                 <span className="block">Disciplers of</span>
-                <span className="block sm:whitespace-nowrap">
+                <span className={cn('block', !user && 'sm:whitespace-nowrap')}>
                   Nations Academy
                 </span>
               </h1>

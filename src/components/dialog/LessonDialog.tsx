@@ -16,7 +16,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useMutation } from '@/hooks/useMutation'
 import { createLesson, deleteLesson, updateLesson } from '@/utils/courses'
-import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
+import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 
 type LessonFormData = {
   title: string
@@ -163,7 +163,7 @@ export function LessonDialog({
         <DialogContent
           className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
           style={{
-            backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
+            backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
@@ -215,7 +215,7 @@ export function LessonDialog({
       <DialogContent
         className="overflow-y-auto rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
         style={{
-          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
+          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}

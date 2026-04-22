@@ -15,14 +15,11 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id)
-    element?.scrollIntoView({ behavior: 'smooth' })
-  }
+  const { user } = Route.useRouteContext()
 
   return (
     <div className="min-h-screen">
-      <LandingHeroEditorial onLearnMore={() => scrollToSection('about')} />
+      <LandingHeroEditorial user={user} />
 
       <LandingAboutSection />
       <LandingCourseShowcase />
