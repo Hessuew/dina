@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { z } from 'zod'
 import { useRouter } from '@tanstack/react-router'
 import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -22,6 +23,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { createCourseSchema, updateCourseSchema } from '@/schemas/course.schema'
 import { useMutation } from '@/hooks/useMutation'
 import { useAllTeachers } from '@/hooks/useAllTeachers'
 import { createCourse, updateCourse } from '@/utils/courses'
@@ -77,11 +79,13 @@ export function CourseDialog({
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const [formData, setFormData] = useState<CourseFormData>({ ...emptyFormData })
 
   useEffect(() => {
     if (open) {
+      setFieldErrors({})
       setFormData(
         initialData
           ? {
@@ -176,25 +180,49 @@ export function CourseDialog({
   const isPending = mutation.status === 'pending' || isUploading
 
   const handleSubmit = () => {
-    if (!formData.title) {
-      toast.error('Title is required')
+    const clientSchema =
+      mode === 'create'
+        ? createCourseSchema
+        : updateCourseSchema.extend({
+            courseId: z.string().default(initialData?.courseId ?? ''),
+          })
+
+    const parseResult = clientSchema.safeParse({
+      title: formData.title,
+      description: formData.description,
+      teacher1Id: formData.teacher1Id ?? undefined,
+      teacher2Id: formData.teacher2Id ?? undefined,
+      orderIndex: formData.orderIndex,
+      courseId: initialData?.courseId ?? '',
+      isPublished: formData.isPublished,
+    })
+
+    if (!parseResult.success) {
+      const errors: Record<string, string> = {}
+      for (const issue of parseResult.error.issues) {
+        const key = issue.path[0] as string
+        if (!errors[key]) errors[key] = issue.message
+      }
+      setFieldErrors(errors)
       return
     }
 
     if (isAdmin && formData.teacher1Id && formData.teacher2Id) {
       if (formData.teacher1Id === formData.teacher2Id) {
-        toast.error('Please select 2 different teachers')
+        setFieldErrors({ teacher2Id: 'Please select 2 different teachers' })
         return
       }
     }
+
+    setFieldErrors({})
 
     if (mode === 'create') {
       createMutation.mutate({
         data: {
           title: formData.title,
           description: formData.description,
-          teacher1Id: formData.teacher1Id as string,
-          teacher2Id: formData.teacher2Id as string,
+          teacher1Id: formData.teacher1Id ?? undefined,
+          teacher2Id: formData.teacher2Id ?? undefined,
           orderIndex: formData.orderIndex,
         },
       })
@@ -269,11 +297,18 @@ export function CourseDialog({
                   id="course-title"
                   placeholder="Introduction to Programming"
                   value={formData.title}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
+                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
+                  onChange={(e) => {
                     setFormData({ ...formData, title: e.target.value })
-                  }
+                    if (fieldErrors.title)
+                      setFieldErrors({ ...fieldErrors, title: '' })
+                  }}
                 />
+                {fieldErrors.title && (
+                  <p className="text-[0.68rem] text-red-400">
+                    {fieldErrors.title}
+                  </p>
+                )}
               </Field>
               <div className="sm:col-span-1" />
               <Field>
@@ -311,13 +346,15 @@ export function CourseDialog({
                       htmlFor="course-teacher1"
                       className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
                     >
-                      Teacher 1 <span className="text-[#C5A059]">*</span>
+                      Teacher 1
                     </FieldLabel>
                     <Select
                       value={formData.teacher1Id ?? undefined}
-                      onValueChange={(value) =>
+                      onValueChange={(value) => {
                         setFormData({ ...formData, teacher1Id: value })
-                      }
+                        if (fieldErrors.teacher1Id)
+                          setFieldErrors({ ...fieldErrors, teacher1Id: '' })
+                      }}
                     >
                       <SelectTrigger
                         className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
@@ -344,19 +381,26 @@ export function CourseDialog({
                         )}
                       </SelectContent>
                     </Select>
+                    {fieldErrors.teacher1Id && (
+                      <p className="text-[0.68rem] text-red-400">
+                        {fieldErrors.teacher1Id}
+                      </p>
+                    )}
                   </Field>
                   <Field>
                     <FieldLabel
                       htmlFor="course-teacher2"
                       className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
                     >
-                      Teacher 2 <span className="text-[#C5A059]">*</span>
+                      Teacher 2
                     </FieldLabel>
                     <Select
                       value={formData.teacher2Id ?? undefined}
-                      onValueChange={(value) =>
+                      onValueChange={(value) => {
                         setFormData({ ...formData, teacher2Id: value })
-                      }
+                        if (fieldErrors.teacher2Id)
+                          setFieldErrors({ ...fieldErrors, teacher2Id: '' })
+                      }}
                     >
                       <SelectTrigger
                         className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
@@ -385,6 +429,11 @@ export function CourseDialog({
                         )}
                       </SelectContent>
                     </Select>
+                    {fieldErrors.teacher2Id && (
+                      <p className="text-[0.68rem] text-red-400">
+                        {fieldErrors.teacher2Id}
+                      </p>
+                    )}
                   </Field>
                 </>
               )}
@@ -403,11 +452,18 @@ export function CourseDialog({
                   placeholder="Describe what students will learn in this course"
                   rows={10}
                   value={formData.description}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
+                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.description ? 'border-red-500/60' : ''}`}
+                  onChange={(e) => {
                     setFormData({ ...formData, description: e.target.value })
-                  }
+                    if (fieldErrors.description)
+                      setFieldErrors({ ...fieldErrors, description: '' })
+                  }}
                 />
+                {fieldErrors.description && (
+                  <p className="text-[0.68rem] text-red-400">
+                    {fieldErrors.description}
+                  </p>
+                )}
               </Field>
               <Field>
                 <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">

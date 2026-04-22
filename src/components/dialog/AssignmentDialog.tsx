@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import {
+  createAssignmentSchema,
+  gradeSubmissionSchema,
+  updateAssignmentSchema,
+} from '@/schemas/assignment.schema'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -65,6 +70,7 @@ export function AssignmentDialog({
   onDeleteSuccess,
 }: AssignmentDialogProps) {
   const router = useRouter()
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const emptyForm = {
     title: '',
@@ -95,6 +101,7 @@ export function AssignmentDialog({
 
   useEffect(() => {
     if (open) {
+      setFieldErrors({})
       if (mode === 'create') {
         setFormData(emptyForm)
       } else if (mode === 'edit' && assignment) {
@@ -295,8 +302,8 @@ export function AssignmentDialog({
                     max={assignment?.maxGrade ?? 100}
                     value={gradingData.grade === 0 ? '' : gradingData.grade}
                     placeholder="0"
-                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                    onChange={(e) =>
+                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.grade ? 'border-red-500/60' : ''}`}
+                    onChange={(e) => {
                       setGradingData({
                         ...gradingData,
                         grade:
@@ -304,8 +311,15 @@ export function AssignmentDialog({
                             ? 0
                             : parseInt(e.target.value) || 0,
                       })
-                    }
+                      if (fieldErrors.grade)
+                        setFieldErrors({ ...fieldErrors, grade: '' })
+                    }}
                   />
+                  {fieldErrors.grade && (
+                    <p className="text-[0.68rem] text-red-400">
+                      {fieldErrors.grade}
+                    </p>
+                  )}
                 </Field>
                 <Field>
                   <FieldLabel
@@ -343,6 +357,22 @@ export function AssignmentDialog({
                 theme="dark"
                 onClick={() => {
                   if (!submission) return
+                  const gradeParseResult = gradeSubmissionSchema.safeParse({
+                    submissionId: submission.id,
+                    assignmentId: assignment?.id ?? '',
+                    grade: gradingData.grade,
+                    feedback: gradingData.feedback,
+                  })
+                  if (!gradeParseResult.success) {
+                    const errors: Record<string, string> = {}
+                    for (const issue of gradeParseResult.error.issues) {
+                      const key = issue.path[0] as string
+                      if (!errors[key]) errors[key] = issue.message
+                    }
+                    setFieldErrors(errors)
+                    return
+                  }
+                  setFieldErrors({})
                   gradeMutation.mutate({
                     data: {
                       submissionId: submission.id,
@@ -401,11 +431,18 @@ export function AssignmentDialog({
                 <Input
                   id="title"
                   value={formData.title}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
+                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
+                  onChange={(e) => {
                     setFormData({ ...formData, title: e.target.value })
-                  }
+                    if (fieldErrors.title)
+                      setFieldErrors({ ...fieldErrors, title: '' })
+                  }}
                 />
+                {fieldErrors.title && (
+                  <p className="text-[0.68rem] text-red-400">
+                    {fieldErrors.title}
+                  </p>
+                )}
               </Field>
               <Field>
                 <FieldLabel
@@ -418,11 +455,18 @@ export function AssignmentDialog({
                   id="dueDate"
                   type="datetime-local"
                   value={formData.dueDate}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
+                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.dueDate ? 'border-red-500/60' : ''}`}
+                  onChange={(e) => {
                     setFormData({ ...formData, dueDate: e.target.value })
-                  }
+                    if (fieldErrors.dueDate)
+                      setFieldErrors({ ...fieldErrors, dueDate: '' })
+                  }}
                 />
+                {fieldErrors.dueDate && (
+                  <p className="text-[0.68rem] text-red-400">
+                    {fieldErrors.dueDate}
+                  </p>
+                )}
               </Field>
               <Field>
                 <FieldLabel
@@ -437,8 +481,8 @@ export function AssignmentDialog({
                   min="0"
                   value={formData.maxGrade === 0 ? '' : formData.maxGrade}
                   placeholder="100"
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
+                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.maxGrade ? 'border-red-500/60' : ''}`}
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       maxGrade:
@@ -446,8 +490,15 @@ export function AssignmentDialog({
                           ? 0
                           : parseInt(e.target.value) || 0,
                     })
-                  }
+                    if (fieldErrors.maxGrade)
+                      setFieldErrors({ ...fieldErrors, maxGrade: '' })
+                  }}
                 />
+                {fieldErrors.maxGrade && (
+                  <p className="text-[0.68rem] text-red-400">
+                    {fieldErrors.maxGrade}
+                  </p>
+                )}
               </Field>
               <Field>
                 <FieldLabel
@@ -506,10 +557,36 @@ export function AssignmentDialog({
             <Button
               theme="dark"
               onClick={() => {
-                if (!formData.title || !formData.dueDate) {
-                  toast.error('Title and due date are required')
+                const parseResult =
+                  mode === 'create'
+                    ? createAssignmentSchema.safeParse({
+                        lessonId: lessonId ?? '',
+                        title: formData.title,
+                        description: formData.description || undefined,
+                        dueDate: formData.dueDate,
+                        maxGrade: formData.maxGrade || undefined,
+                      })
+                    : updateAssignmentSchema.safeParse({
+                        assignmentId: assignment?.id ?? '',
+                        title: formData.title,
+                        description: formData.description || undefined,
+                        dueDate: formData.dueDate,
+                        maxGrade: formData.maxGrade || undefined,
+                        status: formData.status,
+                      })
+
+                if (!parseResult.success) {
+                  const errors: Record<string, string> = {}
+                  for (const issue of parseResult.error.issues) {
+                    const key = issue.path[0] as string
+                    if (!errors[key]) errors[key] = issue.message
+                  }
+                  setFieldErrors(errors)
                   return
                 }
+
+                setFieldErrors({})
+
                 if (mode === 'create') {
                   if (!lessonId) return
                   createMutation.mutate({

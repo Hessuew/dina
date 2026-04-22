@@ -4,8 +4,8 @@ export const createCourseSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
   thumbnailUrl: z.url('Invalid URL').optional(),
-  teacher1Id: z.uuid('Invalid teacher ID'),
-  teacher2Id: z.uuid('Invalid teacher ID'),
+  teacher1Id: z.uuid('Invalid teacher ID').optional(),
+  teacher2Id: z.uuid('Invalid teacher ID').optional(),
   orderIndex: z.number().int().min(0).default(0),
 })
 

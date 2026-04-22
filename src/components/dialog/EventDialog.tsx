@@ -12,6 +12,7 @@ import {
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import type { CalendarEventRow } from '@/utils/events'
+import { createEventSchema, updateEventSchema } from '@/schemas/event.schema'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
@@ -98,9 +99,11 @@ export function EventDialog({
   const router = useRouter()
 
   const [formData, setFormData] = useState<EventFormData>(emptyForm)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!open) return
+    setFieldErrors({})
     if ((mode === 'edit' || mode === 'view') && event) {
       setFormData({
         title: event.title,
@@ -149,16 +152,41 @@ export function EventDialog({
     deleteMutation.status === 'pending'
 
   const handleSubmit = () => {
-    if (!formData.title || !formData.startTime || !formData.endTime) {
-      toast.error('Title, start time, and end time are required')
+    const parseData = {
+      title: formData.title,
+      description: formData.description,
+      startTime: formData.startTime ? new Date(formData.startTime) : undefined,
+      endTime: formData.endTime ? new Date(formData.endTime) : undefined,
+      location: formData.location,
+      zoomLink: formData.zoomLink,
+      category: formData.category || undefined,
+      eventId: event?.id ?? '',
+    }
+
+    const parseResult =
+      mode === 'create'
+        ? createEventSchema.safeParse(parseData)
+        : updateEventSchema.safeParse(parseData)
+
+    if (!parseResult.success) {
+      const errors: Record<string, string> = {}
+      for (const issue of parseResult.error.issues) {
+        const key = issue.path[0] as string
+        if (!errors[key]) errors[key] = issue.message
+      }
+      setFieldErrors(errors)
       return
     }
+
     const startDate = new Date(formData.startTime)
     const endDate = new Date(formData.endTime)
     if (endDate <= startDate) {
-      toast.error('End time must be after start time')
+      setFieldErrors({ endTime: 'End time must be after start time' })
       return
     }
+
+    setFieldErrors({})
+
     const payload = {
       title: formData.title,
       description: formData.description || undefined,
@@ -367,11 +395,18 @@ export function EventDialog({
                   id="event-title"
                   placeholder="Event title"
                   value={formData.title}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
+                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
+                  onChange={(e) => {
                     setFormData({ ...formData, title: e.target.value })
-                  }
+                    if (fieldErrors.title)
+                      setFieldErrors({ ...fieldErrors, title: '' })
+                  }}
                 />
+                {fieldErrors.title && (
+                  <p className="text-[0.68rem] text-red-400">
+                    {fieldErrors.title}
+                  </p>
+                )}
               </Field>
               <Field>
                 <FieldLabel
@@ -384,11 +419,18 @@ export function EventDialog({
                   id="event-start"
                   type="datetime-local"
                   value={formData.startTime}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
+                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.startTime ? 'border-red-500/60' : ''}`}
+                  onChange={(e) => {
                     setFormData({ ...formData, startTime: e.target.value })
-                  }
+                    if (fieldErrors.startTime)
+                      setFieldErrors({ ...fieldErrors, startTime: '' })
+                  }}
                 />
+                {fieldErrors.startTime && (
+                  <p className="text-[0.68rem] text-red-400">
+                    {fieldErrors.startTime}
+                  </p>
+                )}
               </Field>
               <Field>
                 <FieldLabel
@@ -401,11 +443,18 @@ export function EventDialog({
                   id="event-end"
                   type="datetime-local"
                   value={formData.endTime}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
+                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.endTime ? 'border-red-500/60' : ''}`}
+                  onChange={(e) => {
                     setFormData({ ...formData, endTime: e.target.value })
-                  }
+                    if (fieldErrors.endTime)
+                      setFieldErrors({ ...fieldErrors, endTime: '' })
+                  }}
                 />
+                {fieldErrors.endTime && (
+                  <p className="text-[0.68rem] text-red-400">
+                    {fieldErrors.endTime}
+                  </p>
+                )}
               </Field>
               <Field>
                 <FieldLabel
