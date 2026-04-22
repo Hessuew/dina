@@ -67,12 +67,8 @@
           "name": "announcements_course_id_courses_id_fk",
           "tableFrom": "announcements",
           "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -80,12 +76,8 @@
           "name": "announcements_author_id_profiles_id_fk",
           "tableFrom": "announcements",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "author_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["author_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -97,36 +89,28 @@
           "name": "view_global_announcements",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"announcements\".\"is_global\" = true"
         },
         "view_course_announcements": {
           "name": "view_course_announcements",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"announcements\".\"course_id\" IS NOT NULL AND EXISTS (\n      SELECT 1 FROM \"enrollments\"\n      WHERE course_id = \"announcements\".\"course_id\"\n      AND student_id = (select auth.uid())\n      AND status = 'active'\n    )"
         },
         "teachers_manage_own_announcements": {
           "name": "teachers_manage_own_announcements",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"announcements\".\"author_id\" = (select auth.uid()) OR (\"announcements\".\"course_id\" IS NOT NULL AND EXISTS (\n      SELECT 1 FROM \"courses\" WHERE id = \"announcements\".\"course_id\" AND teacher_id = (select auth.uid())\n    ))"
         },
         "admins_manage_all_announcements": {
           "name": "admins_manage_all_announcements",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"profiles\" WHERE id = (select auth.uid()) AND role = 'admin')"
         }
       },
@@ -196,12 +180,8 @@
           "name": "assignments_course_id_courses_id_fk",
           "tableFrom": "assignments",
           "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -213,27 +193,21 @@
           "name": "students_view_enrolled_assignments",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (\n      SELECT 1 FROM \"enrollments\"\n      WHERE course_id = \"assignments\".\"course_id\"\n      AND student_id = (select auth.uid())\n      AND status = 'active'\n    )"
         },
         "teachers_manage_own_assignments": {
           "name": "teachers_manage_own_assignments",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"courses\" WHERE id = \"assignments\".\"course_id\" AND teacher_id = (select auth.uid()))"
         },
         "admins_manage_all_assignments": {
           "name": "admins_manage_all_assignments",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"profiles\" WHERE id = (select auth.uid()) AND role = 'admin')"
         }
       },
@@ -314,12 +288,8 @@
           "name": "calendar_events_course_id_courses_id_fk",
           "tableFrom": "calendar_events",
           "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -331,36 +301,28 @@
           "name": "view_global_events",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"calendar_events\".\"course_id\" IS NULL"
         },
         "view_course_events": {
           "name": "view_course_events",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"calendar_events\".\"course_id\" IS NOT NULL AND EXISTS (\n      SELECT 1 FROM \"enrollments\"\n      WHERE course_id = \"calendar_events\".\"course_id\"\n      AND student_id = (select auth.uid())\n      AND status = 'active'\n    )"
         },
         "teachers_manage_own_events": {
           "name": "teachers_manage_own_events",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"calendar_events\".\"course_id\" IS NOT NULL AND EXISTS (\n      SELECT 1 FROM \"courses\" WHERE id = \"calendar_events\".\"course_id\" AND teacher_id = (select auth.uid())\n    )"
         },
         "admins_manage_all_events": {
           "name": "admins_manage_all_events",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"profiles\" WHERE id = (select auth.uid()) AND role = 'admin')"
         }
       },
@@ -437,12 +399,8 @@
           "name": "courses_teacher_id_profiles_id_fk",
           "tableFrom": "courses",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "teacher_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["teacher_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -454,27 +412,21 @@
           "name": "view_published_courses",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"courses\".\"is_published\" = true"
         },
         "teachers_manage_own_courses": {
           "name": "teachers_manage_own_courses",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"courses\".\"teacher_id\" = (select auth.uid())"
         },
         "admins_manage_all_courses": {
           "name": "admins_manage_all_courses",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"profiles\" WHERE id = (select auth.uid()) AND role = 'admin')"
         }
       },
@@ -564,12 +516,8 @@
           "name": "enrollments_student_id_profiles_id_fk",
           "tableFrom": "enrollments",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "student_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["student_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -577,12 +525,8 @@
           "name": "enrollments_course_id_courses_id_fk",
           "tableFrom": "enrollments",
           "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -590,12 +534,8 @@
           "name": "enrollments_approved_by_profiles_id_fk",
           "tableFrom": "enrollments",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "approved_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["approved_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -607,36 +547,28 @@
           "name": "students_view_own_enrollments",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"enrollments\".\"student_id\" = (select auth.uid())"
         },
         "students_insert_own_enrollments": {
           "name": "students_insert_own_enrollments",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "\"enrollments\".\"student_id\" = (select auth.uid()) AND \"enrollments\".\"status\" = 'pending'"
         },
         "teachers_view_course_enrollments": {
           "name": "teachers_view_course_enrollments",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"courses\" WHERE id = \"enrollments\".\"course_id\" AND teacher_id = (select auth.uid()))"
         },
         "admins_manage_all_enrollments": {
           "name": "admins_manage_all_enrollments",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"profiles\" WHERE id = (select auth.uid()) AND role = 'admin')"
         }
       },
@@ -707,12 +639,8 @@
           "name": "inquiries_student_id_profiles_id_fk",
           "tableFrom": "inquiries",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "student_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["student_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -720,12 +648,8 @@
           "name": "inquiries_course_id_courses_id_fk",
           "tableFrom": "inquiries",
           "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -737,9 +661,7 @@
           "name": "students_manage_own_inquiries",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"inquiries\".\"student_id\" = (select auth.uid())",
           "withCheck": "\"inquiries\".\"student_id\" = (select auth.uid())"
         },
@@ -747,27 +669,21 @@
           "name": "teachers_view_course_inquiries",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"courses\" WHERE id = \"inquiries\".\"course_id\" AND teacher_id = (select auth.uid()))"
         },
         "teachers_update_course_inquiries": {
           "name": "teachers_update_course_inquiries",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"courses\" WHERE id = \"inquiries\".\"course_id\" AND teacher_id = (select auth.uid()))"
         },
         "admins_manage_all_inquiries": {
           "name": "admins_manage_all_inquiries",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"profiles\" WHERE id = (select auth.uid()) AND role = 'admin')"
         }
       },
@@ -817,12 +733,8 @@
           "name": "inquiry_responses_inquiry_id_inquiries_id_fk",
           "tableFrom": "inquiry_responses",
           "tableTo": "inquiries",
-          "columnsFrom": [
-            "inquiry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["inquiry_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -830,12 +742,8 @@
           "name": "inquiry_responses_responder_id_profiles_id_fk",
           "tableFrom": "inquiry_responses",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "responder_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["responder_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -847,27 +755,21 @@
           "name": "view_inquiry_responses",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (\n      SELECT 1 FROM \"inquiries\" i\n      WHERE i.id = \"inquiry_responses\".\"inquiry_id\"\n      AND (i.student_id = (select auth.uid()) OR EXISTS (\n        SELECT 1 FROM \"courses\" c WHERE c.id = i.course_id AND c.teacher_id = (select auth.uid())\n      ))\n    )"
         },
         "teachers_respond_to_inquiries": {
           "name": "teachers_respond_to_inquiries",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "EXISTS (\n      SELECT 1 FROM \"inquiries\" i\n      JOIN \"courses\" c ON c.id = i.course_id\n      WHERE i.id = \"inquiry_responses\".\"inquiry_id\" AND c.teacher_id = (select auth.uid())\n    ) AND \"inquiry_responses\".\"responder_id\" = (select auth.uid())"
         },
         "admins_manage_all_responses": {
           "name": "admins_manage_all_responses",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"profiles\" WHERE id = (select auth.uid()) AND role = 'admin')"
         }
       },
@@ -931,12 +833,8 @@
           "name": "lesson_progress_student_id_profiles_id_fk",
           "tableFrom": "lesson_progress",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "student_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["student_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -944,12 +842,8 @@
           "name": "lesson_progress_lesson_id_lessons_id_fk",
           "tableFrom": "lesson_progress",
           "tableTo": "lessons",
-          "columnsFrom": [
-            "lesson_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["lesson_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -961,9 +855,7 @@
           "name": "students_manage_own_progress",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"lesson_progress\".\"student_id\" = (select auth.uid())",
           "withCheck": "\"lesson_progress\".\"student_id\" = (select auth.uid())"
         },
@@ -971,18 +863,14 @@
           "name": "teachers_view_course_progress",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (\n      SELECT 1 FROM \"lessons\" l\n      JOIN \"modules\" m ON m.id = l.module_id\n      JOIN \"courses\" c ON c.id = m.course_id\n      WHERE l.id = \"lesson_progress\".\"lesson_id\" AND c.teacher_id = (select auth.uid())\n    )"
         },
         "admins_view_all_progress": {
           "name": "admins_view_all_progress",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"profiles\" WHERE id = (select auth.uid()) AND role = 'admin')"
         }
       },
@@ -1076,12 +964,8 @@
           "name": "lessons_module_id_modules_id_fk",
           "tableFrom": "lessons",
           "tableTo": "modules",
-          "columnsFrom": [
-            "module_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["module_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1093,27 +977,21 @@
           "name": "view_lessons_enrolled_courses",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (\n      SELECT 1 FROM \"modules\" m\n      JOIN \"courses\" c ON c.id = m.course_id\n      JOIN \"enrollments\" e ON e.course_id = c.id\n      WHERE m.id = \"lessons\".\"module_id\"\n      AND e.student_id = (select auth.uid())\n      AND e.status = 'active'\n    )"
         },
         "teachers_manage_own_lessons": {
           "name": "teachers_manage_own_lessons",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (\n      SELECT 1 FROM \"modules\" m\n      JOIN \"courses\" c ON c.id = m.course_id\n      WHERE m.id = \"lessons\".\"module_id\" AND c.teacher_id = (select auth.uid())\n    )"
         },
         "admins_manage_all_lessons": {
           "name": "admins_manage_all_lessons",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"profiles\" WHERE id = (select auth.uid()) AND role = 'admin')"
         }
       },
@@ -1188,12 +1066,8 @@
           "name": "media_library_uploader_id_profiles_id_fk",
           "tableFrom": "media_library",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "uploader_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["uploader_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1201,12 +1075,8 @@
           "name": "media_library_course_id_courses_id_fk",
           "tableFrom": "media_library",
           "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1218,18 +1088,14 @@
           "name": "view_course_media",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"media_library\".\"course_id\" IS NULL OR EXISTS (\n      SELECT 1 FROM \"enrollments\"\n      WHERE course_id = \"media_library\".\"course_id\"\n      AND student_id = (select auth.uid())\n      AND status = 'active'\n    ) OR EXISTS (\n      SELECT 1 FROM \"courses\" WHERE id = \"media_library\".\"course_id\" AND teacher_id = (select auth.uid())\n    )"
         },
         "teachers_manage_own_media": {
           "name": "teachers_manage_own_media",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"media_library\".\"uploader_id\" = (select auth.uid())",
           "withCheck": "\"media_library\".\"uploader_id\" = (select auth.uid())"
         },
@@ -1237,9 +1103,7 @@
           "name": "admins_manage_all_media",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"profiles\" WHERE id = (select auth.uid()) AND role = 'admin')"
         }
       },
@@ -1303,12 +1167,8 @@
           "name": "modules_course_id_courses_id_fk",
           "tableFrom": "modules",
           "tableTo": "courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1320,27 +1180,21 @@
           "name": "view_modules_enrolled_courses",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (\n      SELECT 1 FROM \"enrollments\" e \n      JOIN \"courses\" c ON c.id = e.course_id \n      WHERE e.student_id = (select auth.uid())\n      AND e.status = 'active' \n      AND c.id = \"modules\".\"course_id\"\n    )"
         },
         "teachers_manage_own_modules": {
           "name": "teachers_manage_own_modules",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"courses\" WHERE id = \"modules\".\"course_id\" AND teacher_id = (select auth.uid()))"
         },
         "admins_manage_all_modules": {
           "name": "admins_manage_all_modules",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"profiles\" WHERE id = (select auth.uid()) AND role = 'admin')"
         }
       },
@@ -1410,12 +1264,8 @@
           "name": "notifications_user_id_profiles_id_fk",
           "tableFrom": "notifications",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1427,9 +1277,7 @@
           "name": "users_manage_own_notifications",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"notifications\".\"user_id\" = (select auth.uid())",
           "withCheck": "\"notifications\".\"user_id\" = (select auth.uid())"
         }
@@ -1536,9 +1384,7 @@
         "profiles_email_unique": {
           "name": "profiles_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {
@@ -1546,36 +1392,28 @@
           "name": "users_view_own_profile",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "(select auth.uid()) = \"profiles\".\"id\""
         },
         "users_update_own_profile": {
           "name": "users_update_own_profile",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "(select auth.uid()) = \"profiles\".\"id\""
         },
         "admins_view_all_profiles": {
           "name": "admins_view_all_profiles",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM profiles WHERE id = (select auth.uid()) AND role = 'admin')"
         },
         "admins_manage_all_profiles": {
           "name": "admins_manage_all_profiles",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM profiles WHERE id = (select auth.uid()) AND role = 'admin')"
         }
       },
@@ -1670,12 +1508,8 @@
           "name": "submissions_assignment_id_assignments_id_fk",
           "tableFrom": "submissions",
           "tableTo": "assignments",
-          "columnsFrom": [
-            "assignment_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["assignment_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1683,12 +1517,8 @@
           "name": "submissions_student_id_profiles_id_fk",
           "tableFrom": "submissions",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "student_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["student_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1700,9 +1530,7 @@
           "name": "students_manage_own_submissions",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"submissions\".\"student_id\" = (select auth.uid())",
           "withCheck": "\"submissions\".\"student_id\" = (select auth.uid())"
         },
@@ -1710,27 +1538,21 @@
           "name": "teachers_view_course_submissions",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (\n      SELECT 1 FROM \"assignments\" a\n      JOIN \"courses\" c ON c.id = a.course_id\n      WHERE a.id = \"submissions\".\"assignment_id\" AND c.teacher_id = (select auth.uid())\n    )"
         },
         "teachers_grade_course_submissions": {
           "name": "teachers_grade_course_submissions",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (\n      SELECT 1 FROM \"assignments\" a\n      JOIN \"courses\" c ON c.id = a.course_id\n      WHERE a.id = \"submissions\".\"assignment_id\" AND c.teacher_id = (select auth.uid())\n    )"
         },
         "admins_manage_all_submissions": {
           "name": "admins_manage_all_submissions",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "EXISTS (SELECT 1 FROM \"profiles\" WHERE id = (select auth.uid()) AND role = 'admin')"
         }
       },
@@ -1742,33 +1564,17 @@
     "public.enrollment_status": {
       "name": "enrollment_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "active",
-        "completed",
-        "dropped"
-      ]
+      "values": ["pending", "active", "completed", "dropped"]
     },
     "public.inquiry_status": {
       "name": "inquiry_status",
       "schema": "public",
-      "values": [
-        "open",
-        "in_progress",
-        "resolved",
-        "closed"
-      ]
+      "values": ["open", "in_progress", "resolved", "closed"]
     },
     "public.media_type": {
       "name": "media_type",
       "schema": "public",
-      "values": [
-        "video",
-        "audio",
-        "document",
-        "image",
-        "other"
-      ]
+      "values": ["video", "audio", "document", "image", "other"]
     },
     "public.notification_type": {
       "name": "notification_type",
@@ -1785,21 +1591,12 @@
     "public.submission_status": {
       "name": "submission_status",
       "schema": "public",
-      "values": [
-        "draft",
-        "submitted",
-        "graded",
-        "returned"
-      ]
+      "values": ["draft", "submitted", "graded", "returned"]
     },
     "public.user_role": {
       "name": "user_role",
       "schema": "public",
-      "values": [
-        "student",
-        "teacher",
-        "admin"
-      ]
+      "values": ["student", "teacher", "admin"]
     }
   },
   "schemas": {},

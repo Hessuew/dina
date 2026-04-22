@@ -9,6 +9,7 @@ This directory contains database migrations for the Discipler's Institute portal
 This migration adds Row Level Security (RLS) policies to all tables. It must be applied after the initial schema is created.
 
 **What it does:**
+
 - Enables RLS on all tables
 - Creates security policies for each user role (student, teacher, admin)
 - Enforces data access control at the database level
@@ -36,7 +37,6 @@ bun db:migrate
 
 1. **First**: Push Drizzle schema (`bun db:push`)
    - Creates all tables, enums, constraints
-   
 2. **Second**: Apply RLS policies (`bun db:migrate`)
    - Adds security policies to tables
 
