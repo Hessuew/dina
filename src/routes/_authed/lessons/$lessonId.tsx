@@ -190,20 +190,24 @@ function LessonDetailComponent() {
                 >
                   {isPublished ? 'Published' : 'Draft'}
                 </div>
-                <button
-                  type="button"
-                  className="flex size-8 items-center justify-center border border-white/12 bg-white/6 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#D4B373]"
+                <Button
+                  variant="ghost"
+                  theme="light"
+                  size="icon"
+                  className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
                   onClick={() => setLessonDialogMode('edit')}
                 >
                   <PencilIcon className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  className="flex size-8 items-center justify-center border border-white/12 bg-white/6 text-[#8E816D] transition-all hover:border-red-400/50 hover:text-red-400"
+                </Button>
+                <Button
+                  variant="ghost"
+                  theme="light"
+                  size="icon"
+                  className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-red-300 hover:text-red-600"
                   onClick={() => setLessonDialogMode('delete')}
                 >
                   <TrashIcon className="size-3.5" />
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -340,25 +344,29 @@ function LessonDetailComponent() {
                         </div>
                         {canEdit && (
                           <div className="flex shrink-0 items-center gap-2">
-                            <button
-                              type="button"
-                              className="flex size-7 items-center justify-center border border-white/10 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#D4B373]"
+                            <Button
+                              variant="ghost"
+                              theme="dark"
+                              size="icon"
+                              className="size-7 border border-white/10 text-[#8E816D] hover:border-[#C5A059]/40 hover:text-[#D4B373]"
                               onClick={() => {
                                 setAssignmentToAct(assignment)
                                 setAssignmentDialogMode('edit')
                               }}
                             >
                               <PencilIcon className="size-3" />
-                            </button>
-                            <button
-                              type="button"
-                              className="flex size-7 items-center justify-center border border-white/10 text-[#8E816D] transition-all hover:border-red-400/50 hover:text-red-400"
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              theme="dark"
+                              size="icon"
+                              className="size-7 border border-white/10 text-[#8E816D] hover:border-red-400/50 hover:text-red-400"
                               onClick={() =>
                                 handleDeleteAssignmentClick(assignment)
                               }
                             >
                               <TrashIcon className="size-3" />
-                            </button>
+                            </Button>
                           </div>
                         )}
                       </div>

@@ -10,14 +10,20 @@ import {
   PlusIcon,
   TrashIcon,
 } from 'lucide-react'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import z from 'zod'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import { db } from '@/db'
-import { courses, lessonProgress, profiles } from '@/db/schema'
+import {
+  assignments,
+  courses,
+  lessonProgress,
+  profiles,
+  submissions,
+} from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth'
 import { useMutation } from '@/hooks/useMutation'
 import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
@@ -66,6 +72,11 @@ const getCourseData = createServerFn({ method: 'GET' })
     }
 
     let progress: Array<any> = []
+    let assignmentData: {
+      totalAssignments: number
+      submittedCount: number
+      gradedCount: number
+    } = { totalAssignments: 0, submittedCount: 0, gradedCount: 0 }
 
     if (profile.role === 'student') {
       progress = await db.query.lessonProgress.findMany({
@@ -74,6 +85,34 @@ const getCourseData = createServerFn({ method: 'GET' })
           eq(lessonProgress.completed, true),
         ),
       })
+
+      const lessonIds = course.lessons.map((l) => l.id)
+      const courseAssignments =
+        lessonIds.length > 0
+          ? await db.query.assignments.findMany({
+              where: inArray(assignments.lessonId, lessonIds),
+            })
+          : []
+
+      const assignmentIds = courseAssignments.map((a) => a.id)
+      const studentSubmissions =
+        assignmentIds.length > 0
+          ? await db.query.submissions.findMany({
+              where: and(
+                eq(submissions.studentId, user.id),
+                inArray(submissions.assignmentId, assignmentIds),
+              ),
+            })
+          : []
+
+      assignmentData = {
+        totalAssignments: courseAssignments.length,
+        submittedCount: studentSubmissions.filter(
+          (s) => s.status === 'submitted',
+        ).length,
+        gradedCount: studentSubmissions.filter((s) => s.status === 'graded')
+          .length,
+      }
     }
 
     const completedLessonIds = new Set(progress.map((p) => p.lessonId))
@@ -86,6 +125,7 @@ const getCourseData = createServerFn({ method: 'GET' })
       },
       role: profile.role,
       completedLessonIds: Array.from(completedLessonIds),
+      assignmentData,
     }
   })
 
@@ -110,7 +150,7 @@ type Lesson = {
 function CourseDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
-  const { course: c, role, completedLessonIds } = loaderData
+  const { course: c, role, completedLessonIds, assignmentData } = loaderData
   const course = c as typeof loaderData.course | null
 
   const [showEditCourseDialog, setShowEditCourseDialog] = useState(false)
@@ -136,10 +176,7 @@ function CourseDetailComponent() {
   const isAdmin = role === 'admin'
   const courseTeachersData = course?.courseTeachers || []
   const canEdit = role === 'teacher' || role === 'admin'
-  const completedCount = completedLessonIds.length
   const totalLessons = course?.lessons.length || 0
-  const progressPct =
-    totalLessons > 0 ? (completedCount / totalLessons) * 100 : 0
 
   const deleteCourseMutation = useMutation({
     fn: deleteCourse,
@@ -217,9 +254,11 @@ function CourseDetailComponent() {
                   >
                     {course?.isPublished ? 'Published' : 'Draft'}
                   </div>
-                  <button
-                    type="button"
-                    className="flex size-8 items-center justify-center border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] transition-all hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
+                  <Button
+                    variant="ghost"
+                    theme="light"
+                    size="icon"
+                    className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
                     onClick={() => {
                       if (course) {
                         setEditCourseInitialData({
@@ -239,14 +278,16 @@ function CourseDetailComponent() {
                     }}
                   >
                     <PencilIcon className="size-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    className="flex size-8 items-center justify-center border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] transition-all hover:border-red-300 hover:text-red-600"
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    theme="light"
+                    size="icon"
+                    className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-red-300 hover:text-red-600"
                     onClick={() => setShowDeleteCourseDialog(true)}
                   >
                     <TrashIcon className="size-3.5" />
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
@@ -298,19 +339,43 @@ function CourseDetailComponent() {
                   </div>
                   <div className="mt-5 flex items-baseline justify-between">
                     <span className="font-serif text-2xl text-[#E9D9B4]">
-                      {completedCount}
+                      {assignmentData.submittedCount +
+                        assignmentData.gradedCount}
                     </span>
                     <span className="text-[0.68rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
-                      of {totalLessons} lesson{totalLessons !== 1 ? 's' : ''}{' '}
-                      completed
+                      of {assignmentData.totalAssignments} assignment
+                      {assignmentData.totalAssignments !== 1 ? 's' : ''}{' '}
+                      submitted
                     </span>
                   </div>
                   <div className="mt-3 h-1 w-full overflow-hidden bg-white/8">
-                    <div
-                      className="h-full bg-[#C5A059] transition-all"
-                      style={{ width: `${progressPct}%` }}
-                    />
+                    <div className="flex h-full">
+                      <div
+                        className="h-full bg-blue-500 transition-all"
+                        style={{
+                          width: `${assignmentData.totalAssignments > 0 ? (assignmentData.submittedCount / assignmentData.totalAssignments) * 100 : 0}%`,
+                        }}
+                      />
+                      <div
+                        className="h-full bg-[#9B7A41] transition-all"
+                        style={{
+                          width: `${assignmentData.totalAssignments > 0 ? (assignmentData.gradedCount / assignmentData.totalAssignments) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
                   </div>
+                  <p className="mt-2 text-[0.65rem] font-medium tracking-[0.12em] text-[#8E816D]">
+                    {assignmentData.submittedCount} submitted,{' '}
+                    {assignmentData.gradedCount} graded (
+                    {Math.round(
+                      (assignmentData.totalAssignments > 0
+                        ? (assignmentData.submittedCount +
+                            assignmentData.gradedCount) /
+                          assignmentData.totalAssignments
+                        : 0) * 100,
+                    )}
+                    %) of {assignmentData.totalAssignments} assignments
+                  </p>
                 </div>
               </div>
             )}
@@ -442,9 +507,11 @@ function CourseDetailComponent() {
                               Completed
                             </span>
                           ) : (
-                            <button
-                              type="button"
-                              className="flex size-8 items-center justify-center border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] transition-all hover:border-[#D6B16E]"
+                            <Button
+                              variant="ghost"
+                              theme="dark"
+                              size="icon"
+                              className="size-8 border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E]"
                               onClick={() =>
                                 router.navigate({
                                   to: '/lessons/$lessonId',
@@ -453,24 +520,28 @@ function CourseDetailComponent() {
                               }
                             >
                               <ArrowRight className="size-3.5" />
-                            </button>
+                            </Button>
                           ))}
                         {canEdit && (
                           <>
-                            <button
-                              type="button"
-                              className="flex size-7 items-center justify-center border border-white/10 text-[#8E816D] transition-all hover:border-[#C5A059]/40 hover:text-[#D4B373]"
+                            <Button
+                              variant="ghost"
+                              theme="dark"
+                              size="icon"
+                              className="size-7 border border-white/10 text-[#8E816D] hover:border-[#C5A059]/40 hover:text-[#D4B373]"
                               onClick={() => openLessonDialog('edit', lesson)}
                             >
                               <PencilIcon className="size-3" />
-                            </button>
-                            <button
-                              type="button"
-                              className="flex size-7 items-center justify-center border border-white/10 text-[#8E816D] transition-all hover:border-red-400/50 hover:text-red-400"
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              theme="dark"
+                              size="icon"
+                              className="size-7 border border-white/10 text-[#8E816D] hover:border-red-400/50 hover:text-red-400"
                               onClick={() => openLessonDialog('delete', lesson)}
                             >
                               <TrashIcon className="size-3" />
-                            </button>
+                            </Button>
                           </>
                         )}
                       </div>
