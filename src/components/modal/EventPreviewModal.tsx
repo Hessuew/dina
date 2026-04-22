@@ -49,17 +49,25 @@ const TYPE_CHIP: Record<string, { label: string; classes: string }> = {
     label: 'Personal',
     classes: 'border-sky-500/30 bg-sky-950/50 text-sky-300',
   },
+  other: {
+    label: 'Other',
+    classes: 'border-gray-500/30 bg-gray-950/50 text-gray-300',
+  },
 }
 
 const SPECIAL_ICONS: Record<SpecialEventCategory, React.ElementType> = {
   chapel: HeartHandshakeIcon,
   exam: AlertTriangleIcon,
   personal: UserIcon,
+  other: CalendarIcon,
 }
 
 function getChip(event: CalendarEvent) {
-  if (event.type === 'special' && event.specialCategory) {
-    return TYPE_CHIP[event.specialCategory]
+  if (event.type === 'special') {
+    if (event.specialCategory) {
+      return TYPE_CHIP[event.specialCategory]
+    }
+    return TYPE_CHIP.other
   }
   return TYPE_CHIP[event.type]
 }

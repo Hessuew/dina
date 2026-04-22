@@ -42,6 +42,7 @@ const SPECIAL_ICON: Record<SpecialEventCategory, React.ElementType> = {
   chapel: HeartHandshakeIcon,
   exam: AlertTriangleIcon,
   personal: UserIcon,
+  other: CalendarDaysIcon,
 }
 
 const SPECIAL_STYLES: Record<
@@ -62,6 +63,11 @@ const SPECIAL_STYLES: Record<
     chip: 'border-sky-500/30 bg-sky-950/40 text-sky-300',
     dot: 'bg-sky-400',
     label: 'Personal',
+  },
+  other: {
+    chip: 'border-gray-500/30 bg-gray-950/40 text-gray-300',
+    dot: 'bg-gray-400',
+    label: 'Other',
   },
 }
 
@@ -224,7 +230,7 @@ function CalendarComponent() {
               ) : (
                 <div className="divide-y divide-white/6">
                   {upcomingSpecials.map((event: CalendarEvent) => {
-                    const cat = event.specialCategory!
+                    const cat = event.specialCategory || 'other'
                     const s = SPECIAL_STYLES[cat]
                     const Icon = SPECIAL_ICON[cat]
                     return (

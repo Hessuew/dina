@@ -42,11 +42,18 @@ const EVENT_STYLES: Record<string, { dot: string; pill: string }> = {
     dot: 'bg-sky-400',
     pill: 'border-sky-500/30 bg-sky-950/50 text-sky-300 hover:bg-sky-950/70',
   },
+  other: {
+    dot: 'bg-gray-400',
+    pill: 'border-gray-500/30 bg-gray-950/50 text-gray-300 hover:bg-gray-950/70',
+  },
 }
 
 function getEventStyle(event: CalendarEvent) {
-  if (event.type === 'special' && event.specialCategory) {
-    return EVENT_STYLES[event.specialCategory]
+  if (event.type === 'special') {
+    if (event.specialCategory) {
+      return EVENT_STYLES[event.specialCategory]
+    }
+    return EVENT_STYLES.other
   }
   return EVENT_STYLES[event.type]
 }

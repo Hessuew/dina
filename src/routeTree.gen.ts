@@ -20,6 +20,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiUploadImageRouteImport } from './routes/api.upload-image'
 import { Route as AuthedTeachersRouteImport } from './routes/_authed/teachers'
 import { Route as AuthedInvitationsRouteImport } from './routes/_authed/invitations'
+import { Route as AuthedEventsRouteImport } from './routes/_authed/events'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedCalendarRouteImport } from './routes/_authed/calendar'
 import { Route as AuthedStudentsIndexRouteImport } from './routes/_authed/students/index'
@@ -84,6 +85,11 @@ const AuthedInvitationsRoute = AuthedInvitationsRouteImport.update({
   path: '/invitations',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedEventsRoute = AuthedEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthedCalendarRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/events': typeof AuthedEventsRoute
   '/invitations': typeof AuthedInvitationsRoute
   '/teachers': typeof AuthedTeachersRoute
   '/api/upload-image': typeof ApiUploadImageRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthedCalendarRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/events': typeof AuthedEventsRoute
   '/invitations': typeof AuthedInvitationsRoute
   '/teachers': typeof AuthedTeachersRoute
   '/api/upload-image': typeof ApiUploadImageRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_authed/calendar': typeof AuthedCalendarRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/events': typeof AuthedEventsRoute
   '/_authed/invitations': typeof AuthedInvitationsRoute
   '/_authed/teachers': typeof AuthedTeachersRoute
   '/api/upload-image': typeof ApiUploadImageRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/calendar'
     | '/dashboard'
+    | '/events'
     | '/invitations'
     | '/teachers'
     | '/api/upload-image'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/calendar'
     | '/dashboard'
+    | '/events'
     | '/invitations'
     | '/teachers'
     | '/api/upload-image'
@@ -251,6 +262,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_authed/calendar'
     | '/_authed/dashboard'
+    | '/_authed/events'
     | '/_authed/invitations'
     | '/_authed/teachers'
     | '/api/upload-image'
@@ -354,6 +366,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedInvitationsRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/events': {
+      id: '/_authed/events'
+      path: '/events'
+      fullPath: '/events'
+      preLoaderRoute: typeof AuthedEventsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/dashboard': {
       id: '/_authed/dashboard'
       path: '/dashboard'
@@ -423,6 +442,7 @@ declare module '@tanstack/react-router' {
 interface AuthedRouteChildren {
   AuthedCalendarRoute: typeof AuthedCalendarRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedEventsRoute: typeof AuthedEventsRoute
   AuthedInvitationsRoute: typeof AuthedInvitationsRoute
   AuthedTeachersRoute: typeof AuthedTeachersRoute
   AuthedAssignmentsAssignmentIdRoute: typeof AuthedAssignmentsAssignmentIdRoute
@@ -437,6 +457,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedCalendarRoute: AuthedCalendarRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedEventsRoute: AuthedEventsRoute,
   AuthedInvitationsRoute: AuthedInvitationsRoute,
   AuthedTeachersRoute: AuthedTeachersRoute,
   AuthedAssignmentsAssignmentIdRoute: AuthedAssignmentsAssignmentIdRoute,

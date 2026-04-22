@@ -53,6 +53,11 @@ export const invitationStatusEnum = pgEnum('invitation_status', [
   'accepted',
   'revoked',
 ])
+export const calendarEventCategoryEnum = pgEnum('calendar_event_category', [
+  'exam',
+  'chapel',
+  'personal',
+])
 
 // ============================================================================
 // TABLES
@@ -796,6 +801,7 @@ export const calendarEvents = pgTable(
     endTime: timestamp('end_time').notNull(),
     location: text('location'),
     zoomLink: text('zoom_link'),
+    category: calendarEventCategoryEnum('category'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
