@@ -1,10 +1,20 @@
 import { useState } from 'react'
-import { useServerFn } from '@tanstack/react-start'
 import { format } from 'date-fns'
 import { Mail, MoreVertical, Shield, Trash2, UserX } from 'lucide-react'
 import { toast } from 'sonner'
-import { Badge } from '@/components/ui/badge'
+import { useServerFn } from '@tanstack/react-start'
+import { createColumnHelper } from '@tanstack/react-table'
+import type { ColumnDef } from '@tanstack/react-table'
+import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,24 +22,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { DataTable } from '@/components/table/DataTable'
+import { InvitationStatusChip, RoleChip } from '@/components/table/chips'
 import { useMutation } from '@/hooks/useMutation'
 import {
   deleteInvitation,
@@ -54,6 +48,8 @@ type InvitationsTableProps = {
   invitations: Array<Invitation>
   onRefresh: () => void
 }
+
+const columnHelper = createColumnHelper<Invitation>()
 
 export function InvitationsTable({
   invitations,
@@ -94,77 +90,118 @@ export function InvitationsTable({
     },
   })
 
-  const handleResend = (id: string) => {
-    resendMutation.mutate({ data: { id } })
-  }
-
-  const handleRevoke = (id: string) => {
-    revokeMutation.mutate({ data: { id } })
-  }
-
-  const handleDeleteClick = (id: string) => {
-    setSelectedInvitationId(id)
-    setDeleteDialogOpen(true)
-  }
-
-  const handleDeleteConfirm = () => {
-    if (selectedInvitationId) {
-      deleteMutation.mutate({ data: { id: selectedInvitationId } })
-    }
-  }
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
+  const columns: Array<ColumnDef<Invitation, any>> = [
+    columnHelper.accessor('email', {
+      cell: (info) => (
+        <span className="font-medium text-[#F8F4EC]">{info.getValue()}</span>
+      ),
+      header: 'Email',
+    }),
+    columnHelper.accessor('role', {
+      cell: (info) => <RoleChip role={info.getValue()} />,
+      header: 'Role',
+    }),
+    columnHelper.accessor('status', {
+      cell: (info) => <InvitationStatusChip status={info.getValue()} />,
+      header: 'Status',
+    }),
+    columnHelper.accessor('inviter', {
+      cell: (info) => {
+        const inviter = info.getValue()
         return (
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
-            Pending
-          </Badge>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[#D6CCBE]">{inviter.fullName}</span>
+            <span className="text-[0.72rem] text-[#8E816D]">
+              {inviter.email}
+            </span>
+          </div>
         )
-      case 'accepted':
+      },
+      enableSorting: false,
+      header: 'Invited By',
+    }),
+    columnHelper.accessor('invitedAt', {
+      cell: (info) => format(new Date(info.getValue()), 'MMM d, yyyy'),
+      header: 'Invited At',
+    }),
+    columnHelper.accessor('acceptedAt', {
+      cell: (info) => {
+        const val = info.getValue()
+        return val ? format(new Date(val), 'MMM d, yyyy') : '—'
+      },
+      header: 'Accepted At',
+    }),
+    columnHelper.display({
+      cell: (info) => {
+        const invitation = info.row.original
         return (
-          <Badge variant="outline" className="bg-green-50 text-green-700">
-            Accepted
-          </Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 hover:translate-y-0"
+                >
+                  <MoreVertical className="size-3.5" />
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="end">
+              {/* <DropdownMenuItem disabled>
+                <Eye className="mr-2 size-3.5" />
+                View
+              </DropdownMenuItem> */}
+              {invitation.status === 'pending' && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() =>
+                      resendMutation.mutate({ data: { id: invitation.id } })
+                    }
+                  >
+                    <Mail className="mr-2 size-3.5" />
+                    Resend
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      revokeMutation.mutate({ data: { id: invitation.id } })
+                    }
+                  >
+                    <UserX className="mr-2 size-3.5" />
+                    Revoke
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedInvitationId(invitation.id)
+                  setDeleteDialogOpen(true)
+                }}
+                className="text-red-400 focus:text-red-400"
+              >
+                <Trash2 className="mr-2 size-3.5" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )
-      case 'revoked':
-        return (
-          <Badge variant="outline" className="bg-red-50 text-red-700">
-            Revoked
-          </Badge>
-        )
-      default:
-        return <Badge variant="outline">{status}</Badge>
-    }
-  }
-
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case 'student':
-        return <Badge variant="secondary">Student</Badge>
-      case 'teacher':
-        return (
-          <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-            Teacher
-          </Badge>
-        )
-      case 'admin':
-        return (
-          <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-            Admin
-          </Badge>
-        )
-      default:
-        return <Badge variant="secondary">{role}</Badge>
-    }
-  }
+      },
+      enableSorting: false,
+      header: 'Actions',
+      id: 'actions',
+    }),
+  ]
 
   if (invitations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <Shield className="text-muted-foreground mb-4 h-12 w-12" />
-        <h3 className="mb-2 text-lg font-semibold">No invitations yet</h3>
-        <p className="text-muted-foreground">
+        <Shield className="mb-4 size-12 text-[#8E816D]" />
+        <h3 className="mb-2 font-serif text-lg text-[#F8F4EC]">
+          No invitations yet
+        </h3>
+        <p className="text-sm text-[#8E816D]">
           Click &quot;Invite User&quot; to send your first invitation
         </p>
       </div>
@@ -173,106 +210,66 @@ export function InvitationsTable({
 
   return (
     <>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Invited By</TableHead>
-              <TableHead>Invited At</TableHead>
-              <TableHead>Accepted At</TableHead>
-              <TableHead className="w-[70px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invitations.map((invitation) => (
-              <TableRow key={invitation.id}>
-                <TableCell className="font-medium">
-                  {invitation.email}
-                </TableCell>
-                <TableCell>{getRoleBadge(invitation.role)}</TableCell>
-                <TableCell>{getStatusBadge(invitation.status)}</TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="text-sm">
-                      {invitation.inviter.fullName}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      {invitation.inviter.email}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {format(new Date(invitation.invitedAt), 'MMM d, yyyy')}
-                </TableCell>
-                <TableCell>
-                  {invitation.acceptedAt
-                    ? format(new Date(invitation.acceptedAt), 'MMM d, yyyy')
-                    : '-'}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {invitation.status === 'pending' && (
-                        <>
-                          <DropdownMenuItem
-                            onClick={() => handleResend(invitation.id)}
-                          >
-                            <Mail className="mr-2 h-4 w-4" />
-                            Resend Invitation
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleRevoke(invitation.id)}
-                          >
-                            <UserX className="mr-2 h-4 w-4" />
-                            Revoke
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteClick(invitation.id)}
-                        className="text-red-600"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        columns={columns}
+        data={invitations}
+        pageSize={10}
+        searchPlaceholder="Search by email, role, status…"
+      />
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Invitation</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this invitation? This action
-              cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent
+          className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
+          style={{
+            backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+          showCloseButton={false}
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
+          <div className="relative">
+            <DialogHeader>
+              <div className="mb-1">
+                <div className="h-px w-8 bg-[#C5A059]/40" />
+                <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                  Confirm action
+                </div>
+              </div>
+              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
+                Delete Invitation
+              </DialogTitle>
+              <DialogDescription className="text-[#AFA28F]">
+                Are you sure you want to delete this invitation? This action
+                cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
+              <Button
+                variant="outline"
+                theme="dark"
+                onClick={() => setDeleteDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="rounded-none"
+                onClick={() => {
+                  if (selectedInvitationId) {
+                    deleteMutation.mutate({
+                      data: { id: selectedInvitationId },
+                    })
+                  }
+                }}
+                disabled={deleteMutation.status === 'pending'}
+              >
+                {deleteMutation.status === 'pending' ? 'Deleting…' : 'Delete'}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

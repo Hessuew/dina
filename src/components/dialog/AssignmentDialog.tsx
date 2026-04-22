@@ -293,12 +293,16 @@ export function AssignmentDialog({
                     type="number"
                     min="0"
                     max={assignment?.maxGrade ?? 100}
-                    value={gradingData.grade}
-                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50"
+                    value={gradingData.grade === 0 ? '' : gradingData.grade}
+                    placeholder="0"
+                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                     onChange={(e) =>
                       setGradingData({
                         ...gradingData,
-                        grade: parseInt(e.target.value) || 0,
+                        grade:
+                          e.target.value === ''
+                            ? 0
+                            : parseInt(e.target.value) || 0,
                       })
                     }
                   />
@@ -430,12 +434,17 @@ export function AssignmentDialog({
                 <Input
                   id="maxGrade"
                   type="number"
-                  value={formData.maxGrade.toString()}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50"
+                  min="0"
+                  value={formData.maxGrade === 0 ? '' : formData.maxGrade}
+                  placeholder="100"
+                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      maxGrade: parseInt(e.target.value) || 100,
+                      maxGrade:
+                        e.target.value === ''
+                          ? 0
+                          : parseInt(e.target.value) || 0,
                     })
                   }
                 />

@@ -20,7 +20,7 @@ import { db } from '@/db'
 import { courses, lessonProgress, profiles } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth'
 import { useMutation } from '@/hooks/useMutation'
-import { TeacherAvatars } from '@/components/avarats/TeacherAvatars'
+import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
 import { CourseDialog } from '@/components/dialog/CourseDialog'
 import { LessonDialog } from '@/components/dialog/LessonDialog'
 import {
@@ -173,14 +173,16 @@ function CourseDetailComponent() {
       <div className="relative mx-auto max-w-7xl px-6 py-10 sm:px-8 sm:py-12">
         {/* Page header */}
         <div className="mb-10">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            theme="light"
+            size="sm"
+            className="mb-6 gap-1"
             onClick={() => router.navigate({ to: '/dashboard' })}
-            className="mb-6 flex items-center gap-2 text-[0.72rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase transition-colors hover:text-[#C5A059]"
           >
             <ChevronLeft className="size-3.5" />
             Dashboard
-          </button>
+          </Button>
 
           <div className="flex items-start justify-between gap-6">
             <div>
@@ -260,7 +262,7 @@ function CourseDetailComponent() {
               {course?.thumbnailUrl && (
                 <div className="relative overflow-hidden border-b border-white/10">
                   <div
-                    className="relative min-h-48 bg-cover bg-center sm:min-h-56"
+                    className="relative min-h-72 bg-cover bg-center sm:min-h-80"
                     style={{
                       backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.18), rgba(7,7,8,0.68)), url(${course.thumbnailUrl})`,
                     }}

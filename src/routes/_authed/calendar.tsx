@@ -109,7 +109,12 @@ function CalendarComponent() {
                 onValueChange={(value) => setSelectedType(value ?? 'all')}
               >
                 <SelectTrigger className="w-[150px] rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40">
-                  <SelectValue placeholder="Event type" />
+                  <SelectValue>
+                    {selectedType === 'all'
+                      ? 'All Events'
+                      : selectedType.charAt(0).toUpperCase() +
+                        selectedType.slice(1)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="rounded-none">
                   <SelectItem value="all">All Events</SelectItem>
@@ -123,7 +128,12 @@ function CalendarComponent() {
                   onValueChange={(value) => setSelectedCourse(value ?? 'all')}
                 >
                   <SelectTrigger className="w-[200px] rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40">
-                    <SelectValue placeholder="Filter by course" />
+                    <SelectValue>
+                      {selectedCourse === 'all'
+                        ? 'All Courses'
+                        : courses.find((c) => c.id === selectedCourse)?.name ||
+                          'Select Course'}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="rounded-none">
                     <SelectItem value="all">All Courses</SelectItem>

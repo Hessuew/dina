@@ -1,7 +1,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowRight, BookOpenIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { TeacherAvatars } from '@/components/avarats/TeacherAvatars'
+import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
 import { Button } from '@/components/ui/button'
 
 type CourseCardProps = {

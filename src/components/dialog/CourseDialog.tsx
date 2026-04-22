@@ -288,12 +288,15 @@ export function CourseDialog({
                   type="number"
                   min="0"
                   placeholder="0"
-                  value={formData.orderIndex}
+                  value={formData.orderIndex === 0 ? '' : formData.orderIndex}
                   className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      orderIndex: parseInt(e.target.value) || 0,
+                      orderIndex:
+                        e.target.value === ''
+                          ? 0
+                          : parseInt(e.target.value) || 0,
                     })
                   }
                 />

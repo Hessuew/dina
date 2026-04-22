@@ -122,7 +122,7 @@ export function UpcomingAssignmentsList({
                           className={cn(
                             'flex items-center gap-1',
                             overdue
-                              ? 'font-medium text-[#C5A059]'
+                              ? 'text-destructive font-medium'
                               : 'text-[#8E816D]',
                           )}
                         >

@@ -1,8 +1,9 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { ArrowRight, CalendarIcon, ChevronLeft } from 'lucide-react'
+import { CalendarIcon, ChevronLeft } from 'lucide-react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import { getStudentDetail } from '@/utils/students'
+import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/_authed/students/$studentId')({
   loader: async ({ params }) => {
@@ -77,32 +78,32 @@ function StudentDetailComponent() {
         </div>
 
         {/* Info card */}
-        <div className="mb-10 border border-[#1A1A1A]/10 bg-[#F8F4EC] shadow-[0_16px_28px_-24px_rgba(0,0,0,0.12)]">
+        <div className="mb-10 border border-white/10 bg-[#1A1716] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
           <div className="flex items-start gap-6 px-6 py-6">
             <div className="shrink-0">
               {student.avatarUrl ? (
                 <img
                   src={student.avatarUrl}
                   alt={student.fullName}
-                  className="size-20 border border-[#1A1A1A]/10 object-cover"
+                  className="size-20 border border-white/10 object-cover"
                 />
               ) : (
-                <div className="flex size-20 items-center justify-center border border-[#9B7A41]/30 bg-[#EDE8DE] font-serif text-2xl text-[#9B7A41]">
+                <div className="flex size-20 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-2xl text-[#E9D9B4]">
                   {initials}
                 </div>
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="h-px w-8 bg-[#C5A059]/50" />
+              <div className="h-px w-8 bg-[#C5A059]/60" />
               <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                 Student
               </div>
-              <h2 className="mt-1 font-serif text-2xl text-[#1C1815]">
+              <h2 className="mt-1 font-serif text-2xl text-[#F8F4EC]">
                 {student.fullName}
               </h2>
-              <p className="mt-0.5 text-sm text-[#8E816D]">{student.email}</p>
+              <p className="mt-0.5 text-sm text-[#AFA28F]">{student.email}</p>
               {student.bio && (
-                <p className="mt-3 text-sm leading-6 whitespace-pre-wrap text-[#5E5549]">
+                <p className="mt-3 text-sm leading-6 whitespace-pre-wrap text-[#CFC6B7]">
                   {student.bio}
                 </p>
               )}
@@ -111,7 +112,7 @@ function StudentDetailComponent() {
                   {student.enrollments.length} enrolled{' '}
                   {student.enrollments.length === 1 ? 'course' : 'courses'}
                 </span>
-                <span className="h-3 w-px bg-[#1A1A1A]/12" />
+                <span className="h-3 w-px bg-white/12" />
                 <span>
                   {student.assignments.length} submitted{' '}
                   {student.assignments.length === 1
@@ -124,7 +125,7 @@ function StudentDetailComponent() {
         </div>
 
         {/* Assignments by course */}
-        <div className="space-y-10">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {assignmentsByCourse.map(({ course, assignments }) => {
             if (assignments.length === 0) return null
 
@@ -145,97 +146,109 @@ function StudentDetailComponent() {
                   )
                 : null
 
+            const now = new Date()
+
             return (
-              <div key={course.courseId} className="space-y-4">
-                <div className="flex items-baseline justify-between gap-4">
-                  <div className="flex items-baseline gap-4">
-                    <h3 className="font-serif text-xl text-[#1C1815]">
+              <div
+                key={course.courseId}
+                className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]"
+              >
+                {/* Panel header */}
+                <div className="flex items-start justify-between px-6 py-4">
+                  <div>
+                    <div className="h-px w-8 bg-[#C5A059]/40" />
+                    <h3 className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                       {course.courseTitle}
                     </h3>
-                    <span className="text-[0.68rem] tracking-[0.18em] text-[#8E816D] uppercase">
-                      {assignments.length}{' '}
-                      {assignments.length === 1 ? 'assignment' : 'assignments'}
-                    </span>
                   </div>
                   {averageGrade !== null && (
-                    <span className="border border-[#C5A059]/40 px-3 py-1 text-[0.62rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
-                      Avg {averageGrade}%
-                    </span>
+                    <div className="border border-[#C5A059]/40 px-3 py-1 text-center">
+                      <div className="font-serif text-base text-[#E9D9B4]">
+                        {averageGrade}%
+                      </div>
+                      <div className="text-[0.55rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
+                        avg
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {assignments.map((assignment) => {
-                    const isGraded = assignment.submission?.grade !== null
+                {/* Assignment rows */}
+                <div className="px-5 pb-5">
+                  <div className="space-y-6">
+                    {assignments.map((assignment, idx) => {
+                      const isGraded = assignment.submission?.grade !== null
+                      const isSubmitted = assignment.submission !== null
+                      const overdue = new Date(assignment.dueDate) < now
 
-                    return (
-                      <div
-                        key={assignment.id}
-                        className="group border border-[#1A1A1A]/10 bg-[#F8F4EC] shadow-[0_16px_28px_-24px_rgba(0,0,0,0.12)] transition-all hover:border-[#C5A059]/30"
-                      >
-                        <div className="px-5 pt-5 pb-4">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="mt-1 h-px w-6 shrink-0 bg-[#C5A059]/40" />
-                            <span
-                              className={`shrink-0 border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase ${
-                                isGraded
-                                  ? 'border-[#C5A059]/40 text-[#9B7A41]'
-                                  : 'border-[#1A1A1A]/12 text-[#8E816D]'
-                              }`}
-                            >
-                              {isGraded ? 'Graded' : 'Submitted'}
-                            </span>
+                      return (
+                        <div
+                          key={assignment.id}
+                          className="group flex cursor-pointer items-start gap-4 border-b border-white/8 py-5 pl-1 transition-all first:pt-1 last:border-b-0 last:pb-0 hover:bg-white/8"
+                          onClick={() => handleAssignmentClick(assignment.id)}
+                        >
+                          <div className="flex size-8 shrink-0 items-center justify-center border border-[#C5A059]/50 bg-[#1A1716] font-serif text-xs text-[#E9D9B4]">
+                            {idx + 1}
                           </div>
-                          <h4 className="mt-2 font-serif text-base leading-snug text-[#1C1815]">
-                            {assignment.title}
-                          </h4>
-                          <p className="mt-1 text-[0.72rem] text-[#8E816D]">
-                            {assignment.lessonTitle}
-                          </p>
-                        </div>
-
-                        <div className="border-t border-[#1A1A1A]/8 px-5 py-3">
-                          <div className="flex items-center gap-1.5 text-[0.68rem] text-[#9B8C7C]">
-                            <CalendarIcon className="size-3" />
-                            <span>
-                              Due{' '}
-                              {new Date(
-                                assignment.dueDate,
-                              ).toLocaleDateString()}
-                            </span>
-                          </div>
-
-                          {isGraded && (
-                            <div className="mt-2 flex items-center justify-between">
-                              <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
-                                Grade
-                              </span>
-                              <span className="font-serif text-sm text-[#1C1815]">
-                                {assignment.submission?.grade} /{' '}
-                                {assignment.maxGrade ?? 100}
-                              </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[0.62rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
+                                  {assignment.title}
+                                </div>
+                                <div className="mt-1 font-serif text-base text-[#F8F4EC] group-hover:text-white">
+                                  {isGraded
+                                    ? `${assignment.submission!.grade} / ${assignment.maxGrade ?? 100}`
+                                    : isSubmitted
+                                      ? 'Submitted'
+                                      : 'Not submitted'}
+                                </div>
+                              </div>
+                              {/* <div
+                                className={`shrink-0 border px-2 py-1 text-[0.58rem] font-medium tracking-[0.18em] uppercase ${
+                                  isGraded
+                                    ? 'border-[#C5A059]/40 text-[#D4B373]'
+                                    : isSubmitted
+                                      ? 'border-white/20 text-[#AFA28F]'
+                                      : 'border-white/12 text-[#8E816D]'
+                                }`}
+                              >
+                                {isGraded
+                                  ? 'Graded'
+                                  : isSubmitted
+                                    ? 'Submitted'
+                                    : 'Pending'}
+                              </div> */}
                             </div>
-                          )}
-
-                          {/* Footer action */}
-                          <div className="mt-3 flex items-center justify-between border-t border-[#1A1A1A]/8 pt-3">
-                            <span className="text-[0.68rem] font-medium tracking-[0.2em] text-[#5E5549] uppercase">
-                              View assignment
-                            </span>
-                            <Button
-                              theme="light"
-                              size="icon"
-                              onClick={() =>
-                                handleAssignmentClick(assignment.id)
-                              }
-                            >
-                              <ArrowRight className="size-3.5" />
-                            </Button>
+                            <div className="mt-1.5 flex items-center gap-1 text-xs">
+                              <div
+                                className={cn(
+                                  'flex items-center gap-1',
+                                  overdue
+                                    ? 'text-destructive font-medium'
+                                    : 'text-[#8E816D]',
+                                )}
+                              >
+                                <CalendarIcon className="size-3" />
+                                Due{' '}
+                                {new Date(
+                                  assignment.dueDate,
+                                ).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                })}
+                              </div>
+                              {overdue && !isGraded && (
+                                <span className="ml-1 text-[#C5A059]">
+                                  (Overdue)
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             )
