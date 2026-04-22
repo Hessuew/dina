@@ -66,7 +66,7 @@ function StudentDetailComponent() {
             onClick={() => router.navigate({ to: '/students' })}
           >
             <ChevronLeft className="size-3.5" />
-            All Students
+            Back
           </Button>
           <div className="h-px w-10 bg-[#C5A059]/50" />
           <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">

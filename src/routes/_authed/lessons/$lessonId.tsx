@@ -135,7 +135,7 @@ function LessonDetailComponent() {
             onClick={goBack}
           >
             <ChevronLeft className="size-3.5" />
-            {lesson.course.title}
+            Back
           </Button>
 
           <div className="flex items-start justify-between gap-6">
