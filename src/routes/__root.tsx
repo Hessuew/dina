@@ -19,8 +19,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import appCss from '@/styles/app.css?url'
 import { seo } from '@/utils/seo'
 
-import { db } from '@/db'
-import { profiles } from '@/db/schema'
+import { getDb } from '@/db'
 import { getSupabaseServerClient } from '@/utils/supabase'
 import { AppSidebar } from '@/components/navigation/AppSidebar'
 
@@ -33,10 +32,10 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   }
 
   // Fetch user profile to get avatarUrl and fullName
-  const { eq } = await import('drizzle-orm')
+  const db = await getDb()
 
   const profile = await db.query.profiles.findFirst({
-    where: eq(profiles.id, data.user.id),
+    where: (t, { eq }) => eq(t.id, data.user.id),
     columns: {
       avatarUrl: true,
       bio: true,

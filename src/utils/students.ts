@@ -4,7 +4,7 @@ import type {
   StudentDetailWithAssignments,
   StudentWithStats,
 } from '@/types/student'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import {
   assignments,
   courses,
@@ -16,6 +16,8 @@ import { getStudentDetailSchema } from '@/schemas/student.schema'
 
 export const getStudents = createServerFn({ method: 'GET' }).handler(
   async () => {
+    const db = await getDb()
+
     const students = await db.query.profiles.findMany({
       where: eq(profiles.role, 'student'),
       orderBy: (p, { asc }) => [asc(p.fullName)],
@@ -114,6 +116,8 @@ export const getStudents = createServerFn({ method: 'GET' }).handler(
 export const getStudentDetail = createServerFn({ method: 'POST' })
   .inputValidator(getStudentDetailSchema)
   .handler(async ({ data }) => {
+    const db = await getDb()
+
     const student = await db.query.profiles.findFirst({
       where: and(eq(profiles.id, data.studentId), eq(profiles.role, 'student')),
     })

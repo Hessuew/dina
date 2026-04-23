@@ -16,7 +16,7 @@ import { toast } from 'sonner'
 import z from 'zod'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import {
   assignments,
   courses,
@@ -44,6 +44,7 @@ const getCourseData = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ courseId: z.uuid() }))
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const course = await db.query.courses.findFirst({
       where: eq(courses.id, data.courseId),

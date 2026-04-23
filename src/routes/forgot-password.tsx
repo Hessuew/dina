@@ -4,19 +4,18 @@ import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
 import { render } from '@react-email/render'
 import { Resend } from 'resend'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 import { env } from '@/env'
 import { ForgotPasswordForm } from '@/components/auth/forgot-password-form'
 import { PasswordResetEmail } from '@/emails/PasswordResetEmail'
 import { requestPasswordResetSchema } from '@/schemas/auth.schema'
 
-const resend = new Resend(env.RESEND_API_KEY)
-
 export const requestPasswordResetFn = createServerFn({ method: 'POST' })
   .inputValidator(requestPasswordResetSchema)
   .handler(async ({ data }) => {
     const email = data.email.toLowerCase().trim()
+    const db = await getDb()
 
     // Find user by email
     const user = await db.query.profiles.findFirst({
@@ -66,7 +65,7 @@ export const requestPasswordResetFn = createServerFn({ method: 'POST' })
       .where(eq(profiles.id, user.id))
 
     // Build reset link
-    const appUrl = env.APP_URL || env.SERVER_URL || 'http://localhost:3000'
+    const appUrl = env.APP_URL || 'http://localhost:3000'
     const resetLink = `${appUrl}/reset-password?token=${resetToken}`
 
     // Send email
@@ -77,6 +76,7 @@ export const requestPasswordResetFn = createServerFn({ method: 'POST' })
       }),
     )
 
+    const resend = new Resend(env.RESEND_API_KEY)
     const { error: emailError } = await resend.emails.send({
       from: env.RESEND_FROM_EMAIL,
       to: email,

@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import { courses, profiles } from '@/db/schema'
 import {
   uploadAvatarSchema,
@@ -103,6 +103,7 @@ export const uploadAvatarFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     try {
       const user = await getCurrentUser()
+      const db = await getDb()
 
       // Get current profile to find old avatar
       const currentProfile = await db.query.profiles.findFirst({
@@ -152,6 +153,7 @@ export const uploadCourseThumbnailFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     try {
       await getCurrentUser()
+      const db = await getDb()
 
       // Get current course to find old thumbnail
       const currentCourse = await db.query.courses.findFirst({

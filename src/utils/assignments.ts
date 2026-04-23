@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { and, eq } from 'drizzle-orm'
 import z from 'zod'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import {
   deleteAssignmentSchema,
   getAssignmentSchema,
@@ -25,6 +25,7 @@ export const getLesson = createServerFn({ method: 'GET' })
   .inputValidator(getLessonSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const lesson = await db.query.lessons.findFirst({
       where: eq(lessons.id, data.lessonId),
@@ -66,6 +67,7 @@ export const getAssignmentsByLesson = createServerFn({ method: 'GET' })
   .inputValidator(getAssignmentsByLessonSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.id, user.id),
@@ -102,6 +104,7 @@ export const getAssignment = createServerFn({ method: 'GET' })
   .inputValidator(getAssignmentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const assignment = await db.query.assignments.findFirst({
       where: eq(assignments.id, data.assignmentId),
@@ -167,6 +170,7 @@ export const createAssignment = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const lesson = await db.query.lessons.findFirst({
       where: eq(lessons.id, data.lessonId),
@@ -201,6 +205,7 @@ export const updateAssignment = createServerFn({ method: 'POST' })
   .inputValidator(updateAssignmentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const assignment = await db.query.assignments.findFirst({
       where: eq(assignments.id, data.assignmentId),
@@ -240,6 +245,7 @@ export const getAssignmentSubmissionCount = createServerFn({ method: 'GET' })
   .inputValidator(getAssignmentSubmissionCountSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const assignment = await db.query.assignments.findFirst({
       where: eq(assignments.id, data.assignmentId),
@@ -267,6 +273,7 @@ export const deleteAssignment = createServerFn({ method: 'POST' })
   .inputValidator(deleteAssignmentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const assignment = await db.query.assignments.findFirst({
       where: eq(assignments.id, data.assignmentId),
@@ -302,6 +309,7 @@ export const getSubmission = createServerFn({ method: 'GET' })
   .inputValidator(getSubmissionSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const submission = await db.query.submissions.findFirst({
       where: and(
@@ -324,6 +332,7 @@ export const createOrUpdateSubmission = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const assignment = await db.query.assignments.findFirst({
       where: eq(assignments.id, data.assignmentId),
@@ -390,6 +399,7 @@ export const getAllAssignmentsForStudent = createServerFn({
   method: 'GET',
 }).handler(async () => {
   const user = await getCurrentUser()
+  const db = await getDb()
 
   const profile = await db.query.profiles.findFirst({
     where: eq(profiles.id, user.id),
@@ -439,6 +449,7 @@ export const getAllAssignmentsForTeacher = createServerFn({
   method: 'GET',
 }).handler(async () => {
   const user = await getCurrentUser()
+  const db = await getDb()
 
   const profile = await db.query.profiles.findFirst({
     where: eq(profiles.id, user.id),
@@ -523,6 +534,7 @@ export const getAssignmentSubmissions = createServerFn({ method: 'GET' })
   .inputValidator(getAssignmentSubmissionsSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const assignment = await db.query.assignments.findFirst({
       where: eq(assignments.id, data.assignmentId),
@@ -564,6 +576,7 @@ export const gradeSubmission = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const assignment = await db.query.assignments.findFirst({
       where: eq(assignments.id, data.assignmentId),

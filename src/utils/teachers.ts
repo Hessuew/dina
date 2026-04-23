@@ -1,10 +1,12 @@
 import { createServerFn } from '@tanstack/react-start'
 import { eq, inArray } from 'drizzle-orm'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import { courseTeachers, profiles } from '@/db/schema'
 
 export const getTeachers = createServerFn({ method: 'GET' }).handler(
   async () => {
+    const db = await getDb()
+
     const teachers = await db.query.profiles.findMany({
       where: inArray(profiles.role, ['teacher', 'admin']),
       orderBy: (t, { asc }) => [asc(t.fullName)],

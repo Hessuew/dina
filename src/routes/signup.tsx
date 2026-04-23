@@ -4,7 +4,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
 import { Resend } from 'resend'
 import { render } from '@react-email/render'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import { invitations, profiles } from '@/db/schema'
 import { env } from '@/env'
 import {
@@ -19,13 +19,12 @@ import {
   verifyOtpSchema,
 } from '@/schemas/auth.schema'
 
-const resend = new Resend(env.RESEND_API_KEY)
-
 export const verifyOtpFn = createServerFn({ method: 'POST' })
   .inputValidator(verifyOtpSchema)
   .handler(async ({ data }) => {
     const supabase = getSupabaseServerClient()
     const supabaseAdmin = getSupabaseAdminClient()
+    const db = await getDb()
 
     // Find invitation by token
     const invitation = await db.query.invitations.findFirst({
@@ -139,6 +138,7 @@ export const verifyOtpFn = createServerFn({ method: 'POST' })
 export const resendOtpFn = createServerFn({ method: 'POST' })
   .inputValidator(resendOtpSchema)
   .handler(async ({ data }) => {
+    const db = await getDb()
     // Find invitation by token
     const invitation = await db.query.invitations.findFirst({
       where: eq(invitations.token, data.invitationToken),
@@ -166,8 +166,11 @@ export const resendOtpFn = createServerFn({ method: 'POST' })
       }
     }
 
-    // Generate new OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString()
+    // Generate new OTP using cryptographically secure random
+    const otp = (
+      (crypto.randomBytes(3).readUIntBE(0, 3) % 900000) +
+      100000
+    ).toString()
     const otpHash = crypto.createHash('sha256').update(otp).digest('hex')
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000)
 
@@ -190,6 +193,7 @@ export const resendOtpFn = createServerFn({ method: 'POST' })
       }),
     )
 
+    const resend = new Resend(env.RESEND_API_KEY)
     const { error: emailError } = await resend.emails.send({
       from: env.RESEND_FROM_EMAIL,
       to: data.email,
@@ -214,6 +218,7 @@ export const resendOtpFn = createServerFn({ method: 'POST' })
 export const signupFn = createServerFn({ method: 'POST' })
   .inputValidator(signupSchema)
   .handler(async ({ data }) => {
+    const db = await getDb()
     // Validate invitation token
     const invitation = await db.query.invitations.findFirst({
       where: eq(invitations.token, data.token),
@@ -296,8 +301,11 @@ export const signupFn = createServerFn({ method: 'POST' })
         })
         .where(eq(invitations.id, invitation.id))
 
-      // Generate 6-digit OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString()
+      // Generate 6-digit OTP using cryptographically secure random
+      const otp = (
+        (crypto.randomBytes(3).readUIntBE(0, 3) % 900000) +
+        100000
+      ).toString()
       const otpHash = crypto.createHash('sha256').update(otp).digest('hex')
       const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
 
@@ -320,6 +328,7 @@ export const signupFn = createServerFn({ method: 'POST' })
         }),
       )
 
+      const resend = new Resend(env.RESEND_API_KEY)
       const { error: emailError } = await resend.emails.send({
         from: env.RESEND_FROM_EMAIL,
         to: data.email,

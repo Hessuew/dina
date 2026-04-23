@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { and, eq, gt, inArray } from 'drizzle-orm'
 import z from 'zod'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import {
   deleteCourseSchema,
   updateCourseSchema,
@@ -25,6 +25,7 @@ import { getCurrentUser } from '@/utils/auth'
 export const getCourses = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.id, user.id),
@@ -106,6 +107,7 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
 export const getUpcomingLessons = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.id, user.id),
@@ -150,6 +152,7 @@ export const getUpcomingLessons = createServerFn({ method: 'GET' }).handler(
 export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.id, user.id),
@@ -232,6 +235,7 @@ export const createCourse = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.id, user.id),
@@ -293,6 +297,7 @@ export const updateCourse = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { requireTeacherOfCourse, isAdmin } = await import('@/utils/auth')
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const userIsAdmin = await isAdmin(user.id)
 
@@ -367,6 +372,7 @@ export const deleteCourse = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { requireTeacherOfCourse, isAdmin } = await import('@/utils/auth')
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const userIsAdmin = await isAdmin(user.id)
 
@@ -385,6 +391,7 @@ export const createLesson = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { requireTeacherOfCourse } = await import('@/utils/auth')
     const user = await getCurrentUser()
+    const db = await getDb()
 
     await requireTeacherOfCourse(user.id, data.courseId)
 
@@ -411,6 +418,7 @@ export const updateLesson = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { requireTeacherOfCourse } = await import('@/utils/auth')
     const user = await getCurrentUser()
+    const db = await getDb()
 
     await requireTeacherOfCourse(user.id, data.courseId)
 
@@ -438,6 +446,7 @@ export const deleteLesson = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { requireTeacherOfCourse } = await import('@/utils/auth')
     const user = await getCurrentUser()
+    const db = await getDb()
 
     await requireTeacherOfCourse(user.id, data.courseId)
 
@@ -449,6 +458,7 @@ export const deleteLesson = createServerFn({ method: 'POST' })
 export const getAllTeachers = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.id, user.id),
@@ -477,6 +487,7 @@ export const getCourseTeachers = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ courseId: z.uuid() }))
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.id, user.id),
@@ -509,6 +520,7 @@ export const updateCourseTeachers = createServerFn({ method: 'POST' })
   .inputValidator(updateCourseTeachersSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const db = await getDb()
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.id, user.id),

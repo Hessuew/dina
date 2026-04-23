@@ -1,13 +1,8 @@
 import { createServerFn } from '@tanstack/react-start'
 import { LandingPublicHeader } from '@/components/landing/hero'
 import { SidebarTrigger } from '@/components/ui/sidebar'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 import { useMutation } from '@/hooks/useMutation'
 import { getCurrentUser } from '@/utils/auth'
@@ -17,7 +12,7 @@ type User = {
   email: string
   fullName?: string
   avatarUrl?: string | null
-  role?: 'student' | 'teacher'
+  role?: 'student' | 'teacher' | 'admin'
 }
 
 type HeaderProps = {
@@ -29,6 +24,7 @@ export const toggleUserRole = createServerFn({ method: 'POST' }).handler(
     const user = await getCurrentUser()
 
     const { eq } = await import('drizzle-orm')
+    const db = await getDb()
 
     // Get current user role
     const profile = await db.query.profiles.findFirst({
@@ -80,14 +76,7 @@ export function Header({ user }: HeaderProps) {
 
   return (
     <header className="absolute top-0 z-40 flex h-12 w-full shrink-0 flex-row items-center justify-between bg-transparent px-4">
-      <Tooltip>
-        <TooltipTrigger>
-          <SidebarTrigger className="-ml-1 text-[#C5A059] hover:text-[#D6B16E]" />
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          <p className="text-[0.7rem]">(CTRL = B)</p>
-        </TooltipContent>
-      </Tooltip>
+      <SidebarTrigger className="-ml-1 text-[#C5A059] hover:text-[#D6B16E]" />
 
       {(isTeacher || isStudent) && (
         <Button
