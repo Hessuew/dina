@@ -22,7 +22,7 @@ import {
 } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth'
 
-export const getCourses = createServerFn({ method: 'GET' }).handler(
+export const getCourses = createServerFn({ method: 'POST' }).handler(
   async () => {
     const user = await getCurrentUser()
     const db = await getDb()
@@ -104,7 +104,7 @@ export const getCourses = createServerFn({ method: 'GET' }).handler(
   },
 )
 
-export const getUpcomingLessons = createServerFn({ method: 'GET' }).handler(
+export const getUpcomingLessons = createServerFn({ method: 'POST' }).handler(
   async () => {
     const user = await getCurrentUser()
     const db = await getDb()
@@ -149,7 +149,7 @@ export const getUpcomingLessons = createServerFn({ method: 'GET' }).handler(
   },
 )
 
-export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
+export const getCalendarEvents = createServerFn({ method: 'POST' }).handler(
   async () => {
     const user = await getCurrentUser()
     const db = await getDb()
@@ -455,7 +455,7 @@ export const deleteLesson = createServerFn({ method: 'POST' })
     return { success: true, lessonId: data.lessonId }
   })
 
-export const getAllTeachers = createServerFn({ method: 'GET' }).handler(
+export const getAllTeachers = createServerFn({ method: 'POST' }).handler(
   async () => {
     const user = await getCurrentUser()
     const db = await getDb()
@@ -483,7 +483,7 @@ export const getAllTeachers = createServerFn({ method: 'GET' }).handler(
   },
 )
 
-export const getCourseTeachers = createServerFn({ method: 'GET' })
+export const getCourseTeachers = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ courseId: z.uuid() }))
   .handler(async ({ data }) => {
     const user = await getCurrentUser()

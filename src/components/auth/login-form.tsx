@@ -189,17 +189,9 @@ export function LoginForm({ verified = false }: LoginFormProps) {
                     </Field>
 
                     <Field>
-                      <div className="flex items-center justify-between">
-                        <FieldLabel theme="dark" htmlFor="password-v2">
-                          Password
-                        </FieldLabel>
-                        <Link
-                          to="/forgot-password"
-                          className="text-[0.72rem] text-[#9B7A41] underline-offset-4 transition-colors hover:underline"
-                        >
-                          Forgot your password?
-                        </Link>
-                      </div>
+                      <FieldLabel theme="dark" htmlFor="password-v2">
+                        Password
+                      </FieldLabel>
                       <Input
                         id="password-v2"
                         name="password"
@@ -208,6 +200,15 @@ export function LoginForm({ verified = false }: LoginFormProps) {
                         theme="dark"
                       />
                     </Field>
+
+                    <div className="flex items-center justify-between">
+                      <Link
+                        to="/forgot-password"
+                        className="text-[0.72rem] text-[#9B7A41] underline-offset-4 transition-colors hover:underline"
+                      >
+                        Forgot your password?
+                      </Link>
+                    </div>
 
                     <Field className="pt-2">
                       <button

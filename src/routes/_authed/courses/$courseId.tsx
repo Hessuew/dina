@@ -40,7 +40,7 @@ import {
 import { deleteCourse } from '@/utils/courses'
 import { cn } from '@/lib/utils'
 
-const getCourseData = createServerFn({ method: 'GET' })
+const getCourseData = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ courseId: z.uuid() }))
   .handler(async ({ data }) => {
     const user = await getCurrentUser()

@@ -21,7 +21,7 @@ import {
 } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth'
 
-export const getLesson = createServerFn({ method: 'GET' })
+export const getLesson = createServerFn({ method: 'POST' })
   .inputValidator(getLessonSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
@@ -63,7 +63,7 @@ export const getLesson = createServerFn({ method: 'GET' })
     }
   })
 
-export const getAssignmentsByLesson = createServerFn({ method: 'GET' })
+export const getAssignmentsByLesson = createServerFn({ method: 'POST' })
   .inputValidator(getAssignmentsByLessonSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
@@ -100,7 +100,7 @@ export const getAssignmentsByLesson = createServerFn({ method: 'GET' })
     }
   })
 
-export const getAssignment = createServerFn({ method: 'GET' })
+export const getAssignment = createServerFn({ method: 'POST' })
   .inputValidator(getAssignmentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
@@ -241,7 +241,7 @@ export const updateAssignment = createServerFn({ method: 'POST' })
     return { assignment: updatedAssignment }
   })
 
-export const getAssignmentSubmissionCount = createServerFn({ method: 'GET' })
+export const getAssignmentSubmissionCount = createServerFn({ method: 'POST' })
   .inputValidator(getAssignmentSubmissionCountSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
@@ -305,7 +305,7 @@ export const deleteAssignment = createServerFn({ method: 'POST' })
     return { success: true }
   })
 
-export const getSubmission = createServerFn({ method: 'GET' })
+export const getSubmission = createServerFn({ method: 'POST' })
   .inputValidator(getSubmissionSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
@@ -396,7 +396,7 @@ export const createOrUpdateSubmission = createServerFn({ method: 'POST' })
   })
 
 export const getAllAssignmentsForStudent = createServerFn({
-  method: 'GET',
+  method: 'POST',
 }).handler(async () => {
   const user = await getCurrentUser()
   const db = await getDb()
@@ -446,7 +446,7 @@ export const getAllAssignmentsForStudent = createServerFn({
 })
 
 export const getAllAssignmentsForTeacher = createServerFn({
-  method: 'GET',
+  method: 'POST',
 }).handler(async () => {
   const user = await getCurrentUser()
   const db = await getDb()
@@ -530,7 +530,7 @@ export const getAllAssignmentsForTeacher = createServerFn({
   return { assignments: assignmentsWithStats }
 })
 
-export const getAssignmentSubmissions = createServerFn({ method: 'GET' })
+export const getAssignmentSubmissions = createServerFn({ method: 'POST' })
   .inputValidator(getAssignmentSubmissionsSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()

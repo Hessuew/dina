@@ -33,13 +33,13 @@ import {
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { cn } from '@/lib/utils'
 
-const getAssignmentData = createServerFn({ method: 'GET' })
+const getAssignmentData = createServerFn({ method: 'POST' })
   .inputValidator((d: { assignmentId: string }) => d)
   .handler(async ({ data }) => {
     return await getAssignment({ data })
   })
 
-const getSubmissionsData = createServerFn({ method: 'GET' })
+const getSubmissionsData = createServerFn({ method: 'POST' })
   .inputValidator((d: { assignmentId: string }) => d)
   .handler(async ({ data }) => {
     return await getAssignmentSubmissions({ data })

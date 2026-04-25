@@ -1,4 +1,4 @@
-import { FileText, Mail, MapPin, Phone } from 'lucide-react'
+import { FileText, Landmark, Mail, MapPin, Phone } from 'lucide-react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 
 export function LandingOfficialInfo() {
@@ -23,7 +23,7 @@ export function LandingOfficialInfo() {
             <div className="mx-auto mt-6 h-px w-16 bg-[#9B8A73]/50" />
           </div>
 
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             <div className="group space-y-4 border border-[#C5A059]/20 bg-white/70 p-6 backdrop-blur-sm transition-all hover:border-[#C5A059]/50 hover:bg-white/90">
               <div className="flex h-12 w-12 items-center justify-center rounded-sm border border-[#C5A059]/30 bg-[#C5A059]/10">
                 <Mail className="h-5 w-5 text-[#9B7A41]" />
@@ -89,6 +89,23 @@ export function LandingOfficialInfo() {
                   <div className="text-xs text-[#8A7355]">
                     Registered in England
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="group space-y-4 border border-[#C5A059]/20 bg-white/70 p-6 backdrop-blur-sm transition-all hover:border-[#C5A059]/50 hover:bg-white/90 sm:col-span-2 lg:col-span-1">
+              <div className="flex h-12 w-12 items-center justify-center rounded-sm border border-[#C5A059]/30 bg-[#C5A059]/10">
+                <Landmark className="h-5 w-5 text-[#9B7A41]" />
+              </div>
+              <div>
+                <div className="mb-2 text-[0.65rem] font-medium tracking-[0.25em] text-[#8A7355] uppercase">
+                  Bank Account
+                </div>
+                <div className="space-y-1 text-sm text-[#2C2218]">
+                  <div className="font-mono tracking-wide">
+                    FI00 0000 0000 0000 00
+                  </div>
+                  <div className="text-xs text-[#8A7355]">BIC: XXXXXXXX</div>
                 </div>
               </div>
             </div>

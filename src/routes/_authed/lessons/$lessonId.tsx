@@ -18,7 +18,7 @@ import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { LessonDialog } from '@/components/dialog/LessonDialog'
 import { cn } from '@/lib/utils'
 
-const getLessonData = createServerFn({ method: 'GET' })
+const getLessonData = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ lessonId: z.uuid() }))
   .handler(async ({ data }) => {
     return await getLesson({ data })
