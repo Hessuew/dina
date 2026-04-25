@@ -96,9 +96,7 @@ export const updateEvent = createServerFn({ method: 'POST' })
 export const deleteEvent = createServerFn({ method: 'POST' })
   .inputValidator(deleteEventSchema)
   .handler(async ({ data }) => {
-    await db
-      .delete(calendarEvents)
-      .where(eq(calendarEvents.id, data.eventId))
+    await db.delete(calendarEvents).where(eq(calendarEvents.id, data.eventId))
 
     return { success: true }
   })
