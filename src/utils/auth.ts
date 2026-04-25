@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import { courseTeachers, profiles } from '@/db/schema'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
@@ -43,6 +43,7 @@ export async function requireRole(
   userId: string,
   role: 'student' | 'teacher' | 'admin',
 ): Promise<void> {
+  const db = await getDb()
   const user = await db.query.profiles.findFirst({
     where: eq(profiles.id, userId),
   })
@@ -82,6 +83,7 @@ export async function requireTeacherOfCourse(
   userId: string,
   courseId: string,
 ): Promise<void> {
+  const db = await getDb()
   const isTeacher = await db.query.courseTeachers.findFirst({
     where: and(
       eq(courseTeachers.courseId, courseId),
@@ -105,6 +107,7 @@ export async function getCourseAccess(
   courseId: string,
 ): Promise<'teacher' | 'student'> {
   // Check if teacher via course_teachers junction table
+  const db = await getDb()
   const isTeacher = await db.query.courseTeachers.findFirst({
     where: and(
       eq(courseTeachers.courseId, courseId),
@@ -124,6 +127,7 @@ export async function getCourseAccess(
  * @param userId - The Supabase user ID (UUID)
  */
 export async function getUserProfile(userId: string) {
+  const db = await getDb()
   const user = await db.query.profiles.findFirst({
     where: eq(profiles.id, userId),
   })
@@ -140,6 +144,7 @@ export async function getUserProfile(userId: string) {
  * @param userId - The Supabase user ID (UUID)
  */
 export async function isAdmin(userId: string): Promise<boolean> {
+  const db = await getDb()
   const user = await db.query.profiles.findFirst({
     where: eq(profiles.id, userId),
   })

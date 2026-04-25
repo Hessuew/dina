@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { and, eq, isNotNull } from 'drizzle-orm'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import { assignments, calendarEvents, courses, lessons } from '@/db/schema'
 
 export type SpecialEventCategory = 'exam' | 'chapel' | 'personal' | 'other'
@@ -20,6 +20,7 @@ export type CalendarEvent = {
 
 export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
   async () => {
+    const db = await getDb()
     const publishedLessons = await db
       .select({
         id: lessons.id,

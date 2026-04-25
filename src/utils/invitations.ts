@@ -3,7 +3,8 @@ import { createServerFn } from '@tanstack/react-start'
 import { render } from '@react-email/render'
 import { eq } from 'drizzle-orm'
 import { Resend } from 'resend'
-import { db } from '@/db'
+import { getCurrentUser } from './auth'
+import { getDb } from '@/db'
 import { env } from '@/env'
 import { invitations, profiles } from '@/db/schema'
 import {
@@ -15,9 +16,6 @@ import {
   revokeInvitationSchema,
 } from '@/schemas/invitation.schema'
 import { InvitationEmail } from '@/emails/InvitationEmail'
-import { getSupabaseServerClient } from '@/utils/supabase'
-
-const resend = new Resend(env.RESEND_API_KEY)
 
 function generateSecureToken(): string {
   return crypto.randomBytes(32).toString('hex')
@@ -26,14 +24,8 @@ function generateSecureToken(): string {
 export const createInvitation = createServerFn({ method: 'POST' })
   .inputValidator(createInvitationSchema)
   .handler(async ({ data }) => {
-    const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return { error: true, message: 'Unauthorized' }
-    }
+    const user = await getCurrentUser()
+    const db = await getDb()
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.id, user.id),
@@ -92,6 +84,7 @@ export const createInvitation = createServerFn({ method: 'POST' })
       }),
     )
 
+    const resend = new Resend(env.RESEND_API_KEY)
     const { error: emailError } = await resend.emails.send({
       from: env.RESEND_FROM_EMAIL,
       to: data.email,
@@ -111,6 +104,7 @@ export const createInvitation = createServerFn({ method: 'POST' })
 export const checkInvitationByEmail = createServerFn({ method: 'GET' })
   .inputValidator(checkInvitationByEmailSchema)
   .handler(async ({ data }) => {
+    const db = await getDb()
     const invitation = await db.query.invitations.findFirst({
       where: eq(invitations.email, data.email),
     })
@@ -147,6 +141,7 @@ export const getInvitationByToken = createServerFn({ method: 'GET' })
       return { error: true, message: 'No token provided' }
     }
 
+    const db = await getDb()
     const invitation = await db.query.invitations.findFirst({
       where: eq(invitations.token, data.token),
     })
@@ -178,14 +173,8 @@ export const getInvitationByToken = createServerFn({ method: 'GET' })
 
 export const getInvitations = createServerFn({ method: 'GET' }).handler(
   async () => {
-    const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return { error: true, message: 'Unauthorized' }
-    }
+    const user = await getCurrentUser()
+    const db = await getDb()
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.id, user.id),
@@ -214,6 +203,7 @@ export const getInvitations = createServerFn({ method: 'GET' }).handler(
 export const getInvitationByEmail = createServerFn({ method: 'GET' })
   .inputValidator(checkInvitationByEmailSchema)
   .handler(async ({ data }) => {
+    const db = await getDb()
     const invitation = await db.query.invitations.findFirst({
       where: eq(invitations.email, data.email),
     })
@@ -228,14 +218,8 @@ export const getInvitationByEmail = createServerFn({ method: 'GET' })
 export const revokeInvitation = createServerFn({ method: 'POST' })
   .inputValidator(revokeInvitationSchema)
   .handler(async ({ data }) => {
-    const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return { error: true, message: 'Unauthorized' }
-    }
+    const user = await getCurrentUser()
+    const db = await getDb()
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.id, user.id),
@@ -259,14 +243,8 @@ export const revokeInvitation = createServerFn({ method: 'POST' })
 export const deleteInvitation = createServerFn({ method: 'POST' })
   .inputValidator(deleteInvitationSchema)
   .handler(async ({ data }) => {
-    const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return { error: true, message: 'Unauthorized' }
-    }
+    const user = await getCurrentUser()
+    const db = await getDb()
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.id, user.id),
@@ -284,14 +262,8 @@ export const deleteInvitation = createServerFn({ method: 'POST' })
 export const resendInvitation = createServerFn({ method: 'POST' })
   .inputValidator(resendInvitationSchema)
   .handler(async ({ data }) => {
-    const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return { error: true, message: 'Unauthorized' }
-    }
+    const user = await getCurrentUser()
+    const db = await getDb()
 
     const profile = await db.query.profiles.findFirst({
       where: eq(profiles.id, user.id),
@@ -340,6 +312,7 @@ export const resendInvitation = createServerFn({ method: 'POST' })
       }),
     )
 
+    const resend = new Resend(env.RESEND_API_KEY)
     const { error: emailError } = await resend.emails.send({
       from: env.RESEND_FROM_EMAIL,
       to: emailToUse,

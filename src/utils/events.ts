@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { asc, eq } from 'drizzle-orm'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import { calendarEvents, courses } from '@/db/schema'
 import {
   createEventSchema,
@@ -24,6 +24,7 @@ export type CalendarEventRow = {
 }
 
 export const getEvents = createServerFn({ method: 'GET' }).handler(async () => {
+  const db = await getDb()
   const rows = await db
     .select({
       id: calendarEvents.id,
@@ -54,6 +55,7 @@ export const getEvents = createServerFn({ method: 'GET' }).handler(async () => {
 export const createEvent = createServerFn({ method: 'POST' })
   .inputValidator(createEventSchema)
   .handler(async ({ data }) => {
+    const db = await getDb()
     const [event] = await db
       .insert(calendarEvents)
       .values({
@@ -74,6 +76,7 @@ export const createEvent = createServerFn({ method: 'POST' })
 export const updateEvent = createServerFn({ method: 'POST' })
   .inputValidator(updateEventSchema)
   .handler(async ({ data }) => {
+    const db = await getDb()
     const [event] = await db
       .update(calendarEvents)
       .set({
@@ -96,6 +99,7 @@ export const updateEvent = createServerFn({ method: 'POST' })
 export const deleteEvent = createServerFn({ method: 'POST' })
   .inputValidator(deleteEventSchema)
   .handler(async ({ data }) => {
+    const db = await getDb()
     await db.delete(calendarEvents).where(eq(calendarEvents.id, data.eventId))
 
     return { success: true }

@@ -69,8 +69,8 @@ export function LandingQASection() {
               </div>
             </div>
 
-            <h2 className="max-w-3xl font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] text-[#1A1A1A]">
-              Common Questions
+            <h2 className="max-w-3xl font-serif text-[clamp(3rem,5vw,5.1rem)] leading-none tracking-[-0.055em] text-[#1A1A1A]">
+              Frequently Asked Questions
             </h2>
 
             <p className="max-w-2xl text-base leading-8 font-light tracking-[0.04em] text-[#4E463D] sm:text-lg">

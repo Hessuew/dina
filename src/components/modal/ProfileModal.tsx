@@ -20,7 +20,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useMutation } from '@/hooks/useMutation'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth'
 import { uploadAvatarFn } from '@/utils/imageUpload'
@@ -48,6 +48,7 @@ const updateProfileFn = createServerFn({ method: 'POST' })
         }
       }
     }
+    const db = await getDb()
 
     await db
       .update(profiles)

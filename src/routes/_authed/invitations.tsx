@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { InvitationsTable } from '@/components/table/InvitationsTable'
 import { InviteUserModal } from '@/components/modal/InviteUserModal'
 import { getSupabaseServerClient } from '@/utils/supabase'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 import { getInvitations } from '@/utils/invitations'
 
@@ -22,6 +22,7 @@ const checkAdminAccess = createServerFn({ method: 'GET' }).handler(async () => {
     throw redirect({ href: '/login' })
   }
 
+  const db = await getDb()
   const profile = await db.query.profiles.findFirst({
     where: eq(profiles.id, user.id),
   })

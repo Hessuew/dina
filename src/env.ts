@@ -1,15 +1,20 @@
 import { createEnv } from '@t3-oss/env-core'
-import { env as cfEnv } from 'cloudflare:workers'
 import { z } from 'zod'
+import { env as _cfEnv } from 'cloudflare:workers'
+
+const cfEnv = _cfEnv as any
+
+// const runtimeEnv =
+//   typeof process !== 'undefined' ? process.env : ((globalThis as any).env ?? {})
 
 export const env = createEnv({
   server: {
     SUPABASE_URL: z.url(),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-    DATABASE_URL: z.string().min(1),
     APP_URL: z.url().optional(),
     RESEND_API_KEY: z.string().min(1),
     RESEND_FROM_EMAIL: z.email(),
+    DATABASE_URL: z.string().optional(),
   },
   /**
    * The prefix that client-side variables must have. This is enforced both at
@@ -17,7 +22,6 @@ export const env = createEnv({
    */
   clientPrefix: 'VITE_',
   client: {
-    VITE_APP_TITLE: z.string().min(1).optional(),
     VITE_SUPABASE_URL: z.url(),
     VITE_SUPABASE_ANON_KEY: z.string().min(1),
   },
@@ -29,12 +33,10 @@ export const env = createEnv({
     // Server-side variables from Cloudflare Workers env bindings
     SUPABASE_URL: cfEnv.SUPABASE_URL,
     SUPABASE_SERVICE_ROLE_KEY: cfEnv.SUPABASE_SERVICE_ROLE_KEY,
-    DATABASE_URL: cfEnv.DATABASE_URL,
     APP_URL: cfEnv.APP_URL,
     RESEND_API_KEY: cfEnv.RESEND_API_KEY,
     RESEND_FROM_EMAIL: cfEnv.RESEND_FROM_EMAIL,
     // Client-side variables from import.meta.env
-    VITE_APP_TITLE: import.meta.env.VITE_APP_TITLE,
     VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
     VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
   },

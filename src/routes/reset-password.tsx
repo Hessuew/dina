@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
-import { db } from '@/db'
+import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 import { getSupabaseAdminClient } from '@/utils/supabase'
 import { ResetPasswordForm } from '@/components/auth/reset-password-form'
@@ -26,6 +26,7 @@ export const validateResetTokenFn = createServerFn({ method: 'POST' })
       .update(data.token)
       .digest('hex')
 
+    const db = await getDb()
     const user = await db.query.profiles.findFirst({
       where: eq(profiles.resetTokenHash, tokenHash),
     })
@@ -86,6 +87,7 @@ export const resetPasswordFn = createServerFn({ method: 'POST' })
       .update(data.token)
       .digest('hex')
 
+    const db = await getDb()
     const user = await db.query.profiles.findFirst({
       where: eq(profiles.resetTokenHash, tokenHash),
     })
