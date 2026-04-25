@@ -22,7 +22,6 @@ const config = defineConfig(({ mode }) => {
         }),
       },
     },
-
     plugins: [
       devtools(),
       isCloudflare && cloudflare({ viteEnvironment: { name: 'ssr' } }),
