@@ -1,9 +1,9 @@
 import { createEnv } from '@t3-oss/env-core'
+import { env as cfEnv } from 'cloudflare:workers'
 import { z } from 'zod'
 
 export const env = createEnv({
   server: {
-    SERVER_URL: z.string().url().optional(),
     SUPABASE_URL: z.url(),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
     DATABASE_URL: z.string().min(1),
@@ -26,14 +26,13 @@ export const env = createEnv({
    * `process.env` or `import.meta.env`.
    */
   runtimeEnv: {
-    // Server-side variables from process.env
-    SERVER_URL: process.env.SERVER_URL,
-    SUPABASE_URL: process.env.SUPABASE_URL,
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    DATABASE_URL: process.env.DATABASE_URL,
-    APP_URL: process.env.APP_URL,
-    RESEND_API_KEY: process.env.RESEND_API_KEY,
-    RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+    // Server-side variables from Cloudflare Workers env bindings
+    SUPABASE_URL: cfEnv.SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY: cfEnv.SUPABASE_SERVICE_ROLE_KEY,
+    DATABASE_URL: cfEnv.DATABASE_URL,
+    APP_URL: cfEnv.APP_URL,
+    RESEND_API_KEY: cfEnv.RESEND_API_KEY,
+    RESEND_FROM_EMAIL: cfEnv.RESEND_FROM_EMAIL,
     // Client-side variables from import.meta.env
     VITE_APP_TITLE: import.meta.env.VITE_APP_TITLE,
     VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
@@ -47,7 +46,7 @@ export const env = createEnv({
    * to be a number (e.g. `PORT=` in a ".env" file), Zod will incorrectly flag
    * it as a type mismatch violation. Additionally, if you have an empty string
    * for a value that is supposed to be a string with a default value (e.g.
-   * `DOMAIN=` in an ".env" file), the default value will never be applied.
+   * `DOMAIN=` in a ".env" file), the default value will never be applied.
    *
    * In order to solve these issues, we recommend that all new projects
    * explicitly specify this option as true.
