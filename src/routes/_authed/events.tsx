@@ -17,7 +17,7 @@ import type { CalendarEventRow } from '@/utils/events'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { EventDialog } from '@/components/dialog/EventDialog'
 import { Button } from '@/components/ui/button'
-import { DataTable } from '@/components/table/DataTable'
+import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { cn } from '@/lib/utils'
 import { getCourses } from '@/utils/courses'
 import { getEvents } from '@/utils/events'
@@ -107,74 +107,37 @@ function EventsComponent() {
       header: 'Category',
     }),
     columnHelper.accessor('startTime', {
-      cell: (info) => (
-        <span className="text-sm text-[#D6CCBE]">
-          {format(new Date(info.getValue()), 'PPp')}
-        </span>
-      ),
+      cell: (info) => format(new Date(info.getValue()), 'PPp'),
       header: 'Start',
     }),
     columnHelper.accessor('endTime', {
-      cell: (info) => (
-        <span className="text-sm text-[#D6CCBE]">
-          {format(new Date(info.getValue()), 'PPp')}
-        </span>
-      ),
+      cell: (info) => format(new Date(info.getValue()), 'PPp'),
       header: 'End',
     }),
     columnHelper.accessor('location', {
       cell: (info) => {
         const location = info.getValue()
-        return location ? (
-          <span className="text-sm text-[#D6CCBE]">{location}</span>
-        ) : (
-          <span className="text-[#8E816D]">—</span>
-        )
+        return location ? location : '—'
       },
       header: 'Location',
     }),
-    columnHelper.display({
-      cell: (info) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            theme="light"
-            className="size-8 rounded-none"
-            onClick={() =>
-              setDialogState({ mode: 'view', event: info.row.original })
-            }
-          >
-            <EyeIcon className="size-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            theme="light"
-            className="size-8 rounded-none"
-            onClick={() =>
-              setDialogState({ mode: 'edit', event: info.row.original })
-            }
-          >
-            <PencilIcon className="size-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            theme="light"
-            className="size-8 rounded-none text-red-500 hover:bg-red-50 hover:text-red-600"
-            onClick={() =>
-              setDialogState({ mode: 'delete', event: info.row.original })
-            }
-          >
-            <Trash2Icon className="size-3.5" />
-          </Button>
-        </div>
-      ),
-      enableSorting: false,
-      header: '',
-      id: 'actions',
-    }),
+    createButtonColumn([
+      {
+        icon: EyeIcon,
+        label: 'View',
+        onClick: (event) => setDialogState({ mode: 'view', event }),
+      },
+      {
+        icon: PencilIcon,
+        label: 'Edit',
+        onClick: (event) => setDialogState({ mode: 'edit', event }),
+      },
+      {
+        icon: Trash2Icon,
+        label: 'Delete',
+        onClick: (event) => setDialogState({ mode: 'delete', event }),
+      },
+    ]),
   ]
 
   return (
@@ -237,6 +200,7 @@ function EventsComponent() {
       </div>
 
       <EventDialog
+        key={`${dialogMode}-${dialogEvent?.id}`}
         open={isOpen}
         onOpenChange={(open) => !open && setDialogState(null)}
         mode={dialogMode}
