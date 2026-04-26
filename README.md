@@ -33,8 +33,8 @@ You'll need to:
 From your terminal:
 
 ```sh
-pnpm install
-pnpm dev
+bun install
+bun dev
 ```
 
 This starts your app in development mode, rebuilding assets on file changes.
@@ -44,7 +44,7 @@ This starts your app in development mode, rebuilding assets on file changes.
 To build the app for production:
 
 ```sh
-pnpm build
+bun run build
 ```
 
 ## Supabase Integration

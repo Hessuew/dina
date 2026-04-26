@@ -1,0 +1,18 @@
+# Repository agent rules
+
+Before making changes:
+
+1. Read `AI_GUIDE.md` (engineering rules + documentation contract).
+2. Read `CLAUDE.md` (design system rules).
+3. Read the nearest directory `README.md` for the area you will edit.
+
+Documentation maintenance:
+
+- If you add/remove/rename routes, update `src/routes/README.md` and/or `src/routes/_authed/README.md`.
+- If you change root route context (`context.user`), update `AI_GUIDE.md` and `src/routes/README.md`.
+- If you change DB schema (`src/db/schema.ts`), update `src/db/README.md` (and any related deep dives).
+
+Documentation style:
+
+- Prefer directory-level `README.md` over file-level docs.
+- Only add file-level deep dives for keystone modules, as defined in `AI_GUIDE.md`.

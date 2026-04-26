@@ -21,7 +21,7 @@
 
 ### Backend Architecture
 
-- **Authentication:** Clerk for user authentication and session management
+- **Authentication:** Supabase for user authentication and session management
 - **Database:** Supabase PostgreSQL (accessed via Drizzle ORM)
   - Connection: Supabase connection pooler for performance
   - Authorization: Application-level checks (no RLS)
@@ -35,9 +35,9 @@
 
 ### Database Design Principles
 
-- **Authorization:** App-level authorization using Clerk user IDs
+- **Authorization:** App-level authorization using Supabase user IDs
 - **Role-based access control (RBAC):** Implemented in application code
-- Use UUID for primary keys (Clerk user IDs for profiles)
+- Use UUID for primary keys (Supabase user IDs for profiles)
 - Include `created_at` and `updated_at` timestamps
 - Soft deletes where appropriate (use `deleted_at` field)
 - Normalize data but denormalize for performance where needed
@@ -47,9 +47,9 @@
 All authorization is handled in application code using helper functions from `src/utils/auth.ts`:
 
 - **Route Protection:** Use `beforeLoad` to check authentication and authorization
-- **Server Functions:** Call `requireAuth()` at the start of server functions
+- **Server Functions:** Call `getCurrentUser()` at the start of server functions that require authentication
 - **Role Checks:** Use `requireRole()`, `requireAdmin()`, `requireTeacher()`
-- **Resource Access:** Use `requireTeacherOfCourse()`, `requireEnrolledInCourse()`
+- **Resource Access:** Use `requireTeacherOfCourse()` (and feature-specific access checks as needed)
 - **Query Filtering:** Always filter queries by user ownership (e.g., `studentId`, `teacherId`)
 
 **Example - Protected Route:**
@@ -57,8 +57,8 @@ All authorization is handled in application code using helper functions from `sr
 ```typescript
 export const Route = createFileRoute('/_authed/courses/$courseId')({
   beforeLoad: async ({ params }) => {
-    const userId = await requireAuth()
-    await requireEnrolledInCourse(userId, params.courseId)
+    const user = await getCurrentUser()
+    // Add any feature-specific access checks here (e.g. course access)
   },
 })
 ```
@@ -67,9 +67,9 @@ export const Route = createFileRoute('/_authed/courses/$courseId')({
 
 ```typescript
 const getMyEnrollments = createServerFn({ method: 'GET' }).handler(async () => {
-  const userId = await requireAuth()
+  const user = await getCurrentUser()
   return db.query.enrollments.findMany({
-    where: eq(enrollments.studentId, userId),
+    where: eq(enrollments.studentId, user.id),
   })
 })
 ```
@@ -216,11 +216,11 @@ updated_at TIMESTAMPTZ DEFAULT NOW()
 const getStudentCourses = createServerFn({ method: 'GET' }).handler(
   async () => {
     // 1. Authenticate
-    const userId = await requireAuth()
+    const user = await getCurrentUser()
 
     // 2. Query with user filter
     const enrollments = await db.query.enrollments.findMany({
-      where: eq(enrollments.studentId, userId),
+      where: eq(enrollments.studentId, user.id),
       with: { course: true },
     })
 
@@ -231,10 +231,10 @@ const getStudentCourses = createServerFn({ method: 'GET' }).handler(
 // Teacher-only server function
 const updateCourse = createServerFn({ method: 'POST' }).handler(
   async ({ courseId, data }) => {
-    const userId = await requireAuth()
+    const user = await getCurrentUser()
 
     // Verify teacher owns this course
-    await requireTeacherOfCourse(userId, courseId)
+    await requireTeacherOfCourse(user.id, courseId)
 
     // Update course
     return db.update(courses).set(data).where(eq(courses.id, courseId))
@@ -257,10 +257,10 @@ const updateCourse = createServerFn({ method: 'POST' }).handler(
 
 ### Authentication
 
-- Use Clerk for all authentication
-- Clerk handles email verification, password requirements, and session management
-- User sessions are managed via HTTP-only cookies by Clerk
-- Always call `requireAuth()` in server functions and protected routes
+- Use Supabase for all authentication
+- Supabase handles email verification, password requirements, and session management
+- User sessions are managed via HTTP-only cookies by Supabase
+- Always call `getCurrentUser()` in server functions that require authentication
 
 ### Authorization
 
