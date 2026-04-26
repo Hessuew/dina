@@ -6,6 +6,7 @@ import {
   ClipboardList,
   GraduationCap,
   LayoutDashboard,
+  MessageSquare,
   UserPlus,
   Users,
 } from 'lucide-react'
@@ -56,6 +57,11 @@ const navItems = [
     title: 'Calendar',
     url: '/calendar',
     icon: Calendar,
+  },
+  {
+    title: 'Posts',
+    url: '/posts',
+    icon: MessageSquare,
   },
   {
     title: 'Teachers',
