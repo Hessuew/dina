@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { Link, useRouter, useRouterState } from '@tanstack/react-router'
 import {
+  BookOpen,
   Calendar,
   CalendarDays,
   ClipboardList,
@@ -62,6 +63,11 @@ const navItems = [
     title: 'Posts',
     url: '/posts',
     icon: MessageSquare,
+  },
+  {
+    title: 'Library',
+    url: '/library',
+    icon: BookOpen,
   },
   {
     title: 'Teachers',

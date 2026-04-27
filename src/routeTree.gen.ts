@@ -25,9 +25,11 @@ import { Route as AuthedEventsRouteImport } from './routes/_authed/events'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedCalendarRouteImport } from './routes/_authed/calendar'
 import { Route as AuthedStudentsIndexRouteImport } from './routes/_authed/students/index'
+import { Route as AuthedLibraryIndexRouteImport } from './routes/_authed/library/index'
 import { Route as AuthedCoursesIndexRouteImport } from './routes/_authed/courses/index'
 import { Route as AuthedAssignmentsIndexRouteImport } from './routes/_authed/assignments/index'
 import { Route as AuthedStudentsStudentIdRouteImport } from './routes/_authed/students/$studentId'
+import { Route as AuthedLibraryMediaIdRouteImport } from './routes/_authed/library/$mediaId'
 import { Route as AuthedLessonsLessonIdRouteImport } from './routes/_authed/lessons/$lessonId'
 import { Route as AuthedCoursesCourseIdRouteImport } from './routes/_authed/courses/$courseId'
 import { Route as AuthedAssignmentsAssignmentIdRouteImport } from './routes/_authed/assignments/$assignmentId'
@@ -111,6 +113,11 @@ const AuthedStudentsIndexRoute = AuthedStudentsIndexRouteImport.update({
   path: '/students/',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedLibraryIndexRoute = AuthedLibraryIndexRouteImport.update({
+  id: '/library/',
+  path: '/library/',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedCoursesIndexRoute = AuthedCoursesIndexRouteImport.update({
   id: '/courses/',
   path: '/courses/',
@@ -124,6 +131,11 @@ const AuthedAssignmentsIndexRoute = AuthedAssignmentsIndexRouteImport.update({
 const AuthedStudentsStudentIdRoute = AuthedStudentsStudentIdRouteImport.update({
   id: '/students/$studentId',
   path: '/students/$studentId',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedLibraryMediaIdRoute = AuthedLibraryMediaIdRouteImport.update({
+  id: '/library/$mediaId',
+  path: '/library/$mediaId',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedLessonsLessonIdRoute = AuthedLessonsLessonIdRouteImport.update({
@@ -161,9 +173,11 @@ export interface FileRoutesByFullPath {
   '/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/lessons/$lessonId': typeof AuthedLessonsLessonIdRoute
+  '/library/$mediaId': typeof AuthedLibraryMediaIdRoute
   '/students/$studentId': typeof AuthedStudentsStudentIdRoute
   '/assignments/': typeof AuthedAssignmentsIndexRoute
   '/courses/': typeof AuthedCoursesIndexRoute
+  '/library/': typeof AuthedLibraryIndexRoute
   '/students/': typeof AuthedStudentsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -184,9 +198,11 @@ export interface FileRoutesByTo {
   '/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/lessons/$lessonId': typeof AuthedLessonsLessonIdRoute
+  '/library/$mediaId': typeof AuthedLibraryMediaIdRoute
   '/students/$studentId': typeof AuthedStudentsStudentIdRoute
   '/assignments': typeof AuthedAssignmentsIndexRoute
   '/courses': typeof AuthedCoursesIndexRoute
+  '/library': typeof AuthedLibraryIndexRoute
   '/students': typeof AuthedStudentsIndexRoute
 }
 export interface FileRoutesById {
@@ -209,9 +225,11 @@ export interface FileRoutesById {
   '/_authed/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/_authed/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/_authed/lessons/$lessonId': typeof AuthedLessonsLessonIdRoute
+  '/_authed/library/$mediaId': typeof AuthedLibraryMediaIdRoute
   '/_authed/students/$studentId': typeof AuthedStudentsStudentIdRoute
   '/_authed/assignments/': typeof AuthedAssignmentsIndexRoute
   '/_authed/courses/': typeof AuthedCoursesIndexRoute
+  '/_authed/library/': typeof AuthedLibraryIndexRoute
   '/_authed/students/': typeof AuthedStudentsIndexRoute
 }
 export interface FileRouteTypes {
@@ -234,9 +252,11 @@ export interface FileRouteTypes {
     | '/assignments/$assignmentId'
     | '/courses/$courseId'
     | '/lessons/$lessonId'
+    | '/library/$mediaId'
     | '/students/$studentId'
     | '/assignments/'
     | '/courses/'
+    | '/library/'
     | '/students/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -257,9 +277,11 @@ export interface FileRouteTypes {
     | '/assignments/$assignmentId'
     | '/courses/$courseId'
     | '/lessons/$lessonId'
+    | '/library/$mediaId'
     | '/students/$studentId'
     | '/assignments'
     | '/courses'
+    | '/library'
     | '/students'
   id:
     | '__root__'
@@ -281,9 +303,11 @@ export interface FileRouteTypes {
     | '/_authed/assignments/$assignmentId'
     | '/_authed/courses/$courseId'
     | '/_authed/lessons/$lessonId'
+    | '/_authed/library/$mediaId'
     | '/_authed/students/$studentId'
     | '/_authed/assignments/'
     | '/_authed/courses/'
+    | '/_authed/library/'
     | '/_authed/students/'
   fileRoutesById: FileRoutesById
 }
@@ -413,6 +437,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedStudentsIndexRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/library/': {
+      id: '/_authed/library/'
+      path: '/library'
+      fullPath: '/library/'
+      preLoaderRoute: typeof AuthedLibraryIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/courses/': {
       id: '/_authed/courses/'
       path: '/courses'
@@ -432,6 +463,13 @@ declare module '@tanstack/react-router' {
       path: '/students/$studentId'
       fullPath: '/students/$studentId'
       preLoaderRoute: typeof AuthedStudentsStudentIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/library/$mediaId': {
+      id: '/_authed/library/$mediaId'
+      path: '/library/$mediaId'
+      fullPath: '/library/$mediaId'
+      preLoaderRoute: typeof AuthedLibraryMediaIdRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/lessons/$lessonId': {
@@ -468,9 +506,11 @@ interface AuthedRouteChildren {
   AuthedAssignmentsAssignmentIdRoute: typeof AuthedAssignmentsAssignmentIdRoute
   AuthedCoursesCourseIdRoute: typeof AuthedCoursesCourseIdRoute
   AuthedLessonsLessonIdRoute: typeof AuthedLessonsLessonIdRoute
+  AuthedLibraryMediaIdRoute: typeof AuthedLibraryMediaIdRoute
   AuthedStudentsStudentIdRoute: typeof AuthedStudentsStudentIdRoute
   AuthedAssignmentsIndexRoute: typeof AuthedAssignmentsIndexRoute
   AuthedCoursesIndexRoute: typeof AuthedCoursesIndexRoute
+  AuthedLibraryIndexRoute: typeof AuthedLibraryIndexRoute
   AuthedStudentsIndexRoute: typeof AuthedStudentsIndexRoute
 }
 
@@ -484,9 +524,11 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAssignmentsAssignmentIdRoute: AuthedAssignmentsAssignmentIdRoute,
   AuthedCoursesCourseIdRoute: AuthedCoursesCourseIdRoute,
   AuthedLessonsLessonIdRoute: AuthedLessonsLessonIdRoute,
+  AuthedLibraryMediaIdRoute: AuthedLibraryMediaIdRoute,
   AuthedStudentsStudentIdRoute: AuthedStudentsStudentIdRoute,
   AuthedAssignmentsIndexRoute: AuthedAssignmentsIndexRoute,
   AuthedCoursesIndexRoute: AuthedCoursesIndexRoute,
+  AuthedLibraryIndexRoute: AuthedLibraryIndexRoute,
   AuthedStudentsIndexRoute: AuthedStudentsIndexRoute,
 }
 

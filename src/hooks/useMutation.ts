@@ -15,29 +15,29 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
   >('idle')
 
   const mutate = React.useCallback(
-    async (variables: TVariables): Promise<TData | undefined> => {
+    async (vars: TVariables): Promise<TData | undefined> => {
       setStatus('pending')
       setSubmittedAt(Date.now())
-      setVariables(variables)
+      setVariables(vars)
       setError(undefined)
 
       try {
-        const data = await opts.fn(variables)
-        await opts.onSuccess?.({ data })
+        const result = await opts.fn(vars)
+        await opts.onSuccess?.({ data: result })
         setStatus('success')
-        setData(data)
-        return data
+        setData(result)
+        return result
       } catch (err) {
-        const error = err as TError
+        const tError = err as TError
         setStatus('error')
-        setError(error)
+        setError(tError)
 
         if (opts.onError) {
-          await opts.onError({ error })
+          await opts.onError({ error: tError })
         } else {
           const errorMessage =
-            error instanceof Error
-              ? error.message
+            tError instanceof Error
+              ? tError.message
               : 'An unexpected error occurred'
           toast.error(errorMessage)
         }

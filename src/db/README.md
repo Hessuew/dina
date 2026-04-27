@@ -20,6 +20,10 @@ Database access layer and schema definitions.
 - **`schema.ts`**
   - Contains enums, tables, and relations for the app.
   - Acts as the schema source of truth for Drizzle queries.
+  - Notable tables:
+    - `media_library`
+      - Stores org-wide library materials (YouTube links, PDFs, etc.).
+      - Draft gating is modeled via `is_published`.
 
 ## Key Invariants / Assumptions
 
