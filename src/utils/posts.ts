@@ -2,8 +2,10 @@ import { createServerFn } from '@tanstack/react-start'
 import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import {
+  courseTeachers,
   postCommentReactions,
   postComments,
+  postNotifications,
   postReactions,
   posts,
   profiles,
@@ -14,6 +16,7 @@ import {
   deleteCommentSchema,
   deletePostSchema,
   getCommentsSchema,
+  getPostByIdSchema,
   getPostsSchema,
   toggleCommentReactionSchema,
   toggleReactionSchema,
@@ -218,6 +221,8 @@ export const createPost = createServerFn({ method: 'POST' })
     const user = await getCurrentUser()
     const db = await getDb()
 
+    const role = await getRole(user.id)
+
     const [post] = await db
       .insert(posts)
       .values({
@@ -257,6 +262,54 @@ export const createPost = createServerFn({ method: 'POST' })
 
     if (!full) throw new Error('Post not found')
 
+    const recipients = new Set<string>()
+    const courseId = data.courseId ?? null
+
+    if (role === 'teacher' || role === 'admin') {
+      const studentRows = await db
+        .select({ id: profiles.id })
+        .from(profiles)
+        .where(
+          sql`${profiles.role} = 'student' AND ${profiles.id} <> ${user.id}`,
+        )
+
+      for (const row of studentRows) recipients.add(row.id)
+
+      if (courseId === null) {
+        const staffRows = await db
+          .select({ id: profiles.id })
+          .from(profiles)
+          .where(
+            sql`${profiles.role} IN ('teacher','admin') AND ${profiles.id} <> ${user.id}`,
+          )
+
+        for (const row of staffRows) recipients.add(row.id)
+      }
+    }
+
+    if (courseId) {
+      const teacherRows = await db
+        .select({ id: courseTeachers.teacherId })
+        .from(courseTeachers)
+        .where(eq(courseTeachers.courseId, courseId))
+
+      for (const row of teacherRows) {
+        if (row.id !== user.id) recipients.add(row.id)
+      }
+    }
+
+    if (recipients.size > 0) {
+      await db.insert(postNotifications).values(
+        Array.from(recipients).map((recipientId) => ({
+          userId: recipientId,
+          actorId: user.id,
+          event: 'post_created' as const,
+          postId: post.id,
+          commentId: null,
+        })),
+      )
+    }
+
     return {
       post: {
         id: full.id,
@@ -277,6 +330,73 @@ export const createPost = createServerFn({ method: 'POST' })
         })),
       } satisfies PostWithDetails,
     }
+  })
+
+export const getPostById = createServerFn({ method: 'POST' })
+  .inputValidator(getPostByIdSchema)
+  .handler(async ({ data }) => {
+    await getCurrentUser()
+    const db = await getDb()
+
+    const row = await db.query.posts.findFirst({
+      where: and(eq(posts.id, data.postId), isNull(posts.deletedAt)),
+      with: {
+        course: {
+          columns: { id: true, title: true },
+        },
+        author: {
+          columns: { id: true, fullName: true, avatarUrl: true },
+        },
+        reactions: {
+          columns: { id: true, emoji: true, userId: true },
+        },
+        comments: {
+          where: isNull(postComments.deletedAt),
+          orderBy: [desc(postComments.createdAt)],
+          limit: 3,
+          with: {
+            author: {
+              columns: { id: true, fullName: true, avatarUrl: true },
+            },
+            reactions: {
+              columns: { id: true, emoji: true, userId: true },
+            },
+          },
+        },
+      },
+    })
+
+    if (!row) throw new Error('Post not found')
+
+    const countRows = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(postComments)
+      .where(
+        and(eq(postComments.postId, row.id), isNull(postComments.deletedAt)),
+      )
+
+    const commentCount = countRows[0]?.count ?? 0
+
+    const result: PostWithDetails = {
+      id: row.id,
+      course: row.course,
+      content: row.content,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      author: row.author,
+      reactions: row.reactions,
+      commentCount,
+      previewComments: row.comments.reverse().map((c) => ({
+        id: c.id,
+        content: c.content,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+        author: c.author,
+        reactions: c.reactions,
+      })),
+    }
+
+    return { post: result }
   })
 
 export const updatePost = createServerFn({ method: 'POST' })
@@ -511,6 +631,16 @@ export const createComment = createServerFn({ method: 'POST' })
         },
       },
     })
+
+    if (post.authorId !== user.id) {
+      await db.insert(postNotifications).values({
+        userId: post.authorId,
+        actorId: user.id,
+        event: 'comment_created' as const,
+        postId: post.id,
+        commentId: comment.id,
+      })
+    }
 
     return { comment: full! }
   })

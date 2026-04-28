@@ -29,6 +29,10 @@ export const deletePostSchema = z.object({
   postId: z.string().uuid(),
 })
 
+export const getPostByIdSchema = z.object({
+  postId: z.string().uuid(),
+})
+
 export const toggleReactionSchema = z.object({
   postId: z.string().uuid(),
   emoji: z
@@ -86,6 +90,7 @@ export const getCommentsSchema = z.object({
 export type CreatePostInput = z.infer<typeof createPostSchema>
 export type UpdatePostInput = z.infer<typeof updatePostSchema>
 export type DeletePostInput = z.infer<typeof deletePostSchema>
+export type GetPostByIdInput = z.infer<typeof getPostByIdSchema>
 export type ToggleReactionInput = z.infer<typeof toggleReactionSchema>
 export type ToggleCommentReactionInput = z.infer<
   typeof toggleCommentReactionSchema

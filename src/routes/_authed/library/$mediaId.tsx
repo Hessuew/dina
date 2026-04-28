@@ -1,5 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { ExternalLinkIcon, FileTextIcon, VideoIcon } from 'lucide-react'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
+import {
+  ChevronLeftIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  VideoIcon,
+} from 'lucide-react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -18,6 +23,7 @@ function normalizeUrl(url: string): string {
 
 function MediaDetailComponent() {
   const loaderData = Route.useLoaderData()
+  const router = useRouter()
   const { media, viewer } = loaderData
 
   const isVideo = media.fileType === 'video'
@@ -34,7 +40,18 @@ function MediaDetailComponent() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.10),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.22),transparent_22%)]" />
       <div className="relative mx-auto max-w-5xl px-6 py-10 sm:px-8 sm:py-12">
         <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
+          <div className="mb-10 flex-1">
+            <Button
+              variant="ghost"
+              theme="light"
+              size="sm"
+              className="mb-6 gap-1"
+              onClick={() => router.navigate({ to: '/library' })}
+            >
+              <ChevronLeftIcon className="size-3.5" />
+              Back
+            </Button>
+
             <div className="h-px w-8 bg-[#9B7A41]/50" />
             <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
               Library

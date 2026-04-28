@@ -17,6 +17,8 @@ This folder is primarily where TanStack Start server functions live (via `create
 - **Feature server function modules**
   - `courses.ts`, `assignments.ts`, `students.ts`, `teachers.ts`, `calendar.ts`, `events.ts`, `invitations.ts`, `posts.ts`, `library.ts`.
   - These typically export server functions that routes call for loading and mutations.
+  - `postNotifications.ts`.
+    - Post notification inbox logic (aggregation + mark read).
 
 - **Misc**
   - `imageUpload.ts`: server-side upload-related helpers.
