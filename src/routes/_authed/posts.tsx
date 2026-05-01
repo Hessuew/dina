@@ -32,6 +32,7 @@ import {
   deleteComment,
   deletePost,
   getComments,
+  getPostById,
   getPostChannels,
   getPosts,
   toggleCommentReaction,
@@ -54,9 +55,13 @@ const fetchCurrentUser = createServerFn({ method: 'POST' }).handler(
 )
 
 export const Route = createFileRoute('/_authed/posts')({
-  validateSearch: (search: Record<string, unknown>): { channel?: string } => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { channel?: string; focusPostId?: string } => {
     return {
       channel: typeof search.channel === 'string' ? search.channel : undefined,
+      focusPostId:
+        typeof search.focusPostId === 'string' ? search.focusPostId : undefined,
     }
   },
   loader: async () => {
@@ -88,6 +93,8 @@ function PostsComponent() {
   const selectedCourseId =
     selectedChannel === 'general' ? null : selectedChannel
 
+  const focusPostId = search.focusPostId
+
   const [allPosts, setAllPosts] = useState<Array<PostWithDetails>>(
     loaderData.posts,
   )
@@ -95,6 +102,8 @@ function PostsComponent() {
   const [loadingMore, setLoadingMore] = useState(false)
   const latestChannelRequestId = useRef<number>(0)
   const loadedChannelRef = useRef<string>('general')
+  const focusFetchKeyRef = useRef<string | null>(null)
+  const focusScrollKeyRef = useRef<string | null>(null)
 
   const canModerate =
     currentUser.role === 'teacher' || currentUser.role === 'admin'
@@ -118,6 +127,7 @@ function PostsComponent() {
       search: {
         ...search,
         channel: channelId === 'general' ? undefined : channelId,
+        focusPostId: undefined,
       },
       replace: false,
     })
@@ -146,6 +156,39 @@ function PostsComponent() {
         setLoadingMore(false)
       })
   }, [selectedChannel])
+
+  useEffect(() => {
+    if (!focusPostId) return
+    if (loadedChannelRef.current !== selectedChannel) return
+
+    const focusKey = `${focusPostId}:${selectedChannel}`
+    if (allPosts.some((p) => p.id === focusPostId)) return
+    if (focusFetchKeyRef.current === focusKey) return
+
+    focusFetchKeyRef.current = focusKey
+    getPostById({ data: { postId: focusPostId } })
+      .then((res) => {
+        setAllPosts((prev) => {
+          if (prev.some((p) => p.id === res.post.id)) return prev
+          return [res.post, ...prev]
+        })
+      })
+      .catch(() => {})
+  }, [allPosts, focusPostId, selectedChannel])
+
+  useEffect(() => {
+    if (!focusPostId) return
+    if (loadedChannelRef.current !== selectedChannel) return
+
+    const focusKey = `${focusPostId}:${selectedChannel}`
+    if (focusScrollKeyRef.current === focusKey) return
+
+    const el = document.getElementById(`post-${focusPostId}`)
+    if (!el) return
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    focusScrollKeyRef.current = focusKey
+  }, [allPosts, focusPostId, selectedChannel])
 
   const handlePostCreated = (post: PostWithDetails) => {
     setAllPosts((prev) => [post, ...prev])
@@ -526,21 +569,26 @@ function PostCard({
   const displayedComments = showAllComments ? allComments : previewComments
 
   return (
-    <div className="border border-[#1A1A1A]/10 bg-white/60 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.08)]">
+    <div
+      id={`post-${post.id}`}
+      className="border border-[#1A1A1A]/10 bg-white/60 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.08)]"
+    >
       {/* Post header */}
       <div className="flex items-start justify-between gap-3 px-5 pt-5">
-        <div className="flex items-center gap-3">
-          {post.author.avatarUrl ? (
-            <img
-              src={post.author.avatarUrl}
-              alt={post.author.fullName}
-              className="size-9 shrink-0 border border-[#1A1A1A]/10 object-cover"
-            />
-          ) : (
-            <div className="flex size-9 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] text-[0.55rem] font-medium text-[#E9D9B4]">
-              {initials}
-            </div>
-          )}
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-full bg-[#EDE8DE]">
+            {post.author.avatarUrl ? (
+              <img
+                src={post.author.avatarUrl}
+                alt={post.author.fullName}
+                className="size-9 shrink-0 border border-[#1A1A1A]/10 object-cover"
+              />
+            ) : (
+              <div className="flex size-9 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] text-[0.55rem] font-medium text-[#E9D9B4]">
+                {initials}
+              </div>
+            )}
+          </div>
           <div>
             <span className="text-sm font-medium text-[#1C1815]">
               {post.author.fullName}

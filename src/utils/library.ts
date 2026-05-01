@@ -223,7 +223,7 @@ export const uploadMediaPdfFn = createServerFn({ method: 'POST' })
         const oldPath = data.oldUrl.split('/').pop()
         if (oldPath) {
           const { error: deleteError } = await supabase.storage
-            .from('media_library')
+            .from('media-library')
             .remove([oldPath])
           if (deleteError) {
             console.log('⚠️ Failed to delete old PDF', {
@@ -240,7 +240,7 @@ export const uploadMediaPdfFn = createServerFn({ method: 'POST' })
       const buffer = Buffer.from(base64Data, 'base64')
 
       const { error: uploadError } = await supabase.storage
-        .from('media_library')
+        .from('media-library')
         .upload(fileName, buffer, {
           contentType: data.fileType,
           upsert: false,
@@ -254,7 +254,7 @@ export const uploadMediaPdfFn = createServerFn({ method: 'POST' })
       }
 
       const { data: urlData } = supabase.storage
-        .from('media_library')
+        .from('media-library')
         .getPublicUrl(fileName)
 
       return {

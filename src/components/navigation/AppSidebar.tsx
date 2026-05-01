@@ -1,16 +1,19 @@
 import * as React from 'react'
 import { Link, useRouter, useRouterState } from '@tanstack/react-router'
 import {
-  BookOpen,
   Calendar,
   CalendarDays,
   ClipboardList,
   GraduationCap,
   LayoutDashboard,
+  Library,
   MessageSquare,
   UserPlus,
   Users,
 } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
+import type { Variants } from 'framer-motion'
+import type { LucideIcon } from 'lucide-react'
 import { NavUser } from '@/components/navigation/nav-user'
 import {
   Sidebar,
@@ -27,6 +30,7 @@ import {
 } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 import heroEmblem from '@/assets/images/bg/logo.webp'
+import { NotificationsMenu } from '@/components/navigation/NotificationsMenu'
 
 type User = {
   id: string
@@ -37,75 +41,154 @@ type User = {
 
 type SidebarVariant = 'light' | 'dark'
 
+type IconMotionPreset = 'tilt' | 'rotate' | 'pulse' | 'shift'
+
+type NavItem = {
+  title: string
+  url: string
+  icon: LucideIcon
+  motionPreset: IconMotionPreset
+}
+
 type AppSidebarProps = {
   user: User | null
   role: 'student' | 'teacher' | 'admin'
   sidebarVariant?: SidebarVariant
 }
 
-const navItems = [
+const navItems: Array<NavItem> = [
   {
     title: 'Dashboard',
     url: '/dashboard',
     icon: LayoutDashboard,
+    motionPreset: 'tilt',
   },
   {
     title: 'Assignments',
     url: '/assignments',
     icon: ClipboardList,
+    motionPreset: 'pulse',
   },
   {
     title: 'Calendar',
     url: '/calendar',
     icon: Calendar,
+    motionPreset: 'rotate',
   },
   {
     title: 'Posts',
     url: '/posts',
     icon: MessageSquare,
+    motionPreset: 'pulse',
   },
   {
     title: 'Library',
     url: '/library',
-    icon: BookOpen,
+    icon: Library,
+    motionPreset: 'tilt',
   },
   {
     title: 'Teachers',
     url: '/teachers',
     icon: Users,
+    motionPreset: 'rotate',
   },
 ]
 
-const teacherNavItems = [
+const teacherNavItems: Array<NavItem> = [
   {
     title: 'Students',
     url: '/students',
     icon: GraduationCap,
+    motionPreset: 'tilt',
   },
   {
     title: 'Events',
     url: '/events',
     icon: CalendarDays,
+    motionPreset: 'rotate',
   },
   {
     title: 'User Management',
     url: '/invitations',
     icon: UserPlus,
+    motionPreset: 'pulse',
   },
 ]
+
+const iconMotionVariants: Record<IconMotionPreset, Variants> = {
+  tilt: {
+    rest: { rotate: 0, y: 0 },
+    hover: {
+      rotate: [0, -10, 6, 0],
+      y: [0, -1, 0],
+      transition: { duration: 0.42, ease: 'easeOut' },
+    },
+  },
+  rotate: {
+    rest: { rotate: 0, y: 0 },
+    hover: {
+      rotate: [0, -14, 0],
+      transition: { duration: 0.36, ease: 'easeOut' },
+    },
+  },
+  pulse: {
+    rest: { scale: 1 },
+    hover: {
+      scale: [1, 1.08, 1],
+      transition: { duration: 0.34, ease: 'easeOut' },
+    },
+  },
+  shift: {
+    rest: { x: 0 },
+    hover: {
+      x: [0, 1.5, 0],
+      transition: { duration: 0.3, ease: 'easeOut' },
+    },
+  },
+}
+
+function AnimatedSidebarIcon({
+  icon: Icon,
+  isHovered,
+  preset,
+}: {
+  icon: LucideIcon
+  isHovered: boolean
+  preset: IconMotionPreset
+}) {
+  const shouldReduceMotion = useReducedMotion()
+
+  if (shouldReduceMotion) {
+    return <Icon />
+  }
+
+  return (
+    <motion.span
+      className="inline-flex"
+      initial={false}
+      animate={isHovered ? 'hover' : 'rest'}
+      variants={iconMotionVariants[preset]}
+    >
+      <Icon />
+    </motion.span>
+  )
+}
 
 function NavItemList({
   items,
   variant,
 }: {
-  items: typeof navItems
+  items: Array<NavItem>
   variant: SidebarVariant
 }) {
   const routerState = useRouterState()
+  const [hoveredUrl, setHoveredUrl] = React.useState<string | null>(null)
   return (
     <SidebarMenu>
       {items.map((item) => {
         const isActive = routerState.location.pathname === item.url
+        const isHovered = hoveredUrl === item.url
         return (
           <SidebarMenuItem key={item.title}>
             <SidebarMenuButton
@@ -120,9 +203,21 @@ function NavItemList({
                     : 'border-l-2 border-transparent text-[#4E463D] hover:border-[#9B7A41]/30 hover:bg-[#EDE8DE]/60 hover:text-[#1C1815]',
               )}
               isActive={isActive}
+              onMouseEnter={() => setHoveredUrl(item.url)}
+              onMouseLeave={() =>
+                setHoveredUrl((prev) => (prev === item.url ? null : prev))
+              }
+              onFocus={() => setHoveredUrl(item.url)}
+              onBlur={() =>
+                setHoveredUrl((prev) => (prev === item.url ? null : prev))
+              }
               render={
                 <Link to={item.url}>
-                  <item.icon />
+                  <AnimatedSidebarIcon
+                    icon={item.icon}
+                    isHovered={isHovered}
+                    preset={item.motionPreset}
+                  />
                   <span>{item.title}</span>
                 </Link>
               }
@@ -214,6 +309,7 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="pl-3">
+        <NotificationsMenu variant={sidebarVariant} />
         <NavUser
           user={user as any}
           onProfileUpdate={() => router.invalidate()}

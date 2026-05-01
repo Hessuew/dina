@@ -23,12 +23,6 @@ export const submissionStatusEnum = pgEnum('submission_status', [
   'graded',
   'returned',
 ])
-export const inquiryStatusEnum = pgEnum('inquiry_status', [
-  'open',
-  'in_progress',
-  'resolved',
-  'closed',
-])
 export const mediaTypeEnum = pgEnum('media_type', [
   'video',
   'audio',
@@ -40,9 +34,11 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'announcement',
   'assignment',
   'grade',
-  'inquiry',
-  'enrollment',
   'system',
+])
+export const postNotificationEventEnum = pgEnum('post_notification_event', [
+  'post_created',
+  'comment_created',
 ])
 export const assignmentStatusEnum = pgEnum('assignment_status', [
   'draft',
@@ -76,7 +72,6 @@ export const profiles = pgTable(
     emailNotifications: boolean('email_notifications').default(true),
     notifyNewAssignments: boolean('notify_new_assignments').default(true),
     notifyGrades: boolean('notify_grades').default(true),
-    notifyInquiries: boolean('notify_inquiries').default(true),
     resetTokenHash: text('reset_token_hash'),
     resetTokenExpiresAt: timestamp('reset_token_expires_at'),
     resetTokenAttempts: integer('reset_token_attempts').default(0).notNull(),
@@ -517,154 +512,6 @@ export const submissions = pgTable(
   ],
 )
 
-export const inquiries = pgTable(
-  'inquiries',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    studentId: uuid('student_id')
-      .notNull()
-      .references(() => profiles.id, { onDelete: 'cascade' }),
-    courseId: uuid('course_id')
-      .notNull()
-      .references(() => courses.id, { onDelete: 'cascade' }),
-    subject: text('subject').notNull(),
-    message: text('message').notNull(),
-    status: inquiryStatusEnum('status').notNull().default('open'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (_table) => [
-    // Students can view their own inquiries
-    pgPolicy('students_view_own_inquiries', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`student_id = auth.uid()`,
-    }),
-    // Teachers can view inquiries in their courses
-    pgPolicy('teachers_view_course_inquiries', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`
-        course_id IN (
-          SELECT course_id FROM course_teachers 
-          WHERE teacher_id = auth.uid()
-        )
-      `,
-    }),
-    // Admins can view all inquiries
-    pgPolicy('admins_view_all_inquiries', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
-    }),
-    // Students can update their own inquiries
-    pgPolicy('students_update_own_inquiries', {
-      for: 'update',
-      to: authenticatedRole,
-      using: sql`student_id = auth.uid()`,
-      withCheck: sql`student_id = auth.uid()`,
-    }),
-    // Teachers can respond to inquiries in their courses
-    pgPolicy('teachers_respond_course_inquiries', {
-      for: 'update',
-      to: authenticatedRole,
-      using: sql`
-        course_id IN (
-          SELECT course_id FROM course_teachers 
-          WHERE teacher_id = auth.uid()
-        )
-      `,
-      withCheck: sql`
-        course_id IN (
-          SELECT course_id FROM course_teachers 
-          WHERE teacher_id = auth.uid()
-        )
-      `,
-    }),
-    // Students can insert their own inquiries
-    pgPolicy('students_insert_own_inquiries', {
-      for: 'insert',
-      to: authenticatedRole,
-      withCheck: sql`student_id = auth.uid()`,
-    }),
-  ],
-)
-
-export const inquiryResponses = pgTable(
-  'inquiry_responses',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    inquiryId: uuid('inquiry_id')
-      .notNull()
-      .references(() => inquiries.id, { onDelete: 'cascade' }),
-    responderId: uuid('responder_id')
-      .notNull()
-      .references(() => profiles.id),
-    message: text('message').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-  },
-  (_table) => [
-    // Users can view responses to their own inquiries
-    pgPolicy('users_view_own_inquiry_responses', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`
-        inquiry_id IN (
-          SELECT id FROM inquiries 
-          WHERE student_id = auth.uid()
-        )
-      `,
-    }),
-    // Teachers can view responses in their courses
-    pgPolicy('teachers_view_course_responses', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`
-        inquiry_id IN (
-          SELECT i.id FROM inquiries i
-          WHERE i.course_id IN (
-            SELECT course_id FROM course_teachers 
-            WHERE teacher_id = auth.uid()
-          )
-        )
-      `,
-    }),
-    // Admins can view all responses
-    pgPolicy('admins_view_all_responses', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
-    }),
-    // Users can update their own responses
-    pgPolicy('users_update_own_responses', {
-      for: 'update',
-      to: authenticatedRole,
-      using: sql`responder_id = auth.uid()`,
-      withCheck: sql`responder_id = auth.uid()`,
-    }),
-    // Teachers can insert responses in their courses
-    pgPolicy('teachers_insert_course_responses', {
-      for: 'insert',
-      to: authenticatedRole,
-      withCheck: sql`
-        inquiry_id IN (
-          SELECT i.id FROM inquiries i
-          WHERE i.course_id IN (
-            SELECT course_id FROM course_teachers 
-            WHERE teacher_id = auth.uid()
-          )
-        )
-      `,
-    }),
-    // Admins can insert responses
-    pgPolicy('admins_insert_responses', {
-      for: 'insert',
-      to: authenticatedRole,
-      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
-    }),
-  ],
-)
-
 export const announcements = pgTable(
   'announcements',
   {
@@ -1056,6 +903,64 @@ export const postComments = pgTable(
   ],
 )
 
+export const postNotifications = pgTable(
+  'post_notifications',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    actorId: uuid('actor_id').notNull(),
+    event: postNotificationEventEnum('event').notNull(),
+    postId: uuid('post_id')
+      .notNull()
+      .references(() => posts.id, { onDelete: 'cascade' }),
+    commentId: uuid('comment_id').references(() => postComments.id, {
+      onDelete: 'cascade',
+    }),
+    isRead: boolean('is_read').default(false).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    pgPolicy('users_view_own_post_notifications', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`user_id = auth.uid()`,
+    }),
+    pgPolicy('users_update_own_post_notifications', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`user_id = auth.uid()`,
+      withCheck: sql`user_id = auth.uid()`,
+    }),
+    pgPolicy('users_insert_post_notifications', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`
+        actor_id = auth.uid()
+        AND (
+          (
+            event = 'post_created'
+            AND comment_id IS NULL
+            AND EXISTS (
+              SELECT 1 FROM posts p WHERE p.id = post_id AND p.author_id = actor_id
+            )
+          )
+          OR
+          (
+            event = 'comment_created'
+            AND comment_id IS NOT NULL
+            AND EXISTS (
+              SELECT 1 FROM post_comments c
+              WHERE c.id = comment_id AND c.author_id = actor_id AND c.post_id = post_id
+            )
+          )
+        )
+      `,
+    }),
+  ],
+)
+
 export const postReactions = pgTable(
   'post_reactions',
   {
@@ -1144,14 +1049,13 @@ export const postCommentReactions = pgTable(
 export const profilesRelations = relations(profiles, ({ many }) => ({
   courseTeachers: many(courseTeachers),
   submissions: many(submissions),
-  inquiries: many(inquiries),
-  inquiryResponses: many(inquiryResponses),
   announcements: many(announcements),
   mediaUploads: many(mediaLibrary),
   notifications: many(notifications),
   invitations: many(invitations),
   posts: many(posts),
   postComments: many(postComments),
+  postNotifications: many(postNotifications),
   postReactions: many(postReactions),
   postCommentReactions: many(postCommentReactions),
 }))
@@ -1159,7 +1063,6 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
 export const coursesRelations = relations(courses, ({ many }) => ({
   courseTeachers: many(courseTeachers),
   lessons: many(lessons),
-  inquiries: many(inquiries),
   announcements: many(announcements),
   mediaFiles: many(mediaLibrary),
   calendarEvents: many(calendarEvents),
@@ -1215,32 +1118,6 @@ export const submissionsRelations = relations(submissions, ({ one }) => ({
     references: [profiles.id],
   }),
 }))
-
-export const inquiriesRelations = relations(inquiries, ({ one, many }) => ({
-  student: one(profiles, {
-    fields: [inquiries.studentId],
-    references: [profiles.id],
-  }),
-  course: one(courses, {
-    fields: [inquiries.courseId],
-    references: [courses.id],
-  }),
-  responses: many(inquiryResponses),
-}))
-
-export const inquiryResponsesRelations = relations(
-  inquiryResponses,
-  ({ one }) => ({
-    inquiry: one(inquiries, {
-      fields: [inquiryResponses.inquiryId],
-      references: [inquiries.id],
-    }),
-    responder: one(profiles, {
-      fields: [inquiryResponses.responderId],
-      references: [profiles.id],
-    }),
-  }),
-)
 
 export const announcementsRelations = relations(announcements, ({ one }) => ({
   author: one(profiles, {
@@ -1334,6 +1211,24 @@ export const postCommentReactionsRelations = relations(
     user: one(profiles, {
       fields: [postCommentReactions.userId],
       references: [profiles.id],
+    }),
+  }),
+)
+
+export const postNotificationsRelations = relations(
+  postNotifications,
+  ({ one }) => ({
+    user: one(profiles, {
+      fields: [postNotifications.userId],
+      references: [profiles.id],
+    }),
+    post: one(posts, {
+      fields: [postNotifications.postId],
+      references: [posts.id],
+    }),
+    comment: one(postComments, {
+      fields: [postNotifications.commentId],
+      references: [postComments.id],
     }),
   }),
 )
