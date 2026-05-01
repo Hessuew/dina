@@ -4,9 +4,6 @@ import { env as _cfEnv } from 'cloudflare:workers'
 
 const cfEnv = _cfEnv as any
 
-// const runtimeEnv =
-//   typeof process !== 'undefined' ? process.env : ((globalThis as any).env ?? {})
-
 export const env = createEnv({
   server: {
     SUPABASE_URL: z.url(),

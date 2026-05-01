@@ -6,7 +6,8 @@
     "eslint.config.js",
     "prettier.config.js",
     "vite.config.js",
-    "worker-configuration.d.ts"
+    "worker-configuration.d.ts",
+    "public/_headers"
   ],
 
   "compilerOptions": {
