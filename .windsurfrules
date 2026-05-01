@@ -1,10 +1,13 @@
 # Repository Agent Rules — DINA Codebase
 
-## Required Read Order (Before Any Change)
+## Required Reading
 
-1. Read `AI_GUIDE.md` — engineering rules, architecture, documentation contract
-2. Read `CLAUDE.md` — only when working on UI/styling (design system, visual constraints, component patterns)
-3. Read nearest directory `README.md` for the area you will edit
+- [documentation/ENGINEERING_GUIDE.md](documentation/ENGINEERING_GUIDE.md) — engineering rules, architecture, documentation contract
+- [documentation/DESIGN_SYSTEM.md](documentation/DESIGN_SYSTEM.md) — design system, visual constraints, component patterns
+- [documentation/ARCHITECTURAL_DECISIONS.md](documentation/ARCHITECTURAL_DECISIONS.md) — architectural decisions and rationale
+- [documentation/BUSINESS_RULES.md](documentation/BUSINESS_RULES.md) — business rules and domain logic
+
+Before any change: read the relevant documentation above and the nearest directory `README.md`.
 
 ## Architecture Overview
 
@@ -26,28 +29,24 @@
 ## Documentation Contract (Update in Same PR)
 
 **Routing changes**: Update `src/routes/README.md` and/or `src/routes/_authed/README.md`
-**Root context changes**: Update `AI_GUIDE.md` and `src/routes/README.md`
+**Root context changes**: Update `documentation/ENGINEERING_GUIDE.md` and `src/routes/README.md`
 **DB schema changes**: Update `src/db/README.md` (and any related deep dives)
 **Utility module changes**: Update `src/utils/README.md`
 **New component subsystems**: Update `src/components/README.md`
+**Design system changes**: Update `documentation/DESIGN_SYSTEM.md`
 
 **Deep dive docs**: Only create for keystone modules (>250 lines, high impact, non-obvious invariants). Structure: Purpose, Responsibilities, Invariants, Key exports, Change recipes.
 
 **Documentation style**: Prefer directory-level `README.md` over file-level docs. Document "why" and invariants, not obvious code.
 
-## Design System Summary (From CLAUDE.md)
+## Design System
 
-**Brand**: Architectural minimalist, high-end editorial, quiet luxury. Timeless, authoritative, serene.
+See [documentation/DESIGN_SYSTEM.md](documentation/DESIGN_SYSTEM.md) for complete design system.
 
-**Color palette**: Use exact tokens from CLAUDE.md — never invent new hex values. Light marble (`#F8F4EC`) alternates with dark graphite (`#121212`, `#1A1A1A`). Gold accents (`#C5A059`) are refined highlights only.
-
-**Typography**: `font-serif` (Georgia/Times) for premium display/headings. `font-sans` (Geist Variable) for body/labels. Follow exact scale from CLAUDE.md.
-
-**Shape language**: Zero rounding on premium surfaces — sharp 90-degree corners only.
-
-**Component patterns**: Follow documented patterns (eyebrow decoration, two-column layout, right-panel feature card, selector grid, nav controls). Copy exact classes from CLAUDE.md.
-
-**Motion**: Restrained — `hover:-translate-y-0.5`, `group-hover:translate-x-0.5`, no bouncy effects.
+**Critical constraints:**
+- Zero border-radius on premium surfaces (sharp 90-degree corners)
+- Use exact color tokens from documentation/DESIGN_SYSTEM.md — never invent new hex values
+- Restrained motion: `hover:-translate-y-0.5`, `group-hover:translate-x-0.5` only
 
 ## Working Patterns
 
@@ -71,9 +70,9 @@
 After completing any task, if you identify patterns that could benefit the codebase:
 
 1. **Pattern detection**: If you see repeated code structure, missing abstractions, or inconsistent patterns
-2. **Documentation gaps**: If you encounter areas lacking clear guidance in AI_GUIDE.md or CLAUDE.md
+2. **Documentation gaps**: If you encounter areas lacking clear guidance in documentation/ENGINEERING_GUIDE.md or documentation/DESIGN_SYSTEM.md
 3. **Tooling opportunities**: If workflows could be automated or streamlined
-4. **Design inconsistencies**: If visual patterns diverge from CLAUDE.md without justification
+4. **Design inconsistencies**: If visual patterns diverge from documentation/DESIGN_SYSTEM.md without justification
 
 **Action**: Propose improvements to the user with:
 - Specific observation (what you noticed)
@@ -81,16 +80,16 @@ After completing any task, if you identify patterns that could benefit the codeb
 - Concrete suggestion (what to change)
 - Priority level (high/medium/low)
 
-**Documentation updates**: If a new pattern emerges as standard across the codebase, update CLAUDE.md. If engineering patterns shift, update AI_GUIDE.md.
+**Documentation updates**: If a new pattern emerges as standard across the codebase, update documentation/DESIGN_SYSTEM.md. If engineering patterns shift, update documentation/ENGINEERING_GUIDE.md.
 
 **Rule additions**: If you discover a new invariant or working pattern that should be enforced, add it to this file (.windsurfrules).
 
 ## Quick Checklist Before Shipping
 
-- Read AI_GUIDE.md, CLAUDE.md, and relevant directory README
+- Read documentation/ENGINEERING_GUIDE.md, documentation/DESIGN_SYSTEM.md, and relevant directory README
 - Updated all affected documentation files
-- Used exact color tokens from CLAUDE.md
-- Followed component patterns from CLAUDE.md
+- Used exact color tokens from documentation/DESIGN_SYSTEM.md
+- Followed component patterns from documentation/DESIGN_SYSTEM.md
 - Zero border-radius on premium surfaces
 - Used `getDb()` for database access
 - Added error handling on async operations

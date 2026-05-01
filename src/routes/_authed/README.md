@@ -42,9 +42,9 @@ This folder contains feature areas implemented as route files:
 
 - **Change authentication behavior**
   - Edit `src/routes/_authed.tsx`.
-  - If you change auth assumptions, update `src/routes/README.md` and `AI_GUIDE.md` as needed.
+  - If you change auth assumptions, update `src/routes/README.md` and `documentation/ENGINEERING_GUIDE.md` as needed.
 
 ## Related Docs
 
 - `src/routes/README.md`
-- `AI_GUIDE.md`
+- `documentation/ENGINEERING_GUIDE.md`
