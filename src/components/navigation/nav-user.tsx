@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { BadgeCheck, ChevronsUpDown, LogOut } from 'lucide-react'
+import { ChevronsUpDown } from 'lucide-react'
+import { ProfileModal } from '@/components/modal/ProfileModal'
+import { LogOut } from '@/components/animate-ui/icons/log-out'
+import { BadgeCheck } from '@/components/animate-ui/icons/badge-check'
 
-import { ProfileModal } from '../modal/ProfileModal'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -22,6 +24,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
+import { AnimateIcon } from '@/components/animate-ui/icons/icon'
 
 type NavUserProps = {
   user: {
@@ -182,13 +185,18 @@ export function NavUser({
                   )}
                   onClick={() => setProfileModalOpen(true)}
                 >
-                  <BadgeCheck
-                    className={cn(
-                      'size-4 shrink-0 group-hover/button:text-[#C5A059] group-focus/button:text-[#C5A059]',
-                      isDark ? 'text-[#C5A059]!' : 'text-[#9B7A41]!',
-                    )}
-                  />
-                  My Profile
+                  <AnimateIcon
+                    animateOnHover
+                    className="flex h-full w-full flex-row items-center gap-2 py-2"
+                  >
+                    <BadgeCheck
+                      className={cn(
+                        'size-4 shrink-0 group-hover/button:text-[#C5A059] group-focus/button:text-[#C5A059]',
+                        isDark ? 'text-[#C5A059]!' : 'text-[#9B7A41]!',
+                      )}
+                    />
+                    My Profile
+                  </AnimateIcon>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator
                   className={isDark ? 'bg-white/8' : 'bg-[#1A1A1A]/10'}
@@ -202,13 +210,18 @@ export function NavUser({
                         : 'text-[#4E463D] hover:bg-[#EDE8DE] focus:bg-[#EDE8DE]',
                     )}
                   >
-                    <LogOut
-                      className={cn(
-                        'size-4 shrink-0',
-                        isDark ? 'text-[#C5A059]!' : 'text-[#9B7A41]!',
-                      )}
-                    />
-                    Log out
+                    <AnimateIcon
+                      animateOnHover
+                      className="flex h-full w-full flex-row items-center gap-2 py-2"
+                    >
+                      <LogOut
+                        className={cn(
+                          'size-4 shrink-0',
+                          isDark ? 'text-[#C5A059]!' : 'text-[#9B7A41]!',
+                        )}
+                      />
+                      Log out
+                    </AnimateIcon>
                   </DropdownMenuItem>
                 </Link>
               </DropdownMenuGroup>

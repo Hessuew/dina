@@ -1,18 +1,99 @@
-# Repository agent rules
+# Repository Agent Rules — DINA Codebase
 
-Before making changes:
+## Required Read Order (Before Any Change)
 
-1. Read `AI_GUIDE.md` (engineering rules + documentation contract).
-2. Read `CLAUDE.md` (design system rules).
-3. Read the nearest directory `README.md` for the area you will edit.
+1. Read `AI_GUIDE.md` — engineering rules, architecture, documentation contract
+2. Read `CLAUDE.md` — only when working on UI/styling (design system, visual constraints, component patterns)
+3. Read nearest directory `README.md` for the area you will edit
 
-Documentation maintenance:
+## Architecture Overview
 
-- If you add/remove/rename routes, update `src/routes/README.md` and/or `src/routes/_authed/README.md`.
-- If you change root route context (`context.user`), update `AI_GUIDE.md` and `src/routes/README.md`.
-- If you change DB schema (`src/db/schema.ts`), update `src/db/README.md` (and any related deep dives).
+- **Framework**: TanStack Start + React + TanStack Router (file-based routing in `src/routes/**`)
+- **Root route**: `src/routes/__root.tsx` — sets `context.user` from Supabase auth
+- **Server functions**: Use `createServerFn` from TanStack Start
+- **Database**: Postgres via Drizzle — entry point `src/db/index.ts` exports `getDb()`
+- **Auth**: Supabase — server client in `src/utils/supabase.ts`, use `getCurrentUser()` in server functions
+- **Env**: Typed in `src/env.ts` — never hardcode secrets
+- **Package runner**: Bun — use `bun run <script>` and `bun add`
 
-Documentation style:
+## Cross-Cutting Invariants
 
-- Prefer directory-level `README.md` over file-level docs.
-- Only add file-level deep dives for keystone modules, as defined in `AI_GUIDE.md`.
+- Auth boundaries: `src/routes/_authed/**` routes require authentication via `src/routes/_authed.tsx`
+- DB connections: Always use `getDb()` from `src/db/index.ts`, never instantiate ad-hoc
+- Cloudflare Hyperdrive: Supported via `HYPERDRIVE.connectionString` binding
+- Root context: `context.user` is the single source of truth for authenticated user data
+
+## Documentation Contract (Update in Same PR)
+
+**Routing changes**: Update `src/routes/README.md` and/or `src/routes/_authed/README.md`
+**Root context changes**: Update `AI_GUIDE.md` and `src/routes/README.md`
+**DB schema changes**: Update `src/db/README.md` (and any related deep dives)
+**Utility module changes**: Update `src/utils/README.md`
+**New component subsystems**: Update `src/components/README.md`
+
+**Deep dive docs**: Only create for keystone modules (>250 lines, high impact, non-obvious invariants). Structure: Purpose, Responsibilities, Invariants, Key exports, Change recipes.
+
+**Documentation style**: Prefer directory-level `README.md` over file-level docs. Document "why" and invariants, not obvious code.
+
+## Design System Summary (From CLAUDE.md)
+
+**Brand**: Architectural minimalist, high-end editorial, quiet luxury. Timeless, authoritative, serene.
+
+**Color palette**: Use exact tokens from CLAUDE.md — never invent new hex values. Light marble (`#F8F4EC`) alternates with dark graphite (`#121212`, `#1A1A1A`). Gold accents (`#C5A059`) are refined highlights only.
+
+**Typography**: `font-serif` (Georgia/Times) for premium display/headings. `font-sans` (Geist Variable) for body/labels. Follow exact scale from CLAUDE.md.
+
+**Shape language**: Zero rounding on premium surfaces — sharp 90-degree corners only.
+
+**Component patterns**: Follow documented patterns (eyebrow decoration, two-column layout, right-panel feature card, selector grid, nav controls). Copy exact classes from CLAUDE.md.
+
+**Motion**: Restrained — `hover:-translate-y-0.5`, `group-hover:translate-x-0.5`, no bouncy effects.
+
+## Working Patterns
+
+- **Bug fixing**: Prefer minimal upstream fixes over downstream workarounds. Identify root cause first. Add regression tests.
+- **Code changes**: Use minimal, focused edits. Follow existing style. Write general-purpose solutions.
+- **Verification**: Use available automated testing (Playwright, unit tests) when possible.
+- **Parallel tool calls**: Default to parallel execution for independent operations (reads, searches).
+- **Import organization**: Imports at top of file. Separate imports for new edits.
+
+## Code Quality Standards
+
+- Functions >30 lines: likely doing too much — split
+- Logic duplicated >2 times: extract to utility
+- Any `any` type in TypeScript: replace with real types
+- Components >3 props: consider grouping into object
+- Missing error handling on async ops: add try/catch
+- After implementation: review for above issues
+
+## Self-Improvement Mechanism
+
+After completing any task, if you identify patterns that could benefit the codebase:
+
+1. **Pattern detection**: If you see repeated code structure, missing abstractions, or inconsistent patterns
+2. **Documentation gaps**: If you encounter areas lacking clear guidance in AI_GUIDE.md or CLAUDE.md
+3. **Tooling opportunities**: If workflows could be automated or streamlined
+4. **Design inconsistencies**: If visual patterns diverge from CLAUDE.md without justification
+
+**Action**: Propose improvements to the user with:
+- Specific observation (what you noticed)
+- Impact assessment (why it matters)
+- Concrete suggestion (what to change)
+- Priority level (high/medium/low)
+
+**Documentation updates**: If a new pattern emerges as standard across the codebase, update CLAUDE.md. If engineering patterns shift, update AI_GUIDE.md.
+
+**Rule additions**: If you discover a new invariant or working pattern that should be enforced, add it to this file (.windsurfrules).
+
+## Quick Checklist Before Shipping
+
+- Read AI_GUIDE.md, CLAUDE.md, and relevant directory README
+- Updated all affected documentation files
+- Used exact color tokens from CLAUDE.md
+- Followed component patterns from CLAUDE.md
+- Zero border-radius on premium surfaces
+- Used `getDb()` for database access
+- Added error handling on async operations
+- No `any` types in TypeScript
+- Functions are focused and under 30 lines
+- Considered self-improvement opportunities

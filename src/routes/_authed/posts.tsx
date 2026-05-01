@@ -576,15 +576,15 @@ function PostCard({
       {/* Post header */}
       <div className="flex items-start justify-between gap-3 px-5 pt-5">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-full bg-[#EDE8DE]">
+          <div className="mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-none bg-[#EDE8DE]">
             {post.author.avatarUrl ? (
               <img
                 src={post.author.avatarUrl}
                 alt={post.author.fullName}
-                className="size-9 shrink-0 border border-[#1A1A1A]/10 object-cover"
+                className="flex-1 shrink-0 border border-[#1A1A1A]/10 object-cover"
               />
             ) : (
-              <div className="flex size-9 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] text-[0.55rem] font-medium text-[#E9D9B4]">
+              <div className="flex size-10 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] text-[0.55rem] font-medium text-[#E9D9B4]">
                 {initials}
               </div>
             )}
