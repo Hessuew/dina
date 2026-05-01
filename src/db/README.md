@@ -49,5 +49,5 @@ Database access layer and schema definitions.
 
 ## Related Docs
 
-- `AI_GUIDE.md`
+- `documentation/ENGINEERING_GUIDE.md`
 - `src/db/schema.md`

@@ -1,4 +1,4 @@
-# src/routes/__root.tsx (Deep Dive)
+# src/routes/\_\_root.tsx (Deep Dive)
 
 ## Purpose
 
@@ -18,7 +18,7 @@ Defines the root route for TanStack Router and establishes the global applicatio
 - `context.user` is the primary auth signal for route protection.
   - The authenticated route tree checks this value in `src/routes/_authed.tsx`.
 - If the shape of `context.user` changes, update:
-  - `AI_GUIDE.md`
+  - `documentation/ENGINEERING_GUIDE.md`
   - `src/routes/README.md`
 
 ## Key Entry Points
@@ -37,4 +37,4 @@ Defines the root route for TanStack Router and establishes the global applicatio
 
 - Change authentication context
   - Adjust `fetchUser` and the returned `user` shape.
-  - Update doc contract targets (see `AI_GUIDE.md`).
+  - Update doc contract targets (see `documentation/ENGINEERING_GUIDE.md`).

@@ -29,7 +29,7 @@ This folder contains:
 ## Key Invariants / Assumptions
 
 - **Design system**
-  - Public-facing UI should follow `CLAUDE.md` for visual tokens and patterns.
+  - Public-facing UI should follow `documentation/DESIGN_SYSTEM.md` for visual tokens and patterns.
 
 - **Composition**
   - Prefer composing feature UI from `ui/*` primitives and small feature components.
@@ -50,5 +50,5 @@ This folder contains:
 
 ## Related Docs
 
-- `CLAUDE.md`
+- `documentation/DESIGN_SYSTEM.md`
 - `src/routes/README.md`
