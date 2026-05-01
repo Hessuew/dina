@@ -1,4 +1,4 @@
-# src/routes/_authed
+# src/routes/\_authed
 
 ## Purpose
 
@@ -20,6 +20,7 @@ This folder contains feature areas implemented as route files:
 - **Invitations**: `invitations.tsx`
 - **Teachers**: `teachers.tsx`
 - **Posts**: `posts.tsx`
+- **Library**: `library/index.tsx`, `library/$mediaId.tsx`
 
 ## Key Invariants / Assumptions
 

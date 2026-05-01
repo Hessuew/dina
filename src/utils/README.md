@@ -15,7 +15,7 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `supabase.ts`: server client (`@supabase/ssr`) and admin client.
 
 - **Feature server function modules**
-  - `courses.ts`, `assignments.ts`, `students.ts`, `teachers.ts`, `calendar.ts`, `events.ts`, `invitations.ts`, `posts.ts`.
+  - `courses.ts`, `assignments.ts`, `students.ts`, `teachers.ts`, `calendar.ts`, `events.ts`, `invitations.ts`, `posts.ts`, `library.ts`.
   - These typically export server functions that routes call for loading and mutations.
 
 - **Misc**
