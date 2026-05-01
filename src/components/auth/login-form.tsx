@@ -1,12 +1,7 @@
 import { Link, useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import facultyBackground from '@/assets/images/bg/bg_hero.webp'
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from '@/components/ui/field'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useMutation } from '@/hooks/useMutation'
 import { loginFn } from '@/routes/_authed'
@@ -224,20 +219,6 @@ export function LoginForm({ verified = false }: LoginFormProps) {
                           ? 'Signing in...'
                           : 'Sign In'}
                       </button>
-
-                      <FieldDescription
-                        theme="dark"
-                        className="pt-1 text-center"
-                      >
-                        Don&apos;t have an account?{' '}
-                        <Link
-                          to="/signup"
-                          search={{ token: '' }}
-                          className="text-[#C5A059] underline-offset-4 transition-colors hover:underline"
-                        >
-                          Sign up
-                        </Link>
-                      </FieldDescription>
                     </Field>
                   </FieldGroup>
                 </div>

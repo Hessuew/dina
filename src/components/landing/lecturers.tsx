@@ -51,13 +51,13 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Juhani J.',
         title: '',
-        bio: '',
+        bio: 'Juhani is an experienced software developer. His passion is to know the Holy Spirit and to see Finland turn to God, city by city. The fire of God is evident in his life, and through him the world will see Jesus.',
         image: juhaniImage,
       },
       {
         name: 'Akosua O.',
         title: '',
-        bio: 'Currently pursuing a degree in Computer Science',
+        bio: 'Currently pursuing a degree in Computer Science.',
         image: akosyaImage,
       },
     ],

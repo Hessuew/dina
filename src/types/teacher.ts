@@ -12,9 +12,10 @@ export type TeacherCourse = {
   title: string
   description: string | null
   isPublished: boolean | null
+  createdAt: Date
+  orderIndex: number | null
 }
 
-export type TeacherWithCourses = Teacher & {
-  courses: Array<TeacherCourse>
-  courseCount: number
+export type TeacherWithCourse = Teacher & {
+  course?: TeacherCourse | null
 }

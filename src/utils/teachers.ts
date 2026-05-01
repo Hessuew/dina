@@ -14,7 +14,7 @@ export const getTeachers = createServerFn({ method: 'POST' }).handler(
 
     const teachersWithCourses = await Promise.all(
       teachers.map(async (teacher) => {
-        const teacherAssignments = await db.query.courseTeachers.findMany({
+        const teacherAssignments = await db.query.courseTeachers.findFirst({
           where: eq(courseTeachers.teacherId, teacher.id),
           with: {
             course: {
@@ -24,14 +24,14 @@ export const getTeachers = createServerFn({ method: 'POST' }).handler(
                 description: true,
                 isPublished: true,
                 createdAt: true,
+                orderIndex: true,
               },
             },
           },
           orderBy: (ct, { desc }) => [desc(ct.createdAt)],
         })
 
-        const teacherCourses = teacherAssignments.map((ta) => ta.course)
-
+        // order by the teachers course orderIndex, and by the teacher's creation date
         return {
           id: teacher.id,
           fullName: teacher.fullName,
@@ -39,12 +39,18 @@ export const getTeachers = createServerFn({ method: 'POST' }).handler(
           bio: teacher.bio,
           avatarUrl: teacher.avatarUrl,
           createdAt: teacher.createdAt,
-          courses: teacherCourses,
-          courseCount: teacherCourses.length,
+          course: teacherAssignments?.course,
         }
       }),
     )
 
-    return { teachers: teachersWithCourses }
+    const sortedTeachers = teachersWithCourses.sort((a, b) => {
+      if (a.course?.orderIndex && b.course?.orderIndex) {
+        return a.course.orderIndex - b.course.orderIndex
+      }
+      return a.createdAt.getTime() - b.createdAt.getTime()
+    })
+
+    return { teachers: sortedTeachers }
   },
 )

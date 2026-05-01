@@ -30,7 +30,8 @@ const testimonials: Array<TestimonialItem> = [
     id: 'juhani-j',
     name: 'Juhani J.',
     role: 'Bishop, Programmer',
-    quote: '',
+    quote:
+      'Being discipled by my dear brother has changed me irreversibly for the rest of my life. Weight in the spirit matters. Now, carrying a heavy measure of what I have received, I am giving it to others. My dear disciples have become prayer warriors, staying in the cave of Adullam through 5–12 prayer meetings and enjoying them.',
     theme: 'Foundation',
   },
   {
@@ -251,14 +252,14 @@ export function LandingTestimonialsSection() {
                     }`}
                     style={getCardMotionStyle(offset)}
                   >
-                    <div className="relative flex min-h-full flex-col justify-between gap-4 lg:gap-10">
+                    <div className="relative flex min-h-full flex-col justify-between gap-4 lg:gap-8">
                       <div className="space-y-6">
                         <div className="inline-flex items-center gap-3 text-[0.6rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
                           <span className="h-px w-6 bg-[#C5A059]/45" />
                           {item.theme}
                         </div>
 
-                        <blockquote className="font-serif text-base text-[0.9rem] leading-[1.6] text-white md:text-[1rem] lg:text-[1.1rem] xl:text-[1.25rem]">
+                        <blockquote className="font-serif text-base text-[0.9rem] leading-[1.6] text-white md:text-[1rem] lg:text-[1.1rem] xl:text-[1.2rem]">
                           "{item.quote}"
                         </blockquote>
                       </div>
@@ -280,20 +281,49 @@ export function LandingTestimonialsSection() {
               })}
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {testimonials.map((item, index) => (
-                <button
-                  key={`indicator-${item.id}`}
-                  type="button"
-                  onClick={() => setActiveIndex(index)}
-                  aria-label={`Show testimony from ${item.name}`}
-                  className={`h-1.5 transition-all duration-500 ease-out ${
-                    index === activeIndex
-                      ? 'w-10 bg-white'
-                      : 'w-5 bg-white/18 hover:bg-[#C5A059]/44'
-                  }`}
-                />
-              ))}
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {testimonials
+                  .slice(0, Math.ceil(testimonials.length / 2))
+                  .map((item, index) => (
+                    <button
+                      key={`indicator-${item.id}`}
+                      type="button"
+                      onClick={() => setActiveIndex(index)}
+                      aria-label={`Show testimony from ${item.name}`}
+                      className={`border px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.28em] uppercase transition-all duration-500 ease-out ${
+                        index === activeIndex
+                          ? 'border-[#C5A059]/42 bg-white/8 text-[#D4B373] shadow-[0_24px_44px_-34px_rgba(0,0,0,0.6)]'
+                          : 'border-white/10 bg-white/3 text-[#8E816D] hover:border-white/18 hover:bg-white/5'
+                      }`}
+                    >
+                      {item.name}
+                    </button>
+                  ))}
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {testimonials
+                  .slice(Math.ceil(testimonials.length / 2))
+                  .map((item, index) => {
+                    const actualIndex =
+                      index + Math.ceil(testimonials.length / 2)
+                    return (
+                      <button
+                        key={`indicator-${item.id}`}
+                        type="button"
+                        onClick={() => setActiveIndex(actualIndex)}
+                        aria-label={`Show testimony from ${item.name}`}
+                        className={`border px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.28em] uppercase transition-all duration-500 ease-out ${
+                          actualIndex === activeIndex
+                            ? 'border-[#C5A059]/42 bg-white/8 text-[#D4B373] shadow-[0_24px_44px_-34px_rgba(0,0,0,0.6)]'
+                            : 'border-white/10 bg-white/3 text-[#8E816D] hover:border-white/18 hover:bg-white/5'
+                        }`}
+                      >
+                        {item.name}
+                      </button>
+                    )
+                  })}
+              </div>
             </div>
 
             <div className="text-end">

@@ -1,18 +1,18 @@
 import { useState } from 'react'
-import type { TeacherWithCourses } from '@/types/teacher'
+import type { TeacherWithCourse } from '@/types/teacher'
 import { TeacherCard } from '@/components/card/TeacherCard'
 import { TeacherModal } from '@/components/modal/TeacherModal'
 
 type TeachersViewProps = {
-  teachers: Array<TeacherWithCourses>
+  teachers: Array<TeacherWithCourse>
 }
 
 export function TeachersView({ teachers }: TeachersViewProps) {
   const [selectedTeacher, setSelectedTeacher] =
-    useState<TeacherWithCourses | null>(null)
+    useState<TeacherWithCourse | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
-  const handleTeacherClick = (teacher: TeacherWithCourses) => {
+  const handleTeacherClick = (teacher: TeacherWithCourse) => {
     setSelectedTeacher(teacher)
     setModalOpen(true)
   }
