@@ -1,11 +1,10 @@
 import { format } from 'date-fns'
-import { ArrowRight } from 'lucide-react'
+import { EyeIcon } from 'lucide-react'
 import { useRouter } from '@tanstack/react-router'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { StudentWithStats } from '@/types/student'
-import { Button } from '@/components/ui/button'
-import { DataTable } from '@/components/table/DataTable'
+import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 
 type StudentsViewProps = {
   students: Array<StudentWithStats>
@@ -78,10 +77,10 @@ export function StudentsView({ students }: StudentsViewProps) {
         const { submittedAssignments, totalAssignments } =
           info.row.original.assignmentStats
         return (
-          <span className="text-[#D6CCBE]">
+          <>
             {submittedAssignments}
             <span className="text-[#8E816D]">/{totalAssignments}</span>
-          </span>
+          </>
         )
       },
       enableSorting: false,
@@ -102,27 +101,18 @@ export function StudentsView({ students }: StudentsViewProps) {
       header: 'Avg Grade',
       id: 'avgGrade',
     }),
-    columnHelper.display({
-      cell: (info) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() =>
-            router.navigate({
-              to: '/students/$studentId',
-              params: { studentId: info.row.original.id },
-              search: { fromDashboard: false },
-            })
-          }
-        >
-          <ArrowRight className="size-3.5" />
-        </Button>
-      ),
-      enableSorting: false,
-      header: '',
-      id: 'actions',
-    }),
+    createButtonColumn([
+      {
+        icon: EyeIcon,
+        label: 'View',
+        onClick: (student) =>
+          router.navigate({
+            to: '/students/$studentId',
+            params: { studentId: student.id },
+            search: { fromDashboard: false },
+          }),
+      },
+    ]),
   ]
 
   return (

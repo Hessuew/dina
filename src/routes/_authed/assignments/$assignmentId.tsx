@@ -11,19 +11,14 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { createColumnHelper } from '@tanstack/react-table'
+import type { ColumnDef } from '@tanstack/react-table'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { useMutation } from '@/hooks/useMutation'
 import {
   createOrUpdateSubmission,
@@ -94,6 +89,8 @@ type SubmissionWithStudent = {
   }
 }
 
+const columnHelper = createColumnHelper<SubmissionWithStudent>()
+
 function AssignmentDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
@@ -105,6 +102,77 @@ function AssignmentDetailComponent() {
   >(null)
   const [selectedSubmission, setSelectedSubmission] =
     useState<SubmissionWithStudent | null>(null)
+
+  const submissionsColumns: Array<ColumnDef<SubmissionWithStudent, any>> = [
+    columnHelper.accessor('student.fullName', {
+      cell: (info) => (
+        <span className="font-serif text-sm text-[#F8F4EC]">
+          {info.getValue()}
+        </span>
+      ),
+      header: 'Student',
+    }),
+    columnHelper.accessor('status', {
+      cell: (info) => {
+        const sub = info.row.original
+        return (
+          <span
+            className={cn(
+              'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
+              sub.grade !== null
+                ? 'border-[#C5A059]/40 text-[#9B7A41]'
+                : sub.status === 'submitted'
+                  ? 'border-blue-300/60 text-blue-600'
+                  : 'border-[#1A1A1A]/12 text-[#8E816D]',
+            )}
+          >
+            {sub.grade !== null
+              ? 'Graded'
+              : sub.status === 'submitted'
+                ? 'Submitted'
+                : 'Draft'}
+          </span>
+        )
+      },
+      header: 'Status',
+    }),
+    columnHelper.accessor('grade', {
+      cell: (info) => {
+        const sub = info.row.original
+        return (
+          <span className="text-sm text-[#AFA28F]">
+            {sub.grade !== null
+              ? `${sub.grade} / ${assignment.maxGrade ?? 100}`
+              : '—'}
+          </span>
+        )
+      },
+      header: 'Grade',
+    }),
+    columnHelper.accessor('submittedAt', {
+      cell: (info) => {
+        const sub = info.row.original
+        return (
+          <span className="text-sm text-[#8E816D]">
+            {sub.submittedAt
+              ? new Date(sub.submittedAt).toLocaleDateString()
+              : '—'}
+          </span>
+        )
+      },
+      header: 'Submitted',
+    }),
+    createButtonColumn<SubmissionWithStudent>([
+      {
+        icon: PencilIcon,
+        label: 'Grade',
+        onClick: (sub) => {
+          setSelectedSubmission(sub)
+          setDialogMode('grade')
+        },
+      },
+    ]),
+  ]
 
   const [submissionFormData, setSubmissionFormData] = useState({
     content: submission?.content || '',
@@ -448,70 +516,12 @@ function AssignmentDetailComponent() {
                     </p>
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-white/8 hover:bg-transparent">
-                        <TableHead className="text-[0.62rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-                          Student
-                        </TableHead>
-                        <TableHead className="text-[0.62rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-                          Status
-                        </TableHead>
-                        <TableHead className="text-[0.62rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-                          Grade
-                        </TableHead>
-                        <TableHead className="text-[0.62rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-                          Submitted
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(allSubmissions as Array<SubmissionWithStudent>).map(
-                        (sub) => (
-                          <TableRow
-                            key={sub.id}
-                            className="cursor-pointer border-white/6 transition-colors hover:bg-white/5"
-                            onClick={() => {
-                              setSelectedSubmission(sub)
-                              setDialogMode('grade')
-                            }}
-                          >
-                            <TableCell className="font-serif text-sm text-[#F8F4EC]">
-                              {sub.student.fullName}
-                            </TableCell>
-                            <TableCell>
-                              <span
-                                className={cn(
-                                  'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
-                                  sub.grade !== null
-                                    ? 'border-[#C5A059]/40 text-[#9B7A41]'
-                                    : sub.status === 'submitted'
-                                      ? 'border-blue-300/60 text-blue-600'
-                                      : 'border-[#1A1A1A]/12 text-[#8E816D]',
-                                )}
-                              >
-                                {sub.grade !== null
-                                  ? 'Graded'
-                                  : sub.status === 'submitted'
-                                    ? 'Submitted'
-                                    : 'Draft'}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-sm text-[#AFA28F]">
-                              {sub.grade !== null
-                                ? `${sub.grade} / ${assignment.maxGrade ?? 100}`
-                                : '—'}
-                            </TableCell>
-                            <TableCell className="text-sm text-[#8E816D]">
-                              {sub.submittedAt
-                                ? new Date(sub.submittedAt).toLocaleDateString()
-                                : '—'}
-                            </TableCell>
-                          </TableRow>
-                        ),
-                      )}
-                    </TableBody>
-                  </Table>
+                  <DataTable
+                    columns={submissionsColumns}
+                    data={allSubmissions as Array<SubmissionWithStudent>}
+                    pageSize={10}
+                    searchPlaceholder="Search by student name…"
+                  />
                 )}
               </div>
             )}

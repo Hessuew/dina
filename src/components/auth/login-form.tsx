@@ -201,7 +201,7 @@ export function LoginForm({ verified = false }: LoginFormProps) {
                       />
                     </Field>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex w-full items-center justify-end">
                       <Link
                         to="/forgot-password"
                         className="text-[0.72rem] text-[#9B7A41] underline-offset-4 transition-colors hover:underline"

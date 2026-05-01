@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, ChevronsUpDown, Search } from 'lucide-react'
 import {
+  createColumnHelper,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -9,6 +10,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
+import type { ComponentType } from 'react'
 import { Input } from '@/components/ui/input'
 import {
   Pagination,
@@ -26,13 +28,64 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+
+type ButtonConfig<TData> = {
+  icon: ComponentType<{ className?: string }>
+  label: string
+  onClick: (row: TData) => void
+  show?: (row: TData) => boolean
+}
 
 type DataTableProps<TData> = {
   columns: Array<ColumnDef<TData, any>>
   data: Array<TData>
   pageSize?: number
   searchPlaceholder?: string
+}
+
+export function createButtonColumn<TData>(
+  buttons: Array<ButtonConfig<TData>>,
+): ColumnDef<TData, any> {
+  const columnHelper = createColumnHelper<TData>()
+  return columnHelper.display({
+    cell: (info) => {
+      const row = info.row.original
+      return (
+        <TooltipProvider delay={200}>
+          <div className="flex items-center justify-end gap-1">
+            {buttons
+              .filter((btn) => !btn.show || btn.show(row))
+              .map((btn, index) => (
+                <Tooltip key={index}>
+                  <TooltipTrigger>
+                    <Button
+                      size="icon"
+                      theme="dark"
+                      className="size-8 rounded-none border-none bg-transparent hover:bg-white/5"
+                      onClick={() => btn.onClick(row)}
+                    >
+                      <btn.icon className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{btn.label}</TooltipContent>
+                </Tooltip>
+              ))}
+          </div>
+        </TooltipProvider>
+      )
+    },
+    enableSorting: false,
+    header: 'Actions',
+    id: 'actions',
+  })
 }
 
 function SortIcon({ isSorted }: { isSorted: false | 'asc' | 'desc' }) {
@@ -184,15 +237,15 @@ export function DataTable<TData>({
           </span>
 
           <Pagination className="mx-0 w-auto justify-end">
-            <PaginationContent className="gap-0">
+            <PaginationContent className="gap-1.5">
               <PaginationItem>
                 <PaginationPrevious
                   onClick={() => table.previousPage()}
                   aria-disabled={!table.getCanPreviousPage()}
                   className={cn(
-                    'h-8 border border-white/10 bg-[#1A1716] text-[0.72rem] tracking-[0.15em] text-[#D6CCBE] uppercase transition-colors hover:border-[#C5A059]/40 hover:bg-white/6 hover:text-[#F8F4EC]',
+                    'rounded-sm',
                     !table.getCanPreviousPage() &&
-                      'pointer-events-none opacity-40',
+                      'pointer-events-none opacity-30',
                   )}
                 />
               </PaginationItem>
@@ -200,7 +253,7 @@ export function DataTable<TData>({
               {pageWindow.map((page, i) =>
                 page === '…' ? (
                   <PaginationItem key={`ellipsis-${i}`}>
-                    <PaginationEllipsis className="text-[#8E816D]" />
+                    <PaginationEllipsis className="text-[#8E816D]/60" />
                   </PaginationItem>
                 ) : (
                   <PaginationItem key={page}>
@@ -208,10 +261,10 @@ export function DataTable<TData>({
                       type="button"
                       onClick={() => table.setPageIndex(Number(page) - 1)}
                       className={cn(
-                        'flex h-8 w-8 items-center justify-center border text-[0.78rem] transition-colors',
+                        'flex h-8 w-8 items-center justify-center rounded-sm border text-[0.76rem] transition-all duration-200 active:scale-95',
                         page === pageIndex + 1
-                          ? 'border-[#C5A059]/40 bg-[#1A1716] text-[#E9D9B4]'
-                          : 'border-white/10 bg-transparent text-[#8E816D] hover:border-white/20 hover:text-[#D6CCBE]',
+                          ? 'border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_0_12px_-4px_rgba(197,160,89,0.15)]'
+                          : 'border-white/8 bg-black/10 text-[#8E816D] hover:border-white/15 hover:bg-black/20 hover:text-black',
                       )}
                     >
                       {page}
@@ -225,8 +278,8 @@ export function DataTable<TData>({
                   onClick={() => table.nextPage()}
                   aria-disabled={!table.getCanNextPage()}
                   className={cn(
-                    'h-8 border border-white/10 bg-[#1A1716] text-[0.72rem] tracking-[0.15em] text-[#D6CCBE] uppercase transition-colors hover:border-[#C5A059]/40 hover:bg-white/6 hover:text-[#F8F4EC]',
-                    !table.getCanNextPage() && 'pointer-events-none opacity-40',
+                    'rounded-sm',
+                    !table.getCanNextPage() && 'pointer-events-none opacity-30',
                   )}
                 />
               </PaginationItem>

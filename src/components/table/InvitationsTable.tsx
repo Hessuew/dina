@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Mail, MoreVertical, Shield, Trash2, UserX } from 'lucide-react'
+import { Mail, Shield, Trash2, UserX } from 'lucide-react'
 import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
 import { createColumnHelper } from '@tanstack/react-table'
@@ -15,14 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { DataTable } from '@/components/table/DataTable'
+import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { InvitationStatusChip, RoleChip } from '@/components/table/chips'
 import { useMutation } from '@/hooks/useMutation'
 import {
@@ -110,7 +103,7 @@ export function InvitationsTable({
         const inviter = info.getValue()
         return (
           <div className="flex flex-col gap-0.5">
-            <span className="text-[#D6CCBE]">{inviter.fullName}</span>
+            {inviter.fullName}
             <span className="text-[0.72rem] text-[#8E816D]">
               {inviter.email}
             </span>
@@ -131,67 +124,30 @@ export function InvitationsTable({
       },
       header: 'Accepted At',
     }),
-    columnHelper.display({
-      cell: (info) => {
-        const invitation = info.row.original
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 hover:translate-y-0"
-                >
-                  <MoreVertical className="size-3.5" />
-                </Button>
-              }
-            />
-            <DropdownMenuContent align="end">
-              {/* <DropdownMenuItem disabled>
-                <Eye className="mr-2 size-3.5" />
-                View
-              </DropdownMenuItem> */}
-              {invitation.status === 'pending' && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() =>
-                      resendMutation.mutate({ data: { id: invitation.id } })
-                    }
-                  >
-                    <Mail className="mr-2 size-3.5" />
-                    Resend
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() =>
-                      revokeMutation.mutate({ data: { id: invitation.id } })
-                    }
-                  >
-                    <UserX className="mr-2 size-3.5" />
-                    Revoke
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              <DropdownMenuItem
-                onClick={() => {
-                  setSelectedInvitationId(invitation.id)
-                  setDeleteDialogOpen(true)
-                }}
-                className="text-red-400 focus:text-red-400"
-              >
-                <Trash2 className="mr-2 size-3.5" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )
+    createButtonColumn([
+      {
+        icon: Mail,
+        label: 'Resend',
+        onClick: (invitation) =>
+          resendMutation.mutate({ data: { id: invitation.id } }),
+        show: (invitation) => invitation.status === 'pending',
       },
-      enableSorting: false,
-      header: 'Actions',
-      id: 'actions',
-    }),
+      {
+        icon: UserX,
+        label: 'Revoke',
+        onClick: (invitation) =>
+          revokeMutation.mutate({ data: { id: invitation.id } }),
+        show: (invitation) => invitation.status === 'pending',
+      },
+      {
+        icon: Trash2,
+        label: 'Delete',
+        onClick: (invitation) => {
+          setSelectedInvitationId(invitation.id)
+          setDeleteDialogOpen(true)
+        },
+      },
+    ]),
   ]
 
   if (invitations.length === 0) {
