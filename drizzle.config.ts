@@ -3,7 +3,7 @@ import { defineConfig } from 'drizzle-kit'
 
 config({ path: ['.env.local', '.env'] })
 
-// Note: We use Clerk for authentication and handle authorization in application code
+// Note: We use Supabase for authentication and handle authorization in application code
 // RLS policies are disabled - authorization checks are done in server functions and route handlers
 export default defineConfig({
   out: './drizzle',
