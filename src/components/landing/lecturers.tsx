@@ -29,7 +29,7 @@ const lecturerPairs: Array<LecturerPair> = [
         bio: 'Guides students into biblical clarity, disciplined reading, and a Christ-centered understanding of truth.',
       },
       {
-        name: 'Ella',
+        name: 'Ella O.',
         title: '',
         bio: 'Focuses on inner life, repentance, and practices that shape hidden faithfulness over time.',
       },

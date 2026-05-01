@@ -171,7 +171,7 @@ export const getInvitationByToken = createServerFn({ method: 'GET' })
     }
   })
 
-export const getInvitations = createServerFn({ method: 'GET' }).handler(
+export const getInvitations = createServerFn({ method: 'POST' }).handler(
   async () => {
     const user = await getCurrentUser()
     const db = await getDb()

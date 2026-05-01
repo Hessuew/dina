@@ -3,7 +3,7 @@ import { eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { courseTeachers, profiles } from '@/db/schema'
 
-export const getTeachers = createServerFn({ method: 'GET' }).handler(
+export const getTeachers = createServerFn({ method: 'POST' }).handler(
   async () => {
     const db = await getDb()
 

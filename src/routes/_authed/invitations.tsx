@@ -12,27 +12,29 @@ import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 import { getInvitations } from '@/utils/invitations'
 
-const checkAdminAccess = createServerFn({ method: 'GET' }).handler(async () => {
-  const supabase = getSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+const checkAdminAccess = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const supabase = getSupabaseServerClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  if (!user) {
-    throw redirect({ href: '/login' })
-  }
+    if (!user) {
+      throw redirect({ href: '/login' })
+    }
 
-  const db = await getDb()
-  const profile = await db.query.profiles.findFirst({
-    where: eq(profiles.id, user.id),
-  })
+    const db = await getDb()
+    const profile = await db.query.profiles.findFirst({
+      where: eq(profiles.id, user.id),
+    })
 
-  if (profile?.role !== 'admin') {
-    throw redirect({ href: '/dashboard' })
-  }
+    if (profile?.role !== 'admin') {
+      throw redirect({ href: '/dashboard' })
+    }
 
-  return { isAdmin: true }
-})
+    return { isAdmin: true }
+  },
+)
 
 export const Route = createFileRoute('/_authed/invitations')({
   beforeLoad: async () => {

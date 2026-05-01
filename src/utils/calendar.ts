@@ -18,7 +18,7 @@ export type CalendarEvent = {
   specialCategory?: SpecialEventCategory
 }
 
-export const getCalendarEvents = createServerFn({ method: 'GET' }).handler(
+export const getCalendarEvents = createServerFn({ method: 'POST' }).handler(
   async () => {
     const db = await getDb()
     const publishedLessons = await db

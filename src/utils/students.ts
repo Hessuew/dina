@@ -14,7 +14,7 @@ import {
 } from '@/db/schema'
 import { getStudentDetailSchema } from '@/schemas/student.schema'
 
-export const getStudents = createServerFn({ method: 'GET' }).handler(
+export const getStudents = createServerFn({ method: 'POST' }).handler(
   async () => {
     const db = await getDb()
 

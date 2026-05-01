@@ -23,34 +23,36 @@ export type CalendarEventRow = {
   updatedAt: Date
 }
 
-export const getEvents = createServerFn({ method: 'GET' }).handler(async () => {
-  const db = await getDb()
-  const rows = await db
-    .select({
-      id: calendarEvents.id,
-      title: calendarEvents.title,
-      description: calendarEvents.description,
-      startTime: calendarEvents.startTime,
-      endTime: calendarEvents.endTime,
-      location: calendarEvents.location,
-      zoomLink: calendarEvents.zoomLink,
-      category: calendarEvents.category,
-      courseId: calendarEvents.courseId,
-      courseName: courses.title,
-      createdAt: calendarEvents.createdAt,
-      updatedAt: calendarEvents.updatedAt,
-    })
-    .from(calendarEvents)
-    .leftJoin(courses, eq(calendarEvents.courseId, courses.id))
-    .orderBy(asc(calendarEvents.startTime))
+export const getEvents = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const db = await getDb()
+    const rows = await db
+      .select({
+        id: calendarEvents.id,
+        title: calendarEvents.title,
+        description: calendarEvents.description,
+        startTime: calendarEvents.startTime,
+        endTime: calendarEvents.endTime,
+        location: calendarEvents.location,
+        zoomLink: calendarEvents.zoomLink,
+        category: calendarEvents.category,
+        courseId: calendarEvents.courseId,
+        courseName: courses.title,
+        createdAt: calendarEvents.createdAt,
+        updatedAt: calendarEvents.updatedAt,
+      })
+      .from(calendarEvents)
+      .leftJoin(courses, eq(calendarEvents.courseId, courses.id))
+      .orderBy(asc(calendarEvents.startTime))
 
-  return {
-    events: rows.map((r) => ({
-      ...r,
-      courseName: r.courseName ?? null,
-    })) as Array<CalendarEventRow>,
-  }
-})
+    return {
+      events: rows.map((r) => ({
+        ...r,
+        courseName: r.courseName ?? null,
+      })) as Array<CalendarEventRow>,
+    }
+  },
+)
 
 export const createEvent = createServerFn({ method: 'POST' })
   .inputValidator(createEventSchema)
