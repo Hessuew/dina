@@ -339,10 +339,10 @@ export const updateCourse = createServerFn({ method: 'POST' })
       const teacher1 = teachers.find((t) => t.id === data.teacher1Id)
       const teacher2 = teachers.find((t) => t.id === data.teacher2Id)
 
-      if (teacher1?.role !== 'teacher') {
+      if (teacher1?.role !== 'teacher' && teacher1?.role !== 'admin') {
         throw new Error(`${teacher1?.fullName || 'Teacher 1'} is not a teacher`)
       }
-      if (teacher2?.role !== 'teacher') {
+      if (teacher2?.role !== 'teacher' && teacher2?.role !== 'admin') {
         throw new Error(`${teacher2?.fullName || 'Teacher 2'} is not a teacher`)
       }
 

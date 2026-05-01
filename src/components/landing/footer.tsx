@@ -1,5 +1,3 @@
-import { Link } from '@tanstack/react-router'
-import { ArrowRight } from 'lucide-react'
 import footerBackground from '@/assets/images/bg/bg_footer.webp'
 
 export function LandingFooter() {
