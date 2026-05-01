@@ -1,11 +1,17 @@
 import { useState } from 'react'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
+import andrewImage from '@/assets/images/lecturers/andrew.jpg'
+import akosyaImage from '@/assets/images/lecturers/akosya.jpg'
+import juhaniImage from '@/assets/images/lecturers/juhani.webp'
+import mahiImage from '@/assets/images/lecturers/mahi.jpg'
+import sadeImage from '@/assets/images/lecturers/sade.jpeg'
 
 type Lecturer = {
   name: string
   title: string
   bio: string
+  image?: string
 }
 
 type LecturerPair = {
@@ -26,12 +32,13 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Andrew A.',
         title: '',
-        bio: 'Guides students into biblical clarity, disciplined reading, and a Christ-centered understanding of truth.',
+        bio: 'Professor Andrew is an award-winning physician and world-class scholar in preventing childhood obesity. He leads urFIT-child research group in Finland and a born-again Christian who demonstrates the power of the Holy Ghost daily.',
+        image: andrewImage,
       },
       {
         name: 'Ella O.',
         title: '',
-        bio: 'Focuses on inner life, repentance, and practices that shape hidden faithfulness over time.',
+        bio: '',
       },
     ],
   },
@@ -44,12 +51,14 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Juhani J.',
         title: '',
-        bio: 'Teaches students how to build rhythms of prayer that produce depth, attentiveness, and endurance.',
+        bio: '',
+        image: juhaniImage,
       },
       {
         name: 'Akosua O.',
         title: '',
-        bio: 'Leads formation around reverence, worship, and the practice of remaining near to the presence of God.',
+        bio: 'Currently pursuing a degree in Computer Science',
+        image: akosyaImage,
       },
     ],
   },
@@ -62,12 +71,12 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Emmanuel E.',
         title: '',
-        bio: 'Strengthens integrity, maturity, and resilience so leadership is carried with credibility and weight.',
+        bio: '',
       },
       {
         name: 'Ezinne O.',
         title: '',
-        bio: 'Equips students to guard desire, reject mixture, and live with holy clarity in complex times.',
+        bio: '',
       },
     ],
   },
@@ -80,12 +89,13 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Sade P.',
         title: '',
-        bio: 'Forms leaders who can carry responsibility with wisdom, courage, and servant-hearted authority.',
+        bio: 'I am a Christian with a passion for teaching Christ and spreading the gospel of our Lord and saviour Jesus.',
+        image: sadeImage,
       },
       {
         name: 'Blessing',
         title: '',
-        bio: 'Clarifies patterns of alignment, governance, and structure that help callings mature into lasting work.',
+        bio: '',
       },
     ],
   },
@@ -98,12 +108,13 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Kene O.',
         title: '',
-        bio: 'Develops a theology of witness that helps students carry Christ faithfully into public life and society.',
+        bio: '',
       },
       {
         name: 'Mahidere A.',
         title: '',
-        bio: 'Explores how biblical formation can shape families, churches, and wider communities with wisdom.',
+        bio: 'I am Mahidere W. Ali (Preferred: Mahi). I currently live in Finland and am an epidemiology researcher with a medical background. God brought me to Finland to renew my life and calling.',
+        image: mahiImage,
       },
     ],
   },
@@ -116,12 +127,12 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Obi C.',
         title: '',
-        bio: 'Teaches perseverance under pressure and the strength that grows through faithful submission and trust.',
+        bio: '',
       },
       {
         name: 'Ugo O.',
         title: '',
-        bio: 'Helps students discern calling, embrace assignment, and move toward the nations with clarity and boldness.',
+        bio: '',
       },
     ],
   },
@@ -306,16 +317,26 @@ export function LandingTeacherSection() {
                   className="min-h-88 border border-white/10 bg-white/3 p-5 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.4)]"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-black/24 text-center backdrop-blur-sm">
-                      <div>
-                        <div className="text-[0.58rem] font-medium tracking-[0.24em] text-[#9B8A73] uppercase">
-                          Image
-                        </div>
-                        <div className="mt-1.5 text-[0.56rem] tracking-[0.16em] text-[#8E816D] uppercase">
-                          Soon
+                    {lecturer.image ? (
+                      <div className="h-20 w-20 shrink-0 overflow-hidden border border-[#C5A059]/30 bg-black/24 backdrop-blur-sm">
+                        <img
+                          src={lecturer.image}
+                          alt={lecturer.name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-20 w-20 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-black/24 text-center backdrop-blur-sm">
+                        <div>
+                          <div className="text-[0.58rem] font-medium tracking-[0.24em] text-[#9B8A73] uppercase">
+                            Image
+                          </div>
+                          <div className="mt-1.5 text-[0.56rem] tracking-[0.16em] text-[#8E816D] uppercase">
+                            Soon
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="min-w-0">
                       <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#D4B373] uppercase">

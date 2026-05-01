@@ -1,17 +1,38 @@
 import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
+import andrewImage from '@/assets/images/lecturers/andrew.jpg'
+import akosyaImage from '@/assets/images/lecturers/akosya.jpg'
+import juhaniImage from '@/assets/images/lecturers/juhani.webp'
+import mahiImage from '@/assets/images/lecturers/mahi.jpg'
+import sadeImage from '@/assets/images/lecturers/sade.jpeg'
 
 type LeadershipMember = {
   name: string
   role: string
   category: 'executive' | 'directors'
+  image?: string
 }
 
 const executives: Array<LeadershipMember> = [
-  { name: 'Dr. Mahidere A.', role: 'President', category: 'executive' },
+  {
+    name: 'Dr. Mahidere A.',
+    role: 'President',
+    category: 'executive',
+    image: mahiImage,
+  },
   { name: 'Dr. Ugo O.', role: 'President', category: 'executive' },
   { name: 'Ezinne O.', role: 'Vice-President', category: 'executive' },
-  { name: 'Akosua O.', role: 'Secretary', category: 'executive' },
-  { name: 'Prof. Andrew A.', role: 'Chaplain', category: 'executive' },
+  {
+    name: 'Akosua O.',
+    role: 'Secretary',
+    category: 'executive',
+    image: akosyaImage,
+  },
+  {
+    name: 'Prof. Andrew A.',
+    role: 'Chaplain',
+    category: 'executive',
+    image: andrewImage,
+  },
 ]
 
 const directors: Array<LeadershipMember> = [
@@ -34,8 +55,14 @@ const directors: Array<LeadershipMember> = [
     name: 'Dr. Sade P.',
     role: 'Director of Health Affairs',
     category: 'directors',
+    image: sadeImage,
   },
-  { name: 'Juhani J.', role: 'Director of IT', category: 'directors' },
+  {
+    name: 'Juhani J.',
+    role: 'Director of IT',
+    category: 'directors',
+    image: juhaniImage,
+  },
 ]
 
 function MemberCard({ member }: { member: LeadershipMember }) {
@@ -50,9 +77,17 @@ function MemberCard({ member }: { member: LeadershipMember }) {
         }}
       >
         <div className="flex aspect-4/3 items-center justify-center">
-          <div className="flex h-16 w-16 items-center justify-center border border-white/12 bg-white/4 font-serif text-[1.4rem] tracking-[-0.02em] text-[#C5A059]">
-            {member.name.charAt(0)}
-          </div>
+          {member.image ? (
+            <img
+              src={member.image}
+              alt={member.name}
+              className="h-16 w-16 object-cover"
+            />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center border border-white/12 bg-white/4 font-serif text-[1.4rem] tracking-[-0.02em] text-[#C5A059]">
+              {member.name.charAt(0)}
+            </div>
+          )}
         </div>
         <div className="absolute bottom-0 left-0 h-px w-full bg-[linear-gradient(90deg,transparent,rgba(197,160,89,0.35),transparent)]" />
       </div>
