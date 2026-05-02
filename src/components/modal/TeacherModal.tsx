@@ -1,4 +1,4 @@
-import { HashIcon, UserIcon, XIcon } from 'lucide-react'
+import { HashIcon, XIcon } from 'lucide-react'
 import type { TeacherWithCourse } from '@/types/teacher'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
