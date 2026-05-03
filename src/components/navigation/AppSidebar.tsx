@@ -13,6 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 import heroEmblem from '@/assets/images/bg/logo.webp'
@@ -93,6 +94,9 @@ const teacherNavItems: Array<NavItem> = [
     url: '/events',
     icon: CalendarDaysIcon,
   },
+]
+
+const adminNavItems: Array<NavItem> = [
   {
     title: 'User Management',
     url: '/invitations',
@@ -150,16 +154,42 @@ function NavItemList({
 function TeacherContent({
   isTeacherOrAdmin,
   variant,
+  state,
 }: {
   isTeacherOrAdmin: boolean
   variant: SidebarVariant
+  state: 'expanded' | 'collapsed'
 }) {
   if (!isTeacherOrAdmin) return null
   return (
     <>
-      <SidebarGroupLabel>For teachers</SidebarGroupLabel>
+      <SidebarGroupLabel className={state === 'collapsed' ? 'hidden' : ''}>
+        For teachers
+      </SidebarGroupLabel>
       <SidebarGroupContent>
         <NavItemList items={teacherNavItems} variant={variant} />
+      </SidebarGroupContent>
+    </>
+  )
+}
+
+function AdminContent({
+  isAdmin,
+  variant,
+  state,
+}: {
+  isAdmin: boolean
+  variant: SidebarVariant
+  state: 'expanded' | 'collapsed'
+}) {
+  if (!isAdmin) return null
+  return (
+    <>
+      <SidebarGroupLabel className={state === 'collapsed' ? 'hidden' : ''}>
+        For admins
+      </SidebarGroupLabel>
+      <SidebarGroupContent>
+        <NavItemList items={adminNavItems} variant={variant} />
       </SidebarGroupContent>
     </>
   )
@@ -172,6 +202,7 @@ export function AppSidebar({
   ...props
 }: AppSidebarProps & React.ComponentProps<typeof Sidebar>) {
   const router = useRouter()
+  const { state } = useSidebar()
 
   const isTeacherOrAdmin = role === 'teacher' || role === 'admin'
 
@@ -221,6 +252,12 @@ export function AppSidebar({
 
           <TeacherContent
             isTeacherOrAdmin={isTeacherOrAdmin}
+            state={state}
+            variant={sidebarVariant}
+          />
+          <AdminContent
+            isAdmin={role === 'admin'}
+            state={state}
             variant={sidebarVariant}
           />
         </SidebarGroup>

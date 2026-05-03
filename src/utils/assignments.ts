@@ -19,7 +19,7 @@ import {
   profiles,
   submissions,
 } from '@/db/schema'
-import { getCurrentUser } from '@/utils/auth'
+import { getCurrentUser, requireTeacherOfCourse } from '@/utils/auth'
 
 export const getLesson = createServerFn({ method: 'POST' })
   .inputValidator(getLessonSchema)
@@ -34,7 +34,13 @@ export const getLesson = createServerFn({ method: 'POST' })
           with: {
             courseTeachers: {
               with: {
-                teacher: true,
+                teacher: {
+                  columns: {
+                    avatarUrl: true,
+                    id: true,
+                    fullName: true,
+                  },
+                },
               },
             },
           },
@@ -58,8 +64,16 @@ export const getLesson = createServerFn({ method: 'POST' })
     }
 
     return {
-      lesson,
+      lesson: {
+        ...lesson,
+        course: {
+          id: lesson.course.id,
+          teacher1Id: lesson.course.courseTeachers[0]?.teacherId ?? null,
+          teacher2Id: lesson.course.courseTeachers[1]?.teacherId ?? null,
+        },
+      },
       role: profile.role,
+      user,
     }
   })
 
@@ -152,9 +166,23 @@ export const getAssignment = createServerFn({ method: 'POST' })
     }
 
     return {
-      assignment,
+      assignment: {
+        ...assignment,
+        lesson: {
+          ...assignment.lesson,
+          course: {
+            id: assignment.lesson.course.id,
+            title: assignment.lesson.course.title,
+            teacher1Id:
+              assignment.lesson.course.courseTeachers[0]?.teacherId ?? null,
+            teacher2Id:
+              assignment.lesson.course.courseTeachers[1]?.teacherId ?? null,
+          },
+        },
+      },
       submission,
       role: profile.role,
+      user,
     }
   })
 
@@ -183,7 +211,6 @@ export const createAssignment = createServerFn({ method: 'POST' })
       throw new Error('Lesson not found')
     }
 
-    const { requireTeacherOfCourse } = await import('@/utils/auth')
     await requireTeacherOfCourse(user.id, lesson.courseId)
 
     const [assignment] = await db
@@ -222,7 +249,6 @@ export const updateAssignment = createServerFn({ method: 'POST' })
       throw new Error('Assignment not found')
     }
 
-    const { requireTeacherOfCourse } = await import('@/utils/auth')
     await requireTeacherOfCourse(user.id, assignment.lesson.courseId)
 
     const [updatedAssignment] = await db
@@ -263,7 +289,6 @@ export const getAssignmentSubmissionCount = createServerFn({ method: 'POST' })
       throw new Error('Assignment not found')
     }
 
-    const { requireTeacherOfCourse } = await import('@/utils/auth')
     await requireTeacherOfCourse(user.id, assignment.lesson.courseId)
 
     return { count: assignment.submissions.length }
@@ -291,7 +316,6 @@ export const deleteAssignment = createServerFn({ method: 'POST' })
       throw new Error('Assignment not found')
     }
 
-    const { requireTeacherOfCourse } = await import('@/utils/auth')
     await requireTeacherOfCourse(user.id, assignment.lesson.courseId)
 
     if (assignment.submissions.length > 0) {
@@ -533,7 +557,6 @@ export const getAllAssignmentsForTeacher = createServerFn({
 export const getAssignmentSubmissions = createServerFn({ method: 'POST' })
   .inputValidator(getAssignmentSubmissionsSchema)
   .handler(async ({ data }) => {
-    const user = await getCurrentUser()
     const db = await getDb()
 
     const assignment = await db.query.assignments.findFirst({
@@ -550,9 +573,6 @@ export const getAssignmentSubmissions = createServerFn({ method: 'POST' })
     if (!assignment) {
       throw new Error('Assignment not found')
     }
-
-    const { requireTeacherOfCourse } = await import('@/utils/auth')
-    await requireTeacherOfCourse(user.id, assignment.lesson.courseId)
 
     const allSubmissions = await db.query.submissions.findMany({
       where: eq(submissions.assignmentId, data.assignmentId),
@@ -593,7 +613,6 @@ export const gradeSubmission = createServerFn({ method: 'POST' })
       throw new Error('Assignment not found')
     }
 
-    const { requireTeacherOfCourse } = await import('@/utils/auth')
     await requireTeacherOfCourse(user.id, assignment.lesson.courseId)
 
     const [gradedSubmission] = await db

@@ -27,6 +27,7 @@ import {
 } from '@/utils/assignments'
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { cn } from '@/lib/utils'
+import { isUserCourseTeacher } from '@/utils/teacher/isCourseTeacher'
 
 const getAssignmentData = createServerFn({ method: 'POST' })
   .inputValidator((d: { assignmentId: string }) => d)
@@ -95,7 +96,7 @@ function AssignmentDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
   const { fromDashboard, fromCalendar, calendarMonth } = Route.useSearch()
-  const { assignment, submission, role, allSubmissions } = loaderData
+  const { assignment, submission, role, allSubmissions, user } = loaderData
 
   const [dialogMode, setDialogMode] = useState<
     'edit' | 'delete' | 'grade' | null
@@ -180,6 +181,8 @@ function AssignmentDetailComponent() {
   })
 
   const canEdit = role === 'teacher' || role === 'admin'
+  const isCourseTeacher =
+    isUserCourseTeacher(assignment.lesson.course, user.id) || role === 'admin'
   const isStudent = role === 'student'
   const isPastDue = new Date(assignment.dueDate) < new Date()
   const canSubmit = isStudent && assignment.status === 'published' && !isPastDue
@@ -289,7 +292,7 @@ function AssignmentDetailComponent() {
                 {assignment.status.charAt(0).toUpperCase() +
                   assignment.status.slice(1)}
               </div>
-              {canEdit && (
+              {canEdit && isCourseTeacher && (
                 <>
                   <Button
                     variant="ghost"
