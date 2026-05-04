@@ -190,7 +190,7 @@ export function LandingCourseShowcase() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="hidden gap-3 sm:grid sm:grid-cols-2">
               {courseShowcaseItems.map((course, index) => {
                 const isActive = index === activeIndex
 

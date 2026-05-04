@@ -56,6 +56,21 @@ export const calendarEventCategoryEnum = pgEnum('calendar_event_category', [
   'personal',
 ])
 
+export const enrollmentStatusEnum = pgEnum('enrollment_status', [
+  'pending',
+  'under_review',
+  'approved',
+  'rejected',
+  'waitlisted',
+  'withdrawn',
+  'deferred',
+])
+
+export const enrollmentGenderEnum = pgEnum('enrollment_gender', [
+  'male',
+  'female',
+])
+
 // ============================================================================
 // TABLES
 // ============================================================================
@@ -817,6 +832,55 @@ export const invitations = pgTable(
       for: 'insert',
       to: authenticatedRole,
       withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'teacher')`,
+    }),
+  ],
+)
+
+export const enrollments = pgTable(
+  'enrollments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    fullLegalName: text('full_legal_name').notNull(),
+    preferredName: text('preferred_name'),
+    email: text('email').notNull(),
+    yearOfBirth: integer('year_of_birth').notNull(),
+    gender: enrollmentGenderEnum('gender').notNull(),
+    nationalityCitizenship: text('nationality_citizenship'),
+    phoneWhatsApp: text('phone_whatsapp').notNull(),
+    currentCity: text('current_city'),
+    currentCountry: text('current_country'),
+    churchAffiliations: text('church_affiliations'),
+    aboutYourself: text('about_yourself').notNull(),
+    expectationsAlignment: text('expectations_alignment').notNull(),
+    status: enrollmentStatusEnum('status').notNull().default('pending'),
+    invitationSent: boolean('invitation_sent').notNull().default(false),
+    invitationId: uuid('invitation_id').references(() => invitations.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (_table) => [
+    pgPolicy('public_insert_enrollments', {
+      for: 'insert',
+      to: 'public',
+      withCheck: sql`true`,
+    }),
+    pgPolicy('admins_view_all_enrollments', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    pgPolicy('admins_update_all_enrollments', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    pgPolicy('admins_delete_all_enrollments', {
+      for: 'delete',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
     }),
   ],
 )

@@ -1,30 +1,25 @@
-import { useState } from 'react'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { UserPlus } from 'lucide-react'
-import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
+import { FileTextIcon } from 'lucide-react'
+import type { EnrollmentRow } from '@/components/table/EnrollmentsTable'
 import { Button } from '@/components/ui/button'
-import { InvitationsTable } from '@/components/table/InvitationsTable'
-import { InviteUserModal } from '@/components/modal/InviteUserModal'
+import { EnrollmentsTable } from '@/components/table/EnrollmentsTable'
+import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { checkAdminAccess } from '@/utils/admin'
-import { getInvitations } from '@/utils/invitations'
+import { getEnrollments } from '@/utils/enrollments'
 
-export const Route = createFileRoute('/_authed/invitations')({
+export const Route = createFileRoute('/_authed/enrollments')({
   beforeLoad: async () => {
     await checkAdminAccess()
   },
   loader: async () => {
-    const result = await getInvitations()
-    if (result.error) {
-      return { invitations: [] }
-    }
-    return { invitations: result.invitations }
+    const result = await getEnrollments()
+    return { enrollments: result.enrollments }
   },
-  component: InvitationsPage,
+  component: EnrollmentsPage,
 })
 
-function InvitationsPage() {
-  const { invitations } = Route.useLoaderData()
-  const [modalOpen, setModalOpen] = useState(false)
+function EnrollmentsPage() {
+  const { enrollments } = Route.useLoaderData()
   const router = useRouter()
 
   const handleRefresh = () => {
@@ -46,24 +41,25 @@ function InvitationsPage() {
           <div>
             <div className="h-px w-10 bg-[#C5A059]/50" />
             <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">
-              User Management
+              Enrollments
             </h1>
             <p className="mt-2 text-[0.72rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-              Manage user invitations and access control
+              Review public enrolment submissions
             </p>
           </div>
-          <Button theme="light" onClick={() => setModalOpen(true)}>
-            <UserPlus className="size-3.5" />
-            Invite User
+          <Button
+            theme="light"
+            variant="outline"
+            onClick={() => handleRefresh()}
+          >
+            <FileTextIcon className="size-3.5" />
+            Refresh
           </Button>
         </div>
 
-        <InvitationsTable invitations={invitations} onRefresh={handleRefresh} />
-
-        <InviteUserModal
-          open={modalOpen}
-          onOpenChange={setModalOpen}
-          onSuccess={handleRefresh}
+        <EnrollmentsTable
+          enrollments={enrollments as Array<EnrollmentRow>}
+          onRefresh={handleRefresh}
         />
       </div>
     </div>

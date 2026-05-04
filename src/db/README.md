@@ -24,6 +24,9 @@ Database access layer and schema definitions.
     - `media_library`
       - Stores org-wide library materials (YouTube links, PDFs, etc.).
       - Draft gating is modeled via `is_published`.
+    - `enrollments`
+      - Stores public enrolment submissions (application data).
+      - Admin-only review workflow via `status`, plus invitation tracking via `invitation_sent`.
     - `post_notifications`
       - Stores post-related notifications (new teacher/admin posts, comments on your posts).
       - Used to power the in-app notifications dropdown and unread badge.
