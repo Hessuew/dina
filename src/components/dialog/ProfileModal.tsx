@@ -7,6 +7,7 @@ import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -213,7 +214,7 @@ export function ProfileModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-2xl"
+        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-2xl"
         style={{
           backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
           backgroundSize: 'cover',
@@ -223,7 +224,7 @@ export function ProfileModal({
       >
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
 
-        <div className="relative">
+        <div className="relative flex min-h-0 flex-1 flex-col">
           {/* Dialog header */}
           <DialogHeader>
             <div className="mb-1 flex items-start justify-between">
@@ -248,203 +249,205 @@ export function ProfileModal({
             </DialogTitle>
           </DialogHeader>
 
-          {/* Profile section */}
+          <DialogBody>
+            {/* Profile section */}
 
-          {!showPasswordForm && (
-            <div className="mt-8">
+            {!showPasswordForm && (
+              <div className="mt-8">
+                <div className="mb-4 flex items-center gap-2">
+                  <div className="h-px w-8 bg-[#C5A059]/40" />
+                  <span className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                    Profile
+                  </span>
+                </div>
+
+                <div className="mb-6 flex items-center gap-5">
+                  <div className="shrink-0">
+                    {user.avatarUrl ? (
+                      <img
+                        src={user.avatarUrl}
+                        alt={user.fullName || user.email}
+                        className="size-16 border border-white/10 object-cover"
+                      />
+                    ) : (
+                      <div className="flex size-16 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-xl text-[#E9D9B4]">
+                        {initials}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      theme="dark"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadAvatarMutation.status === 'pending'}
+                    >
+                      <UploadIcon className="size-3.5" />
+                      {uploadAvatarMutation.status === 'pending'
+                        ? 'Uploading...'
+                        : 'Change Avatar'}
+                    </Button>
+                    <p className="text-[0.68rem] text-[#8E816D]">
+                      JPG, PNG, WebP or GIF. Max 2MB.
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleProfileSubmit}>
+                  <FieldGroup className="gap-5">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <Field>
+                        <FieldLabel
+                          htmlFor="email"
+                          className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                        >
+                          Email
+                        </FieldLabel>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          defaultValue={user.email}
+                          required
+                          className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                        />
+                        <FieldDescription className="text-[#8E816D]">
+                          Changing your email will require verification
+                        </FieldDescription>
+                      </Field>
+                      <Field>
+                        <FieldLabel
+                          htmlFor="fullName"
+                          className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                        >
+                          Full Name
+                        </FieldLabel>
+                        <Input
+                          id="fullName"
+                          name="fullName"
+                          type="text"
+                          defaultValue={user.fullName}
+                          required
+                          className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                        />
+                      </Field>
+                    </div>
+                    <Field>
+                      <FieldLabel
+                        htmlFor="bio"
+                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                      >
+                        Bio
+                      </FieldLabel>
+                      <Textarea
+                        id="bio"
+                        name="bio"
+                        placeholder="Tell us about yourself..."
+                        defaultValue={user.bio || ''}
+                        rows={8}
+                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                      />
+                    </Field>
+                    <div className="flex justify-end">
+                      <Button
+                        type="submit"
+                        theme="dark"
+                        disabled={updateProfileMutation.status === 'pending'}
+                      >
+                        {updateProfileMutation.status === 'pending'
+                          ? 'Saving...'
+                          : 'Save Changes'}
+                      </Button>
+                    </div>
+                  </FieldGroup>
+                </form>
+              </div>
+            )}
+
+            {/* Password section */}
+            <div className="mt-10 border-t border-white/8 pt-8">
               <div className="mb-4 flex items-center gap-2">
                 <div className="h-px w-8 bg-[#C5A059]/40" />
                 <span className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Profile
+                  Security
                 </span>
               </div>
 
-              <div className="mb-6 flex items-center gap-5">
-                <div className="shrink-0">
-                  {user.avatarUrl ? (
-                    <img
-                      src={user.avatarUrl}
-                      alt={user.fullName || user.email}
-                      className="size-16 border border-white/10 object-cover"
-                    />
-                  ) : (
-                    <div className="flex size-16 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-xl text-[#E9D9B4]">
-                      {initials}
+              {!showPasswordForm ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  theme="dark"
+                  onClick={() => setShowPasswordForm(true)}
+                >
+                  Change Password
+                </Button>
+              ) : (
+                <form onSubmit={handlePasswordSubmit}>
+                  <FieldGroup className="gap-5">
+                    <Field>
+                      <FieldLabel
+                        htmlFor="newPassword"
+                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                      >
+                        New Password
+                      </FieldLabel>
+                      <Input
+                        id="newPassword"
+                        name="newPassword"
+                        type="password"
+                        required
+                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel
+                        htmlFor="confirmPassword"
+                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                      >
+                        Confirm New Password
+                      </FieldLabel>
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password"
+                        required
+                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                      />
+                    </Field>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="submit"
+                        theme="dark"
+                        disabled={updatePasswordMutation.status === 'pending'}
+                      >
+                        {updatePasswordMutation.status === 'pending'
+                          ? 'Updating...'
+                          : 'Update Password'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        theme="dark"
+                        onClick={() => setShowPasswordForm(false)}
+                      >
+                        Cancel
+                      </Button>
                     </div>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    onChange={handleAvatarChange}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    theme="dark"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadAvatarMutation.status === 'pending'}
-                  >
-                    <UploadIcon className="size-3.5" />
-                    {uploadAvatarMutation.status === 'pending'
-                      ? 'Uploading...'
-                      : 'Change Avatar'}
-                  </Button>
-                  <p className="text-[0.68rem] text-[#8E816D]">
-                    JPG, PNG, WebP or GIF. Max 2MB.
-                  </p>
-                </div>
-              </div>
-
-              <form onSubmit={handleProfileSubmit}>
-                <FieldGroup className="gap-5">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Field>
-                      <FieldLabel
-                        htmlFor="email"
-                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                      >
-                        Email
-                      </FieldLabel>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        defaultValue={user.email}
-                        required
-                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                      />
-                      <FieldDescription className="text-[#8E816D]">
-                        Changing your email will require verification
-                      </FieldDescription>
-                    </Field>
-                    <Field>
-                      <FieldLabel
-                        htmlFor="fullName"
-                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                      >
-                        Full Name
-                      </FieldLabel>
-                      <Input
-                        id="fullName"
-                        name="fullName"
-                        type="text"
-                        defaultValue={user.fullName}
-                        required
-                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                      />
-                    </Field>
-                  </div>
-                  <Field>
-                    <FieldLabel
-                      htmlFor="bio"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Bio
-                    </FieldLabel>
-                    <Textarea
-                      id="bio"
-                      name="bio"
-                      placeholder="Tell us about yourself..."
-                      defaultValue={user.bio || ''}
-                      rows={8}
-                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                    />
-                  </Field>
-                  <div className="flex justify-end">
-                    <Button
-                      type="submit"
-                      theme="dark"
-                      disabled={updateProfileMutation.status === 'pending'}
-                    >
-                      {updateProfileMutation.status === 'pending'
-                        ? 'Saving...'
-                        : 'Save Changes'}
-                    </Button>
-                  </div>
-                </FieldGroup>
-              </form>
+                  </FieldGroup>
+                </form>
+              )}
             </div>
-          )}
-
-          {/* Password section */}
-          <div className="mt-10 border-t border-white/8 pt-8">
-            <div className="mb-4 flex items-center gap-2">
-              <div className="h-px w-8 bg-[#C5A059]/40" />
-              <span className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                Security
-              </span>
-            </div>
-
-            {!showPasswordForm ? (
-              <Button
-                type="button"
-                variant="outline"
-                theme="dark"
-                onClick={() => setShowPasswordForm(true)}
-              >
-                Change Password
-              </Button>
-            ) : (
-              <form onSubmit={handlePasswordSubmit}>
-                <FieldGroup className="gap-5">
-                  <Field>
-                    <FieldLabel
-                      htmlFor="newPassword"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      New Password
-                    </FieldLabel>
-                    <Input
-                      id="newPassword"
-                      name="newPassword"
-                      type="password"
-                      required
-                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel
-                      htmlFor="confirmPassword"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Confirm New Password
-                    </FieldLabel>
-                    <Input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      required
-                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                    />
-                  </Field>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      type="submit"
-                      theme="dark"
-                      disabled={updatePasswordMutation.status === 'pending'}
-                    >
-                      {updatePasswordMutation.status === 'pending'
-                        ? 'Updating...'
-                        : 'Update Password'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      theme="dark"
-                      onClick={() => setShowPasswordForm(false)}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </FieldGroup>
-              </form>
-            )}
-          </div>
+          </DialogBody>
         </div>
       </DialogContent>
     </Dialog>

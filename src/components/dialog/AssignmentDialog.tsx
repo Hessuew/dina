@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -248,7 +249,7 @@ export function AssignmentDialog({
           showCloseButton={false}
         >
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-          <div className="relative">
+          <div className="relative flex min-h-0 flex-1 flex-col">
             <DialogHeader>
               <div className="mb-1">
                 <div className="h-px w-8 bg-[#C5A059]/40" />
@@ -261,89 +262,91 @@ export function AssignmentDialog({
               </DialogTitle>
             </DialogHeader>
 
-            <div className="mt-4 space-y-4">
-              <div>
-                <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Student's Answer
-                </div>
-                <div className="mt-2 border border-white/10 bg-white/4 px-4 py-3">
-                  <p className="text-sm whitespace-pre-wrap text-[#AFA28F]">
-                    {submission?.content || 'No content provided'}
-                  </p>
-                </div>
-              </div>
-              {submission?.fileUrl && (
+            <DialogBody>
+              <div className="mt-4 space-y-4">
                 <div>
                   <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                    File URL
+                    Student's Answer
                   </div>
-                  <a
-                    href={submission.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 block text-sm text-[#9B7A41] hover:underline"
-                  >
-                    {submission.fileUrl}
-                  </a>
-                </div>
-              )}
-              <FieldGroup>
-                <Field>
-                  <FieldLabel
-                    htmlFor="grade"
-                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                  >
-                    Grade (max: {assignment?.maxGrade ?? 100})
-                  </FieldLabel>
-                  <Input
-                    id="grade"
-                    type="number"
-                    min="0"
-                    max={assignment?.maxGrade ?? 100}
-                    value={gradingData.grade === 0 ? '' : gradingData.grade}
-                    placeholder="0"
-                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.grade ? 'border-red-500/60' : ''}`}
-                    onChange={(e) => {
-                      setGradingData({
-                        ...gradingData,
-                        grade:
-                          e.target.value === ''
-                            ? 0
-                            : parseInt(e.target.value) || 0,
-                      })
-                      if (fieldErrors.grade)
-                        setFieldErrors({ ...fieldErrors, grade: '' })
-                    }}
-                  />
-                  {fieldErrors.grade && (
-                    <p className="text-[0.68rem] text-red-400">
-                      {fieldErrors.grade}
+                  <div className="mt-2 border border-white/10 bg-white/4 px-4 py-3">
+                    <p className="text-sm whitespace-pre-wrap text-[#AFA28F]">
+                      {submission?.content || 'No content provided'}
                     </p>
-                  )}
-                </Field>
-                <Field>
-                  <FieldLabel
-                    htmlFor="feedback"
-                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                  >
-                    Feedback
-                  </FieldLabel>
-                  <Textarea
-                    id="feedback"
-                    rows={4}
-                    placeholder="Provide feedback to the student..."
-                    value={gradingData.feedback}
-                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                    onChange={(e) =>
-                      setGradingData({
-                        ...gradingData,
-                        feedback: e.target.value,
-                      })
-                    }
-                  />
-                </Field>
-              </FieldGroup>
-            </div>
+                  </div>
+                </div>
+                {submission?.fileUrl && (
+                  <div>
+                    <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                      File URL
+                    </div>
+                    <a
+                      href={submission.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 block text-sm text-[#9B7A41] hover:underline"
+                    >
+                      {submission.fileUrl}
+                    </a>
+                  </div>
+                )}
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel
+                      htmlFor="grade"
+                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                    >
+                      Grade (max: {assignment?.maxGrade ?? 100})
+                    </FieldLabel>
+                    <Input
+                      id="grade"
+                      type="number"
+                      min="0"
+                      max={assignment?.maxGrade ?? 100}
+                      value={gradingData.grade === 0 ? '' : gradingData.grade}
+                      placeholder="0"
+                      className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.grade ? 'border-red-500/60' : ''}`}
+                      onChange={(e) => {
+                        setGradingData({
+                          ...gradingData,
+                          grade:
+                            e.target.value === ''
+                              ? 0
+                              : parseInt(e.target.value) || 0,
+                        })
+                        if (fieldErrors.grade)
+                          setFieldErrors({ ...fieldErrors, grade: '' })
+                      }}
+                    />
+                    {fieldErrors.grade && (
+                      <p className="text-[0.68rem] text-red-400">
+                        {fieldErrors.grade}
+                      </p>
+                    )}
+                  </Field>
+                  <Field>
+                    <FieldLabel
+                      htmlFor="feedback"
+                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                    >
+                      Feedback
+                    </FieldLabel>
+                    <Textarea
+                      id="feedback"
+                      rows={4}
+                      placeholder="Provide feedback to the student..."
+                      value={gradingData.feedback}
+                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                      onChange={(e) =>
+                        setGradingData({
+                          ...gradingData,
+                          feedback: e.target.value,
+                        })
+                      }
+                    />
+                  </Field>
+                </FieldGroup>
+              </div>
+            </DialogBody>
 
             <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
               <Button
@@ -396,12 +399,12 @@ export function AssignmentDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="overflow-y-auto rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
+        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
         style={dialogStyle}
         showCloseButton={false}
       >
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-        <div className="relative">
+        <div className="relative flex min-h-0 flex-1 flex-col">
           <DialogHeader>
             <div className="mb-1">
               <div className="h-px w-8 bg-[#C5A059]/40" />
@@ -419,132 +422,134 @@ export function AssignmentDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="mt-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field className="sm:col-span-2">
-                <FieldLabel
-                  htmlFor="title"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Title <span className="text-[#C5A059]">*</span>
-                </FieldLabel>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
-                  onChange={(e) => {
-                    setFormData({ ...formData, title: e.target.value })
-                    if (fieldErrors.title)
-                      setFieldErrors({ ...fieldErrors, title: '' })
-                  }}
-                />
-                {fieldErrors.title && (
-                  <p className="text-[0.68rem] text-red-400">
-                    {fieldErrors.title}
-                  </p>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel
-                  htmlFor="dueDate"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Due Date <span className="text-[#C5A059]">*</span>
-                </FieldLabel>
-                <Input
-                  id="dueDate"
-                  type="datetime-local"
-                  value={formData.dueDate}
-                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.dueDate ? 'border-red-500/60' : ''}`}
-                  onChange={(e) => {
-                    setFormData({ ...formData, dueDate: e.target.value })
-                    if (fieldErrors.dueDate)
-                      setFieldErrors({ ...fieldErrors, dueDate: '' })
-                  }}
-                />
-                {fieldErrors.dueDate && (
-                  <p className="text-[0.68rem] text-red-400">
-                    {fieldErrors.dueDate}
-                  </p>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel
-                  htmlFor="maxGrade"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Maximum Grade
-                </FieldLabel>
-                <Input
-                  id="maxGrade"
-                  type="number"
-                  min="0"
-                  value={formData.maxGrade === 0 ? '' : formData.maxGrade}
-                  placeholder="100"
-                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.maxGrade ? 'border-red-500/60' : ''}`}
-                  onChange={(e) => {
-                    setFormData({
-                      ...formData,
-                      maxGrade:
-                        e.target.value === ''
-                          ? 0
-                          : parseInt(e.target.value) || 0,
-                    })
-                    if (fieldErrors.maxGrade)
-                      setFieldErrors({ ...fieldErrors, maxGrade: '' })
-                  }}
-                />
-                {fieldErrors.maxGrade && (
-                  <p className="text-[0.68rem] text-red-400">
-                    {fieldErrors.maxGrade}
-                  </p>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel
-                  htmlFor="status"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Status
-                </FieldLabel>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      status: value as 'draft' | 'published' | 'closed',
-                    })
-                  }
-                >
-                  <SelectTrigger className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field className="sm:col-span-2">
-                <FieldLabel
-                  htmlFor="description"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Description
-                </FieldLabel>
-                <Textarea
-                  id="description"
-                  rows={8}
-                  value={formData.description}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                />
-              </Field>
-            </div>
-          </FieldGroup>
+          <DialogBody>
+            <FieldGroup className="mt-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field className="sm:col-span-2">
+                  <FieldLabel
+                    htmlFor="title"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Title <span className="text-[#C5A059]">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
+                    onChange={(e) => {
+                      setFormData({ ...formData, title: e.target.value })
+                      if (fieldErrors.title)
+                        setFieldErrors({ ...fieldErrors, title: '' })
+                    }}
+                  />
+                  {fieldErrors.title && (
+                    <p className="text-[0.68rem] text-red-400">
+                      {fieldErrors.title}
+                    </p>
+                  )}
+                </Field>
+                <Field>
+                  <FieldLabel
+                    htmlFor="dueDate"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Due Date <span className="text-[#C5A059]">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="dueDate"
+                    type="datetime-local"
+                    value={formData.dueDate}
+                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.dueDate ? 'border-red-500/60' : ''}`}
+                    onChange={(e) => {
+                      setFormData({ ...formData, dueDate: e.target.value })
+                      if (fieldErrors.dueDate)
+                        setFieldErrors({ ...fieldErrors, dueDate: '' })
+                    }}
+                  />
+                  {fieldErrors.dueDate && (
+                    <p className="text-[0.68rem] text-red-400">
+                      {fieldErrors.dueDate}
+                    </p>
+                  )}
+                </Field>
+                <Field>
+                  <FieldLabel
+                    htmlFor="maxGrade"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Maximum Grade
+                  </FieldLabel>
+                  <Input
+                    id="maxGrade"
+                    type="number"
+                    min="0"
+                    value={formData.maxGrade === 0 ? '' : formData.maxGrade}
+                    placeholder="100"
+                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.maxGrade ? 'border-red-500/60' : ''}`}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        maxGrade:
+                          e.target.value === ''
+                            ? 0
+                            : parseInt(e.target.value) || 0,
+                      })
+                      if (fieldErrors.maxGrade)
+                        setFieldErrors({ ...fieldErrors, maxGrade: '' })
+                    }}
+                  />
+                  {fieldErrors.maxGrade && (
+                    <p className="text-[0.68rem] text-red-400">
+                      {fieldErrors.maxGrade}
+                    </p>
+                  )}
+                </Field>
+                <Field>
+                  <FieldLabel
+                    htmlFor="status"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Status
+                  </FieldLabel>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        status: value as typeof formData.status,
+                      })
+                    }
+                  >
+                    <SelectTrigger className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="published">Published</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field className="sm:col-span-2">
+                  <FieldLabel
+                    htmlFor="description"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Description
+                  </FieldLabel>
+                  <Textarea
+                    id="description"
+                    rows={5}
+                    value={formData.description}
+                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                  />
+                </Field>
+              </div>
+            </FieldGroup>
+          </DialogBody>
 
           <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
             <Button

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ChevronsUpDown } from 'lucide-react'
-import { ProfileModal } from '@/components/modal/ProfileModal'
+import { ProfileModal } from '@/components/dialog/ProfileModal'
 import { LogOut } from '@/components/animate-ui/icons/log-out'
 import { BadgeCheck } from '@/components/animate-ui/icons/badge-check'
 

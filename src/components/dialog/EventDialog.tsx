@@ -17,6 +17,7 @@ import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -268,7 +269,7 @@ export function EventDialog({
           showCloseButton={false}
         >
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-          <div className="relative">
+          <div className="relative flex min-h-0 flex-1 flex-col">
             <DialogHeader>
               <div className="mb-1 flex items-center justify-between">
                 <div>
@@ -299,47 +300,49 @@ export function EventDialog({
               )}
             </DialogHeader>
 
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center gap-2.5 text-sm">
-                <CalendarIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                <span className="text-[#D6CCBE]">
-                  {format(new Date(event.startTime), 'PPP')}
-                </span>
-              </div>
-              <div className="flex items-center gap-2.5 text-sm">
-                <ClockIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                <span className="text-[#D6CCBE]">
-                  {format(new Date(event.startTime), 'p')} –{' '}
-                  {format(new Date(event.endTime), 'p')}
-                </span>
-              </div>
-              {event.location && (
+            <DialogBody>
+              <div className="mt-4 space-y-3">
                 <div className="flex items-center gap-2.5 text-sm">
-                  <MapPinIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                  <span className="text-[#D6CCBE]">{event.location}</span>
+                  <CalendarIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+                  <span className="text-[#D6CCBE]">
+                    {format(new Date(event.startTime), 'PPP')}
+                  </span>
                 </div>
-              )}
-              {event.zoomLink && (
                 <div className="flex items-center gap-2.5 text-sm">
-                  <VideoIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                  <a
-                    href={event.zoomLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="truncate text-[#9B7A41] hover:underline"
-                  >
-                    {event.zoomLink}
-                  </a>
+                  <ClockIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+                  <span className="text-[#D6CCBE]">
+                    {format(new Date(event.startTime), 'p')} –{' '}
+                    {format(new Date(event.endTime), 'p')}
+                  </span>
                 </div>
-              )}
-              {event.description && (
-                <div className="mt-4 border border-white/8 bg-white/4 p-3">
-                  <p className="line-clamp-6 text-[0.82rem] leading-relaxed text-[#AFA28F]">
-                    {event.description}
-                  </p>
-                </div>
-              )}
-            </div>
+                {event.location && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <MapPinIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+                    <span className="text-[#D6CCBE]">{event.location}</span>
+                  </div>
+                )}
+                {event.zoomLink && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <VideoIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+                    <a
+                      href={event.zoomLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="truncate text-[#9B7A41] hover:underline"
+                    >
+                      {event.zoomLink}
+                    </a>
+                  </div>
+                )}
+                {event.description && (
+                  <div className="mt-4 border border-white/8 bg-white/4 p-3">
+                    <p className="line-clamp-6 text-[0.82rem] leading-relaxed text-[#AFA28F]">
+                      {event.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </DialogBody>
 
             <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
               <Button
@@ -359,12 +362,12 @@ export function EventDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="overflow-y-auto rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-2xl"
+        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-2xl"
         style={dialogStyle}
         showCloseButton={false}
       >
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-        <div className="relative">
+        <div className="relative flex min-h-0 flex-1 flex-col">
           <DialogHeader>
             <div className="mb-1">
               <div className="h-px w-8 bg-[#C5A059]/40" />
@@ -382,166 +385,168 @@ export function EventDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="mt-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field className="sm:col-span-2">
-                <FieldLabel
-                  htmlFor="event-title"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Title <span className="text-[#C5A059]">*</span>
-                </FieldLabel>
-                <Input
-                  id="event-title"
-                  placeholder="Event title"
-                  value={formData.title}
-                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
-                  onChange={(e) => {
-                    setFormData({ ...formData, title: e.target.value })
-                    if (fieldErrors.title)
-                      setFieldErrors({ ...fieldErrors, title: '' })
-                  }}
-                />
-                {fieldErrors.title && (
-                  <p className="text-[0.68rem] text-red-400">
-                    {fieldErrors.title}
-                  </p>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel
-                  htmlFor="event-start"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Start Time <span className="text-[#C5A059]">*</span>
-                </FieldLabel>
-                <Input
-                  id="event-start"
-                  type="datetime-local"
-                  value={formData.startTime}
-                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.startTime ? 'border-red-500/60' : ''}`}
-                  onChange={(e) => {
-                    setFormData({ ...formData, startTime: e.target.value })
-                    if (fieldErrors.startTime)
-                      setFieldErrors({ ...fieldErrors, startTime: '' })
-                  }}
-                />
-                {fieldErrors.startTime && (
-                  <p className="text-[0.68rem] text-red-400">
-                    {fieldErrors.startTime}
-                  </p>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel
-                  htmlFor="event-end"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  End Time <span className="text-[#C5A059]">*</span>
-                </FieldLabel>
-                <Input
-                  id="event-end"
-                  type="datetime-local"
-                  value={formData.endTime}
-                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.endTime ? 'border-red-500/60' : ''}`}
-                  onChange={(e) => {
-                    setFormData({ ...formData, endTime: e.target.value })
-                    if (fieldErrors.endTime)
-                      setFieldErrors({ ...fieldErrors, endTime: '' })
-                  }}
-                />
-                {fieldErrors.endTime && (
-                  <p className="text-[0.68rem] text-red-400">
-                    {fieldErrors.endTime}
-                  </p>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel
-                  htmlFor="event-category"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Category
-                </FieldLabel>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      category: value as EventFormData['category'],
-                    })
-                  }
-                >
-                  <SelectTrigger className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
-                    <SelectValue placeholder="Select category">
-                      {formData.category
-                        ? formData.category.charAt(0).toUpperCase() +
-                          formData.category.slice(1)
-                        : 'Select category'}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-none border-white/12">
-                    <SelectItem value="chapel">Chapel</SelectItem>
-                    <SelectItem value="exam">Exam</SelectItem>
-                    <SelectItem value="personal">Personal</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field>
-                <FieldLabel
-                  htmlFor="event-location"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Location
-                </FieldLabel>
-                <Input
-                  id="event-location"
-                  placeholder="Room or address"
-                  value={formData.location}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
-                    setFormData({ ...formData, location: e.target.value })
-                  }
-                />
-              </Field>
-              <Field className="sm:col-span-2">
-                <FieldLabel
-                  htmlFor="event-zoom"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Zoom Link
-                </FieldLabel>
-                <Input
-                  id="event-zoom"
-                  placeholder="https://zoom.us/j/..."
-                  value={formData.zoomLink}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
-                    setFormData({ ...formData, zoomLink: e.target.value })
-                  }
-                />
-              </Field>
-              <Field className="sm:col-span-2">
-                <FieldLabel
-                  htmlFor="event-description"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Description
-                </FieldLabel>
-                <Textarea
-                  id="event-description"
-                  rows={5}
-                  placeholder="Event description"
-                  value={formData.description}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                />
-              </Field>
-            </div>
-          </FieldGroup>
+          <DialogBody>
+            <FieldGroup className="mt-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field className="sm:col-span-2">
+                  <FieldLabel
+                    htmlFor="event-title"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Title <span className="text-[#C5A059]">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="event-title"
+                    placeholder="Event title"
+                    value={formData.title}
+                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
+                    onChange={(e) => {
+                      setFormData({ ...formData, title: e.target.value })
+                      if (fieldErrors.title)
+                        setFieldErrors({ ...fieldErrors, title: '' })
+                    }}
+                  />
+                  {fieldErrors.title && (
+                    <p className="text-[0.68rem] text-red-400">
+                      {fieldErrors.title}
+                    </p>
+                  )}
+                </Field>
+                <Field>
+                  <FieldLabel
+                    htmlFor="event-start"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Start Time <span className="text-[#C5A059]">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="event-start"
+                    type="datetime-local"
+                    value={formData.startTime}
+                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.startTime ? 'border-red-500/60' : ''}`}
+                    onChange={(e) => {
+                      setFormData({ ...formData, startTime: e.target.value })
+                      if (fieldErrors.startTime)
+                        setFieldErrors({ ...fieldErrors, startTime: '' })
+                    }}
+                  />
+                  {fieldErrors.startTime && (
+                    <p className="text-[0.68rem] text-red-400">
+                      {fieldErrors.startTime}
+                    </p>
+                  )}
+                </Field>
+                <Field>
+                  <FieldLabel
+                    htmlFor="event-end"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    End Time <span className="text-[#C5A059]">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="event-end"
+                    type="datetime-local"
+                    value={formData.endTime}
+                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.endTime ? 'border-red-500/60' : ''}`}
+                    onChange={(e) => {
+                      setFormData({ ...formData, endTime: e.target.value })
+                      if (fieldErrors.endTime)
+                        setFieldErrors({ ...fieldErrors, endTime: '' })
+                    }}
+                  />
+                  {fieldErrors.endTime && (
+                    <p className="text-[0.68rem] text-red-400">
+                      {fieldErrors.endTime}
+                    </p>
+                  )}
+                </Field>
+                <Field>
+                  <FieldLabel
+                    htmlFor="event-category"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Category
+                  </FieldLabel>
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        category: value as EventFormData['category'],
+                      })
+                    }
+                  >
+                    <SelectTrigger className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
+                      <SelectValue placeholder="Select category">
+                        {formData.category
+                          ? formData.category.charAt(0).toUpperCase() +
+                            formData.category.slice(1)
+                          : 'Select category'}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="rounded-none border-white/12">
+                      <SelectItem value="chapel">Chapel</SelectItem>
+                      <SelectItem value="exam">Exam</SelectItem>
+                      <SelectItem value="personal">Personal</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel
+                    htmlFor="event-location"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Location
+                  </FieldLabel>
+                  <Input
+                    id="event-location"
+                    placeholder="Room or address"
+                    value={formData.location}
+                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                    onChange={(e) =>
+                      setFormData({ ...formData, location: e.target.value })
+                    }
+                  />
+                </Field>
+                <Field className="sm:col-span-2">
+                  <FieldLabel
+                    htmlFor="event-zoom"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Zoom Link
+                  </FieldLabel>
+                  <Input
+                    id="event-zoom"
+                    placeholder="https://zoom.us/j/..."
+                    value={formData.zoomLink}
+                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                    onChange={(e) =>
+                      setFormData({ ...formData, zoomLink: e.target.value })
+                    }
+                  />
+                </Field>
+                <Field className="sm:col-span-2">
+                  <FieldLabel
+                    htmlFor="event-description"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Description
+                  </FieldLabel>
+                  <Textarea
+                    id="event-description"
+                    rows={5}
+                    placeholder="Event description"
+                    value={formData.description}
+                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                  />
+                </Field>
+              </div>
+            </FieldGroup>
+          </DialogBody>
 
           <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
             <Button

@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -256,7 +257,7 @@ export function CourseDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="overflow-y-auto rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
+        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
         style={{
           backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
           backgroundSize: 'cover',
@@ -266,7 +267,7 @@ export function CourseDialog({
       >
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
 
-        <div className="relative">
+        <div className="relative flex min-h-0 flex-1 flex-col">
           <DialogHeader>
             <div className="mb-1">
               <div className="h-px w-8 bg-[#C5A059]/40" />
@@ -284,263 +285,267 @@ export function CourseDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="mt-6 gap-8">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Field className="sm:col-span-2">
-                <FieldLabel
-                  htmlFor="course-title"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Title <span className="text-[#C5A059]">*</span>
-                </FieldLabel>
-                <Input
-                  id="course-title"
-                  placeholder="Introduction to Programming"
-                  value={formData.title}
-                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
-                  onChange={(e) => {
-                    setFormData({ ...formData, title: e.target.value })
-                    if (fieldErrors.title)
-                      setFieldErrors({ ...fieldErrors, title: '' })
-                  }}
-                />
-                {fieldErrors.title && (
-                  <p className="text-[0.68rem] text-red-400">
-                    {fieldErrors.title}
+          <DialogBody>
+            <FieldGroup className="mt-6 gap-8">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <Field className="sm:col-span-2">
+                  <FieldLabel
+                    htmlFor="course-title"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Title <span className="text-[#C5A059]">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="course-title"
+                    placeholder="Introduction to Programming"
+                    value={formData.title}
+                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
+                    onChange={(e) => {
+                      setFormData({ ...formData, title: e.target.value })
+                      if (fieldErrors.title)
+                        setFieldErrors({ ...fieldErrors, title: '' })
+                    }}
+                  />
+                  {fieldErrors.title && (
+                    <p className="text-[0.68rem] text-red-400">
+                      {fieldErrors.title}
+                    </p>
+                  )}
+                </Field>
+                <div className="sm:col-span-1" />
+                <Field>
+                  <FieldLabel
+                    htmlFor="course-orderIndex"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Order Index
+                  </FieldLabel>
+                  <Input
+                    id="course-orderIndex"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={formData.orderIndex === 0 ? '' : formData.orderIndex}
+                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        orderIndex:
+                          e.target.value === ''
+                            ? 0
+                            : parseInt(e.target.value) || 0,
+                      })
+                    }
+                  />
+                  <p className="text-xs text-[#8E816D]">
+                    Lower numbers appear first in course list
                   </p>
-                )}
-              </Field>
-              <div className="sm:col-span-1" />
-              <Field>
-                <FieldLabel
-                  htmlFor="course-orderIndex"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Order Index
-                </FieldLabel>
-                <Input
-                  id="course-orderIndex"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={formData.orderIndex === 0 ? '' : formData.orderIndex}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      orderIndex:
-                        e.target.value === ''
-                          ? 0
-                          : parseInt(e.target.value) || 0,
-                    })
-                  }
-                />
-                <p className="text-xs text-[#8E816D]">
-                  Lower numbers appear first in course list
-                </p>
-              </Field>
-              {isAdmin && (
-                <>
-                  <Field>
-                    <FieldLabel
-                      htmlFor="course-teacher1"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Teacher 1
-                    </FieldLabel>
-                    <Select
-                      value={formData.teacher1Id ?? undefined}
-                      onValueChange={(value) => {
-                        setFormData({ ...formData, teacher1Id: value })
-                        if (fieldErrors.teacher1Id)
-                          setFieldErrors({ ...fieldErrors, teacher1Id: '' })
-                      }}
-                    >
-                      <SelectTrigger
-                        className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
-                        id="course-teacher1"
+                </Field>
+                {isAdmin && (
+                  <>
+                    <Field>
+                      <FieldLabel
+                        htmlFor="course-teacher1"
+                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
                       >
-                        <SelectValue placeholder="Select first teacher">
-                          {formData.teacher1Id
-                            ? teachers.find((t) => t.id === formData.teacher1Id)
-                                ?.fullName || 'Select first teacher'
-                            : 'Select first teacher'}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
-                        {teachers.length === 0 ? (
-                          <SelectItem value="none" disabled>
-                            No teachers available
-                          </SelectItem>
-                        ) : (
-                          teachers.map((teacher) => (
-                            <SelectItem key={teacher.id} value={teacher.id}>
-                              {teacher.fullName}
+                        Teacher 1
+                      </FieldLabel>
+                      <Select
+                        value={formData.teacher1Id ?? undefined}
+                        onValueChange={(value) => {
+                          setFormData({ ...formData, teacher1Id: value })
+                          if (fieldErrors.teacher1Id)
+                            setFieldErrors({ ...fieldErrors, teacher1Id: '' })
+                        }}
+                      >
+                        <SelectTrigger
+                          className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
+                          id="course-teacher1"
+                        >
+                          <SelectValue placeholder="Select first teacher">
+                            {formData.teacher1Id
+                              ? teachers.find(
+                                  (t) => t.id === formData.teacher1Id,
+                                )?.fullName || 'Select first teacher'
+                              : 'Select first teacher'}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
+                          {teachers.length === 0 ? (
+                            <SelectItem value="none" disabled>
+                              No teachers available
                             </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {fieldErrors.teacher1Id && (
-                      <p className="text-[0.68rem] text-red-400">
-                        {fieldErrors.teacher1Id}
-                      </p>
-                    )}
-                  </Field>
-                  <Field>
-                    <FieldLabel
-                      htmlFor="course-teacher2"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Teacher 2
-                    </FieldLabel>
-                    <Select
-                      value={formData.teacher2Id ?? undefined}
-                      onValueChange={(value) => {
-                        setFormData({ ...formData, teacher2Id: value })
-                        if (fieldErrors.teacher2Id)
-                          setFieldErrors({ ...fieldErrors, teacher2Id: '' })
-                      }}
-                    >
-                      <SelectTrigger
-                        className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
-                        id="course-teacher2"
-                      >
-                        <SelectValue placeholder="Select second teacher">
-                          {formData.teacher2Id
-                            ? teachers.find((t) => t.id === formData.teacher2Id)
-                                ?.fullName || 'Select second teacher'
-                            : 'Select second teacher'}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
-                        {teachers.length === 0 ? (
-                          <SelectItem value="none" disabled>
-                            No teachers available
-                          </SelectItem>
-                        ) : (
-                          teachers
-                            .filter((t) => t.id !== formData.teacher1Id)
-                            .map((teacher) => (
+                          ) : (
+                            teachers.map((teacher) => (
                               <SelectItem key={teacher.id} value={teacher.id}>
                                 {teacher.fullName}
                               </SelectItem>
                             ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {fieldErrors.teacher2Id && (
-                      <p className="text-[0.68rem] text-red-400">
-                        {fieldErrors.teacher2Id}
-                      </p>
-                    )}
-                  </Field>
-                </>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel
-                  htmlFor="course-description"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Description
-                </FieldLabel>
-                <Textarea
-                  id="course-description"
-                  placeholder="Describe what students will learn in this course"
-                  rows={10}
-                  value={formData.description}
-                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.description ? 'border-red-500/60' : ''}`}
-                  onChange={(e) => {
-                    setFormData({ ...formData, description: e.target.value })
-                    if (fieldErrors.description)
-                      setFieldErrors({ ...fieldErrors, description: '' })
-                  }}
-                />
-                {fieldErrors.description && (
-                  <p className="text-[0.68rem] text-red-400">
-                    {fieldErrors.description}
-                  </p>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-                  Course Thumbnail
-                </FieldLabel>
-                <div className="space-y-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  {formData.thumbnailUrl ? (
-                    <div className="relative aspect-video w-full max-w-sm overflow-hidden border border-white/10">
-                      <img
-                        src={formData.thumbnailUrl}
-                        alt="Course thumbnail"
-                        className="size-full object-cover"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="absolute top-2 right-2 rounded-none border-white/20 bg-black/40 text-white hover:bg-black/60"
-                        onClick={() => {
-                          setFormData({
-                            ...formData,
-                            thumbnailUrl: null,
-                            thumbnailFile: null,
-                          })
-                          if (fileInputRef.current)
-                            fileInputRef.current.value = ''
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {fieldErrors.teacher1Id && (
+                        <p className="text-[0.68rem] text-red-400">
+                          {fieldErrors.teacher1Id}
+                        </p>
+                      )}
+                    </Field>
+                    <Field>
+                      <FieldLabel
+                        htmlFor="course-teacher2"
+                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                      >
+                        Teacher 2
+                      </FieldLabel>
+                      <Select
+                        value={formData.teacher2Id ?? undefined}
+                        onValueChange={(value) => {
+                          setFormData({ ...formData, teacher2Id: value })
+                          if (fieldErrors.teacher2Id)
+                            setFieldErrors({ ...fieldErrors, teacher2Id: '' })
                         }}
                       >
-                        <XIcon className="size-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      theme="dark"
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full max-w-sm rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
-                    >
-                      <UploadIcon className="mr-2 size-4" />
-                      Upload Thumbnail
-                    </Button>
-                  )}
-                  <p className="text-xs text-[#8E816D]">
-                    JPG, PNG, WebP or GIF. Max 2MB.
-                  </p>
-                </div>
-              </Field>
-            </div>
+                        <SelectTrigger
+                          className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
+                          id="course-teacher2"
+                        >
+                          <SelectValue placeholder="Select second teacher">
+                            {formData.teacher2Id
+                              ? teachers.find(
+                                  (t) => t.id === formData.teacher2Id,
+                                )?.fullName || 'Select second teacher'
+                              : 'Select second teacher'}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
+                          {teachers.length === 0 ? (
+                            <SelectItem value="none" disabled>
+                              No teachers available
+                            </SelectItem>
+                          ) : (
+                            teachers
+                              .filter((t) => t.id !== formData.teacher1Id)
+                              .map((teacher) => (
+                                <SelectItem key={teacher.id} value={teacher.id}>
+                                  {teacher.fullName}
+                                </SelectItem>
+                              ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {fieldErrors.teacher2Id && (
+                        <p className="text-[0.68rem] text-red-400">
+                          {fieldErrors.teacher2Id}
+                        </p>
+                      )}
+                    </Field>
+                  </>
+                )}
+              </div>
 
-            {mode === 'edit' && (
-              <Field>
-                <div className="flex items-center gap-3">
-                  <Switch
-                    id="course-published"
-                    checked={formData.isPublished}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, isPublished: checked })
-                    }
-                  />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field>
                   <FieldLabel
-                    htmlFor="course-published"
-                    className="text-sm text-[#AFA28F]"
+                    htmlFor="course-description"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
                   >
-                    Publish course
+                    Description
                   </FieldLabel>
-                </div>
-              </Field>
-            )}
-          </FieldGroup>
+                  <Textarea
+                    id="course-description"
+                    placeholder="Describe what students will learn in this course"
+                    rows={10}
+                    value={formData.description}
+                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.description ? 'border-red-500/60' : ''}`}
+                    onChange={(e) => {
+                      setFormData({ ...formData, description: e.target.value })
+                      if (fieldErrors.description)
+                        setFieldErrors({ ...fieldErrors, description: '' })
+                    }}
+                  />
+                  {fieldErrors.description && (
+                    <p className="text-[0.68rem] text-red-400">
+                      {fieldErrors.description}
+                    </p>
+                  )}
+                </Field>
+                <Field>
+                  <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+                    Course Thumbnail
+                  </FieldLabel>
+                  <div className="space-y-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    {formData.thumbnailUrl ? (
+                      <div className="relative aspect-video w-full max-w-sm overflow-hidden border border-white/10">
+                        <img
+                          src={formData.thumbnailUrl}
+                          alt="Course thumbnail"
+                          className="size-full object-cover"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="absolute top-2 right-2 rounded-none border-white/20 bg-black/40 text-white hover:bg-black/60"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              thumbnailUrl: null,
+                              thumbnailFile: null,
+                            })
+                            if (fileInputRef.current)
+                              fileInputRef.current.value = ''
+                          }}
+                        >
+                          <XIcon className="size-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        theme="dark"
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full max-w-sm rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
+                      >
+                        <UploadIcon className="mr-2 size-4" />
+                        Upload Thumbnail
+                      </Button>
+                    )}
+                    <p className="text-xs text-[#8E816D]">
+                      JPG, PNG, WebP or GIF. Max 2MB.
+                    </p>
+                  </div>
+                </Field>
+              </div>
+
+              {mode === 'edit' && (
+                <Field>
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      id="course-published"
+                      checked={formData.isPublished}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, isPublished: checked })
+                      }
+                    />
+                    <FieldLabel
+                      htmlFor="course-published"
+                      className="text-sm text-[#AFA28F]"
+                    >
+                      Publish course
+                    </FieldLabel>
+                  </div>
+                </Field>
+              )}
+            </FieldGroup>
+          </DialogBody>
 
           <DialogFooter className="mt-6 rounded-none border-white/8 bg-white/3">
             <Button

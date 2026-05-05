@@ -7,7 +7,7 @@ Reusable UI and feature components.
 This folder contains:
 
 - Shared app navigation components
-- Feature UI components (views, modals, cards)
+- Feature UI components (views, dialogs, cards)
 - Base UI primitives (shadcn/ui) and small wrappers
 
 ## What Lives Here
@@ -21,7 +21,7 @@ This folder contains:
 
 - **Feature component families**
   - `auth/`: signup/login/reset/enrolment forms.
-  - `modal/`: modals for profile, invitations, teachers, event previews.
+  - `dialog/`: dialogs for profile, invitations, teachers, event previews.
   - `card/`: card-style feature components.
   - `view/`: composite “page section” components for feature pages.
   - `landing/`: public landing page sections.
@@ -40,8 +40,8 @@ This folder contains:
   - Add under `components/ui/*`.
   - Keep API consistent with existing components.
 
-- **Add a new feature modal or view**
-  - Place in `components/modal/*` or `components/view/*`.
+- **Add a new feature dialog or view**
+  - Place in `components/dialog/*` or `components/view/*`.
   - Keep data fetching in routes/server functions; keep components focused on rendering + callbacks.
 
 - **Update global nav**
