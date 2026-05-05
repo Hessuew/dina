@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import andrewImage from '@/assets/images/lecturers/andrew.jpg'
 import akosyaImage from '@/assets/images/lecturers/akosya.webp'
@@ -8,9 +7,11 @@ import mahiImage from '@/assets/images/lecturers/mahi.png'
 import sadeImage from '@/assets/images/lecturers/sade.jpeg'
 import ezinneImage from '@/assets/images/lecturers/ezinne.jpg'
 import {
+  LandingActiveItemNav,
   LandingFeaturePanel,
   LandingFeaturePanelBody,
   LandingFeaturePanelHeader,
+  LandingItemGrid,
   LandingScriptureSectionHeader,
   LandingSection,
   LandingSectionContainer,
@@ -200,78 +201,47 @@ export function LandingTeacherSection() {
               ]}
             />
 
-            <div className="flex items-center justify-between gap-6 border-y border-[#1A1A1A]/10 py-5">
-              <div>
-                <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#6e562d] uppercase">
-                  Active pair
-                </div>
-                <div className="mt-2 font-serif text-2xl text-[#1C1815]">
-                  {activePair.number}. {activePair.theme}
-                </div>
-              </div>
+            <LandingActiveItemNav
+              label="Active pair"
+              activeValue={`${activePair.number}. ${activePair.theme}`}
+              onPrevious={goToPrevious}
+              onNext={goToNext}
+              borderColor="border-[#1A1A1A]/10"
+              prevButtonClass="border-[#1A1A1A]/10 bg-[#FCFBF8]/74 text-[#1C1815] shadow-[0_22px_34px_-30px_rgba(0,0,0,0.24)] backdrop-blur-sm hover:border-[#C5A059]/50 hover:bg-white/80"
+              nextButtonClass="border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_26px_40px_-28px_rgba(0,0,0,0.4)] hover:border-[#D6B16E] hover:text-white"
+              labelColor="text-[#6e562d]"
+              valueColor="text-[#1C1815]"
+            />
 
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={goToPrevious}
-                  className="inline-flex h-12 w-12 items-center justify-center border border-[#1A1A1A]/10 bg-[#FCFBF8]/74 text-[#1C1815] shadow-[0_22px_34px_-30px_rgba(0,0,0,0.24)] backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-[#C5A059]/50 hover:bg-white/80"
-                  aria-label="Show previous lecturer pair"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={goToNext}
-                  className="inline-flex h-12 w-12 items-center justify-center border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_26px_40px_-28px_rgba(0,0,0,0.4)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
-                  aria-label="Show next lecturer pair"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="hidden gap-3 sm:grid sm:grid-cols-2">
-              {lecturerPairs.map((pair, index) => {
-                const isActive = index === activeIndex
-
-                return (
-                  <button
-                    key={pair.id}
-                    type="button"
-                    onClick={() => setActiveIndex(index)}
-                    className={`group flex items-center justify-between gap-4 border px-4 py-4 text-left transition-all ${
-                      isActive
-                        ? 'border-[#C5A059]/42 bg-[#1A1716] shadow-[0_24px_44px_-34px_rgba(0,0,0,0.6)]'
-                        : 'border-[#1A1A1A]/10 bg-[#1A1716]/80 hover:border-[#C5A059]/30 hover:bg-[#1A1716]/90'
+            <LandingItemGrid
+              items={lecturerPairs}
+              activeIndex={activeIndex}
+              onSelect={setActiveIndex}
+              borderColor="border-[#1A1A1A]/10"
+              bgColor="bg-[#1A1716]/80"
+              activeBorderColor="border-[#C5A059]/42"
+              activeBgColor="bg-[#1A1716]"
+              arrowColor="text-[#9B8A73]"
+              activeArrowColor="text-[#E9D9B4]"
+              renderItem={(pair, _index, isActive) => (
+                <div>
+                  <div
+                    className={`text-[0.65rem] font-medium tracking-[0.28em] uppercase ${
+                      isActive ? 'text-[#D4B373]' : 'text-[#8A7B68]'
                     }`}
                   >
-                    <div>
-                      <div
-                        className={`text-[0.65rem] font-medium tracking-[0.28em] uppercase ${
-                          isActive ? 'text-[#D4B373]' : 'text-[#8A7B68]'
-                        }`}
-                      >
-                        {pair.number}
-                      </div>
-                      <div
-                        className={`mt-2 font-serif text-xl ${
-                          isActive ? 'text-[#F8F4EC]' : 'text-[#F8F4EC]/70'
-                        }`}
-                      >
-                        {pair.theme}
-                      </div>
-                    </div>
-                    <ArrowRight
-                      className={`h-4 w-4 transition-transform ${
-                        isActive
-                          ? 'translate-x-0 text-[#E9D9B4]'
-                          : 'text-[#9B8A73] group-hover:translate-x-0.5'
-                      }`}
-                    />
-                  </button>
-                )
-              })}
-            </div>
+                    {pair.number}
+                  </div>
+                  <div
+                    className={`mt-2 font-serif text-xl ${
+                      isActive ? 'text-[#F8F4EC]' : 'text-[#F8F4EC]/70'
+                    }`}
+                  >
+                    {pair.theme}
+                  </div>
+                </div>
+              )}
+            />
           </div>
 
           <LandingFeaturePanel>

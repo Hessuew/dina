@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 import marksBackground from '@/assets/images/bg/bg_marks.webp'
 import {
+  LandingActiveItemNav,
   LandingFeaturePanel,
   LandingFeaturePanelBody,
   LandingFeaturePanelHeader,
@@ -121,35 +121,16 @@ export function LandingMarksSection() {
               ]}
             />
 
-            <div className="flex items-center justify-between gap-6 border-y border-white/10 py-5">
-              <div>
-                <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
-                  Active mark
-                </div>
-                <div className="mt-2 font-serif text-2xl text-[#F8F4EC]">
-                  {activeMark.title}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={goToPrevious}
-                  className="inline-flex h-12 w-12 items-center justify-center border border-white/12 bg-white/6 text-[#F8F4EC] transition-all hover:-translate-y-0.5 hover:border-[#C5A059]/50 hover:bg-white/10"
-                  aria-label="Show previous mark"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={goToNext}
-                  className="inline-flex h-12 w-12 items-center justify-center border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
-                  aria-label="Show next mark"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            <LandingActiveItemNav
+              label="Active mark"
+              activeValue={activeMark.title}
+              onPrevious={goToPrevious}
+              onNext={goToNext}
+              borderColor="border-white/10"
+              prevButtonClass="border-white/12 bg-white/6 text-[#F8F4EC] hover:border-[#C5A059]/50 hover:bg-white/10"
+              nextButtonClass="border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E] hover:text-white"
+              labelColor="text-[#9B8A73]"
+            />
           </div>
 
           <LandingFeaturePanel key={activeMark.id}>
