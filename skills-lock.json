@@ -19,11 +19,6 @@
       "skillPath": "caveman-compress/SKILL.md",
       "computedHash": "25520dcbf1cc98a372ea9e53abc6a5be20ebf1c7bcbc2008cdc9a118de0311c6"
     },
-    "design-an-interface": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "computedHash": "885b05367fb1cf61a1e27e0d50f14d2502a05c1fa276c6e9ea050ce6a90e7095"
-    },
     "grill-me": {
       "source": "mattpocock/skills",
       "sourceType": "github",
