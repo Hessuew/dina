@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import testimonialBackground from '@/assets/images/bg/bg_testimonials.webp'
+import {
+  LandingSection,
+  LandingSectionContainer,
+  LandingSectionEyebrowCentered,
+} from '@/components/landing/primitives'
 
 type TestimonialItem = {
   id: string
@@ -172,35 +177,19 @@ export function LandingTestimonialsSection() {
   }
 
   return (
-    <section
+    <LandingSection
       id="testimonials"
-      className="relative isolate overflow-hidden border-b border-[#C5A059]/14 text-[#F7F4EE]"
+      className="border-b border-[#C5A059]/14 text-[#F7F4EE]"
       style={{
         backgroundImage: `linear-gradient(180deg, rgba(14,13,17,0.922), rgba(10,10,12,0.97)), url(${testimonialBackground})`,
         backgroundPosition: 'center',
         backgroundSize: 'cover',
       }}
     >
-      {/* <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: `url(${testimonialBackground})`,
-          backgroundPosition: 'center',
-          backgroundSize: 'cover',
-        }}
-      />
-      <div className="absolute inset-0 bg-linear-to-b from-[#0A0807] via-[#0C0A09]/95 to-[#0A0807]" />
-      <div className="absolute inset-0 bg-linear-to-b from-[#0A0807] via-[#0C0A09]/5 to-[#0A0807]" />
-
-      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(26,23,22,0.88),transparent_28%,rgba(10,8,7,0.92)_100%)]" /> */}
-
-      <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-18 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-28">
+      <LandingSectionContainer className="py-18 sm:py-22 lg:py-28">
         <div className="space-y-16">
           <div className="mx-auto max-w-3xl space-y-8 text-center">
-            <div className="inline-flex flex-col items-center gap-3 text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
-              <div className="h-px w-16 bg-[#C5A059]/50" />
-              Formation of pillars
-            </div>
+            <LandingSectionEyebrowCentered label="Formation of pillars" />
 
             <h2 className="font-serif text-[clamp(3.2rem,6vw,5.5rem)] leading-[0.9] tracking-[-0.055em] text-white">
               Experiences
@@ -273,9 +262,6 @@ export function LandingTestimonialsSection() {
                         <div className="pt-2 font-serif text-[1.3rem] text-white">
                           {item.name}
                         </div>
-                        {/* <div className="mt-1 text-sm leading-6 text-[#D8D0C7]">
-                          {item.role}
-                        </div> */}
                       </div>
                     </div>
                   </button>
@@ -335,7 +321,7 @@ export function LandingTestimonialsSection() {
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </LandingSectionContainer>
+    </LandingSection>
   )
 }

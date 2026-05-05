@@ -1,6 +1,14 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import marksBackground from '@/assets/images/bg/bg_marks.webp'
+import {
+  LandingFeaturePanel,
+  LandingFeaturePanelBody,
+  LandingFeaturePanelHeader,
+  LandingSection,
+  LandingSectionContainer,
+  LandingSectionEyebrow,
+} from '@/components/landing/primitives'
 
 type MarkItem = {
   id: string
@@ -82,9 +90,9 @@ export function LandingMarksSection() {
   }
 
   return (
-    <section
+    <LandingSection
       id="marks"
-      className="relative isolate min-h-screen overflow-hidden border-b border-[#C5A059]/14 text-[#F7F4EE]"
+      className="min-h-screen border-b border-[#C5A059]/14 text-[#F7F4EE]"
       style={{
         backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${marksBackground})`,
         backgroundPosition: 'center',
@@ -94,18 +102,11 @@ export function LandingMarksSection() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.14),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.06),transparent_22%)]" />
       <div className="absolute right-[8%] bottom-24 h-px w-16 bg-white/12 lg:w-24" />
 
-      <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-18 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24">
+      <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.88fr)_minmax(24rem,1.12fr)] lg:gap-20">
           <div className="space-y-10">
             <div className="space-y-6">
-              <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-                <div className="mb-2 h-px w-20 bg-[#C5A059]/50 lg:w-28" />
-                <div className="h-px w-20 bg-[#C5A059]/50 lg:w-28" />
-                <div className="flex flex-row items-center gap-3">
-                  <span className="h-px w-10 bg-[#C5A059]/55" />
-                  Presence of God
-                </div>
-              </div>
+              <LandingSectionEyebrow label="Presence of God" topLineCount={2} />
 
               <h2 className="max-w-[14ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
                 Apostolic confirmations
@@ -154,19 +155,8 @@ export function LandingMarksSection() {
             </div>
           </div>
 
-          <div
-            key={activeMark.id}
-            className="relative border border-white/10 bg-[#171717]/72 p-4 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:p-6"
-          >
-            <div
-              className="relative overflow-hidden border border-white/10"
-              style={{
-                backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.26), rgba(7,7,8,0.72)), url(${marksBackground})`,
-                backgroundPosition: 'center',
-                backgroundSize: 'cover',
-              }}
-            >
-              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_38%,rgba(197,160,89,0.14)_100%)]" />
+          <LandingFeaturePanel key={activeMark.id}>
+            <LandingFeaturePanelHeader backgroundImageUrl={marksBackground}>
               <div className="relative min-h-84 space-y-8 p-6 sm:p-8 lg:h-100">
                 <div>
                   <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
@@ -204,9 +194,9 @@ export function LandingMarksSection() {
                   {activeMark.description}
                 </p>
               </div>
-            </div>
+            </LandingFeaturePanelHeader>
 
-            <div className="border-x border-b border-white/10 bg-[#151515]/88 px-6 py-7 sm:px-8 sm:py-8">
+            <LandingFeaturePanelBody className="px-6 py-7 sm:px-8 sm:py-8">
               {activeMark.example && (
                 <div
                   className="animate-[fadeInSlideRight_0.7s_ease-out_forwards] opacity-0"
@@ -220,10 +210,10 @@ export function LandingMarksSection() {
                   </p>
                 </div>
               )}
-            </div>
-          </div>
+            </LandingFeaturePanelBody>
+          </LandingFeaturePanel>
         </div>
-      </div>
-    </section>
+      </LandingSectionContainer>
+    </LandingSection>
   )
 }

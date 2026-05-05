@@ -1,10 +1,15 @@
 import { FileText, Landmark, Mail, MapPin, Phone } from 'lucide-react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
+import {
+  LandingSection,
+  LandingSectionContainer,
+  LandingSectionEyebrow,
+} from '@/components/landing/primitives'
 
 export function LandingOfficialInfo() {
   return (
-    <section
-      className="relative isolate overflow-hidden text-[#1C1815]"
+    <LandingSection
+      className="text-[#1C1815]"
       style={{
         backgroundImage: `linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url(${facultyBackground})`,
         backgroundPosition: 'center',
@@ -13,14 +18,21 @@ export function LandingOfficialInfo() {
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(197,160,89,0.08),transparent_50%)]" />
 
-      <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-16 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-20 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-12 text-center">
-            <div className="mx-auto mb-6 h-px w-16 bg-[#9B8A73]/50" />
-            <h2 className="font-serif text-[clamp(2rem,4vw,3rem)] leading-tight tracking-[-0.04em] text-[#1C1815]">
+      <LandingSectionContainer className="py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-6xl space-y-14">
+          <div className="flex flex-col items-center space-y-6 text-center">
+            <LandingSectionEyebrow
+              label="Registry & Documentation"
+              align="center"
+            />
+
+            <h2 className="max-w-3xl font-serif text-[clamp(3rem,5vw,5.1rem)] leading-none tracking-[-0.055em] text-[#1A1A1A]">
               Official Information
             </h2>
-            <div className="mx-auto mt-6 h-px w-16 bg-[#9B8A73]/50" />
+
+            <p className="max-w-2xl text-base leading-8 font-light tracking-[0.04em] text-[#4E463D] sm:text-lg">
+              Official information about the Discipleship Training School
+            </p>
           </div>
 
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
@@ -122,7 +134,7 @@ export function LandingOfficialInfo() {
             </p>
           </div>
         </div>
-      </div>
-    </section>
+      </LandingSectionContainer>
+    </LandingSection>
   )
 }

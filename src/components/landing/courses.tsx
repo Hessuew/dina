@@ -7,6 +7,14 @@ import houseWalls from '@/assets/images/house/house_walls.webp'
 import houseFraming from '@/assets/images/house/house_framing.webp'
 import houseInterior from '@/assets/images/house/house_interior.webp'
 import houseRoof from '@/assets/images/house/house_roof.webp'
+import {
+  LandingFeaturePanel,
+  LandingFeaturePanelBody,
+  LandingFeaturePanelHeader,
+  LandingSection,
+  LandingSectionContainer,
+  LandingSectionEyebrow,
+} from '@/components/landing/primitives'
 
 type CourseShowcaseItem = {
   id: string
@@ -118,9 +126,9 @@ export function LandingCourseShowcase() {
   }
 
   return (
-    <section
+    <LandingSection
       id="courses"
-      className="relative isolate overflow-hidden border-b border-[#C5A059]/14 bg-[#121212] text-[#F8F4EC]"
+      className="border-b border-[#C5A059]/14 bg-[#121212] text-[#F8F4EC]"
       style={{
         backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
         backgroundPosition: 'center',
@@ -130,17 +138,11 @@ export function LandingCourseShowcase() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.06),transparent_22%)]" />
       <div className="absolute right-[8%] bottom-24 h-px w-16 bg-white/12 lg:w-24" />
 
-      <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-18 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24">
+      <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(24rem,1.15fr)] lg:gap-20">
           <div className="space-y-10">
             <div className="space-y-6">
-              <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-                <div className="h-px w-20 bg-[#C5A059]/50 lg:w-28" />
-                <div className="flex flex-row items-center gap-3">
-                  <span className="h-px w-10 bg-[#C5A059]/55" />
-                  Curriculum Architecture
-                </div>
-              </div>
+              <LandingSectionEyebrow label="Curriculum Architecture" />
 
               <h2 className="max-w-[12ch] font-serif text-[clamp(3rem,5vw,5.2rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
                 Six courses
@@ -226,16 +228,8 @@ export function LandingCourseShowcase() {
             </div>
           </div>
 
-          <div className="relative border border-white/10 bg-[#171717]/72 p-4 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:p-6">
-            <div
-              className="relative overflow-hidden border border-white/10"
-              style={{
-                backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.26), rgba(7,7,8,0.72)), url(${graphiteBackground})`,
-                backgroundPosition: 'center',
-                backgroundSize: 'cover',
-              }}
-            >
-              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_38%,rgba(197,160,89,0.14)_100%)]" />
+          <LandingFeaturePanel>
+            <LandingFeaturePanelHeader backgroundImageUrl={graphiteBackground}>
               <div className="relative flex min-h-84 flex-col justify-between p-6 sm:p-8 lg:min-h-100">
                 <div className="flex items-start justify-between gap-6">
                   <div>
@@ -255,9 +249,9 @@ export function LandingCourseShowcase() {
                   <img src={activeCourse.image} alt={activeCourse.title} />
                 </div>
               </div>
-            </div>
+            </LandingFeaturePanelHeader>
 
-            <div className="grid gap-8 border-x border-b border-white/10 bg-[#151515]/88 px-6 py-7 sm:px-8 sm:py-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
+            <LandingFeaturePanelBody className="grid gap-8 px-6 py-7 sm:px-8 sm:py-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
               <div>
                 <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                   Course description
@@ -287,7 +281,7 @@ export function LandingCourseShowcase() {
                   ))}
                 </div>
               </div>
-            </div>
+            </LandingFeaturePanelBody>
 
             <div className="mt-6 flex flex-col gap-5 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm leading-7 text-[#AFA28F]">
@@ -296,9 +290,9 @@ export function LandingCourseShowcase() {
               </div>
               <div className="w-1/2" />
             </div>
-          </div>
+          </LandingFeaturePanel>
         </div>
-      </div>
-    </section>
+      </LandingSectionContainer>
+    </LandingSection>
   )
 }
