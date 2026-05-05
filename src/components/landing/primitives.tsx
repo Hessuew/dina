@@ -32,6 +32,26 @@ type LandingFeaturePanelHeaderProps = {
 
 type LandingFeaturePanelBodyProps = ComponentPropsWithoutRef<'div'>
 
+type Scripture = {
+  quote: string
+  reference: string
+}
+
+type LandingScriptureSectionHeaderProps = {
+  eyebrowLabel: string
+  eyebrowTone?: LandingSectionEyebrowTone
+  eyebrowAlign?: LandingSectionEyebrowAlign
+  eyebrowTopLineCount?: 1 | 2
+  headline: ReactNode
+  headlineMaxW?: string
+  headlineNowrap?: boolean
+  introText?: ReactNode
+  scriptures?: Array<Scripture>
+  textColor?: string
+  headlineColor?: string
+  className?: string
+}
+
 export function LandingSection({ className, ...props }: LandingSectionProps) {
   return (
     <section
@@ -129,7 +149,10 @@ export function LandingFeaturePanelHeader({
 }: LandingFeaturePanelHeaderProps) {
   return (
     <div
-      className={cn('relative overflow-hidden border border-white/10', className)}
+      className={cn(
+        'relative overflow-hidden border border-white/10',
+        className,
+      )}
       style={{
         backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.26), rgba(7,7,8,0.72)), url(${backgroundImageUrl})`,
         backgroundPosition: 'center',
@@ -149,7 +172,77 @@ export function LandingFeaturePanelBody({
   return (
     <div
       {...props}
-      className={cn('border-x border-b border-white/10 bg-[#151515]/88', className)}
+      className={cn(
+        'border-x border-b border-white/10 bg-[#151515]/88',
+        className,
+      )}
     />
+  )
+}
+
+export function LandingScriptureSectionHeader({
+  eyebrowLabel,
+  eyebrowTone = 'gold',
+  eyebrowAlign = 'start',
+  eyebrowTopLineCount = 1,
+  headline,
+  headlineMaxW = 'max-w-[14ch]',
+  headlineNowrap = false,
+  introText,
+  scriptures,
+  textColor = '#4E463D',
+  headlineColor = '#1C1815',
+  className,
+}: LandingScriptureSectionHeaderProps) {
+  return (
+    <div className={cn('space-y-6', className)}>
+      <LandingSectionEyebrow
+        label={eyebrowLabel}
+        tone={eyebrowTone}
+        align={eyebrowAlign}
+        topLineCount={eyebrowTopLineCount}
+      />
+
+      <h2
+        className={cn(
+          'block font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em]',
+          headlineMaxW,
+          headlineNowrap && 'whitespace-nowrap',
+        )}
+        style={{ color: headlineColor }}
+      >
+        {headline}
+      </h2>
+
+      {(introText || scriptures) && (
+        <p
+          className="max-w-xl text-base leading-8 font-light tracking-[0.04em] sm:text-lg"
+          style={{ color: textColor }}
+        >
+          {introText}
+          {introText && scriptures && (
+            <>
+              <br />
+              <br />
+            </>
+          )}
+          {scriptures &&
+            scriptures.map((scripture, index) => (
+              <span key={index}>
+                {index > 0 && (
+                  <>
+                    <br />
+                    <br />
+                  </>
+                )}
+                "{scripture.quote}"
+                <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
+                  &nbsp;{scripture.reference}
+                </span>
+              </span>
+            ))}
+        </p>
+      )}
+    </div>
   )
 }

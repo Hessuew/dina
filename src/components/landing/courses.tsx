@@ -11,9 +11,9 @@ import {
   LandingFeaturePanel,
   LandingFeaturePanelBody,
   LandingFeaturePanelHeader,
+  LandingScriptureSectionHeader,
   LandingSection,
   LandingSectionContainer,
-  LandingSectionEyebrow,
 } from '@/components/landing/primitives'
 
 type CourseShowcaseItem = {
@@ -141,26 +141,21 @@ export function LandingCourseShowcase() {
       <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(24rem,1.15fr)] lg:gap-20">
           <div className="space-y-10">
-            <div className="space-y-6">
-              <LandingSectionEyebrow label="Curriculum Architecture" />
-
-              <h2 className="max-w-[12ch] font-serif text-[clamp(3rem,5vw,5.2rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
-                Six courses
-              </h2>
-
-              <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#CFC6B7] sm:text-lg">
-                Spiritual life should not stand upon a school of theology but
-                upon Christ. It must be founded on a real revelation of the Son
-                of God, full of grace and truth, revealed from heavenly places.
-                <br />
-                <br />
-                "For every house is builded by some man; but he that built all
-                things is God."
-                <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
-                  &nbsp;Hebrews 3:4
-                </span>
-              </p>
-            </div>
+            <LandingScriptureSectionHeader
+              eyebrowLabel="Curriculum Architecture"
+              headline="Six courses"
+              headlineMaxW="max-w-[12ch]"
+              headlineColor="#F8F4EC"
+              textColor="#CFC6B7"
+              introText="Spiritual life should not stand upon a school of theology but upon Christ. It must be founded on a real revelation of the Son of God, full of grace and truth, revealed from heavenly places."
+              scriptures={[
+                {
+                  quote:
+                    'For every house is builded by some man; but he that built all things is God.',
+                  reference: 'Hebrews 3:4',
+                },
+              ]}
+            />
 
             <div className="flex items-center justify-between gap-6 border-y border-white/10 py-5">
               <div>

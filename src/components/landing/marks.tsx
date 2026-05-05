@@ -5,9 +5,9 @@ import {
   LandingFeaturePanel,
   LandingFeaturePanelBody,
   LandingFeaturePanelHeader,
+  LandingScriptureSectionHeader,
   LandingSection,
   LandingSectionContainer,
-  LandingSectionEyebrow,
 } from '@/components/landing/primitives'
 
 type MarkItem = {
@@ -105,24 +105,21 @@ export function LandingMarksSection() {
       <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.88fr)_minmax(24rem,1.12fr)] lg:gap-20">
           <div className="space-y-10">
-            <div className="space-y-6">
-              <LandingSectionEyebrow label="Presence of God" topLineCount={2} />
-
-              <h2 className="max-w-[14ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
-                Apostolic confirmations
-              </h2>
-
-              <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#D3CAC0] sm:text-lg">
-                "Ye men of Israel, hear these words; Jesus of Nazareth, a man
-                approved of God among you by miracles and wonders and signs,
-                which God did by him in the midst of you, as ye yourselves also
-                know"
-                <br />
-                <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
-                  Acts 2:22
-                </span>
-              </p>
-            </div>
+            <LandingScriptureSectionHeader
+              eyebrowLabel="Presence of God"
+              eyebrowTopLineCount={2}
+              headline="Apostolic confirmations"
+              headlineMaxW="max-w-[14ch]"
+              headlineColor="#F8F4EC"
+              textColor="#D3CAC0"
+              scriptures={[
+                {
+                  quote:
+                    'Ye men of Israel, hear these words; Jesus of Nazareth, a man approved of God among you by miracles and wonders and signs, which God did by him in the midst of you, as ye yourselves also know',
+                  reference: 'Acts 2:22',
+                },
+              ]}
+            />
 
             <div className="flex items-center justify-between gap-6 border-y border-white/10 py-5">
               <div>

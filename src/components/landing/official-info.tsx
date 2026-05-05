@@ -1,9 +1,9 @@
 import { FileText, Landmark, Mail, MapPin, Phone } from 'lucide-react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import {
+  LandingScriptureSectionHeader,
   LandingSection,
   LandingSectionContainer,
-  LandingSectionEyebrow,
 } from '@/components/landing/primitives'
 
 export function LandingOfficialInfo() {
@@ -20,20 +20,16 @@ export function LandingOfficialInfo() {
 
       <LandingSectionContainer className="py-16 sm:py-20 lg:py-24">
         <div className="mx-auto max-w-6xl space-y-14">
-          <div className="flex flex-col items-center space-y-6 text-center">
-            <LandingSectionEyebrow
-              label="Registry & Documentation"
-              align="center"
-            />
-
-            <h2 className="max-w-3xl font-serif text-[clamp(3rem,5vw,5.1rem)] leading-none tracking-[-0.055em] text-[#1A1A1A]">
-              Official Information
-            </h2>
-
-            <p className="max-w-2xl text-base leading-8 font-light tracking-[0.04em] text-[#4E463D] sm:text-lg">
-              Official information about the Discipleship Training School
-            </p>
-          </div>
+          <LandingScriptureSectionHeader
+            eyebrowLabel="Registry & Documentation"
+            eyebrowAlign="center"
+            headline="Official Information"
+            headlineMaxW="max-w-3xl"
+            headlineColor="#1A1A1A"
+            textColor="#4E463D"
+            introText="Official information about the Discipleship Training School"
+            className="flex flex-col items-center text-center"
+          />
 
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             <div className="group space-y-4 border border-[#C5A059]/20 bg-white/70 p-6 backdrop-blur-sm transition-all hover:border-[#C5A059]/50 hover:bg-white/90">

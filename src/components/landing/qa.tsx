@@ -1,9 +1,9 @@
 import { ArrowRight } from 'lucide-react'
 import marbleTexture from '@/assets/images/bg/bg_hero.webp'
 import {
+  LandingScriptureSectionHeader,
   LandingSection,
   LandingSectionContainer,
-  LandingSectionEyebrow,
 } from '@/components/landing/primitives'
 
 type QAItem = {
@@ -65,18 +65,16 @@ export function LandingQASection() {
 
       <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="mx-auto max-w-6xl space-y-14">
-          <div className="flex flex-col items-center space-y-6 text-center">
-            <LandingSectionEyebrow label="Questions & Answers" align="center" />
-
-            <h2 className="max-w-3xl font-serif text-[clamp(3rem,5vw,5.1rem)] leading-none tracking-[-0.055em] text-[#1A1A1A]">
-              Frequently Asked Questions
-            </h2>
-
-            <p className="max-w-2xl text-base leading-8 font-light tracking-[0.04em] text-[#4E463D] sm:text-lg">
-              What you should know about the Discipleship Training School
-              program, enrollment, and what to expect.
-            </p>
-          </div>
+          <LandingScriptureSectionHeader
+            eyebrowLabel="Questions & Answers"
+            eyebrowAlign="center"
+            headline="Frequently Asked Questions"
+            headlineMaxW="max-w-3xl"
+            headlineColor="#1A1A1A"
+            textColor="#4E463D"
+            introText="What you should know about the Discipleship Training School program, enrollment, and what to expect."
+            className="flex flex-col items-center text-center"
+          />
 
           <div className="space-y-8">
             {qaItems.map((item, index) => (
