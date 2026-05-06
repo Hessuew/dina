@@ -1,12 +1,6 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import {
-  CheckCircle2,
-  ChevronRight,
-  Mail,
-  MoreHorizontal,
-  Trash2,
-} from 'lucide-react'
+import { CheckCircle2, Eye, Mail, MoreHorizontal, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
@@ -146,28 +140,11 @@ export function EnrollmentsTable({
       ),
       header: 'Full legal name',
     }),
-    columnHelper.accessor('preferredName', {
-      cell: (info) => {
-        const val = info.getValue()
-        return val ? (
-          <span className="text-[0.82rem] text-[#AFA28F]">{val}</span>
-        ) : (
-          <span className="text-[#8E816D]">—</span>
-        )
-      },
-      header: 'Preferred',
-    }),
     columnHelper.accessor('email', {
       cell: (info) => (
         <span className="text-[0.82rem] text-[#AFA28F]">{info.getValue()}</span>
       ),
       header: 'Email',
-    }),
-    columnHelper.accessor('phoneWhatsApp', {
-      cell: (info) => (
-        <span className="text-[0.82rem] text-[#AFA28F]">{info.getValue()}</span>
-      ),
-      header: 'WhatsApp',
     }),
     columnHelper.accessor('nationalityCitizenship', {
       cell: (info) => {
@@ -179,22 +156,6 @@ export function EnrollmentsTable({
         )
       },
       header: 'Nationality',
-    }),
-    columnHelper.display({
-      id: 'address',
-      header: 'Address',
-      enableSorting: false,
-      cell: (info) => {
-        const row = info.row.original
-        const city = row.currentCity?.trim()
-        const country = row.currentCountry?.trim()
-        const combined = [city, country].filter(Boolean).join(', ')
-        return combined ? (
-          <span className="text-[0.82rem] text-[#AFA28F]">{combined}</span>
-        ) : (
-          <span className="text-[#8E816D]">—</span>
-        )
-      },
     }),
     columnHelper.accessor('yearOfBirth', {
       cell: (info) => (
@@ -254,7 +215,7 @@ export function EnrollmentsTable({
                       })
                     }
                   >
-                    <ChevronRight className="size-3.5" />
+                    <Eye className="size-3.5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>View</TooltipContent>

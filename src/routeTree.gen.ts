@@ -22,11 +22,11 @@ import { Route as AuthedTeachersRouteImport } from './routes/_authed/teachers'
 import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
 import { Route as AuthedInvitationsRouteImport } from './routes/_authed/invitations'
 import { Route as AuthedEventsRouteImport } from './routes/_authed/events'
-import { Route as AuthedEnrollmentsRouteImport } from './routes/_authed/enrollments'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedCalendarRouteImport } from './routes/_authed/calendar'
 import { Route as AuthedStudentsIndexRouteImport } from './routes/_authed/students/index'
 import { Route as AuthedLibraryIndexRouteImport } from './routes/_authed/library/index'
+import { Route as AuthedEnrollmentsIndexRouteImport } from './routes/_authed/enrollments/index'
 import { Route as AuthedCoursesIndexRouteImport } from './routes/_authed/courses/index'
 import { Route as AuthedAssignmentsIndexRouteImport } from './routes/_authed/assignments/index'
 import { Route as AuthedStudentsStudentIdRouteImport } from './routes/_authed/students/$studentId'
@@ -100,11 +100,6 @@ const AuthedEventsRoute = AuthedEventsRouteImport.update({
   path: '/events',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedEnrollmentsRoute = AuthedEnrollmentsRouteImport.update({
-  id: '/enrollments',
-  path: '/enrollments',
-  getParentRoute: () => AuthedRoute,
-} as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -123,6 +118,11 @@ const AuthedStudentsIndexRoute = AuthedStudentsIndexRouteImport.update({
 const AuthedLibraryIndexRoute = AuthedLibraryIndexRouteImport.update({
   id: '/library/',
   path: '/library/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedEnrollmentsIndexRoute = AuthedEnrollmentsIndexRouteImport.update({
+  id: '/enrollments/',
+  path: '/enrollments/',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedCoursesIndexRoute = AuthedCoursesIndexRouteImport.update({
@@ -152,9 +152,9 @@ const AuthedLessonsLessonIdRoute = AuthedLessonsLessonIdRouteImport.update({
 } as any)
 const AuthedEnrollmentsEnrollmentIdRoute =
   AuthedEnrollmentsEnrollmentIdRouteImport.update({
-    id: '/$enrollmentId',
-    path: '/$enrollmentId',
-    getParentRoute: () => AuthedEnrollmentsRoute,
+    id: '/enrollments/$enrollmentId',
+    path: '/enrollments/$enrollmentId',
+    getParentRoute: () => AuthedRoute,
   } as any)
 const AuthedCoursesCourseIdRoute = AuthedCoursesCourseIdRouteImport.update({
   id: '/courses/$courseId',
@@ -178,7 +178,6 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthedCalendarRoute
   '/dashboard': typeof AuthedDashboardRoute
-  '/enrollments': typeof AuthedEnrollmentsRouteWithChildren
   '/events': typeof AuthedEventsRoute
   '/invitations': typeof AuthedInvitationsRoute
   '/posts': typeof AuthedPostsRoute
@@ -192,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/students/$studentId': typeof AuthedStudentsStudentIdRoute
   '/assignments/': typeof AuthedAssignmentsIndexRoute
   '/courses/': typeof AuthedCoursesIndexRoute
+  '/enrollments/': typeof AuthedEnrollmentsIndexRoute
   '/library/': typeof AuthedLibraryIndexRoute
   '/students/': typeof AuthedStudentsIndexRoute
 }
@@ -205,7 +205,6 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthedCalendarRoute
   '/dashboard': typeof AuthedDashboardRoute
-  '/enrollments': typeof AuthedEnrollmentsRouteWithChildren
   '/events': typeof AuthedEventsRoute
   '/invitations': typeof AuthedInvitationsRoute
   '/posts': typeof AuthedPostsRoute
@@ -219,6 +218,7 @@ export interface FileRoutesByTo {
   '/students/$studentId': typeof AuthedStudentsStudentIdRoute
   '/assignments': typeof AuthedAssignmentsIndexRoute
   '/courses': typeof AuthedCoursesIndexRoute
+  '/enrollments': typeof AuthedEnrollmentsIndexRoute
   '/library': typeof AuthedLibraryIndexRoute
   '/students': typeof AuthedStudentsIndexRoute
 }
@@ -234,7 +234,6 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_authed/calendar': typeof AuthedCalendarRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
-  '/_authed/enrollments': typeof AuthedEnrollmentsRouteWithChildren
   '/_authed/events': typeof AuthedEventsRoute
   '/_authed/invitations': typeof AuthedInvitationsRoute
   '/_authed/posts': typeof AuthedPostsRoute
@@ -248,6 +247,7 @@ export interface FileRoutesById {
   '/_authed/students/$studentId': typeof AuthedStudentsStudentIdRoute
   '/_authed/assignments/': typeof AuthedAssignmentsIndexRoute
   '/_authed/courses/': typeof AuthedCoursesIndexRoute
+  '/_authed/enrollments/': typeof AuthedEnrollmentsIndexRoute
   '/_authed/library/': typeof AuthedLibraryIndexRoute
   '/_authed/students/': typeof AuthedStudentsIndexRoute
 }
@@ -263,7 +263,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/calendar'
     | '/dashboard'
-    | '/enrollments'
     | '/events'
     | '/invitations'
     | '/posts'
@@ -277,6 +276,7 @@ export interface FileRouteTypes {
     | '/students/$studentId'
     | '/assignments/'
     | '/courses/'
+    | '/enrollments/'
     | '/library/'
     | '/students/'
   fileRoutesByTo: FileRoutesByTo
@@ -290,7 +290,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/calendar'
     | '/dashboard'
-    | '/enrollments'
     | '/events'
     | '/invitations'
     | '/posts'
@@ -304,6 +303,7 @@ export interface FileRouteTypes {
     | '/students/$studentId'
     | '/assignments'
     | '/courses'
+    | '/enrollments'
     | '/library'
     | '/students'
   id:
@@ -318,7 +318,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_authed/calendar'
     | '/_authed/dashboard'
-    | '/_authed/enrollments'
     | '/_authed/events'
     | '/_authed/invitations'
     | '/_authed/posts'
@@ -332,6 +331,7 @@ export interface FileRouteTypes {
     | '/_authed/students/$studentId'
     | '/_authed/assignments/'
     | '/_authed/courses/'
+    | '/_authed/enrollments/'
     | '/_authed/library/'
     | '/_authed/students/'
   fileRoutesById: FileRoutesById
@@ -441,13 +441,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedEventsRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/enrollments': {
-      id: '/_authed/enrollments'
-      path: '/enrollments'
-      fullPath: '/enrollments'
-      preLoaderRoute: typeof AuthedEnrollmentsRouteImport
-      parentRoute: typeof AuthedRoute
-    }
     '/_authed/dashboard': {
       id: '/_authed/dashboard'
       path: '/dashboard'
@@ -474,6 +467,13 @@ declare module '@tanstack/react-router' {
       path: '/library'
       fullPath: '/library/'
       preLoaderRoute: typeof AuthedLibraryIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/enrollments/': {
+      id: '/_authed/enrollments/'
+      path: '/enrollments'
+      fullPath: '/enrollments/'
+      preLoaderRoute: typeof AuthedEnrollmentsIndexRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/courses/': {
@@ -513,10 +513,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authed/enrollments/$enrollmentId': {
       id: '/_authed/enrollments/$enrollmentId'
-      path: '/$enrollmentId'
+      path: '/enrollments/$enrollmentId'
       fullPath: '/enrollments/$enrollmentId'
       preLoaderRoute: typeof AuthedEnrollmentsEnrollmentIdRouteImport
-      parentRoute: typeof AuthedEnrollmentsRoute
+      parentRoute: typeof AuthedRoute
     }
     '/_authed/courses/$courseId': {
       id: '/_authed/courses/$courseId'
@@ -535,32 +535,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthedEnrollmentsRouteChildren {
-  AuthedEnrollmentsEnrollmentIdRoute: typeof AuthedEnrollmentsEnrollmentIdRoute
-}
-
-const AuthedEnrollmentsRouteChildren: AuthedEnrollmentsRouteChildren = {
-  AuthedEnrollmentsEnrollmentIdRoute: AuthedEnrollmentsEnrollmentIdRoute,
-}
-
-const AuthedEnrollmentsRouteWithChildren =
-  AuthedEnrollmentsRoute._addFileChildren(AuthedEnrollmentsRouteChildren)
-
 interface AuthedRouteChildren {
   AuthedCalendarRoute: typeof AuthedCalendarRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
-  AuthedEnrollmentsRoute: typeof AuthedEnrollmentsRouteWithChildren
   AuthedEventsRoute: typeof AuthedEventsRoute
   AuthedInvitationsRoute: typeof AuthedInvitationsRoute
   AuthedPostsRoute: typeof AuthedPostsRoute
   AuthedTeachersRoute: typeof AuthedTeachersRoute
   AuthedAssignmentsAssignmentIdRoute: typeof AuthedAssignmentsAssignmentIdRoute
   AuthedCoursesCourseIdRoute: typeof AuthedCoursesCourseIdRoute
+  AuthedEnrollmentsEnrollmentIdRoute: typeof AuthedEnrollmentsEnrollmentIdRoute
   AuthedLessonsLessonIdRoute: typeof AuthedLessonsLessonIdRoute
   AuthedLibraryMediaIdRoute: typeof AuthedLibraryMediaIdRoute
   AuthedStudentsStudentIdRoute: typeof AuthedStudentsStudentIdRoute
   AuthedAssignmentsIndexRoute: typeof AuthedAssignmentsIndexRoute
   AuthedCoursesIndexRoute: typeof AuthedCoursesIndexRoute
+  AuthedEnrollmentsIndexRoute: typeof AuthedEnrollmentsIndexRoute
   AuthedLibraryIndexRoute: typeof AuthedLibraryIndexRoute
   AuthedStudentsIndexRoute: typeof AuthedStudentsIndexRoute
 }
@@ -568,18 +558,19 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedCalendarRoute: AuthedCalendarRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
-  AuthedEnrollmentsRoute: AuthedEnrollmentsRouteWithChildren,
   AuthedEventsRoute: AuthedEventsRoute,
   AuthedInvitationsRoute: AuthedInvitationsRoute,
   AuthedPostsRoute: AuthedPostsRoute,
   AuthedTeachersRoute: AuthedTeachersRoute,
   AuthedAssignmentsAssignmentIdRoute: AuthedAssignmentsAssignmentIdRoute,
   AuthedCoursesCourseIdRoute: AuthedCoursesCourseIdRoute,
+  AuthedEnrollmentsEnrollmentIdRoute: AuthedEnrollmentsEnrollmentIdRoute,
   AuthedLessonsLessonIdRoute: AuthedLessonsLessonIdRoute,
   AuthedLibraryMediaIdRoute: AuthedLibraryMediaIdRoute,
   AuthedStudentsStudentIdRoute: AuthedStudentsStudentIdRoute,
   AuthedAssignmentsIndexRoute: AuthedAssignmentsIndexRoute,
   AuthedCoursesIndexRoute: AuthedCoursesIndexRoute,
+  AuthedEnrollmentsIndexRoute: AuthedEnrollmentsIndexRoute,
   AuthedLibraryIndexRoute: AuthedLibraryIndexRoute,
   AuthedStudentsIndexRoute: AuthedStudentsIndexRoute,
 }

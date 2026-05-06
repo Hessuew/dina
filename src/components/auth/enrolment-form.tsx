@@ -1,10 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useForm } from '@tanstack/react-form'
-import { CheckCircle } from 'lucide-react'
+import { CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
-import footerBackground from '@/assets/images/bg/bg_footer.webp'
+import houseFoundation from '@/assets/images/house/house_foundation.webp'
+import houseGround from '@/assets/images/house/house_ground.webp'
+import houseFraming from '@/assets/images/house/house_framing.webp'
+import houseWalls from '@/assets/images/house/house_walls.webp'
+import houseInterior from '@/assets/images/house/house_interior.webp'
+import houseRoof from '@/assets/images/house/house_roof.webp'
+import { Button } from '@/components/ui/button'
 import {
   Field,
   FieldDescription,
@@ -20,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { createEnrollment } from '@/utils/enrollments'
+import { cn } from '@/lib/utils'
 
 function required({ value }: { value: string }) {
   return !value.trim() ? 'This field is required' : undefined
@@ -63,26 +70,110 @@ function optionalText(value: string): string | undefined {
   return trimmed ? trimmed : undefined
 }
 
+const ENROLMENT_DEFAULT_VALUES = {
+  fullLegalName: '',
+  preferredName: '',
+  email: '',
+  yearOfBirth: '',
+  gender: '',
+  nationalityCitizenship: '',
+  phoneWhatsApp: '',
+  currentCity: '',
+  currentCountry: '',
+  churchAffiliations: '',
+  aboutYourself: '',
+  expectationsAlignment: '',
+}
+
+const STEPS = [
+  {
+    id: 'identity',
+    title: 'Your Identity',
+    image: houseGround,
+    fields: ['fullLegalName', 'preferredName', 'email'],
+  },
+  {
+    id: 'contact',
+    title: 'Contact Details',
+    image: houseFoundation,
+    fields: ['phoneWhatsApp', 'yearOfBirth', 'gender'],
+  },
+  {
+    id: 'location',
+    title: 'Location',
+    image: houseWalls,
+    fields: ['nationalityCitizenship', 'currentCity', 'currentCountry'],
+  },
+  {
+    id: 'church',
+    title: 'Church Context',
+    image: houseFraming,
+    fields: ['churchAffiliations'],
+  },
+  {
+    id: 'story',
+    title: 'Your Story',
+    image: houseInterior,
+    fields: ['aboutYourself'],
+  },
+  {
+    id: 'roof',
+    title: 'Your Roof',
+    image: houseRoof,
+    fields: ['expectationsAlignment'],
+  },
+] as const
+
+type EnrolmentFieldName = (typeof STEPS)[number]['fields'][number]
+
+const FIELD_VALIDATORS: Partial<
+  Record<EnrolmentFieldName, (value: string) => string | undefined>
+> = {
+  fullLegalName: (value) => required({ value }),
+  email: (value) => validEmail({ value }),
+  phoneWhatsApp: (value) => required({ value }),
+  yearOfBirth: (value) => validYear({ value }),
+  gender: (value) => requiredSelect({ value }),
+  aboutYourself: (value) => required({ value }) || maxWords(200)({ value }),
+  expectationsAlignment: (value) =>
+    required({ value }) || maxWords(200)({ value }),
+}
+
+function getFieldError(
+  fieldName: EnrolmentFieldName,
+  value: string,
+): string | undefined {
+  return FIELD_VALIDATORS[fieldName]?.(value)
+}
+
+function StableFieldError({ error }: { error?: string }) {
+  return (
+    <div className="relative h-0">
+      <FieldDescription
+        aria-hidden={!error}
+        theme="dark"
+        className={cn(
+          'absolute top-1 right-0 left-0 leading-4',
+          error ? 'text-destructive' : 'invisible',
+        )}
+      >
+        {error || 'No field error'}
+      </FieldDescription>
+    </div>
+  )
+}
+
 export function EnrolmentForm() {
   const [submitted, setSubmitted] = useState(false)
+  const [currentStep, setCurrentStep] = useState(0)
+  const [attemptedFields, setAttemptedFields] = useState<
+    ReadonlySet<EnrolmentFieldName>
+  >(() => new Set())
 
   const createEnrollmentFn = useServerFn(createEnrollment)
 
   const form = useForm({
-    defaultValues: {
-      fullLegalName: '',
-      preferredName: '',
-      email: '',
-      yearOfBirth: '',
-      gender: '',
-      nationalityCitizenship: '',
-      phoneWhatsApp: '',
-      currentCity: '',
-      currentCountry: '',
-      churchAffiliations: '',
-      aboutYourself: '',
-      expectationsAlignment: '',
-    },
+    defaultValues: ENROLMENT_DEFAULT_VALUES,
     onSubmit: async ({ value }) => {
       try {
         await createEnrollmentFn({
@@ -110,89 +201,112 @@ export function EnrolmentForm() {
     },
   })
 
+  const currentStepConfig = STEPS[currentStep]
+
+  const getManualError = (
+    fieldName: EnrolmentFieldName,
+    value: string,
+  ): string | undefined => {
+    if (!attemptedFields.has(fieldName)) return undefined
+    return getFieldError(fieldName, value)
+  }
+
+  const getVisibleError = (
+    fieldName: EnrolmentFieldName,
+    value: string,
+    metaErrors: Array<unknown>,
+    isTouched: boolean,
+  ): string | undefined => {
+    if (metaErrors.length > 0 && isTouched) return String(metaErrors[0])
+    return getManualError(fieldName, value)
+  }
+
+  const validateCurrentStep = (): boolean => {
+    const values = form.state.values
+    const invalidFields = currentStepConfig.fields.filter((fieldName) =>
+      Boolean(getFieldError(fieldName, values[fieldName])),
+    )
+
+    if (invalidFields.length === 0) return true
+
+    setAttemptedFields((previous) => {
+      const next = new Set(previous)
+      currentStepConfig.fields.forEach((fieldName) => next.add(fieldName))
+      return next
+    })
+    toast.error('Please complete this step before continuing.')
+    return false
+  }
+
+  const handleNext = () => {
+    if (!validateCurrentStep()) return
+
+    if (currentStep < STEPS.length - 1) {
+      setCurrentStep(currentStep + 1)
+    } else {
+      form.handleSubmit()
+    }
+  }
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1)
+    }
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLTextAreaElement) return
+
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        handleNext()
+      } else if (e.key === 'ArrowRight') {
+        handleNext()
+      } else if (e.key === 'ArrowLeft' && currentStep > 0) {
+        handleBack()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [currentStep, handleNext, handleBack])
+
   const pageShell = (rightPanel: React.ReactNode) => (
-    <section
-      className="relative isolate min-h-svh overflow-hidden border-b border-[#C5A059]/14 bg-[#121212] text-[#F8F4EC]"
-      style={{
-        backgroundImage: `linear-gradient(180deg, rgba(8,6,5,0.78), rgba(10,8,7,0.85)), url(${footerBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.06),transparent_22%)]" />
-
-      <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-18 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24">
-        <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(24rem,1.15fr)] lg:gap-20">
-          <div className="flex h-full flex-1 flex-col justify-between space-y-10">
-            <div className="space-y-6">
-              <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-                <div className="h-px w-20 bg-[#C5A059]/50 lg:w-28" />
-                <div className="flex flex-row items-center gap-3">
-                  <span className="h-px w-10 bg-[#C5A059]/55" />
-                  Enrolment 2027
-                </div>
+    <section className="relative isolate min-h-svh overflow-hidden bg-[#111111] text-[#F8F4EC]">
+      <div className="grid min-h-svh lg:grid-cols-2">
+        <aside className="relative hidden min-h-svh overflow-hidden lg:block">
+          <img
+            key={currentStepConfig.id}
+            src={currentStepConfig.image}
+            alt=""
+            className="animate-in fade-in h-full w-full object-cover duration-500"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.28),rgba(0,0,0,0.62)),linear-gradient(180deg,rgba(0,0,0,0.12),rgba(0,0,0,0.68))]" />
+          <div className="absolute inset-x-0 bottom-0 p-10 xl:p-14">
+            <div className="max-w-md border border-white/12 bg-black/28 p-6 backdrop-blur-sm">
+              <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                Enrolment 2026
               </div>
-
-              <h1 className="max-w-[12ch] font-serif text-[clamp(3rem,5vw,5.2rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
+              <h1 className="mt-4 font-serif text-[clamp(3rem,5vw,5.5rem)] leading-[0.9] tracking-[-0.055em] text-white">
                 Apply for enrolment
               </h1>
-
-              <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#CFC6B7] sm:text-lg">
+              <p className="mt-5 text-sm leading-7 tracking-[0.04em] text-[#E6DDCF]">
                 "Through desire a man, having separated himself, seeketh and
                 intermeddleth with all wisdom."
-                <br />
-                <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
-                  Proverbs 18:1
-                </span>
               </p>
             </div>
-
-            <div className="border-t border-white/10 pt-8 text-[0.65rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-              <div>© {new Date().getFullYear()} DINA</div>
-              <a
-                href="https://cherubim-it.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1 block transition-colors hover:text-[#C5A059]"
-              >
-                Cherubim IT
-              </a>
-            </div>
           </div>
+        </aside>
 
-          <div className="relative border border-white/10 bg-[#171717]/72 p-4 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:p-6">
-            <div
-              className="relative overflow-hidden border border-white/10"
-              style={{
-                backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.26), rgba(7,7,8,0.72)), url(${footerBackground})`,
-                backgroundPosition: 'center',
-                backgroundSize: 'cover',
-              }}
-            >
-              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_38%,rgba(197,160,89,0.14)_100%)]" />
-              <div className="relative flex min-h-48 flex-col justify-between p-6 sm:p-8">
-                <div className="flex items-start justify-between gap-6">
-                  <div>
-                    <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
-                      Disciplers of Nations Academy
-                    </div>
-                    <div className="mt-3 font-serif text-[clamp(2rem,3.5vw,3rem)] leading-[0.94] tracking-[-0.045em] text-white">
-                      DINA
-                    </div>
-                  </div>
-                  <div className="border border-white/12 bg-black/18 px-4 py-3 text-[0.9rem] font-medium tracking-[0.26em] text-[#E9D9B4] uppercase">
-                    {new Date().getFullYear()}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-x border-b border-white/10 bg-[#151515]/88 px-6 py-7 sm:px-8 sm:py-8">
-              <div className="border border-white/10 bg-white/3 p-5 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.4)]">
-                {rightPanel}
-              </div>
-            </div>
+        <div className="relative flex min-h-svh flex-col items-center justify-center bg-[#151515] px-5 pt-24 pb-10 sm:px-8 lg:px-12 lg:pt-20">
+          <div className="p-6 text-center lg:hidden">
+            <h1 className="mt-4 font-serif text-[clamp(3rem,5vw,5.5rem)] leading-[0.9] tracking-[-0.055em] text-white">
+              Apply for enrolment
+            </h1>
           </div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.06),transparent_24%)]" />
+          <div className="relative w-full max-w-xl">{rightPanel}</div>
         </div>
       </div>
     </section>
@@ -222,355 +336,541 @@ export function EnrolmentForm() {
     )
   }
 
+  const renderField = (fieldName: EnrolmentFieldName) => {
+    switch (fieldName) {
+      case 'fullLegalName':
+        return (
+          <form.Field name="fullLegalName" validators={{ onChange: required }}>
+            {(field) => {
+              const error = getVisibleError(
+                'fullLegalName',
+                field.state.value,
+                field.state.meta.errors,
+                field.state.meta.isTouched,
+              )
+
+              return (
+                <Field>
+                  <FieldLabel
+                    className="normal-case"
+                    htmlFor="enrol-full-legal-name"
+                    theme="dark"
+                  >
+                    Full legal name
+                  </FieldLabel>
+                  <Input
+                    id="enrol-full-legal-name"
+                    name="fullLegalName"
+                    type="text"
+                    placeholder="John Doe"
+                    theme="dark"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    required
+                  />
+                  <StableFieldError error={error} />
+                </Field>
+              )
+            }}
+          </form.Field>
+        )
+      case 'preferredName':
+        return (
+          <form.Field name="preferredName">
+            {(field) => {
+              const error = getVisibleError(
+                'preferredName',
+                field.state.value,
+                field.state.meta.errors,
+                field.state.meta.isTouched,
+              )
+              return (
+                <Field>
+                  <FieldLabel
+                    className="normal-case"
+                    htmlFor="enrol-preferred-name"
+                    theme="dark"
+                  >
+                    Preferred name
+                  </FieldLabel>
+                  <Input
+                    id="enrol-preferred-name"
+                    name="preferredName"
+                    type="text"
+                    placeholder="John"
+                    theme="dark"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                  <StableFieldError error={error} />
+                </Field>
+              )
+            }}
+          </form.Field>
+        )
+      case 'email':
+        return (
+          <form.Field name="email" validators={{ onChange: validEmail }}>
+            {(field) => {
+              const error = getVisibleError(
+                'email',
+                field.state.value,
+                field.state.meta.errors,
+                field.state.meta.isTouched,
+              )
+
+              return (
+                <Field>
+                  <FieldLabel
+                    className="normal-case"
+                    htmlFor="enrol-email"
+                    theme="dark"
+                  >
+                    Email
+                  </FieldLabel>
+                  <Input
+                    id="enrol-email"
+                    name="email"
+                    type="email"
+                    placeholder="your@email.com"
+                    theme="dark"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    required
+                  />
+                  <StableFieldError error={error} />
+                </Field>
+              )
+            }}
+          </form.Field>
+        )
+      case 'phoneWhatsApp':
+        return (
+          <form.Field name="phoneWhatsApp" validators={{ onChange: required }}>
+            {(field) => {
+              const error = getVisibleError(
+                'phoneWhatsApp',
+                field.state.value,
+                field.state.meta.errors,
+                field.state.meta.isTouched,
+              )
+
+              return (
+                <Field>
+                  <FieldLabel
+                    className="normal-case"
+                    htmlFor="enrol-phone"
+                    theme="dark"
+                  >
+                    Phone number (WhatsApp)
+                  </FieldLabel>
+                  <Input
+                    id="enrol-phone"
+                    name="phoneWhatsApp"
+                    type="tel"
+                    placeholder="+358 40 123 4567"
+                    theme="dark"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    required
+                  />
+                  <StableFieldError error={error} />
+                </Field>
+              )
+            }}
+          </form.Field>
+        )
+      case 'yearOfBirth':
+        return (
+          <form.Field name="yearOfBirth" validators={{ onChange: validYear }}>
+            {(field) => {
+              const error = getVisibleError(
+                'yearOfBirth',
+                field.state.value,
+                field.state.meta.errors,
+                field.state.meta.isTouched,
+              )
+
+              return (
+                <Field>
+                  <FieldLabel
+                    className="normal-case"
+                    htmlFor="enrol-yob"
+                    theme="dark"
+                  >
+                    Year of birth
+                  </FieldLabel>
+                  <Input
+                    id="enrol-yob"
+                    name="yearOfBirth"
+                    type="number"
+                    placeholder="1996"
+                    theme="dark"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    required
+                  />
+                  <StableFieldError error={error} />
+                </Field>
+              )
+            }}
+          </form.Field>
+        )
+      case 'gender':
+        return (
+          <form.Field name="gender" validators={{ onChange: requiredSelect }}>
+            {(field) => {
+              const error = getVisibleError(
+                'gender',
+                field.state.value,
+                field.state.meta.errors,
+                field.state.meta.isTouched,
+              )
+
+              return (
+                <Field>
+                  <FieldLabel
+                    className="normal-case"
+                    htmlFor="enrol-gender"
+                    theme="dark"
+                  >
+                    Gender
+                  </FieldLabel>
+                  <Select
+                    value={field.state.value || undefined}
+                    onValueChange={(value) => field.handleChange(value ?? '')}
+                  >
+                    <SelectTrigger
+                      id="enrol-gender"
+                      className="w-full rounded-none border-white/14 bg-black/20 text-[#F8F4EC] data-[size=default]:h-11"
+                    >
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-none border-white/10 bg-[#1A1716] text-[#F8F4EC]">
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <StableFieldError error={error} />
+                </Field>
+              )
+            }}
+          </form.Field>
+        )
+      case 'nationalityCitizenship':
+        return (
+          <form.Field name="nationalityCitizenship">
+            {(field) => {
+              const error = getVisibleError(
+                'nationalityCitizenship',
+                field.state.value,
+                field.state.meta.errors,
+                field.state.meta.isTouched,
+              )
+              return (
+                <Field>
+                  <FieldLabel
+                    className="normal-case"
+                    htmlFor="enrol-nationality"
+                    theme="dark"
+                  >
+                    Nationality / citizenship
+                  </FieldLabel>
+                  <Input
+                    id="enrol-nationality"
+                    name="nationalityCitizenship"
+                    type="text"
+                    placeholder="Finnish"
+                    theme="dark"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                  <StableFieldError error={error} />
+                </Field>
+              )
+            }}
+          </form.Field>
+        )
+      case 'currentCity':
+        return (
+          <form.Field name="currentCity">
+            {(field) => {
+              const error = getVisibleError(
+                'currentCity',
+                field.state.value,
+                field.state.meta.errors,
+                field.state.meta.isTouched,
+              )
+              return (
+                <Field>
+                  <FieldLabel
+                    className="normal-case"
+                    htmlFor="enrol-city"
+                    theme="dark"
+                  >
+                    Current city
+                  </FieldLabel>
+                  <Input
+                    id="enrol-city"
+                    name="currentCity"
+                    type="text"
+                    placeholder="Helsinki"
+                    theme="dark"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                  <StableFieldError error={error} />
+                </Field>
+              )
+            }}
+          </form.Field>
+        )
+      case 'currentCountry':
+        return (
+          <form.Field name="currentCountry">
+            {(field) => {
+              const error = getVisibleError(
+                'currentCountry',
+                field.state.value,
+                field.state.meta.errors,
+                field.state.meta.isTouched,
+              )
+              return (
+                <Field>
+                  <FieldLabel
+                    className="normal-case"
+                    htmlFor="enrol-country"
+                    theme="dark"
+                  >
+                    Current country
+                  </FieldLabel>
+                  <Input
+                    id="enrol-country"
+                    name="currentCountry"
+                    type="text"
+                    placeholder="Finland"
+                    theme="dark"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                  <StableFieldError error={error} />
+                </Field>
+              )
+            }}
+          </form.Field>
+        )
+      case 'churchAffiliations':
+        return (
+          <form.Field name="churchAffiliations">
+            {(field) => (
+              <Field>
+                <FieldLabel
+                  className="normal-case"
+                  htmlFor="enrol-church"
+                  theme="dark"
+                >
+                  Church affiliations
+                </FieldLabel>
+                <Input
+                  id="enrol-church"
+                  name="churchAffiliations"
+                  type="text"
+                  placeholder="Church name, network, etc."
+                  theme="dark"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                />
+              </Field>
+            )}
+          </form.Field>
+        )
+      case 'aboutYourself':
+        return (
+          <form.Field
+            name="aboutYourself"
+            validators={{ onChange: (v) => required(v) || maxWords(200)(v) }}
+          >
+            {(field) => {
+              const error = getVisibleError(
+                'aboutYourself',
+                field.state.value,
+                field.state.meta.errors,
+                field.state.meta.isTouched,
+              )
+
+              return (
+                <Field>
+                  <FieldLabel
+                    className="normal-case"
+                    htmlFor="enrol-about"
+                    theme="dark"
+                  >
+                    Tell us about yourself and why you are interested in this
+                    program
+                  </FieldLabel>
+                  <textarea
+                    id="enrol-about"
+                    name="aboutYourself"
+                    placeholder="Write up to 200 words..."
+                    rows={6}
+                    required
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    className="w-full resize-none border border-white/12 bg-[#1A1A1A] px-3 py-2.5 text-sm leading-7 text-[#F8F4EC] placeholder:text-[#5A5248] focus:border-[#C5A059]/50 focus:ring-1 focus:ring-[#C5A059]/30 focus:outline-none"
+                  />
+                  <div className="flex items-start justify-between gap-4">
+                    {error ? (
+                      <FieldDescription
+                        theme="dark"
+                        className="text-destructive"
+                      >
+                        {error}
+                      </FieldDescription>
+                    ) : (
+                      <FieldDescription theme="dark">
+                        Maximum 200 words.
+                      </FieldDescription>
+                    )}
+                    <span className="shrink-0 text-[0.62rem] text-[#5A5248]">
+                      {countWords(field.state.value)} words
+                    </span>
+                  </div>
+                </Field>
+              )
+            }}
+          </form.Field>
+        )
+      case 'expectationsAlignment':
+        return (
+          <form.Field
+            name="expectationsAlignment"
+            validators={{ onChange: (v) => required(v) || maxWords(200)(v) }}
+          >
+            {(field) => {
+              const error = getVisibleError(
+                'expectationsAlignment',
+                field.state.value,
+                field.state.meta.errors,
+                field.state.meta.isTouched,
+              )
+
+              return (
+                <Field>
+                  <FieldLabel
+                    className="normal-case"
+                    htmlFor="enrol-expectations"
+                    theme="dark"
+                  >
+                    Tell us what you expect to achieve at the end of this
+                    program, and how it would align with your personal pursuit
+                    of Jesus Christ.
+                  </FieldLabel>
+                  <textarea
+                    id="enrol-expectations"
+                    name="expectationsAlignment"
+                    placeholder="Write up to 200 words..."
+                    rows={6}
+                    required
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    className="w-full resize-none border border-white/12 bg-[#1A1A1A] px-3 py-2.5 text-sm leading-7 text-[#F8F4EC] placeholder:text-[#5A5248] focus:border-[#C5A059]/50 focus:ring-1 focus:ring-[#C5A059]/30 focus:outline-none"
+                  />
+                  <div className="flex items-start justify-between gap-4">
+                    {error ? (
+                      <FieldDescription
+                        theme="dark"
+                        className="text-destructive"
+                      >
+                        {error}
+                      </FieldDescription>
+                    ) : (
+                      <FieldDescription theme="dark">
+                        Maximum 200 words.
+                      </FieldDescription>
+                    )}
+                    <span className="shrink-0 text-[0.62rem] text-[#5A5248]">
+                      {countWords(field.state.value)} words
+                    </span>
+                  </div>
+                </Field>
+              )
+            }}
+          </form.Field>
+        )
+      default:
+        return null
+    }
+  }
+
   return pageShell(
     <form
+      className="flex min-h-136 flex-col border border-white/10 bg-[#171717]/88 p-5 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:min-h-144 sm:p-8"
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
+        if (!validateCurrentStep()) return
         form.handleSubmit()
       }}
     >
-      <FieldGroup>
-        <form.Field name="fullLegalName" validators={{ onChange: required }}>
-          {(field) => (
-            <Field>
-              <FieldLabel htmlFor="enrol-full-legal-name" theme="dark">
-                Full legal name
-              </FieldLabel>
-              <Input
-                id="enrol-full-legal-name"
-                name="fullLegalName"
-                type="text"
-                placeholder="John Doe"
-                theme="dark"
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                required
-              />
-              {field.state.meta.errors.length > 0 &&
-                field.state.meta.isTouched && (
-                  <FieldDescription className="text-destructive">
-                    {field.state.meta.errors[0]}
-                  </FieldDescription>
-                )}
-            </Field>
-          )}
-        </form.Field>
+      <div className="flex flex-1 flex-col">
+        <div className="mb-8 flex items-start gap-4 lg:block">
+          <div className="relative h-20 w-20 shrink-0 overflow-hidden border border-white/10 lg:hidden">
+            <img
+              key={currentStepConfig.id}
+              src={currentStepConfig.image}
+              alt=""
+              className="animate-in fade-in h-full w-full object-cover duration-1500"
+            />
+            <div className="absolute inset-0 bg-linear-to-t from-black/44 to-transparent" />
+          </div>
 
-        <form.Field name="preferredName">
-          {(field) => (
-            <Field>
-              <FieldLabel htmlFor="enrol-preferred-name" theme="dark">
-                Preferred name
-              </FieldLabel>
-              <Input
-                id="enrol-preferred-name"
-                name="preferredName"
-                type="text"
-                placeholder="John"
-                theme="dark"
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-              />
-            </Field>
-          )}
-        </form.Field>
-
-        <form.Field name="email" validators={{ onChange: validEmail }}>
-          {(field) => (
-            <Field>
-              <FieldLabel htmlFor="enrol-email" theme="dark">
-                Email
-              </FieldLabel>
-              <Input
-                id="enrol-email"
-                name="email"
-                type="email"
-                placeholder="your@email.com"
-                theme="dark"
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                required
-              />
-              {field.state.meta.errors.length > 0 &&
-                field.state.meta.isTouched && (
-                  <FieldDescription className="text-destructive">
-                    {field.state.meta.errors[0]}
-                  </FieldDescription>
-                )}
-            </Field>
-          )}
-        </form.Field>
-
-        <form.Field name="phoneWhatsApp" validators={{ onChange: required }}>
-          {(field) => (
-            <Field>
-              <FieldLabel htmlFor="enrol-phone" theme="dark">
-                Phone number (WhatsApp)
-              </FieldLabel>
-              <Input
-                id="enrol-phone"
-                name="phoneWhatsApp"
-                type="tel"
-                placeholder="+358 40 123 4567"
-                theme="dark"
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                required
-              />
-              {field.state.meta.errors.length > 0 &&
-                field.state.meta.isTouched && (
-                  <FieldDescription className="text-destructive">
-                    {field.state.meta.errors[0]}
-                  </FieldDescription>
-                )}
-            </Field>
-          )}
-        </form.Field>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <form.Field name="yearOfBirth" validators={{ onChange: validYear }}>
-            {(field) => (
-              <Field>
-                <FieldLabel htmlFor="enrol-yob" theme="dark">
-                  Year of birth
-                </FieldLabel>
-                <Input
-                  id="enrol-yob"
-                  name="yearOfBirth"
-                  type="number"
-                  placeholder="1996"
-                  theme="dark"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  required
-                />
-                {field.state.meta.errors.length > 0 &&
-                  field.state.meta.isTouched && (
-                    <FieldDescription className="text-destructive">
-                      {field.state.meta.errors[0]}
-                    </FieldDescription>
-                  )}
-              </Field>
-            )}
-          </form.Field>
-
-          <form.Field name="gender" validators={{ onChange: requiredSelect }}>
-            {(field) => (
-              <Field>
-                <FieldLabel htmlFor="enrol-gender" theme="dark">
-                  Gender
-                </FieldLabel>
-                <Select
-                  value={field.state.value || undefined}
-                  onValueChange={(value) => field.handleChange(value ?? '')}
-                >
-                  <SelectTrigger
-                    id="enrol-gender"
-                    className="h-11 w-full rounded-none border-white/14 bg-black/20 text-[#F8F4EC]"
-                  >
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-none border-white/10 bg-[#1A1716] text-[#F8F4EC]">
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                  </SelectContent>
-                </Select>
-                {field.state.meta.errors.length > 0 &&
-                  field.state.meta.isTouched && (
-                    <FieldDescription className="text-destructive">
-                      {field.state.meta.errors[0]}
-                    </FieldDescription>
-                  )}
-              </Field>
-            )}
-          </form.Field>
+          <div className="min-w-0 flex-1">
+            <div className="mb-3 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                Step {currentStep + 1} of {STEPS.length}
+              </div>
+              <div className="grid w-full grid-cols-6 gap-1 sm:flex sm:w-auto">
+                {STEPS.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`h-1 min-w-0 transition-colors duration-300 sm:w-8 ${
+                      index <= currentStep ? 'bg-[#C5A059]' : 'bg-white/20'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+            <h2
+              key={currentStep}
+              className="animate-in fade-in slide-in-from-right-8 font-serif text-2xl leading-tight text-[#F8F4EC] duration-500"
+            >
+              {currentStepConfig.title}
+            </h2>
+          </div>
         </div>
 
-        <form.Field name="nationalityCitizenship">
-          {(field) => (
-            <Field>
-              <FieldLabel htmlFor="enrol-nationality" theme="dark">
-                Nationality / citizenship
-              </FieldLabel>
-              <Input
-                id="enrol-nationality"
-                name="nationalityCitizenship"
-                type="text"
-                placeholder="Finnish"
-                theme="dark"
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-              />
-            </Field>
-          )}
-        </form.Field>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <form.Field name="currentCity">
-            {(field) => (
-              <Field>
-                <FieldLabel htmlFor="enrol-city" theme="dark">
-                  Current city
-                </FieldLabel>
-                <Input
-                  id="enrol-city"
-                  name="currentCity"
-                  type="text"
-                  placeholder="Helsinki"
-                  theme="dark"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                />
-              </Field>
-            )}
-          </form.Field>
-
-          <form.Field name="currentCountry">
-            {(field) => (
-              <Field>
-                <FieldLabel htmlFor="enrol-country" theme="dark">
-                  Current country
-                </FieldLabel>
-                <Input
-                  id="enrol-country"
-                  name="currentCountry"
-                  type="text"
-                  placeholder="Finland"
-                  theme="dark"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                />
-              </Field>
-            )}
-          </form.Field>
-        </div>
-
-        <form.Field name="churchAffiliations">
-          {(field) => (
-            <Field>
-              <FieldLabel htmlFor="enrol-church" theme="dark">
-                Church affiliations
-              </FieldLabel>
-              <Input
-                id="enrol-church"
-                name="churchAffiliations"
-                type="text"
-                placeholder="Church name, network, etc."
-                theme="dark"
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-              />
-            </Field>
-          )}
-        </form.Field>
-
-        <form.Field
-          name="aboutYourself"
-          validators={{ onChange: (v) => required(v) || maxWords(200)(v) }}
-        >
-          {(field) => (
-            <Field>
-              <FieldLabel htmlFor="enrol-about" theme="dark">
-                Tell us about yourself and why you are interested in this
-                program
-              </FieldLabel>
-              <textarea
-                id="enrol-about"
-                name="aboutYourself"
-                placeholder="Write up to 200 words…"
-                rows={6}
-                required
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                className="w-full resize-none border border-white/12 bg-[#1A1A1A] px-3 py-2.5 text-sm leading-7 text-[#F8F4EC] placeholder:text-[#5A5248] focus:border-[#C5A059]/50 focus:ring-1 focus:ring-[#C5A059]/30 focus:outline-none"
-              />
-              <div className="flex items-start justify-between gap-4">
-                {field.state.meta.errors.length > 0 &&
-                field.state.meta.isTouched ? (
-                  <FieldDescription theme="dark" className="text-destructive">
-                    {field.state.meta.errors[0]}
-                  </FieldDescription>
-                ) : (
-                  <FieldDescription theme="dark">
-                    Maximum 200 words.
-                  </FieldDescription>
-                )}
-                <span className="shrink-0 text-[0.62rem] text-[#5A5248]">
-                  {countWords(field.state.value)} words
-                </span>
-              </div>
-            </Field>
-          )}
-        </form.Field>
-
-        <form.Field
-          name="expectationsAlignment"
-          validators={{ onChange: (v) => required(v) || maxWords(200)(v) }}
-        >
-          {(field) => (
-            <Field>
-              <FieldLabel htmlFor="enrol-expectations" theme="dark">
-                Tell us what you expect to achieve at the end of this program,
-                and how it would align with your personal pursuit of Jesus
-                Christ.
-              </FieldLabel>
-              <textarea
-                id="enrol-expectations"
-                name="expectationsAlignment"
-                placeholder="Write up to 200 words…"
-                rows={6}
-                required
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                className="w-full resize-none border border-white/12 bg-[#1A1A1A] px-3 py-2.5 text-sm leading-7 text-[#F8F4EC] placeholder:text-[#5A5248] focus:border-[#C5A059]/50 focus:ring-1 focus:ring-[#C5A059]/30 focus:outline-none"
-              />
-              <div className="flex items-start justify-between gap-4">
-                {field.state.meta.errors.length > 0 &&
-                field.state.meta.isTouched ? (
-                  <FieldDescription theme="dark" className="text-destructive">
-                    {field.state.meta.errors[0]}
-                  </FieldDescription>
-                ) : (
-                  <FieldDescription theme="dark">
-                    Maximum 200 words.
-                  </FieldDescription>
-                )}
-                <span className="shrink-0 text-[0.62rem] text-[#5A5248]">
-                  {countWords(field.state.value)} words
-                </span>
-              </div>
-            </Field>
-          )}
-        </form.Field>
-
-        <Field className="pt-2">
-          <form.Subscribe
-            selector={(state) => [state.canSubmit, state.isSubmitting]}
+        <FieldGroup className="flex-1">
+          <div
+            key={currentStep}
+            className="animate-in fade-in slide-in-from-right-4 space-y-8 duration-500"
           >
-            {([canSubmit, isSubmitting]) => (
-              <button
-                type="submit"
-                disabled={!canSubmit || isSubmitting}
-                className="h-11 w-full cursor-pointer border border-[#C5A059]/55 bg-linear-to-b from-[#2A2A2A] to-[#111111] font-serif tracking-[0.12em] text-[#E9D9B4] transition-opacity hover:opacity-80 disabled:opacity-40"
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit Application'}
-              </button>
-            )}
-          </form.Subscribe>
+            {currentStepConfig.fields.map(renderField)}
+          </div>
+        </FieldGroup>
 
-          <FieldDescription theme="dark" className="pt-1 text-center">
+        <div className="mt-auto pt-8">
+          <FieldDescription theme="dark" className="mb-4 text-center">
             Already have an account?{' '}
             <Link
               to="/login"
@@ -579,8 +879,38 @@ export function EnrolmentForm() {
               Sign in
             </Link>
           </FieldDescription>
-        </Field>
-      </FieldGroup>
+
+          <div className="flex items-center justify-between gap-4">
+            {currentStep > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                theme="lightGhost"
+                size="sm"
+                onClick={handleBack}
+                className="h-auto px-0 text-[0.68rem] tracking-[0.14em] text-[#9B8A73] uppercase shadow-none hover:bg-transparent hover:text-[#C5A059]"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </Button>
+            ) : (
+              <div />
+            )}
+            <Button
+              type="button"
+              theme="dark"
+              size="lg"
+              onClick={handleNext}
+              className="h-11 px-6"
+            >
+              {currentStep === STEPS.length - 1 ? 'Submit' : 'Next'}
+              {currentStep < STEPS.length - 1 && (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
     </form>,
   )
 }

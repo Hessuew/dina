@@ -7,7 +7,7 @@ import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { checkAdminAccess } from '@/utils/admin'
 import { getEnrollments } from '@/utils/enrollments'
 
-export const Route = createFileRoute('/_authed/enrollments')({
+export const Route = createFileRoute('/_authed/enrollments/')({
   beforeLoad: async () => {
     await checkAdminAccess()
   },
