@@ -77,7 +77,7 @@ export const Route = createRootRoute({
           'DINA is a free, 9-month online Discipleship Training School. 18 lessons, biweekly personal mentorship, and a formation journey that takes believers from infancy to maturity — no prerequisites, open to all.',
         keywords:
           'Disciplers of Nations Academy, DINA, discipleship training school, online discipleship, Christian formation, biblical foundations, free Christian school, mentorship, disciple nations, spiritual maturity, christ-dina',
-        image: `${import.meta.env.VITE_APP_URL ?? 'https://christ-dina.juhani-juusola.workers.dev'}/og-logo.webp`,
+        image: `${import.meta.env.VITE_APP_URL ?? 'https://christ-dina.org'}/og-logo.webp`,
       }),
     ],
     links: [
