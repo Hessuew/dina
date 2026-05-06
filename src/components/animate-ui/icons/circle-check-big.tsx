@@ -1,16 +1,16 @@
-'use client';
+'use client'
 
-import * as React from 'react';
-import { motion, type Variants } from 'motion/react';
+import { motion } from 'motion/react'
+import type { Variants } from 'motion/react'
 
+import type { IconProps } from '@/components/animate-ui/icons/icon'
 import {
+  IconWrapper,
   getVariants,
   useAnimateIconContext,
-  IconWrapper,
-  type IconProps,
-} from '@/components/animate-ui/icons/icon';
+} from '@/components/animate-ui/icons/icon'
 
-type CircleCheckBigProps = IconProps<keyof typeof animations>;
+type CircleCheckBigProps = IconProps<keyof typeof animations>
 
 const animations = {
   default: {
@@ -32,11 +32,11 @@ const animations = {
       },
     },
   } satisfies Record<string, Variants>,
-} as const;
+} as const
 
 function IconComponent({ size, ...props }: CircleCheckBigProps) {
-  const { controls } = useAnimateIconContext();
-  const variants = getVariants(animations);
+  const { controls } = useAnimateIconContext()
+  const variants = getVariants(animations)
 
   return (
     <motion.svg
@@ -64,11 +64,11 @@ function IconComponent({ size, ...props }: CircleCheckBigProps) {
         animate={controls}
       />
     </motion.svg>
-  );
+  )
 }
 
 function CircleCheckBig(props: CircleCheckBigProps) {
-  return <IconWrapper icon={IconComponent} {...props} />;
+  return <IconWrapper icon={IconComponent} {...props} />
 }
 
 export {
@@ -77,4 +77,4 @@ export {
   CircleCheckBig as CircleCheckBigIcon,
   type CircleCheckBigProps,
   type CircleCheckBigProps as CircleCheckBigIconProps,
-};
+}
