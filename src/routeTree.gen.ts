@@ -18,6 +18,7 @@ import { Route as EnrolmentRouteImport } from './routes/enrolment'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiUploadImageRouteImport } from './routes/api.upload-image'
+import { Route as AuthedZoomRouteImport } from './routes/_authed/zoom'
 import { Route as AuthedTeachersRouteImport } from './routes/_authed/teachers'
 import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
 import { Route as AuthedInvitationsRouteImport } from './routes/_authed/invitations'
@@ -79,6 +80,11 @@ const ApiUploadImageRoute = ApiUploadImageRouteImport.update({
   id: '/api/upload-image',
   path: '/api/upload-image',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedZoomRoute = AuthedZoomRouteImport.update({
+  id: '/zoom',
+  path: '/zoom',
+  getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedTeachersRoute = AuthedTeachersRouteImport.update({
   id: '/teachers',
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/invitations': typeof AuthedInvitationsRoute
   '/posts': typeof AuthedPostsRoute
   '/teachers': typeof AuthedTeachersRoute
+  '/zoom': typeof AuthedZoomRoute
   '/api/upload-image': typeof ApiUploadImageRoute
   '/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/invitations': typeof AuthedInvitationsRoute
   '/posts': typeof AuthedPostsRoute
   '/teachers': typeof AuthedTeachersRoute
+  '/zoom': typeof AuthedZoomRoute
   '/api/upload-image': typeof ApiUploadImageRoute
   '/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
@@ -238,6 +246,7 @@ export interface FileRoutesById {
   '/_authed/invitations': typeof AuthedInvitationsRoute
   '/_authed/posts': typeof AuthedPostsRoute
   '/_authed/teachers': typeof AuthedTeachersRoute
+  '/_authed/zoom': typeof AuthedZoomRoute
   '/api/upload-image': typeof ApiUploadImageRoute
   '/_authed/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/_authed/courses/$courseId': typeof AuthedCoursesCourseIdRoute
@@ -267,6 +276,7 @@ export interface FileRouteTypes {
     | '/invitations'
     | '/posts'
     | '/teachers'
+    | '/zoom'
     | '/api/upload-image'
     | '/assignments/$assignmentId'
     | '/courses/$courseId'
@@ -294,6 +304,7 @@ export interface FileRouteTypes {
     | '/invitations'
     | '/posts'
     | '/teachers'
+    | '/zoom'
     | '/api/upload-image'
     | '/assignments/$assignmentId'
     | '/courses/$courseId'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/_authed/invitations'
     | '/_authed/posts'
     | '/_authed/teachers'
+    | '/_authed/zoom'
     | '/api/upload-image'
     | '/_authed/assignments/$assignmentId'
     | '/_authed/courses/$courseId'
@@ -412,6 +424,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/upload-image'
       preLoaderRoute: typeof ApiUploadImageRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authed/zoom': {
+      id: '/_authed/zoom'
+      path: '/zoom'
+      fullPath: '/zoom'
+      preLoaderRoute: typeof AuthedZoomRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/_authed/teachers': {
       id: '/_authed/teachers'
@@ -542,6 +561,7 @@ interface AuthedRouteChildren {
   AuthedInvitationsRoute: typeof AuthedInvitationsRoute
   AuthedPostsRoute: typeof AuthedPostsRoute
   AuthedTeachersRoute: typeof AuthedTeachersRoute
+  AuthedZoomRoute: typeof AuthedZoomRoute
   AuthedAssignmentsAssignmentIdRoute: typeof AuthedAssignmentsAssignmentIdRoute
   AuthedCoursesCourseIdRoute: typeof AuthedCoursesCourseIdRoute
   AuthedEnrollmentsEnrollmentIdRoute: typeof AuthedEnrollmentsEnrollmentIdRoute
@@ -562,6 +582,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedInvitationsRoute: AuthedInvitationsRoute,
   AuthedPostsRoute: AuthedPostsRoute,
   AuthedTeachersRoute: AuthedTeachersRoute,
+  AuthedZoomRoute: AuthedZoomRoute,
   AuthedAssignmentsAssignmentIdRoute: AuthedAssignmentsAssignmentIdRoute,
   AuthedCoursesCourseIdRoute: AuthedCoursesCourseIdRoute,
   AuthedEnrollmentsEnrollmentIdRoute: AuthedEnrollmentsEnrollmentIdRoute,

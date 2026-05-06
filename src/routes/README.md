@@ -20,6 +20,7 @@ This folder defines:
 - **`_authed.tsx`**
   - Layout route for the authenticated route tree (`/_authed`).
   - Enforces authentication in `beforeLoad` by checking `context.user`.
+  - Includes authenticated feature routes such as `/zoom`.
 
 - **Public routes**
   - Routes at this level are generally accessible without auth.
