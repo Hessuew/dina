@@ -21,6 +21,11 @@ import {
 } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth/auth'
 import { authz, withRequestCache } from '@/utils/authz'
+import {
+  AuthorizationError,
+  NotFoundError,
+  ValidationError,
+} from '@/utils/errors'
 
 export const getLesson = createServerFn({ method: 'POST' })
   .inputValidator(getLessonSchema)
@@ -53,7 +58,10 @@ export const getLesson = createServerFn({ method: 'POST' })
     })
 
     if (!lesson) {
-      throw new Error('Lesson not found')
+      throw new NotFoundError('Lesson not found', {
+        code: 'LESSON_NOT_FOUND',
+        details: { lessonId: data.lessonId },
+      })
     }
 
     const profile = await db.query.profiles.findFirst({
@@ -61,7 +69,9 @@ export const getLesson = createServerFn({ method: 'POST' })
     })
 
     if (!profile) {
-      throw new Error('Profile not found')
+      throw new NotFoundError('Profile not found', {
+        details: { userId: user.id },
+      })
     }
 
     return {
@@ -89,7 +99,9 @@ export const getAssignmentsByLesson = createServerFn({ method: 'POST' })
     })
 
     if (!profile) {
-      throw new Error('Profile not found')
+      throw new NotFoundError('Profile not found', {
+        details: { userId: user.id },
+      })
     }
 
     const lesson = await db.query.lessons.findFirst({
@@ -97,7 +109,10 @@ export const getAssignmentsByLesson = createServerFn({ method: 'POST' })
     })
 
     if (!lesson) {
-      throw new Error('Lesson not found')
+      throw new NotFoundError('Lesson not found', {
+        code: 'LESSON_NOT_FOUND',
+        details: { lessonId: data.lessonId },
+      })
     }
 
     let assignmentsList = await db.query.assignments.findMany({
@@ -141,7 +156,10 @@ export const getAssignment = createServerFn({ method: 'POST' })
     })
 
     if (!assignment) {
-      throw new Error('Assignment not found')
+      throw new NotFoundError('Assignment not found', {
+        code: 'ASSIGNMENT_NOT_FOUND',
+        details: { assignmentId: data.assignmentId },
+      })
     }
 
     const profile = await db.query.profiles.findFirst({
@@ -149,11 +167,16 @@ export const getAssignment = createServerFn({ method: 'POST' })
     })
 
     if (!profile) {
-      throw new Error('Profile not found')
+      throw new NotFoundError('Profile not found', {
+        details: { userId: user.id },
+      })
     }
 
     if (profile.role === 'student' && assignment.status !== 'published') {
-      throw new Error('Assignment not available')
+      throw new AuthorizationError('Assignment not available', {
+        internalMessage: `Student attempted to access unpublished assignment: ${data.assignmentId}`,
+        details: { assignmentId: data.assignmentId, status: assignment.status },
+      })
     }
 
     let submission = null
@@ -211,7 +234,10 @@ export const createAssignment = createServerFn({ method: 'POST' })
       })
 
       if (!lesson) {
-        throw new Error('Lesson not found')
+        throw new NotFoundError('Lesson not found', {
+          code: 'LESSON_NOT_FOUND',
+          details: { lessonId: data.lessonId },
+        })
       }
 
       await authz(user.id).perform('createLesson').on('course', lesson.courseId)
@@ -252,7 +278,10 @@ export const updateAssignment = createServerFn({ method: 'POST' })
       })
 
       if (!assignment) {
-        throw new Error('Assignment not found')
+        throw new NotFoundError('Assignment not found', {
+          code: 'ASSIGNMENT_NOT_FOUND',
+          details: { assignmentId: data.assignmentId },
+        })
       }
 
       await authz(user.id)
@@ -297,7 +326,10 @@ export const getAssignmentSubmissionCount = createServerFn({ method: 'POST' })
       })
 
       if (!assignment) {
-        throw new Error('Assignment not found')
+        throw new NotFoundError('Assignment not found', {
+          code: 'ASSIGNMENT_NOT_FOUND',
+          details: { assignmentId: data.assignmentId },
+        })
       }
 
       await authz(user.id)
@@ -329,7 +361,10 @@ export const deleteAssignment = createServerFn({ method: 'POST' })
       })
 
       if (!assignment) {
-        throw new Error('Assignment not found')
+        throw new NotFoundError('Assignment not found', {
+          code: 'ASSIGNMENT_NOT_FOUND',
+          details: { assignmentId: data.assignmentId },
+        })
       }
 
       await authz(user.id)
@@ -337,8 +372,14 @@ export const deleteAssignment = createServerFn({ method: 'POST' })
         .on('course', assignment.lesson.courseId)
 
       if (assignment.submissions.length > 0) {
-        throw new Error(
+        throw new ValidationError(
           `Cannot delete assignment with ${assignment.submissions.length} submission${assignment.submissions.length !== 1 ? 's' : ''}`,
+          {
+            details: {
+              assignmentId: data.assignmentId,
+              submissionCount: assignment.submissions.length,
+            },
+          },
         )
       }
 
@@ -382,16 +423,26 @@ export const createOrUpdateSubmission = createServerFn({ method: 'POST' })
     })
 
     if (!assignment) {
-      throw new Error('Assignment not found')
+      throw new NotFoundError('Assignment not found', {
+        code: 'ASSIGNMENT_NOT_FOUND',
+        details: { assignmentId: data.assignmentId },
+      })
     }
 
     if (assignment.status !== 'published') {
-      throw new Error('Assignment is not open for submissions')
+      throw new ValidationError('Assignment is not open for submissions', {
+        details: { assignmentId: data.assignmentId, status: assignment.status },
+      })
     }
 
     const now = new Date()
     if (assignment.dueDate < now) {
-      throw new Error('Assignment due date has passed')
+      throw new ValidationError('Assignment due date has passed', {
+        details: {
+          assignmentId: data.assignmentId,
+          dueDate: assignment.dueDate,
+        },
+      })
     }
 
     const existingSubmission = await db.query.submissions.findFirst({
@@ -449,7 +500,11 @@ export const getAllAssignmentsForStudent = createServerFn({
   })
 
   if (!profile || profile.role !== 'student') {
-    throw new Error('Only students can access this endpoint')
+    throw new AuthorizationError('Only students can access this endpoint', {
+      code: 'ROLE_REQUIRED',
+      internalMessage: 'Non-student attempted to access student endpoint',
+      details: { role: profile?.role },
+    })
   }
 
   const allAssignments = await db.query.assignments.findMany({
@@ -499,7 +554,15 @@ export const getAllAssignmentsForTeacher = createServerFn({
   })
 
   if (!profile || (profile.role !== 'teacher' && profile.role !== 'admin')) {
-    throw new Error('Only teachers and admins can access this endpoint')
+    throw new AuthorizationError(
+      'Only teachers and admins can access this endpoint',
+      {
+        code: 'ROLE_REQUIRED',
+        internalMessage:
+          'Non-teacher/non-admin attempted to access teacher endpoint',
+        details: { role: profile?.role },
+      },
+    )
   }
 
   const teacherAssignments = await db.query.courseTeachers.findMany({
@@ -590,7 +653,10 @@ export const getAssignmentSubmissions = createServerFn({ method: 'POST' })
     })
 
     if (!assignment) {
-      throw new Error('Assignment not found')
+      throw new NotFoundError('Assignment not found', {
+        code: 'ASSIGNMENT_NOT_FOUND',
+        details: { assignmentId: data.assignmentId },
+      })
     }
 
     const allSubmissions = await db.query.submissions.findMany({
@@ -631,7 +697,10 @@ export const gradeSubmission = createServerFn({ method: 'POST' })
       })
 
       if (!assignment) {
-        throw new Error('Assignment not found')
+        throw new NotFoundError('Assignment not found', {
+          code: 'ASSIGNMENT_NOT_FOUND',
+          details: { assignmentId: data.assignmentId },
+        })
       }
 
       await authz(user.id)

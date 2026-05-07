@@ -22,6 +22,7 @@ import {
 } from '@/schemas/post.schema'
 import { getCurrentUser } from '@/utils/auth/auth'
 import { authz, withRequestCache } from '@/utils/authz'
+import { AuthorizationError, NotFoundError } from '@/utils/errors'
 import {
   createCommentCreatedEvent,
   createPostCreatedEvent,
@@ -254,7 +255,12 @@ export const createPost = createServerFn({ method: 'POST' })
         },
       })
 
-      if (!full) throw new Error('Post not found')
+      if (!full) {
+        throw new NotFoundError('Post not found', {
+          code: 'POST_NOT_FOUND',
+          details: { postId: post.id },
+        })
+      }
 
       const event = createPostCreatedEvent(
         user.id,
@@ -321,7 +327,12 @@ export const getPostById = createServerFn({ method: 'POST' })
       },
     })
 
-    if (!row) throw new Error('Post not found')
+    if (!row) {
+      throw new NotFoundError('Post not found', {
+        code: 'POST_NOT_FOUND',
+        details: { postId: data.postId },
+      })
+    }
 
     const countRows = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -366,7 +377,12 @@ export const updatePost = createServerFn({ method: 'POST' })
         where: and(eq(posts.id, data.postId), isNull(posts.deletedAt)),
       })
 
-      if (!existing) throw new Error('Post not found')
+      if (!existing) {
+        throw new NotFoundError('Post not found', {
+          code: 'POST_NOT_FOUND',
+          details: { postId: data.postId },
+        })
+      }
       if (existing.authorId !== user.id) {
         await authz(user.id).perform('editPost').on('post', data.postId)
       }
@@ -393,7 +409,12 @@ export const deletePost = createServerFn({ method: 'POST' })
         where: and(eq(posts.id, data.postId), isNull(posts.deletedAt)),
       })
 
-      if (!existing) throw new Error('Post not found')
+      if (!existing) {
+        throw new NotFoundError('Post not found', {
+          code: 'POST_NOT_FOUND',
+          details: { postId: data.postId },
+        })
+      }
       if (existing.authorId !== user.id) {
         await authz(user.id).perform('deletePost').on('post', data.postId)
       }
@@ -570,7 +591,12 @@ export const createComment = createServerFn({ method: 'POST' })
     const post = await db.query.posts.findFirst({
       where: and(eq(posts.id, data.postId), isNull(posts.deletedAt)),
     })
-    if (!post) throw new Error('Post not found')
+    if (!post) {
+      throw new NotFoundError('Post not found', {
+        code: 'POST_NOT_FOUND',
+        details: { postId: data.postId },
+      })
+    }
 
     const [comment] = await db
       .insert(postComments)
@@ -618,8 +644,18 @@ export const updateComment = createServerFn({ method: 'POST' })
       ),
     })
 
-    if (!existing) throw new Error('Comment not found')
-    if (existing.authorId !== user.id) throw new Error('Not authorized')
+    if (!existing) {
+      throw new NotFoundError('Comment not found', {
+        code: 'COMMENT_NOT_FOUND',
+        details: { commentId: data.commentId },
+      })
+    }
+    if (existing.authorId !== user.id) {
+      throw new AuthorizationError('Not authorized', {
+        internalMessage: `User ${user.id} attempted to edit comment ${data.commentId} owned by ${existing.authorId}`,
+        details: { commentId: data.commentId, authorId: existing.authorId },
+      })
+    }
 
     const [comment] = await db
       .update(postComments)
@@ -645,7 +681,12 @@ export const deleteComment = createServerFn({ method: 'POST' })
         ),
       })
 
-      if (!existing) throw new Error('Comment not found')
+      if (!existing) {
+        throw new NotFoundError('Comment not found', {
+          code: 'COMMENT_NOT_FOUND',
+          details: { commentId: data.commentId },
+        })
+      }
       if (existing.authorId !== user.id) {
         await authz(user.id)
           .perform('deleteComment')

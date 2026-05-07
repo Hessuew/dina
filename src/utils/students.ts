@@ -13,6 +13,7 @@ import {
   submissions,
 } from '@/db/schema'
 import { getStudentDetailSchema } from '@/schemas/student.schema'
+import { NotFoundError } from '@/utils/errors'
 
 export const getStudents = createServerFn({ method: 'POST' }).handler(
   async () => {
@@ -123,7 +124,9 @@ export const getStudentDetail = createServerFn({ method: 'POST' })
     })
 
     if (!student) {
-      throw new Error('Student not found')
+      throw new NotFoundError('Student not found', {
+        details: { studentId: data.studentId },
+      })
     }
 
     const studentEnrollments = await db.query.courses.findMany({

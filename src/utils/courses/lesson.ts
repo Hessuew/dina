@@ -9,6 +9,7 @@ import {
 import { assignments, courses, lessons, profiles } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth/auth'
 import { authz, withRequestCache } from '@/utils/authz'
+import { NotFoundError } from '@/utils/errors'
 
 export const createLesson = createServerFn({ method: 'POST' })
   .inputValidator(createLessonSchema)
@@ -95,7 +96,9 @@ export const getUpcomingLessons = createServerFn({ method: 'POST' }).handler(
     })
 
     if (!profile) {
-      throw new Error('Profile not found')
+      throw new NotFoundError('Profile not found', {
+        details: { userId: user.id },
+      })
     }
 
     const now = new Date()
@@ -140,7 +143,9 @@ export const getCalendarEvents = createServerFn({ method: 'POST' }).handler(
     })
 
     if (!profile) {
-      throw new Error('Profile not found')
+      throw new NotFoundError('Profile not found', {
+        details: { userId: user.id },
+      })
     }
 
     const courseIds = (

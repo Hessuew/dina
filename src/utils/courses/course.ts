@@ -13,6 +13,11 @@ import {
 } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth/auth'
 import { authz, withRequestCache } from '@/utils/authz'
+import {
+  AuthorizationError,
+  NotFoundError,
+  ValidationError,
+} from '@/utils/errors'
 
 export const getCourses = createServerFn({ method: 'POST' }).handler(
   async () => {
@@ -24,7 +29,9 @@ export const getCourses = createServerFn({ method: 'POST' }).handler(
     })
 
     if (!profile) {
-      throw new Error('Profile not found')
+      throw new NotFoundError('Profile not found', {
+        details: { userId: user.id },
+      })
     }
 
     // Admins and teachers see all courses
@@ -117,7 +124,10 @@ export const getCourse = createServerFn({ method: 'POST' })
     })
 
     if (!course) {
-      throw new Error('Course not found')
+      throw new NotFoundError('Course not found', {
+        code: 'COURSE_NOT_FOUND',
+        details: { courseId: data.courseId },
+      })
     }
 
     const profile = await db.query.profiles.findFirst({
@@ -125,7 +135,9 @@ export const getCourse = createServerFn({ method: 'POST' })
     })
 
     if (!profile) {
-      throw new Error('Profile not found')
+      throw new NotFoundError('Profile not found', {
+        details: { userId: user.id },
+      })
     }
 
     let progress: Array<{ lessonId: string }> = []
@@ -211,7 +223,11 @@ export const createCourse = createServerFn({ method: 'POST' })
     })
 
     if (!profile || profile.role !== 'admin') {
-      throw new Error('Only admins can create courses')
+      throw new AuthorizationError('Only admins can create courses', {
+        code: 'ROLE_REQUIRED',
+        internalMessage: 'Non-admin attempted to create course',
+        details: { role: profile?.role },
+      })
     }
 
     // Create course
@@ -235,7 +251,13 @@ export const createCourse = createServerFn({ method: 'POST' })
         data.teacher2Id,
       )
     } else if (data.teacher1Id || data.teacher2Id) {
-      throw new Error('Please assign either both teachers or neither')
+      throw new ValidationError(
+        'Please assign either both teachers or neither',
+        {
+          code: 'TEACHER_PAIR_INVALID',
+          details: { teacher1Id: data.teacher1Id, teacher2Id: data.teacher2Id },
+        },
+      )
     }
 
     return { course }

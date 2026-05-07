@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { useRouter } from '@tanstack/react-router'
 import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { toUserError } from '@/utils/errors'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -132,7 +133,7 @@ export function CourseDialog({
     if (!formData.thumbnailFile) return
     setIsUploading(true)
     try {
-      const result = await uploadCourseThumbnailFn({
+      await uploadCourseThumbnailFn({
         data: {
           fileData: await fileToBase64(formData.thumbnailFile),
           fileName: formData.thumbnailFile.name,
@@ -141,12 +142,9 @@ export function CourseDialog({
           courseId,
         },
       })
-      if ('error' in result && result.error) {
-        toast.error(result.message || 'Failed to upload thumbnail')
-      }
     } catch (error) {
       console.error('Thumbnail upload error:', error)
-      toast.error('Failed to upload thumbnail')
+      toast.error(toUserError(error).message)
     }
     setIsUploading(false)
   }

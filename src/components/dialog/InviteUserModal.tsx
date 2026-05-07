@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { XIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { toUserError } from '@/utils/errors'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
@@ -46,16 +47,15 @@ export function InviteUserModal({
   const createInvitationFn = useServerFn(createInvitation)
   const inviteMutation = useMutation({
     fn: createInvitationFn,
-    onSuccess: ({ data }) => {
-      if (data.error) {
-        toast.error(data.message)
-      } else {
-        toast.success(`Invitation sent to ${email}`)
-        setEmail('')
-        setRole('student')
-        onOpenChange(false)
-        onSuccess()
-      }
+    onSuccess: () => {
+      toast.success(`Invitation sent to ${email}`)
+      setEmail('')
+      setRole('student')
+      onOpenChange(false)
+      onSuccess()
+    },
+    onError: (error) => {
+      toast.error(toUserError(error).message)
     },
   })
 
