@@ -187,7 +187,8 @@ export function ZoomLinkDialog({
               {link ? 'Edit Zoom Link' : 'Add Zoom Link'}
             </DialogTitle>
             <DialogDescription className="text-[#AFA28F]">
-              Add the Zoom URL, meeting ID, and passcode shown to students and teachers.
+              Add the Zoom URL, meeting ID, and passcode shown to students and
+              teachers.
             </DialogDescription>
           </DialogHeader>
 
@@ -228,7 +229,9 @@ export function ZoomLinkDialog({
                     }
                   >
                     <SelectTrigger className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
-                      <SelectValue>{courseLabel(courses, form.courseId)}</SelectValue>
+                      <SelectValue>
+                        {courseLabel(courses, form.courseId)}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="rounded-none border-white/12">
                       <SelectItem value="none">No course</SelectItem>
@@ -283,7 +286,10 @@ export function ZoomLinkDialog({
                   valueKey="orderIndex"
                 />
                 <Field className="sm:col-span-2">
-                  <FieldLabel className="text-[#9B7A41]" htmlFor="zoom-description">
+                  <FieldLabel
+                    className="text-[#9B7A41]"
+                    htmlFor="zoom-description"
+                  >
                     Description
                   </FieldLabel>
                   <Textarea
@@ -313,7 +319,11 @@ export function ZoomLinkDialog({
                 Delete
               </Button>
             )}
-            <Button variant="outline" theme="dark" onClick={() => onOpenChange(false)}>
+            <Button
+              variant="outline"
+              theme="dark"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button theme="dark" disabled={isPending} onClick={handleSubmit}>
