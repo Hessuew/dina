@@ -1,11 +1,11 @@
 import * as React from 'react'
-import { toast } from 'sonner'
-import { toUserError } from '@/utils/errors'
+import { toastErrorHandler } from './errorHandler'
 
 export function useMutation<TVariables, TData, TError = Error>(opts: {
   fn: (variables: TVariables) => Promise<TData>
   onSuccess?: (ctx: { data: TData }) => void | Promise<void>
   onError?: (ctx: { error: TError }) => void | Promise<void>
+  errorHandler?: (error: TError) => void
 }) {
   const [submittedAt, setSubmittedAt] = React.useState<number | undefined>()
   const [variables, setVariables] = React.useState<TVariables | undefined>()
@@ -35,8 +35,10 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
 
         if (opts.onError) {
           await opts.onError({ error: tError })
+        } else if (opts.errorHandler) {
+          opts.errorHandler(tError)
         } else {
-          toast.error(toUserError(tError).message)
+          toastErrorHandler(tError)
         }
       }
     },
