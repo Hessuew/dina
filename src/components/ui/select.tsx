@@ -112,8 +112,9 @@ function SelectLabel({
 function SelectItem({
   className,
   children,
+  textClass,
   ...props
-}: SelectPrimitive.Item.Props) {
+}: SelectPrimitive.Item.Props & { textClass?: string }) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -123,7 +124,12 @@ function SelectItem({
       )}
       {...props}
     >
-      <SelectPrimitive.ItemText className="flex flex-1 shrink-0 gap-2 whitespace-nowrap text-white">
+      <SelectPrimitive.ItemText
+        className={cn(
+          'flex flex-1 shrink-0 gap-2 whitespace-nowrap',
+          textClass,
+        )}
+      >
         {children}
       </SelectPrimitive.ItemText>
       <SelectPrimitive.ItemIndicator

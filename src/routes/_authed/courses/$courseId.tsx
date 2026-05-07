@@ -542,15 +542,7 @@ function CourseDetailComponent() {
           lessonCount={course.lessons.length}
           initialData={
             selectedLesson
-              ? {
-                  lessonId: selectedLesson.id,
-                  title: selectedLesson.title,
-                  content: selectedLesson.content,
-                  scheduledTime: selectedLesson.scheduledTime,
-                  duration: selectedLesson.duration,
-                  isPublished: selectedLesson.isPublished ?? false,
-                  orderIndex: selectedLesson.orderIndex,
-                }
+              ? { ...selectedLesson, lessonId: selectedLesson.id }
               : undefined
           }
         />
