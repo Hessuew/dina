@@ -13,7 +13,6 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
-import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -26,6 +25,7 @@ import {
   getAssignmentSubmissions,
 } from '@/utils/assignments'
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
+import { PageLayout } from '@/components/layout/page-layout'
 import { cn } from '@/lib/utils'
 import { isUserCourseTeacher } from '@/utils/teachers'
 
@@ -223,312 +223,297 @@ function AssignmentDetailComponent() {
   }
 
   return (
-    <div
-      className="relative isolate min-h-screen overflow-hidden"
-      style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(255,255,255,0.92), rgba(255,255,255,0.92)), url(${facultyBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.10),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.22),transparent_22%)]" />
+    <PageLayout>
+      {/* Page header */}
+      <div className="mb-10">
+        <Button
+          variant="ghost"
+          theme="light"
+          size="sm"
+          className="mb-6 gap-1"
+          onClick={goBack}
+        >
+          <ChevronLeft className="size-3.5" />
+          Back
+        </Button>
 
-      <div className="relative mx-auto max-w-7xl px-6 py-10 sm:px-8 sm:py-12">
-        {/* Page header */}
-        <div className="mb-10">
-          <Button
-            variant="ghost"
-            theme="light"
-            size="sm"
-            className="mb-6 gap-1"
-            onClick={goBack}
-          >
-            <ChevronLeft className="size-3.5" />
-            Back
-          </Button>
-
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <div className="h-px w-10 bg-[#C5A059]/50" />
-              <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-black sm:text-4xl">
-                {assignment.title}
-              </h1>
-              <div className="mt-3 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
-                <span className="tracking-wides">
-                  {assignment.lesson.course.title}
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <div className="h-px w-10 bg-[#C5A059]/50" />
+            <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-black sm:text-4xl">
+              {assignment.title}
+            </h1>
+            <div className="mt-3 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
+              <span className="tracking-wides">
+                {assignment.lesson.course.title}
+              </span>
+              <span className="text-[#C5A059]/40">·</span>
+              <div className="flex items-center gap-1.5">
+                <CalendarIcon className="size-3" />
+                <span>
+                  Due{' '}
+                  {new Date(assignment.dueDate).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
                 </span>
-                <span className="text-[#C5A059]/40">·</span>
-                <div className="flex items-center gap-1.5">
-                  <CalendarIcon className="size-3" />
-                  <span>
-                    Due{' '}
-                    {new Date(assignment.dueDate).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <ClockIcon className="size-3" />
-                  <span>
-                    {new Date(assignment.dueDate).toLocaleTimeString('en-US', {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true,
-                    })}
-                  </span>
-                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ClockIcon className="size-3" />
+                <span>
+                  {new Date(assignment.dueDate).toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                  })}
+                </span>
               </div>
             </div>
+          </div>
 
-            <div className="flex items-center gap-3 pt-4">
-              <div
-                className={cn(
-                  'border px-3 py-1.5 text-[0.62rem] font-medium tracking-[0.22em] uppercase',
-                  statusColors[assignment.status] ?? statusColors.draft,
-                )}
-              >
-                {assignment.status.charAt(0).toUpperCase() +
-                  assignment.status.slice(1)}
+          <div className="flex items-center gap-3 pt-4">
+            <div
+              className={cn(
+                'border px-3 py-1.5 text-[0.62rem] font-medium tracking-[0.22em] uppercase',
+                statusColors[assignment.status] ?? statusColors.draft,
+              )}
+            >
+              {assignment.status.charAt(0).toUpperCase() +
+                assignment.status.slice(1)}
+            </div>
+            {canEdit && isCourseTeacher && (
+              <>
+                <Button
+                  variant="ghost"
+                  theme="light"
+                  size="icon"
+                  className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
+                  onClick={() => setDialogMode('edit')}
+                >
+                  <PencilIcon className="size-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  theme="light"
+                  size="icon"
+                  className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-red-300 hover:text-red-600"
+                  onClick={() => setDialogMode('delete')}
+                >
+                  <TrashIcon className="size-3.5" />
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Main grid */}
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        {/* Left — assignment details */}
+        <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
+          <div className="bg-[#151515]/88 px-6 py-6">
+            <div className="h-px w-8 bg-[#C5A059]/40" />
+            <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+              About this assignment
+            </div>
+            {assignment.description ? (
+              <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
+                {assignment.description}
+              </p>
+            ) : (
+              <p className="mt-4 text-sm text-[#8E816D] italic">
+                No description provided.
+              </p>
+            )}
+          </div>
+
+          <div className="border-t border-white/8 bg-[#151515]/88 px-6 py-5">
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
+                  Maximum Grade
+                </span>
+                <span className="font-serif text-base text-[#F8F4EC]">
+                  {assignment.maxGrade ?? 100} pts
+                </span>
               </div>
-              {canEdit && isCourseTeacher && (
-                <>
-                  <Button
-                    variant="ghost"
-                    theme="light"
-                    size="icon"
-                    className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
-                    onClick={() => setDialogMode('edit')}
-                  >
-                    <PencilIcon className="size-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    theme="light"
-                    size="icon"
-                    className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-red-300 hover:text-red-600"
-                    onClick={() => setDialogMode('delete')}
-                  >
-                    <TrashIcon className="size-3.5" />
-                  </Button>
-                </>
+              {isPastDue && (
+                <div className="border border-red-400/30 bg-red-900/20 px-4 py-3 text-xs text-red-400">
+                  This assignment is past due
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Main grid */}
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-          {/* Left — assignment details */}
-          <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
-            <div className="bg-[#151515]/88 px-6 py-6">
-              <div className="h-px w-8 bg-[#C5A059]/40" />
-              <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                About this assignment
-              </div>
-              {assignment.description ? (
-                <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
-                  {assignment.description}
+        {/* Right — submission / submissions list */}
+        <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
+          <div className="border-b border-white/8 px-6 py-5">
+            <div className="h-px w-8 bg-[#C5A059]/40" />
+            <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+              {isStudent ? 'Your Submission' : 'Submissions'}
+            </div>
+            <div className="mt-1 font-serif text-xl text-[#F8F4EC]">
+              {isStudent
+                ? canSubmit
+                  ? 'Submit before the due date'
+                  : isPastDue
+                    ? 'Submission period ended'
+                    : 'Not yet open'
+                : `${(allSubmissions as Array<SubmissionWithStudent>).length} submitted`}
+            </div>
+          </div>
+
+          {isStudent ? (
+            <div className="px-6 py-6">
+              {assignment.status !== 'published' ? (
+                <p className="py-8 text-center text-sm text-[#8E816D] italic">
+                  This assignment is not yet available.
                 </p>
               ) : (
-                <p className="mt-4 text-sm text-[#8E816D] italic">
-                  No description provided.
-                </p>
-              )}
-            </div>
+                <div className="space-y-5">
+                  <Field>
+                    <FieldLabel
+                      htmlFor="content"
+                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                    >
+                      Your Answer
+                    </FieldLabel>
+                    <Textarea
+                      id="content"
+                      rows={8}
+                      placeholder="Enter your answer here..."
+                      value={submissionFormData.content}
+                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                      onChange={(e) =>
+                        setSubmissionFormData({
+                          ...submissionFormData,
+                          content: e.target.value,
+                        })
+                      }
+                      disabled={!canSubmit}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel
+                      htmlFor="fileUrl"
+                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                    >
+                      File URL (Optional)
+                    </FieldLabel>
+                    <Input
+                      id="fileUrl"
+                      type="url"
+                      placeholder="https://..."
+                      value={submissionFormData.fileUrl}
+                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                      onChange={(e) =>
+                        setSubmissionFormData({
+                          ...submissionFormData,
+                          fileUrl: e.target.value,
+                        })
+                      }
+                      disabled={!canSubmit}
+                    />
+                  </Field>
 
-            <div className="border-t border-white/8 bg-[#151515]/88 px-6 py-5">
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
-                    Maximum Grade
-                  </span>
-                  <span className="font-serif text-base text-[#F8F4EC]">
-                    {assignment.maxGrade ?? 100} pts
-                  </span>
-                </div>
-                {isPastDue && (
-                  <div className="border border-red-400/30 bg-red-900/20 px-4 py-3 text-xs text-red-400">
-                    This assignment is past due
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right — submission / submissions list */}
-          <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
-            <div className="border-b border-white/8 px-6 py-5">
-              <div className="h-px w-8 bg-[#C5A059]/40" />
-              <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                {isStudent ? 'Your Submission' : 'Submissions'}
-              </div>
-              <div className="mt-1 font-serif text-xl text-[#F8F4EC]">
-                {isStudent
-                  ? canSubmit
-                    ? 'Submit before the due date'
-                    : isPastDue
-                      ? 'Submission period ended'
-                      : 'Not yet open'
-                  : `${(allSubmissions as Array<SubmissionWithStudent>).length} submitted`}
-              </div>
-            </div>
-
-            {isStudent ? (
-              <div className="px-6 py-6">
-                {assignment.status !== 'published' ? (
-                  <p className="py-8 text-center text-sm text-[#8E816D] italic">
-                    This assignment is not yet available.
-                  </p>
-                ) : (
-                  <div className="space-y-5">
-                    <Field>
-                      <FieldLabel
-                        htmlFor="content"
-                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                      >
-                        Your Answer
-                      </FieldLabel>
-                      <Textarea
-                        id="content"
-                        rows={8}
-                        placeholder="Enter your answer here..."
-                        value={submissionFormData.content}
-                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                        onChange={(e) =>
-                          setSubmissionFormData({
-                            ...submissionFormData,
-                            content: e.target.value,
-                          })
-                        }
-                        disabled={!canSubmit}
-                      />
-                    </Field>
-                    <Field>
-                      <FieldLabel
-                        htmlFor="fileUrl"
-                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                      >
-                        File URL (Optional)
-                      </FieldLabel>
-                      <Input
-                        id="fileUrl"
-                        type="url"
-                        placeholder="https://..."
-                        value={submissionFormData.fileUrl}
-                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                        onChange={(e) =>
-                          setSubmissionFormData({
-                            ...submissionFormData,
-                            fileUrl: e.target.value,
-                          })
-                        }
-                        disabled={!canSubmit}
-                      />
-                    </Field>
-
-                    {submission && (
-                      <div className="border border-white/10 bg-white/4 px-4 py-4 text-sm">
-                        <div className="flex items-center justify-between">
+                  {submission && (
+                    <div className="border border-white/10 bg-white/4 px-4 py-4 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
+                          Status
+                        </span>
+                        <span
+                          className={cn(
+                            'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
+                            submission.status === 'submitted'
+                              ? 'border-[#C5A059]/40 text-[#9B7A41]'
+                              : 'border-white/12 text-[#8E816D]',
+                          )}
+                        >
+                          {submission.status === 'submitted'
+                            ? 'Submitted'
+                            : 'Draft'}
+                        </span>
+                      </div>
+                      {submission.submittedAt && (
+                        <div className="mt-3 flex items-center justify-between">
                           <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
-                            Status
+                            Submitted
                           </span>
-                          <span
-                            className={cn(
-                              'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
-                              submission.status === 'submitted'
-                                ? 'border-[#C5A059]/40 text-[#9B7A41]'
-                                : 'border-white/12 text-[#8E816D]',
-                            )}
-                          >
-                            {submission.status === 'submitted'
-                              ? 'Submitted'
-                              : 'Draft'}
+                          <span className="text-xs text-[#AFA28F]">
+                            {new Date(submission.submittedAt).toLocaleString()}
                           </span>
                         </div>
-                        {submission.submittedAt && (
+                      )}
+                      {submission.grade !== null && (
+                        <>
                           <div className="mt-3 flex items-center justify-between">
                             <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
-                              Submitted
+                              Grade
                             </span>
-                            <span className="text-xs text-[#AFA28F]">
-                              {new Date(
-                                submission.submittedAt,
-                              ).toLocaleString()}
+                            <span className="font-serif text-base text-[#F8F4EC]">
+                              {submission.grade} / {assignment.maxGrade ?? 100}
                             </span>
                           </div>
-                        )}
-                        {submission.grade !== null && (
-                          <>
-                            <div className="mt-3 flex items-center justify-between">
+                          {submission.feedback && (
+                            <div className="mt-3">
                               <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
-                                Grade
+                                Feedback
                               </span>
-                              <span className="font-serif text-base text-[#F8F4EC]">
-                                {submission.grade} /{' '}
-                                {assignment.maxGrade ?? 100}
-                              </span>
+                              <p className="mt-2 text-sm whitespace-pre-wrap text-[#CFC6B7]">
+                                {submission.feedback}
+                              </p>
                             </div>
-                            {submission.feedback && (
-                              <div className="mt-3">
-                                <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
-                                  Feedback
-                                </span>
-                                <p className="mt-2 text-sm whitespace-pre-wrap text-[#CFC6B7]">
-                                  {submission.feedback}
-                                </p>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
 
-                    {canSubmit && (
-                      <div className="flex gap-3">
-                        <Button
-                          variant="outline"
-                          theme="dark"
-                          onClick={() => handleSaveSubmission(false)}
-                          disabled={submissionMutation.status === 'pending'}
-                        >
-                          <SaveIcon className="size-3.5" />
-                          Save Draft
-                        </Button>
-                        <Button
-                          theme="dark"
-                          onClick={() => handleSaveSubmission(true)}
-                          disabled={submissionMutation.status === 'pending'}
-                        >
-                          <SendIcon className="size-3.5" />
-                          Submit
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div>
-                {(allSubmissions as Array<SubmissionWithStudent>).length ===
-                0 ? (
-                  <div className="py-16 text-center">
-                    <p className="text-sm text-[#AFA28F] italic">
-                      No submissions yet
-                    </p>
-                  </div>
-                ) : (
-                  <DataTable
-                    columns={submissionsColumns}
-                    data={allSubmissions as Array<SubmissionWithStudent>}
-                    pageSize={10}
-                    searchPlaceholder="Search by student name…"
-                  />
-                )}
-              </div>
-            )}
-          </div>
+                  {canSubmit && (
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        theme="dark"
+                        onClick={() => handleSaveSubmission(false)}
+                        disabled={submissionMutation.status === 'pending'}
+                      >
+                        <SaveIcon className="size-3.5" />
+                        Save Draft
+                      </Button>
+                      <Button
+                        theme="dark"
+                        onClick={() => handleSaveSubmission(true)}
+                        disabled={submissionMutation.status === 'pending'}
+                      >
+                        <SendIcon className="size-3.5" />
+                        Submit
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              {(allSubmissions as Array<SubmissionWithStudent>).length === 0 ? (
+                <div className="py-16 text-center">
+                  <p className="text-sm text-[#AFA28F] italic">
+                    No submissions yet
+                  </p>
+                </div>
+              ) : (
+                <DataTable
+                  columns={submissionsColumns}
+                  data={allSubmissions as Array<SubmissionWithStudent>}
+                  pageSize={10}
+                  searchPlaceholder="Search by student name…"
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -569,6 +554,6 @@ function AssignmentDetailComponent() {
           submission={selectedSubmission}
         />
       )}
-    </div>
+    </PageLayout>
   )
 }

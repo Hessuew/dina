@@ -19,6 +19,9 @@ This folder contains:
 - **`navigation/`**
   - App shell components: sidebar, header, catch boundary, not-found page.
 
+- **`layout/`**
+  - Page layout wrappers: PageLayout for consistent page background and container structure.
+
 - **Feature component families**
   - `auth/`: signup/login/reset/enrolment forms.
   - `dialog/`: dialogs for profile, invitations, teachers, event previews.

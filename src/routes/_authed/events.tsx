@@ -18,6 +18,7 @@ import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { EventDialog } from '@/components/dialog/EventDialog'
 import { Button } from '@/components/ui/button'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
+import { PageLayout } from '@/components/layout/page-layout'
 import { cn } from '@/lib/utils'
 import { getCourses } from '@/utils/courses'
 import { getEvents } from '@/utils/event'
@@ -141,63 +142,53 @@ function EventsComponent() {
   ]
 
   return (
-    <div
-      className="relative isolate min-h-screen overflow-hidden"
-      style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(255,255,255,0.92), rgba(255,255,255,0.92)), url(${facultyBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.10),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.22),transparent_22%)]" />
-      <div className="relative mx-auto max-w-7xl px-6 py-10 sm:px-8 sm:py-12">
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <div className="h-px w-8 bg-[#9B7A41]/50" />
-            <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-              School Calendar
-            </div>
-            <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
-              Events
-            </h1>
-            <p className="mt-2 text-sm text-[#5E5549]">
-              Manage chapel services, exams, and school-wide occasions
-            </p>
+    <PageLayout>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <div className="h-px w-8 bg-[#9B7A41]/50" />
+          <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+            School Calendar
           </div>
+          <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
+            Events
+          </h1>
+          <p className="mt-2 text-sm text-[#5E5549]">
+            Manage chapel services, exams, and school-wide occasions
+          </p>
+        </div>
+        <Button
+          theme="light"
+          onClick={() => setDialogState({ mode: 'create' })}
+        >
+          <PlusIcon className="size-4" />
+          Create Event
+        </Button>
+      </div>
+
+      {events.length === 0 ? (
+        <div className="flex flex-col items-center justify-center border border-dashed border-[#1A1A1A]/20 bg-[#EDE8DE]/40 p-16 text-center">
+          <CalendarDaysIcon className="mb-3 size-8 text-[#9B7A41]/50" />
+          <h3 className="font-serif text-lg text-[#1C1815]">No events yet</h3>
+          <p className="mt-2 text-sm text-[#5E5549]">
+            Create the first school event to get started
+          </p>
           <Button
             theme="light"
+            className="mt-4"
             onClick={() => setDialogState({ mode: 'create' })}
           >
             <PlusIcon className="size-4" />
             Create Event
           </Button>
         </div>
-
-        {events.length === 0 ? (
-          <div className="flex flex-col items-center justify-center border border-dashed border-[#1A1A1A]/20 bg-[#EDE8DE]/40 p-16 text-center">
-            <CalendarDaysIcon className="mb-3 size-8 text-[#9B7A41]/50" />
-            <h3 className="font-serif text-lg text-[#1C1815]">No events yet</h3>
-            <p className="mt-2 text-sm text-[#5E5549]">
-              Create the first school event to get started
-            </p>
-            <Button
-              theme="light"
-              className="mt-4"
-              onClick={() => setDialogState({ mode: 'create' })}
-            >
-              <PlusIcon className="size-4" />
-              Create Event
-            </Button>
-          </div>
-        ) : (
-          <DataTable
-            columns={columns}
-            data={events}
-            pageSize={15}
-            searchPlaceholder="Search events…"
-          />
-        )}
-      </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={events}
+          pageSize={15}
+          searchPlaceholder="Search events…"
+        />
+      )}
 
       <EventDialog
         key={`${dialogMode}-${dialogEvent?.id}`}
@@ -206,6 +197,6 @@ function EventsComponent() {
         mode={dialogMode}
         event={dialogEvent}
       />
-    </div>
+    </PageLayout>
   )
 }
