@@ -21,6 +21,7 @@ import {
   submissions,
 } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth/auth'
+import { authz, withRequestCache } from '@/utils/authz'
 
 export const getCourses = createServerFn({ method: 'POST' }).handler(
   async () => {
@@ -295,77 +296,81 @@ export const createCourse = createServerFn({ method: 'POST' })
 export const updateCourse = createServerFn({ method: 'POST' })
   .inputValidator(updateCourseSchema)
   .handler(async ({ data }) => {
-    const { requireTeacherOfCourse, isAdmin } =
-      await import('@/utils/auth/auth')
     const user = await getCurrentUser()
-    const db = await getDb()
 
-    const userIsAdmin = await isAdmin(user.id)
+    return withRequestCache(async () => {
+      const db = await getDb()
 
-    // Teachers can update their courses, admins can update any course
-    if (!userIsAdmin) {
-      await requireTeacherOfCourse(user.id, data.courseId)
-    }
-
-    // Update course basic info
-    const [course] = await db
-      .update(courses)
-      .set({
-        title: data.title,
-        description: data.description,
-        thumbnailUrl: data.thumbnailUrl || null,
-        isPublished: data.isPublished,
-        orderIndex: data.orderIndex,
-        updatedAt: new Date(),
-      })
-      .where(eq(courses.id, data.courseId))
-      .returning()
-
-    // If admin is updating teachers
-    if (userIsAdmin && data.teacher1Id && data.teacher2Id) {
-      // Validate that exactly 2 different teachers are provided
-      if (data.teacher1Id === data.teacher2Id) {
-        throw new Error('Must assign 2 different teachers to a course')
+      // Admins can update any course, teachers can only update their own
+      const isUserAdmin = await authz(user.id).isAdmin()
+      if (!isUserAdmin) {
+        await authz(user.id).perform('editCourse').on('course', data.courseId)
       }
 
-      // Verify both teachers exist and have teacher role
-      const teachers = await db.query.profiles.findMany({
-        where: inArray(profiles.id, [data.teacher1Id, data.teacher2Id]),
-      })
+      // Update course basic info
+      const [course] = await db
+        .update(courses)
+        .set({
+          title: data.title,
+          description: data.description,
+          thumbnailUrl: data.thumbnailUrl || null,
+          isPublished: data.isPublished,
+          orderIndex: data.orderIndex,
+          updatedAt: new Date(),
+        })
+        .where(eq(courses.id, data.courseId))
+        .returning()
 
-      if (teachers.length !== 2) {
-        throw new Error('One or both teachers not found')
+      // If admin is updating teachers
+      if (isUserAdmin && data.teacher1Id && data.teacher2Id) {
+        // Validate that exactly 2 different teachers are provided
+        if (data.teacher1Id === data.teacher2Id) {
+          throw new Error('Must assign 2 different teachers to a course')
+        }
+
+        // Verify both teachers exist and have teacher role
+        const teachers = await db.query.profiles.findMany({
+          where: inArray(profiles.id, [data.teacher1Id, data.teacher2Id]),
+        })
+
+        if (teachers.length !== 2) {
+          throw new Error('One or both teachers not found')
+        }
+
+        const teacher1 = teachers.find((t) => t.id === data.teacher1Id)
+        const teacher2 = teachers.find((t) => t.id === data.teacher2Id)
+
+        if (teacher1?.role !== 'teacher' && teacher1?.role !== 'admin') {
+          throw new Error(
+            `${teacher1?.fullName || 'Teacher 1'} is not a teacher`,
+          )
+        }
+        if (teacher2?.role !== 'teacher' && teacher2?.role !== 'admin') {
+          throw new Error(
+            `${teacher2?.fullName || 'Teacher 2'} is not a teacher`,
+          )
+        }
+
+        // Delete existing teacher assignments
+        await db
+          .delete(courseTeachers)
+          .where(eq(courseTeachers.courseId, data.courseId))
+
+        // Insert new teacher assignments
+        await db.insert(courseTeachers).values([
+          {
+            courseId: data.courseId,
+            teacherId: data.teacher1Id,
+          },
+          {
+            courseId: data.courseId,
+            teacherId: data.teacher2Id,
+          },
+        ])
       }
 
-      const teacher1 = teachers.find((t) => t.id === data.teacher1Id)
-      const teacher2 = teachers.find((t) => t.id === data.teacher2Id)
-
-      if (teacher1?.role !== 'teacher' && teacher1?.role !== 'admin') {
-        throw new Error(`${teacher1?.fullName || 'Teacher 1'} is not a teacher`)
-      }
-      if (teacher2?.role !== 'teacher' && teacher2?.role !== 'admin') {
-        throw new Error(`${teacher2?.fullName || 'Teacher 2'} is not a teacher`)
-      }
-
-      // Delete existing teacher assignments
-      await db
-        .delete(courseTeachers)
-        .where(eq(courseTeachers.courseId, data.courseId))
-
-      // Insert new teacher assignments
-      await db.insert(courseTeachers).values([
-        {
-          courseId: data.courseId,
-          teacherId: data.teacher1Id,
-        },
-        {
-          courseId: data.courseId,
-          teacherId: data.teacher2Id,
-        },
-      ])
-    }
-
-    return { course }
+      return { course }
+    })
   })
 
 export const deleteCourse = createServerFn({ method: 'POST' })
