@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCachedData } from './useCachedData'
 import type { StudentWithStats } from '@/types/student'
 import { getStudents } from '@/utils/students'
-
-const CACHE_DURATION = 5 * 60 * 1000
 
 type UseStudentsResult = {
   students: Array<StudentWithStats>
@@ -12,42 +10,17 @@ type UseStudentsResult = {
 }
 
 export function useStudents(shouldFetch: boolean): UseStudentsResult {
-  const [students, setStudents] = useState<Array<StudentWithStats>>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-  const [lastFetchTime, setLastFetchTime] = useState<number | null>(null)
-
-  const fetchStudents = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-      const result = await getStudents()
-      setStudents(result.students)
-      setLastFetchTime(Date.now())
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error('Failed to fetch students'),
-      )
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (!shouldFetch) return
-
-    const now = Date.now()
-    const isStale = !lastFetchTime || now - lastFetchTime > CACHE_DURATION
-
-    if (isStale && !isLoading) {
-      fetchStudents()
-    }
-  }, [shouldFetch])
+  const {
+    data: students,
+    isLoading,
+    error,
+    refetch,
+  } = useCachedData(shouldFetch, getStudents, (result) => result.students)
 
   return {
     students,
     isLoading,
     error,
-    refetch: fetchStudents,
+    refetch,
   }
 }
