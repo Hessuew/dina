@@ -24,21 +24,9 @@ import {
   updatePostSchema,
 } from '@/schemas/post.schema'
 import { getCurrentUser } from '@/utils/auth/auth'
+import { authz, withRequestCache } from '@/utils/authz'
 
 // ── Helpers ──────────────────────────────────────────────────────────────
-
-async function getRole(userId: string) {
-  const db = await getDb()
-  const profile = await db.query.profiles.findFirst({
-    where: eq(profiles.id, userId),
-    columns: { role: true },
-  })
-  return profile?.role ?? 'student'
-}
-
-function canModerate(role: string) {
-  return role === 'teacher' || role === 'admin'
-}
 
 export type PostChannel =
   | { id: 'general'; name: 'General'; courseId: null }
@@ -219,117 +207,122 @@ export const createPost = createServerFn({ method: 'POST' })
   .inputValidator(createPostSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const db = await getDb()
 
-    const role = await getRole(user.id)
+    return withRequestCache(async () => {
+      const db = await getDb()
 
-    const [post] = await db
-      .insert(posts)
-      .values({
-        authorId: user.id,
-        courseId: data.courseId ?? null,
-        content: data.content,
-      })
-      .returning()
+      const isTeacher = await authz(user.id).isRole('teacher')
+      const isAdmin = await authz(user.id).isAdmin()
+      const canModerate = isTeacher || isAdmin
 
-    const full = await db.query.posts.findFirst({
-      where: and(eq(posts.id, post.id), isNull(posts.deletedAt)),
-      with: {
-        course: {
-          columns: { id: true, title: true },
-        },
-        author: {
-          columns: { id: true, fullName: true, avatarUrl: true },
-        },
-        reactions: {
-          columns: { id: true, emoji: true, userId: true },
-        },
-        comments: {
-          where: isNull(postComments.deletedAt),
-          orderBy: [desc(postComments.createdAt)],
-          limit: 3,
-          with: {
-            author: {
-              columns: { id: true, fullName: true, avatarUrl: true },
-            },
-            reactions: {
-              columns: { id: true, emoji: true, userId: true },
+      const [post] = await db
+        .insert(posts)
+        .values({
+          authorId: user.id,
+          courseId: data.courseId ?? null,
+          content: data.content,
+        })
+        .returning()
+
+      const full = await db.query.posts.findFirst({
+        where: and(eq(posts.id, post.id), isNull(posts.deletedAt)),
+        with: {
+          course: {
+            columns: { id: true, title: true },
+          },
+          author: {
+            columns: { id: true, fullName: true, avatarUrl: true },
+          },
+          reactions: {
+            columns: { id: true, emoji: true, userId: true },
+          },
+          comments: {
+            where: isNull(postComments.deletedAt),
+            orderBy: [desc(postComments.createdAt)],
+            limit: 3,
+            with: {
+              author: {
+                columns: { id: true, fullName: true, avatarUrl: true },
+              },
+              reactions: {
+                columns: { id: true, emoji: true, userId: true },
+              },
             },
           },
         },
-      },
-    })
+      })
 
-    if (!full) throw new Error('Post not found')
+      if (!full) throw new Error('Post not found')
 
-    const recipients = new Set<string>()
-    const courseId = data.courseId ?? null
+      const recipients = new Set<string>()
+      const courseId = data.courseId ?? null
 
-    if (role === 'teacher' || role === 'admin') {
-      const studentRows = await db
-        .select({ id: profiles.id })
-        .from(profiles)
-        .where(
-          sql`${profiles.role} = 'student' AND ${profiles.id} <> ${user.id}`,
-        )
-
-      for (const row of studentRows) recipients.add(row.id)
-
-      if (courseId === null) {
-        const staffRows = await db
+      if (canModerate) {
+        const studentRows = await db
           .select({ id: profiles.id })
           .from(profiles)
           .where(
-            sql`${profiles.role} IN ('teacher','admin') AND ${profiles.id} <> ${user.id}`,
+            sql`${profiles.role} = 'student' AND ${profiles.id} <> ${user.id}`,
           )
 
-        for (const row of staffRows) recipients.add(row.id)
+        for (const row of studentRows) recipients.add(row.id)
+
+        if (courseId === null) {
+          const staffRows = await db
+            .select({ id: profiles.id })
+            .from(profiles)
+            .where(
+              sql`${profiles.role} IN ('teacher','admin') AND ${profiles.id} <> ${user.id}`,
+            )
+
+          for (const row of staffRows) recipients.add(row.id)
+        }
       }
-    }
 
-    if (courseId) {
-      const teacherRows = await db
-        .select({ id: courseTeachers.teacherId })
-        .from(courseTeachers)
-        .where(eq(courseTeachers.courseId, courseId))
+      if (courseId) {
+        const teacherRows = await db
+          .select({ id: courseTeachers.teacherId })
+          .from(courseTeachers)
+          .where(eq(courseTeachers.courseId, courseId))
 
-      for (const row of teacherRows) {
-        if (row.id !== user.id) recipients.add(row.id)
+        for (const row of teacherRows) {
+          if (row.id !== user.id) recipients.add(row.id)
+        }
       }
-    }
 
-    if (recipients.size > 0) {
-      await db.insert(postNotifications).values(
-        Array.from(recipients).map((recipientId) => ({
-          userId: recipientId,
-          actorId: user.id,
-          event: 'post_created' as const,
-          postId: post.id,
-          commentId: null,
-        })),
-      )
-    }
+      if (recipients.size > 0) {
+        await db.insert(postNotifications).values(
+          Array.from(recipients).map((recipientId) => ({
+            userId: recipientId,
+            actorId: user.id,
+            event: 'post_created' as const,
+            postId: post.id,
+            commentId: null,
+          })),
+        )
+      }
 
-    return {
-      post: {
-        id: full.id,
-        course: full.course,
-        content: full.content,
-        createdAt: full.createdAt,
-        updatedAt: full.updatedAt,
-        author: full.author,
-        reactions: full.reactions,
-        commentCount: 0,
-        previewComments: full.comments.reverse().map((c) => ({
-          id: c.id,
-          content: c.content,
-          createdAt: c.createdAt,
-          updatedAt: c.updatedAt,
-          author: c.author,
-          reactions: c.reactions,
-        })),
-      } satisfies PostWithDetails,
-    }
+      return {
+        post: {
+          id: full.id,
+          course: full.course,
+          content: full.content,
+          createdAt: full.createdAt,
+          updatedAt: full.updatedAt,
+          author: full.author,
+          reactions: full.reactions,
+          commentCount: 0,
+          previewComments: full.comments.reverse().map((c) => ({
+            id: c.id,
+            content: c.content,
+            createdAt: c.createdAt,
+            updatedAt: c.updatedAt,
+            author: c.author,
+            reactions: c.reactions,
+          })),
+        } satisfies PostWithDetails,
+      }
+    })
   })
 
 export const getPostById = createServerFn({ method: 'POST' })
@@ -403,46 +396,53 @@ export const updatePost = createServerFn({ method: 'POST' })
   .inputValidator(updatePostSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const db = await getDb()
 
-    const existing = await db.query.posts.findFirst({
-      where: and(eq(posts.id, data.postId), isNull(posts.deletedAt)),
+    return withRequestCache(async () => {
+      const db = await getDb()
+
+      const existing = await db.query.posts.findFirst({
+        where: and(eq(posts.id, data.postId), isNull(posts.deletedAt)),
+      })
+
+      if (!existing) throw new Error('Post not found')
+      if (existing.authorId !== user.id) {
+        await authz(user.id).perform('editPost').on('post', data.postId)
+      }
+
+      const [post] = await db
+        .update(posts)
+        .set({ content: data.content, updatedAt: new Date() })
+        .where(eq(posts.id, data.postId))
+        .returning()
+
+      return { post }
     })
-
-    if (!existing) throw new Error('Post not found')
-    if (existing.authorId !== user.id) throw new Error('Not authorized')
-
-    const [post] = await db
-      .update(posts)
-      .set({ content: data.content, updatedAt: new Date() })
-      .where(eq(posts.id, data.postId))
-      .returning()
-
-    return { post }
   })
 
 export const deletePost = createServerFn({ method: 'POST' })
   .inputValidator(deletePostSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const db = await getDb()
-    const role = await getRole(user.id)
 
-    const existing = await db.query.posts.findFirst({
-      where: and(eq(posts.id, data.postId), isNull(posts.deletedAt)),
+    return withRequestCache(async () => {
+      const db = await getDb()
+
+      const existing = await db.query.posts.findFirst({
+        where: and(eq(posts.id, data.postId), isNull(posts.deletedAt)),
+      })
+
+      if (!existing) throw new Error('Post not found')
+      if (existing.authorId !== user.id) {
+        await authz(user.id).perform('deletePost').on('post', data.postId)
+      }
+
+      await db
+        .update(posts)
+        .set({ deletedAt: new Date(), deletedBy: user.id })
+        .where(eq(posts.id, data.postId))
+
+      return { success: true }
     })
-
-    if (!existing) throw new Error('Post not found')
-    if (existing.authorId !== user.id && !canModerate(role)) {
-      throw new Error('Not authorized')
-    }
-
-    await db
-      .update(posts)
-      .set({ deletedAt: new Date(), deletedBy: user.id })
-      .where(eq(posts.id, data.postId))
-
-    return { success: true }
   })
 
 // ── Reactions ─────────────────────────────────────────────────────────────
@@ -674,25 +674,29 @@ export const deleteComment = createServerFn({ method: 'POST' })
   .inputValidator(deleteCommentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const db = await getDb()
-    const role = await getRole(user.id)
 
-    const existing = await db.query.postComments.findFirst({
-      where: and(
-        eq(postComments.id, data.commentId),
-        isNull(postComments.deletedAt),
-      ),
+    return withRequestCache(async () => {
+      const db = await getDb()
+
+      const existing = await db.query.postComments.findFirst({
+        where: and(
+          eq(postComments.id, data.commentId),
+          isNull(postComments.deletedAt),
+        ),
+      })
+
+      if (!existing) throw new Error('Comment not found')
+      if (existing.authorId !== user.id) {
+        await authz(user.id)
+          .perform('deleteComment')
+          .on('comment', data.commentId)
+      }
+
+      await db
+        .update(postComments)
+        .set({ deletedAt: new Date(), deletedBy: user.id })
+        .where(eq(postComments.id, data.commentId))
+
+      return { success: true }
     })
-
-    if (!existing) throw new Error('Comment not found')
-    if (existing.authorId !== user.id && !canModerate(role)) {
-      throw new Error('Not authorized')
-    }
-
-    await db
-      .update(postComments)
-      .set({ deletedAt: new Date(), deletedBy: user.id })
-      .where(eq(postComments.id, data.commentId))
-
-    return { success: true }
   })

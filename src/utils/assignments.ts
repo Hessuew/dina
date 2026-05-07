@@ -19,7 +19,8 @@ import {
   profiles,
   submissions,
 } from '@/db/schema'
-import { getCurrentUser, requireTeacherOfCourse } from '@/utils/auth/auth'
+import { getCurrentUser } from '@/utils/auth/auth'
+import { authz, withRequestCache } from '@/utils/authz'
 
 export const getLesson = createServerFn({ method: 'POST' })
   .inputValidator(getLessonSchema)
@@ -198,135 +199,153 @@ export const createAssignment = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const db = await getDb()
 
-    const lesson = await db.query.lessons.findFirst({
-      where: eq(lessons.id, data.lessonId),
-      with: {
-        course: true,
-      },
-    })
+    return withRequestCache(async () => {
+      const db = await getDb()
 
-    if (!lesson) {
-      throw new Error('Lesson not found')
-    }
-
-    await requireTeacherOfCourse(user.id, lesson.courseId)
-
-    const [assignment] = await db
-      .insert(assignments)
-      .values({
-        lessonId: data.lessonId,
-        title: data.title,
-        description: data.description || null,
-        dueDate: new Date(data.dueDate),
-        maxGrade: data.maxGrade || 100,
-        status: 'draft',
+      const lesson = await db.query.lessons.findFirst({
+        where: eq(lessons.id, data.lessonId),
+        with: {
+          course: true,
+        },
       })
-      .returning()
 
-    return { assignment }
+      if (!lesson) {
+        throw new Error('Lesson not found')
+      }
+
+      await authz(user.id).perform('createLesson').on('course', lesson.courseId)
+
+      const [assignment] = await db
+        .insert(assignments)
+        .values({
+          lessonId: data.lessonId,
+          title: data.title,
+          description: data.description || null,
+          dueDate: new Date(data.dueDate),
+          maxGrade: data.maxGrade || 100,
+          status: 'draft',
+        })
+        .returning()
+
+      return { assignment }
+    })
   })
 
 export const updateAssignment = createServerFn({ method: 'POST' })
   .inputValidator(updateAssignmentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const db = await getDb()
 
-    const assignment = await db.query.assignments.findFirst({
-      where: eq(assignments.id, data.assignmentId),
-      with: {
-        lesson: {
-          with: {
-            course: true,
+    return withRequestCache(async () => {
+      const db = await getDb()
+
+      const assignment = await db.query.assignments.findFirst({
+        where: eq(assignments.id, data.assignmentId),
+        with: {
+          lesson: {
+            with: {
+              course: true,
+            },
           },
         },
-      },
-    })
-
-    if (!assignment) {
-      throw new Error('Assignment not found')
-    }
-
-    await requireTeacherOfCourse(user.id, assignment.lesson.courseId)
-
-    const [updatedAssignment] = await db
-      .update(assignments)
-      .set({
-        title: data.title,
-        description: data.description || null,
-        dueDate: new Date(data.dueDate),
-        maxGrade: data.maxGrade || 100,
-        status: data.status,
-        updatedAt: new Date(),
       })
-      .where(eq(assignments.id, data.assignmentId))
-      .returning()
 
-    return { assignment: updatedAssignment }
+      if (!assignment) {
+        throw new Error('Assignment not found')
+      }
+
+      await authz(user.id)
+        .perform('editLesson')
+        .on('course', assignment.lesson.courseId)
+
+      const [updatedAssignment] = await db
+        .update(assignments)
+        .set({
+          title: data.title,
+          description: data.description || null,
+          dueDate: new Date(data.dueDate),
+          maxGrade: data.maxGrade || 100,
+          status: data.status,
+          updatedAt: new Date(),
+        })
+        .where(eq(assignments.id, data.assignmentId))
+        .returning()
+
+      return { assignment: updatedAssignment }
+    })
   })
 
 export const getAssignmentSubmissionCount = createServerFn({ method: 'POST' })
   .inputValidator(getAssignmentSubmissionCountSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const db = await getDb()
 
-    const assignment = await db.query.assignments.findFirst({
-      where: eq(assignments.id, data.assignmentId),
-      with: {
-        lesson: {
-          with: {
-            course: true,
+    return withRequestCache(async () => {
+      const db = await getDb()
+
+      const assignment = await db.query.assignments.findFirst({
+        where: eq(assignments.id, data.assignmentId),
+        with: {
+          lesson: {
+            with: {
+              course: true,
+            },
           },
+          submissions: true,
         },
-        submissions: true,
-      },
+      })
+
+      if (!assignment) {
+        throw new Error('Assignment not found')
+      }
+
+      await authz(user.id)
+        .perform('editLesson')
+        .on('course', assignment.lesson.courseId)
+
+      return { count: assignment.submissions.length }
     })
-
-    if (!assignment) {
-      throw new Error('Assignment not found')
-    }
-
-    await requireTeacherOfCourse(user.id, assignment.lesson.courseId)
-
-    return { count: assignment.submissions.length }
   })
 
 export const deleteAssignment = createServerFn({ method: 'POST' })
   .inputValidator(deleteAssignmentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const db = await getDb()
 
-    const assignment = await db.query.assignments.findFirst({
-      where: eq(assignments.id, data.assignmentId),
-      with: {
-        lesson: {
-          with: {
-            course: true,
+    return withRequestCache(async () => {
+      const db = await getDb()
+
+      const assignment = await db.query.assignments.findFirst({
+        where: eq(assignments.id, data.assignmentId),
+        with: {
+          lesson: {
+            with: {
+              course: true,
+            },
           },
+          submissions: true,
         },
-        submissions: true,
-      },
+      })
+
+      if (!assignment) {
+        throw new Error('Assignment not found')
+      }
+
+      await authz(user.id)
+        .perform('editLesson')
+        .on('course', assignment.lesson.courseId)
+
+      if (assignment.submissions.length > 0) {
+        throw new Error(
+          `Cannot delete assignment with ${assignment.submissions.length} submission${assignment.submissions.length !== 1 ? 's' : ''}`,
+        )
+      }
+
+      await db.delete(assignments).where(eq(assignments.id, data.assignmentId))
+
+      return { success: true }
     })
-
-    if (!assignment) {
-      throw new Error('Assignment not found')
-    }
-
-    await requireTeacherOfCourse(user.id, assignment.lesson.courseId)
-
-    if (assignment.submissions.length > 0) {
-      throw new Error(
-        `Cannot delete assignment with ${assignment.submissions.length} submission${assignment.submissions.length !== 1 ? 's' : ''}`,
-      )
-    }
-
-    await db.delete(assignments).where(eq(assignments.id, data.assignmentId))
-
-    return { success: true }
   })
 
 export const getSubmission = createServerFn({ method: 'POST' })
@@ -596,35 +615,40 @@ export const gradeSubmission = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const db = await getDb()
 
-    const assignment = await db.query.assignments.findFirst({
-      where: eq(assignments.id, data.assignmentId),
-      with: {
-        lesson: {
-          with: {
-            course: true,
+    return withRequestCache(async () => {
+      const db = await getDb()
+
+      const assignment = await db.query.assignments.findFirst({
+        where: eq(assignments.id, data.assignmentId),
+        with: {
+          lesson: {
+            with: {
+              course: true,
+            },
           },
         },
-      },
-    })
-
-    if (!assignment) {
-      throw new Error('Assignment not found')
-    }
-
-    await requireTeacherOfCourse(user.id, assignment.lesson.courseId)
-
-    const [gradedSubmission] = await db
-      .update(submissions)
-      .set({
-        grade: data.grade,
-        feedback: data.feedback || null,
-        gradedAt: new Date(),
-        updatedAt: new Date(),
       })
-      .where(eq(submissions.id, data.submissionId))
-      .returning()
 
-    return { submission: gradedSubmission }
+      if (!assignment) {
+        throw new Error('Assignment not found')
+      }
+
+      await authz(user.id)
+        .perform('gradeAssignment')
+        .on('course', assignment.lesson.courseId)
+
+      const [gradedSubmission] = await db
+        .update(submissions)
+        .set({
+          grade: data.grade,
+          feedback: data.feedback || null,
+          gradedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(submissions.id, data.submissionId))
+        .returning()
+
+      return { submission: gradedSubmission }
+    })
   })
