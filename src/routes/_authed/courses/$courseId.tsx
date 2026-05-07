@@ -1,5 +1,4 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
 import {
   ArrowRight,
   BookOpenIcon,
@@ -10,21 +9,10 @@ import {
   PlusIcon,
   TrashIcon,
 } from 'lucide-react'
-import { and, eq, inArray } from 'drizzle-orm'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import z from 'zod'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
-import { getDb } from '@/db'
-import {
-  assignments,
-  courses,
-  lessonProgress,
-  profiles,
-  submissions,
-} from '@/db/schema'
-import { getCurrentUser } from '@/utils/auth/auth'
 import { useMutation } from '@/hooks/useMutation'
 import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
 import { CourseDialog } from '@/components/dialog/CourseDialog'
@@ -37,104 +25,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { deleteCourse } from '@/utils/courses'
+import { deleteCourse, getCourse } from '@/utils/courses'
 import { cn } from '@/lib/utils'
 import { isUserCourseTeacher } from '@/utils/teacher/isCourseTeacher'
 
-const getCourseData = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({ courseId: z.uuid() }))
-  .handler(async ({ data }) => {
-    const user = await getCurrentUser()
-    const db = await getDb()
-
-    const course = await db.query.courses.findFirst({
-      where: eq(courses.id, data.courseId),
-      with: {
-        courseTeachers: {
-          with: {
-            teacher: true,
-          },
-        },
-        lessons: {
-          orderBy: (lessons, { asc }) => [asc(lessons.orderIndex)],
-        },
-      },
-    })
-
-    if (!course) {
-      throw new Error('Course not found')
-    }
-
-    const profile = await db.query.profiles.findFirst({
-      where: eq(profiles.id, user.id),
-    })
-
-    if (!profile) {
-      throw new Error('Profile not found')
-    }
-
-    let progress: Array<any> = []
-    let assignmentData: {
-      totalAssignments: number
-      submittedCount: number
-      gradedCount: number
-    } = { totalAssignments: 0, submittedCount: 0, gradedCount: 0 }
-
-    if (profile.role === 'student') {
-      progress = await db.query.lessonProgress.findMany({
-        where: and(
-          eq(lessonProgress.studentId, user.id),
-          eq(lessonProgress.completed, true),
-        ),
-      })
-
-      const lessonIds = course.lessons.map((l) => l.id)
-      const courseAssignments =
-        lessonIds.length > 0
-          ? await db.query.assignments.findMany({
-              where: inArray(assignments.lessonId, lessonIds),
-            })
-          : []
-
-      const assignmentIds = courseAssignments.map((a) => a.id)
-      const studentSubmissions =
-        assignmentIds.length > 0
-          ? await db.query.submissions.findMany({
-              where: and(
-                eq(submissions.studentId, user.id),
-                inArray(submissions.assignmentId, assignmentIds),
-              ),
-            })
-          : []
-
-      assignmentData = {
-        totalAssignments: courseAssignments.length,
-        submittedCount: studentSubmissions.filter(
-          (s) => s.status === 'submitted',
-        ).length,
-        gradedCount: studentSubmissions.filter((s) => s.status === 'graded')
-          .length,
-      }
-    }
-
-    const completedLessonIds = new Set(progress.map((p) => p.lessonId))
-
-    return {
-      course: {
-        ...course,
-        teacher1Id: course.courseTeachers[0]?.teacherId,
-        teacher2Id: course.courseTeachers[1]?.teacherId,
-      },
-      role: profile.role,
-      completedLessonIds: Array.from(completedLessonIds),
-      assignmentData,
-      user,
-    }
-  })
-
 export const Route = createFileRoute('/_authed/courses/$courseId')({
   loader: async ({ params }) => {
-    const data = await getCourseData({ data: { courseId: params.courseId } })
+    const data = await getCourse({ data: { courseId: params.courseId } })
     return data
   },
   component: CourseDetailComponent,
@@ -153,14 +50,7 @@ type Lesson = {
 function CourseDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
-  const {
-    course: c,
-    role,
-    completedLessonIds,
-    assignmentData,
-    user,
-  } = loaderData
-  const course = c as typeof loaderData.course | null
+  const { course, role, completedLessonIds, assignmentData, user } = loaderData
 
   const [showEditCourseDialog, setShowEditCourseDialog] = useState(false)
   const [editCourseInitialData, setEditCourseInitialData] = useState<
@@ -184,9 +74,9 @@ function CourseDetailComponent() {
 
   const isAdmin = role === 'admin'
   const courseTeachersData = course?.courseTeachers || []
-  const canEdit = role === 'teacher' || role === 'admin'
   const isCourseTeacher =
     isUserCourseTeacher(course, user.id) || role === 'admin'
+  const canEdit = role === 'teacher' || role === 'admin'
   const totalLessons = course?.lessons.length || 0
 
   const deleteCourseMutation = useMutation({
