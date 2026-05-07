@@ -5,7 +5,7 @@ import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import { InvitationsTable } from '@/components/table/InvitationsTable'
 import { InviteUserModal } from '@/components/dialog/InviteUserModal'
-import { checkAdminAccess } from '@/utils/admin'
+import { checkAdminAccess } from '@/utils/auth/admin'
 import { getInvitations } from '@/utils/invitations'
 
 export const Route = createFileRoute('/_authed/invitations')({

@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { checkAdminAccess } from '@/utils/admin'
+import { checkAdminAccess } from '@/utils/auth/admin'
 import {
   deleteEnrollment,
   getEnrollmentById,
@@ -214,7 +214,9 @@ function EnrollmentDetailPage() {
               <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
                 Email
               </div>
-              <div className="mt-2 text-sm text-[#D6CCBE]">{enrollment.email}</div>
+              <div className="mt-2 text-sm text-[#D6CCBE]">
+                {enrollment.email}
+              </div>
             </div>
 
             <div>
@@ -257,7 +259,9 @@ function EnrollmentDetailPage() {
               <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
                 Current address
               </div>
-              <div className="mt-2 text-sm text-[#D6CCBE]">{address || '—'}</div>
+              <div className="mt-2 text-sm text-[#D6CCBE]">
+                {address || '—'}
+              </div>
             </div>
 
             <div className="sm:col-span-2">

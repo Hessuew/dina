@@ -7,7 +7,7 @@ import { getDb } from '@/db'
 import { enrollments, invitations, profiles } from '@/db/schema'
 import { env } from '@/env'
 import { InvitationEmail } from '@/emails/InvitationEmail'
-import { getCurrentUser, requireAdmin } from '@/utils/auth'
+import { getCurrentUser, requireAdmin } from '@/utils/auth/auth'
 import {
   createEnrollmentSchema,
   deleteEnrollmentSchema,

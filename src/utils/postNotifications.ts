@@ -6,7 +6,7 @@ import {
   getPostNotificationsSummarySchema,
   markPostNotificationGroupReadSchema,
 } from '@/schemas/postNotifications.schema'
-import { getCurrentUser } from '@/utils/auth'
+import { getCurrentUser } from '@/utils/auth/auth'
 
 export type PostNotificationEvent = 'post_created' | 'comment_created'
 

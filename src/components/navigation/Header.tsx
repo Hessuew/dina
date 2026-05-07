@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 import { useMutation } from '@/hooks/useMutation'
-import { getCurrentUser } from '@/utils/auth'
+import { getCurrentUser } from '@/utils/auth/auth'
 
 type User = {
   id: string

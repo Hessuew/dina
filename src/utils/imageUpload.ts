@@ -7,7 +7,7 @@ import {
   uploadCourseThumbnailSchema,
   uploadImageSchema,
 } from '@/schemas/image.schema'
-import { getCurrentUser } from '@/utils/auth'
+import { getCurrentUser } from '@/utils/auth/auth'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 export const uploadImageFn = createServerFn({ method: 'POST' })

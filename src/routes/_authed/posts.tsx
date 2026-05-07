@@ -25,7 +25,7 @@ import {
 import { useMutation } from '@/hooks/useMutation'
 import { cn } from '@/lib/utils'
 import { REACTION_EMOJIS } from '@/schemas/post.schema'
-import { getCurrentUser, getUserProfile } from '@/utils/auth'
+import { getCurrentUser, getUserProfile } from '@/utils/auth/auth'
 import {
   createComment,
   createPost,

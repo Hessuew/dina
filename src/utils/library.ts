@@ -9,7 +9,7 @@ import {
   updateMediaSchema,
   uploadMediaPdfSchema,
 } from '@/schemas/media.schema'
-import { getCurrentUser, getUserProfile } from '@/utils/auth'
+import { getCurrentUser, getUserProfile } from '@/utils/auth/auth'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 export type MediaLibraryRow = {

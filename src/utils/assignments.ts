@@ -19,7 +19,7 @@ import {
   profiles,
   submissions,
 } from '@/db/schema'
-import { getCurrentUser, requireTeacherOfCourse } from '@/utils/auth'
+import { getCurrentUser, requireTeacherOfCourse } from '@/utils/auth/auth'
 
 export const getLesson = createServerFn({ method: 'POST' })
   .inputValidator(getLessonSchema)

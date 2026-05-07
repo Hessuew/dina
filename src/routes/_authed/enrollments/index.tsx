@@ -4,7 +4,7 @@ import type { EnrollmentRow } from '@/components/table/EnrollmentsTable'
 import { Button } from '@/components/ui/button'
 import { EnrollmentsTable } from '@/components/table/EnrollmentsTable'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
-import { checkAdminAccess } from '@/utils/admin'
+import { checkAdminAccess } from '@/utils/auth/admin'
 import { getEnrollments } from '@/utils/enrollments'
 
 export const Route = createFileRoute('/_authed/enrollments/')({

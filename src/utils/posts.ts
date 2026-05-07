@@ -23,7 +23,7 @@ import {
   updateCommentSchema,
   updatePostSchema,
 } from '@/schemas/post.schema'
-import { getCurrentUser } from '@/utils/auth'
+import { getCurrentUser } from '@/utils/auth/auth'
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
