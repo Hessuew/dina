@@ -35,6 +35,13 @@ This folder is primarily where TanStack Start server functions live (via `create
   - These typically export server functions that routes call for loading and mutations.
   - `postNotifications.ts`.
     - Post notification inbox logic (aggregation + mark read).
+  - `notifications/` - Notification event system:
+    - `types.ts` - Core types (NotificationEvent, DeliveryAdapter, Handler)
+    - `events.ts` - Event factories (createPostCreatedEvent, createCommentCreatedEvent)
+    - `recipients.ts` - Business rules for recipient calculation
+    - `delivery.ts` - Delivery adapters (DatabaseDeliveryAdapter for DB writes)
+    - `index.ts` - Main exports: emit(event) for sending notifications
+    - Usage: `await emit(createPostCreatedEvent(actorId, postId, courseId, canModerate))`
 
 - **Role-gated route helpers**
   - `admin.ts`: shared admin-only access check for routes (legacy, migrate to authz).
