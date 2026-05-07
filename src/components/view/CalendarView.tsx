@@ -10,7 +10,7 @@ import {
 } from 'date-fns'
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { useState } from 'react'
-import type { CalendarEvent } from '@/utils/calendar'
+import type { CalendarEvent } from '@/utils/calendar/calendar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 

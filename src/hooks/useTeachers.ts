@@ -1,6 +1,6 @@
 import { useCachedData } from './useCachedData'
 import type { TeacherWithCourse } from '@/types/teacher'
-import { getTeachers } from '@/utils/teachers'
+import { getTeachers } from '@/utils/teachers/teachers'
 
 type UseTeachersResult = {
   teachers: Array<TeacherWithCourse>

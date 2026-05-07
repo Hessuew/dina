@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { InvitationsTable } from '@/components/table/InvitationsTable'
 import { InviteUserModal } from '@/components/dialog/InviteUserModal'
 import { checkAdminAccess } from '@/utils/auth/admin'
-import { getInvitations } from '@/utils/invitations'
+import { getInvitations } from '@/utils/invitation'
 
 export const Route = createFileRoute('/_authed/invitations')({
   beforeLoad: async () => {

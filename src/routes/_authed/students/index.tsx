@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { StudentsView } from '@/components/view/StudentsView'
-import { getStudents } from '@/utils/students'
+import { getStudents } from '@/utils/student'
 import { getCourses } from '@/utils/courses'
 
 export const Route = createFileRoute('/_authed/students/')({

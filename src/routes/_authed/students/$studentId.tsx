@@ -2,7 +2,7 @@ import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { CalendarIcon, ChevronLeft } from 'lucide-react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
-import { getStudentDetail } from '@/utils/students'
+import { getStudentDetail } from '@/utils/student'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/_authed/students/$studentId')({

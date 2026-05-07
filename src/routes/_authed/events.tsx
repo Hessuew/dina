@@ -13,14 +13,14 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
-import type { CalendarEventRow } from '@/utils/events'
+import type { CalendarEventRow } from '@/utils/event'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { EventDialog } from '@/components/dialog/EventDialog'
 import { Button } from '@/components/ui/button'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { cn } from '@/lib/utils'
 import { getCourses } from '@/utils/courses'
-import { getEvents } from '@/utils/events'
+import { getEvents } from '@/utils/event'
 
 export const Route = createFileRoute('/_authed/events')({
   beforeLoad: async () => {

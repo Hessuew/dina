@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { EnrollmentsTable } from '@/components/table/EnrollmentsTable'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { checkAdminAccess } from '@/utils/auth/admin'
-import { getEnrollments } from '@/utils/enrollments'
+import { getEnrollments } from '@/utils/enrolment'
 
 export const Route = createFileRoute('/_authed/enrollments/')({
   beforeLoad: async () => {

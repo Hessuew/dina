@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useMutation } from '@/hooks/useMutation'
-import { createInvitation } from '@/utils/invitations'
+import { createInvitation } from '@/utils/invitation'
 
 type InviteUserModalProps = {
   open: boolean

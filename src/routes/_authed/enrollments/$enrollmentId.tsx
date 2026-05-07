@@ -29,7 +29,7 @@ import {
   getEnrollmentById,
   sendInvitationForEnrollment,
   updateEnrollmentStatus,
-} from '@/utils/enrollments'
+} from '@/utils/enrolment'
 import { useMutation } from '@/hooks/useMutation'
 
 const STATUS_OPTIONS = [

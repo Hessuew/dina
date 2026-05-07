@@ -27,7 +27,7 @@ import {
 } from '@/utils/assignments'
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { cn } from '@/lib/utils'
-import { isUserCourseTeacher } from '@/utils/teacher/isCourseTeacher'
+import { isUserCourseTeacher } from '@/utils/teachers'
 
 const getAssignmentData = createServerFn({ method: 'POST' })
   .inputValidator((d: { assignmentId: string }) => d)

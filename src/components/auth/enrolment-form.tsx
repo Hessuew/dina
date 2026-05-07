@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { createEnrollment } from '@/utils/enrollments'
+import { createEnrollment } from '@/utils/enrolment/enrollments'
 import { cn } from '@/lib/utils'
 
 function required({ value }: { value: string }) {
