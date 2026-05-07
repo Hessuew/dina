@@ -36,6 +36,9 @@ When working in this repo:
 - **Auth boundaries**
   - Routes under `src/routes/_authed/**` require authentication via `src/routes/_authed.tsx`.
   - Server functions that require auth should call `getCurrentUser()` (`src/utils/auth.ts`).
+- **Server-function errors**
+  - Expected server-function failures should throw typed errors from `src/utils/errors.ts`.
+  - UI and route boundaries should translate unknown errors with `toUserError()` instead of relying on raw `error.message`.
 - **Environment variables**
   - Typed env definitions live in `src/env.ts`.
   - Never hardcode secrets; use bindings/env.

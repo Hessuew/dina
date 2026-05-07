@@ -27,13 +27,8 @@ export function isAllowed(userId: string) {
 }
 
 export { withRequestCache }
-export type {
-  AuthorizationService,
-  Role,
-  Action,
-  ResourceType,
-  AuthorizationError,
-} from './types'
+export type { AuthorizationService, Role, Action, ResourceType } from './types'
+export { AuthorizationError } from '@/utils/errors'
 export { DefaultAuthorizationService } from './default-adapter'
 export { protectRoute } from './route'
 export { TestAuthorizationService } from './test-adapter'

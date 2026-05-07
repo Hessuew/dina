@@ -1,5 +1,5 @@
-import { AuthorizationError } from './types'
 import type { Action, AuthorizationService, ResourceType, Role } from './types'
+import { AuthorizationError } from '@/utils/errors'
 
 interface TestConfig {
   roles?: Map<string, Role>
@@ -23,11 +23,11 @@ export class TestAuthorizationService implements AuthorizationService {
   async hasRole(userId: string, role: Role): Promise<void> {
     const hasIt = await this.isRole(userId, role)
     if (!hasIt) {
-      throw new AuthorizationError(
-        `${role} access required`,
-        `Test: User does not have role: ${role}`,
-        'ROLE_REQUIRED',
-      )
+      throw new AuthorizationError(`${role} access required`, {
+        code: 'ROLE_REQUIRED',
+        internalMessage: `Test: User does not have role: ${role}`,
+        details: { role },
+      })
     }
   }
 
@@ -54,8 +54,11 @@ export class TestAuthorizationService implements AuthorizationService {
     if (!allowed) {
       throw new AuthorizationError(
         `Not authorized to ${action} on ${resourceType}`,
-        `Test: User cannot perform ${action} on ${resourceType}:${resourceId}`,
-        'ACTION_NOT_ALLOWED',
+        {
+          code: 'ACTION_NOT_ALLOWED',
+          internalMessage: `Test: User cannot perform ${action} on ${resourceType}:${resourceId}`,
+          details: { action, resourceType, resourceId },
+        },
       )
     }
   }

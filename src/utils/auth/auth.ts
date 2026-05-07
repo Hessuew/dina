@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
+import { AuthenticationError, NotFoundError } from '@/utils/errors'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 /**
@@ -15,7 +16,7 @@ export async function getCurrentUser() {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    throw new Error('Not authenticated')
+    throw new AuthenticationError('Not authenticated')
   }
 
   return user
@@ -30,7 +31,7 @@ export function requireAuth(
   userId: string | undefined,
 ): asserts userId is string {
   if (!userId) {
-    throw new Error('Authentication required')
+    throw new AuthenticationError('Authentication required')
   }
 }
 
@@ -45,7 +46,9 @@ export async function getUserProfile(userId: string) {
   })
 
   if (!user) {
-    throw new Error('User profile not found')
+    throw new NotFoundError('User profile not found', {
+      details: { userId },
+    })
   }
 
   return user

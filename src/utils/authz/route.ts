@@ -1,8 +1,8 @@
 import { redirect } from '@tanstack/react-router'
-import { AuthorizationError } from './types'
 import { getAuthorizationService } from './index'
 import type { Role } from './types'
 import { getCurrentUser } from '@/utils/auth/auth'
+import { AuthorizationError } from '@/utils/errors'
 
 interface ProtectRouteOptions {
   require?: Role

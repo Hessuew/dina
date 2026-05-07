@@ -14,6 +14,7 @@ import {
   updateLibraryMedia,
   uploadMediaPdfFn,
 } from '@/utils/library'
+import { toUserError } from '@/utils/errors'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { useMutation } from '@/hooks/useMutation'
 import { Button } from '@/components/ui/button'
@@ -211,19 +212,12 @@ export function MediaDialog({
             },
           })
 
-          if ('error' in result && result.error) {
-            toast.error(result.message || 'Failed to upload PDF')
-            setIsUploading(false)
-            return
-          }
-
-          if ('fileUrl' in result && result.fileUrl) {
+          if (result.fileUrl) {
             url = result.fileUrl
             fileSize = formData.pdfFile.size
           }
         } catch (error) {
-          console.error('PDF upload error:', error)
-          toast.error('Failed to upload PDF')
+          toast.error(toUserError(error).message)
           setIsUploading(false)
           return
         }
@@ -283,19 +277,12 @@ export function MediaDialog({
           },
         })
 
-        if ('error' in result && result.error) {
-          toast.error(result.message || 'Failed to upload PDF')
-          setIsUploading(false)
-          return
-        }
-
-        if ('fileUrl' in result && result.fileUrl) {
+        if (result.fileUrl) {
           url = result.fileUrl
           fileSize = formData.pdfFile.size
         }
       } catch (error) {
-        console.error('PDF upload error:', error)
-        toast.error('Failed to upload PDF')
+        toast.error(toUserError(error).message)
         setIsUploading(false)
         return
       }

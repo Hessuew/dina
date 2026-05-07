@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { loginSchema } from '@/schemas/auth.schema'
+import { toUserError } from '@/utils/errors'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 export const loginFn = createServerFn({ method: 'POST' })
@@ -29,7 +30,9 @@ export const Route = createFileRoute('/_authed')({
     }
   },
   errorComponent: ({ error }) => {
-    if (error.message === 'Not authenticated') {
+    const userError = toUserError(error)
+
+    if (userError.code === 'AUTHENTICATION_REQUIRED') {
       throw redirect({
         to: '/login',
       })
