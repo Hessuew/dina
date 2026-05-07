@@ -159,6 +159,15 @@ export function toUserError(error: unknown): UserError {
     }
   }
 
+  // Fallback for plain Error objects (e.g., after serialization)
+  if (error instanceof Error) {
+    return {
+      code: 'UNEXPECTED_ERROR',
+      message: error.message || 'An unexpected error occurred',
+      status: 500,
+    }
+  }
+
   return {
     code: 'UNEXPECTED_ERROR',
     message: 'An unexpected error occurred',

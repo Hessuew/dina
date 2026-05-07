@@ -14,6 +14,7 @@ import {
 } from '@/db/schema'
 import { getStudentDetailSchema } from '@/schemas/student.schema'
 import { NotFoundError } from '@/utils/errors'
+import { calculateAverageGrade } from '@/domain/grade.service'
 
 export const getStudents = createServerFn({ method: 'POST' }).handler(
   async () => {
@@ -76,11 +77,7 @@ export const getStudents = createServerFn({ method: 'POST' }).handler(
 
           if (gradesInCourse.length === 0) return null
 
-          const averageGrade =
-            gradesInCourse.reduce(
-              (sum, g) => sum + (g.grade / g.maxGrade) * 100,
-              0,
-            ) / gradesInCourse.length
+          const averageGrade = calculateAverageGrade(gradesInCourse)
 
           return {
             courseId: enrollment.id,

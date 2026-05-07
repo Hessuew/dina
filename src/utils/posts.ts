@@ -1,5 +1,10 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm'
+import { and, desc, eq, isNull, lt, or, sql } from 'drizzle-orm'
+import type {
+  CommentWithAuthor,
+  PostChannel,
+  PostWithDetails,
+} from '@/domain/post.service'
 import { getDb } from '@/db'
 import {
   postCommentReactions,
@@ -28,12 +33,66 @@ import {
   createPostCreatedEvent,
 } from '@/utils/notifications/events'
 import { emit } from '@/utils/notifications'
+import {
+  calculateCommentCounts,
+  determineReactionAction,
+  transformCommentWithAuthor,
+  transformPostWithDetails,
+} from '@/domain/post.service'
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
-export type PostChannel =
-  | { id: 'general'; name: 'General'; courseId: null }
-  | { id: string; name: string; courseId: string }
+function buildPostWhereClause(filters: {
+  courseId?: string | null
+  cursor?: { createdAt: string; id: string } | null
+}) {
+  const conditions = [isNull(posts.deletedAt)]
+
+  if (filters.courseId === null || filters.courseId === undefined) {
+    conditions.push(isNull(posts.courseId))
+  } else {
+    conditions.push(eq(posts.courseId, filters.courseId))
+  }
+
+  if (filters.cursor) {
+    const cursorDate = new Date(filters.cursor.createdAt)
+    const cursorCondition = or(
+      lt(posts.createdAt, cursorDate),
+      and(eq(posts.createdAt, cursorDate), lt(posts.id, filters.cursor.id)),
+    )
+    if (cursorCondition) {
+      conditions.push(cursorCondition)
+    }
+  }
+
+  return conditions
+}
+
+function buildCommentWhereClause(
+  postId: string,
+  cursor?: { createdAt: string; id: string } | null,
+) {
+  const conditions = [
+    eq(postComments.postId, postId),
+    isNull(postComments.deletedAt),
+  ]
+
+  if (cursor) {
+    const cursorDate = new Date(cursor.createdAt)
+    const cursorCondition = or(
+      lt(postComments.createdAt, cursorDate),
+      and(
+        eq(postComments.createdAt, cursorDate),
+        lt(postComments.id, cursor.id),
+      ),
+    )
+    if (cursorCondition) {
+      conditions.push(cursorCondition)
+    }
+  }
+
+  return conditions
+}
 
 export const getPostChannels = createServerFn({ method: 'POST' }).handler(
   async () => {
@@ -60,67 +119,16 @@ export const getPostChannels = createServerFn({ method: 'POST' }).handler(
 
 // ── Posts ─────────────────────────────────────────────────────────────────
 
-export type PostWithDetails = {
-  id: string
-  course: {
-    id: string
-    title: string
-  } | null
-  content: string
-  createdAt: Date
-  updatedAt: Date
-  author: {
-    id: string
-    fullName: string
-    avatarUrl: string | null
-  }
-  reactions: Array<{
-    id: string
-    emoji: string
-    userId: string
-  }>
-  commentCount: number
-  previewComments: Array<{
-    id: string
-    content: string
-    createdAt: Date
-    updatedAt: Date
-    author: {
-      id: string
-      fullName: string
-      avatarUrl: string | null
-    }
-    reactions: Array<{
-      id: string
-      emoji: string
-      userId: string
-    }>
-  }>
-}
-
 export const getPosts = createServerFn({ method: 'POST' })
   .inputValidator(getPostsSchema)
   .handler(async ({ data }) => {
     const db = await getDb()
     const limit = data.limit
 
-    // Build where clause: non-deleted, cursor-based pagination
-    const conditions = [isNull(posts.deletedAt)]
-
-    if (data.courseId === null || data.courseId === undefined) {
-      conditions.push(isNull(posts.courseId))
-    } else {
-      conditions.push(eq(posts.courseId, data.courseId))
-    }
-    if (data.cursor) {
-      const cursorDate = new Date(data.cursor.createdAt)
-      conditions.push(
-        or(
-          lt(posts.createdAt, cursorDate),
-          and(eq(posts.createdAt, cursorDate), lt(posts.id, data.cursor.id)),
-        )!,
-      )
-    }
+    const conditions = buildPostWhereClause({
+      courseId: data.courseId,
+      cursor: data.cursor,
+    })
 
     const rows = await db.query.posts.findMany({
       where: and(...conditions),
@@ -157,46 +165,11 @@ export const getPosts = createServerFn({ method: 'POST' })
 
     // We need total non-deleted comment counts per post
     const postIds = postsSlice.map((p) => p.id)
-    let commentCounts: Record<string, number> = {}
+    const commentCounts = await calculateCommentCounts(db, postIds)
 
-    if (postIds.length > 0) {
-      const countRows = await db
-        .select({
-          postId: postComments.postId,
-          count: sql<number>`count(*)::int`,
-        })
-        .from(postComments)
-        .where(
-          and(
-            inArray(postComments.postId, postIds),
-            isNull(postComments.deletedAt),
-          ),
-        )
-        .groupBy(postComments.postId)
-
-      commentCounts = Object.fromEntries(
-        countRows.map((r) => [r.postId, r.count]),
-      )
-    }
-
-    const result: Array<PostWithDetails> = postsSlice.map((p) => ({
-      id: p.id,
-      course: p.course,
-      content: p.content,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      author: p.author,
-      reactions: p.reactions,
-      commentCount: commentCounts[p.id] ?? 0,
-      previewComments: p.comments.reverse().map((c) => ({
-        id: c.id,
-        content: c.content,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt,
-        author: c.author,
-        reactions: c.reactions,
-      })),
-    }))
+    const result: Array<PostWithDetails> = postsSlice.map((p) =>
+      transformPostWithDetails(p, commentCounts[p.id] ?? 0),
+    )
 
     const lastPost = postsSlice[postsSlice.length - 1]
     const nextCursor = hasMore
@@ -271,24 +244,7 @@ export const createPost = createServerFn({ method: 'POST' })
       await emit(event)
 
       return {
-        post: {
-          id: full.id,
-          course: full.course,
-          content: full.content,
-          createdAt: full.createdAt,
-          updatedAt: full.updatedAt,
-          author: full.author,
-          reactions: full.reactions,
-          commentCount: 0,
-          previewComments: full.comments.reverse().map((c) => ({
-            id: c.id,
-            content: c.content,
-            createdAt: c.createdAt,
-            updatedAt: c.updatedAt,
-            author: c.author,
-            reactions: c.reactions,
-          })),
-        } satisfies PostWithDetails,
+        post: transformPostWithDetails(full, 0),
       }
     })
   })
@@ -352,14 +308,17 @@ export const getPostById = createServerFn({ method: 'POST' })
       author: row.author,
       reactions: row.reactions,
       commentCount,
-      previewComments: row.comments.reverse().map((c) => ({
-        id: c.id,
-        content: c.content,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt,
-        author: c.author,
-        reactions: c.reactions,
-      })),
+      previewComments: row.comments
+        .slice()
+        .reverse()
+        .map((c) => ({
+          id: c.id,
+          content: c.content,
+          createdAt: c.createdAt,
+          updatedAt: c.updatedAt,
+          author: c.author,
+          reactions: c.reactions,
+        })),
     }
 
     return { post: result }
@@ -443,28 +402,34 @@ export const toggleReaction = createServerFn({ method: 'POST' })
       ),
     })
 
-    if (existing) {
-      if (existing.emoji === data.emoji) {
-        // Same emoji → remove
-        await db.delete(postReactions).where(eq(postReactions.id, existing.id))
-        return { action: 'removed' as const }
-      } else {
-        // Different emoji → update
-        await db
-          .update(postReactions)
-          .set({ emoji: data.emoji })
-          .where(eq(postReactions.id, existing.id))
-        return { action: 'updated' as const }
-      }
-    } else {
-      // No existing → insert
-      await db.insert(postReactions).values({
-        postId: data.postId,
-        userId: user.id,
-        emoji: data.emoji,
-      })
-      return { action: 'added' as const }
+    const action = determineReactionAction(existing, data.emoji)
+
+    switch (action) {
+      case 'added':
+        await db.insert(postReactions).values({
+          postId: data.postId,
+          userId: user.id,
+          emoji: data.emoji,
+        })
+        break
+      case 'removed':
+        if (existing) {
+          await db
+            .delete(postReactions)
+            .where(eq(postReactions.id, existing.id))
+        }
+        break
+      case 'updated':
+        if (existing) {
+          await db
+            .update(postReactions)
+            .set({ emoji: data.emoji })
+            .where(eq(postReactions.id, existing.id))
+        }
+        break
     }
+
+    return { action }
   })
 
 export const toggleCommentReaction = createServerFn({ method: 'POST' })
@@ -480,47 +445,37 @@ export const toggleCommentReaction = createServerFn({ method: 'POST' })
       ),
     })
 
-    if (existing) {
-      if (existing.emoji === data.emoji) {
-        await db
-          .delete(postCommentReactions)
-          .where(eq(postCommentReactions.id, existing.id))
-        return { action: 'removed' as const }
-      }
+    const action = determineReactionAction(existing, data.emoji)
 
-      await db
-        .update(postCommentReactions)
-        .set({ emoji: data.emoji })
-        .where(eq(postCommentReactions.id, existing.id))
-      return { action: 'updated' as const }
+    switch (action) {
+      case 'added':
+        await db.insert(postCommentReactions).values({
+          commentId: data.commentId,
+          userId: user.id,
+          emoji: data.emoji,
+        })
+        break
+      case 'removed':
+        if (existing) {
+          await db
+            .delete(postCommentReactions)
+            .where(eq(postCommentReactions.id, existing.id))
+        }
+        break
+      case 'updated':
+        if (existing) {
+          await db
+            .update(postCommentReactions)
+            .set({ emoji: data.emoji })
+            .where(eq(postCommentReactions.id, existing.id))
+        }
+        break
     }
 
-    await db.insert(postCommentReactions).values({
-      commentId: data.commentId,
-      userId: user.id,
-      emoji: data.emoji,
-    })
-    return { action: 'added' as const }
+    return { action }
   })
 
 // ── Comments ──────────────────────────────────────────────────────────────
-
-export type CommentWithAuthor = {
-  id: string
-  content: string
-  createdAt: Date
-  updatedAt: Date
-  author: {
-    id: string
-    fullName: string
-    avatarUrl: string | null
-  }
-  reactions: Array<{
-    id: string
-    emoji: string
-    userId: string
-  }>
-}
 
 export const getComments = createServerFn({ method: 'POST' })
   .inputValidator(getCommentsSchema)
@@ -528,23 +483,7 @@ export const getComments = createServerFn({ method: 'POST' })
     const db = await getDb()
     const limit = data.limit
 
-    const conditions = [
-      eq(postComments.postId, data.postId),
-      isNull(postComments.deletedAt),
-    ]
-
-    if (data.cursor) {
-      const cursorDate = new Date(data.cursor.createdAt)
-      conditions.push(
-        or(
-          lt(postComments.createdAt, cursorDate),
-          and(
-            eq(postComments.createdAt, cursorDate),
-            lt(postComments.id, data.cursor.id),
-          ),
-        )!,
-      )
-    }
+    const conditions = buildCommentWhereClause(data.postId, data.cursor)
 
     const rows = await db.query.postComments.findMany({
       where: and(...conditions),
@@ -564,15 +503,9 @@ export const getComments = createServerFn({ method: 'POST' })
     const commentsSlice = hasMore ? rows.slice(0, limit) : rows
 
     const result: Array<CommentWithAuthor> = commentsSlice
+      .slice()
       .reverse()
-      .map((c) => ({
-        id: c.id,
-        content: c.content,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt,
-        author: c.author,
-        reactions: c.reactions,
-      }))
+      .map((c) => transformCommentWithAuthor(c))
 
     const lastRow = commentsSlice[commentsSlice.length - 1]
     const nextCursor = hasMore
