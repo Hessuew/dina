@@ -15,18 +15,11 @@ import {
   uploadMediaPdfFn,
 } from '@/utils/library/library'
 import { toUserError } from '@/utils/errors'
-import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { useMutation } from '@/hooks/useMutation'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
+import { FormDialog } from '@/components/ui/form-dialog'
+import { DialogBody } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import {
@@ -69,12 +62,6 @@ const emptyForm: MediaFormData = {
   url: '',
   isPublished: false,
   pdfFile: null,
-}
-
-const dialogStyle = {
-  backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
-  backgroundSize: 'cover',
-  backgroundPosition: 'center',
 }
 
 function fromFileType(
@@ -303,45 +290,40 @@ export function MediaDialog({
     })
   }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
-        style={dialogStyle}
-        showCloseButton={false}
-      >
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-        <div className="relative flex min-h-0 flex-1 flex-col">
-          <DialogHeader>
-            <div className="mb-1">
-              <div className="h-px w-8 bg-[#C5A059]/40" />
-              <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                {mode === 'create'
-                  ? 'New media'
-                  : mode === 'edit'
-                    ? 'Edit media'
-                    : 'Confirm action'}
-              </div>
-            </div>
-            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-              {mode === 'create'
-                ? 'Create Media'
-                : mode === 'edit'
-                  ? 'Edit Media'
-                  : 'Delete Media'}
-            </DialogTitle>
-            <DialogDescription className="text-[#AFA28F]">
-              {mode === 'create'
-                ? 'Add a new item to the library'
-                : mode === 'edit'
-                  ? 'Update this library item'
-                  : `Are you sure you want to delete "${media?.title ?? ''}"? This action cannot be undone.`}
-            </DialogDescription>
-          </DialogHeader>
+  if (mode === 'delete') {
+    return (
+      <DeleteConfirmDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        entityName="Media"
+        onConfirm={() => {
+          if (!media) return
+          deleteMutation.mutate({ data: { mediaId: media.id } })
+        }}
+        isDeleting={deleteMutation.status === 'pending'}
+      />
+    )
+  }
 
-          <DialogBody>
-            {mode !== 'delete' && (
-              <FieldGroup className="mt-6 gap-8">
+  return (
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      mode={mode}
+      title={mode === 'create' ? 'Create Media' : 'Edit Media'}
+      subtitle={
+        mode === 'create'
+          ? 'Add a new item to the library'
+          : 'Update this library item'
+      }
+      maxWidth="3xl"
+      onSubmit={handleSubmit}
+      isSubmitting={isPending || isUploading}
+      submitLabel={mode === 'create' ? 'Create Media' : 'Save Changes'}
+      loadingLabel={isUploading ? 'Uploading...' : undefined}
+    >
+      <DialogBody>
+        <FieldGroup className="mt-6 gap-8">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field className="sm:col-span-2">
                     <FieldLabel
@@ -553,41 +535,7 @@ export function MediaDialog({
                   </Field>
                 </div>
               </FieldGroup>
-            )}
-          </DialogBody>
-
-          <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-            <Button
-              variant="outline"
-              theme="dark"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              theme="dark"
-              variant={mode === 'delete' ? 'destructive' : 'default'}
-              className="rounded-none"
-              onClick={handleSubmit}
-              disabled={isPending}
-            >
-              {isUploading
-                ? 'Uploading...'
-                : isPending
-                  ? mode === 'create'
-                    ? 'Creating...'
-                    : mode === 'edit'
-                      ? 'Saving...'
-                      : 'Deleting...'
-                  : mode === 'create'
-                    ? 'Create'
-                    : mode === 'edit'
-                      ? 'Save Changes'
-                      : 'Delete'}
-            </Button>
-          </DialogFooter>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </DialogBody>
+    </FormDialog>
   )
 }

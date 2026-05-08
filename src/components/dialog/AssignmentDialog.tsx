@@ -8,6 +8,7 @@ import {
 } from '@/schemas/assignment.schema'
 import { Button } from '@/components/ui/button'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
+import { FormDialog } from '@/components/ui/form-dialog'
 import {
   Dialog,
   DialogBody,
@@ -168,6 +169,63 @@ export function AssignmentDialog({
     createMutation.status === 'pending' ||
     updateMutation.status === 'pending' ||
     gradeMutation.status === 'pending'
+
+  const handleSubmit = () => {
+    const parseResult =
+      mode === 'create'
+        ? createAssignmentSchema.safeParse({
+            lessonId: lessonId ?? '',
+            title: formData.title,
+            description: formData.description || undefined,
+            dueDate: formData.dueDate,
+            maxGrade: formData.maxGrade || undefined,
+          })
+        : updateAssignmentSchema.safeParse({
+            assignmentId: assignment?.id ?? '',
+            title: formData.title,
+            description: formData.description || undefined,
+            dueDate: formData.dueDate,
+            maxGrade: formData.maxGrade || undefined,
+            status: formData.status,
+          })
+
+    if (!parseResult.success) {
+      const errors: Record<string, string> = {}
+      for (const issue of parseResult.error.issues) {
+        const key = issue.path[0] as string
+        if (!errors[key]) errors[key] = issue.message
+      }
+      setFieldErrors(errors)
+      return
+    }
+
+    setFieldErrors({})
+
+    if (mode === 'create') {
+      if (!lessonId) return
+      createMutation.mutate({
+        data: {
+          lessonId,
+          title: formData.title,
+          description: formData.description,
+          dueDate: formData.dueDate,
+          maxGrade: formData.maxGrade,
+        },
+      })
+    } else {
+      if (!assignment) return
+      updateMutation.mutate({
+        data: {
+          assignmentId: assignment.id,
+          title: formData.title,
+          description: formData.description,
+          dueDate: formData.dueDate,
+          maxGrade: formData.maxGrade,
+          status: formData.status,
+        },
+      })
+    }
+  }
 
   const dialogStyle = {
     backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
@@ -390,32 +448,22 @@ export function AssignmentDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
-        style={dialogStyle}
-        showCloseButton={false}
-      >
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-        <div className="relative flex min-h-0 flex-1 flex-col">
-          <DialogHeader>
-            <div className="mb-1">
-              <div className="h-px w-8 bg-[#C5A059]/40" />
-              <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                {mode === 'create' ? 'New assignment' : 'Edit assignment'}
-              </div>
-            </div>
-            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-              {mode === 'create' ? 'Create Assignment' : 'Edit Assignment'}
-            </DialogTitle>
-            <DialogDescription className="text-[#AFA28F]">
-              {mode === 'create'
-                ? 'Add a new assignment for this lesson'
-                : 'Update the assignment information'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogBody>
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      mode={mode}
+      title={mode === 'create' ? 'Create Assignment' : 'Edit Assignment'}
+      subtitle={
+        mode === 'create'
+          ? 'Add a new assignment for this lesson'
+          : 'Update the assignment information'
+      }
+      maxWidth="3xl"
+      onSubmit={handleSubmit}
+      isSubmitting={isPending}
+      submitLabel={mode === 'create' ? 'Create Assignment' : 'Save Changes'}
+    >
+      <DialogBody>
             <FieldGroup className="mt-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field className="sm:col-span-2">
@@ -542,85 +590,7 @@ export function AssignmentDialog({
                 </Field>
               </div>
             </FieldGroup>
-          </DialogBody>
-
-          <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-            <Button
-              variant="outline"
-              theme="dark"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              theme="dark"
-              onClick={() => {
-                const parseResult =
-                  mode === 'create'
-                    ? createAssignmentSchema.safeParse({
-                        lessonId: lessonId ?? '',
-                        title: formData.title,
-                        description: formData.description || undefined,
-                        dueDate: formData.dueDate,
-                        maxGrade: formData.maxGrade || undefined,
-                      })
-                    : updateAssignmentSchema.safeParse({
-                        assignmentId: assignment?.id ?? '',
-                        title: formData.title,
-                        description: formData.description || undefined,
-                        dueDate: formData.dueDate,
-                        maxGrade: formData.maxGrade || undefined,
-                        status: formData.status,
-                      })
-
-                if (!parseResult.success) {
-                  const errors: Record<string, string> = {}
-                  for (const issue of parseResult.error.issues) {
-                    const key = issue.path[0] as string
-                    if (!errors[key]) errors[key] = issue.message
-                  }
-                  setFieldErrors(errors)
-                  return
-                }
-
-                setFieldErrors({})
-
-                if (mode === 'create') {
-                  if (!lessonId) return
-                  createMutation.mutate({
-                    data: {
-                      lessonId,
-                      title: formData.title,
-                      description: formData.description,
-                      dueDate: formData.dueDate,
-                      maxGrade: formData.maxGrade,
-                    },
-                  })
-                } else {
-                  if (!assignment) return
-                  updateMutation.mutate({
-                    data: {
-                      assignmentId: assignment.id,
-                      title: formData.title,
-                      description: formData.description,
-                      dueDate: formData.dueDate,
-                      maxGrade: formData.maxGrade,
-                      status: formData.status,
-                    },
-                  })
-                }
-              }}
-              disabled={isPending}
-            >
-              {isPending
-                ? 'Saving...'
-                : mode === 'create'
-                  ? 'Create Assignment'
-                  : 'Save Changes'}
-            </Button>
-          </DialogFooter>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </DialogBody>
+    </FormDialog>
   )
 }

@@ -16,6 +16,7 @@ This folder contains:
   - Shared UI primitives, largely shadcn-style components.
   - These are the building blocks used across routes and feature components.
   - Includes `DeleteConfirmDialog` for standardized delete confirmation flows.
+  - Includes `FormDialog` for standardized form dialog structure with background styling, mode-based labels, and default footer with Cancel/Submit buttons.
 
 - **`navigation/`**
   - App shell components: sidebar, header, catch boundary, not-found page.
