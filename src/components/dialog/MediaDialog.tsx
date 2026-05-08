@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { useRouter } from '@tanstack/react-router'
 import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { MediaLibraryRow } from '@/utils/library/library'
@@ -15,7 +14,7 @@ import {
   uploadMediaPdfFn,
 } from '@/utils/library/library'
 import { toUserError } from '@/utils/errors'
-import { useMutation } from '@/hooks/useMutation'
+import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { Button } from '@/components/ui/button'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { FormDialog } from '@/components/ui/form-dialog'
@@ -77,7 +76,6 @@ export function MediaDialog({
   mode,
   media,
 }: MediaDialogProps) {
-  const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState<MediaFormData>({ ...emptyForm })
@@ -109,37 +107,19 @@ export function MediaDialog({
     if (fileInputRef.current) fileInputRef.current.value = ''
   }, [open, mode, media])
 
-  const createMutation = useMutation({
-    fn: createLibraryMedia,
-    onSuccess: async () => {
-      toast.success('Media created successfully!')
+  const { createMutation, updateMutation, deleteMutation } = useEntityMutation({
+    createFn: createLibraryMedia,
+    updateFn: updateLibraryMedia,
+    deleteFn: deleteLibraryMedia,
+    onSuccess: () => {
       onOpenChange(false)
-      await router.invalidate()
-    },
-  })
-
-  const updateMutation = useMutation({
-    fn: updateLibraryMedia,
-    onSuccess: async () => {
-      toast.success('Media updated successfully!')
-      onOpenChange(false)
-      await router.invalidate()
-    },
-  })
-
-  const deleteMutation = useMutation({
-    fn: deleteLibraryMedia,
-    onSuccess: async () => {
-      toast.success('Media deleted successfully!')
-      onOpenChange(false)
-      await router.invalidate()
     },
   })
 
   const isPending =
-    createMutation.status === 'pending' ||
-    updateMutation.status === 'pending' ||
-    deleteMutation.status === 'pending' ||
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    deleteMutation.isPending ||
     isUploading
 
   const handleSubmit = async () => {
@@ -300,7 +280,7 @@ export function MediaDialog({
           if (!media) return
           deleteMutation.mutate({ data: { mediaId: media.id } })
         }}
-        isDeleting={deleteMutation.status === 'pending'}
+        isDeleting={deleteMutation.isPending}
       />
     )
   }
@@ -324,217 +304,214 @@ export function MediaDialog({
     >
       <DialogBody>
         <FieldGroup className="mt-6 gap-8">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field className="sm:col-span-2">
-                    <FieldLabel
-                      htmlFor="media-title"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Name <span className="text-[#C5A059]">*</span>
-                    </FieldLabel>
-                    <Input
-                      id="media-title"
-                      value={formData.title}
-                      placeholder="Lesson recap video"
-                      className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
-                      onChange={(e) => {
-                        setFormData({ ...formData, title: e.target.value })
-                        if (fieldErrors.title)
-                          setFieldErrors({ ...fieldErrors, title: '' })
-                      }}
-                    />
-                    {fieldErrors.title && (
-                      <p className="text-[0.68rem] text-red-400">
-                        {fieldErrors.title}
-                      </p>
-                    )}
-                  </Field>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field className="sm:col-span-2">
+              <FieldLabel
+                htmlFor="media-title"
+                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+              >
+                Name <span className="text-[#C5A059]">*</span>
+              </FieldLabel>
+              <Input
+                id="media-title"
+                value={formData.title}
+                placeholder="Lesson recap video"
+                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
+                onChange={(e) => {
+                  setFormData({ ...formData, title: e.target.value })
+                  if (fieldErrors.title)
+                    setFieldErrors({ ...fieldErrors, title: '' })
+                }}
+              />
+              {fieldErrors.title && (
+                <p className="text-[0.68rem] text-red-400">
+                  {fieldErrors.title}
+                </p>
+              )}
+            </Field>
 
-                  <Field>
-                    <FieldLabel
-                      htmlFor="media-category"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Category <span className="text-[#C5A059]">*</span>
-                    </FieldLabel>
-                    <Input
-                      id="media-category"
-                      value={formData.category}
-                      placeholder="Foundations"
-                      className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.category ? 'border-red-500/60' : ''}`}
-                      onChange={(e) => {
-                        setFormData({ ...formData, category: e.target.value })
-                        if (fieldErrors.category)
-                          setFieldErrors({ ...fieldErrors, category: '' })
-                      }}
-                    />
-                    {fieldErrors.category && (
-                      <p className="text-[0.68rem] text-red-400">
-                        {fieldErrors.category}
-                      </p>
-                    )}
-                  </Field>
+            <Field>
+              <FieldLabel
+                htmlFor="media-category"
+                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+              >
+                Category <span className="text-[#C5A059]">*</span>
+              </FieldLabel>
+              <Input
+                id="media-category"
+                value={formData.category}
+                placeholder="Foundations"
+                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.category ? 'border-red-500/60' : ''}`}
+                onChange={(e) => {
+                  setFormData({ ...formData, category: e.target.value })
+                  if (fieldErrors.category)
+                    setFieldErrors({ ...fieldErrors, category: '' })
+                }}
+              />
+              {fieldErrors.category && (
+                <p className="text-[0.68rem] text-red-400">
+                  {fieldErrors.category}
+                </p>
+              )}
+            </Field>
 
-                  <Field>
-                    <FieldLabel
-                      htmlFor="media-kind"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Type
-                    </FieldLabel>
-                    <Select
-                      value={formData.kind}
-                      onValueChange={(value) => {
-                        const kind = value as MediaFormData['kind']
-                        setFormData({
-                          ...formData,
-                          kind,
-                          pdfFile: null,
-                        })
+            <Field>
+              <FieldLabel
+                htmlFor="media-kind"
+                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+              >
+                Type
+              </FieldLabel>
+              <Select
+                value={formData.kind}
+                onValueChange={(value) => {
+                  const kind = value as MediaFormData['kind']
+                  setFormData({
+                    ...formData,
+                    kind,
+                    pdfFile: null,
+                  })
+                  if (fileInputRef.current) fileInputRef.current.value = ''
+                }}
+              >
+                <SelectTrigger
+                  className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
+                  id="media-kind"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
+                  <SelectItem value="youtube">YouTube</SelectItem>
+                  <SelectItem value="pdf">PDF</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field className="sm:col-span-2">
+              <FieldLabel
+                htmlFor="media-url"
+                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+              >
+                {formData.kind === 'youtube' ? 'YouTube URL' : 'PDF URL'}{' '}
+                <span className="text-[#C5A059]">*</span>
+              </FieldLabel>
+              <Input
+                id="media-url"
+                value={formData.url}
+                placeholder={
+                  formData.kind === 'youtube'
+                    ? 'https://www.youtube.com/watch?v=...'
+                    : 'https://.../file.pdf'
+                }
+                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.url ? 'border-red-500/60' : ''}`}
+                onChange={(e) => {
+                  setFormData({ ...formData, url: e.target.value })
+                  if (fieldErrors.url)
+                    setFieldErrors({ ...fieldErrors, url: '' })
+                }}
+              />
+              {fieldErrors.url && (
+                <p className="text-[0.68rem] text-red-400">{fieldErrors.url}</p>
+              )}
+            </Field>
+
+            {formData.kind === 'pdf' && (
+              <Field className="sm:col-span-2">
+                <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+                  Upload PDF (optional)
+                </FieldLabel>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setFormData({ ...formData, pdfFile: file })
+                  }}
+                  className="hidden"
+                />
+
+                {formData.pdfFile ? (
+                  <div className="flex items-center justify-between border border-white/10 bg-black/20 px-4 py-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm text-[#F8F4EC]">
+                        {formData.pdfFile.name}
+                      </div>
+                      <div className="mt-1 text-xs text-[#8E816D]">
+                        PDF will be uploaded on save
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      theme="dark"
+                      size="icon"
+                      className="rounded-none"
+                      onClick={() => {
+                        setFormData({ ...formData, pdfFile: null })
                         if (fileInputRef.current)
                           fileInputRef.current.value = ''
                       }}
                     >
-                      <SelectTrigger
-                        className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
-                        id="media-kind"
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
-                        <SelectItem value="youtube">YouTube</SelectItem>
-                        <SelectItem value="pdf">PDF</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
+                      <XIcon className="size-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    theme="dark"
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
+                  >
+                    <UploadIcon className="mr-2 size-4" />
+                    Upload PDF
+                  </Button>
+                )}
 
-                  <Field className="sm:col-span-2">
-                    <FieldLabel
-                      htmlFor="media-url"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      {formData.kind === 'youtube' ? 'YouTube URL' : 'PDF URL'}{' '}
-                      <span className="text-[#C5A059]">*</span>
-                    </FieldLabel>
-                    <Input
-                      id="media-url"
-                      value={formData.url}
-                      placeholder={
-                        formData.kind === 'youtube'
-                          ? 'https://www.youtube.com/watch?v=...'
-                          : 'https://.../file.pdf'
-                      }
-                      className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.url ? 'border-red-500/60' : ''}`}
-                      onChange={(e) => {
-                        setFormData({ ...formData, url: e.target.value })
-                        if (fieldErrors.url)
-                          setFieldErrors({ ...fieldErrors, url: '' })
-                      }}
-                    />
-                    {fieldErrors.url && (
-                      <p className="text-[0.68rem] text-red-400">
-                        {fieldErrors.url}
-                      </p>
-                    )}
-                  </Field>
+                <p className="text-xs text-[#8E816D]">PDF. Max 25MB.</p>
+              </Field>
+            )}
 
-                  {formData.kind === 'pdf' && (
-                    <Field className="sm:col-span-2">
-                      <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-                        Upload PDF (optional)
-                      </FieldLabel>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="application/pdf"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (!file) return
-                          setFormData({ ...formData, pdfFile: file })
-                        }}
-                        className="hidden"
-                      />
+            <Field className="sm:col-span-2">
+              <FieldLabel
+                htmlFor="media-description"
+                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+              >
+                Description
+              </FieldLabel>
+              <Textarea
+                id="media-description"
+                rows={6}
+                value={formData.description}
+                placeholder="Short summary for students"
+                className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    description: e.target.value,
+                  })
+                }
+              />
+            </Field>
 
-                      {formData.pdfFile ? (
-                        <div className="flex items-center justify-between border border-white/10 bg-black/20 px-4 py-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm text-[#F8F4EC]">
-                              {formData.pdfFile.name}
-                            </div>
-                            <div className="mt-1 text-xs text-[#8E816D]">
-                              PDF will be uploaded on save
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            theme="dark"
-                            size="icon"
-                            className="rounded-none"
-                            onClick={() => {
-                              setFormData({ ...formData, pdfFile: null })
-                              if (fileInputRef.current)
-                                fileInputRef.current.value = ''
-                            }}
-                          >
-                            <XIcon className="size-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          theme="dark"
-                          type="button"
-                          variant="outline"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-full rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
-                        >
-                          <UploadIcon className="mr-2 size-4" />
-                          Upload PDF
-                        </Button>
-                      )}
-
-                      <p className="text-xs text-[#8E816D]">PDF. Max 25MB.</p>
-                    </Field>
-                  )}
-
-                  <Field className="sm:col-span-2">
-                    <FieldLabel
-                      htmlFor="media-description"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Description
-                    </FieldLabel>
-                    <Textarea
-                      id="media-description"
-                      rows={6}
-                      value={formData.description}
-                      placeholder="Short summary for students"
-                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          description: e.target.value,
-                        })
-                      }
-                    />
-                  </Field>
-
-                  <Field className="sm:col-span-2">
-                    <div className="flex items-center gap-3">
-                      <Switch
-                        id="media-published"
-                        checked={formData.isPublished}
-                        onCheckedChange={(checked) =>
-                          setFormData({ ...formData, isPublished: checked })
-                        }
-                      />
-                      <FieldLabel htmlFor="media-published" className="text-sm">
-                        Published
-                      </FieldLabel>
-                    </div>
-                  </Field>
-                </div>
-              </FieldGroup>
+            <Field className="sm:col-span-2">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="media-published"
+                  checked={formData.isPublished}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, isPublished: checked })
+                  }
+                />
+                <FieldLabel htmlFor="media-published" className="text-sm">
+                  Published
+                </FieldLabel>
+              </div>
+            </Field>
+          </div>
+        </FieldGroup>
       </DialogBody>
     </FormDialog>
   )

@@ -32,6 +32,7 @@ import {
   sendInvitationForEnrollment,
   updateEnrollmentStatus,
 } from '@/utils/enrolment'
+import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { useMutation } from '@/hooks/useMutation'
 
 const STATUS_OPTIONS = [
@@ -88,11 +89,13 @@ function EnrollmentDetailPage() {
     },
   })
 
-  const deleteMutation = useMutation({
-    fn: deleteFn,
+  const { deleteMutation } = useEntityMutation({
+    deleteFn: deleteFn,
+    onSuccessMessage: () => 'Enrollment deleted',
     onSuccess: () => {
-      toast.success('Enrollment deleted')
+      router.navigate({ to: '/enrollments' })
     },
+    invalidateRouter: false,
   })
 
   const address = [enrollment.currentCity, enrollment.currentCountry]
@@ -330,7 +333,7 @@ function EnrollmentDetailPage() {
             data: { enrollmentId: enrollment.id },
           })
         }
-        isDeleting={deleteMutation.status === 'pending'}
+        isDeleting={deleteMutation.isPending}
         navigateTo="/enrollments"
       />
     </PageLayout>

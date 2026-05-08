@@ -1,4 +1,3 @@
-import { useRouter } from '@tanstack/react-router'
 import { Trash2Icon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -24,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { useMutation } from '@/hooks/useMutation'
+import { useEntityMutation } from '@/hooks/useEntityMutation'
 import {
   createZoomLink,
   deleteZoomLink,
@@ -102,7 +101,6 @@ export function ZoomLinkDialog({
   dialogState,
   onOpenChange,
 }: ZoomLinkDialogProps) {
-  const router = useRouter()
   const [form, setForm] = useState<ZoomFormState>(emptyForm)
   const link = dialogState?.mode === 'edit' ? dialogState.link : null
   const open = dialogState !== null
@@ -112,35 +110,20 @@ export function ZoomLinkDialog({
     setForm(link ? linkToForm(link) : emptyForm)
   }, [link, open])
 
-  const createMutation = useMutation({
-    fn: createZoomLink,
-    onSuccess: async () => {
-      toast.success('Zoom link created')
+  const { createMutation, updateMutation, deleteMutation } = useEntityMutation({
+    createFn: createZoomLink,
+    updateFn: updateZoomLink,
+    deleteFn: deleteZoomLink,
+    onSuccessMessage: (mode) => `Zoom link ${mode}d`,
+    onSuccess: () => {
       onOpenChange(false)
-      await router.invalidate()
-    },
-  })
-  const updateMutation = useMutation({
-    fn: updateZoomLink,
-    onSuccess: async () => {
-      toast.success('Zoom link updated')
-      onOpenChange(false)
-      await router.invalidate()
-    },
-  })
-  const deleteMutation = useMutation({
-    fn: deleteZoomLink,
-    onSuccess: async () => {
-      toast.success('Zoom link deleted')
-      onOpenChange(false)
-      await router.invalidate()
     },
   })
 
   const isPending =
-    createMutation.status === 'pending' ||
-    updateMutation.status === 'pending' ||
-    deleteMutation.status === 'pending'
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    deleteMutation.isPending
 
   const handleSubmit = () => {
     if (!form.title || !form.zoomUrl || !form.meetingId || !form.passcode) {

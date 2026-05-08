@@ -46,6 +46,7 @@ export function useTeachers(shouldFetch: boolean) {
 ## UI Hooks
 
 - `useMutation` — Generic mutation hook with configurable error handling
+- `useEntityMutation` — High-level CRUD mutation hook with toast notifications and router invalidation
 - `useIsMobile` — Mobile viewport detection (768px breakpoint)
 
 ## Error Handling
@@ -68,6 +69,57 @@ useMutation({
 - `onError` takes precedence over `errorHandler`
 - `errorHandler` takes precedence over default `toastErrorHandler`
 - Default behavior displays user-friendly error messages via toast
+
+## useEntityMutation
+
+High-level mutation hook for CRUD operations. Composes `useMutation` with standard success patterns.
+
+**Interface:**
+
+```typescript
+useEntityMutation<
+  TCreateData,
+  TCreateVars,
+  TUpdateData,
+  TUpdateVars,
+  TDeleteData,
+  TDeleteVars
+>({
+  createFn?: (vars: TCreateVars) => Promise<TCreateData>
+  updateFn?: (vars: TUpdateVars) => Promise<TUpdateData>
+  deleteFn?: (vars: TDeleteVars) => Promise<TDeleteData>
+  onSuccessMessage?: (mode: 'create' | 'update' | 'delete') => string
+  onSuccess?: (ctx: { mode: 'create' | 'update' | 'delete'; data: TCreateData | TUpdateData | TDeleteData }) => void | Promise<void>
+  invalidateRouter?: boolean // defaults to true
+}): {
+  createMutation: { mutate: (vars: TCreateVars) => void; isPending: boolean }
+  updateMutation: { mutate: (vars: TUpdateVars) => void; isPending: boolean }
+  deleteMutation: { mutate: (vars: TDeleteVars) => void; isPending: boolean }
+}
+```
+
+**Usage:**
+
+```typescript
+const { createMutation, updateMutation, deleteMutation } = useEntityMutation({
+  createFn: createCourse,
+  updateFn: updateCourse,
+  deleteFn: deleteCourse,
+  onSuccessMessage: (mode) => `Course ${mode}d successfully!`,
+  onSuccess: async ({ mode, data }) => {
+    if (mode === 'create') {
+      await handleThumbnailUpload(data.course.id)
+    }
+  },
+})
+```
+
+**Invariants:**
+
+- Mutation functions are optional; unprovided mutations throw when called
+- Default success messages: "Created successfully", "Updated successfully", "Deleted successfully"
+- Router invalidation happens automatically unless `invalidateRouter: false`
+- Error handling delegated to composed `useMutation` (uses `toastErrorHandler` by default)
 
 ## Form Hooks
 

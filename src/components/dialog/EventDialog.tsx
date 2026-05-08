@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useRouter } from '@tanstack/react-router'
 import {
   AlertTriangleIcon,
   CalendarIcon,
@@ -10,7 +9,6 @@ import {
   VideoIcon,
 } from 'lucide-react'
 import { format } from 'date-fns'
-import { toast } from 'sonner'
 import type { CalendarEventRow } from '@/utils/event/events'
 import { createEventSchema, updateEventSchema } from '@/schemas/event.schema'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
@@ -35,7 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { useMutation } from '@/hooks/useMutation'
+import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { createEvent, deleteEvent, updateEvent } from '@/utils/event/events'
 import { cn } from '@/lib/utils'
 
@@ -98,8 +96,6 @@ export function EventDialog({
   mode,
   event,
 }: EventDialogProps) {
-  const router = useRouter()
-
   const [formData, setFormData] = useState<EventFormData>(emptyForm)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
@@ -121,35 +117,16 @@ export function EventDialog({
     }
   }, [open, mode, event])
 
-  const createMutation = useMutation({
-    fn: createEvent,
-    onSuccess: async () => {
-      toast.success('Event created successfully!')
+  const { createMutation, updateMutation, deleteMutation } = useEntityMutation({
+    createFn: createEvent,
+    updateFn: updateEvent,
+    deleteFn: deleteEvent,
+    onSuccess: () => {
       onOpenChange(false)
-      await router.invalidate()
     },
   })
 
-  const updateMutation = useMutation({
-    fn: updateEvent,
-    onSuccess: async () => {
-      toast.success('Event updated successfully!')
-      onOpenChange(false)
-      await router.invalidate()
-    },
-  })
-
-  const deleteMutation = useMutation({
-    fn: deleteEvent,
-    onSuccess: async () => {
-      toast.success('Event deleted successfully!')
-      onOpenChange(false)
-      await router.invalidate()
-    },
-  })
-
-  const isPending =
-    createMutation.status === 'pending' || updateMutation.status === 'pending'
+  const isPending = createMutation.isPending || updateMutation.isPending
 
   const handleSubmit = () => {
     const parseData = {
@@ -212,7 +189,7 @@ export function EventDialog({
         onConfirm={() =>
           event && deleteMutation.mutate({ data: { eventId: event.id } })
         }
-        isDeleting={deleteMutation.status === 'pending'}
+        isDeleting={deleteMutation.isPending}
       />
     )
   }

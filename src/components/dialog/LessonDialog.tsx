@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { createLessonSchema, updateLessonSchema } from '@/schemas/lesson.schema'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
@@ -9,7 +8,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { useMutation } from '@/hooks/useMutation'
+import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { createLesson, deleteLesson, updateLesson } from '@/utils/courses'
 
 type LessonFormData = {
@@ -53,7 +52,6 @@ export function LessonDialog({
   lessonCount = 0,
   initialData,
 }: LessonDialogProps) {
-  const router = useRouter()
   const [formData, setFormData] = useState<LessonFormData>({ ...emptyFormData })
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
@@ -76,35 +74,16 @@ export function LessonDialog({
     }
   }, [open, initialData, mode])
 
-  const createMutation = useMutation({
-    fn: createLesson,
-    onSuccess: async () => {
-      toast.success('Lesson created successfully!')
+  const { createMutation, updateMutation, deleteMutation } = useEntityMutation({
+    createFn: createLesson,
+    updateFn: updateLesson,
+    deleteFn: deleteLesson,
+    onSuccess: () => {
       onOpenChange(false)
-      await router.invalidate()
     },
   })
 
-  const updateMutation = useMutation({
-    fn: updateLesson,
-    onSuccess: async () => {
-      toast.success('Lesson updated successfully!')
-      onOpenChange(false)
-      await router.invalidate()
-    },
-  })
-
-  const deleteMutation = useMutation({
-    fn: deleteLesson,
-    onSuccess: async () => {
-      toast.success('Lesson deleted successfully!')
-      onOpenChange(false)
-      await router.invalidate()
-    },
-  })
-
-  const isPending =
-    createMutation.status === 'pending' || updateMutation.status === 'pending'
+  const isPending = createMutation.isPending || updateMutation.isPending
 
   const handleSubmit = () => {
     const schema = mode === 'create' ? createLessonSchema : updateLessonSchema
@@ -177,7 +156,7 @@ export function LessonDialog({
             data: { lessonId: initialData.lessonId, courseId },
           })
         }}
-        isDeleting={deleteMutation.status === 'pending'}
+        isDeleting={deleteMutation.isPending}
       />
     )
   }
