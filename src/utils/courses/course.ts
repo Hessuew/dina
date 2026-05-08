@@ -320,7 +320,5 @@ export const deleteCourse = createServerFn({ method: 'POST' })
       }
 
       await db.delete(courses).where(eq(courses.id, data.courseId))
-
-      return { success: true }
     })
   })

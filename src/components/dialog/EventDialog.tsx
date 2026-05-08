@@ -15,6 +15,7 @@ import type { CalendarEventRow } from '@/utils/event/events'
 import { createEventSchema, updateEventSchema } from '@/schemas/event.schema'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
+import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import {
   Dialog,
   DialogBody,
@@ -148,9 +149,7 @@ export function EventDialog({
   })
 
   const isPending =
-    createMutation.status === 'pending' ||
-    updateMutation.status === 'pending' ||
-    deleteMutation.status === 'pending'
+    createMutation.status === 'pending' || updateMutation.status === 'pending'
 
   const handleSubmit = () => {
     const parseData = {
@@ -206,52 +205,15 @@ export function EventDialog({
 
   if (mode === 'delete') {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
-          style={dialogStyle}
-          showCloseButton={false}
-        >
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-          <div className="relative">
-            <DialogHeader>
-              <div className="mb-1">
-                <div className="h-px w-8 bg-[#C5A059]/40" />
-                <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Confirm action
-                </div>
-              </div>
-              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-                Delete Event
-              </DialogTitle>
-              <DialogDescription className="text-[#AFA28F]">
-                Are you sure you want to delete "{event?.title}"? This action
-                cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-              <Button
-                variant="outline"
-                theme="dark"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                className="rounded-none"
-                onClick={() =>
-                  event &&
-                  deleteMutation.mutate({ data: { eventId: event.id } })
-                }
-                disabled={isPending}
-              >
-                {isPending ? 'Deleting...' : 'Delete'}
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        entityName="Event"
+        onConfirm={() =>
+          event && deleteMutation.mutate({ data: { eventId: event.id } })
+        }
+        isDeleting={deleteMutation.status === 'pending'}
+      />
     )
   }
 

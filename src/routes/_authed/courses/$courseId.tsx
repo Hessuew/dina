@@ -11,20 +11,12 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
+import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { useMutation } from '@/hooks/useMutation'
 import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
 import { CourseDialog } from '@/components/dialog/CourseDialog'
 import { LessonDialog } from '@/components/dialog/LessonDialog'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { deleteCourse, getCourse } from '@/utils/courses'
 import { cn } from '@/lib/utils'
 import { isUserCourseTeacher } from '@/utils/teachers'
@@ -74,17 +66,16 @@ function CourseDetailComponent() {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
 
   const isAdmin = role === 'admin'
-  const courseTeachersData = course?.courseTeachers || []
+  const courseTeachersData = course.courseTeachers
   const isCourseTeacher =
     isUserCourseTeacher(course, user.id) || role === 'admin'
   const canEdit = role === 'teacher' || role === 'admin'
-  const totalLessons = course?.lessons.length || 0
+  const totalLessons = course.lessons.length || 0
 
   const deleteCourseMutation = useMutation({
     fn: deleteCourse,
-    onSuccess: async () => {
+    onSuccess: () => {
       toast.success('Course deleted successfully!')
-      await router.navigate({ to: '/dashboard' })
     },
   })
 
@@ -117,9 +108,9 @@ function CourseDetailComponent() {
           <div>
             <div className="h-px w-10 bg-[#C5A059]/50" />
             <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
-              {course?.title}
+              {course.title}
             </h1>
-            {course?.courseTeachers && course.courseTeachers.length > 0 && (
+            {course.courseTeachers.length > 0 && (
               <div className="mt-3 flex items-center gap-3">
                 <span className="text-[0.65rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
                   Teachers
@@ -139,12 +130,12 @@ function CourseDetailComponent() {
                 <div
                   className={cn(
                     'border px-3 py-1.5 text-[0.62rem] font-medium tracking-[0.22em] uppercase',
-                    course?.isPublished
+                    course.isPublished
                       ? 'border-[#C5A059]/40 bg-[#C5A059]/8 text-[#9B7A41]'
                       : 'border-[#1A1A1A]/12 bg-[#1A1A1A]/4 text-[#8E816D]',
                   )}
                 >
-                  {course?.isPublished ? 'Published' : 'Draft'}
+                  {course.isPublished ? 'Published' : 'Draft'}
                 </div>
                 <Button
                   variant="ghost"
@@ -152,18 +143,16 @@ function CourseDetailComponent() {
                   size="icon"
                   className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
                   onClick={() => {
-                    if (course) {
-                      setEditCourseInitialData({
-                        courseId: course.id,
-                        title: course.title,
-                        description: course.description || '',
-                        thumbnailUrl: course.thumbnailUrl,
-                        isPublished: course.isPublished ?? false,
-                        teacher1Id: courseTeachersData[0]?.teacher?.id || null,
-                        teacher2Id: courseTeachersData[1]?.teacher?.id || null,
-                        orderIndex: course.orderIndex ?? 0,
-                      })
-                    }
+                    setEditCourseInitialData({
+                      courseId: course.id,
+                      title: course.title,
+                      description: course.description || '',
+                      thumbnailUrl: course.thumbnailUrl,
+                      isPublished: course.isPublished ?? false,
+                      teacher1Id: courseTeachersData[0]?.teacher?.id || null,
+                      teacher2Id: courseTeachersData[1]?.teacher?.id || null,
+                      orderIndex: course.orderIndex ?? 0,
+                    })
                     setShowEditCourseDialog(true)
                   }}
                 >
@@ -190,7 +179,7 @@ function CourseDetailComponent() {
         <div className="space-y-6">
           {/* Course info card */}
           <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
-            {course?.thumbnailUrl && (
+            {course.thumbnailUrl && (
               <div className="relative overflow-hidden border-b border-white/10">
                 <div
                   className="relative min-h-72 bg-cover bg-center sm:min-h-80"
@@ -207,7 +196,7 @@ function CourseDetailComponent() {
               <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                 About this course
               </div>
-              {course?.description ? (
+              {course.description ? (
                 <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
                   {course.description}
                 </p>
@@ -282,19 +271,16 @@ function CourseDetailComponent() {
                 {totalLessons} {totalLessons === 1 ? 'Lesson' : 'Lessons'}
               </div>
             </div>
-            {canEdit &&
-              isCourseTeacher &&
-              course &&
-              course.lessons.length < 3 && (
-                <Button theme="dark" onClick={() => openLessonDialog('create')}>
-                  <PlusIcon className="size-3.5" />
-                  Add Lesson
-                </Button>
-              )}
+            {canEdit && isCourseTeacher && course.lessons.length < 3 && (
+              <Button theme="dark" onClick={() => openLessonDialog('create')}>
+                <PlusIcon className="size-3.5" />
+                Add Lesson
+              </Button>
+            )}
           </div>
 
           {/* Lesson list */}
-          {course?.lessons.length === 0 ? (
+          {course.lessons.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <BookOpenIcon className="mb-4 size-10 text-[#C5A059]/30" />
               <p className="text-sm text-[#AFA28F]">No lessons yet</p>
@@ -311,7 +297,7 @@ function CourseDetailComponent() {
             </div>
           ) : (
             <div className="divide-y divide-white/8">
-              {course?.lessons.map((lesson: Lesson, index: number) => {
+              {course.lessons.map((lesson: Lesson, index: number) => {
                 const isCompleted = completedLessonIds.includes(lesson.id)
                 const isPublished = lesson.isPublished ?? false
                 const showContent = isPublished || canEdit
@@ -454,67 +440,21 @@ function CourseDetailComponent() {
       />
 
       {/* Delete Course Dialog */}
-      <Dialog
+      <DeleteConfirmDialog
         open={showDeleteCourseDialog}
         onOpenChange={setShowDeleteCourseDialog}
-      >
-        <DialogContent
-          className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
-          style={{
-            backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-          showCloseButton={false}
-        >
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-          <div className="relative">
-            <DialogHeader>
-              <div className="mb-1">
-                <div className="h-px w-8 bg-[#C5A059]/40" />
-                <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Confirm action
-                </div>
-              </div>
-              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-                Delete Course
-              </DialogTitle>
-              <DialogDescription className="text-[#AFA28F]">
-                Are you sure you want to delete "{course?.title}"? This action
-                cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-              <Button
-                variant="outline"
-                theme="dark"
-                onClick={() => setShowDeleteCourseDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                className="rounded-none"
-                onClick={() => {
-                  if (course) {
-                    deleteCourseMutation.mutate({
-                      data: { courseId: course.id },
-                    })
-                  }
-                }}
-                disabled={deleteCourseMutation.status === 'pending'}
-              >
-                {deleteCourseMutation.status === 'pending'
-                  ? 'Deleting...'
-                  : 'Delete'}
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+        entityName="Course"
+        onConfirm={() =>
+          deleteCourseMutation.mutate({
+            data: { courseId: course.id },
+          })
+        }
+        isDeleting={deleteCourseMutation.status === 'pending'}
+        navigateTo="/dashboard"
+      />
 
       {/* Lesson Dialog (create / edit / delete) */}
-      {lessonDialogMode !== null && course && (
+      {lessonDialogMode !== null && (
         <LessonDialog
           open={true}
           onOpenChange={(open) => {

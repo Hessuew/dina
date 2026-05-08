@@ -7,6 +7,7 @@ import {
   updateAssignmentSchema,
 } from '@/schemas/assignment.schema'
 import { Button } from '@/components/ui/button'
+import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import {
   Dialog,
   DialogBody,
@@ -166,7 +167,6 @@ export function AssignmentDialog({
   const isPending =
     createMutation.status === 'pending' ||
     updateMutation.status === 'pending' ||
-    deleteMutation.status === 'pending' ||
     gradeMutation.status === 'pending'
 
   const dialogStyle = {
@@ -176,67 +176,60 @@ export function AssignmentDialog({
   }
 
   if (mode === 'delete') {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
-          style={dialogStyle}
-          showCloseButton={false}
-        >
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-          <div className="relative">
-            <DialogHeader>
-              <div className="mb-1">
-                <div className="h-px w-8 bg-[#C5A059]/40" />
-                <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Confirm action
+    if (submissionCount > 0) {
+      return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent
+            className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
+            style={dialogStyle}
+            showCloseButton={false}
+          >
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
+            <div className="relative">
+              <DialogHeader>
+                <div className="mb-1">
+                  <div className="h-px w-8 bg-[#C5A059]/40" />
+                  <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                    Confirm action
+                  </div>
                 </div>
-              </div>
-              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-                Delete Assignment
-              </DialogTitle>
-              <DialogDescription className="text-[#AFA28F]">
-                {submissionCount > 0 ? (
-                  <>
-                    This assignment has {submissionCount} submission
-                    {submissionCount !== 1 ? 's' : ''}. Assignments with
-                    submissions cannot be deleted.
-                  </>
-                ) : (
-                  <>
-                    Are you sure you want to delete "{assignment?.title}"? This
-                    action cannot be undone.
-                  </>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-              <Button
-                variant="outline"
-                theme="dark"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              {submissionCount === 0 && (
+                <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
+                  Delete Assignment
+                </DialogTitle>
+                <DialogDescription className="text-[#AFA28F]">
+                  This assignment has {submissionCount} submission
+                  {submissionCount !== 1 ? 's' : ''}. Assignments with
+                  submissions cannot be deleted.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
                 <Button
-                  variant="destructive"
-                  className="rounded-none"
-                  onClick={() =>
-                    assignment &&
-                    deleteMutation.mutate({
-                      data: { assignmentId: assignment.id },
-                    })
-                  }
-                  disabled={isPending}
+                  variant="outline"
+                  theme="dark"
+                  onClick={() => onOpenChange(false)}
                 >
-                  {isPending ? 'Deleting...' : 'Delete'}
+                  Cancel
                 </Button>
-              )}
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )
+    }
+
+    return (
+      <DeleteConfirmDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        entityName="Assignment"
+        onConfirm={() =>
+          assignment &&
+          deleteMutation.mutate({
+            data: { assignmentId: assignment.id },
+          })
+        }
+        isDeleting={deleteMutation.status === 'pending'}
+      />
     )
   }
 

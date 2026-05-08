@@ -15,6 +15,7 @@ This folder contains:
 - **`ui/`**
   - Shared UI primitives, largely shadcn-style components.
   - These are the building blocks used across routes and feature components.
+  - Includes `DeleteConfirmDialog` for standardized delete confirmation flows.
 
 - **`navigation/`**
   - App shell components: sidebar, header, catch boundary, not-found page.

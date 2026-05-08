@@ -390,8 +390,6 @@ export const deleteAssignment = createServerFn({ method: 'POST' })
       }
 
       await db.delete(assignments).where(eq(assignments.id, data.assignmentId))
-
-      return { success: true }
     })
   })
 
