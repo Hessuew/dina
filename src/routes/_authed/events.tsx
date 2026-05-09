@@ -9,11 +9,11 @@ import {
   Trash2Icon,
   UserIcon,
 } from 'lucide-react'
-import { useDialogState } from '@/hooks/useDialogState'
 import { format } from 'date-fns'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { CalendarEventRow } from '@/utils/event'
+import { useDialogState } from '@/hooks/useDialogState'
 import { EventDialog } from '@/components/dialog/EventDialog'
 import { Button } from '@/components/ui/button'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'

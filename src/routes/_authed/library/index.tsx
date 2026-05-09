@@ -7,10 +7,10 @@ import {
   PlusIcon,
   Trash2Icon,
 } from 'lucide-react'
-import { useState } from 'react'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { MediaLibraryRow } from '@/utils/library'
+import { useDialogState } from '@/hooks/useDialogState'
 import { MediaDialog } from '@/components/dialog/MediaDialog'
 import { Button } from '@/components/ui/button'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
@@ -24,12 +24,6 @@ export const Route = createFileRoute('/_authed/library/')({
   },
   component: LibraryComponent,
 })
-
-type DialogState =
-  | { mode: 'create' }
-  | { mode: 'edit'; media: MediaLibraryRow }
-  | { mode: 'delete'; media: MediaLibraryRow }
-  | null
 
 const columnHelper = createColumnHelper<MediaLibraryRow>()
 
@@ -80,12 +74,8 @@ function LibraryComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
   const { media, viewer } = loaderData
-  const [dialogState, setDialogState] = useState<DialogState>(null)
-
-  const isOpen = dialogState !== null
-  const dialogMode = dialogState?.mode ?? 'create'
-  const dialogMedia =
-    dialogState && dialogState.mode !== 'create' ? dialogState.media : undefined
+  const { isOpen, dialogMode, dialogItem: dialogMedia, openDialog, closeDialog } =
+    useDialogState<MediaLibraryRow>()
 
   const canCreate = viewer.role === 'teacher' || viewer.role === 'admin'
 
@@ -193,13 +183,13 @@ function LibraryComponent() {
         icon: PencilIcon,
         label: 'Edit',
         show: (row) => canManageRow(row),
-        onClick: (row) => setDialogState({ mode: 'edit', media: row }),
+        onClick: (row) => openDialog('edit', row),
       },
       {
         icon: Trash2Icon,
         label: 'Delete',
         show: (row) => canManageRow(row),
-        onClick: (row) => setDialogState({ mode: 'delete', media: row }),
+        onClick: (row) => openDialog('delete', row),
       },
     ]),
   ]
@@ -223,7 +213,7 @@ function LibraryComponent() {
         {canCreate && (
           <Button
             theme="light"
-            onClick={() => setDialogState({ mode: 'create' })}
+            onClick={() => openDialog('create')}
           >
             <PlusIcon className="size-4" />
             Add Media
@@ -244,7 +234,7 @@ function LibraryComponent() {
             <Button
               theme="light"
               className="mt-4"
-              onClick={() => setDialogState({ mode: 'create' })}
+              onClick={() => openDialog('create')}
             >
               <PlusIcon className="size-4" />
               Add Media
@@ -265,8 +255,8 @@ function LibraryComponent() {
       <MediaDialog
         key={`${dialogMode}-${dialogMedia?.id}`}
         open={isOpen}
-        onOpenChange={(open) => !open && setDialogState(null)}
-        mode={dialogMode}
+        onOpenChange={(open) => !open && closeDialog()}
+        mode={dialogMode as 'create' | 'edit' | 'delete'}
         media={dialogMedia}
       />
     </PageLayout>
