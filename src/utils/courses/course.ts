@@ -14,6 +14,7 @@ import {
 import { getCurrentUser } from '@/utils/auth/auth'
 import { getSupabaseServerClient } from '@/utils/supabase'
 import { authz, withRequestCache } from '@/utils/authz'
+import { calculateEntityPermissions } from '@/utils/authz/permissions'
 import {
   AuthorizationError,
   NotFoundError,
@@ -191,16 +192,25 @@ export const getCourse = createServerFn({ method: 'POST' })
 
     const completedLessonIds = new Set(progress.map((item) => item.lessonId))
 
+    const courseWithTeachers = {
+      ...course,
+      teacher1Id: course.courseTeachers[0]?.teacherId ?? null,
+      teacher2Id: course.courseTeachers[1]?.teacherId ?? null,
+    }
+
+    const permissions = calculateEntityPermissions(
+      profile.role,
+      courseWithTeachers,
+      user.id,
+    )
+
     return {
-      course: {
-        ...course,
-        teacher1Id: course.courseTeachers[0]?.teacherId,
-        teacher2Id: course.courseTeachers[1]?.teacherId,
-      },
+      course: courseWithTeachers,
       role: profile.role,
       completedLessonIds: Array.from(completedLessonIds),
       assignmentData,
       user,
+      permissions,
     }
   })
 

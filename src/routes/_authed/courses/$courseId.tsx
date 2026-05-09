@@ -20,7 +20,6 @@ import { CourseDialog } from '@/components/dialog/CourseDialog'
 import { LessonDialog } from '@/components/dialog/LessonDialog'
 import { deleteCourse, getCourse } from '@/utils/courses'
 import { cn } from '@/lib/utils'
-import { isUserCourseTeacher } from '@/utils/teachers'
 import { PageLayout } from '@/components/layout/page-layout'
 import { DarkCard } from '@/components/ui/dark-card'
 
@@ -56,16 +55,13 @@ type CourseEditData = {
 function CourseDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
-  const { course, role, completedLessonIds, assignmentData, user } = loaderData
+  const { course, role, completedLessonIds, assignmentData, permissions } =
+    loaderData
 
   const courseDialog = useDialogState<CourseEditData>()
   const lessonDialog = useDialogState<Lesson>()
 
-  const isAdmin = role === 'admin'
   const courseTeachersData = course.courseTeachers
-  const isCourseTeacher =
-    isUserCourseTeacher(course, user.id) || role === 'admin'
-  const canEdit = role === 'teacher' || role === 'admin'
   const totalLessons = course.lessons.length || 0
 
   const deleteCourseMutation = useMutation({
@@ -111,7 +107,7 @@ function CourseDetailComponent() {
           </div>
 
           <div className="flex items-center gap-3 pt-4">
-            {canEdit && isCourseTeacher && (
+            {permissions.canEdit && permissions.isCourseTeacher && (
               <>
                 <div
                   className={cn(
@@ -190,7 +186,7 @@ function CourseDetailComponent() {
           </div>
 
           {/* Progress card — students only */}
-          {!canEdit && (
+          {!permissions.canEdit && (
             <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
               <DarkCard label="Your Progress">
                 <div>
@@ -252,15 +248,17 @@ function CourseDetailComponent() {
                 {totalLessons} {totalLessons === 1 ? 'Lesson' : 'Lessons'}
               </div>
             </div>
-            {canEdit && isCourseTeacher && course.lessons.length < 3 && (
-              <Button
-                theme="dark"
-                onClick={() => lessonDialog.openDialog('create')}
-              >
-                <PlusIcon className="size-3.5" />
-                Add Lesson
-              </Button>
-            )}
+            {permissions.canEdit &&
+              permissions.isCourseTeacher &&
+              course.lessons.length < 3 && (
+                <Button
+                  theme="dark"
+                  onClick={() => lessonDialog.openDialog('create')}
+                >
+                  <PlusIcon className="size-3.5" />
+                  Add Lesson
+                </Button>
+              )}
           </div>
 
           {/* Lesson list */}
@@ -268,7 +266,7 @@ function CourseDetailComponent() {
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <BookOpenIcon className="mb-4 size-10 text-[#C5A059]/30" />
               <p className="text-sm text-[#AFA28F]">No lessons yet</p>
-              {canEdit && isCourseTeacher && (
+              {permissions.canEdit && permissions.isCourseTeacher && (
                 <Button
                   theme="dark"
                   className="mt-4"
@@ -284,7 +282,7 @@ function CourseDetailComponent() {
               {course.lessons.map((lesson: Lesson, index: number) => {
                 const isCompleted = completedLessonIds.includes(lesson.id)
                 const isPublished = lesson.isPublished ?? false
-                const showContent = isPublished || canEdit
+                const showContent = isPublished || permissions.canEdit
 
                 return (
                   <div
@@ -314,7 +312,7 @@ function CourseDetailComponent() {
                         <span className="text-[0.62rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
                           {lesson.title}
                         </span>
-                        {canEdit && isCourseTeacher && (
+                        {permissions.canEdit && permissions.isCourseTeacher && (
                           <StatusChip
                             variant={isPublished ? 'published' : 'draft'}
                             size="sm"
@@ -377,7 +375,7 @@ function CourseDetailComponent() {
                             <ArrowRight className="size-3.5" />
                           </Button>
                         ))}
-                      {canEdit && isCourseTeacher && (
+                      {permissions.canEdit && permissions.isCourseTeacher && (
                         <>
                           <Button
                             variant="ghost"
@@ -417,7 +415,7 @@ function CourseDetailComponent() {
         open={courseDialog.isOpen && courseDialog.dialogMode === 'edit'}
         onOpenChange={(open) => !open && courseDialog.closeDialog()}
         mode="edit"
-        isAdmin={isAdmin}
+        isAdmin={permissions.isAdmin}
         initialData={courseDialog.dialogItem}
       />
 

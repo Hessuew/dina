@@ -16,6 +16,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `cache.ts`: Per-request caching using AsyncLocalStorage.
   - `route.ts`: Route protection with redirect support.
   - `test-adapter.ts`: Test adapter for unit testing authorization logic.
+  - `permissions.ts`: UI permission calculation utility for entity-level permissions.
+    - `calculateEntityPermissions(role, entity, userId)`: Returns `{ isAdmin, isCourseTeacher, canEdit, canManage }`
+    - Used by server functions to return permissions to frontend, eliminating client-side permission logic duplication.
   - Usage: `authz(userId).perform('gradeAssignment').on(assignmentId)` (throws if not allowed)
   - Usage: `isAllowed(userId).perform('gradeAssignment').on(assignmentId)` (returns boolean)
 

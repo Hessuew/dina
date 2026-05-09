@@ -19,7 +19,6 @@ import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { LessonDialog } from '@/components/dialog/LessonDialog'
 import { useDialogState } from '@/hooks/useDialogState'
 import { PageLayout } from '@/components/layout/page-layout'
-import { isUserCourseTeacher } from '@/utils/teachers'
 import { DarkCard } from '@/components/ui/dark-card'
 
 const getLessonData = createServerFn({ method: 'POST' })
@@ -62,15 +61,12 @@ function LessonDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
   const search = Route.useSearch()
-  const { lesson, role, user } = loaderData
+  const { lesson, role, permissions } = loaderData
   const lessonDialog = useDialogState()
   const assignmentDialog = useDialogState<Assignment>()
   const [submissionCount, setSubmissionCount] = useState(0)
-  const isCourseTeacher =
-    isUserCourseTeacher(lesson.course, user.id) || role === 'admin'
-  const canEdit = role === 'teacher' || role === 'admin'
   const isPublished = lesson.isPublished ?? false
-  const showContent = isPublished || canEdit
+  const showContent = isPublished || permissions.canEdit
 
   const handleDeleteAssignmentClick = async (assignment: Assignment) => {
     try {
@@ -153,7 +149,7 @@ function LessonDetailComponent() {
             </div>
           </div>
 
-          {canEdit && isCourseTeacher && (
+          {permissions.canEdit && permissions.isCourseTeacher && (
             <div className="flex items-center gap-3 pt-4">
               <StatusChip
                 variant={isPublished ? 'published' : 'draft'}
@@ -218,7 +214,7 @@ function LessonDetailComponent() {
                 {lesson.assignments.length === 1 ? 'Assignment' : 'Assignments'}
               </div>
             </div>
-            {canEdit && isCourseTeacher && (
+            {permissions.canEdit && permissions.isCourseTeacher && (
               <Button
                 theme="dark"
                 onClick={() => assignmentDialog.openDialog('create')}
@@ -232,7 +228,7 @@ function LessonDetailComponent() {
           {lesson.assignments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <p className="text-sm text-[#AFA28F]">No assignments yet</p>
-              {canEdit && isCourseTeacher && (
+              {permissions.canEdit && permissions.isCourseTeacher && (
                 <Button
                   theme="dark"
                   className="mt-4"
@@ -296,7 +292,7 @@ function LessonDetailComponent() {
                           <span>Max: {assignment.maxGrade ?? 100} pts</span>
                         </div>
                       </div>
-                      {canEdit && isCourseTeacher && (
+                      {permissions.canEdit && permissions.isCourseTeacher && (
                         <div className="flex shrink-0 items-center gap-2">
                           <Button
                             variant="ghost"

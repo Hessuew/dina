@@ -28,7 +28,6 @@ import {
 } from '@/utils/assignments'
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { PageLayout } from '@/components/layout/page-layout'
-import { isUserCourseTeacher } from '@/utils/teachers'
 import { DarkCard } from '@/components/ui/dark-card'
 
 const getAssignmentData = createServerFn({ method: 'POST' })
@@ -98,7 +97,8 @@ function AssignmentDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
   const { fromDashboard, fromCalendar, calendarMonth } = Route.useSearch()
-  const { assignment, submission, role, allSubmissions, user } = loaderData
+  const { assignment, submission, role, allSubmissions, permissions } =
+    loaderData
 
   const assignmentDialog = useDialogState()
   const gradeDialog = useDialogState<SubmissionWithStudent>()
@@ -167,9 +167,6 @@ function AssignmentDetailComponent() {
     fileUrl: submission?.fileUrl || '',
   })
 
-  const isCourseTeacher =
-    isUserCourseTeacher(assignment.lesson.course, user.id) || role === 'admin'
-  const canEdit = role === 'teacher' || role === 'admin'
   const isStudent = role === 'student'
   const isPastDue = new Date(assignment.dueDate) < new Date()
   const canSubmit = isStudent && assignment.status === 'published' && !isPastDue
@@ -255,7 +252,7 @@ function AssignmentDetailComponent() {
 
           <div className="flex items-center gap-3 pt-4">
             <StatusChip variant={assignment.status} size="md" />
-            {canEdit && isCourseTeacher && (
+            {permissions.canEdit && permissions.isCourseTeacher && (
               <>
                 <Button
                   variant="ghost"
