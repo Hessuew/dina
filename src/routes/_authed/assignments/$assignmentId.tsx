@@ -2,12 +2,10 @@ import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import {
   CalendarIcon,
-  ChevronLeft,
   ClockIcon,
   PencilIcon,
   SaveIcon,
   SendIcon,
-  TrashIcon,
 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -28,6 +26,8 @@ import {
 } from '@/utils/assignments'
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { PageLayout } from '@/components/layout/page-layout'
+import { PageHeader } from '@/components/layout/page-header'
+import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { DarkCard } from '@/components/ui/dark-card'
 
 const getAssignmentData = createServerFn({ method: 'POST' })
@@ -202,81 +202,48 @@ function AssignmentDetailComponent() {
 
   return (
     <PageLayout>
-      {/* Page header */}
-      <div className="mb-10">
-        <Button
-          variant="ghost"
-          theme="light"
-          size="sm"
-          className="mb-6 gap-1"
-          onClick={goBack}
-        >
-          <ChevronLeft className="size-3.5" />
-          Back
-        </Button>
-
-        <div className="flex items-start justify-between gap-6">
-          <div>
-            <div className="h-px w-10 bg-[#C5A059]/50" />
-            <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-black sm:text-4xl">
-              {assignment.title}
-            </h1>
-            <div className="mt-3 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
-              <span className="tracking-wides">
-                {assignment.lesson.course.title}
+      <PageHeader
+        title={assignment.title}
+        onBack={goBack}
+        metadata={
+          <>
+            <span className="tracking-wides">
+              {assignment.lesson.course.title}
+            </span>
+            <span className="text-[#C5A059]/40">·</span>
+            <div className="flex items-center gap-1.5">
+              <CalendarIcon className="size-3" />
+              <span>
+                Due{' '}
+                {new Date(assignment.dueDate).toLocaleDateString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
               </span>
-              <span className="text-[#C5A059]/40">·</span>
-              <div className="flex items-center gap-1.5">
-                <CalendarIcon className="size-3" />
-                <span>
-                  Due{' '}
-                  {new Date(assignment.dueDate).toLocaleDateString('en-US', {
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <ClockIcon className="size-3" />
-                <span>
-                  {new Date(assignment.dueDate).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true,
-                  })}
-                </span>
-              </div>
             </div>
-          </div>
-
-          <div className="flex items-center gap-3 pt-4">
-            <StatusChip variant={assignment.status} size="md" />
-            {permissions.canEdit && permissions.isCourseTeacher && (
-              <>
-                <Button
-                  variant="ghost"
-                  theme="light"
-                  size="icon"
-                  className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
-                  onClick={() => assignmentDialog.openDialog('edit')}
-                >
-                  <PencilIcon className="size-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  theme="light"
-                  size="icon"
-                  className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-red-300 hover:text-red-600"
-                  onClick={() => assignmentDialog.openDialog('delete')}
-                >
-                  <TrashIcon className="size-3.5" />
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+            <div className="flex items-center gap-1.5">
+              <ClockIcon className="size-3" />
+              <span>
+                {new Date(assignment.dueDate).toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                })}
+              </span>
+            </div>
+          </>
+        }
+        actions={
+          <EntityHeaderActions
+            status={assignment.status}
+            canEdit={permissions.canEdit}
+            isCourseTeacher={permissions.isCourseTeacher}
+            onEdit={() => assignmentDialog.openDialog('edit')}
+            onDelete={() => assignmentDialog.openDialog('delete')}
+          />
+        }
+      />
 
       {/* Main grid */}
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">

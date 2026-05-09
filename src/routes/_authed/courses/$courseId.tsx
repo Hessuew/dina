@@ -3,7 +3,6 @@ import {
   ArrowRight,
   BookOpenIcon,
   CalendarIcon,
-  ChevronLeft,
   ClockIcon,
   PencilIcon,
   PlusIcon,
@@ -21,6 +20,8 @@ import { LessonDialog } from '@/components/dialog/LessonDialog'
 import { deleteCourse, getCourse } from '@/utils/courses'
 import { cn } from '@/lib/utils'
 import { PageLayout } from '@/components/layout/page-layout'
+import { PageHeader } from '@/components/layout/page-header'
+import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { DarkCard } from '@/components/ui/dark-card'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -74,86 +75,44 @@ function CourseDetailComponent() {
 
   return (
     <PageLayout>
-      {/* Page header */}
-      <div className="mb-10">
-        <Button
-          variant="ghost"
-          theme="light"
-          size="sm"
-          className="mb-6 gap-1"
-          onClick={() => router.navigate({ to: '/dashboard' })}
-        >
-          <ChevronLeft className="size-3.5" />
-          Back
-        </Button>
-
-        <div className="flex items-start justify-between gap-6">
-          <div>
-            <div className="h-px w-10 bg-[#C5A059]/50" />
-            <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
-              {course.title}
-            </h1>
-            {course.courseTeachers.length > 0 && (
-              <div className="mt-3 flex items-center gap-3">
-                <span className="text-[0.65rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
-                  Teachers
-                </span>
-                <TeacherAvatars
-                  teachers={course.courseTeachers.map((ct) => ct.teacher)}
-                  size="sm"
-                  showTooltip={true}
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3 pt-4">
-            {permissions.canEdit && permissions.isCourseTeacher && (
-              <>
-                <div
-                  className={cn(
-                    'border px-3 py-1.5 text-[0.62rem] font-medium tracking-[0.22em] uppercase',
-                    course.isPublished
-                      ? 'border-[#C5A059]/40 bg-[#C5A059]/8 text-[#9B7A41]'
-                      : 'border-[#1A1A1A]/12 bg-[#1A1A1A]/4 text-[#8E816D]',
-                  )}
-                >
-                  {course.isPublished ? 'Published' : 'Draft'}
-                </div>
-                <Button
-                  variant="ghost"
-                  theme="light"
-                  size="icon"
-                  className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
-                  onClick={() => {
-                    courseDialog.openDialog('edit', {
-                      courseId: course.id,
-                      title: course.title,
-                      description: course.description || '',
-                      thumbnailUrl: course.thumbnailUrl,
-                      isPublished: course.isPublished ?? false,
-                      teacher1Id: courseTeachersData[0]?.teacher?.id || null,
-                      teacher2Id: courseTeachersData[1]?.teacher?.id || null,
-                      orderIndex: course.orderIndex ?? 0,
-                    })
-                  }}
-                >
-                  <PencilIcon className="size-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  theme="light"
-                  size="icon"
-                  className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-red-300 hover:text-red-600"
-                  onClick={() => courseDialog.openDialog('delete')}
-                >
-                  <TrashIcon className="size-3.5" />
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title={course.title}
+        onBack={() => router.navigate({ to: '/dashboard' })}
+        metadata={
+          course.courseTeachers.length > 0 && (
+            <>
+              <span className="text-[0.65rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
+                Teachers
+              </span>
+              <TeacherAvatars
+                teachers={course.courseTeachers.map((ct) => ct.teacher)}
+                size="sm"
+                showTooltip={true}
+              />
+            </>
+          )
+        }
+        actions={
+          <EntityHeaderActions
+            status={course.isPublished ? 'published' : 'draft'}
+            canEdit={permissions.canEdit}
+            isCourseTeacher={permissions.isCourseTeacher}
+            onEdit={() => {
+              courseDialog.openDialog('edit', {
+                courseId: course.id,
+                title: course.title,
+                description: course.description || '',
+                thumbnailUrl: course.thumbnailUrl,
+                isPublished: course.isPublished ?? false,
+                teacher1Id: courseTeachersData[0]?.teacher?.id || null,
+                teacher2Id: courseTeachersData[1]?.teacher?.id || null,
+                orderIndex: course.orderIndex ?? 0,
+              })
+            }}
+            onDelete={() => courseDialog.openDialog('delete')}
+          />
+        }
+      />
 
       {/* Main grid */}
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">

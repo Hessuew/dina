@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { ChevronLeft, Mail, Trash2 } from 'lucide-react'
+import { Mail, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useState } from 'react'
 import { useServerFn } from '@tanstack/react-start'
@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { PageLayout } from '@/components/layout/page-layout'
+import { PageHeader } from '@/components/layout/page-header'
 import { EnrollmentStatusChip } from '@/components/table/chips'
 import {
   Select,
@@ -104,29 +105,17 @@ function EnrollmentDetailPage() {
 
   return (
     <PageLayout>
-      <Button
-        variant="ghost"
-        theme="light"
-        size="sm"
-        className="mb-6 gap-1"
-        onClick={() => router.navigate({ to: '/enrollments' })}
-      >
-        <ChevronLeft className="size-3.5" />
-        Back
-      </Button>
-
-      <div className="mb-8 flex flex-col gap-3">
-        <div className="h-px w-10 bg-[#C5A059]/50" />
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">
-              {enrollment.fullLegalName}
-            </h1>
-            <p className="mt-2 text-[0.72rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-              Enrollment details
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+      <PageHeader
+        title={enrollment.fullLegalName}
+        onBack={() => router.navigate({ to: '/enrollments' })}
+        responsiveTitle={false}
+        metadata={
+          <p className="text-[0.72rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
+            Enrollment details
+          </p>
+        }
+        actions={
+          <>
             <Button
               theme="light"
               variant="outline"
@@ -144,9 +133,9 @@ function EnrollmentDetailPage() {
               <Trash2 className="size-3.5" />
               Delete
             </Button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="border border-white/10 bg-[#151515]/88 p-6 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
         <div className="grid gap-6 sm:grid-cols-2">

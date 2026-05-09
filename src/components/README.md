@@ -23,7 +23,7 @@ This folder contains:
   - App shell components: sidebar, header, catch boundary, not-found page.
 
 - **`layout/`**
-  - Page layout wrappers: PageLayout for consistent page background and container structure.
+  - Page layout wrappers: PageLayout for consistent page background and container structure; PageHeader for detail page headers with back button, gold line, title, metadata, and actions; EntityHeaderActions for standardized StatusChip + edit/delete button pattern with permission logic.
 
 - **Feature component families**
   - `auth/`: signup/login/reset/enrolment forms.

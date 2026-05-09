@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { CalendarIcon, ChevronLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { CalendarIcon } from 'lucide-react'
 import { PageLayout } from '@/components/layout/page-layout'
+import { PageHeader } from '@/components/layout/page-header'
 import { getStudentDetail } from '@/utils/student'
 import { cn } from '@/lib/utils'
 
@@ -47,26 +47,16 @@ function StudentDetailComponent() {
 
   return (
     <PageLayout>
-      {/* Page header */}
-      <div className="mb-10">
-        <Button
-          variant="ghost"
-          theme="light"
-          size="sm"
-          className="mb-6 gap-1"
-          onClick={() => router.navigate({ to: '/students' })}
-        >
-          <ChevronLeft className="size-3.5" />
-          Back
-        </Button>
-        <div className="h-px w-10 bg-[#C5A059]/50" />
-        <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">
-          {student.fullName}
-        </h1>
-        <p className="mt-2 text-[0.72rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-          Student details &amp; grades
-        </p>
-      </div>
+      <PageHeader
+        title={student.fullName}
+        onBack={() => router.navigate({ to: '/students' })}
+        responsiveTitle={false}
+        metadata={
+          <p className="text-[0.72rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
+            Student details &amp; grades
+          </p>
+        }
+      />
 
       {/* Info card */}
       <div className="mb-10 border border-white/10 bg-[#1A1716] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
