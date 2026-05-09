@@ -16,6 +16,7 @@ import { getAssignmentSubmissionCount, getLesson } from '@/utils/assignments'
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { LessonDialog } from '@/components/dialog/LessonDialog'
 import { cn } from '@/lib/utils'
+import { useDialogState } from '@/hooks/useDialogState'
 import { PageLayout } from '@/components/layout/page-layout'
 import { isUserCourseTeacher } from '@/utils/teachers'
 
@@ -60,15 +61,8 @@ function LessonDetailComponent() {
   const router = useRouter()
   const search = Route.useSearch()
   const { lesson, role, user } = loaderData
-  const [lessonDialogMode, setLessonDialogMode] = useState<
-    'edit' | 'delete' | null
-  >(null)
-  const [assignmentDialogMode, setAssignmentDialogMode] = useState<
-    'create' | 'edit' | 'delete' | null
-  >(null)
-  const [assignmentToAct, setAssignmentToAct] = useState<Assignment | null>(
-    null,
-  )
+  const lessonDialog = useDialogState()
+  const assignmentDialog = useDialogState<Assignment>()
   const [submissionCount, setSubmissionCount] = useState(0)
   const isCourseTeacher =
     isUserCourseTeacher(lesson.course, user.id) || role === 'admin'
@@ -77,14 +71,12 @@ function LessonDetailComponent() {
   const showContent = isPublished || canEdit
 
   const handleDeleteAssignmentClick = async (assignment: Assignment) => {
-    setAssignmentToAct(assignment)
-
     try {
       const result = await getAssignmentSubmissionCount({
         data: { assignmentId: assignment.id },
       })
       setSubmissionCount(result.count)
-      setAssignmentDialogMode('delete')
+      assignmentDialog.openDialog('delete', assignment)
     } catch (error: any) {
       toast.error(error.message || 'Failed to check submissions')
     }
@@ -187,7 +179,7 @@ function LessonDetailComponent() {
                 theme="light"
                 size="icon"
                 className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
-                onClick={() => setLessonDialogMode('edit')}
+                onClick={() => lessonDialog.openDialog('edit')}
               >
                 <PencilIcon className="size-3.5" />
               </Button>
@@ -196,7 +188,7 @@ function LessonDetailComponent() {
                 theme="light"
                 size="icon"
                 className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-red-300 hover:text-red-600"
-                onClick={() => setLessonDialogMode('delete')}
+                onClick={() => lessonDialog.openDialog('delete')}
               >
                 <TrashIcon className="size-3.5" />
               </Button>
@@ -248,7 +240,7 @@ function LessonDetailComponent() {
             {canEdit && isCourseTeacher && (
               <Button
                 theme="dark"
-                onClick={() => setAssignmentDialogMode('create')}
+                onClick={() => assignmentDialog.openDialog('create')}
               >
                 <PlusIcon className="size-3.5" />
                 Add Assignment
@@ -263,7 +255,7 @@ function LessonDetailComponent() {
                 <Button
                   theme="dark"
                   className="mt-4"
-                  onClick={() => setAssignmentDialogMode('create')}
+                  onClick={() => assignmentDialog.openDialog('create')}
                 >
                   <PlusIcon className="size-3.5" />
                   Create First Assignment
@@ -340,8 +332,7 @@ function LessonDetailComponent() {
                             size="icon"
                             className="size-7 border border-white/10 text-[#8E816D] hover:border-[#C5A059]/40 hover:text-[#D4B373]"
                             onClick={() => {
-                              setAssignmentToAct(assignment)
-                              setAssignmentDialogMode('edit')
+                              assignmentDialog.openDialog('edit', assignment)
                             }}
                           >
                             <PencilIcon className="size-3" />
@@ -368,31 +359,30 @@ function LessonDetailComponent() {
       </div>
 
       {/* Assignment Dialog (create / edit / delete) */}
-      {assignmentDialogMode !== null && (
+      {assignmentDialog.isOpen && (
         <AssignmentDialog
           open={true}
           onOpenChange={(open) => {
             if (!open) {
-              setAssignmentDialogMode(null)
-              setAssignmentToAct(null)
+              assignmentDialog.closeDialog()
               setSubmissionCount(0)
             }
           }}
-          mode={assignmentDialogMode}
+          mode={assignmentDialog.dialogMode as 'create' | 'edit' | 'delete'}
           lessonId={lesson.id}
-          assignment={assignmentToAct ?? undefined}
+          assignment={assignmentDialog.dialogItem}
           submissionCount={submissionCount}
         />
       )}
 
       {/* Lesson Dialog (edit / delete) */}
-      {lessonDialogMode !== null && (
+      {lessonDialog.isOpen && (
         <LessonDialog
           open={true}
           onOpenChange={(open) => {
-            if (!open) setLessonDialogMode(null)
+            if (!open) lessonDialog.closeDialog()
           }}
-          mode={lessonDialogMode}
+          mode={lessonDialog.dialogMode as 'edit' | 'delete'}
           courseId={lesson.course.id}
           initialData={{
             lessonId: lesson.id,
