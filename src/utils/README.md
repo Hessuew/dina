@@ -8,8 +8,19 @@ This folder is primarily where TanStack Start server functions live (via `create
 
 ## What Lives Here
 
+- **Authorization module** (`authz/`)
+  - Deep authorization module with fluent interface and per-request caching.
+  - `types.ts`: AuthorizationService interface, Action/ResourceType types, AuthorizationError.
+  - `default-adapter.ts`: Default implementation using Supabase + Drizzle.
+  - `builder.ts`: Fluent builder for `authz(userId).perform(action).on(resource)`.
+  - `cache.ts`: Per-request caching using AsyncLocalStorage.
+  - `route.ts`: Route protection with redirect support.
+  - `test-adapter.ts`: Test adapter for unit testing authorization logic.
+  - Usage: `authz(userId).perform('gradeAssignment').on(assignmentId)` (throws if not allowed)
+  - Usage: `isAllowed(userId).perform('gradeAssignment').on(assignmentId)` (returns boolean)
+
 - **Auth utilities**
-  - `auth.ts`: current user lookup and role/access helpers.
+  - `auth.ts`: current user lookup and role/access helpers (legacy, migrate to authz).
 
 - **Supabase utilities**
   - `supabase.ts`: server client (`@supabase/ssr`) and admin client.
@@ -21,7 +32,7 @@ This folder is primarily where TanStack Start server functions live (via `create
     - Post notification inbox logic (aggregation + mark read).
 
 - **Role-gated route helpers**
-  - `admin.ts`: shared admin-only access check for routes.
+  - `admin.ts`: shared admin-only access check for routes (legacy, migrate to authz).
 
 - **Misc**
   - `imageUpload.ts`: server-side upload-related helpers.
@@ -30,8 +41,14 @@ This folder is primarily where TanStack Start server functions live (via `create
 
 ## Key Invariants / Assumptions
 
+- **Authorization**
+  - Use `authz` module for all authorization checks (preferred over legacy `auth.ts`).
+  - Wrap server functions with `withRequestCache()` for per-request caching.
+  - Route protection: use `protectRoute({ require: 'admin' })` in route loaders.
+
 - **Server functions and auth**
-  - Server functions that require authentication should call `getCurrentUser()` from `auth.ts`.
+  - Server functions that require authentication should call `getCurrentUser()` from `auth.ts` (legacy).
+  - New code should use `authz` module for authorization after authentication.
 
 - **DB access**
   - Use `getDb()` from `src/db/index.ts`.
@@ -46,10 +63,16 @@ This folder is primarily where TanStack Start server functions live (via `create
 - **Add a new server function for a feature**
   - Prefer adding it to the closest feature module in this directory.
   - Validate inputs using schemas from `src/schemas/*`.
+  - Use `authz` module for authorization: `await authz(userId).perform('editCourse').on(courseId)`.
 
 - **Change auth rules / roles**
-  - Update `auth.ts`.
+  - Update `authz/default-adapter.ts` for authorization logic.
+  - Update `auth.ts` only for legacy auth (migration in progress).
   - If route protection assumptions change, update `src/routes/README.md`.
+
+- **Add new authorization action**
+  - Add action to `Action` type in `authz/types.ts`.
+  - Implement logic in `DefaultAuthorizationService.canPerformAction()`.
 
 ## Related Docs
 
