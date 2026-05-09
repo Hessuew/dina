@@ -65,18 +65,19 @@ Or ask: "This branch split from main - is that correct?"
 
 ### Step 4: Present Options
 
-**Normal repo and named-branch worktree — present exactly these 4 options:**
+**Normal repo and named-branch worktree — present exactly these 3 options:**
 
 ```
 Implementation complete. What would you like to do?
 
-1. Merge back to <base-branch> locally
-2. Push and create a Pull Request
-3. Keep the branch as-is (I'll handle it later)
-4. Discard this work
+1. Push and create a Pull Request
+2. Keep the branch as-is (I'll handle it later)
+3. Discard this work
 
 Which option?
 ```
+
+> Merges happen via GitHub PR — submit with Option 1, merge on GitHub, then `gt sync` cleans up the stack automatically.
 
 **Detached HEAD — present exactly these 3 options:**
 
@@ -94,31 +95,7 @@ Which option?
 
 ### Step 5: Execute Choice
 
-#### Option 1: Merge Locally
-
-```bash
-# Get main repo root for CWD safety
-MAIN_ROOT=$(git -C "$(git rev-parse --git-common-dir)/.." rev-parse --show-toplevel)
-cd "$MAIN_ROOT"
-
-# Merge first — verify success before removing anything
-git checkout <base-branch>
-git pull
-git merge <feature-branch>
-
-# Verify tests on merged result
-<test command>
-
-# Only after merge succeeds: cleanup worktree (Step 6), then delete branch
-```
-
-Then: Cleanup worktree (Step 6), then delete branch:
-
-```bash
-git branch -d <feature-branch>
-```
-
-#### Option 2: Push and Create PR
+#### Option 1: Push and Create PR
 
 ```bash
 # Push branch
@@ -128,13 +105,13 @@ gt submit --no-edit
 
 **Do NOT clean up worktree** — user needs it alive to iterate on PR feedback.
 
-#### Option 3: Keep As-Is
+#### Option 2: Keep As-Is
 
 Report: "Keeping branch <name>. Worktree preserved at <path>."
 
 **Don't cleanup worktree.**
 
-#### Option 4: Discard
+#### Option 3: Discard
 
 **Confirm first:**
 ```
@@ -154,14 +131,14 @@ MAIN_ROOT=$(git -C "$(git rev-parse --git-common-dir)/.." rev-parse --show-tople
 cd "$MAIN_ROOT"
 ```
 
-Then: Cleanup worktree (Step 6), then force-delete branch:
+Then: Cleanup worktree (Step 6), then delete branch:
 ```bash
-git branch -D <feature-branch>
+gt branch delete <feature-branch>
 ```
 
 ### Step 6: Cleanup Workspace
 
-**Only runs for Options 1 and 4.** Options 2 and 3 always preserve the worktree.
+**Only runs for Option 3.** Options 1 and 2 always preserve the worktree.
 
 ```bash
 GIT_DIR=$(cd "$(git rev-parse --git-dir)" 2>/dev/null && pwd -P)
@@ -184,12 +161,11 @@ git worktree prune  # Self-healing: clean up any stale registrations
 
 ## Quick Reference
 
-| Option | Merge | Push | Keep Worktree | Cleanup Branch |
-|--------|-------|------|---------------|----------------|
-| 1. Merge locally | yes | - | - | yes |
-| 2. Create PR | - | yes | yes | - |
-| 3. Keep as-is | - | - | yes | - |
-| 4. Discard | - | - | - | yes (force) |
+| Option | Push | Keep Worktree | Cleanup Branch |
+|--------|------|---------------|----------------|
+| 1. Create PR | yes | yes | - |
+| 2. Keep as-is | - | yes | - |
+| 3. Discard | - | - | yes |
 
 ## Common Mistakes
 
@@ -199,15 +175,11 @@ git worktree prune  # Self-healing: clean up any stale registrations
 
 **Open-ended questions**
 - **Problem:** "What should I do next?" is ambiguous
-- **Fix:** Present exactly 4 structured options (or 3 for detached HEAD)
+- **Fix:** Present exactly 3 structured options
 
-**Cleaning up worktree for Option 2**
+**Cleaning up worktree for Option 1**
 - **Problem:** Remove worktree user needs for PR iteration
-- **Fix:** Only cleanup for Options 1 and 4
-
-**Deleting branch before removing worktree**
-- **Problem:** `git branch -d` fails because worktree still references the branch
-- **Fix:** Merge first, remove worktree, then delete branch
+- **Fix:** Only cleanup for Option 3
 
 **Running git worktree remove from inside the worktree**
 - **Problem:** Command fails silently when CWD is inside the worktree being removed
@@ -225,18 +197,16 @@ git worktree prune  # Self-healing: clean up any stale registrations
 
 **Never:**
 - Proceed with failing tests
-- Merge without verifying tests on result
 - Delete work without confirmation
 - Force-push without explicit request
-- Remove a worktree before confirming merge success
 - Clean up worktrees you didn't create (provenance check)
 - Run `git worktree remove` from inside the worktree
 
 **Always:**
 - Verify tests before offering options
 - Detect environment before presenting menu
-- Present exactly 4 options (or 3 for detached HEAD)
-- Get typed confirmation for Option 4
-- Clean up worktree for Options 1 & 4 only
+- Present exactly 3 options
+- Get typed confirmation for Option 3
+- Clean up worktree for Option 3 only
 - `cd` to main repo root before worktree removal
 - Run `git worktree prune` after removal
