@@ -26,6 +26,12 @@ import {
   NotFoundError,
   ValidationError,
 } from '@/utils/errors'
+import {
+  calculateAssignmentStats,
+  canDeleteAssignment,
+  filterAssignmentsForStudent,
+  validateSubmissionWindow,
+} from '@/domain/assignment.service'
 
 export const getLesson = createServerFn({ method: 'POST' })
   .inputValidator(getLessonSchema)
@@ -121,7 +127,7 @@ export const getAssignmentsByLesson = createServerFn({ method: 'POST' })
     })
 
     if (profile.role === 'student') {
-      assignmentsList = assignmentsList.filter((a) => a.status === 'published')
+      assignmentsList = filterAssignmentsForStudent(assignmentsList)
     }
 
     return {
@@ -371,7 +377,7 @@ export const deleteAssignment = createServerFn({ method: 'POST' })
         .perform('editLesson')
         .on('course', assignment.lesson.courseId)
 
-      if (assignment.submissions.length > 0) {
+      if (!canDeleteAssignment(assignment, assignment.submissions)) {
         throw new ValidationError(
           `Cannot delete assignment with ${assignment.submissions.length} submission${assignment.submissions.length !== 1 ? 's' : ''}`,
           {
@@ -429,21 +435,7 @@ export const createOrUpdateSubmission = createServerFn({ method: 'POST' })
       })
     }
 
-    if (assignment.status !== 'published') {
-      throw new ValidationError('Assignment is not open for submissions', {
-        details: { assignmentId: data.assignmentId, status: assignment.status },
-      })
-    }
-
-    const now = new Date()
-    if (assignment.dueDate < now) {
-      throw new ValidationError('Assignment due date has passed', {
-        details: {
-          assignmentId: data.assignmentId,
-          dueDate: assignment.dueDate,
-        },
-      })
-    }
+    validateSubmissionWindow(assignment, new Date())
 
     const existingSubmission = await db.query.submissions.findFirst({
       where: and(
@@ -608,13 +600,7 @@ export const getAllAssignmentsForTeacher = createServerFn({
   })
 
   const assignmentsWithStats = allAssignments.map((assignment) => {
-    const totalSubmissions = assignment.submissions.length
-    const submittedCount = assignment.submissions.filter(
-      (s) => s.status === 'submitted',
-    ).length
-    const gradedCount = assignment.submissions.filter(
-      (s) => s.grade !== null,
-    ).length
+    const stats = calculateAssignmentStats(assignment.submissions)
 
     return {
       ...assignment,
@@ -625,11 +611,7 @@ export const getAllAssignmentsForTeacher = createServerFn({
           startDate: assignment.lesson.scheduledTime || null,
         },
       },
-      submissionStats: {
-        total: totalSubmissions,
-        submitted: submittedCount,
-        graded: gradedCount,
-      },
+      submissionStats: stats,
     }
   })
 

@@ -38,6 +38,7 @@ This folder is primarily where TanStack Start server functions live (via `create
     - `index.ts` - Re-exports all functions for backward compatibility
   - `assignments.ts`, `students.ts`, `teachers.ts`, `calendar.ts`, `events.ts`, `invitations.ts`, `enrollments.ts`, `posts.ts`, `library.ts`.
   - These typically export server functions that routes call for loading and mutations.
+  - Server functions are thin adapters that validate input, call domain services from `src/domain/`, and return responses.
   - `postNotifications.ts`.
     - Post notification inbox logic (aggregation + mark read).
   - `notifications/` - Notification event system:

@@ -45,6 +45,12 @@ When working in this repo:
 - **Database connections**
   - Use `getDb()` from `src/db/index.ts`.
   - Do not instantiate DB connections ad-hoc elsewhere.
+- **Domain services**
+  - Business logic lives in `src/domain/` as pure functions without HTTP infrastructure.
+  - Server functions in `src/utils/` are thin adapters: validate input, call domain service, return response.
+  - Domain services accept `db` as parameter when needed (testable with mock DB).
+  - Example: `AssignmentService.validateSubmissionWindow(assignment, now)` contains the business rule; server function calls it.
+  - Benefits: testability, reusability, locality of business rules.
 
 ## Documentation Contract (Keep Docs Updated)
 
