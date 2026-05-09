@@ -32,7 +32,7 @@ import {
   deleteAssignment,
   gradeSubmission,
   updateAssignment,
-} from '@/utils/assignments'
+} from '@/utils/assignments/assignments'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 
 type AssignmentDialogProps = {

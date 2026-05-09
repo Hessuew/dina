@@ -9,7 +9,10 @@ import {
   HeartHandshakeIcon,
   UserIcon,
 } from 'lucide-react'
-import type { CalendarEvent, SpecialEventCategory } from '@/utils/calendar'
+import type {
+  CalendarEvent,
+  SpecialEventCategory,
+} from '@/utils/calendar/calendar'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {

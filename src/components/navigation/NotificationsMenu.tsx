@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { formatDistanceToNow } from 'date-fns'
 
-import type { PostNotificationGroup } from '@/utils/postNotifications'
+import type { PostNotificationGroup } from '@/utils/post/postNotifications'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +21,7 @@ import {
   getPostNotificationsSummary,
   markAllPostNotificationsRead,
   markPostNotificationGroupRead,
-} from '@/utils/postNotifications'
+} from '@/utils/post/postNotifications'
 import { Bell } from '@/components/animate-ui/icons/bell'
 import { BellRing } from '@/components/animate-ui/icons/bell-ring'
 import { AnimateIcon } from '@/components/animate-ui/icons/icon'

@@ -37,7 +37,7 @@ import {
   deleteEnrollment,
   sendInvitationForEnrollment,
   updateEnrollmentStatus,
-} from '@/utils/enrollments'
+} from '@/utils/enrolment/enrollments'
 import { cn } from '@/lib/utils'
 
 export type EnrollmentRow = {

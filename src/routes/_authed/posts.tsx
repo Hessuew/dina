@@ -12,7 +12,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
-import type { CommentWithAuthor, PostWithDetails } from '@/utils/posts'
+import type { CommentWithAuthor, PostWithDetails } from '@/domain'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -39,7 +39,7 @@ import {
   toggleReaction,
   updateComment,
   updatePost,
-} from '@/utils/posts'
+} from '@/utils/post/posts'
 
 const fetchCurrentUser = createServerFn({ method: 'POST' }).handler(
   async () => {

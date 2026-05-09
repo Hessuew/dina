@@ -4,7 +4,7 @@ import { CourseList } from '@/components/list/CourseList'
 import {
   getAllAssignmentsForStudent,
   getAllAssignmentsForTeacher,
-} from '@/utils/assignments'
+} from '@/utils/assignments/assignments'
 import { getCourses, getUpcomingLessons } from '@/utils/courses'
 
 export const Route = createFileRoute('/_authed/dashboard')({

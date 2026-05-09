@@ -25,4 +25,4 @@ export {
 } from './teacher-assignment'
 
 // Re-export getAllTeachers from teachers.ts for backward compatibility
-export { getAllTeachers } from '@/utils/teachers'
+export { getAllTeachers } from '@/utils/teachers/teachers'

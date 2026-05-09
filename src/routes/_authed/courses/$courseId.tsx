@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/dialog'
 import { deleteCourse, getCourse } from '@/utils/courses'
 import { cn } from '@/lib/utils'
-import { isUserCourseTeacher } from '@/utils/teacher/isCourseTeacher'
+import { isUserCourseTeacher } from '@/utils/teachers'
 
 export const Route = createFileRoute('/_authed/courses/$courseId')({
   loader: async ({ params }) => {

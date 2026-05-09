@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
-import type { CalendarEventRow } from '@/utils/events'
+import type { CalendarEventRow } from '@/utils/event/events'
 import { createEventSchema, updateEventSchema } from '@/schemas/event.schema'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useMutation } from '@/hooks/useMutation'
-import { createEvent, deleteEvent, updateEvent } from '@/utils/events'
+import { createEvent, deleteEvent, updateEvent } from '@/utils/event/events'
 import { cn } from '@/lib/utils'
 
 type EventDialogMode = 'view' | 'create' | 'edit' | 'delete'

@@ -22,7 +22,7 @@ import {
   deleteInvitation,
   resendInvitation,
   revokeInvitation,
-} from '@/utils/invitations'
+} from '@/utils/invitation'
 
 type Invitation = {
   id: string

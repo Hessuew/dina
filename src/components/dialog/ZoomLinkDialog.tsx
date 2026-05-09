@@ -2,7 +2,7 @@ import { useRouter } from '@tanstack/react-router'
 import { Trash2Icon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import type { ZoomLinkRow, ZoomLinkSection } from '@/utils/zoomLinks'
+import type { ZoomLinkRow, ZoomLinkSection } from '@/utils/zoomLink/zoomLinks'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,7 +29,7 @@ import {
   createZoomLink,
   deleteZoomLink,
   updateZoomLink,
-} from '@/utils/zoomLinks'
+} from '@/utils/zoomLink/zoomLinks'
 
 type ZoomCourse = { id: string; title: string }
 

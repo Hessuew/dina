@@ -22,7 +22,7 @@ import { resendOtpFn, signupFn, verifyOtpFn } from '@/routes/signup'
 import {
   checkInvitationByEmail,
   getInvitationByToken,
-} from '@/utils/invitations'
+} from '@/utils/invitation'
 import { calculatePasswordStrength } from '@/utils/password'
 import graphiteBackground from '@/assets/images/bg/bg_about.webp'
 

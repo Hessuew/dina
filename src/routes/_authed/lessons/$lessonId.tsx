@@ -17,7 +17,7 @@ import { getAssignmentSubmissionCount, getLesson } from '@/utils/assignments'
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { LessonDialog } from '@/components/dialog/LessonDialog'
 import { cn } from '@/lib/utils'
-import { isUserCourseTeacher } from '@/utils/teacher/isCourseTeacher'
+import { isUserCourseTeacher } from '@/utils/teachers'
 
 const getLessonData = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ lessonId: z.uuid() }))

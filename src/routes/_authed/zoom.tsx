@@ -9,11 +9,11 @@ import {
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { ZoomLinkDialogState } from '@/components/dialog/ZoomLinkDialog'
-import type { ZoomLinkRow, ZoomLinkSection } from '@/utils/zoomLinks'
+import type { ZoomLinkRow, ZoomLinkSection } from '@/utils/zoomLink'
 import { ZoomLinkDialog } from '@/components/dialog/ZoomLinkDialog'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
-import { getZoomLinks } from '@/utils/zoomLinks'
+import { getZoomLinks } from '@/utils/zoomLink'
 
 const sectionCopy: Record<
   ZoomLinkSection,

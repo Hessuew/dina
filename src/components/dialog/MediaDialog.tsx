@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
-import type { MediaLibraryRow } from '@/utils/library'
+import type { MediaLibraryRow } from '@/utils/library/library'
 import {
   createMediaSchema,
   deleteMediaSchema,
@@ -13,7 +13,7 @@ import {
   deleteLibraryMedia,
   updateLibraryMedia,
   uploadMediaPdfFn,
-} from '@/utils/library'
+} from '@/utils/library/library'
 import { toUserError } from '@/utils/errors'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { useMutation } from '@/hooks/useMutation'
