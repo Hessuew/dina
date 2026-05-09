@@ -10,6 +10,12 @@ import { InvitationEmail } from '@/emails/InvitationEmail'
 import { getCurrentUser } from '@/utils/auth/auth'
 import { authz, withRequestCache } from '@/utils/authz'
 import {
+  AppError,
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from '@/utils/errors'
+import {
   createEnrollmentSchema,
   deleteEnrollmentSchema,
   getEnrollmentByIdSchema,
@@ -44,7 +50,7 @@ export const createEnrollment = createServerFn({ method: 'POST' })
       })
       .returning()
 
-    return { error: false, enrollment }
+    return { enrollment }
   })
 
 export const getEnrollments = createServerFn({ method: 'POST' }).handler(
@@ -60,7 +66,7 @@ export const getEnrollments = createServerFn({ method: 'POST' }).handler(
         orderBy: (e, { desc }) => [desc(e.createdAt)],
       })
 
-      return { error: false, enrollments: allEnrollments }
+      return { enrollments: allEnrollments }
     })
   },
 )
@@ -80,10 +86,13 @@ export const getEnrollmentById = createServerFn({ method: 'GET' })
       })
 
       if (!enrollment) {
-        return { error: true, message: 'Enrollment not found' }
+        throw new NotFoundError('Enrollment not found', {
+          code: 'ENROLLMENT_NOT_FOUND',
+          details: { enrollmentId: data.enrollmentId },
+        })
       }
 
-      return { error: false, enrollment }
+      return { enrollment }
     })
   })
 
@@ -105,7 +114,7 @@ export const updateEnrollmentStatus = createServerFn({ method: 'POST' })
         })
         .where(eq(enrollments.id, data.enrollmentId))
 
-      return { error: false }
+      return
     })
   })
 
@@ -121,7 +130,7 @@ export const deleteEnrollment = createServerFn({ method: 'POST' })
 
       await db.delete(enrollments).where(eq(enrollments.id, data.enrollmentId))
 
-      return { error: false }
+      return
     })
   })
 
@@ -144,7 +153,10 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
       })
 
       if (!enrollment) {
-        return { error: true, message: 'Enrollment not found' }
+        throw new NotFoundError('Enrollment not found', {
+          code: 'ENROLLMENT_NOT_FOUND',
+          details: { enrollmentId: data.enrollmentId },
+        })
       }
 
       const existingInvitation = await db.query.invitations.findFirst({
@@ -158,7 +170,9 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
       const inviteLink = `${env.APP_URL || 'http://localhost:3000'}/signup?token=${token}`
       const email = profile?.fullName || profile?.email || user.email
       if (!email) {
-        return { error: true, message: 'Email not found' }
+        throw new ValidationError('Email not found', {
+          details: { userId: user.id, profileId: profile?.id },
+        })
       }
 
       const invitedByName: string = email
@@ -175,10 +189,16 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
 
       if (existingInvitation) {
         if (existingInvitation.status !== 'pending') {
-          return {
-            error: true,
-            message: 'An invitation already exists for this email',
-          }
+          throw new ConflictError(
+            'An invitation already exists for this email',
+            {
+              code: 'INVITATION_EXISTS',
+              details: {
+                email: enrollment.email,
+                status: existingInvitation.status,
+              },
+            },
+          )
         }
 
         await db
@@ -198,7 +218,12 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
         })
 
         if (emailError) {
-          return { error: true, message: 'Failed to send invitation email' }
+          throw new AppError({
+            code: 'STORAGE_UPLOAD_FAILED',
+            status: 500,
+            userMessage: 'Failed to send invitation email',
+            internalMessage: `Resend API error: ${emailError.message}`,
+          })
         }
 
         await db
@@ -210,7 +235,7 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
           })
           .where(eq(enrollments.id, enrollment.id))
 
-        return { error: false, invitationId: existingInvitation.id }
+        return { invitationId: existingInvitation.id }
       }
 
       const [invitation] = await db
@@ -234,7 +259,12 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
 
       if (emailError) {
         await db.delete(invitations).where(eq(invitations.id, invitation.id))
-        return { error: true, message: 'Failed to send invitation email' }
+        throw new AppError({
+          code: 'STORAGE_UPLOAD_FAILED',
+          status: 500,
+          userMessage: 'Failed to send invitation email',
+          internalMessage: `Resend API error: ${emailError.message}`,
+        })
       }
 
       await db
@@ -246,6 +276,6 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
         })
         .where(eq(enrollments.id, enrollment.id))
 
-      return { error: false, invitationId: invitation.id }
+      return { invitationId: invitation.id }
     })
   })

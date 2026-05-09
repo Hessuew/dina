@@ -6,6 +6,7 @@ import { useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
+import { toUserError } from '@/utils/errors'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
@@ -121,15 +122,14 @@ export function EnrollmentsTable({
 
   const inviteMutation = useMutation({
     fn: sendInviteFn,
-    onSuccess: ({ data }) => {
-      if (data.error) {
-        toast.error(data.message)
-        return
-      }
+    onSuccess: () => {
       toast.success('Invitation sent')
       setInviteDialogOpen(false)
       setSelectedEnrollmentId(null)
       onRefresh()
+    },
+    onError: (error) => {
+      toast.error(toUserError(error).message)
     },
   })
 

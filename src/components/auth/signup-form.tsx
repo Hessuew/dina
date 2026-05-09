@@ -3,6 +3,7 @@ import { Link, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { Loader2, RefreshCwIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { toUserError } from '@/utils/errors'
 import {
   Field,
   FieldDescription,
@@ -187,22 +188,15 @@ export function SignupForm({ token = '' }: SignupFormProps) {
       setIsLoadingToken(true)
       getTokenFn({ data: { token } })
         .then((result) => {
-          if (!result.error) {
-            setEmail(result.invitation.email)
-            setInvitationValid(true)
-            setInvitationRole(result.invitation.role)
-          } else {
-            setInvitationError(result.message)
-            toast.error('Invalid invitation', {
-              description: getUserFriendlyError(result.message),
-            })
-          }
+          setEmail(result.invitation.email)
+          setInvitationValid(true)
+          setInvitationRole(result.invitation.role)
         })
-        .catch(() => {
-          const errorMsg = 'Unable to load invitation. Please check your link.'
-          setInvitationError(errorMsg)
-          toast.error('Error loading invitation', {
-            description: errorMsg,
+        .catch((error) => {
+          const userError = toUserError(error)
+          setInvitationError(userError.message)
+          toast.error('Invalid invitation', {
+            description: userError.message,
           })
         })
         .finally(() => {
@@ -219,23 +213,15 @@ export function SignupForm({ token = '' }: SignupFormProps) {
 
     try {
       const result = await checkEmailFn({ data: { email } })
-      if (result.error) {
-        setInvitationError(result.message)
-        setInvitationValid(false)
-        toast.error('Email not invited', {
-          description: getUserFriendlyError(result.message),
-        })
-      } else {
-        setInvitationValid(true)
-        setInvitationRole(result.invitation.role)
-        setInvitationError(null)
-      }
+      setInvitationValid(true)
+      setInvitationRole(result.invitation.role)
+      setInvitationError(null)
     } catch (error) {
-      const errorMsg = 'Unable to verify email. Please try again.'
-      setInvitationError(errorMsg)
+      const userError = toUserError(error)
+      setInvitationError(userError.message)
       setInvitationValid(false)
-      toast.error('Verification failed', {
-        description: errorMsg,
+      toast.error('Email not invited', {
+        description: userError.message,
       })
     } finally {
       setIsCheckingEmail(false)

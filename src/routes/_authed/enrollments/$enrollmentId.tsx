@@ -1,9 +1,10 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { ChevronLeft, Mail, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
-import { toast } from 'sonner'
-import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
+import { useServerFn } from '@tanstack/react-start'
+import { toast } from 'sonner'
+import { toUserError } from '@/utils/errors'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
@@ -49,12 +50,7 @@ export const Route = createFileRoute('/_authed/enrollments/$enrollmentId')({
     const result = await getEnrollmentById({
       data: { enrollmentId: params.enrollmentId },
     })
-
-    if (result.error) {
-      throw new Error(result.message)
-    }
-
-    return { enrollment: result.enrollment }
+    return result
   },
   component: EnrollmentDetailPage,
 })
@@ -80,14 +76,13 @@ function EnrollmentDetailPage() {
 
   const inviteMutation = useMutation({
     fn: sendInviteFn,
-    onSuccess: ({ data }) => {
-      if (data.error) {
-        toast.error(data.message)
-        return
-      }
+    onSuccess: () => {
       toast.success('Invitation sent')
       setInviteDialogOpen(false)
       router.invalidate()
+    },
+    onError: (error) => {
+      toast.error(toUserError(error).message)
     },
   })
 
@@ -99,10 +94,6 @@ function EnrollmentDetailPage() {
       router.navigate({ to: '/enrollments' })
     },
   })
-
-  if (!enrollment) {
-    return null
-  }
 
   const address = [enrollment.currentCity, enrollment.currentCountry]
     .filter(Boolean)

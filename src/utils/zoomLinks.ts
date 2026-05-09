@@ -9,6 +9,7 @@ import {
 } from '@/schemas/zoomLink.schema'
 import { getCurrentUser } from '@/utils/auth/auth'
 import { authz, withRequestCache } from '@/utils/authz'
+import { NotFoundError } from '@/utils/errors'
 
 export type ZoomLinkSection = 'general_class_lecture' | 'discipleship_group'
 
@@ -41,7 +42,9 @@ async function getViewerProfile(userId: string) {
   })
 
   if (!profile) {
-    throw new Error('Profile not found')
+    throw new NotFoundError('Profile not found', {
+      details: { userId },
+    })
   }
 
   return profile
@@ -161,6 +164,6 @@ export const deleteZoomLink = createServerFn({ method: 'POST' })
 
       await db.delete(zoomLinks).where(eq(zoomLinks.id, data.zoomLinkId))
 
-      return { error: false }
+      return
     })
   })

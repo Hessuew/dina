@@ -7,6 +7,17 @@ export type AppErrorCode =
   | 'NOT_FOUND'
   | 'CONFLICT'
   | 'STORAGE_UPLOAD_FAILED'
+  | 'LESSON_NOT_FOUND'
+  | 'ASSIGNMENT_NOT_FOUND'
+  | 'COURSE_NOT_FOUND'
+  | 'POST_NOT_FOUND'
+  | 'COMMENT_NOT_FOUND'
+  | 'ENROLLMENT_NOT_FOUND'
+  | 'INVITATION_EXISTS'
+  | 'INVITATION_EXPIRED'
+  | 'TEACHER_PAIR_INVALID'
+  | 'EMAIL_UPDATE_FAILED'
+  | 'PASSWORD_UPDATE_FAILED'
 
 export type AppErrorDetails = Record<string, unknown>
 

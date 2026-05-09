@@ -4,9 +4,17 @@ import { render } from '@react-email/render'
 import { eq } from 'drizzle-orm'
 import { Resend } from 'resend'
 import { getCurrentUser } from './auth/auth'
+import {
+  AppError,
+  AuthorizationError,
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from './errors'
 import { getDb } from '@/db'
 import { env } from '@/env'
 import { invitations, profiles } from '@/db/schema'
+import { InvitationEmail } from '@/emails/InvitationEmail'
 import {
   checkInvitationByEmailSchema,
   createInvitationSchema,
@@ -15,7 +23,6 @@ import {
   resendInvitationSchema,
   revokeInvitationSchema,
 } from '@/schemas/invitation.schema'
-import { InvitationEmail } from '@/emails/InvitationEmail'
 
 function generateSecureToken(): string {
   return crypto.randomBytes(32).toString('hex')
@@ -32,7 +39,11 @@ export const createInvitation = createServerFn({ method: 'POST' })
     })
 
     if (profile?.role !== 'admin') {
-      return { error: true, message: 'Only admins can create invitations' }
+      throw new AuthorizationError('Only admins can create invitations', {
+        code: 'ROLE_REQUIRED',
+        internalMessage: 'Non-admin attempted to create invitation',
+        details: { role: profile?.role },
+      })
     }
 
     const existingInvitation = await db.query.invitations.findFirst({
@@ -40,10 +51,10 @@ export const createInvitation = createServerFn({ method: 'POST' })
     })
 
     if (existingInvitation && existingInvitation.status === 'pending') {
-      return {
-        error: true,
-        message: 'Invitation already exists for this email',
-      }
+      throw new ConflictError('Invitation already exists for this email', {
+        code: 'INVITATION_EXISTS',
+        details: { email: data.email },
+      })
     }
 
     const existingProfile = await db.query.profiles.findFirst({
@@ -51,7 +62,10 @@ export const createInvitation = createServerFn({ method: 'POST' })
     })
 
     if (existingProfile) {
-      return { error: true, message: 'User already registered with this email' }
+      throw new ConflictError('User already registered with this email', {
+        code: 'INVITATION_EXISTS',
+        details: { email: data.email },
+      })
     }
 
     // Generate secure token and expiry (7 days)
@@ -95,10 +109,15 @@ export const createInvitation = createServerFn({ method: 'POST' })
     if (emailError) {
       // Delete the invitation if email fails
       await db.delete(invitations).where(eq(invitations.id, invitation.id))
-      return { error: true, message: 'Failed to send invitation email' }
+      throw new AppError({
+        code: 'STORAGE_UPLOAD_FAILED',
+        status: 500,
+        userMessage: 'Failed to send invitation email',
+        internalMessage: `Resend API error: ${emailError.message}`,
+      })
     }
 
-    return { error: false, invitation }
+    return { invitation }
   })
 
 export const checkInvitationByEmail = createServerFn({ method: 'GET' })
@@ -110,23 +129,30 @@ export const checkInvitationByEmail = createServerFn({ method: 'GET' })
     })
 
     if (!invitation) {
-      return { error: true, message: 'No invitation found for this email' }
+      throw new NotFoundError('No invitation found for this email', {
+        details: { email: data.email },
+      })
     }
 
     if (invitation.status !== 'pending') {
-      return {
-        error: true,
-        message: 'This invitation has already been used or revoked',
-      }
+      throw new ConflictError(
+        'This invitation has already been used or revoked',
+        {
+          code: 'INVITATION_EXISTS',
+          details: { email: data.email, status: invitation.status },
+        },
+      )
     }
 
     // Check if expired
     if (new Date() > invitation.expiresAt) {
-      return { error: true, message: 'This invitation has expired' }
+      throw new ValidationError('This invitation has expired', {
+        code: 'INVITATION_EXPIRED',
+        details: { email: data.email, expiresAt: invitation.expiresAt },
+      })
     }
 
     return {
-      error: false,
       invitation: {
         email: invitation.email,
         role: invitation.role,
@@ -138,7 +164,9 @@ export const getInvitationByToken = createServerFn({ method: 'GET' })
   .inputValidator(getInvitationByTokenSchema)
   .handler(async ({ data }) => {
     if (!data.token) {
-      return { error: true, message: 'No token provided' }
+      throw new ValidationError('No token provided', {
+        details: { token: data.token },
+      })
     }
 
     const db = await getDb()
@@ -147,23 +175,30 @@ export const getInvitationByToken = createServerFn({ method: 'GET' })
     })
 
     if (!invitation) {
-      return { error: true, message: 'Invalid invitation token' }
+      throw new NotFoundError('Invalid invitation token', {
+        details: { token: data.token },
+      })
     }
 
     if (invitation.status !== 'pending') {
-      return {
-        error: true,
-        message: 'This invitation has already been used or revoked',
-      }
+      throw new ConflictError(
+        'This invitation has already been used or revoked',
+        {
+          code: 'INVITATION_EXISTS',
+          details: { token: data.token, status: invitation.status },
+        },
+      )
     }
 
     // Check if expired
     if (new Date() > invitation.expiresAt) {
-      return { error: true, message: 'This invitation has expired' }
+      throw new ValidationError('This invitation has expired', {
+        code: 'INVITATION_EXPIRED',
+        details: { token: data.token, expiresAt: invitation.expiresAt },
+      })
     }
 
     return {
-      error: false,
       invitation: {
         email: invitation.email,
         role: invitation.role,
@@ -181,7 +216,11 @@ export const getInvitations = createServerFn({ method: 'POST' }).handler(
     })
 
     if (profile?.role !== 'admin') {
-      return { error: true, message: 'Only admins can view invitations' }
+      throw new AuthorizationError('Only admins can view invitations', {
+        code: 'ROLE_REQUIRED',
+        internalMessage: 'Non-admin attempted to view invitations',
+        details: { role: profile?.role },
+      })
     }
 
     const allInvitations = await db.query.invitations.findMany({
@@ -196,7 +235,7 @@ export const getInvitations = createServerFn({ method: 'POST' }).handler(
       orderBy: (inv, { desc }) => [desc(inv.invitedAt)],
     })
 
-    return { error: false, invitations: allInvitations }
+    return { invitations: allInvitations }
   },
 )
 
@@ -209,10 +248,12 @@ export const getInvitationByEmail = createServerFn({ method: 'GET' })
     })
 
     if (!invitation) {
-      return { error: true, message: 'No invitation found for this email' }
+      throw new NotFoundError('No invitation found for this email', {
+        details: { email: data.email },
+      })
     }
 
-    return { error: false, invitation }
+    return { invitation }
   })
 
 export const revokeInvitation = createServerFn({ method: 'POST' })
@@ -226,7 +267,11 @@ export const revokeInvitation = createServerFn({ method: 'POST' })
     })
 
     if (profile?.role !== 'admin') {
-      return { error: true, message: 'Only admins can revoke invitations' }
+      throw new AuthorizationError('Only admins can revoke invitations', {
+        code: 'ROLE_REQUIRED',
+        internalMessage: 'Non-admin attempted to revoke invitation',
+        details: { role: profile?.role },
+      })
     }
 
     await db
@@ -237,7 +282,7 @@ export const revokeInvitation = createServerFn({ method: 'POST' })
       })
       .where(eq(invitations.id, data.id))
 
-    return { error: false }
+    return
   })
 
 export const deleteInvitation = createServerFn({ method: 'POST' })
@@ -251,12 +296,16 @@ export const deleteInvitation = createServerFn({ method: 'POST' })
     })
 
     if (profile?.role !== 'admin') {
-      return { error: true, message: 'Only admins can delete invitations' }
+      throw new AuthorizationError('Only admins can delete invitations', {
+        code: 'ROLE_REQUIRED',
+        internalMessage: 'Non-admin attempted to delete invitation',
+        details: { role: profile?.role },
+      })
     }
 
     await db.delete(invitations).where(eq(invitations.id, data.id))
 
-    return { error: false }
+    return
   })
 
 export const resendInvitation = createServerFn({ method: 'POST' })
@@ -270,7 +319,11 @@ export const resendInvitation = createServerFn({ method: 'POST' })
     })
 
     if (profile?.role !== 'admin') {
-      return { error: true, message: 'Only admins can resend invitations' }
+      throw new AuthorizationError('Only admins can resend invitations', {
+        code: 'ROLE_REQUIRED',
+        internalMessage: 'Non-admin attempted to resend invitation',
+        details: { role: profile?.role },
+      })
     }
 
     const invitation = await db.query.invitations.findFirst({
@@ -278,7 +331,9 @@ export const resendInvitation = createServerFn({ method: 'POST' })
     })
 
     if (!invitation) {
-      return { error: true, message: 'Invitation not found' }
+      throw new NotFoundError('Invitation not found', {
+        details: { invitationId: data.id },
+      })
     }
 
     // Generate new token and extend expiry
@@ -321,8 +376,13 @@ export const resendInvitation = createServerFn({ method: 'POST' })
     })
 
     if (emailError) {
-      return { error: true, message: 'Failed to send invitation email' }
+      throw new AppError({
+        code: 'STORAGE_UPLOAD_FAILED',
+        status: 500,
+        userMessage: 'Failed to send invitation email',
+        internalMessage: `Resend API error: ${emailError.message}`,
+      })
     }
 
-    return { error: false }
+    return
   })

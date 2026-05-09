@@ -14,10 +14,7 @@ export const Route = createFileRoute('/_authed/invitations')({
   },
   loader: async () => {
     const result = await getInvitations()
-    if (result.error) {
-      return { invitations: [] }
-    }
-    return { invitations: result.invitations }
+    return result
   },
   component: InvitationsPage,
 })

@@ -3,6 +3,7 @@ import { UploadIcon, XIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { eq } from 'drizzle-orm'
+import { AppError, toUserError } from '@/utils/errors'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
@@ -43,10 +44,12 @@ const updateProfileFn = createServerFn({ method: 'POST' })
       })
 
       if (error) {
-        return {
-          error: true,
-          message: error.message,
-        }
+        throw new AppError({
+          code: 'EMAIL_UPDATE_FAILED',
+          status: 400,
+          userMessage: error.message,
+          internalMessage: `Supabase auth error: ${error.message}`,
+        })
       }
     }
     const db = await getDb()
@@ -60,8 +63,6 @@ const updateProfileFn = createServerFn({ method: 'POST' })
         updatedAt: new Date(),
       })
       .where(eq(profiles.id, user.id))
-
-    return { success: true }
   })
 
 const updatePasswordFn = createServerFn({ method: 'POST' })
@@ -74,13 +75,13 @@ const updatePasswordFn = createServerFn({ method: 'POST' })
     })
 
     if (error) {
-      return {
-        error: true,
-        message: error.message,
-      }
+      throw new AppError({
+        code: 'PASSWORD_UPDATE_FAILED',
+        status: 400,
+        userMessage: error.message,
+        internalMessage: `Supabase auth error: ${error.message}`,
+      })
     }
-
-    return { success: true }
   })
 
 type ProfileModalProps = {
@@ -116,37 +117,34 @@ export function ProfileModal({
 
   const updateProfileMutation = useMutation({
     fn: updateProfileFn,
-    onSuccess: (ctx) => {
-      if ('error' in ctx.data && ctx.data.error) {
-        toast.error(ctx.data.message || 'Failed to update profile')
-      } else if ('success' in ctx.data) {
-        toast.success('Profile updated successfully')
-        onProfileUpdate?.()
-      }
+    onSuccess: () => {
+      toast.success('Profile updated successfully')
+      onProfileUpdate?.()
+    },
+    onError: (error) => {
+      toast.error(toUserError(error).message)
     },
   })
 
   const uploadAvatarMutation = useMutation({
     fn: uploadAvatarFn,
-    onSuccess: (ctx) => {
-      if ('error' in ctx.data && ctx.data.error) {
-        toast.error(ctx.data.message || 'Failed to upload avatar')
-      } else if ('success' in ctx.data) {
-        toast.success('Avatar uploaded successfully')
-        onProfileUpdate?.()
-      }
+    onSuccess: () => {
+      toast.success('Avatar uploaded successfully')
+      onProfileUpdate?.()
+    },
+    onError: (error) => {
+      toast.error(toUserError(error).message)
     },
   })
 
   const updatePasswordMutation = useMutation({
     fn: updatePasswordFn,
-    onSuccess: (ctx) => {
-      if ('error' in ctx.data && ctx.data.error) {
-        toast.error(ctx.data.message || 'Failed to update password')
-      } else if ('success' in ctx.data) {
-        toast.success('Password changed successfully')
-        setShowPasswordForm(false)
-      }
+    onSuccess: () => {
+      toast.success('Password changed successfully')
+      setShowPasswordForm(false)
+    },
+    onError: (error) => {
+      toast.error(toUserError(error).message)
     },
   })
 
