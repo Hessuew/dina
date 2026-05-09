@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -20,14 +20,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { createCourseSchema, updateCourseSchema } from '@/schemas/course.schema'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { useAllTeachers } from '@/hooks/useAllTeachers'
+import { useFileUpload } from '@/hooks/useFileUpload'
 import { createCourse, updateCourse } from '@/utils/courses'
-import { fileToBase64, uploadCourseThumbnailFn } from '@/utils/imageUpload'
+import { uploadCourseThumbnailFn } from '@/utils/imageUpload'
 
 type CourseFormData = {
   title: string
   description: string
   thumbnailUrl: string | null
-  thumbnailFile: File | null
   teacher1Id: string | null
   teacher2Id: string | null
   orderIndex: number
@@ -55,7 +55,6 @@ const emptyFormData: CourseFormData = {
   title: '',
   description: '',
   thumbnailUrl: null,
-  thumbnailFile: null,
   teacher1Id: null,
   teacher2Id: null,
   orderIndex: 0,
@@ -69,8 +68,15 @@ export function CourseDialog({
   isAdmin,
   initialData,
 }: CourseDialogProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isUploading, setIsUploading] = useState(false)
+  const {
+    fileInputRef,
+    isUploading,
+    fileData,
+    fileObject,
+    handleFileChange,
+    clearFile,
+    setUploading,
+  } = useFileUpload()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const [formData, setFormData] = useState<CourseFormData>({ ...emptyFormData })
@@ -84,7 +90,6 @@ export function CourseDialog({
               title: initialData.title,
               description: initialData.description,
               thumbnailUrl: initialData.thumbnailUrl,
-              thumbnailFile: null,
               teacher1Id: initialData.teacher1Id,
               teacher2Id: initialData.teacher2Id,
               orderIndex: initialData.orderIndex,
@@ -108,7 +113,6 @@ export function CourseDialog({
             title: initialData.title,
             description: initialData.description,
             thumbnailUrl: initialData.thumbnailUrl,
-            thumbnailFile: null,
             teacher1Id: initialData.teacher1Id,
             teacher2Id: initialData.teacher2Id,
             orderIndex: initialData.orderIndex,
@@ -116,19 +120,19 @@ export function CourseDialog({
           }
         : { ...emptyFormData },
     )
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    clearFile()
   }
 
   const handleThumbnailUpload = async (courseId: string) => {
-    if (!formData.thumbnailFile) return
-    setIsUploading(true)
+    if (!fileObject) return
+    setUploading(true)
     try {
       await uploadCourseThumbnailFn({
         data: {
-          fileData: await fileToBase64(formData.thumbnailFile),
-          fileName: formData.thumbnailFile.name,
-          fileType: formData.thumbnailFile.type,
-          fileSize: formData.thumbnailFile.size,
+          fileData: fileData!,
+          fileName: fileObject.name,
+          fileType: fileObject.type,
+          fileSize: fileObject.size,
           courseId,
         },
       })
@@ -136,7 +140,7 @@ export function CourseDialog({
       console.error('Thumbnail upload error:', error)
       toast.error(toUserError(error).message)
     }
-    setIsUploading(false)
+    setUploading(false)
   }
 
   const { createMutation, updateMutation } = useEntityMutation({
@@ -155,7 +159,7 @@ export function CourseDialog({
   })
 
   const mutation = mode === 'create' ? createMutation : updateMutation
-  const isPending = mutation.isPending || isUploading
+  const isPending = mutation.isPending
 
   const handleSubmit = () => {
     const clientSchema =
@@ -218,17 +222,6 @@ export function CourseDialog({
         },
       })
     }
-  }
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('File size must be less than 2MB')
-      return
-    }
-    const fileData = await fileToBase64(file)
-    setFormData({ ...formData, thumbnailUrl: fileData, thumbnailFile: file })
   }
 
   return (
@@ -440,10 +433,10 @@ export function CourseDialog({
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                {formData.thumbnailUrl ? (
+                {fileData || formData.thumbnailUrl ? (
                   <div className="relative aspect-video w-full max-w-sm overflow-hidden border border-white/10">
                     <img
-                      src={formData.thumbnailUrl}
+                      src={fileData || formData.thumbnailUrl!}
                       alt="Course thumbnail"
                       className="size-full object-cover"
                     />
@@ -456,10 +449,8 @@ export function CourseDialog({
                         setFormData({
                           ...formData,
                           thumbnailUrl: null,
-                          thumbnailFile: null,
                         })
-                        if (fileInputRef.current)
-                          fileInputRef.current.value = ''
+                        clearFile()
                       }}
                     >
                       <XIcon className="size-4" />

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { MediaLibraryRow } from '@/utils/library/library'
@@ -15,6 +15,7 @@ import {
 } from '@/utils/library/library'
 import { toUserError } from '@/utils/errors'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
+import { useFileUpload } from '@/hooks/useFileUpload'
 import { Button } from '@/components/ui/button'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { FormDialog } from '@/components/ui/form-dialog'
@@ -30,7 +31,6 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { fileToBase64 } from '@/utils/imageUpload'
 
 type MediaDialogMode = 'create' | 'edit' | 'delete'
 
@@ -76,11 +76,18 @@ export function MediaDialog({
   mode,
   media,
 }: MediaDialogProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const {
+    fileInputRef,
+    isUploading,
+    fileData,
+    fileObject,
+    handleFileChange,
+    clearFile,
+    setUploading,
+  } = useFileUpload()
 
   const [formData, setFormData] = useState<MediaFormData>({ ...emptyForm })
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const [isUploading, setIsUploading] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -98,13 +105,13 @@ export function MediaDialog({
         pdfFile: null,
       })
 
-      if (fileInputRef.current) fileInputRef.current.value = ''
+      clearFile()
 
       return
     }
 
     setFormData({ ...emptyForm })
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    clearFile()
   }, [open, mode, media])
 
   const { createMutation, updateMutation, deleteMutation } = useEntityMutation({
@@ -168,27 +175,27 @@ export function MediaDialog({
       let fileSize = parseResult.data.fileSize
 
       if (formData.kind === 'pdf' && formData.pdfFile) {
-        setIsUploading(true)
+        setUploading(true)
         try {
           const result = await uploadMediaPdfFn({
             data: {
-              fileData: await fileToBase64(formData.pdfFile),
-              fileName: formData.pdfFile.name,
-              fileType: formData.pdfFile.type,
-              fileSize: formData.pdfFile.size,
+              fileData: fileData!,
+              fileName: fileObject!.name,
+              fileType: fileObject!.type,
+              fileSize: fileObject!.size,
             },
           })
 
           if (result.fileUrl) {
             url = result.fileUrl
-            fileSize = formData.pdfFile.size
+            fileSize = fileObject!.size
           }
         } catch (error) {
           toast.error(toUserError(error).message)
-          setIsUploading(false)
+          setUploading(false)
           return
         }
-        setIsUploading(false)
+        setUploading(false)
       }
 
       createMutation.mutate({
@@ -232,28 +239,28 @@ export function MediaDialog({
     let fileSize = parseResult.data.fileSize
 
     if (formData.kind === 'pdf' && formData.pdfFile) {
-      setIsUploading(true)
+      setUploading(true)
       try {
         const result = await uploadMediaPdfFn({
           data: {
-            fileData: await fileToBase64(formData.pdfFile),
-            fileName: formData.pdfFile.name,
-            fileType: formData.pdfFile.type,
-            fileSize: formData.pdfFile.size,
+            fileData: fileData!,
+            fileName: fileObject!.name,
+            fileType: fileObject!.type,
+            fileSize: fileObject!.size,
             oldUrl: media?.fileUrl,
           },
         })
 
         if (result.fileUrl) {
           url = result.fileUrl
-          fileSize = formData.pdfFile.size
+          fileSize = fileObject!.size
         }
       } catch (error) {
         toast.error(toUserError(error).message)
-        setIsUploading(false)
+        setUploading(false)
         return
       }
-      setIsUploading(false)
+      setUploading(false)
     }
 
     updateMutation.mutate({
@@ -371,7 +378,7 @@ export function MediaDialog({
                     kind,
                     pdfFile: null,
                   })
-                  if (fileInputRef.current) fileInputRef.current.value = ''
+                  clearFile()
                 }}
               >
                 <SelectTrigger
@@ -392,8 +399,14 @@ export function MediaDialog({
                 htmlFor="media-url"
                 className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
               >
-                {formData.kind === 'youtube' ? 'YouTube URL' : 'PDF URL'}{' '}
-                <span className="text-[#C5A059]">*</span>
+                {formData.kind === 'youtube' ? 'YouTube URL' : 'PDF URL'}
+                {formData.kind === 'youtube' || !formData.pdfFile ? (
+                  <span className="text-[#C5A059]">*</span>
+                ) : (
+                  <span className="text-[#8E816D]">
+                    (optional if file uploaded)
+                  </span>
+                )}
               </FieldLabel>
               <Input
                 id="media-url"
@@ -424,10 +437,11 @@ export function MediaDialog({
                   ref={fileInputRef}
                   type="file"
                   accept="application/pdf"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-                    setFormData({ ...formData, pdfFile: file })
+                  onChange={async (e) => {
+                    await handleFileChange(e)
+                    if (fileObject) {
+                      setFormData({ ...formData, pdfFile: fileObject })
+                    }
                   }}
                   className="hidden"
                 />
@@ -450,8 +464,7 @@ export function MediaDialog({
                       className="rounded-none"
                       onClick={() => {
                         setFormData({ ...formData, pdfFile: null })
-                        if (fileInputRef.current)
-                          fileInputRef.current.value = ''
+                        clearFile()
                       }}
                     >
                       <XIcon className="size-4" />

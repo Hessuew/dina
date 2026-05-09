@@ -176,6 +176,58 @@ const { isOpen, dialogMode, dialogItem, openDialog, closeDialog } = useDialogSta
 - `dialogItem` is `undefined` for create/delete modes (only set for edit/view with explicit item)
 - `isOpen` is `true` when `closeDialog` has not been called, `false` otherwise
 
+## useFileUpload
+
+Manages file selection, base64 conversion, and upload state for file uploads.
+
+**Interface:**
+
+```typescript
+useFileUpload(): {
+  fileInputRef: React.RefObject<HTMLInputElement | null>
+  isUploading: boolean
+  fileData: string | null  // base64 string
+  fileObject: File | null  // original File object
+  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>
+  clearFile: () => void
+  setUploading: (isUploading: boolean) => void
+}
+```
+
+**Usage:**
+
+```typescript
+const { fileInputRef, isUploading, fileData, fileObject, handleFileChange, clearFile, setUploading } = useFileUpload()
+
+// In JSX
+<input
+  ref={fileInputRef}
+  type="file"
+  accept="image/*"
+  onChange={handleFileChange}
+  className="hidden"
+/>
+
+// Upload when ready
+const handleUpload = async () => {
+  if (!fileObject) return
+  setUploading(true)
+  await uploadFunction({ data: { fileData, fileName: fileObject.name, fileType: fileObject.type, fileSize: fileObject.size } })
+  setUploading(false)
+}
+
+// Clear file
+<Button onClick={clearFile}>Remove</Button>
+```
+
+**Invariants:**
+
+- No client-side validation (server is single source of truth)
+- Base64 conversion handled internally via `fileToBase64`
+- Consumer orchestrates upload timing (before or after entity creation)
+- Consumer builds UI (hook is logic-only)
+- Old file deletion handled by server functions
+
 ## Form Hooks
 
 - `useAppForm` — TanStack form hook factory (demo/FormComponents)
