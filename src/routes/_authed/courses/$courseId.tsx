@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/dialog'
 import { deleteCourse } from '@/utils/courses'
 import { cn } from '@/lib/utils'
+import { isUserCourseTeacher } from '@/utils/teacher/isCourseTeacher'
 
 const getCourseData = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ courseId: z.uuid() }))
@@ -127,6 +128,7 @@ const getCourseData = createServerFn({ method: 'POST' })
       role: profile.role,
       completedLessonIds: Array.from(completedLessonIds),
       assignmentData,
+      user,
     }
   })
 
@@ -151,7 +153,13 @@ type Lesson = {
 function CourseDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
-  const { course: c, role, completedLessonIds, assignmentData } = loaderData
+  const {
+    course: c,
+    role,
+    completedLessonIds,
+    assignmentData,
+    user,
+  } = loaderData
   const course = c as typeof loaderData.course | null
 
   const [showEditCourseDialog, setShowEditCourseDialog] = useState(false)
@@ -177,6 +185,8 @@ function CourseDetailComponent() {
   const isAdmin = role === 'admin'
   const courseTeachersData = course?.courseTeachers || []
   const canEdit = role === 'teacher' || role === 'admin'
+  const isCourseTeacher =
+    isUserCourseTeacher(course, user.id) || role === 'admin'
   const totalLessons = course?.lessons.length || 0
 
   const deleteCourseMutation = useMutation({
@@ -243,7 +253,7 @@ function CourseDetailComponent() {
             </div>
 
             <div className="flex items-center gap-3 pt-4">
-              {canEdit && (
+              {canEdit && isCourseTeacher && (
                 <>
                   <div
                     className={cn(
@@ -395,12 +405,18 @@ function CourseDetailComponent() {
                   {totalLessons} {totalLessons === 1 ? 'Lesson' : 'Lessons'}
                 </div>
               </div>
-              {canEdit && course && course.lessons.length < 3 && (
-                <Button theme="dark" onClick={() => openLessonDialog('create')}>
-                  <PlusIcon className="size-3.5" />
-                  Add Lesson
-                </Button>
-              )}
+              {canEdit &&
+                isCourseTeacher &&
+                course &&
+                course.lessons.length < 3 && (
+                  <Button
+                    theme="dark"
+                    onClick={() => openLessonDialog('create')}
+                  >
+                    <PlusIcon className="size-3.5" />
+                    Add Lesson
+                  </Button>
+                )}
             </div>
 
             {/* Lesson list */}
@@ -408,7 +424,7 @@ function CourseDetailComponent() {
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <BookOpenIcon className="mb-4 size-10 text-[#C5A059]/30" />
                 <p className="text-sm text-[#AFA28F]">No lessons yet</p>
-                {canEdit && (
+                {canEdit && isCourseTeacher && (
                   <Button
                     theme="dark"
                     className="mt-4"
@@ -454,7 +470,7 @@ function CourseDetailComponent() {
                           <span className="text-[0.62rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
                             {lesson.title}
                           </span>
-                          {canEdit && (
+                          {canEdit && isCourseTeacher && (
                             <span
                               className={cn(
                                 'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
@@ -523,7 +539,7 @@ function CourseDetailComponent() {
                               <ArrowRight className="size-3.5" />
                             </Button>
                           ))}
-                        {canEdit && (
+                        {canEdit && isCourseTeacher && (
                           <>
                             <Button
                               variant="ghost"

@@ -17,6 +17,7 @@ import { getAssignmentSubmissionCount, getLesson } from '@/utils/assignments'
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { LessonDialog } from '@/components/dialog/LessonDialog'
 import { cn } from '@/lib/utils'
+import { isUserCourseTeacher } from '@/utils/teacher/isCourseTeacher'
 
 const getLessonData = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ lessonId: z.uuid() }))
@@ -58,8 +59,7 @@ function LessonDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
   const search = Route.useSearch()
-  const { lesson, role } = loaderData
-
+  const { lesson, role, user } = loaderData
   const [lessonDialogMode, setLessonDialogMode] = useState<
     'edit' | 'delete' | null
   >(null)
@@ -71,6 +71,8 @@ function LessonDetailComponent() {
   )
   const [submissionCount, setSubmissionCount] = useState(0)
   const canEdit = role === 'teacher' || role === 'admin'
+  const isCourseTeacher =
+    isUserCourseTeacher(lesson.course, user.id) || role === 'admin'
   const isPublished = lesson.isPublished ?? false
   const showContent = isPublished || canEdit
 
@@ -178,7 +180,7 @@ function LessonDetailComponent() {
               </div>
             </div>
 
-            {canEdit && (
+            {canEdit && isCourseTeacher && (
               <div className="flex items-center gap-3 pt-4">
                 <div
                   className={cn(
@@ -255,7 +257,7 @@ function LessonDetailComponent() {
                     : 'Assignments'}
                 </div>
               </div>
-              {canEdit && (
+              {canEdit && isCourseTeacher && (
                 <Button
                   theme="dark"
                   onClick={() => setAssignmentDialogMode('create')}
@@ -269,7 +271,7 @@ function LessonDetailComponent() {
             {lesson.assignments.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <p className="text-sm text-[#AFA28F]">No assignments yet</p>
-                {canEdit && (
+                {canEdit && isCourseTeacher && (
                   <Button
                     theme="dark"
                     className="mt-4"
@@ -342,7 +344,7 @@ function LessonDetailComponent() {
                             <span>Max: {assignment.maxGrade ?? 100} pts</span>
                           </div>
                         </div>
-                        {canEdit && (
+                        {canEdit && isCourseTeacher && (
                           <div className="flex shrink-0 items-center gap-2">
                             <Button
                               variant="ghost"
