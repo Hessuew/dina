@@ -575,7 +575,7 @@ const dialogItem = dialogState && dialogState.mode !== 'create' ? dialogState.it
 ### Lower Priority (Score 65-69)
 
 13. ✅ **Status Badge Pattern** - 70/100 - Extract to `<StatusChip>` component
-14. **Permission Check Pattern** - 68/100 - Extract to `usePermissions` hook
+14. ✅ **Permission Check Pattern** - 68/100 - Extract to `usePermissions` hook
 15. ✅ **Loading State Pattern** - 65/100 - Already implemented in `useEntityMutation` hook (dialogs migrated to use `isAnyPending`)
 
 ## Total Estimated Impact

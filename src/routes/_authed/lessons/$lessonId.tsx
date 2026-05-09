@@ -20,6 +20,7 @@ import { LessonDialog } from '@/components/dialog/LessonDialog'
 import { useDialogState } from '@/hooks/useDialogState'
 import { PageLayout } from '@/components/layout/page-layout'
 import { DarkCard } from '@/components/ui/dark-card'
+import { EmptyState } from '@/components/ui/empty-state'
 
 const getLessonData = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ lessonId: z.uuid() }))
@@ -226,19 +227,13 @@ function LessonDetailComponent() {
           </div>
 
           {lesson.assignments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-sm text-[#AFA28F]">No assignments yet</p>
-              {permissions.canEdit && permissions.isCourseTeacher && (
-                <Button
-                  theme="dark"
-                  className="mt-4"
-                  onClick={() => assignmentDialog.openDialog('create')}
-                >
-                  <PlusIcon className="size-3.5" />
-                  Create First Assignment
-                </Button>
-              )}
-            </div>
+            <EmptyState
+              message="No assignments yet"
+              actionLabel="Create First Assignment"
+              onAction={() => assignmentDialog.openDialog('create')}
+              showAction={permissions.canEdit && permissions.isCourseTeacher}
+              variant="dark"
+            />
           ) : (
             <div className="divide-y divide-white/8">
               {lesson.assignments

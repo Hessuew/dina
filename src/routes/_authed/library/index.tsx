@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { getLibraryMedia } from '@/utils/library'
 import { PageLayout } from '@/components/layout/page-layout'
+import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
 
@@ -209,25 +210,19 @@ function LibraryComponent() {
       </div>
 
       {media.length === 0 ? (
-        <div className="flex flex-col items-center justify-center border border-dashed border-[#1A1A1A]/20 bg-[#EDE8DE]/40 p-16 text-center">
-          <FileTextIcon className="mb-3 size-8 text-[#9B7A41]/50" />
-          <h3 className="font-serif text-lg text-[#1C1815]">No media yet</h3>
-          <p className="mt-2 text-sm text-[#5E5549]">
-            {canCreate
+        <EmptyState
+          icon={FileTextIcon}
+          heading="No media yet"
+          description={
+            canCreate
               ? 'Add the first library item to get started'
-              : 'Check back later for new materials'}
-          </p>
-          {canCreate && (
-            <Button
-              theme="light"
-              className="mt-4"
-              onClick={() => openDialog('create')}
-            >
-              <PlusIcon className="size-4" />
-              Add Media
-            </Button>
-          )}
-        </div>
+              : 'Check back later for new materials'
+          }
+          actionLabel="Add Media"
+          onAction={() => openDialog('create')}
+          showAction={canCreate}
+          variant="light"
+        />
       ) : (
         <div className={cn(viewer.role === 'student' && 'mt-2')}>
           <DataTable

@@ -15,6 +15,7 @@ import { EventDialog } from '@/components/dialog/EventDialog'
 import { Button } from '@/components/ui/button'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { PageLayout } from '@/components/layout/page-layout'
+import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 import { getCourses } from '@/utils/courses'
 import { getEvents } from '@/utils/event'
@@ -142,21 +143,14 @@ function EventsComponent() {
       </div>
 
       {events.length === 0 ? (
-        <div className="flex flex-col items-center justify-center border border-dashed border-[#1A1A1A]/20 bg-[#EDE8DE]/40 p-16 text-center">
-          <CalendarDaysIcon className="mb-3 size-8 text-[#9B7A41]/50" />
-          <h3 className="font-serif text-lg text-[#1C1815]">No events yet</h3>
-          <p className="mt-2 text-sm text-[#5E5549]">
-            Create the first school event to get started
-          </p>
-          <Button
-            theme="light"
-            className="mt-4"
-            onClick={() => openDialog('create')}
-          >
-            <PlusIcon className="size-4" />
-            Create Event
-          </Button>
-        </div>
+        <EmptyState
+          icon={CalendarDaysIcon}
+          heading="No events yet"
+          description="Create the first school event to get started"
+          actionLabel="Create Event"
+          onAction={() => openDialog('create')}
+          variant="light"
+        />
       ) : (
         <DataTable
           columns={columns}

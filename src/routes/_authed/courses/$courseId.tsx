@@ -22,6 +22,7 @@ import { deleteCourse, getCourse } from '@/utils/courses'
 import { cn } from '@/lib/utils'
 import { PageLayout } from '@/components/layout/page-layout'
 import { DarkCard } from '@/components/ui/dark-card'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export const Route = createFileRoute('/_authed/courses/$courseId')({
   loader: async ({ params }) => {
@@ -263,20 +264,14 @@ function CourseDetailComponent() {
 
           {/* Lesson list */}
           {course.lessons.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <BookOpenIcon className="mb-4 size-10 text-[#C5A059]/30" />
-              <p className="text-sm text-[#AFA28F]">No lessons yet</p>
-              {permissions.canEdit && permissions.isCourseTeacher && (
-                <Button
-                  theme="dark"
-                  className="mt-4"
-                  onClick={() => lessonDialog.openDialog('create')}
-                >
-                  <PlusIcon className="size-3.5" />
-                  Create First Lesson
-                </Button>
-              )}
-            </div>
+            <EmptyState
+              icon={BookOpenIcon}
+              message="No lessons yet"
+              actionLabel="Create First Lesson"
+              onAction={() => lessonDialog.openDialog('create')}
+              showAction={permissions.canEdit && permissions.isCourseTeacher}
+              variant="dark"
+            />
           ) : (
             <div className="divide-y divide-white/8">
               {course.lessons.map((lesson: Lesson, index: number) => {
