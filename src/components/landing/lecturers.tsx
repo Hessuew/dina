@@ -93,7 +93,7 @@ const lecturerPairs: Array<LecturerPair> = [
         image: sadeImage,
       },
       {
-        name: 'Blessing',
+        name: 'Blessing A.',
         title: '',
         bio: '',
       },

@@ -66,7 +66,7 @@ const testimonials: Array<TestimonialItem> = [
   },
   {
     id: 'blessing',
-    name: 'Blessing',
+    name: 'Blessing A.',
     role: 'Pastor, -',
     quote: '',
     theme: 'Framing',
