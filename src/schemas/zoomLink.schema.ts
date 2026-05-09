@@ -1,6 +1,9 @@
 import { z } from 'zod'
 
-const zoomLinkSectionEnum = z.enum(['general_class_lecture', 'discipleship_group'])
+const zoomLinkSectionEnum = z.enum([
+  'general_class_lecture',
+  'discipleship_group',
+])
 const optionalText = z.string().trim().optional()
 const optionalUuid = z.uuid('Invalid course ID').optional()
 
