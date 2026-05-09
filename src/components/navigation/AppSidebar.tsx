@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { Link, useRouter, useRouterState } from '@tanstack/react-router'
-import { FileText } from 'lucide-react'
 import { NavUser } from '@/components/navigation/nav-user'
 import {
   Sidebar,
@@ -29,6 +28,8 @@ import { BookText } from '@/components/animate-ui/icons/book'
 import { CalendarDaysIcon } from '@/components/animate-ui/icons/calendar-days'
 import { AnimateIcon } from '@/components/animate-ui/icons/icon'
 import { List } from '@/components/animate-ui/icons/list'
+import { CookingPot } from '@/components/animate-ui/icons/cooking-pot'
+import { Clapperboard } from '@/components/animate-ui/icons/clapperboard'
 
 type User = {
   id: string
@@ -73,6 +74,11 @@ const navItems: Array<NavItem> = [
     icon: MessageSquare,
   },
   {
+    title: 'Zoom',
+    url: '/zoom',
+    icon: Clapperboard,
+  },
+  {
     title: 'Library',
     url: '/library',
     icon: LayersIcon,
@@ -101,7 +107,7 @@ const adminNavItems: Array<NavItem> = [
   {
     title: 'Enrollments',
     url: '/enrollments',
-    icon: FileText,
+    icon: CookingPot,
   },
   {
     title: 'User Management',
