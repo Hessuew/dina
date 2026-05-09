@@ -1,3 +1,4 @@
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -49,6 +50,34 @@ type LandingScriptureSectionHeaderProps = {
   scriptures?: Array<Scripture>
   textColor?: string
   headlineColor?: string
+  className?: string
+}
+
+type LandingActiveItemNavProps = {
+  label: string
+  activeValue: ReactNode
+  onPrevious?: () => void
+  onNext?: () => void
+  borderColor?: string
+  prevButtonClass?: string
+  nextButtonClass?: string
+  labelColor?: string
+  valueColor?: string
+  className?: string
+}
+
+type LandingItemGridProps = {
+  items: Array<any>
+  activeIndex: number
+  onSelect: (index: number) => void
+  renderItem: (item: any, index: number, isActive: boolean) => ReactNode
+  gridCols?: string
+  borderColor?: string
+  bgColor?: string
+  activeBorderColor?: string
+  activeBgColor?: string
+  arrowColor?: string
+  activeArrowColor?: string
   className?: string
 }
 
@@ -243,6 +272,125 @@ export function LandingScriptureSectionHeader({
             ))}
         </p>
       )}
+    </div>
+  )
+}
+
+export function LandingActiveItemNav({
+  label,
+  activeValue,
+  onPrevious,
+  onNext,
+  borderColor = 'border-white/10',
+  prevButtonClass,
+  nextButtonClass,
+  labelColor = 'text-[#8E816D]',
+  valueColor = 'text-[#F8F4EC]',
+  className,
+}: LandingActiveItemNavProps) {
+  const handlePrevious = () => {
+    if (onPrevious) {
+      onPrevious()
+    }
+  }
+
+  const handleNext = () => {
+    if (onNext) {
+      onNext()
+    }
+  }
+
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-between gap-6 border-y py-5',
+        borderColor,
+        className,
+      )}
+    >
+      <div>
+        <div
+          className={cn(
+            'text-[0.68rem] font-medium tracking-[0.3em] uppercase',
+            labelColor,
+          )}
+        >
+          {label}
+        </div>
+        <div className={cn('mt-2 font-serif text-2xl', valueColor)}>
+          {activeValue}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handlePrevious}
+          className={cn(
+            'inline-flex h-12 w-12 items-center justify-center border transition-all hover:-translate-y-0.5',
+            prevButtonClass,
+          )}
+          aria-label="Show previous item"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={handleNext}
+          className={cn(
+            'inline-flex h-12 w-12 items-center justify-center border transition-all hover:-translate-y-0.5',
+            nextButtonClass,
+          )}
+          aria-label="Show next item"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export function LandingItemGrid({
+  items,
+  activeIndex,
+  onSelect,
+  renderItem,
+  gridCols = 'sm:grid-cols-2',
+  borderColor = 'border-white/10',
+  bgColor = 'bg-white/3',
+  activeBorderColor = 'border-[#C5A059]/42',
+  activeBgColor = 'bg-[#1A1716]',
+  arrowColor = 'text-[#9B8A73]',
+  activeArrowColor = 'text-[#E9D9B4]',
+  className,
+}: LandingItemGridProps) {
+  return (
+    <div className={cn('hidden gap-3 sm:grid', gridCols, className)}>
+      {items.map((item, index) => {
+        const isActive = index === activeIndex
+
+        return (
+          <button
+            key={index}
+            type="button"
+            onClick={() => onSelect(index)}
+            className={cn(
+              'group flex items-center justify-between gap-4 border px-4 py-4 text-left transition-all',
+              isActive ? activeBorderColor : borderColor,
+              isActive ? activeBgColor : bgColor,
+            )}
+          >
+            {renderItem(item, index, isActive)}
+            <ArrowRight
+              className={cn(
+                'h-4 w-4 transition-transform',
+                isActive ? activeArrowColor : arrowColor,
+                isActive ? 'translate-x-0' : 'group-hover:translate-x-0.5',
+              )}
+            />
+          </button>
+        )
+      })}
     </div>
   )
 }

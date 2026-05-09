@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
 import houseGround from '@/assets/images/house/house_ground.webp'
 import houseFoundation from '@/assets/images/house/house_foundation.webp'
@@ -8,9 +7,11 @@ import houseFraming from '@/assets/images/house/house_framing.webp'
 import houseInterior from '@/assets/images/house/house_interior.webp'
 import houseRoof from '@/assets/images/house/house_roof.webp'
 import {
+  LandingActiveItemNav,
   LandingFeaturePanel,
   LandingFeaturePanelBody,
   LandingFeaturePanelHeader,
+  LandingItemGrid,
   LandingScriptureSectionHeader,
   LandingSection,
   LandingSectionContainer,
@@ -157,70 +158,41 @@ export function LandingCourseShowcase() {
               ]}
             />
 
-            <div className="flex items-center justify-between gap-6 border-y border-white/10 py-5">
-              <div>
-                <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Active course
-                </div>
-                <div className="mt-2 font-serif text-2xl text-[#F8F4EC]">
-                  {activeCourse.number}. {activeCourse.title}
-                </div>
-              </div>
+            <LandingActiveItemNav
+              label="Active course"
+              activeValue={`${activeCourse.number}. ${activeCourse.title}`}
+              onPrevious={goToPrevious}
+              onNext={goToNext}
+              borderColor="border-white/10"
+              prevButtonClass="border-white/12 bg-white/6 text-[#F8F4EC] hover:border-[#C5A059]/50 hover:bg-white/10"
+              nextButtonClass="border-[#C5A059]/35 bg-[#1C1C1D] text-[#E9D9B4] hover:border-[#D6B16E] hover:text-white"
+            />
 
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={goToPrevious}
-                  className="inline-flex h-12 w-12 items-center justify-center border border-white/12 bg-white/6 text-[#F8F4EC] transition-all hover:-translate-y-0.5 hover:border-[#C5A059]/50 hover:bg-white/10"
-                  aria-label="Show previous course"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={goToNext}
-                  className="inline-flex h-12 w-12 items-center justify-center border border-[#C5A059]/35 bg-[#1C1C1D] text-[#E9D9B4] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
-                  aria-label="Show next course"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="hidden gap-3 sm:grid sm:grid-cols-2">
-              {courseShowcaseItems.map((course, index) => {
-                const isActive = index === activeIndex
-
-                return (
-                  <button
-                    key={course.id}
-                    type="button"
-                    onClick={() => setActiveIndex(index)}
-                    className={`group flex items-center justify-between gap-4 border px-4 py-4 text-left transition-all ${
-                      isActive
-                        ? 'border-[#C5A059]/42 bg-white/8 shadow-[0_24px_44px_-34px_rgba(0,0,0,0.6)]'
-                        : 'border-white/10 bg-white/3 hover:border-white/18 hover:bg-white/5'
-                    }`}
+            <LandingItemGrid
+              items={courseShowcaseItems}
+              activeIndex={activeIndex}
+              onSelect={setActiveIndex}
+              borderColor="border-white/10"
+              bgColor="bg-white/3"
+              activeBorderColor="border-[#C5A059]/42"
+              activeBgColor="bg-white/8"
+              arrowColor="text-[#8E816D]"
+              activeArrowColor="text-[#E9D9B4]"
+              renderItem={(course, _index, isActive) => (
+                <div>
+                  <div
+                    className={`text-[0.65rem] font-medium tracking-[0.28em] uppercase ${isActive ? 'text-[#D4B373]' : 'text-[#8A7B68]'}`}
                   >
-                    <div>
-                      <div className="text-[0.65rem] font-medium tracking-[0.28em] text-[#8E816D] uppercase">
-                        {course.number}
-                      </div>
-                      <div className="mt-2 font-serif text-xl text-[#F8F4EC]">
-                        {course.title}
-                      </div>
-                    </div>
-                    <ArrowRight
-                      className={`h-4 w-4 transition-transform ${
-                        isActive
-                          ? 'translate-x-0 text-[#E9D9B4]'
-                          : 'text-[#8E816D] group-hover:translate-x-0.5'
-                      }`}
-                    />
-                  </button>
-                )
-              })}
-            </div>
+                    {course.number}
+                  </div>
+                  <div
+                    className={`mt-2 font-serif text-xl ${isActive ? 'text-[#F8F4EC]' : 'text-[#F8F4EC]/70'}`}
+                  >
+                    {course.title}
+                  </div>
+                </div>
+              )}
+            />
           </div>
 
           <LandingFeaturePanel>
