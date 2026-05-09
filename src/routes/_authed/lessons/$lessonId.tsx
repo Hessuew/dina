@@ -70,9 +70,9 @@ function LessonDetailComponent() {
     null,
   )
   const [submissionCount, setSubmissionCount] = useState(0)
-  const canEdit = role === 'teacher' || role === 'admin'
   const isCourseTeacher =
     isUserCourseTeacher(lesson.course, user.id) || role === 'admin'
+  const canEdit = role === 'teacher' || role === 'admin'
   const isPublished = lesson.isPublished ?? false
   const showContent = isPublished || canEdit
 

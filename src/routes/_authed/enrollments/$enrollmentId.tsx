@@ -100,6 +100,10 @@ function EnrollmentDetailPage() {
     },
   })
 
+  if (!enrollment) {
+    return null
+  }
+
   const address = [enrollment.currentCity, enrollment.currentCountry]
     .filter(Boolean)
     .join(', ')

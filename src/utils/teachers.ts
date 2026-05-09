@@ -2,6 +2,8 @@ import { createServerFn } from '@tanstack/react-start'
 import { eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { courseTeachers, profiles } from '@/db/schema'
+import { getCurrentUser } from '@/utils/auth/auth'
+import { authz, withRequestCache } from '@/utils/authz'
 
 export const getTeachers = createServerFn({ method: 'POST' }).handler(
   async () => {
@@ -52,5 +54,30 @@ export const getTeachers = createServerFn({ method: 'POST' }).handler(
     })
 
     return { teachers: sortedTeachers }
+  },
+)
+
+export const getAllTeachers = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const user = await getCurrentUser()
+
+    return withRequestCache(async () => {
+      const db = await getDb()
+
+      await authz(user.id).hasRole('admin')
+
+      const teachers = await db.query.profiles.findMany({
+        where: inArray(profiles.role, ['teacher', 'admin']),
+        columns: {
+          id: true,
+          fullName: true,
+          email: true,
+          avatarUrl: true,
+        },
+        orderBy: (p, { asc }) => [asc(p.fullName)],
+      })
+
+      return { teachers }
+    })
   },
 )

@@ -180,9 +180,9 @@ function AssignmentDetailComponent() {
     fileUrl: submission?.fileUrl || '',
   })
 
-  const canEdit = role === 'teacher' || role === 'admin'
   const isCourseTeacher =
     isUserCourseTeacher(assignment.lesson.course, user.id) || role === 'admin'
+  const canEdit = role === 'teacher' || role === 'admin'
   const isStudent = role === 'student'
   const isPastDue = new Date(assignment.dueDate) < new Date()
   const canSubmit = isStudent && assignment.status === 'published' && !isPastDue
