@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useMutation } from '@/hooks/useMutation'
 import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
-import { getCurrentUser } from '@/utils/auth'
+import { getCurrentUser } from '@/utils/auth/auth'
 import { uploadAvatarFn } from '@/utils/imageUpload'
 import { getSupabaseServerClient } from '@/utils/supabase'
 import {

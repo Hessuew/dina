@@ -24,7 +24,7 @@ import {
   profiles,
   submissions,
 } from '@/db/schema'
-import { getCurrentUser } from '@/utils/auth'
+import { getCurrentUser } from '@/utils/auth/auth'
 import { useMutation } from '@/hooks/useMutation'
 import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
 import { CourseDialog } from '@/components/dialog/CourseDialog'

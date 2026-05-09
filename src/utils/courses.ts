@@ -20,7 +20,7 @@ import {
   profiles,
   submissions,
 } from '@/db/schema'
-import { getCurrentUser } from '@/utils/auth'
+import { getCurrentUser } from '@/utils/auth/auth'
 
 export const getCourses = createServerFn({ method: 'POST' }).handler(
   async () => {
@@ -295,7 +295,8 @@ export const createCourse = createServerFn({ method: 'POST' })
 export const updateCourse = createServerFn({ method: 'POST' })
   .inputValidator(updateCourseSchema)
   .handler(async ({ data }) => {
-    const { requireTeacherOfCourse, isAdmin } = await import('@/utils/auth')
+    const { requireTeacherOfCourse, isAdmin } =
+      await import('@/utils/auth/auth')
     const user = await getCurrentUser()
     const db = await getDb()
 
@@ -370,7 +371,8 @@ export const updateCourse = createServerFn({ method: 'POST' })
 export const deleteCourse = createServerFn({ method: 'POST' })
   .inputValidator(deleteCourseSchema)
   .handler(async ({ data }) => {
-    const { requireTeacherOfCourse, isAdmin } = await import('@/utils/auth')
+    const { requireTeacherOfCourse, isAdmin } =
+      await import('@/utils/auth/auth')
     const user = await getCurrentUser()
     const db = await getDb()
 
@@ -389,7 +391,7 @@ export const deleteCourse = createServerFn({ method: 'POST' })
 export const createLesson = createServerFn({ method: 'POST' })
   .inputValidator(createLessonSchema)
   .handler(async ({ data }) => {
-    const { requireTeacherOfCourse } = await import('@/utils/auth')
+    const { requireTeacherOfCourse } = await import('@/utils/auth/auth')
     const user = await getCurrentUser()
     const db = await getDb()
 
@@ -416,7 +418,7 @@ export const createLesson = createServerFn({ method: 'POST' })
 export const updateLesson = createServerFn({ method: 'POST' })
   .inputValidator(updateLessonSchema)
   .handler(async ({ data }) => {
-    const { requireTeacherOfCourse } = await import('@/utils/auth')
+    const { requireTeacherOfCourse } = await import('@/utils/auth/auth')
     const user = await getCurrentUser()
     const db = await getDb()
 
@@ -444,7 +446,7 @@ export const updateLesson = createServerFn({ method: 'POST' })
 export const deleteLesson = createServerFn({ method: 'POST' })
   .inputValidator(deleteLessonSchema)
   .handler(async ({ data }) => {
-    const { requireTeacherOfCourse } = await import('@/utils/auth')
+    const { requireTeacherOfCourse } = await import('@/utils/auth/auth')
     const user = await getCurrentUser()
     const db = await getDb()
 

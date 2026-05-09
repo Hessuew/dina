@@ -7,7 +7,7 @@ import {
   deleteZoomLinkSchema,
   updateZoomLinkSchema,
 } from '@/schemas/zoomLink.schema'
-import { getCurrentUser, requireAdmin } from '@/utils/auth'
+import { getCurrentUser, requireAdmin } from '@/utils/auth/auth'
 
 export type ZoomLinkSection = 'general_class_lecture' | 'discipleship_group'
 
