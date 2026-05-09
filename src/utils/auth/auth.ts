@@ -1,6 +1,6 @@
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { getDb } from '@/db'
-import { courseTeachers, profiles } from '@/db/schema'
+import { profiles } from '@/db/schema'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 /**
@@ -35,94 +35,6 @@ export function requireAuth(
 }
 
 /**
- * Check if a user has a specific role
- * @param userId - The Supabase user ID (UUID)
- * @param role - The required role ('student', 'teacher', or 'admin')
- */
-export async function requireRole(
-  userId: string,
-  role: 'student' | 'teacher' | 'admin',
-): Promise<void> {
-  const db = await getDb()
-  const user = await db.query.profiles.findFirst({
-    where: eq(profiles.id, userId),
-  })
-
-  if (!user) {
-    throw new Error('User profile not found')
-  }
-
-  if (user.role !== role) {
-    throw new Error(`${role} access required`)
-  }
-}
-
-/**
- * Verify that a user is an admin
- * @param userId - The Supabase user ID (UUID)
- */
-export async function requireAdmin(userId: string): Promise<void> {
-  await requireRole(userId, 'admin')
-}
-
-/**
- * Verify that a user is a teacher
- * @param userId - The Supabase user ID (UUID)
- */
-export async function requireTeacher(userId: string): Promise<void> {
-  await requireRole(userId, 'teacher')
-}
-
-/**
- * Check if a user is the teacher of a specific course
- * Checks the course_teachers junction table
- * @param userId - The Supabase user ID (UUID)
- * @param courseId - The course ID to check
- */
-export async function requireTeacherOfCourse(
-  userId: string,
-  courseId: string,
-): Promise<void> {
-  const db = await getDb()
-  const isTeacher = await db.query.courseTeachers.findFirst({
-    where: and(
-      eq(courseTeachers.courseId, courseId),
-      eq(courseTeachers.teacherId, userId),
-    ),
-  })
-
-  if (!isTeacher) {
-    throw new Error('Not authorized to access this course')
-  }
-}
-
-/**
- * Check if a user can access a course (either as teacher or enrolled student)
- * @param userId - The Supabase user ID (UUID)
- * @param courseId - The course ID to check
- * @returns 'teacher' | 'student' - The user's role in the course
- */
-export async function getCourseAccess(
-  userId: string,
-  courseId: string,
-): Promise<'teacher' | 'student'> {
-  // Check if teacher via course_teachers junction table
-  const db = await getDb()
-  const isTeacher = await db.query.courseTeachers.findFirst({
-    where: and(
-      eq(courseTeachers.courseId, courseId),
-      eq(courseTeachers.teacherId, userId),
-    ),
-  })
-
-  if (isTeacher) {
-    return 'teacher'
-  }
-
-  return 'student'
-}
-
-/**
  * Get user profile with role information
  * @param userId - The Supabase user ID (UUID)
  */
@@ -137,17 +49,4 @@ export async function getUserProfile(userId: string) {
   }
 
   return user
-}
-
-/**
- * Check if user is admin (returns boolean instead of throwing)
- * @param userId - The Supabase user ID (UUID)
- */
-export async function isAdmin(userId: string): Promise<boolean> {
-  const db = await getDb()
-  const user = await db.query.profiles.findFirst({
-    where: eq(profiles.id, userId),
-  })
-
-  return user?.role === 'admin'
 }

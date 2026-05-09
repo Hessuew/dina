@@ -7,7 +7,8 @@ import {
   deleteZoomLinkSchema,
   updateZoomLinkSchema,
 } from '@/schemas/zoomLink.schema'
-import { getCurrentUser, requireAdmin } from '@/utils/auth/auth'
+import { getCurrentUser } from '@/utils/auth/auth'
+import { authz, withRequestCache } from '@/utils/authz'
 
 export type ZoomLinkSection = 'general_class_lecture' | 'discipleship_group'
 
@@ -97,60 +98,69 @@ export const createZoomLink = createServerFn({ method: 'POST' })
   .inputValidator(createZoomLinkSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    await requireAdmin(user.id)
-    const db = await getDb()
 
-    const [link] = await db
-      .insert(zoomLinks)
-      .values({
-        title: data.title,
-        description: data.description || null,
-        section: data.section,
-        courseId: data.courseId || null,
-        zoomUrl: data.zoomUrl,
-        meetingId: data.meetingId,
-        passcode: data.passcode,
-        orderIndex: data.orderIndex ?? 0,
-      })
-      .returning()
+    return withRequestCache(async () => {
+      await authz(user.id).hasRole('admin')
+      const db = await getDb()
 
-    return { link }
+      const [link] = await db
+        .insert(zoomLinks)
+        .values({
+          title: data.title,
+          description: data.description || null,
+          section: data.section,
+          courseId: data.courseId || null,
+          zoomUrl: data.zoomUrl,
+          meetingId: data.meetingId,
+          passcode: data.passcode,
+          orderIndex: data.orderIndex ?? 0,
+        })
+        .returning()
+
+      return { link }
+    })
   })
 
 export const updateZoomLink = createServerFn({ method: 'POST' })
   .inputValidator(updateZoomLinkSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    await requireAdmin(user.id)
-    const db = await getDb()
 
-    const [link] = await db
-      .update(zoomLinks)
-      .set({
-        title: data.title,
-        description: data.description || null,
-        section: data.section,
-        courseId: data.courseId || null,
-        zoomUrl: data.zoomUrl,
-        meetingId: data.meetingId,
-        passcode: data.passcode,
-        orderIndex: data.orderIndex ?? 0,
-        updatedAt: new Date(),
-      })
-      .where(eq(zoomLinks.id, data.zoomLinkId))
-      .returning()
+    return withRequestCache(async () => {
+      await authz(user.id).hasRole('admin')
+      const db = await getDb()
 
-    return { link }
+      const [link] = await db
+        .update(zoomLinks)
+        .set({
+          title: data.title,
+          description: data.description || null,
+          section: data.section,
+          courseId: data.courseId || null,
+          zoomUrl: data.zoomUrl,
+          meetingId: data.meetingId,
+          passcode: data.passcode,
+          orderIndex: data.orderIndex ?? 0,
+          updatedAt: new Date(),
+        })
+        .where(eq(zoomLinks.id, data.zoomLinkId))
+        .returning()
+
+      return { link }
+    })
   })
 
 export const deleteZoomLink = createServerFn({ method: 'POST' })
   .inputValidator(deleteZoomLinkSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    await requireAdmin(user.id)
-    const db = await getDb()
 
-    await db.delete(zoomLinks).where(eq(zoomLinks.id, data.zoomLinkId))
+    return withRequestCache(async () => {
+      await authz(user.id).hasRole('admin')
+      const db = await getDb()
 
-    return { error: false }
+      await db.delete(zoomLinks).where(eq(zoomLinks.id, data.zoomLinkId))
+
+      return { error: false }
+    })
   })
