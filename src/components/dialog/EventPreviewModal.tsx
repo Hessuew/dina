@@ -14,6 +14,7 @@ import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -124,7 +125,7 @@ export function EventPreviewModal({
         showCloseButton={false}
       >
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-        <div className="relative">
+        <div className="relative flex min-h-0 flex-1 flex-col">
           <DialogHeader>
             <div className="mb-1 flex items-center justify-between">
               <div>
@@ -153,56 +154,58 @@ export function EventPreviewModal({
             )}
           </DialogHeader>
 
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center gap-2.5 text-sm">
-              <CalendarIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-              <span
-                className={
-                  isOverdue ? 'font-medium text-red-400' : 'text-[#D6CCBE]'
-                }
-              >
-                {format(new Date(event.date), 'PPPP')}
-                {isOverdue && (
-                  <span className="ml-2 text-[0.65rem] tracking-wider text-red-400/80 uppercase">
-                    Overdue
+          <DialogBody>
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center gap-2.5 text-sm">
+                <CalendarIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+                <span
+                  className={
+                    isOverdue ? 'font-medium text-red-400' : 'text-[#D6CCBE]'
+                  }
+                >
+                  {format(new Date(event.date), 'PPPP')}
+                  {isOverdue && (
+                    <span className="ml-2 text-[0.65rem] tracking-wider text-red-400/80 uppercase">
+                      Overdue
+                    </span>
+                  )}
+                </span>
+              </div>
+
+              {event.type === 'lesson' && event.duration && (
+                <div className="flex items-center gap-2.5 text-sm">
+                  <ClockIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+                  <span className="text-[#D6CCBE]">
+                    {format(new Date(event.date), 'p')} · {event.duration} min
                   </span>
-                )}
-              </span>
+                </div>
+              )}
+
+              {event.type === 'lesson' && (
+                <div className="flex items-center gap-2.5 text-sm">
+                  <BookOpenIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+                  <span className="text-[#D6CCBE]">Lesson</span>
+                </div>
+              )}
+
+              {event.type === 'assignment' && event.maxGrade != null && (
+                <div className="flex items-center gap-2.5 text-sm">
+                  <GraduationCapIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+                  <span className="text-[#D6CCBE]">
+                    Max grade: {event.maxGrade} pts
+                  </span>
+                </div>
+              )}
+
+              {event.description && (
+                <div className="mt-4 border border-white/8 bg-white/4 p-3">
+                  <p className="line-clamp-4 text-[0.82rem] leading-relaxed text-[#AFA28F]">
+                    {event.description}
+                  </p>
+                </div>
+              )}
             </div>
-
-            {event.type === 'lesson' && event.duration && (
-              <div className="flex items-center gap-2.5 text-sm">
-                <ClockIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                <span className="text-[#D6CCBE]">
-                  {format(new Date(event.date), 'p')} · {event.duration} min
-                </span>
-              </div>
-            )}
-
-            {event.type === 'lesson' && (
-              <div className="flex items-center gap-2.5 text-sm">
-                <BookOpenIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                <span className="text-[#D6CCBE]">Lesson</span>
-              </div>
-            )}
-
-            {event.type === 'assignment' && event.maxGrade != null && (
-              <div className="flex items-center gap-2.5 text-sm">
-                <GraduationCapIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                <span className="text-[#D6CCBE]">
-                  Max grade: {event.maxGrade} pts
-                </span>
-              </div>
-            )}
-
-            {event.description && (
-              <div className="mt-4 border border-white/8 bg-white/4 p-3">
-                <p className="line-clamp-4 text-[0.82rem] leading-relaxed text-[#AFA28F]">
-                  {event.description}
-                </p>
-              </div>
-            )}
-          </div>
+          </DialogBody>
 
           <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
             <Button

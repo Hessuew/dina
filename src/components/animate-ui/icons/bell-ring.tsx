@@ -1,16 +1,16 @@
-'use client';
+'use client'
 
-import * as React from 'react';
-import { motion, type Variants } from 'motion/react';
+import { motion } from 'motion/react'
+import type { Variants } from 'motion/react'
 
+import type { IconProps } from '@/components/animate-ui/icons/icon'
 import {
+  IconWrapper,
   getVariants,
   useAnimateIconContext,
-  IconWrapper,
-  type IconProps,
-} from '@/components/animate-ui/icons/icon';
+} from '@/components/animate-ui/icons/icon'
 
-type BellRingProps = IconProps<keyof typeof animations>;
+type BellRingProps = IconProps<keyof typeof animations>
 
 const animations = {
   default: {
@@ -58,11 +58,11 @@ const animations = {
     },
     path4: {},
   } satisfies Record<string, Variants>,
-} as const;
+} as const
 
 function IconComponent({ size, ...props }: BellRingProps) {
-  const { controls } = useAnimateIconContext();
-  const variants = getVariants(animations);
+  const { controls } = useAnimateIconContext()
+  const variants = getVariants(animations)
 
   return (
     <motion.svg
@@ -105,11 +105,11 @@ function IconComponent({ size, ...props }: BellRingProps) {
         animate={controls}
       />
     </motion.svg>
-  );
+  )
 }
 
 function BellRing(props: BellRingProps) {
-  return <IconWrapper icon={IconComponent} {...props} />;
+  return <IconWrapper icon={IconComponent} {...props} />
 }
 
 export {
@@ -118,4 +118,4 @@ export {
   BellRing as BellRingIcon,
   type BellRingProps,
   type BellRingProps as BellRingIconProps,
-};
+}

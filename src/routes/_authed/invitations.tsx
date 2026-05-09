@@ -4,7 +4,7 @@ import { UserPlus } from 'lucide-react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import { InvitationsTable } from '@/components/table/InvitationsTable'
-import { InviteUserModal } from '@/components/modal/InviteUserModal'
+import { InviteUserModal } from '@/components/dialog/InviteUserModal'
 import { checkAdminAccess } from '@/utils/admin'
 import { getInvitations } from '@/utils/invitations'
 

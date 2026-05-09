@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
 import type { CalendarEvent, SpecialEventCategory } from '@/utils/calendar'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { CalendarView } from '@/components/view/CalendarView'
-import { EventPreviewModal } from '@/components/modal/EventPreviewModal'
+import { EventPreviewModal } from '@/components/dialog/EventPreviewModal'
 import {
   Select,
   SelectContent,

@@ -5,6 +5,7 @@ import { createLessonSchema, updateLessonSchema } from '@/schemas/lesson.schema'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -238,7 +239,7 @@ export function LessonDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="overflow-y-auto rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
+        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
         style={{
           backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
           backgroundSize: 'cover',
@@ -248,7 +249,7 @@ export function LessonDialog({
       >
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
 
-        <div className="relative">
+        <div className="relative flex min-h-0 flex-1 flex-col">
           <DialogHeader>
             <div className="mb-1">
               <div className="h-px w-8 bg-[#C5A059]/40" />
@@ -266,118 +267,123 @@ export function LessonDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="mt-6 gap-8">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field className="sm:col-span-2">
-                <FieldLabel
-                  htmlFor="lesson-title"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Title <span className="text-[#C5A059]">*</span>
-                </FieldLabel>
-                <Input
-                  id="lesson-title"
-                  placeholder="Lesson title"
-                  value={formData.title}
-                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
-                  onChange={(e) => {
-                    setFormData({ ...formData, title: e.target.value })
-                    if (fieldErrors.title)
-                      setFieldErrors({ ...fieldErrors, title: '' })
-                  }}
-                />
-                {fieldErrors.title && (
-                  <p className="text-[0.68rem] text-red-400">
-                    {fieldErrors.title}
-                  </p>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel
-                  htmlFor="lesson-time"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Scheduled Time <span className="text-[#C5A059]">*</span>
-                </FieldLabel>
-                <Input
-                  id="lesson-time"
-                  type="datetime-local"
-                  value={formData.scheduledTime}
-                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.scheduledTime ? 'border-red-500/60' : ''}`}
-                  onChange={(e) => {
-                    setFormData({ ...formData, scheduledTime: e.target.value })
-                    if (fieldErrors.scheduledTime)
-                      setFieldErrors({ ...fieldErrors, scheduledTime: '' })
-                  }}
-                />
-                {fieldErrors.scheduledTime && (
-                  <p className="text-[0.68rem] text-red-400">
-                    {fieldErrors.scheduledTime}
-                  </p>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel
-                  htmlFor="lesson-duration"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Duration (minutes)
-                </FieldLabel>
-                <Input
-                  id="lesson-duration"
-                  type="number"
-                  placeholder="60"
-                  value={formData.duration}
-                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.duration ? 'border-red-500/60' : ''}`}
-                  onChange={(e) => {
-                    setFormData({ ...formData, duration: e.target.value })
-                    if (fieldErrors.duration)
-                      setFieldErrors({ ...fieldErrors, duration: '' })
-                  }}
-                />
-                {fieldErrors.duration && (
-                  <p className="text-[0.68rem] text-red-400">
-                    {fieldErrors.duration}
-                  </p>
-                )}
-              </Field>
-              <Field className="sm:col-span-2">
-                <FieldLabel
-                  htmlFor="lesson-content"
-                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                >
-                  Content
-                </FieldLabel>
-                <Textarea
-                  id="lesson-content"
-                  placeholder="Lesson content or description"
-                  rows={8}
-                  value={formData.content}
-                  className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                  onChange={(e) =>
-                    setFormData({ ...formData, content: e.target.value })
-                  }
-                />
-              </Field>
-              <Field>
-                <div className="flex items-center gap-3">
-                  <Switch
-                    id="lesson-published"
-                    checked={formData.isPublished}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, isPublished: checked })
+          <DialogBody>
+            <FieldGroup className="mt-6 gap-8">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field className="sm:col-span-2">
+                  <FieldLabel
+                    htmlFor="lesson-title"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Title <span className="text-[#C5A059]">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="lesson-title"
+                    placeholder="Lesson title"
+                    value={formData.title}
+                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
+                    onChange={(e) => {
+                      setFormData({ ...formData, title: e.target.value })
+                      if (fieldErrors.title)
+                        setFieldErrors({ ...fieldErrors, title: '' })
+                    }}
+                  />
+                  {fieldErrors.title && (
+                    <p className="text-[0.68rem] text-red-400">
+                      {fieldErrors.title}
+                    </p>
+                  )}
+                </Field>
+                <Field>
+                  <FieldLabel
+                    htmlFor="lesson-time"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Scheduled Time <span className="text-[#C5A059]">*</span>
+                  </FieldLabel>
+                  <Input
+                    id="lesson-time"
+                    type="datetime-local"
+                    value={formData.scheduledTime}
+                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.scheduledTime ? 'border-red-500/60' : ''}`}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        scheduledTime: e.target.value,
+                      })
+                      if (fieldErrors.scheduledTime)
+                        setFieldErrors({ ...fieldErrors, scheduledTime: '' })
+                    }}
+                  />
+                  {fieldErrors.scheduledTime && (
+                    <p className="text-[0.68rem] text-red-400">
+                      {fieldErrors.scheduledTime}
+                    </p>
+                  )}
+                </Field>
+                <Field>
+                  <FieldLabel
+                    htmlFor="lesson-duration"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Duration (minutes)
+                  </FieldLabel>
+                  <Input
+                    id="lesson-duration"
+                    type="number"
+                    placeholder="60"
+                    value={formData.duration}
+                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.duration ? 'border-red-500/60' : ''}`}
+                    onChange={(e) => {
+                      setFormData({ ...formData, duration: e.target.value })
+                      if (fieldErrors.duration)
+                        setFieldErrors({ ...fieldErrors, duration: '' })
+                    }}
+                  />
+                  {fieldErrors.duration && (
+                    <p className="text-[0.68rem] text-red-400">
+                      {fieldErrors.duration}
+                    </p>
+                  )}
+                </Field>
+                <Field className="sm:col-span-2">
+                  <FieldLabel
+                    htmlFor="lesson-content"
+                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                  >
+                    Content
+                  </FieldLabel>
+                  <Textarea
+                    id="lesson-content"
+                    placeholder="Lesson content or description"
+                    rows={8}
+                    value={formData.content}
+                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                    onChange={(e) =>
+                      setFormData({ ...formData, content: e.target.value })
                     }
                   />
-                  <FieldLabel
-                    htmlFor="lesson-published"
-                    className="text-sm text-[#AFA28F]"
-                  >
-                    Publish lesson
-                  </FieldLabel>
-                </div>
-              </Field>
-            </div>
-          </FieldGroup>
+                </Field>
+                <Field>
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      id="lesson-published"
+                      checked={formData.isPublished}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, isPublished: checked })
+                      }
+                    />
+                    <FieldLabel
+                      htmlFor="lesson-published"
+                      className="text-sm text-[#AFA28F]"
+                    >
+                      Publish lesson
+                    </FieldLabel>
+                  </div>
+                </Field>
+              </div>
+            </FieldGroup>
+          </DialogBody>
 
           <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
             <Button
