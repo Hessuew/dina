@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react'
-import type { TeacherWithCourses } from '@/types/teacher'
+import type { TeacherWithCourse } from '@/types/teacher'
 import { getTeachers } from '@/utils/teachers'
 
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes in milliseconds
 
 type UseTeachersResult = {
-  teachers: Array<TeacherWithCourses>
+  teachers: Array<TeacherWithCourse>
   isLoading: boolean
   error: Error | null
   refetch: () => Promise<void>
 }
 
 export function useTeachers(shouldFetch: boolean): UseTeachersResult {
-  const [teachers, setTeachers] = useState<Array<TeacherWithCourses>>([])
+  const [teachers, setTeachers] = useState<Array<TeacherWithCourse>>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [lastFetchTime, setLastFetchTime] = useState<number | null>(null)

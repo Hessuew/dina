@@ -2,13 +2,10 @@ import { createServerFn } from '@tanstack/react-start'
 import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import {
-  courseTeachers,
   postCommentReactions,
   postComments,
-  postNotifications,
   postReactions,
   posts,
-  profiles,
 } from '@/db/schema'
 import {
   createCommentSchema,
@@ -25,6 +22,11 @@ import {
 } from '@/schemas/post.schema'
 import { getCurrentUser } from '@/utils/auth/auth'
 import { authz, withRequestCache } from '@/utils/authz'
+import {
+  createCommentCreatedEvent,
+  createPostCreatedEvent,
+} from '@/utils/notifications/events'
+import { emit } from '@/utils/notifications'
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -254,53 +256,13 @@ export const createPost = createServerFn({ method: 'POST' })
 
       if (!full) throw new Error('Post not found')
 
-      const recipients = new Set<string>()
-      const courseId = data.courseId ?? null
-
-      if (canModerate) {
-        const studentRows = await db
-          .select({ id: profiles.id })
-          .from(profiles)
-          .where(
-            sql`${profiles.role} = 'student' AND ${profiles.id} <> ${user.id}`,
-          )
-
-        for (const row of studentRows) recipients.add(row.id)
-
-        if (courseId === null) {
-          const staffRows = await db
-            .select({ id: profiles.id })
-            .from(profiles)
-            .where(
-              sql`${profiles.role} IN ('teacher','admin') AND ${profiles.id} <> ${user.id}`,
-            )
-
-          for (const row of staffRows) recipients.add(row.id)
-        }
-      }
-
-      if (courseId) {
-        const teacherRows = await db
-          .select({ id: courseTeachers.teacherId })
-          .from(courseTeachers)
-          .where(eq(courseTeachers.courseId, courseId))
-
-        for (const row of teacherRows) {
-          if (row.id !== user.id) recipients.add(row.id)
-        }
-      }
-
-      if (recipients.size > 0) {
-        await db.insert(postNotifications).values(
-          Array.from(recipients).map((recipientId) => ({
-            userId: recipientId,
-            actorId: user.id,
-            event: 'post_created' as const,
-            postId: post.id,
-            commentId: null,
-          })),
-        )
-      }
+      const event = createPostCreatedEvent(
+        user.id,
+        post.id,
+        data.courseId ?? null,
+        canModerate,
+      )
+      await emit(event)
 
       return {
         post: {
@@ -632,15 +594,13 @@ export const createComment = createServerFn({ method: 'POST' })
       },
     })
 
-    if (post.authorId !== user.id) {
-      await db.insert(postNotifications).values({
-        userId: post.authorId,
-        actorId: user.id,
-        event: 'comment_created' as const,
-        postId: post.id,
-        commentId: comment.id,
-      })
-    }
+    const event = createCommentCreatedEvent(
+      user.id,
+      post.id,
+      comment.id,
+      post.authorId,
+    )
+    await emit(event)
 
     return { comment: full! }
   })
