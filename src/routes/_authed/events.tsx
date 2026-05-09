@@ -9,7 +9,7 @@ import {
   Trash2Icon,
   UserIcon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useDialogState } from '@/hooks/useDialogState'
 import { format } from 'date-fns'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -62,23 +62,12 @@ const CATEGORY_CHIP: Record<string, string> = {
   other: 'border-gray-500/30 bg-gray-950/40 text-gray-300',
 }
 
-type DialogState =
-  | { mode: 'create' }
-  | { mode: 'view'; event: CalendarEventRow }
-  | { mode: 'edit'; event: CalendarEventRow }
-  | { mode: 'delete'; event: CalendarEventRow }
-  | null
-
 const columnHelper = createColumnHelper<CalendarEventRow>()
 
 function EventsComponent() {
   const { events } = Route.useLoaderData()
-  const [dialogState, setDialogState] = useState<DialogState>(null)
-
-  const isOpen = dialogState !== null
-  const dialogMode = dialogState?.mode ?? 'create'
-  const dialogEvent =
-    dialogState && dialogState.mode !== 'create' ? dialogState.event : undefined
+  const { isOpen, dialogMode, dialogItem: dialogEvent, openDialog, closeDialog } =
+    useDialogState<CalendarEventRow>()
 
   const columns: Array<ColumnDef<CalendarEventRow, any>> = [
     columnHelper.accessor('title', {
@@ -125,17 +114,17 @@ function EventsComponent() {
       {
         icon: EyeIcon,
         label: 'View',
-        onClick: (event) => setDialogState({ mode: 'view', event }),
+        onClick: (event) => openDialog('view', event),
       },
       {
         icon: PencilIcon,
         label: 'Edit',
-        onClick: (event) => setDialogState({ mode: 'edit', event }),
+        onClick: (event) => openDialog('edit', event),
       },
       {
         icon: Trash2Icon,
         label: 'Delete',
-        onClick: (event) => setDialogState({ mode: 'delete', event }),
+        onClick: (event) => openDialog('delete', event),
       },
     ]),
   ]
@@ -157,7 +146,7 @@ function EventsComponent() {
         </div>
         <Button
           theme="light"
-          onClick={() => setDialogState({ mode: 'create' })}
+          onClick={() => openDialog('create')}
         >
           <PlusIcon className="size-4" />
           Create Event
@@ -174,7 +163,7 @@ function EventsComponent() {
           <Button
             theme="light"
             className="mt-4"
-            onClick={() => setDialogState({ mode: 'create' })}
+            onClick={() => openDialog('create')}
           >
             <PlusIcon className="size-4" />
             Create Event
@@ -192,7 +181,7 @@ function EventsComponent() {
       <EventDialog
         key={`${dialogMode}-${dialogEvent?.id}`}
         open={isOpen}
-        onOpenChange={(open) => !open && setDialogState(null)}
+        onOpenChange={(open) => !open && closeDialog()}
         mode={dialogMode}
         event={dialogEvent}
       />
