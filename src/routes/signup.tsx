@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
 import { Resend } from 'resend'
@@ -374,6 +374,13 @@ export const signupFn = createServerFn({ method: 'POST' })
   })
 
 export const Route = createFileRoute('/signup')({
+  beforeLoad: ({ search }) => {
+    if (!search.token) {
+      throw redirect({
+        to: '/login',
+      })
+    }
+  },
   validateSearch: (search: Record<string, unknown>) => {
     return {
       token: (search.token as string) || '',

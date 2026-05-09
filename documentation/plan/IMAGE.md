@@ -25,8 +25,8 @@ import marbleTexture from '@/assets/images/bg/bg_hero.webp'
 import heroEmblem from '@/assets/images/bg/logo.webp'
 
 // Add:
-const marbleTexture = `${import.meta.env.VITE_APP_URL ?? 'https://christ-dina.juhani-juusola.workers.dev'}/cdn-cgi/image/format=auto,width=auto/images/bg/bg_hero.webp`
-const heroEmblem = `${import.meta.env.VITE_APP_URL ?? 'https://christ-dina.juhani-juusola.workers.dev'}/cdn-cgi/image/format=auto,width=auto/images/bg/logo.webp`
+const marbleTexture = `${import.meta.env.VITE_APP_URL ?? 'https://christ-dina.org'}/cdn-cgi/image/format=auto,width=auto/images/bg/bg_hero.webp`
+const heroEmblem = `${import.meta.env.VITE_APP_URL ?? 'https://christ-dina.org'}/cdn-cgi/image/format=auto,width=auto/images/bg/logo.webp`
 ```
 
 ### 2. Verify image paths
