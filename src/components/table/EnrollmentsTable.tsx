@@ -232,7 +232,7 @@ export function EnrollmentsTable({
                       setSelectedEnrollmentId(row.id)
                       setInviteDialogOpen(true)
                     }}
-                    disabled={inviteMutation.status === 'pending'}
+                    disabled={inviteMutation.isPending}
                   >
                     <Mail className="size-3.5" />
                   </Button>
@@ -351,9 +351,9 @@ export function EnrollmentsTable({
                     data: { enrollmentId: selectedEnrollmentId },
                   })
                 }}
-                disabled={inviteMutation.status === 'pending'}
+                disabled={inviteMutation.isPending}
               >
-                {inviteMutation.status === 'pending' ? 'Sending…' : 'Send'}
+                {inviteMutation.isPending ? 'Sending…' : 'Send'}
               </Button>
             </DialogFooter>
           </div>
@@ -370,7 +370,7 @@ export function EnrollmentsTable({
             data: { enrollmentId: selectedEnrollmentId },
           })
         }}
-        isDeleting={deleteMutation.status === 'pending'}
+        isDeleting={deleteMutation.isPending}
       />
     </>
   )

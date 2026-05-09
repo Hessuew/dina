@@ -475,7 +475,7 @@ function AssignmentDetailComponent() {
                         variant="outline"
                         theme="dark"
                         onClick={() => handleSaveSubmission(false)}
-                        disabled={submissionMutation.status === 'pending'}
+                        disabled={submissionMutation.isPending}
                       >
                         <SaveIcon className="size-3.5" />
                         Save Draft
@@ -483,7 +483,7 @@ function AssignmentDetailComponent() {
                       <Button
                         theme="dark"
                         onClick={() => handleSaveSubmission(true)}
-                        disabled={submissionMutation.status === 'pending'}
+                        disabled={submissionMutation.isPending}
                       >
                         <SendIcon className="size-3.5" />
                         Submit
@@ -515,27 +515,28 @@ function AssignmentDetailComponent() {
       </div>
 
       {/* Assignment Dialog (edit / delete) */}
-      {(assignmentDialog.dialogMode === 'edit' || assignmentDialog.dialogMode === 'delete') &&
+      {(assignmentDialog.dialogMode === 'edit' ||
+        assignmentDialog.dialogMode === 'delete') &&
         assignmentDialog.isOpen && (
-        <AssignmentDialog
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) assignmentDialog.closeDialog()
-          }}
-          mode={assignmentDialog.dialogMode as 'edit' | 'delete'}
-          assignment={assignment}
-          onDeleteSuccess={() => {
-            if (fromDashboard) {
-              router.navigate({ to: '/assignments' })
-            } else {
-              router.navigate({
-                to: '/lessons/$lessonId',
-                params: { lessonId: assignment.lesson.id },
-              })
-            }
-          }}
-        />
-      )}
+          <AssignmentDialog
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) assignmentDialog.closeDialog()
+            }}
+            mode={assignmentDialog.dialogMode as 'edit' | 'delete'}
+            assignment={assignment}
+            onDeleteSuccess={() => {
+              if (fromDashboard) {
+                router.navigate({ to: '/assignments' })
+              } else {
+                router.navigate({
+                  to: '/lessons/$lessonId',
+                  params: { lessonId: assignment.lesson.id },
+                })
+              }
+            }}
+          />
+        )}
 
       {/* Grade Dialog */}
       {gradeDialog.isOpen && gradeDialog.dialogItem && (

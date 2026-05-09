@@ -131,7 +131,7 @@ function EnrollmentDetailPage() {
               theme="light"
               variant="outline"
               onClick={() => setInviteDialogOpen(true)}
-              disabled={inviteMutation.status === 'pending'}
+              disabled={inviteMutation.isPending}
             >
               <Mail className="size-3.5" />
               Send invitation
@@ -315,9 +315,9 @@ function EnrollmentDetailPage() {
                     data: { enrollmentId: enrollment.id },
                   })
                 }
-                disabled={inviteMutation.status === 'pending'}
+                disabled={inviteMutation.isPending}
               >
-                {inviteMutation.status === 'pending' ? 'Sending…' : 'Send'}
+                {inviteMutation.isPending ? 'Sending…' : 'Send'}
               </Button>
             </DialogFooter>
           </div>

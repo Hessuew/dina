@@ -37,6 +37,7 @@ interface UseEntityMutationReturn<
   createMutation: MutationReturn<TCreateVars>
   updateMutation: MutationReturn<TUpdateVars>
   deleteMutation: MutationReturn<TDeleteVars>
+  isAnyPending: boolean
 }
 
 const DEFAULT_MESSAGES: Record<MutationMode, string> = {
@@ -114,6 +115,11 @@ export function useEntityMutation<
     },
   })
 
+  const isAnyPending =
+    (opts.createFn ? createMutation.status === 'pending' : false) ||
+    (opts.updateFn ? updateMutation.status === 'pending' : false) ||
+    (opts.deleteFn ? deleteMutation.status === 'pending' : false)
+
   return {
     createMutation: opts.createFn
       ? {
@@ -133,5 +139,6 @@ export function useEntityMutation<
           isPending: deleteMutation.status === 'pending',
         }
       : createNoOpMutation<TDeleteVars>(),
+    isAnyPending,
   }
 }

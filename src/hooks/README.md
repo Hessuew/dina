@@ -45,8 +45,8 @@ export function useTeachers(shouldFetch: boolean) {
 
 ## UI Hooks
 
-- `useMutation` — Generic mutation hook with configurable error handling
-- `useEntityMutation` — High-level CRUD mutation hook with toast notifications and router invalidation
+- `useMutation` — Generic mutation hook with configurable error handling and `isPending` convenience property
+- `useEntityMutation` — High-level CRUD mutation hook with toast notifications, router invalidation, and `isAnyPending` convenience property
 - `useIsMobile` — Mobile viewport detection (768px breakpoint)
 
 ## Error Handling
@@ -62,6 +62,20 @@ useMutation({
   errorHandler?: (error: TError) => void // Custom handler
   // If neither provided, defaults to toastErrorHandler
 })
+```
+
+**Returns:**
+
+```typescript
+{
+  status: 'idle' | 'pending' | 'success' | 'error'
+  variables: TVariables | undefined
+  submittedAt: number | undefined
+  mutate: (vars: TVariables) => Promise<TData | undefined>
+  error: TError | undefined
+  data: TData | undefined
+  isPending: boolean // Convenience: status === 'pending'
+}
 ```
 
 **Invariants:**
@@ -95,6 +109,7 @@ useEntityMutation<
   createMutation: { mutate: (vars: TCreateVars) => void; isPending: boolean }
   updateMutation: { mutate: (vars: TUpdateVars) => void; isPending: boolean }
   deleteMutation: { mutate: (vars: TDeleteVars) => void; isPending: boolean }
+  isAnyPending: boolean // Convenience: true if any mutation is pending
 }
 ```
 

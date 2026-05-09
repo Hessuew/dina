@@ -255,7 +255,10 @@ function CourseDetailComponent() {
               </div>
             </div>
             {canEdit && isCourseTeacher && course.lessons.length < 3 && (
-              <Button theme="dark" onClick={() => lessonDialog.openDialog('create')}>
+              <Button
+                theme="dark"
+                onClick={() => lessonDialog.openDialog('create')}
+              >
                 <PlusIcon className="size-3.5" />
                 Add Lesson
               </Button>
@@ -389,7 +392,9 @@ function CourseDetailComponent() {
                             theme="dark"
                             size="icon"
                             className="size-7 border border-white/10 text-[#8E816D] hover:border-[#C5A059]/40 hover:text-[#D4B373]"
-                            onClick={() => lessonDialog.openDialog('edit', lesson)}
+                            onClick={() =>
+                              lessonDialog.openDialog('edit', lesson)
+                            }
                           >
                             <PencilIcon className="size-3" />
                           </Button>
@@ -398,7 +403,9 @@ function CourseDetailComponent() {
                             theme="dark"
                             size="icon"
                             className="size-7 border border-white/10 text-[#8E816D] hover:border-red-400/50 hover:text-red-400"
-                            onClick={() => lessonDialog.openDialog('delete', lesson)}
+                            onClick={() =>
+                              lessonDialog.openDialog('delete', lesson)
+                            }
                           >
                             <TrashIcon className="size-3" />
                           </Button>
@@ -432,7 +439,7 @@ function CourseDetailComponent() {
             data: { courseId: course.id },
           })
         }
-        isDeleting={deleteCourseMutation.status === 'pending'}
+        isDeleting={deleteCourseMutation.isPending}
         navigateTo="/dashboard"
       />
 
@@ -448,7 +455,10 @@ function CourseDetailComponent() {
           lessonCount={course.lessons.length}
           initialData={
             lessonDialog.dialogItem
-              ? { ...lessonDialog.dialogItem, lessonId: lessonDialog.dialogItem.id }
+              ? {
+                  ...lessonDialog.dialogItem,
+                  lessonId: lessonDialog.dialogItem.id,
+                }
               : undefined
           }
         />

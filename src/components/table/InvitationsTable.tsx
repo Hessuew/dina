@@ -175,7 +175,7 @@ export function InvitationsTable({
             })
           }
         }}
-        isDeleting={deleteMutation.status === 'pending'}
+        isDeleting={deleteMutation.isPending}
       />
     </>
   )

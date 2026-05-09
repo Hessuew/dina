@@ -52,5 +52,6 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
     mutate,
     error,
     data,
+    isPending: status === 'pending',
   }
 }

@@ -378,9 +378,9 @@ function PostComposer({
               theme="light"
               size="sm"
               onClick={handleSubmit}
-              disabled={!content.trim() || mutation.status === 'pending'}
+              disabled={!content.trim() || mutation.isPending}
             >
-              {mutation.status === 'pending' ? (
+              {mutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />
               ) : (
                 <SendIcon className="size-3.5" />
@@ -655,9 +655,7 @@ function PostCard({
                     data: { postId: post.id, content: editContent.trim() },
                   })
                 }
-                disabled={
-                  !editContent.trim() || updateMutation.status === 'pending'
-                }
+                disabled={!editContent.trim() || updateMutation.isPending}
               >
                 Save
               </Button>
@@ -967,9 +965,7 @@ function CommentItem({
                     },
                   })
                 }
-                disabled={
-                  !editContent.trim() || editMutation.status === 'pending'
-                }
+                disabled={!editContent.trim() || editMutation.isPending}
                 className="h-7 text-xs"
               >
                 Save
@@ -1114,9 +1110,9 @@ function CommentComposer({
           size="icon"
           className="size-8"
           onClick={handleSubmit}
-          disabled={!content.trim() || mutation.status === 'pending'}
+          disabled={!content.trim() || mutation.isPending}
         >
-          {mutation.status === 'pending' ? (
+          {mutation.isPending ? (
             <Loader2 className="size-3 animate-spin" />
           ) : (
             <SendIcon className="size-3" />

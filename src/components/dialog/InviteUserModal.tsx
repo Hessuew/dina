@@ -177,11 +177,9 @@ export function InviteUserModal({
               <Button
                 type="submit"
                 theme="dark"
-                disabled={inviteMutation.status === 'pending'}
+                disabled={inviteMutation.isPending}
               >
-                {inviteMutation.status === 'pending'
-                  ? 'Sending...'
-                  : 'Send Invitation'}
+                {inviteMutation.isPending ? 'Sending...' : 'Send Invitation'}
               </Button>
             </DialogFooter>
           </form>

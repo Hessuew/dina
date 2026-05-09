@@ -386,7 +386,7 @@ export function SignupForm({ token = '' }: SignupFormProps) {
           id="otp-verification"
           value={otpValue}
           onChange={handleOtpComplete}
-          disabled={verifyOtpMutation.status === 'pending'}
+          disabled={verifyOtpMutation.isPending}
         >
           <InputOTPGroup className="*:data-[slot=input-otp-slot]:h-12 *:data-[slot=input-otp-slot]:w-11 *:data-[slot=input-otp-slot]:text-xl">
             <InputOTPSlot index={0} />
@@ -401,7 +401,7 @@ export function SignupForm({ token = '' }: SignupFormProps) {
           </InputOTPGroup>
         </InputOTP>
 
-        {verifyOtpMutation.status === 'pending' && (
+        {verifyOtpMutation.isPending && (
           <FieldDescription
             theme="dark"
             className="mt-3 flex items-center gap-2"
@@ -417,15 +417,13 @@ export function SignupForm({ token = '' }: SignupFormProps) {
         <button
           type="button"
           onClick={handleResendOtp}
-          disabled={
-            resendCooldown > 0 || resendOtpMutation.status === 'pending'
-          }
+          disabled={resendCooldown > 0 || resendOtpMutation.isPending}
           className="mt-4 inline-flex cursor-pointer items-center gap-2 text-[0.68rem] font-medium tracking-[0.14em] text-[#9B8A73] uppercase transition-colors hover:text-[#C5A059] disabled:opacity-40"
         >
           <RefreshCwIcon className="h-3 w-3" />
           {resendCooldown > 0
             ? `Resend (${resendCooldown}s)`
-            : resendOtpMutation.status === 'pending'
+            : resendOtpMutation.isPending
               ? 'Sending...'
               : 'Resend Code'}
         </button>
@@ -553,13 +551,13 @@ export function SignupForm({ token = '' }: SignupFormProps) {
           <button
             type="submit"
             disabled={
-              signupMutation.status === 'pending' ||
+              signupMutation.isPending ||
               !invitationValid ||
               (signupMutation.data !== undefined && !signupMutation.data.error)
             }
             className="group inline-flex h-11 items-center justify-center gap-3 border border-[#C5A059]/55 bg-linear-to-b from-[#2A2A2A] to-[#111111] px-8 font-serif text-base tracking-[0.12em] text-[#E9D9B4] shadow-[0_28px_60px_-28px_rgba(0,0,0,0.7)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[#C5A059]/55 disabled:hover:text-[#E9D9B4]"
           >
-            {signupMutation.status === 'pending'
+            {signupMutation.isPending
               ? 'Creating Account...'
               : 'Create Account'}
           </button>

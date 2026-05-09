@@ -287,10 +287,10 @@ export function ProfileModal({
                       theme="dark"
                       size="sm"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadAvatarMutation.status === 'pending'}
+                      disabled={uploadAvatarMutation.isPending}
                     >
                       <UploadIcon className="size-3.5" />
-                      {uploadAvatarMutation.status === 'pending'
+                      {uploadAvatarMutation.isPending
                         ? 'Uploading...'
                         : 'Change Avatar'}
                     </Button>
@@ -359,9 +359,9 @@ export function ProfileModal({
                       <Button
                         type="submit"
                         theme="dark"
-                        disabled={updateProfileMutation.status === 'pending'}
+                        disabled={updateProfileMutation.isPending}
                       >
-                        {updateProfileMutation.status === 'pending'
+                        {updateProfileMutation.isPending
                           ? 'Saving...'
                           : 'Save Changes'}
                       </Button>
@@ -426,9 +426,9 @@ export function ProfileModal({
                       <Button
                         type="submit"
                         theme="dark"
-                        disabled={updatePasswordMutation.status === 'pending'}
+                        disabled={updatePasswordMutation.isPending}
                       >
-                        {updatePasswordMutation.status === 'pending'
+                        {updatePasswordMutation.isPending
                           ? 'Updating...'
                           : 'Update Password'}
                       </Button>
