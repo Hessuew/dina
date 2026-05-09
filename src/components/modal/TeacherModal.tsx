@@ -1,11 +1,11 @@
-import { BookOpenIcon, XIcon } from 'lucide-react'
-import type { TeacherWithCourses } from '@/types/teacher'
+import { HashIcon, UserIcon, XIcon } from 'lucide-react'
+import type { TeacherWithCourse } from '@/types/teacher'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 
 type TeacherModalProps = {
-  teacher: TeacherWithCourses | null
+  teacher: TeacherWithCourse | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -39,104 +39,80 @@ export function TeacherModal({
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
 
         <div className="relative">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-4 pb-6">
-            <div className="flex items-center gap-5">
-              <div className="shrink-0">
-                {teacher.avatarUrl ? (
-                  <img
-                    src={teacher.avatarUrl}
-                    alt={teacher.fullName}
-                    className="size-16 border border-white/10 object-cover"
-                  />
-                ) : (
-                  <div className="flex size-16 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-xl text-[#E9D9B4]">
-                    {initials}
-                  </div>
-                )}
-              </div>
-              <div>
-                <div className="h-px w-8 bg-[#C5A059]/40" />
-                <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Teacher
-                </div>
-                <h2 className="mt-1 font-serif text-2xl text-[#F8F4EC]">
-                  {teacher.fullName}
-                </h2>
-              </div>
-            </div>
+          {/* Header with close button */}
+          <div className="absolute top-0 right-0 z-10">
             <Button
               variant="ghost"
               theme="dark"
               size="icon"
-              className="mt-1 shrink-0"
+              className="shrink-0"
               onClick={() => onOpenChange(false)}
             >
               <XIcon className="size-3.5" />
             </Button>
           </div>
 
-          {/* Bio */}
-          {teacher.bio && (
-            <div className="mb-6">
-              <div className="h-px w-8 bg-[#C5A059]/40" />
-              <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                About
-              </div>
-              <div className="max-h-[40vh] overflow-y-auto">
-                <p className="mt-3 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
-                  {teacher.bio}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Courses */}
-          <div className="mb-6">
-            <div className="mb-4 flex items-center gap-2">
-              <div className="h-px w-8 bg-[#C5A059]/40" />
-              <span className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                Courses ({teacher.courseCount})
-              </span>
-            </div>
-
-            <div className="max-h-[30vh] overflow-y-auto">
-              {teacher.courses.length > 0 ? (
-                <div className="divide-y divide-white/8 border border-white/10">
-                  {teacher.courses.map((course) => (
-                    <div
-                      key={course.id}
-                      className="flex items-start gap-4 px-5 py-4"
-                    >
-                      <BookOpenIcon className="mt-0.5 size-3.5 shrink-0 text-[#C5A059]/60" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-[#F8F4EC]">
-                            {course.title}
-                          </span>
-                          <span
-                            className={`border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase ${
-                              course.isPublished
-                                ? 'border-[#C5A059]/40 text-[#9B7A41]'
-                                : 'border-white/12 text-[#8E816D]'
-                            }`}
-                          >
-                            {course.isPublished ? 'Published' : 'Draft'}
-                          </span>
-                        </div>
-                        {course.description && (
-                          <p className="mt-1 line-clamp-2 text-xs whitespace-pre-wrap text-[#8E816D]">
-                            {course.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          {/* Two-column layout */}
+          <div className="grid gap-8 lg:grid-cols-[auto_1fr]">
+            {/* Left: Image */}
+            <div className="shrink-0">
+              {teacher.avatarUrl ? (
+                <img
+                  src={teacher.avatarUrl}
+                  alt={teacher.fullName}
+                  className="size-28 border border-white/10 object-cover lg:size-32"
+                />
               ) : (
-                <p className="text-sm text-[#8E816D] italic">
-                  No courses available yet
-                </p>
+                <div className="flex size-28 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-3xl text-[#E9D9B4] lg:size-32">
+                  {initials}
+                </div>
+              )}
+            </div>
+
+            {/* Right: Details */}
+            <div className="space-y-6">
+              {/* Name and role */}
+              <div>
+                <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                  Faculty Member
+                </div>
+                <h2 className="mt-2 font-serif text-3xl text-[#F8F4EC] lg:text-4xl">
+                  {teacher.fullName}
+                </h2>
+                {teacher.course && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="h-px w-6 bg-[#C5A059]/40" />
+                    <span className="text-sm text-[#CFC6B7]">
+                      Teaching:{' '}
+                      {teacher.course.title.replace(/Stage \d+:/i, '')}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Characteristic */}
+              {teacher.bio && (
+                <div className="flex items-center gap-3 text-sm text-[#CFC6B7]">
+                  <HashIcon className="size-4 shrink-0 text-[#C5A059]/60" />
+                  <span className="line-clamp-1">
+                    Wisdom, character, and experience
+                  </span>
+                </div>
+              )}
+
+              {/* Bio */}
+              {teacher.bio && (
+                <div>
+                  <div className="h-px w-8 bg-[#C5A059]/40" />
+                  <div className="mt-3 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                    About
+                  </div>
+                  <div className="h-[40vh] overflow-y-auto">
+                    <p className="mt-3 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
+                      {teacher.bio}
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
           </div>

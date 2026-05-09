@@ -1,5 +1,5 @@
 import { ArrowRight } from 'lucide-react'
-import type { TeacherWithCourses } from '@/types/teacher'
+import type { TeacherWithCourse } from '@/types/teacher'
 import { Button } from '@/components/ui/button'
 
 function getInitials(fullName: string): string {
@@ -11,7 +11,7 @@ function getInitials(fullName: string): string {
 }
 
 type TeacherCardProps = {
-  teacher: TeacherWithCourses
+  teacher: TeacherWithCourse
   onClick: () => void
 }
 
@@ -19,7 +19,7 @@ export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
   const initials = getInitials(teacher.fullName)
 
   return (
-    <div className="group border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] transition-all hover:border-[#C5A059]/30">
+    <div className="group flex h-full flex-col border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] transition-all hover:border-[#C5A059]/30">
       {/* Image / avatar area — mirrors CourseCard image area */}
       <div className="relative overflow-hidden border-b border-white/10">
         {teacher.avatarUrl ? (
@@ -34,7 +34,7 @@ export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
               {/* Bottom: courses chip */}
               <div className="flex items-end justify-between gap-3">
                 <div className="border border-[#C5A059]/40 bg-black/20 px-3 py-1.5 text-[0.62rem] font-medium tracking-[0.22em] text-[#D4B373] uppercase backdrop-blur-sm">
-                  The Ground
+                  {teacher.course?.title.replace(/Stage \d+:/i, '')}
                 </div>
               </div>
             </div>
@@ -50,15 +50,17 @@ export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
       </div>
 
       {/* Detail area */}
-      <div className="bg-[#151515]/88 px-5 py-5 sm:px-6 sm:py-6">
-        <h3 className="font-serif text-lg leading-tight text-[#F8F4EC] sm:text-xl">
-          {teacher.fullName}
-        </h3>
-        {teacher.bio && (
-          <p className="mt-2 line-clamp-2 text-sm leading-6 whitespace-pre-wrap text-[#CFC6B7]">
-            {teacher.bio}
-          </p>
-        )}
+      <div className="flex flex-1 flex-col justify-between bg-[#151515]/88 px-5 py-5 sm:px-6 sm:py-6">
+        <div>
+          <h3 className="font-serif text-lg leading-tight text-[#F8F4EC] sm:text-xl">
+            {teacher.fullName}
+          </h3>
+          {teacher.bio && (
+            <p className="mt-2 line-clamp-2 text-sm leading-6 whitespace-pre-wrap text-[#CFC6B7]">
+              {teacher.bio}
+            </p>
+          )}
+        </div>
 
         {/* Footer */}
         <div className="mt-4 flex items-center justify-between border-t border-white/8 pt-4">

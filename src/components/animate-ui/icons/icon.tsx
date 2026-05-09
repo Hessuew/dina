@@ -120,7 +120,6 @@ function composeEventHandlers<T extends React.SyntheticEvent<unknown>>(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProps = Record<string, any>
 
 function AnimateIcon({
@@ -144,7 +143,7 @@ function AnimateIcon({
   const controls = useAnimation()
 
   const [localAnimate, setLocalAnimate] = React.useState<boolean>(() => {
-    if (animate === undefined || animate === false) return false
+    if (animate === false) return false
     return delay <= 0
   })
   const [currentAnimation, setCurrentAnimation] = React.useState<
@@ -205,11 +204,9 @@ function AnimateIcon({
   }, [localAnimate])
 
   React.useEffect(() => {
-    if (animate === undefined) return
-    setCurrentAnimation(typeof animate === 'string' ? animate : animation)
+    setCurrentAnimation(animate ? (animate as string) : animation)
     if (animate) startAnimation(animate as TriggerProp)
     else stopAnimation()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animate])
 
   React.useEffect(() => {
@@ -267,7 +264,7 @@ function AnimateIcon({
           }
         }
         if (!persistOnAnimateEnd) {
-          if (cancelledRef.current || gen !== runGenRef.current) {
+          if (gen !== runGenRef.current) {
             await startAnim('initial')
             return
           }
@@ -277,7 +274,7 @@ function AnimateIcon({
       }
 
       if (loop) {
-        if (cancelledRef.current || gen !== runGenRef.current) {
+        if (gen !== runGenRef.current) {
           await startAnim('initial')
           return
         }
@@ -289,7 +286,7 @@ function AnimateIcon({
         resolveAnimateEndRef.current = resolve
       })
 
-      if (cancelledRef.current || gen !== runGenRef.current) {
+      if (gen !== runGenRef.current) {
         isAnimateInProgressRef.current = false
         resolveAnimateEndRef.current?.()
         resolveAnimateEndRef.current = null
@@ -300,7 +297,7 @@ function AnimateIcon({
 
       await startAnim('animate')
 
-      if (cancelledRef.current || gen !== runGenRef.current) {
+      if (gen !== runGenRef.current) {
         isAnimateInProgressRef.current = false
         resolveAnimateEndRef.current?.()
         resolveAnimateEndRef.current = null
@@ -315,7 +312,7 @@ function AnimateIcon({
       animateEndPromiseRef.current = null
 
       if (initialOnAnimateEnd) {
-        if (cancelledRef.current || gen !== runGenRef.current) {
+        if (gen !== runGenRef.current) {
           await startAnim('initial')
           return
         }
@@ -331,7 +328,7 @@ function AnimateIcon({
             }, loopDelay)
           })
 
-          if (cancelledRef.current || gen !== runGenRef.current) {
+          if (gen !== runGenRef.current) {
             await startAnim('initial')
             return
           }
@@ -347,7 +344,7 @@ function AnimateIcon({
             return
           }
         }
-        if (cancelledRef.current || gen !== runGenRef.current) {
+        if (gen !== runGenRef.current) {
           await startAnim('initial')
           return
         }
@@ -368,7 +365,6 @@ function AnimateIcon({
         loopDelayRef.current = null
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localAnimate, controls])
 
   const childProps = (
@@ -497,7 +493,11 @@ function IconWrapper<T extends string>({
 
     if (hasOverrides) {
       const inheritedAnimate: Trigger = parentActive
-        ? (animationProp ?? parentAnimation ?? 'default')
+        ? animationProp !== undefined
+          ? animationProp
+          : parentAnimation
+            ? parentAnimation
+            : 'default'
         : false
 
       const finalAnimate: Trigger = (animate ??
@@ -604,8 +604,11 @@ function IconWrapper<T extends string>({
       size={size}
       className={cn(
         className,
-        (animationProp === 'path' || animationProp === 'path-loop') &&
-          pathClassName,
+        (animationProp as 'path' | T | 'path-loop' | undefined) === 'path' ||
+          (animationProp as 'path' | T | 'path-loop' | undefined) ===
+            'path-loop'
+          ? pathClassName
+          : undefined,
       )}
       {...props}
     />
@@ -613,10 +616,9 @@ function IconWrapper<T extends string>({
 }
 
 function getVariants<
-  V extends { default: T; [key: string]: T },
+  TData extends { default: T; [key: string]: T },
   T extends Record<string, Variants>,
->(animations: V): T {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+>(animations: TData): T {
   const { animation: animationType } = useAnimateIconContext()
 
   let result: T
@@ -633,7 +635,7 @@ function getVariants<
       result[key] = variant as T[Extract<keyof T, string>]
     }
   } else {
-    result = (animations[animationType as keyof V] as T) ?? animations.default
+    result = animations[animationType as keyof TData] as T
   }
 
   return result

@@ -23,10 +23,10 @@ import { CalendarCheckIcon } from '@/components/animate-ui/icons/calendar-check'
 import { MessageSquare } from '@/components/animate-ui/icons/message-square'
 import { LayersIcon } from '@/components/animate-ui/icons/layers'
 import { Users } from '@/components/animate-ui/icons/users'
-import { GraduationCapIcon } from '@/components/animate-ui/icons/graduation-cap'
+import { BookText } from '@/components/animate-ui/icons/book'
 import { CalendarDaysIcon } from '@/components/animate-ui/icons/calendar-days'
 import { AnimateIcon } from '@/components/animate-ui/icons/icon'
-import { UserRoundPlusIcon } from '@/components/animate-ui/icons/user-round-plus'
+import { List } from '@/components/animate-ui/icons/list'
 
 type User = {
   id: string
@@ -86,7 +86,7 @@ const teacherNavItems: Array<NavItem> = [
   {
     title: 'Students',
     url: '/students',
-    icon: GraduationCapIcon,
+    icon: BookText,
   },
   {
     title: 'Events',
@@ -96,7 +96,7 @@ const teacherNavItems: Array<NavItem> = [
   {
     title: 'User Management',
     url: '/invitations',
-    icon: UserRoundPlusIcon,
+    icon: List,
   },
 ]
 

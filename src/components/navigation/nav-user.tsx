@@ -178,7 +178,7 @@ export function NavUser({
                 />
                 <DropdownMenuItem
                   className={cn(
-                    'group/button mx-0 rounded-none px-3 py-2.5 text-sm transition-all',
+                    'group/button mx-0 rounded-none px-3 py-0 text-sm transition-all',
                     isDark
                       ? 'text-[#D6CCBE] hover:bg-white/8 hover:text-[#F8F4EC] focus:bg-white/8 focus:text-[#F8F4EC]'
                       : 'text-[#4E463D] hover:bg-[#EDE8DE] hover:text-[#1C1815] focus:bg-[#EDE8DE] focus:text-[#1C1815]',
@@ -204,7 +204,7 @@ export function NavUser({
                 <Link onClick={() => setOpen(false)} to="/logout">
                   <DropdownMenuItem
                     className={cn(
-                      'mx-0 rounded-none px-3 py-2.5 text-sm transition-all hover:text-[#F8F4EC] focus:text-[#F8F4EC]',
+                      'mx-0 rounded-none px-3 py-0 text-sm transition-all hover:text-[#F8F4EC] focus:text-[#F8F4EC]',
                       isDark
                         ? 'text-[#D6CCBE] hover:bg-white/8 focus:bg-white/8'
                         : 'text-[#4E463D] hover:bg-[#EDE8DE] focus:bg-[#EDE8DE]',
