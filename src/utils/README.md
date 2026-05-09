@@ -54,6 +54,12 @@ This folder is primarily where TanStack Start server functions live (via `create
 
 - **Misc**
   - `imageUpload.ts`: server-side upload-related helpers.
+    - `uploadImageFn`: Generic image upload with automatic WebP conversion
+    - `uploadAvatarFn`: Avatar upload with profile update
+    - `uploadCourseThumbnailFn`: Course thumbnail upload with course update
+    - `fileToBase64`: Client-side utility to convert File to base64 string
+    - `convertToWebP`: Server-side utility to convert images to WebP format
+    - **WebP conversion**: All image uploads (JPEG, PNG, WebP) are automatically converted to WebP at 80% quality to reduce file size. GIF files are preserved (animations). PDF files are excluded from conversion.
   - `password.ts`: password-related helpers for auth flows.
   - `seo.ts`: metadata helper.
 
