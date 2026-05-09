@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner'
 import { useDialogState } from '@/hooks/useDialogState'
 import { Button } from '@/components/ui/button'
+import { StatusChip } from '@/components/ui/status-chip'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { useMutation } from '@/hooks/useMutation'
 import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
@@ -317,16 +318,10 @@ function CourseDetailComponent() {
                           {lesson.title}
                         </span>
                         {canEdit && isCourseTeacher && (
-                          <span
-                            className={cn(
-                              'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
-                              isPublished
-                                ? 'border-[#C5A059]/40 text-[#9B7A41]'
-                                : 'border-white/12 text-[#8E816D]',
-                            )}
-                          >
-                            {isPublished ? 'Published' : 'Draft'}
-                          </span>
+                          <StatusChip
+                            variant={isPublished ? 'published' : 'draft'}
+                            size="sm"
+                          />
                         )}
                       </div>
 

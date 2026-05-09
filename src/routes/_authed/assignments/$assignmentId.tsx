@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
+import { StatusChip } from '@/components/ui/status-chip'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -27,7 +28,6 @@ import {
 } from '@/utils/assignments'
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { PageLayout } from '@/components/layout/page-layout'
-import { cn } from '@/lib/utils'
 import { isUserCourseTeacher } from '@/utils/teachers'
 
 const getAssignmentData = createServerFn({ method: 'POST' })
@@ -114,24 +114,13 @@ function AssignmentDetailComponent() {
     columnHelper.accessor('status', {
       cell: (info) => {
         const sub = info.row.original
-        return (
-          <span
-            className={cn(
-              'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
-              sub.grade !== null
-                ? 'border-[#C5A059]/40 text-[#9B7A41]'
-                : sub.status === 'submitted'
-                  ? 'border-blue-300/60 text-blue-600'
-                  : 'border-[#1A1A1A]/12 text-[#8E816D]',
-            )}
-          >
-            {sub.grade !== null
-              ? 'Graded'
-              : sub.status === 'submitted'
-                ? 'Submitted'
-                : 'Draft'}
-          </span>
-        )
+        const variant =
+          sub.grade !== null
+            ? 'graded'
+            : sub.status === 'submitted'
+              ? 'submitted'
+              : 'draft'
+        return <StatusChip variant={variant} size="sm" />
       },
       header: 'Status',
     }),
@@ -213,12 +202,6 @@ function AssignmentDetailComponent() {
     }
   }
 
-  const statusColors: Record<string, string> = {
-    published: 'border-[#C5A059]/40 bg-[#C5A059]/8 text-[#9B7A41]',
-    closed: 'border-red-400/50 bg-red-900/10 text-red-400',
-    draft: 'border-white/12 bg-white/4 text-[#8E816D]',
-  }
-
   return (
     <PageLayout>
       {/* Page header */}
@@ -270,15 +253,7 @@ function AssignmentDetailComponent() {
           </div>
 
           <div className="flex items-center gap-3 pt-4">
-            <div
-              className={cn(
-                'border px-3 py-1.5 text-[0.62rem] font-medium tracking-[0.22em] uppercase',
-                statusColors[assignment.status] ?? statusColors.draft,
-              )}
-            >
-              {assignment.status.charAt(0).toUpperCase() +
-                assignment.status.slice(1)}
-            </div>
+            <StatusChip variant={assignment.status} size="md" />
             {canEdit && isCourseTeacher && (
               <>
                 <Button
@@ -421,18 +396,14 @@ function AssignmentDetailComponent() {
                         <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
                           Status
                         </span>
-                        <span
-                          className={cn(
-                            'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
+                        <StatusChip
+                          variant={
                             submission.status === 'submitted'
-                              ? 'border-[#C5A059]/40 text-[#9B7A41]'
-                              : 'border-white/12 text-[#8E816D]',
-                          )}
-                        >
-                          {submission.status === 'submitted'
-                            ? 'Submitted'
-                            : 'Draft'}
-                        </span>
+                              ? 'submitted'
+                              : 'draft'
+                          }
+                          size="sm"
+                        />
                       </div>
                       {submission.submittedAt && (
                         <div className="mt-3 flex items-center justify-between">
@@ -523,7 +494,7 @@ function AssignmentDetailComponent() {
             onOpenChange={(open) => {
               if (!open) assignmentDialog.closeDialog()
             }}
-            mode={assignmentDialog.dialogMode as 'edit' | 'delete'}
+            mode={assignmentDialog.dialogMode}
             assignment={assignment}
             onDeleteSuccess={() => {
               if (fromDashboard) {

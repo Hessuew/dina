@@ -11,11 +11,12 @@ import {
 import { useState } from 'react'
 import { toast } from 'sonner'
 import z from 'zod'
+import type { StatusChipVariant } from '@/components/ui/status-chip'
 import { Button } from '@/components/ui/button'
+import { StatusChip } from '@/components/ui/status-chip'
 import { getAssignmentSubmissionCount, getLesson } from '@/utils/assignments'
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { LessonDialog } from '@/components/dialog/LessonDialog'
-import { cn } from '@/lib/utils'
 import { useDialogState } from '@/hooks/useDialogState'
 import { PageLayout } from '@/components/layout/page-layout'
 import { isUserCourseTeacher } from '@/utils/teachers'
@@ -79,17 +80,6 @@ function LessonDetailComponent() {
       assignmentDialog.openDialog('delete', assignment)
     } catch (error: any) {
       toast.error(error.message || 'Failed to check submissions')
-    }
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'published':
-        return 'Published'
-      case 'closed':
-        return 'Closed'
-      default:
-        return 'Draft'
     }
   }
 
@@ -164,16 +154,10 @@ function LessonDetailComponent() {
 
           {canEdit && isCourseTeacher && (
             <div className="flex items-center gap-3 pt-4">
-              <div
-                className={cn(
-                  'border px-3 py-1.5 text-[0.62rem] font-medium tracking-[0.22em] uppercase',
-                  isPublished
-                    ? 'border-[#C5A059]/40 bg-[#C5A059]/8 text-[#9B7A41]'
-                    : 'border-white/12 bg-white/4 text-[#8E816D]',
-                )}
-              >
-                {isPublished ? 'Published' : 'Draft'}
-              </div>
+              <StatusChip
+                variant={isPublished ? 'published' : 'draft'}
+                size="md"
+              />
               <Button
                 variant="ghost"
                 theme="light"
@@ -269,11 +253,6 @@ function LessonDetailComponent() {
                   role === 'student' ? a.status === 'published' : true,
                 )
                 .map((assignment: Assignment) => {
-                  const statusColors = {
-                    published: 'border-[#C5A059]/40 text-[#9B7A41]',
-                    closed: 'border-red-400/50 text-red-400',
-                    draft: 'border-white/12 text-[#8E816D]',
-                  }
                   return (
                     <div
                       key={assignment.id}
@@ -297,14 +276,10 @@ function LessonDetailComponent() {
                           <span className="text-[0.62rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
                             {assignment.title}
                           </span>
-                          <span
-                            className={cn(
-                              'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
-                              statusColors[assignment.status],
-                            )}
-                          >
-                            {getStatusLabel(assignment.status)}
-                          </span>
+                          <StatusChip
+                            variant={assignment.status as StatusChipVariant}
+                            size="sm"
+                          />
                         </div>
                         {assignment.description && (
                           <p className="mt-1 line-clamp-2 text-sm text-[#CFC6B7]">

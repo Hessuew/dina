@@ -17,6 +17,7 @@ This folder contains:
   - These are the building blocks used across routes and feature components.
   - Includes `DeleteConfirmDialog` for standardized delete confirmation flows.
   - Includes `FormDialog` for standardized form dialog structure with background styling, mode-based labels, and default footer with Cancel/Submit buttons.
+  - Includes `StatusChip` for standardized status badges with auto-capitalization, size variants (sm/md), and strict design system color tokens. Variants: published, draft, closed, submitted, graded, not-submitted.
 
 - **`navigation/`**
   - App shell components: sidebar, header, catch boundary, not-found page.
