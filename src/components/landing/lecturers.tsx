@@ -11,9 +11,9 @@ import {
   LandingFeaturePanel,
   LandingFeaturePanelBody,
   LandingFeaturePanelHeader,
+  LandingScriptureSectionHeader,
   LandingSection,
   LandingSectionContainer,
-  LandingSectionEyebrow,
 } from '@/components/landing/primitives'
 
 type Lecturer = {
@@ -180,29 +180,25 @@ export function LandingTeacherSection() {
       <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.82fr)_minmax(24rem,1.18fr)] lg:gap-20">
           <div className="space-y-10">
-            <div className="space-y-6">
-              <LandingSectionEyebrow label="Teaching Faculty" tone="deep" />
-
-              <h2 className="block max-w-[14ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] whitespace-nowrap text-[#1C1815]">
-                Six lecturer pairs
-              </h2>
-
-              <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#4E463D] sm:text-lg">
-                "As they ministered to the Lord, and fasted, the Holy Ghost
-                said, Separate me Barnabas and Saul for the work whereunto I
-                have called them."
-                <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
-                  &nbsp;Acts 13:2
-                </span>
-                <br />
-                <br />
-                "After these things the Lord appointed other seventy also, and
-                sent them two and two before his face."
-                <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
-                  &nbsp;Luke 10:1
-                </span>
-              </p>
-            </div>
+            <LandingScriptureSectionHeader
+              eyebrowLabel="Teaching Faculty"
+              eyebrowTone="deep"
+              headline="Six lecturer pairs"
+              headlineMaxW="max-w-[14ch]"
+              headlineNowrap
+              scriptures={[
+                {
+                  quote:
+                    'As they ministered to the Lord, and fasted, the Holy Ghost said, Separate me Barnabas and Saul for the work whereunto I have called them.',
+                  reference: 'Acts 13:2',
+                },
+                {
+                  quote:
+                    'After these things the Lord appointed other seventy also, and sent them two and two before his face.',
+                  reference: 'Luke 10:1',
+                },
+              ]}
+            />
 
             <div className="flex items-center justify-between gap-6 border-y border-[#1A1A1A]/10 py-5">
               <div>

@@ -6,9 +6,9 @@ import mahiImage from '@/assets/images/lecturers/mahi.png'
 import sadeImage from '@/assets/images/lecturers/sade.jpeg'
 import ezinneImage from '@/assets/images/lecturers/ezinne.jpg'
 import {
+  LandingScriptureSectionHeader,
   LandingSection,
   LandingSectionContainer,
-  LandingSectionEyebrow,
 } from '@/components/landing/primitives'
 
 type LeadershipMember = {
@@ -129,21 +129,20 @@ export function LandingLeadershipSection() {
 
       <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="space-y-16">
-          <div className="space-y-6">
-            <LandingSectionEyebrow label="Governance" />
-
-            <h2 className="max-w-[14ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
-              Executive Leadership
-            </h2>
-
-            <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#CFC6B7] sm:text-lg">
-              "For it seemed good to the Holy Ghost, and to us, to lay upon you
-              no greater burden than these necessary things"
-              <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
-                &nbsp;Acts 15:28
-              </span>
-            </p>
-          </div>
+          <LandingScriptureSectionHeader
+            eyebrowLabel="Governance"
+            headline="Executive Leadership"
+            headlineMaxW="max-w-[14ch]"
+            headlineColor="#F8F4EC"
+            textColor="#CFC6B7"
+            scriptures={[
+              {
+                quote:
+                  'For it seemed good to the Holy Ghost, and to us, to lay upon you no greater burden than these necessary things',
+                reference: 'Acts 15:28',
+              },
+            ]}
+          />
 
           <div className="space-y-14">
             <div>

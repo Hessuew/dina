@@ -3,9 +3,9 @@ import {
   LandingFeaturePanel,
   LandingFeaturePanelBody,
   LandingFeaturePanelHeader,
+  LandingScriptureSectionHeader,
   LandingSection,
   LandingSectionContainer,
-  LandingSectionEyebrow,
 } from '@/components/landing/primitives'
 
 type TimelineEvent = {
@@ -53,29 +53,21 @@ export function LandingAboutSection() {
       <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.88fr)_minmax(24rem,1.12fr)] lg:gap-20">
           <div className="space-y-7">
-            <div className="space-y-4">
-              <LandingSectionEyebrow label="Program Overview" />
-
-              <h2 className="max-w-[14ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
-                Overview
-              </h2>
-
-              <p className="max-w-xl text-base leading-8 font-light tracking-[0.04em] text-[#D3CAC0] sm:text-lg">
-                Building new believers from infancy to adulthood — Foundation to
-                Rooftop
-                <br />
-                <br />
-                <span className="tracking-[0.02em]">
-                  "For when for the time ye ought to be teachers, ye have need
-                  that one teach you again which be the first principles of the
-                  oracles of God; and are become such as have need of milk, and
-                  not of strong meat."
-                  <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
-                    &nbsp;Hebrews 5:12
-                  </span>
-                </span>
-              </p>
-            </div>
+            <LandingScriptureSectionHeader
+              eyebrowLabel="Program Overview"
+              headline="Overview"
+              headlineMaxW="max-w-[14ch]"
+              headlineColor="#F8F4EC"
+              textColor="#D3CAC0"
+              introText="Building new believers from infancy to adulthood — Foundation to Rooftop"
+              scriptures={[
+                {
+                  quote:
+                    'For when for the time ye ought to be teachers, ye have need that one teach you again which be the first principles of the oracles of God; and are become such as have need of milk, and not of strong meat.',
+                  reference: 'Hebrews 5:12',
+                },
+              ]}
+            />
 
             <div className="space-y-6 border-y border-white/10 py-6">
               <div className="grid gap-6 sm:grid-cols-2">
