@@ -16,23 +16,21 @@ const testimonials: Array<TestimonialItem> = [
     name: 'Andrew A.',
     role: 'Apostle, Professor',
     quote:
-      'The teaching did not merely inform me; it reordered my inner life. I left with a deeper love for Scripture and a steadier walk with Christ.',
+      'Jesus Christ discipled me Himself during my “Arabia peninsula” experience for three years, and He conducted a “graduation ceremony” for me personally. In the last twenty years I have discipled scores of believers, in the strength of my encounters, to experience the same Jesus. My disciples are now demonstrating supernatural signs and wonders globally.',
     theme: 'Ground',
   },
   {
     id: 'ella',
     name: 'Ella',
     role: 'Pastor, -',
-    quote:
-      'For the first time, doctrine felt weighty, beautiful, and profoundly livable. The clarity I received now shapes every decision I make in ministry.',
+    quote: '',
     theme: 'Ground',
   },
   {
     id: 'juhani-j',
     name: 'Juhani J.',
     role: 'Bishop, Programmer',
-    quote:
-      'This formation renewed my prayer life from the inside out. I learned how to stay before God long enough for my motives to be purified.',
+    quote: '',
     theme: 'Foundation',
   },
   {
@@ -40,23 +38,21 @@ const testimonials: Array<TestimonialItem> = [
     name: 'Akosua O.',
     role: 'Pastor, Junior programmer',
     quote:
-      'The lectures gave language to what my spirit had long desired: nearness, reverence, and a life arranged around the presence of God.',
+      'Through discipleship, I have experienced significant growth in my faith. It has deepened my knowledge of the Bible, strengthened my spiritual understanding, and equipped me with practical tools to live a spiritually grounded life. Additionally, through discipleship, I have gained wisdom that I would not have acquired otherwise.',
     theme: 'Foundation',
   },
   {
     id: 'emmanuel-e',
     name: 'Emmanuel E.',
     role: 'Pastor, -',
-    quote:
-      'I was confronted lovingly, formed deeply, and strengthened practically. My character has become far more anchored than my gifting alone ever allowed.',
+    quote: '',
     theme: 'Walls',
   },
   {
     id: 'ezinne',
     name: 'Ezinne',
     role: 'Pastor, -',
-    quote:
-      'The emphasis on holiness and discernment gave me courage to live with conviction. It helped me guard what God is building in me.',
+    quote: '',
     theme: 'Walls',
   },
   {
@@ -64,23 +60,21 @@ const testimonials: Array<TestimonialItem> = [
     name: 'Sade',
     role: 'Pastor, -',
     quote:
-      'DINA showed me that order is not cold structure; it is how wisdom protects calling. I lead now with more peace and greater precision.',
+      'My journey of discipleship is rooted in God’s grace! Discipleship has helped me to live intentionally and with purpose for Christ. It came to me at a point in my life where I had no direction and all hope seemed lost. Now I seek to live out Christ’s love daily, growing in faith and guiding others toward purpose and truth.',
     theme: 'Framing',
   },
   {
     id: 'blessing',
     name: 'Blessing',
     role: 'Pastor, -',
-    quote:
-      'The leadership pair helped me understand responsibility as stewardship. Their teaching made authority feel both weighty and deeply pastoral.',
+    quote: '',
     theme: 'Framing',
   },
   {
     id: 'kene',
     name: 'Kene',
     role: 'Pastor, -',
-    quote:
-      'The teaching on worship recentered my entire posture before God. I now approach ministry from a place of adoration, not just duty.',
+    quote: '',
     theme: 'Covering',
   },
   {
@@ -88,23 +82,21 @@ const testimonials: Array<TestimonialItem> = [
     name: 'Mahidere A.',
     role: 'Pastor, -',
     quote:
-      "I learned that spiritual authority is not about control; it is about carrying the weight of God's purposes with humility and strength.",
+      'God provided disciplers for me from this very team, where I was built up and grew in Christ. Many single sessions marked by encounters with the power, wisdom, and comfort of the Holy Spirit have saved me from great crises. The right discipler aids you to rightly position yourself with Jesus Christ.',
     theme: 'Covering',
   },
   {
     id: 'obi',
     name: 'Obi',
     role: 'Pastor, -',
-    quote:
-      'The formation journey taught me that maturity is not measured by gifting but by how deeply Christ has shaped my character.',
+    quote: '',
     theme: 'Rooftop',
   },
   {
     id: 'ugo',
     name: 'Ugo',
     role: 'Pastor, -',
-    quote:
-      'DINA gave me a vision for discipleship that is both tender and uncompromising. I now lead with more clarity and far more love.',
+    quote: '',
     theme: 'Rooftop',
   },
 ]
@@ -259,23 +251,23 @@ export function LandingTestimonialsSection() {
                     }`}
                     style={getCardMotionStyle(offset)}
                   >
-                    <div className="relative flex min-h-full flex-col justify-between gap-10">
+                    <div className="relative flex min-h-full flex-col justify-between gap-4 lg:gap-10">
                       <div className="space-y-6">
                         <div className="inline-flex items-center gap-3 text-[0.6rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
                           <span className="h-px w-6 bg-[#C5A059]/45" />
                           {item.theme}
                         </div>
 
-                        <blockquote className="font-serif text-[1.32rem] leading-[1.6] text-white sm:text-[1.55rem]">
+                        <blockquote className="font-serif text-base text-[0.9rem] leading-[1.6] text-white md:text-[1rem] lg:text-[1.1rem] xl:text-[1.25rem]">
                           "{item.quote}"
                         </blockquote>
                       </div>
 
-                      <div className="border-t border-white/8 pt-6">
+                      <div className="border-t border-white/8 pt-4 lg:pt-6">
                         <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
                           Testimony
                         </div>
-                        <div className="mt-2 font-serif text-[1.3rem] text-white">
+                        <div className="pt-2 font-serif text-[1.3rem] text-white">
                           {item.name}
                         </div>
                         {/* <div className="mt-1 text-sm leading-6 text-[#D8D0C7]">
