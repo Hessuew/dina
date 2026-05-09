@@ -9,8 +9,8 @@ import {
   PlusIcon,
   TrashIcon,
 } from 'lucide-react'
-import { useState } from 'react'
 import { toast } from 'sonner'
+import { useDialogState } from '@/hooks/useDialogState'
 import { Button } from '@/components/ui/button'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { useMutation } from '@/hooks/useMutation'
@@ -40,30 +40,24 @@ type Lesson = {
   orderIndex: number
 }
 
+type CourseEditData = {
+  courseId: string
+  title: string
+  description: string
+  thumbnailUrl: string | null
+  isPublished: boolean
+  teacher1Id: string | null
+  teacher2Id: string | null
+  orderIndex: number
+}
+
 function CourseDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
   const { course, role, completedLessonIds, assignmentData, user } = loaderData
 
-  const [showEditCourseDialog, setShowEditCourseDialog] = useState(false)
-  const [editCourseInitialData, setEditCourseInitialData] = useState<
-    | {
-        courseId: string
-        title: string
-        description: string
-        thumbnailUrl: string | null
-        isPublished: boolean
-        teacher1Id: string | null
-        teacher2Id: string | null
-        orderIndex: number
-      }
-    | undefined
-  >(undefined)
-  const [showDeleteCourseDialog, setShowDeleteCourseDialog] = useState(false)
-  const [lessonDialogMode, setLessonDialogMode] = useState<
-    'create' | 'edit' | 'delete' | null
-  >(null)
-  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
+  const courseDialog = useDialogState<CourseEditData>()
+  const lessonDialog = useDialogState<Lesson>()
 
   const isAdmin = role === 'admin'
   const courseTeachersData = course.courseTeachers
@@ -78,16 +72,6 @@ function CourseDetailComponent() {
       toast.success('Course deleted successfully!')
     },
   })
-
-  const openLessonDialog = (
-    mode: 'create' | 'edit' | 'delete',
-    lesson?: Lesson,
-  ) => {
-    setSelectedLesson(lesson ?? null)
-    setLessonDialogMode(mode)
-  }
-
-  const closeLessonDialog = () => setLessonDialogMode(null)
 
   return (
     <PageLayout>
@@ -143,7 +127,7 @@ function CourseDetailComponent() {
                   size="icon"
                   className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
                   onClick={() => {
-                    setEditCourseInitialData({
+                    courseDialog.openDialog('edit', {
                       courseId: course.id,
                       title: course.title,
                       description: course.description || '',
@@ -153,7 +137,6 @@ function CourseDetailComponent() {
                       teacher2Id: courseTeachersData[1]?.teacher?.id || null,
                       orderIndex: course.orderIndex ?? 0,
                     })
-                    setShowEditCourseDialog(true)
                   }}
                 >
                   <PencilIcon className="size-3.5" />
@@ -163,7 +146,7 @@ function CourseDetailComponent() {
                   theme="light"
                   size="icon"
                   className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-red-300 hover:text-red-600"
-                  onClick={() => setShowDeleteCourseDialog(true)}
+                  onClick={() => courseDialog.openDialog('delete')}
                 >
                   <TrashIcon className="size-3.5" />
                 </Button>
@@ -272,7 +255,7 @@ function CourseDetailComponent() {
               </div>
             </div>
             {canEdit && isCourseTeacher && course.lessons.length < 3 && (
-              <Button theme="dark" onClick={() => openLessonDialog('create')}>
+              <Button theme="dark" onClick={() => lessonDialog.openDialog('create')}>
                 <PlusIcon className="size-3.5" />
                 Add Lesson
               </Button>
@@ -288,7 +271,7 @@ function CourseDetailComponent() {
                 <Button
                   theme="dark"
                   className="mt-4"
-                  onClick={() => openLessonDialog('create')}
+                  onClick={() => lessonDialog.openDialog('create')}
                 >
                   <PlusIcon className="size-3.5" />
                   Create First Lesson
@@ -406,7 +389,7 @@ function CourseDetailComponent() {
                             theme="dark"
                             size="icon"
                             className="size-7 border border-white/10 text-[#8E816D] hover:border-[#C5A059]/40 hover:text-[#D4B373]"
-                            onClick={() => openLessonDialog('edit', lesson)}
+                            onClick={() => lessonDialog.openDialog('edit', lesson)}
                           >
                             <PencilIcon className="size-3" />
                           </Button>
@@ -415,7 +398,7 @@ function CourseDetailComponent() {
                             theme="dark"
                             size="icon"
                             className="size-7 border border-white/10 text-[#8E816D] hover:border-red-400/50 hover:text-red-400"
-                            onClick={() => openLessonDialog('delete', lesson)}
+                            onClick={() => lessonDialog.openDialog('delete', lesson)}
                           >
                             <TrashIcon className="size-3" />
                           </Button>
@@ -432,17 +415,17 @@ function CourseDetailComponent() {
 
       {/* Edit Course Dialog */}
       <CourseDialog
-        open={showEditCourseDialog}
-        onOpenChange={setShowEditCourseDialog}
+        open={courseDialog.isOpen && courseDialog.dialogMode === 'edit'}
+        onOpenChange={(open) => !open && courseDialog.closeDialog()}
         mode="edit"
         isAdmin={isAdmin}
-        initialData={editCourseInitialData}
+        initialData={courseDialog.dialogItem}
       />
 
       {/* Delete Course Dialog */}
       <DeleteConfirmDialog
-        open={showDeleteCourseDialog}
-        onOpenChange={setShowDeleteCourseDialog}
+        open={courseDialog.isOpen && courseDialog.dialogMode === 'delete'}
+        onOpenChange={(open) => !open && courseDialog.closeDialog()}
         entityName="Course"
         onConfirm={() =>
           deleteCourseMutation.mutate({
@@ -454,18 +437,18 @@ function CourseDetailComponent() {
       />
 
       {/* Lesson Dialog (create / edit / delete) */}
-      {lessonDialogMode !== null && (
+      {lessonDialog.isOpen && (
         <LessonDialog
           open={true}
           onOpenChange={(open) => {
-            if (!open) closeLessonDialog()
+            if (!open) lessonDialog.closeDialog()
           }}
-          mode={lessonDialogMode}
+          mode={lessonDialog.dialogMode as 'create' | 'edit' | 'delete'}
           courseId={course.id}
           lessonCount={course.lessons.length}
           initialData={
-            selectedLesson
-              ? { ...selectedLesson, lessonId: selectedLesson.id }
+            lessonDialog.dialogItem
+              ? { ...lessonDialog.dialogItem, lessonId: lessonDialog.dialogItem.id }
               : undefined
           }
         />
