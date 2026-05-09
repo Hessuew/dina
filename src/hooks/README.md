@@ -121,6 +121,46 @@ const { createMutation, updateMutation, deleteMutation } = useEntityMutation({
 - Router invalidation happens automatically unless `invalidateRouter: false`
 - Error handling delegated to composed `useMutation` (uses `toastErrorHandler` by default)
 
+## useDialogState
+
+Manages dialog open/closed state, mode (create/edit/delete/view), and optional dialog item.
+
+**Interface:**
+
+```typescript
+useDialogState<T = unknown>(): {
+  isOpen: boolean
+  dialogMode: 'create' | 'edit' | 'delete' | 'view'
+  dialogItem: T | undefined
+  openDialog: (mode: DialogMode, item?: T) => void
+  closeDialog: () => void
+}
+```
+
+**Usage:**
+
+```typescript
+const { isOpen, dialogMode, dialogItem, openDialog, closeDialog } = useDialogState<Course>()
+
+// Open create dialog
+<Button onClick={() => openDialog('create')}>New Course</Button>
+
+// Open edit dialog with item
+<Button onClick={() => openDialog('edit', course)}>Edit</Button>
+
+// Close dialog
+<Button onClick={closeDialog}>Cancel</Button>
+
+// Use state in dialog
+{isOpen && <CourseDialog mode={dialogMode} item={dialogItem} onClose={closeDialog} />}
+```
+
+**Invariants:**
+
+- `dialogMode` defaults to `'create'` when dialog is closed (prevents visual flash during close animation)
+- `dialogItem` is `undefined` for create/delete modes (only set for edit/view with explicit item)
+- `isOpen` is `true` when `closeDialog` has not been called, `false` otherwise
+
 ## Form Hooks
 
 - `useAppForm` — TanStack form hook factory (demo/FormComponents)
