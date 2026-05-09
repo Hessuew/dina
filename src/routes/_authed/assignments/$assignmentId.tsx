@@ -29,6 +29,7 @@ import {
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { PageLayout } from '@/components/layout/page-layout'
 import { isUserCourseTeacher } from '@/utils/teachers'
+import { DarkCard } from '@/components/ui/dark-card'
 
 const getAssignmentData = createServerFn({ method: 'POST' })
   .inputValidator((d: { assignmentId: string }) => d)
@@ -284,11 +285,7 @@ function AssignmentDetailComponent() {
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         {/* Left — assignment details */}
         <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
-          <div className="bg-[#151515]/88 px-6 py-6">
-            <div className="h-px w-8 bg-[#C5A059]/40" />
-            <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-              About this assignment
-            </div>
+          <DarkCard label="About this assignment">
             {assignment.description ? (
               <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
                 {assignment.description}
@@ -298,7 +295,7 @@ function AssignmentDetailComponent() {
                 No description provided.
               </p>
             )}
-          </div>
+          </DarkCard>
 
           <div className="border-t border-white/8 bg-[#151515]/88 px-6 py-5">
             <div className="space-y-3 text-sm">

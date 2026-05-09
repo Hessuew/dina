@@ -22,6 +22,7 @@ import { deleteCourse, getCourse } from '@/utils/courses'
 import { cn } from '@/lib/utils'
 import { isUserCourseTeacher } from '@/utils/teachers'
 import { PageLayout } from '@/components/layout/page-layout'
+import { DarkCard } from '@/components/ui/dark-card'
 
 export const Route = createFileRoute('/_authed/courses/$courseId')({
   loader: async ({ params }) => {
@@ -175,11 +176,7 @@ function CourseDetailComponent() {
                 </div>
               </div>
             )}
-            <div className="bg-[#151515]/88 px-6 py-6">
-              <div className="h-px w-8 bg-[#C5A059]/40" />
-              <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                About this course
-              </div>
+            <DarkCard label="About this course">
               {course.description ? (
                 <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
                   {course.description}
@@ -189,55 +186,55 @@ function CourseDetailComponent() {
                   No description provided.
                 </p>
               )}
-            </div>
+            </DarkCard>
           </div>
 
           {/* Progress card — students only */}
           {!canEdit && (
             <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
-              <div className="bg-[#151515]/88 px-6 py-6">
-                <div className="h-px w-8 bg-[#C5A059]/40" />
-                <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Your Progress
-                </div>
-                <div className="mt-5 flex items-baseline justify-between">
-                  <span className="font-serif text-2xl text-[#E9D9B4]">
-                    {assignmentData.submittedCount + assignmentData.gradedCount}
-                  </span>
-                  <span className="text-[0.68rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
-                    of {assignmentData.totalAssignments} assignment
-                    {assignmentData.totalAssignments !== 1 ? 's' : ''} submitted
-                  </span>
-                </div>
-                <div className="mt-3 h-1 w-full overflow-hidden bg-white/8">
-                  <div className="flex h-full">
-                    <div
-                      className="h-full bg-blue-500 transition-all"
-                      style={{
-                        width: `${assignmentData.totalAssignments > 0 ? (assignmentData.submittedCount / assignmentData.totalAssignments) * 100 : 0}%`,
-                      }}
-                    />
-                    <div
-                      className="h-full bg-[#9B7A41] transition-all"
-                      style={{
-                        width: `${assignmentData.totalAssignments > 0 ? (assignmentData.gradedCount / assignmentData.totalAssignments) * 100 : 0}%`,
-                      }}
-                    />
+              <DarkCard label="Your Progress">
+                <div>
+                  <div className="mt-5 flex items-baseline justify-between">
+                    <span className="font-serif text-2xl text-[#E9D9B4]">
+                      {assignmentData.submittedCount +
+                        assignmentData.gradedCount}
+                    </span>
+                    <span className="text-[0.68rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
+                      of {assignmentData.totalAssignments} assignment
+                      {assignmentData.totalAssignments !== 1 ? 's' : ''}{' '}
+                      submitted
+                    </span>
                   </div>
+                  <div className="mt-3 h-1 w-full overflow-hidden bg-white/8">
+                    <div className="flex h-full">
+                      <div
+                        className="h-full bg-blue-500 transition-all"
+                        style={{
+                          width: `${assignmentData.totalAssignments > 0 ? (assignmentData.submittedCount / assignmentData.totalAssignments) * 100 : 0}%`,
+                        }}
+                      />
+                      <div
+                        className="h-full bg-[#9B7A41] transition-all"
+                        style={{
+                          width: `${assignmentData.totalAssignments > 0 ? (assignmentData.gradedCount / assignmentData.totalAssignments) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[0.65rem] font-medium tracking-[0.12em] text-[#8E816D]">
+                    {assignmentData.submittedCount} submitted,{' '}
+                    {assignmentData.gradedCount} graded (
+                    {Math.round(
+                      (assignmentData.totalAssignments > 0
+                        ? (assignmentData.submittedCount +
+                            assignmentData.gradedCount) /
+                          assignmentData.totalAssignments
+                        : 0) * 100,
+                    )}
+                    %) of {assignmentData.totalAssignments} assignments
+                  </p>
                 </div>
-                <p className="mt-2 text-[0.65rem] font-medium tracking-[0.12em] text-[#8E816D]">
-                  {assignmentData.submittedCount} submitted,{' '}
-                  {assignmentData.gradedCount} graded (
-                  {Math.round(
-                    (assignmentData.totalAssignments > 0
-                      ? (assignmentData.submittedCount +
-                          assignmentData.gradedCount) /
-                        assignmentData.totalAssignments
-                      : 0) * 100,
-                  )}
-                  %) of {assignmentData.totalAssignments} assignments
-                </p>
-              </div>
+              </DarkCard>
             </div>
           )}
         </div>

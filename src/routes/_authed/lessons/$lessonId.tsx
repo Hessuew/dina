@@ -20,6 +20,7 @@ import { LessonDialog } from '@/components/dialog/LessonDialog'
 import { useDialogState } from '@/hooks/useDialogState'
 import { PageLayout } from '@/components/layout/page-layout'
 import { isUserCourseTeacher } from '@/utils/teachers'
+import { DarkCard } from '@/components/ui/dark-card'
 
 const getLessonData = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ lessonId: z.uuid() }))
@@ -185,11 +186,7 @@ function LessonDetailComponent() {
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         {/* Left — lesson content */}
         <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
-          <div className="bg-[#151515]/88 px-6 py-6">
-            <div className="h-px w-8 bg-[#C5A059]/40" />
-            <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-              Lesson Content
-            </div>
+          <DarkCard label="Lesson Content">
             {!showContent ? (
               <div className="mt-8 text-center">
                 <p className="text-sm text-[#8E816D] italic">
@@ -205,7 +202,7 @@ function LessonDetailComponent() {
                 No content provided.
               </p>
             )}
-          </div>
+          </DarkCard>
         </div>
 
         {/* Right — assignments */}
