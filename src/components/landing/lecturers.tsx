@@ -232,7 +232,7 @@ export function LandingTeacherSection() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="hidden gap-3 sm:grid sm:grid-cols-2">
               {lecturerPairs.map((pair, index) => {
                 const isActive = index === activeIndex
 
@@ -292,7 +292,7 @@ export function LandingTeacherSection() {
                     <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
                       Pair {activePair.number}
                     </div>
-                    <div className="mt-3 max-w-[14ch] font-serif text-[clamp(2.4rem,4vw,4rem)] leading-[0.94] tracking-[-0.045em] text-white">
+                    <div className="mt-3 max-w-[14ch] font-serif text-[clamp(1.8rem,4vw,4rem)] leading-[0.92] tracking-[-0.045em] text-white">
                       {activePair.course}
                     </div>
                   </div>
@@ -305,7 +305,7 @@ export function LandingTeacherSection() {
                   <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
                     Theme
                   </div>
-                  <div className="mt-2 font-serif text-xl leading-tight text-[#F8F4EC]">
+                  <div className="mt-2 font-serif text-xl leading-tight text-[#a29f97]">
                     {activePair.theme}
                   </div>
                 </div>

@@ -21,6 +21,7 @@ This folder contains feature areas implemented as route files:
 - **Teachers**: `teachers.tsx`
 - **Posts**: `posts.tsx`
 - **Library**: `library/index.tsx`, `library/$mediaId.tsx`
+- **Enrollments**: `enrollments.tsx`, `enrollments/$enrollmentId.tsx`
 
 ## Key Invariants / Assumptions
 

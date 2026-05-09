@@ -96,6 +96,77 @@ export function InvitationStatusChip({
   )
 }
 
+type EnrollmentStatusChipProps = {
+  status:
+    | 'pending'
+    | 'under_review'
+    | 'approved'
+    | 'rejected'
+    | 'waitlisted'
+    | 'withdrawn'
+    | 'deferred'
+  className?: string
+}
+
+const ENROLLMENT_STATUS_CONFIG = {
+  pending: {
+    icon: Clock,
+    label: 'Pending',
+    classes: 'border-[#C5A059]/30 bg-[#1A1716]/60 text-[#D4B373]',
+  },
+  under_review: {
+    icon: AlertCircle,
+    label: 'Under review',
+    classes: 'border-sky-500/28 bg-sky-950/40 text-sky-300',
+  },
+  approved: {
+    icon: CheckCircle2,
+    label: 'Approved',
+    classes: 'border-emerald-500/30 bg-emerald-950/40 text-emerald-400',
+  },
+  rejected: {
+    icon: XCircle,
+    label: 'Rejected',
+    classes: 'border-red-500/28 bg-red-950/40 text-red-400',
+  },
+  waitlisted: {
+    icon: CircleDot,
+    label: 'Waitlisted',
+    classes: 'border-amber-500/28 bg-amber-950/40 text-amber-300',
+  },
+  withdrawn: {
+    icon: Ban,
+    label: 'Withdrawn',
+    classes: 'border-white/12 bg-white/4 text-[#8E816D]',
+  },
+  deferred: {
+    icon: CircleDot,
+    label: 'Deferred',
+    classes: 'border-orange-500/25 bg-orange-950/40 text-orange-300',
+  },
+} as const
+
+export function EnrollmentStatusChip({
+  status,
+  className,
+}: EnrollmentStatusChipProps) {
+  const config = ENROLLMENT_STATUS_CONFIG[status]
+  const Icon = config.icon
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 border px-2.5 py-1 text-[0.65rem] font-medium tracking-[0.18em] uppercase',
+        config.classes,
+        className,
+      )}
+    >
+      <Icon className="size-3 shrink-0" />
+      {config.label}
+    </span>
+  )
+}
+
 type SubmissionStatusChipProps = {
   status: 'draft' | 'submitted' | 'graded' | 'returned'
   className?: string

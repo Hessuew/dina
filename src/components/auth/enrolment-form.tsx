@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useForm } from '@tanstack/react-form'
 import { CheckCircle } from 'lucide-react'
+import { toast } from 'sonner'
+import { useServerFn } from '@tanstack/react-start'
 import footerBackground from '@/assets/images/bg/bg_footer.webp'
 import {
   Field,
@@ -10,6 +12,14 @@ import {
   FieldLabel,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { createEnrollment } from '@/utils/enrollments'
 
 function required({ value }: { value: string }) {
   return !value.trim() ? 'This field is required' : undefined
@@ -22,23 +32,81 @@ function validEmail({ value }: { value: string }) {
   return undefined
 }
 
-function minLength(min: number) {
+function countWords(value: string): number {
+  const trimmed = value.trim()
+  if (!trimmed) return 0
+  return trimmed.split(/\s+/).filter(Boolean).length
+}
+
+function maxWords(max: number) {
   return ({ value }: { value: string }) =>
-    value.trim().length < min ? `Minimum ${min} characters required` : undefined
+    countWords(value) > max ? `Must be ${max} words or fewer` : undefined
+}
+
+function validYear({ value }: { value: string }) {
+  const trimmed = value.trim()
+  if (!trimmed) return 'Year of birth is required'
+  const year = Number(trimmed)
+  if (!Number.isInteger(year)) return 'Year of birth must be a whole number'
+  const current = new Date().getFullYear()
+  if (year < 1900) return 'Year of birth must be reasonable'
+  if (year > current) return 'Year of birth cannot be in the future'
+  return undefined
+}
+
+function requiredSelect({ value }: { value: string }) {
+  return !value ? 'This field is required' : undefined
+}
+
+function optionalText(value: string): string | undefined {
+  const trimmed = value.trim()
+  return trimmed ? trimmed : undefined
 }
 
 export function EnrolmentForm() {
   const [submitted, setSubmitted] = useState(false)
 
+  const createEnrollmentFn = useServerFn(createEnrollment)
+
   const form = useForm({
     defaultValues: {
-      name: '',
+      fullLegalName: '',
+      preferredName: '',
       email: '',
-      bio: '',
+      yearOfBirth: '',
+      gender: '',
+      nationalityCitizenship: '',
+      phoneWhatsApp: '',
+      currentCity: '',
+      currentCountry: '',
+      churchAffiliations: '',
+      aboutYourself: '',
+      expectationsAlignment: '',
     },
-    onSubmit: ({ value }) => {
-      console.log('Enrolment submission:', value)
-      setSubmitted(true)
+    onSubmit: async ({ value }) => {
+      try {
+        await createEnrollmentFn({
+          data: {
+            fullLegalName: value.fullLegalName,
+            preferredName: optionalText(value.preferredName),
+            email: value.email,
+            yearOfBirth: value.yearOfBirth,
+            gender: value.gender as 'male' | 'female',
+            nationalityCitizenship: optionalText(value.nationalityCitizenship),
+            phoneWhatsApp: value.phoneWhatsApp,
+            currentCity: optionalText(value.currentCity),
+            currentCountry: optionalText(value.currentCountry),
+            churchAffiliations: optionalText(value.churchAffiliations),
+            aboutYourself: value.aboutYourself,
+            expectationsAlignment: value.expectationsAlignment,
+          },
+        })
+
+        setSubmitted(true)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Submission failed'
+        toast.error(message)
+      }
     },
   })
 
@@ -163,15 +231,15 @@ export function EnrolmentForm() {
       }}
     >
       <FieldGroup>
-        <form.Field name="name" validators={{ onChange: required }}>
+        <form.Field name="fullLegalName" validators={{ onChange: required }}>
           {(field) => (
             <Field>
-              <FieldLabel htmlFor="enrol-name" theme="dark">
-                Full Name
+              <FieldLabel htmlFor="enrol-full-legal-name" theme="dark">
+                Full legal name
               </FieldLabel>
               <Input
-                id="enrol-name"
-                name="name"
+                id="enrol-full-legal-name"
+                name="fullLegalName"
                 type="text"
                 placeholder="John Doe"
                 theme="dark"
@@ -186,6 +254,26 @@ export function EnrolmentForm() {
                     {field.state.meta.errors[0]}
                   </FieldDescription>
                 )}
+            </Field>
+          )}
+        </form.Field>
+
+        <form.Field name="preferredName">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="enrol-preferred-name" theme="dark">
+                Preferred name
+              </FieldLabel>
+              <Input
+                id="enrol-preferred-name"
+                name="preferredName"
+                type="text"
+                placeholder="John"
+                theme="dark"
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+              />
             </Field>
           )}
         </form.Field>
@@ -217,16 +305,189 @@ export function EnrolmentForm() {
           )}
         </form.Field>
 
-        <form.Field name="bio" validators={{ onChange: minLength(300) }}>
+        <form.Field name="phoneWhatsApp" validators={{ onChange: required }}>
           {(field) => (
             <Field>
-              <FieldLabel htmlFor="enrol-bio" theme="dark">
-                Application
+              <FieldLabel htmlFor="enrol-phone" theme="dark">
+                Phone number (WhatsApp)
+              </FieldLabel>
+              <Input
+                id="enrol-phone"
+                name="phoneWhatsApp"
+                type="tel"
+                placeholder="+358 40 123 4567"
+                theme="dark"
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                required
+              />
+              {field.state.meta.errors.length > 0 &&
+                field.state.meta.isTouched && (
+                  <FieldDescription className="text-destructive">
+                    {field.state.meta.errors[0]}
+                  </FieldDescription>
+                )}
+            </Field>
+          )}
+        </form.Field>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <form.Field name="yearOfBirth" validators={{ onChange: validYear }}>
+            {(field) => (
+              <Field>
+                <FieldLabel htmlFor="enrol-yob" theme="dark">
+                  Year of birth
+                </FieldLabel>
+                <Input
+                  id="enrol-yob"
+                  name="yearOfBirth"
+                  type="number"
+                  placeholder="1996"
+                  theme="dark"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  required
+                />
+                {field.state.meta.errors.length > 0 &&
+                  field.state.meta.isTouched && (
+                    <FieldDescription className="text-destructive">
+                      {field.state.meta.errors[0]}
+                    </FieldDescription>
+                  )}
+              </Field>
+            )}
+          </form.Field>
+
+          <form.Field name="gender" validators={{ onChange: requiredSelect }}>
+            {(field) => (
+              <Field>
+                <FieldLabel htmlFor="enrol-gender" theme="dark">
+                  Gender
+                </FieldLabel>
+                <Select
+                  value={field.state.value || undefined}
+                  onValueChange={(value) => field.handleChange(value ?? '')}
+                >
+                  <SelectTrigger
+                    id="enrol-gender"
+                    className="h-11 w-full rounded-none border-white/14 bg-black/20 text-[#F8F4EC]"
+                  >
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-none border-white/10 bg-[#1A1716] text-[#F8F4EC]">
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+                {field.state.meta.errors.length > 0 &&
+                  field.state.meta.isTouched && (
+                    <FieldDescription className="text-destructive">
+                      {field.state.meta.errors[0]}
+                    </FieldDescription>
+                  )}
+              </Field>
+            )}
+          </form.Field>
+        </div>
+
+        <form.Field name="nationalityCitizenship">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="enrol-nationality" theme="dark">
+                Nationality / citizenship
+              </FieldLabel>
+              <Input
+                id="enrol-nationality"
+                name="nationalityCitizenship"
+                type="text"
+                placeholder="Finnish"
+                theme="dark"
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+              />
+            </Field>
+          )}
+        </form.Field>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <form.Field name="currentCity">
+            {(field) => (
+              <Field>
+                <FieldLabel htmlFor="enrol-city" theme="dark">
+                  Current city
+                </FieldLabel>
+                <Input
+                  id="enrol-city"
+                  name="currentCity"
+                  type="text"
+                  placeholder="Helsinki"
+                  theme="dark"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                />
+              </Field>
+            )}
+          </form.Field>
+
+          <form.Field name="currentCountry">
+            {(field) => (
+              <Field>
+                <FieldLabel htmlFor="enrol-country" theme="dark">
+                  Current country
+                </FieldLabel>
+                <Input
+                  id="enrol-country"
+                  name="currentCountry"
+                  type="text"
+                  placeholder="Finland"
+                  theme="dark"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                />
+              </Field>
+            )}
+          </form.Field>
+        </div>
+
+        <form.Field name="churchAffiliations">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="enrol-church" theme="dark">
+                Church affiliations
+              </FieldLabel>
+              <Input
+                id="enrol-church"
+                name="churchAffiliations"
+                type="text"
+                placeholder="Church name, network, etc."
+                theme="dark"
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+              />
+            </Field>
+          )}
+        </form.Field>
+
+        <form.Field
+          name="aboutYourself"
+          validators={{ onChange: (v) => required(v) || maxWords(200)(v) }}
+        >
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="enrol-about" theme="dark">
+                Tell us about yourself and why you are interested in this
+                program
               </FieldLabel>
               <textarea
-                id="enrol-bio"
-                name="bio"
-                placeholder="Tell us about yourself, your faith journey, and why you want to join DINA…"
+                id="enrol-about"
+                name="aboutYourself"
+                placeholder="Write up to 200 words…"
                 rows={6}
                 required
                 value={field.state.value}
@@ -242,11 +503,52 @@ export function EnrolmentForm() {
                   </FieldDescription>
                 ) : (
                   <FieldDescription theme="dark">
-                    Minimum 300 characters.
+                    Maximum 200 words.
                   </FieldDescription>
                 )}
                 <span className="shrink-0 text-[0.62rem] text-[#5A5248]">
-                  {field.state.value.length} chars
+                  {countWords(field.state.value)} words
+                </span>
+              </div>
+            </Field>
+          )}
+        </form.Field>
+
+        <form.Field
+          name="expectationsAlignment"
+          validators={{ onChange: (v) => required(v) || maxWords(200)(v) }}
+        >
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="enrol-expectations" theme="dark">
+                Tell us what you expect to achieve at the end of this program,
+                and how it would align with your personal pursuit of Jesus
+                Christ.
+              </FieldLabel>
+              <textarea
+                id="enrol-expectations"
+                name="expectationsAlignment"
+                placeholder="Write up to 200 words…"
+                rows={6}
+                required
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                className="w-full resize-none border border-white/12 bg-[#1A1A1A] px-3 py-2.5 text-sm leading-7 text-[#F8F4EC] placeholder:text-[#5A5248] focus:border-[#C5A059]/50 focus:ring-1 focus:ring-[#C5A059]/30 focus:outline-none"
+              />
+              <div className="flex items-start justify-between gap-4">
+                {field.state.meta.errors.length > 0 &&
+                field.state.meta.isTouched ? (
+                  <FieldDescription theme="dark" className="text-destructive">
+                    {field.state.meta.errors[0]}
+                  </FieldDescription>
+                ) : (
+                  <FieldDescription theme="dark">
+                    Maximum 200 words.
+                  </FieldDescription>
+                )}
+                <span className="shrink-0 text-[0.62rem] text-[#5A5248]">
+                  {countWords(field.state.value)} words
                 </span>
               </div>
             </Field>

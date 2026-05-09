@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { Link, useRouter, useRouterState } from '@tanstack/react-router'
+import { FileText } from 'lucide-react'
 import { NavUser } from '@/components/navigation/nav-user'
 import {
   Sidebar,
@@ -97,6 +98,11 @@ const teacherNavItems: Array<NavItem> = [
 ]
 
 const adminNavItems: Array<NavItem> = [
+  {
+    title: 'Enrollments',
+    url: '/enrollments',
+    icon: FileText,
+  },
   {
     title: 'User Management',
     url: '/invitations',
