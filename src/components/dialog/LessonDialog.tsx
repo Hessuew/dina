@@ -48,7 +48,7 @@ type LessonDialogProps = {
     content: string | null
     scheduledTime: Date | null
     duration: number | null
-    isPublished: boolean
+    isPublished: boolean | null
     orderIndex: number
   }
 }
@@ -76,7 +76,7 @@ export function LessonDialog({
             ? new Date(initialData.scheduledTime).toISOString().slice(0, 16)
             : '',
           duration: initialData.duration?.toString() || '',
-          isPublished: initialData.isPublished,
+          isPublished: initialData.isPublished ?? false,
         })
       } else {
         setFormData({ ...emptyFormData })

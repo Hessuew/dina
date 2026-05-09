@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { format, isAfter } from 'date-fns'
+import { isAfter } from 'date-fns'
 import {
   AlertTriangleIcon,
   CalendarDaysIcon,
@@ -11,6 +11,7 @@ import type { CalendarEvent, SpecialEventCategory } from '@/utils/calendar'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { CalendarView } from '@/components/view/CalendarView'
 import { EventPreviewModal } from '@/components/dialog/EventPreviewModal'
+import { EventListSidebar } from '@/components/calendar/EventListSidebar'
 import {
   Select,
   SelectContent,
@@ -110,6 +111,10 @@ function CalendarComponent() {
     )
     .slice(0, 3)
 
+  const upcomingEvents = events
+    .filter((e: CalendarEvent) => isAfter(new Date(e.date), new Date()))
+    .slice(0, 5)
+
   const handleEventClick = (event: CalendarEvent) => {
     setSelectedEvent(event)
     setModalOpen(true)
@@ -149,7 +154,7 @@ function CalendarComponent() {
       <div className="relative mx-auto max-w-7xl px-6 py-10 sm:px-8 sm:py-12">
         {/* Page header */}
         <div className="mb-10">
-          <div className="flex items-end justify-between gap-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <div className="h-px w-10 bg-[#C5A059]/50" />
               <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">
@@ -169,10 +174,18 @@ function CalendarComponent() {
                   <SelectValue>{TYPE_LABELS[selectedType]}</SelectValue>
                 </SelectTrigger>
                 <SelectContent className="rounded-none">
-                  <SelectItem value="all">All Events</SelectItem>
-                  <SelectItem value="lesson">Lessons</SelectItem>
-                  <SelectItem value="assignment">Assignments</SelectItem>
-                  <SelectItem value="special">Special</SelectItem>
+                  <SelectItem textClass="text-black" value="all">
+                    All Events
+                  </SelectItem>
+                  <SelectItem textClass="text-black" value="lesson">
+                    Lessons
+                  </SelectItem>
+                  <SelectItem textClass="text-black" value="assignment">
+                    Assignments
+                  </SelectItem>
+                  <SelectItem textClass="text-black" value="special">
+                    Special
+                  </SelectItem>
                 </SelectContent>
               </Select>
               {courses.length > 0 && (
@@ -189,9 +202,15 @@ function CalendarComponent() {
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="rounded-none">
-                    <SelectItem value="all">All Courses</SelectItem>
+                    <SelectItem textClass="text-black" value="all">
+                      All Courses
+                    </SelectItem>
                     {courses.map((course) => (
-                      <SelectItem key={course.id} value={course.id}>
+                      <SelectItem
+                        className="text-black"
+                        key={course.id}
+                        value={course.id}
+                      >
                         {course.name}
                       </SelectItem>
                     ))}
@@ -203,69 +222,60 @@ function CalendarComponent() {
         </div>
 
         {/* Two-column layout */}
-        <div className="flex gap-6">
-          {/* Calendar — takes all remaining width */}
-          <div className="min-w-0 flex-1">
+        <div className="flex flex-col gap-6 sm:flex-row">
+          {/* Sidebar — shows first on sm */}
+          <div className="order-1 w-full sm:order-2 sm:w-64 sm:shrink-0">
+            <div className="flex flex-col gap-4">
+              {/* Upcoming special events */}
+              <EventListSidebar
+                title="Special Events"
+                events={upcomingSpecials}
+                emptyMessage="No upcoming special events"
+                onEventClick={handleEventClick}
+                renderBadge={(event: CalendarEvent) => {
+                  const cat = event.specialCategory || 'other'
+                  const s = SPECIAL_STYLES[cat]
+                  const Icon = SPECIAL_ICON[cat]
+                  return (
+                    <>
+                      <span className={cn('size-1.5 rounded-full', s.dot)} />
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 border px-1.5 py-0.5 text-[0.58rem] font-medium tracking-[0.14em] uppercase',
+                          s.chip,
+                        )}
+                      >
+                        <Icon className="size-2.5" />
+                        {s.label}
+                      </span>
+                    </>
+                  )
+                }}
+              />
+
+              {/* Upcoming events */}
+              <EventListSidebar
+                title="Upcoming"
+                events={upcomingEvents}
+                emptyMessage="No upcoming events"
+                onEventClick={handleEventClick}
+                renderBadge={(event: CalendarEvent) => (
+                  <span className="text-[0.58rem] font-medium tracking-[0.14em] text-[#C5A059] uppercase">
+                    {event.type}
+                  </span>
+                )}
+              />
+            </div>
+          </div>
+
+          {/* Calendar — takes all remaining width, shows second on sm */}
+          <div className="order-2 min-w-0 flex-1 sm:order-1">
             <CalendarView
               events={filteredEvents}
               onEventClick={handleEventClick}
               initialDate={currentMonth}
               onDateChange={handleDateChange}
             />
-          </div>
-
-          {/* Upcoming special events sidebar */}
-          <div className="w-64 shrink-0">
-            <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
-              <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3.5">
-                <CalendarDaysIcon className="size-3.5 text-[#C5A059]" />
-                <span className="text-[0.65rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-                  Upcoming
-                </span>
-              </div>
-              {upcomingSpecials.length === 0 ? (
-                <div className="px-4 py-8 text-center text-[0.78rem] text-[#8E816D]">
-                  No upcoming special events
-                </div>
-              ) : (
-                <div className="divide-y divide-white/6">
-                  {upcomingSpecials.map((event: CalendarEvent) => {
-                    const cat = event.specialCategory || 'other'
-                    const s = SPECIAL_STYLES[cat]
-                    const Icon = SPECIAL_ICON[cat]
-                    return (
-                      <button
-                        key={event.id}
-                        type="button"
-                        onClick={() => handleEventClick(event)}
-                        className="w-full px-4 py-3.5 text-left transition-colors hover:bg-white/4"
-                      >
-                        <div className="mb-1.5 flex items-center gap-1.5">
-                          <span
-                            className={cn('size-1.5 rounded-full', s.dot)}
-                          />
-                          <span
-                            className={cn(
-                              'inline-flex items-center gap-1 border px-1.5 py-0.5 text-[0.58rem] font-medium tracking-[0.14em] uppercase',
-                              s.chip,
-                            )}
-                          >
-                            <Icon className="size-2.5" />
-                            {s.label}
-                          </span>
-                        </div>
-                        <div className="truncate text-[0.82rem] font-medium text-[#F8F4EC]">
-                          {event.title}
-                        </div>
-                        <div className="mt-0.5 text-[0.68rem] text-[#8E816D]">
-                          {format(new Date(event.date), 'MMM d, yyyy')}
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
