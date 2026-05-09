@@ -1,9 +1,10 @@
 import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
 import andrewImage from '@/assets/images/lecturers/andrew.jpg'
-import akosyaImage from '@/assets/images/lecturers/akosya.jpg'
+import akosyaImage from '@/assets/images/lecturers/akosya.webp'
 import juhaniImage from '@/assets/images/lecturers/juhani.webp'
-import mahiImage from '@/assets/images/lecturers/mahi.jpg'
+import mahiImage from '@/assets/images/lecturers/mahi.png'
 import sadeImage from '@/assets/images/lecturers/sade.jpeg'
+import ezinneImage from '@/assets/images/lecturers/ezinne.jpg'
 
 type LeadershipMember = {
   name: string
@@ -20,7 +21,12 @@ const executives: Array<LeadershipMember> = [
     image: mahiImage,
   },
   { name: 'Dr. Ugo O.', role: 'President', category: 'executive' },
-  { name: 'Ezinne O.', role: 'Vice-President', category: 'executive' },
+  {
+    name: 'Ezinne O.',
+    role: 'Vice-President',
+    category: 'executive',
+    image: ezinneImage,
+  },
   {
     name: 'Akosua O.',
     role: 'Secretary',

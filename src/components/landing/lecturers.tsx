@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import andrewImage from '@/assets/images/lecturers/andrew.jpg'
-import akosyaImage from '@/assets/images/lecturers/akosya.jpg'
+import akosyaImage from '@/assets/images/lecturers/akosya.webp'
 import juhaniImage from '@/assets/images/lecturers/juhani.webp'
-import mahiImage from '@/assets/images/lecturers/mahi.jpg'
+import mahiImage from '@/assets/images/lecturers/mahi.png'
 import sadeImage from '@/assets/images/lecturers/sade.jpeg'
+import ezinneImage from '@/assets/images/lecturers/ezinne.jpg'
 
 type Lecturer = {
   name: string
@@ -76,7 +77,8 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Ezinne O.',
         title: '',
-        bio: '',
+        bio: 'Ezinne Onyeka is a disciple of the Lord, devoted daily to learning at His feet and loving Him wholeheartedly. She is also a Product Leader focused on AI enablement, managing the development and launch of AI voice and multimodal products across Europe.',
+        image: ezinneImage,
       },
     ],
   },
@@ -314,7 +316,7 @@ export function LandingTeacherSection() {
               {activePair.lecturers.map((lecturer, index) => (
                 <div
                   key={`${activePair.id}-${lecturer.name}`}
-                  className="min-h-88 border border-white/10 bg-white/3 p-5 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.4)]"
+                  className="min-h-108 border border-white/10 bg-white/3 p-5 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.4)]"
                 >
                   <div className="flex items-start gap-4">
                     {lecturer.image ? (

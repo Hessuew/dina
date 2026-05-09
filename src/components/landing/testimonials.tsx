@@ -21,7 +21,7 @@ const testimonials: Array<TestimonialItem> = [
   },
   {
     id: 'ella',
-    name: 'Ella',
+    name: 'Ella O.',
     role: 'Pastor, -',
     quote: '',
     theme: 'Ground',
@@ -51,14 +51,16 @@ const testimonials: Array<TestimonialItem> = [
   },
   {
     id: 'ezinne',
-    name: 'Ezinne',
+    name: 'Ezinne O.',
     role: 'Pastor, -',
-    quote: '',
+    quote:
+      'Discipleship has rooted me in the Word of God. It builds and guides me with God, at work, and in daily life. I receive scripture-based answers to difficult questions, reminders of God’s love and care, and are built to serve Jesus wholeheartedly. Through discipleship, I learn the in-depth Word of God, how to apply it daily, and gain structure for personal and spiritual growth. It is a light in my life I feel incredibly privileged to have.',
+
     theme: 'Walls',
   },
   {
     id: 'sade',
-    name: 'Sade',
+    name: 'Sade P.',
     role: 'Pastor, -',
     quote:
       'My journey of discipleship is rooted in God’s grace! Discipleship has helped me to live intentionally and with purpose for Christ. It came to me at a point in my life where I had no direction and all hope seemed lost. Now I seek to live out Christ’s love daily, growing in faith and guiding others toward purpose and truth.',
@@ -73,7 +75,7 @@ const testimonials: Array<TestimonialItem> = [
   },
   {
     id: 'kene',
-    name: 'Kene',
+    name: 'Kene O.',
     role: 'Pastor, -',
     quote: '',
     theme: 'Covering',
@@ -88,14 +90,14 @@ const testimonials: Array<TestimonialItem> = [
   },
   {
     id: 'obi',
-    name: 'Obi',
+    name: 'Obi C.',
     role: 'Pastor, -',
     quote: '',
     theme: 'Rooftop',
   },
   {
     id: 'ugo',
-    name: 'Ugo',
+    name: 'Ugo O.',
     role: 'Pastor, -',
     quote: '',
     theme: 'Rooftop',
@@ -252,7 +254,7 @@ export function LandingTestimonialsSection() {
                     }`}
                     style={getCardMotionStyle(offset)}
                   >
-                    <div className="relative flex min-h-full flex-col justify-between gap-4 lg:gap-8">
+                    <div className="relative flex min-h-full flex-col justify-between gap-4">
                       <div className="space-y-6">
                         <div className="inline-flex items-center gap-3 text-[0.6rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
                           <span className="h-px w-6 bg-[#C5A059]/45" />
