@@ -47,7 +47,6 @@ export function useTeachers(shouldFetch: boolean) {
 
 - `useMutation` — Generic mutation hook with configurable error handling
 - `useIsMobile` — Mobile viewport detection (768px breakpoint)
-- `useIsInView` — Intersection observer wrapper for motion/react
 
 ## Error Handling
 

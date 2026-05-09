@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { motion, useAnimation } from 'motion/react'
+import { motion, useAnimation, useInView } from 'motion/react'
 import type {
   HTMLMotionProps,
   LegacyAnimationControls,
@@ -12,7 +12,6 @@ import type {
 
 import type { WithAsChild } from '@/components/animate-ui/primitives/animate/slot'
 import { cn } from '@/lib/utils'
-import { useIsInView } from '@/hooks/use-is-in-view'
 import { Slot } from '@/components/animate-ui/primitives/animate/slot'
 
 const staticAnimations = {
@@ -217,11 +216,11 @@ function AnimateIcon({
   }, [])
 
   const viewOuterRef = React.useRef<HTMLElement>(null)
-  const { ref: inViewRef, isInView } = useIsInView(viewOuterRef, {
-    inView: !!animateOnView,
-    inViewOnce: animateOnViewOnce,
-    inViewMargin: animateOnViewMargin,
+  const inViewResult = useInView(viewOuterRef, {
+    once: animateOnViewOnce,
+    margin: animateOnViewMargin,
   })
+  const isInView = !animateOnView || inViewResult
 
   const startAnim = React.useCallback(
     async (anim: 'initial' | 'animate', method: 'start' | 'set' = 'start') => {
@@ -400,7 +399,7 @@ function AnimateIcon({
 
   const content = asChild ? (
     <Slot
-      ref={inViewRef}
+      ref={viewOuterRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onPointerDown={handlePointerDown}
@@ -411,7 +410,7 @@ function AnimateIcon({
     </Slot>
   ) : (
     <motion.span
-      ref={inViewRef}
+      ref={viewOuterRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onPointerDown={handlePointerDown}
