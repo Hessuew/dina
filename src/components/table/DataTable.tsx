@@ -28,14 +28,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { IconButton } from '@/components/table/IconButton'
 
 type ButtonConfig<TData> = {
   icon: ComponentType<{ className?: string }>
@@ -64,19 +61,12 @@ export function createButtonColumn<TData>(
             {buttons
               .filter((btn) => !btn.show || btn.show(row))
               .map((btn, index) => (
-                <Tooltip key={index}>
-                  <TooltipTrigger>
-                    <Button
-                      size="icon"
-                      theme="dark"
-                      className="size-8 rounded-none border-none bg-transparent hover:bg-white/5"
-                      onClick={() => btn.onClick(row)}
-                    >
-                      <btn.icon className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{btn.label}</TooltipContent>
-                </Tooltip>
+                <IconButton
+                  key={index}
+                  icon={btn.icon}
+                  label={btn.label}
+                  onClick={() => btn.onClick(row)}
+                />
               ))}
           </div>
         </TooltipProvider>

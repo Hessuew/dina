@@ -2,11 +2,8 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import {
   AlertTriangleIcon,
   CalendarDaysIcon,
-  EyeIcon,
   HeartHandshakeIcon,
-  PencilIcon,
   PlusIcon,
-  Trash2Icon,
   UserIcon,
 } from 'lucide-react'
 import { format } from 'date-fns'
@@ -21,6 +18,7 @@ import { PageLayout } from '@/components/layout/page-layout'
 import { cn } from '@/lib/utils'
 import { getCourses } from '@/utils/courses'
 import { getEvents } from '@/utils/event'
+import { createCrudActions } from '@/components/table/functions/createCrudActions'
 
 export const Route = createFileRoute('/_authed/events')({
   beforeLoad: async () => {
@@ -110,23 +108,13 @@ function EventsComponent() {
       },
       header: 'Location',
     }),
-    createButtonColumn([
-      {
-        icon: EyeIcon,
-        label: 'View',
-        onClick: (event) => openDialog('view', event),
-      },
-      {
-        icon: PencilIcon,
-        label: 'Edit',
-        onClick: (event) => openDialog('edit', event),
-      },
-      {
-        icon: Trash2Icon,
-        label: 'Delete',
-        onClick: (event) => openDialog('delete', event),
-      },
-    ]),
+    createButtonColumn(
+      createCrudActions<CalendarEventRow>({
+        onView: (event) => openDialog('view', event),
+        onEdit: (event) => openDialog('edit', event),
+        onDelete: (event) => openDialog('delete', event),
+      }),
+    ),
   ]
 
   return (

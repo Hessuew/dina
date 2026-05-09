@@ -25,13 +25,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { DataTable } from '@/components/table/DataTable'
+import { IconButton } from '@/components/table/IconButton'
 import { EnrollmentStatusChip } from '@/components/table/chips'
 import { useMutation } from '@/hooks/useMutation'
 import {
@@ -141,12 +137,6 @@ export function EnrollmentsTable({
       ),
       header: 'Full legal name',
     }),
-    columnHelper.accessor('email', {
-      cell: (info) => (
-        <span className="text-[0.82rem] text-[#AFA28F]">{info.getValue()}</span>
-      ),
-      header: 'Email',
-    }),
     columnHelper.accessor('nationalityCitizenship', {
       cell: (info) => {
         const val = info.getValue()
@@ -203,55 +193,35 @@ export function EnrollmentsTable({
         return (
           <TooltipProvider delay={200}>
             <div className="flex items-center justify-end gap-1">
-              <Tooltip>
-                <TooltipTrigger>
-                  <Button
-                    size="icon"
-                    theme="dark"
-                    className="size-8 rounded-none border-none bg-transparent hover:bg-white/5"
-                    onClick={() =>
-                      router.navigate({
-                        to: '/enrollments/$enrollmentId',
-                        params: { enrollmentId: row.id },
-                      })
-                    }
-                  >
-                    <Eye className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>View</TooltipContent>
-              </Tooltip>
+              <IconButton
+                icon={() => <Eye className="size-3.5" />}
+                label="View"
+                onClick={() =>
+                  router.navigate({
+                    to: '/enrollments/$enrollmentId',
+                    params: { enrollmentId: row.id },
+                  })
+                }
+              />
 
-              <Tooltip>
-                <TooltipTrigger>
-                  <Button
-                    size="icon"
-                    theme="dark"
-                    className="size-8 rounded-none border-none bg-transparent hover:bg-white/5"
-                    onClick={() => {
-                      setSelectedEnrollmentId(row.id)
-                      setInviteDialogOpen(true)
-                    }}
-                    disabled={inviteMutation.isPending}
-                  >
-                    <Mail className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Send invitation</TooltipContent>
-              </Tooltip>
+              <IconButton
+                icon={Mail}
+                label="Send invitation"
+                onClick={() => {
+                  setSelectedEnrollmentId(row.id)
+                  setInviteDialogOpen(true)
+                }}
+                disabled={inviteMutation.isPending}
+              />
 
               <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      size="icon"
-                      theme="dark"
-                      className="size-8 rounded-none border-none bg-transparent hover:bg-white/5"
-                    >
-                      <MoreHorizontal className="size-3.5" />
-                    </Button>
-                  }
-                />
+                <DropdownMenuTrigger>
+                  <IconButton
+                    icon={MoreHorizontal}
+                    label="More options"
+                    onClick={() => {}}
+                  />
+                </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
                   className="rounded-none border border-white/10 bg-[#1A1716] text-[#F8F4EC]"

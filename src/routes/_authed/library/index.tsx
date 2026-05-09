@@ -1,11 +1,8 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import {
   ExternalLinkIcon,
-  EyeIcon,
   FileTextIcon,
-  PencilIcon,
   PlusIcon,
-  Trash2Icon,
 } from 'lucide-react'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -17,6 +14,7 @@ import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { getLibraryMedia } from '@/utils/library'
 import { PageLayout } from '@/components/layout/page-layout'
 import { cn } from '@/lib/utils'
+import { createCrudActions } from '@/components/table/functions/createCrudActions'
 
 export const Route = createFileRoute('/_authed/library/')({
   loader: async () => {
@@ -160,15 +158,16 @@ function LibraryComponent() {
       },
     }),
     createButtonColumn([
-      {
-        icon: EyeIcon,
-        label: 'View',
-        onClick: (row) =>
+      ...createCrudActions<MediaLibraryRow>({
+        onView: (row) =>
           router.navigate({
             to: '/library/$mediaId',
             params: { mediaId: row.id },
           }),
-      },
+        onEdit: (row) => openDialog('edit', row),
+        onDelete: (row) => openDialog('delete', row),
+        canManage: (row) => canManageRow(row),
+      }),
       {
         icon: ExternalLinkIcon,
         label: 'Go',
@@ -178,18 +177,6 @@ function LibraryComponent() {
             '_blank',
             'noopener,noreferrer',
           ),
-      },
-      {
-        icon: PencilIcon,
-        label: 'Edit',
-        show: (row) => canManageRow(row),
-        onClick: (row) => openDialog('edit', row),
-      },
-      {
-        icon: Trash2Icon,
-        label: 'Delete',
-        show: (row) => canManageRow(row),
-        onClick: (row) => openDialog('delete', row),
       },
     ]),
   ]
