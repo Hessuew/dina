@@ -7,6 +7,14 @@ import juhaniImage from '@/assets/images/lecturers/juhani.webp'
 import mahiImage from '@/assets/images/lecturers/mahi.png'
 import sadeImage from '@/assets/images/lecturers/sade.jpeg'
 import ezinneImage from '@/assets/images/lecturers/ezinne.jpg'
+import {
+  LandingFeaturePanel,
+  LandingFeaturePanelBody,
+  LandingFeaturePanelHeader,
+  LandingSection,
+  LandingSectionContainer,
+  LandingSectionEyebrow,
+} from '@/components/landing/primitives'
 
 type Lecturer = {
   name: string
@@ -157,9 +165,9 @@ export function LandingTeacherSection() {
   }
 
   return (
-    <section
+    <LandingSection
       id="teachers"
-      className="relative isolate overflow-hidden border-b border-[#1A1A1A]/10 text-[#1C1815]"
+      className="border-b border-[#1A1A1A]/10 text-[#1C1815]"
       style={{
         backgroundImage: `linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url(${facultyBackground})`,
         backgroundPosition: 'center',
@@ -169,17 +177,11 @@ export function LandingTeacherSection() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.12),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.28),transparent_22%)]" />
       <div className="absolute right-[8%] bottom-24 h-px w-16 bg-[#1A1A1A]/12 lg:w-24" />
 
-      <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-18 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24">
+      <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.82fr)_minmax(24rem,1.18fr)] lg:gap-20">
           <div className="space-y-10">
             <div className="space-y-6">
-              <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-                <div className="h-px w-20 bg-[#9B7A41]/50 lg:w-28" />
-                <div className="flex flex-row items-center gap-3">
-                  <span className="h-px w-10 bg-[#9B7A41]/55" />
-                  Teaching Faculty
-                </div>
-              </div>
+              <LandingSectionEyebrow label="Teaching Faculty" tone="deep" />
 
               <h2 className="block max-w-[14ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] whitespace-nowrap text-[#1C1815]">
                 Six lecturer pairs
@@ -276,16 +278,8 @@ export function LandingTeacherSection() {
             </div>
           </div>
 
-          <div className="relative border border-white/10 bg-[#171717]/72 p-4 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:p-6">
-            <div
-              className="relative overflow-hidden border border-white/10"
-              style={{
-                backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.26), rgba(7,7,8,0.72)), url(${facultyBackground})`,
-                backgroundPosition: 'center',
-                backgroundSize: 'cover',
-              }}
-            >
-              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_38%,rgba(197,160,89,0.14)_100%)]" />
+          <LandingFeaturePanel>
+            <LandingFeaturePanelHeader backgroundImageUrl={facultyBackground}>
               <div className="relative flex min-h-84 flex-col justify-between p-6 sm:p-8 lg:min-h-100">
                 <div className="flex items-start justify-between gap-6">
                   <div>
@@ -310,9 +304,9 @@ export function LandingTeacherSection() {
                   </div>
                 </div>
               </div>
-            </div>
+            </LandingFeaturePanelHeader>
 
-            <div className="grid gap-5 border-x border-b border-white/10 bg-[#151515]/88 px-6 py-7 sm:px-8 sm:py-8 lg:grid-cols-2">
+            <LandingFeaturePanelBody className="grid gap-5 px-6 py-7 sm:px-8 sm:py-8 lg:grid-cols-2">
               {activePair.lecturers.map((lecturer, index) => (
                 <div
                   key={`${activePair.id}-${lecturer.name}`}
@@ -358,10 +352,10 @@ export function LandingTeacherSection() {
                   </p>
                 </div>
               ))}
-            </div>
-          </div>
+            </LandingFeaturePanelBody>
+          </LandingFeaturePanel>
         </div>
-      </div>
-    </section>
+      </LandingSectionContainer>
+    </LandingSection>
   )
 }

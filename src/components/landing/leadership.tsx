@@ -5,6 +5,11 @@ import juhaniImage from '@/assets/images/lecturers/juhani.webp'
 import mahiImage from '@/assets/images/lecturers/mahi.png'
 import sadeImage from '@/assets/images/lecturers/sade.jpeg'
 import ezinneImage from '@/assets/images/lecturers/ezinne.jpg'
+import {
+  LandingSection,
+  LandingSectionContainer,
+  LandingSectionEyebrow,
+} from '@/components/landing/primitives'
 
 type LeadershipMember = {
   name: string
@@ -112,8 +117,8 @@ function MemberCard({ member }: { member: LeadershipMember }) {
 
 export function LandingLeadershipSection() {
   return (
-    <section
-      className="relative isolate overflow-hidden border-b border-[#C5A059]/14 bg-[#121212] text-[#F8F4EC]"
+    <LandingSection
+      className="border-b border-[#C5A059]/14 bg-[#121212] text-[#F8F4EC]"
       style={{
         backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.92), rgba(16,16,17,0.96)), url(${graphiteBackground})`,
         backgroundPosition: 'center',
@@ -122,16 +127,10 @@ export function LandingLeadershipSection() {
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.1),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.04),transparent_28%)]" />
 
-      <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-18 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24">
+      <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="space-y-16">
           <div className="space-y-6">
-            <div className="inline-flex flex-col gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-              <div className="h-px w-20 bg-[#C5A059]/50 lg:w-28" />
-              <div className="flex flex-row items-center gap-3">
-                <span className="h-px w-10 bg-[#C5A059]/55" />
-                Governance
-              </div>
-            </div>
+            <LandingSectionEyebrow label="Governance" />
 
             <h2 className="max-w-[14ch] font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em] text-[#F8F4EC]">
               Executive Leadership
@@ -176,7 +175,7 @@ export function LandingLeadershipSection() {
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </LandingSectionContainer>
+    </LandingSection>
   )
 }

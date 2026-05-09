@@ -1,11 +1,15 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 import footerBackground from '@/assets/images/bg/bg_footer.webp'
+import {
+  LandingSection,
+  LandingSectionContainer,
+} from '@/components/landing/primitives'
 
 export function LandingFooter() {
   return (
-    <section
-      className="relative isolate min-h-screen overflow-hidden text-[#F7F4EE]"
+    <LandingSection
+      className="min-h-screen text-[#F7F4EE]"
       style={{
         backgroundImage: `linear-gradient(180deg, rgba(8,6,5,0.65), rgba(10,8,7,0.75)), url(${footerBackground})`,
         backgroundPosition: 'center',
@@ -14,7 +18,7 @@ export function LandingFooter() {
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(197,160,89,0.08),transparent_50%)]" />
 
-      <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-20 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-24 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-12">
+      <LandingSectionContainer className="py-20 sm:py-24 lg:py-12">
         <div className="flex min-h-[70vh] flex-col justify-between text-center lg:min-h-[80vh]">
           <div className="flex flex-1 items-center justify-center">
             <div className="space-y-8">
@@ -28,7 +32,7 @@ export function LandingFooter() {
 
               <div className="space-y-4 pt-6">
                 <div className="text-[0.7rem] font-medium tracking-[0.3em] text-[#C5A059] uppercase">
-                  Enrollment Open for 2027
+                  Enrollment Open for 2026
                 </div>
                 <Link
                   to="/enrolment"
@@ -56,7 +60,7 @@ export function LandingFooter() {
             </a>
           </div>
         </div>
-      </div>
-    </section>
+      </LandingSectionContainer>
+    </LandingSection>
   )
 }

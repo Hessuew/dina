@@ -1,5 +1,10 @@
 import { ArrowRight } from 'lucide-react'
 import marbleTexture from '@/assets/images/bg/bg_hero.webp'
+import {
+  LandingSection,
+  LandingSectionContainer,
+  LandingSectionEyebrow,
+} from '@/components/landing/primitives'
 
 type QAItem = {
   id: string
@@ -48,8 +53,8 @@ const qaItems: Array<QAItem> = [
 
 export function LandingQASection() {
   return (
-    <section
-      className="relative isolate overflow-hidden border-b border-[#C5A059]/14"
+    <LandingSection
+      className="border-b border-[#C5A059]/14"
       style={{
         backgroundImage: `linear-gradient(180deg, rgba(247,244,238,0.96), rgba(247,244,238,0.98)), url(${marbleTexture})`,
         backgroundPosition: 'center',
@@ -58,16 +63,10 @@ export function LandingQASection() {
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.08),transparent_40%)]" />
 
-      <div className="relative mx-auto max-w-[calc(100%-2rem)] px-5 py-18 sm:max-w-[calc(100%-4rem)] sm:px-8 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24">
+      <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="mx-auto max-w-6xl space-y-14">
           <div className="flex flex-col items-center space-y-6 text-center">
-            <div className="inline-flex flex-col items-center gap-2 text-[0.72rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-              <div className="h-px w-20 bg-[#C5A059]/50 lg:w-28" />
-              <div className="flex flex-row items-center gap-3">
-                <span className="h-px w-10 bg-[#C5A059]/55" />
-                Questions & Answers
-              </div>
-            </div>
+            <LandingSectionEyebrow label="Questions & Answers" align="center" />
 
             <h2 className="max-w-3xl font-serif text-[clamp(3rem,5vw,5.1rem)] leading-none tracking-[-0.055em] text-[#1A1A1A]">
               Frequently Asked Questions
@@ -110,16 +109,9 @@ export function LandingQASection() {
             ))}
           </div>
 
-          <div className="border-t border-[#C5A059]/20 pt-8 text-center">
-            {/* <p className="text-sm leading-7 text-[#6B5F4D]">
-              Have more questions? Contact us at{' '}
-              <span className="font-medium text-[#C5A059]">
-                info@dina.academy
-              </span>
-            </p> */}
-          </div>
+          <div className="border-t border-[#C5A059]/20 pt-8 text-center"></div>
         </div>
-      </div>
-    </section>
+      </LandingSectionContainer>
+    </LandingSection>
   )
 }
