@@ -18,6 +18,7 @@ import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
+import { useDialogState } from '@/hooks/useDialogState'
 import { useMutation } from '@/hooks/useMutation'
 import {
   createOrUpdateSubmission,
@@ -98,11 +99,8 @@ function AssignmentDetailComponent() {
   const { fromDashboard, fromCalendar, calendarMonth } = Route.useSearch()
   const { assignment, submission, role, allSubmissions, user } = loaderData
 
-  const [dialogMode, setDialogMode] = useState<
-    'edit' | 'delete' | 'grade' | null
-  >(null)
-  const [selectedSubmission, setSelectedSubmission] =
-    useState<SubmissionWithStudent | null>(null)
+  const assignmentDialog = useDialogState()
+  const gradeDialog = useDialogState<SubmissionWithStudent>()
 
   const submissionsColumns: Array<ColumnDef<SubmissionWithStudent, any>> = [
     columnHelper.accessor('student.fullName', {
@@ -168,8 +166,7 @@ function AssignmentDetailComponent() {
         icon: PencilIcon,
         label: 'Grade',
         onClick: (sub) => {
-          setSelectedSubmission(sub)
-          setDialogMode('grade')
+          gradeDialog.openDialog('edit', sub)
         },
       },
     ]),
@@ -289,7 +286,7 @@ function AssignmentDetailComponent() {
                   theme="light"
                   size="icon"
                   className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
-                  onClick={() => setDialogMode('edit')}
+                  onClick={() => assignmentDialog.openDialog('edit')}
                 >
                   <PencilIcon className="size-3.5" />
                 </Button>
@@ -298,7 +295,7 @@ function AssignmentDetailComponent() {
                   theme="light"
                   size="icon"
                   className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-red-300 hover:text-red-600"
-                  onClick={() => setDialogMode('delete')}
+                  onClick={() => assignmentDialog.openDialog('delete')}
                 >
                   <TrashIcon className="size-3.5" />
                 </Button>
@@ -518,13 +515,14 @@ function AssignmentDetailComponent() {
       </div>
 
       {/* Assignment Dialog (edit / delete) */}
-      {(dialogMode === 'edit' || dialogMode === 'delete') && (
+      {(assignmentDialog.dialogMode === 'edit' || assignmentDialog.dialogMode === 'delete') &&
+        assignmentDialog.isOpen && (
         <AssignmentDialog
           open={true}
           onOpenChange={(open) => {
-            if (!open) setDialogMode(null)
+            if (!open) assignmentDialog.closeDialog()
           }}
-          mode={dialogMode}
+          mode={assignmentDialog.dialogMode as 'edit' | 'delete'}
           assignment={assignment}
           onDeleteSuccess={() => {
             if (fromDashboard) {
@@ -540,18 +538,15 @@ function AssignmentDetailComponent() {
       )}
 
       {/* Grade Dialog */}
-      {dialogMode === 'grade' && selectedSubmission && (
+      {gradeDialog.isOpen && gradeDialog.dialogItem && (
         <AssignmentDialog
           open={true}
           onOpenChange={(open) => {
-            if (!open) {
-              setDialogMode(null)
-              setSelectedSubmission(null)
-            }
+            if (!open) gradeDialog.closeDialog()
           }}
           mode="grade"
           assignment={assignment}
-          submission={selectedSubmission}
+          submission={gradeDialog.dialogItem}
         />
       )}
     </PageLayout>
