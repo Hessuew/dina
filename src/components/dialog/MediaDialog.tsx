@@ -114,7 +114,7 @@ export function MediaDialog({
     clearFile()
   }, [open, mode, media])
 
-  const { createMutation, updateMutation, deleteMutation } = useEntityMutation({
+  const { createMutation, updateMutation, deleteMutation, isAnyPending } = useEntityMutation({
     createFn: createLibraryMedia,
     updateFn: updateLibraryMedia,
     deleteFn: deleteLibraryMedia,
@@ -123,11 +123,7 @@ export function MediaDialog({
     },
   })
 
-  const isPending =
-    createMutation.isPending ||
-    updateMutation.isPending ||
-    deleteMutation.isPending ||
-    isUploading
+  const isPending = isAnyPending || isUploading
 
   const handleSubmit = async () => {
     if (mode === 'delete') {
@@ -305,7 +301,7 @@ export function MediaDialog({
       }
       maxWidth="3xl"
       onSubmit={handleSubmit}
-      isSubmitting={isPending || isUploading}
+      isSubmitting={isPending}
       submitLabel={mode === 'create' ? 'Create Media' : 'Save Changes'}
       loadingLabel={isUploading ? 'Uploading...' : undefined}
     >

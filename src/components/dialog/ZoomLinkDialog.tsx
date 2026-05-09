@@ -110,7 +110,7 @@ export function ZoomLinkDialog({
     setForm(link ? linkToForm(link) : emptyForm)
   }, [link, open])
 
-  const { createMutation, updateMutation, deleteMutation } = useEntityMutation({
+  const { createMutation, updateMutation, deleteMutation, isAnyPending } = useEntityMutation({
     createFn: createZoomLink,
     updateFn: updateZoomLink,
     deleteFn: deleteZoomLink,
@@ -120,10 +120,7 @@ export function ZoomLinkDialog({
     },
   })
 
-  const isPending =
-    createMutation.isPending ||
-    updateMutation.isPending ||
-    deleteMutation.isPending
+  const isPending = isAnyPending
 
   const handleSubmit = () => {
     if (!form.title || !form.zoomUrl || !form.meetingId || !form.passcode) {

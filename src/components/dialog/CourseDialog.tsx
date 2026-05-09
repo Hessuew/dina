@@ -143,7 +143,7 @@ export function CourseDialog({
     setUploading(false)
   }
 
-  const { createMutation, updateMutation } = useEntityMutation({
+  const { createMutation, updateMutation, isAnyPending } = useEntityMutation({
     createFn: createCourse,
     updateFn: updateCourse,
     onSuccessMessage: (_mode) =>
@@ -157,9 +157,6 @@ export function CourseDialog({
       }
     },
   })
-
-  const mutation = mode === 'create' ? createMutation : updateMutation
-  const isPending = mutation.isPending
 
   const handleSubmit = () => {
     const clientSchema =
@@ -237,7 +234,7 @@ export function CourseDialog({
       }
       maxWidth="3xl"
       onSubmit={handleSubmit}
-      isSubmitting={isPending || isUploading}
+      isSubmitting={isAnyPending || isUploading}
       submitLabel={mode === 'create' ? 'Create Course' : 'Save Changes'}
       loadingLabel={isUploading ? 'Uploading...' : undefined}
     >

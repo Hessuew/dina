@@ -556,11 +556,11 @@ const dialogItem = dialogState && dialogState.mode !== 'create' ? dialogState.it
 
 ### High Priority (Score 85+)
 
-1. **Dialog Structure Pattern** - 95/100 - Extract to `<FormDialog>` base component
-2. **Delete Confirmation Pattern** - 92/100 - Extract to `<DeleteConfirmDialog>`
-3. **Page Layout Wrapper** - 90/100 - Extract to `<PageLayout>` component
-4. **Mutation Pattern** - 85/100 - Extract to `useEntityMutation` hook
-5. **Dialog State Management** - 82/100 - Extract to `useDialogState` hook
+1. ✅ **Dialog Structure Pattern** - 95/100 - Extract to `<FormDialog>` base component
+2. ✅ **Delete Confirmation Pattern** - 92/100 - Extract to `<DeleteConfirmDialog>`
+3. ✅ **Page Layout Wrapper** - 90/100 - Extract to `<PageLayout>` component
+4. ✅ **Mutation Pattern** - 85/100 - Extract to `useEntityMutation` hook
+5. ✅ **Dialog State Management** - 82/100 - Extract to `useDialogState` hook
 
 ### Medium Priority (Score 70-84)
 
@@ -568,15 +568,15 @@ const dialogItem = dialogState && dialogState.mode !== 'create' ? dialogState.it
 7. **Page Header Pattern** - 85/100 - Extract to `<PageHeader>` component
 8. **DataTable with Actions** - 78/100 - Enhance `createButtonColumn` with standard handlers
 9. **Form Field Pattern** - 80/100 - Extract to `<FormField>` component
-10. **Form Validation Pattern** - 75/100 - Extract to `useFormValidation` hook
-11. **Dark Card Pattern** - 75/100 - Extract to `<DarkCard>` component
-12. **File Upload Pattern** - 72/100 - Extract to `useFileUpload` hook
+10. ❌ **Form Validation Pattern** - 75/100 - Extract to `useFormValidation` hook
+11. ✅ **Dark Card Pattern** - 75/100 - Extract to `<DarkCard>` component
+12. ✅ **File Upload Pattern** - 72/100 - Extract to `useFileUpload` hook
 
 ### Lower Priority (Score 65-69)
 
-13. **Status Badge Pattern** - 70/100 - Extract to `<StatusChip>` component
+13. ✅ **Status Badge Pattern** - 70/100 - Extract to `<StatusChip>` component
 14. **Permission Check Pattern** - 68/100 - Extract to `usePermissions` hook
-15. **Loading State Pattern** - 65/100 - Consolidate with mutation hooks
+15. ✅ **Loading State Pattern** - 65/100 - Already implemented in `useEntityMutation` hook (dialogs migrated to use `isAnyPending`)
 
 ## Total Estimated Impact
 

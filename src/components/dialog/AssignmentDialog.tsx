@@ -126,7 +126,7 @@ export function AssignmentDialog({
     }
   }, [open, mode, assignment, submission])
 
-  const { createMutation, updateMutation, deleteMutation } = useEntityMutation({
+  const { createMutation, updateMutation, deleteMutation, isAnyPending } = useEntityMutation({
     createFn: createAssignment,
     updateFn: updateAssignment,
     deleteFn: deleteAssignment,
@@ -150,7 +150,7 @@ export function AssignmentDialog({
     },
   })
 
-  const isPending = createMutation.isPending || updateMutation.isPending
+  const isPending = isAnyPending
 
   const handleSubmit = () => {
     const parseResult =

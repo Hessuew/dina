@@ -117,7 +117,7 @@ export function EventDialog({
     }
   }, [open, mode, event])
 
-  const { createMutation, updateMutation, deleteMutation } = useEntityMutation({
+  const { createMutation, updateMutation, deleteMutation, isAnyPending } = useEntityMutation({
     createFn: createEvent,
     updateFn: updateEvent,
     deleteFn: deleteEvent,
@@ -126,7 +126,7 @@ export function EventDialog({
     },
   })
 
-  const isPending = createMutation.isPending || updateMutation.isPending
+  const isPending = isAnyPending
 
   const handleSubmit = () => {
     const parseData = {

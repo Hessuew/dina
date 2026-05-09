@@ -74,7 +74,7 @@ export function LessonDialog({
     }
   }, [open, initialData, mode])
 
-  const { createMutation, updateMutation, deleteMutation } = useEntityMutation({
+  const { createMutation, updateMutation, deleteMutation, isAnyPending } = useEntityMutation({
     createFn: createLesson,
     updateFn: updateLesson,
     deleteFn: deleteLesson,
@@ -83,7 +83,7 @@ export function LessonDialog({
     },
   })
 
-  const isPending = createMutation.isPending || updateMutation.isPending
+  const isPending = isAnyPending
 
   const handleSubmit = () => {
     const schema = mode === 'create' ? createLessonSchema : updateLessonSchema
