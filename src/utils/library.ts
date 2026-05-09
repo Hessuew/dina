@@ -10,6 +10,12 @@ import {
   uploadMediaPdfSchema,
 } from '@/schemas/media.schema'
 import { getCurrentUser, getUserProfile } from '@/utils/auth/auth'
+import {
+  AppError,
+  AuthorizationError,
+  NotFoundError,
+  ValidationError,
+} from '@/utils/errors'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 export type MediaLibraryRow = {
@@ -65,11 +71,16 @@ export const getLibraryMediaItem = createServerFn({ method: 'POST' })
     })
 
     if (!row) {
-      throw new Error('Media not found')
+      throw new NotFoundError('Media not found', {
+        details: { mediaId: data.mediaId },
+      })
     }
 
     if (profile.role === 'student' && !row.isPublished) {
-      throw new Error('Media not available')
+      throw new AuthorizationError('Media not available', {
+        internalMessage: `Student attempted to view unpublished media: ${data.mediaId}`,
+        details: { mediaId: data.mediaId },
+      })
     }
 
     return {
@@ -88,7 +99,11 @@ export const createLibraryMedia = createServerFn({ method: 'POST' })
     const profile = await getUserProfile(user.id)
 
     if (profile.role === 'student') {
-      throw new Error('Teacher access required')
+      throw new AuthorizationError('Teacher access required', {
+        code: 'ROLE_REQUIRED',
+        internalMessage: 'Student attempted to create library media',
+        details: { role: profile.role },
+      })
     }
 
     const db = await getDb()
@@ -120,7 +135,11 @@ export const updateLibraryMedia = createServerFn({ method: 'POST' })
     const profile = await getUserProfile(user.id)
 
     if (profile.role === 'student') {
-      throw new Error('Teacher access required')
+      throw new AuthorizationError('Teacher access required', {
+        code: 'ROLE_REQUIRED',
+        internalMessage: 'Student attempted to update library media',
+        details: { role: profile.role },
+      })
     }
 
     const db = await getDb()
@@ -130,13 +149,18 @@ export const updateLibraryMedia = createServerFn({ method: 'POST' })
     })
 
     if (!existing) {
-      throw new Error('Media not found')
+      throw new NotFoundError('Media not found', {
+        details: { mediaId: data.mediaId },
+      })
     }
 
     const canEdit = profile.role === 'admin' || existing.uploaderId === user.id
 
     if (!canEdit) {
-      throw new Error('Not authorized to edit this media')
+      throw new AuthorizationError('Not authorized to edit this media', {
+        internalMessage: `User cannot edit library media: ${data.mediaId}`,
+        details: { mediaId: data.mediaId, userId: user.id },
+      })
     }
 
     const [row] = await db
@@ -164,7 +188,11 @@ export const deleteLibraryMedia = createServerFn({ method: 'POST' })
     const profile = await getUserProfile(user.id)
 
     if (profile.role === 'student') {
-      throw new Error('Teacher access required')
+      throw new AuthorizationError('Teacher access required', {
+        code: 'ROLE_REQUIRED',
+        internalMessage: 'Student attempted to delete library media',
+        details: { role: profile.role },
+      })
     }
 
     const db = await getDb()
@@ -174,14 +202,19 @@ export const deleteLibraryMedia = createServerFn({ method: 'POST' })
     })
 
     if (!existing) {
-      throw new Error('Media not found')
+      throw new NotFoundError('Media not found', {
+        details: { mediaId: data.mediaId },
+      })
     }
 
     const canDelete =
       profile.role === 'admin' || existing.uploaderId === user.id
 
     if (!canDelete) {
-      throw new Error('Not authorized to delete this media')
+      throw new AuthorizationError('Not authorized to delete this media', {
+        internalMessage: `User cannot delete library media: ${data.mediaId}`,
+        details: { mediaId: data.mediaId, userId: user.id },
+      })
     }
 
     await db.delete(mediaLibrary).where(eq(mediaLibrary.id, data.mediaId))
@@ -192,83 +225,73 @@ export const deleteLibraryMedia = createServerFn({ method: 'POST' })
 export const uploadMediaPdfFn = createServerFn({ method: 'POST' })
   .inputValidator(uploadMediaPdfSchema)
   .handler(async ({ data }) => {
-    try {
-      const user = await getCurrentUser()
-      const profile = await getUserProfile(user.id)
+    const user = await getCurrentUser()
+    const profile = await getUserProfile(user.id)
 
-      if (profile.role === 'student') {
-        return {
-          error: true,
-          message: 'Teacher access required',
+    if (profile.role === 'student') {
+      throw new AuthorizationError('Teacher access required', {
+        code: 'ROLE_REQUIRED',
+        internalMessage: 'Student attempted to upload library PDF',
+        details: { role: profile.role },
+      })
+    }
+
+    const supabase = getSupabaseServerClient()
+    const maxSize = 25 * 1024 * 1024
+
+    if (data.fileSize > maxSize) {
+      throw new ValidationError('File size must be less than 25MB', {
+        details: { fileSize: data.fileSize, maxSize },
+      })
+    }
+
+    if (data.fileType !== 'application/pdf') {
+      throw new ValidationError('Only PDF files are allowed', {
+        details: { fileType: data.fileType },
+      })
+    }
+
+    if (data.oldUrl) {
+      const oldPath = data.oldUrl.split('/').pop()
+      if (oldPath) {
+        const { error: deleteError } = await supabase.storage
+          .from('media-library')
+          .remove([oldPath])
+        if (deleteError) {
+          console.log('⚠️ Failed to delete old PDF', {
+            error: deleteError,
+          })
         }
       }
-      const supabase = getSupabaseServerClient()
+    }
 
-      const maxSize = 25 * 1024 * 1024
-      if (data.fileSize > maxSize) {
-        return {
-          error: true,
-          message: 'File size must be less than 25MB',
-        }
-      }
+    const fileExt = data.fileName.split('.').pop() || 'pdf'
+    const fileName = `${user.id}-${Date.now()}.${fileExt}`
+    const base64Data = data.fileData.split(',')[1]
+    const buffer = Buffer.from(base64Data, 'base64')
 
-      if (data.fileType !== 'application/pdf') {
-        return {
-          error: true,
-          message: 'Only PDF files are allowed',
-        }
-      }
+    const { error: uploadError } = await supabase.storage
+      .from('media-library')
+      .upload(fileName, buffer, {
+        contentType: data.fileType,
+        upsert: false,
+      })
 
-      if (data.oldUrl) {
-        const oldPath = data.oldUrl.split('/').pop()
-        if (oldPath) {
-          const { error: deleteError } = await supabase.storage
-            .from('media-library')
-            .remove([oldPath])
-          if (deleteError) {
-            console.log('⚠️ Failed to delete old PDF', {
-              error: deleteError,
-            })
-          }
-        }
-      }
+    if (uploadError) {
+      throw new AppError({
+        code: 'STORAGE_UPLOAD_FAILED',
+        status: 502,
+        userMessage: 'Failed to upload PDF',
+        internalMessage: uploadError.message,
+      })
+    }
 
-      const fileExt = data.fileName.split('.').pop() || 'pdf'
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`
+    const { data: urlData } = supabase.storage
+      .from('media-library')
+      .getPublicUrl(fileName)
 
-      const base64Data = data.fileData.split(',')[1]
-      const buffer = Buffer.from(base64Data, 'base64')
-
-      const { error: uploadError } = await supabase.storage
-        .from('media-library')
-        .upload(fileName, buffer, {
-          contentType: data.fileType,
-          upsert: false,
-        })
-
-      if (uploadError) {
-        return {
-          error: true,
-          message: uploadError.message,
-        }
-      }
-
-      const { data: urlData } = supabase.storage
-        .from('media-library')
-        .getPublicUrl(fileName)
-
-      return {
-        success: true,
-        fileUrl: urlData.publicUrl,
-      }
-    } catch (error) {
-      console.error('❌ Unexpected error in uploadMediaPdfFn:', error)
-      return {
-        error: true,
-        message:
-          error instanceof Error
-            ? error.message
-            : 'An unexpected error occurred',
-      }
+    return {
+      success: true,
+      fileUrl: urlData.publicUrl,
     }
   })

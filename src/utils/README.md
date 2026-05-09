@@ -10,7 +10,7 @@ This folder is primarily where TanStack Start server functions live (via `create
 
 - **Authorization module** (`authz/`)
   - Deep authorization module with fluent interface and per-request caching.
-  - `types.ts`: AuthorizationService interface, Action/ResourceType types, AuthorizationError.
+  - `types.ts`: AuthorizationService interface, Action/ResourceType types.
   - `default-adapter.ts`: Default implementation using Supabase + Drizzle.
   - `builder.ts`: Fluent builder for `authz(userId).perform(action).on(resource)`.
   - `cache.ts`: Per-request caching using AsyncLocalStorage.
@@ -21,6 +21,11 @@ This folder is primarily where TanStack Start server functions live (via `create
 
 - **Auth utilities**
   - `auth.ts`: current user lookup and role/access helpers (legacy, migrate to authz).
+
+- **Error utilities**
+  - `errors.ts`: typed `AppError` hierarchy for expected server-function failures.
+  - Exports `AuthenticationError`, `AuthorizationError`, `ValidationError`, `NotFoundError`, `ConflictError`, `toUserError()`, and `logServerError()`.
+  - Server functions should throw typed errors for expected failures and translate them at UI boundaries with `toUserError()`.
 
 - **Supabase utilities**
   - `supabase.ts`: server client (`@supabase/ssr`) and admin client.
@@ -61,6 +66,8 @@ This folder is primarily where TanStack Start server functions live (via `create
 - **Server functions and auth**
   - Server functions that require authentication should call `getCurrentUser()` from `auth.ts` (legacy).
   - New code should use `authz` module for authorization after authentication.
+  - Expected failures should throw `AppError` subclasses from `errors.ts`.
+  - Do not return `{ error: true, message }` from new server functions.
 
 - **DB access**
   - Use `getDb()` from `src/db/index.ts`.
@@ -76,6 +83,8 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Prefer adding it to the closest feature module in this directory.
   - Validate inputs using schemas from `src/schemas/*`.
   - Use `authz` module for authorization: `await authz(userId).perform('editCourse').on(courseId)`.
+  - Throw typed errors such as `new NotFoundError('Course not found')` or `new AuthorizationError('Teacher access required')`.
+  - Let route/client code translate display text with `toUserError(error).message`.
 
 - **Change auth rules / roles**
   - Update `authz/default-adapter.ts` for authorization logic.

@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { toast } from 'sonner'
+import { toUserError } from '@/utils/errors'
 
 export function useMutation<TVariables, TData, TError = Error>(opts: {
   fn: (variables: TVariables) => Promise<TData>
@@ -35,11 +36,7 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
         if (opts.onError) {
           await opts.onError({ error: tError })
         } else {
-          const errorMessage =
-            tError instanceof Error
-              ? tError.message
-              : 'An unexpected error occurred'
-          toast.error(errorMessage)
+          toast.error(toUserError(tError).message)
         }
       }
     },

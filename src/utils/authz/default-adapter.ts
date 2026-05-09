@@ -1,5 +1,4 @@
 import { and, eq } from 'drizzle-orm'
-import { AuthorizationError } from './types'
 import {
   getCachedResourceCheck,
   getCachedRole,
@@ -15,16 +14,17 @@ import {
   profiles,
   submissions,
 } from '@/db/schema'
+import { AuthorizationError } from '@/utils/errors'
 
 export class DefaultAuthorizationService implements AuthorizationService {
   async hasRole(userId: string, role: Role): Promise<void> {
     const hasIt = await this.isRole(userId, role)
     if (!hasIt) {
-      throw new AuthorizationError(
-        `${role} access required`,
-        `User does not have role: ${role}`,
-        'ROLE_REQUIRED',
-      )
+      throw new AuthorizationError(`${role} access required`, {
+        code: 'ROLE_REQUIRED',
+        internalMessage: `User does not have role: ${role}`,
+        details: { role },
+      })
     }
   }
 
@@ -62,8 +62,11 @@ export class DefaultAuthorizationService implements AuthorizationService {
     if (!allowed) {
       throw new AuthorizationError(
         `Not authorized to ${action} on ${resourceType}`,
-        `User cannot perform ${action} on ${resourceType}:${resourceId}`,
-        'ACTION_NOT_ALLOWED',
+        {
+          code: 'ACTION_NOT_ALLOWED',
+          internalMessage: `User cannot perform ${action} on ${resourceType}:${resourceId}`,
+          details: { action, resourceType, resourceId },
+        },
       )
     }
   }

@@ -44,17 +44,6 @@ export interface AuthorizationService {
   ) => Promise<boolean>
 }
 
-export class AuthorizationError extends Error {
-  constructor(
-    message: string,
-    public readonly reason: string,
-    public readonly code: string,
-  ) {
-    super(message)
-    this.name = 'AuthorizationError'
-  }
-}
-
 /**
  * Authorization module handles permission checks.
  *
