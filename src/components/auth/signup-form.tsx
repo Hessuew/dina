@@ -20,6 +20,7 @@ import {
 import { useAppForm } from '@/hooks/form'
 import { useMutation } from '@/hooks/useMutation'
 import { resendOtpFn, signupFn, verifyOtpFn } from '@/routes/signup'
+import { signupSchema } from '@/schemas/auth.schema'
 import {
   checkInvitationByEmail,
   getInvitationByToken,
@@ -96,7 +97,7 @@ export function SignupForm({ token = '' }: SignupFormProps) {
       password: '',
       confirmPassword: '',
     },
-    onSubmit: async ({ value }) => {
+    onSubmit: ({ value }) => {
       if (!invitationValid) {
         setInvitationError('Please enter a valid email with an invitation')
         return
@@ -495,7 +496,10 @@ export function SignupForm({ token = '' }: SignupFormProps) {
           )}
         </form.AppField>
 
-        <form.Field name="password">
+        <form.Field
+          name="password"
+          validators={{ onSubmit: signupSchema.shape.password }}
+        >
           {(field) => (
             <Field>
               <FieldLabel htmlFor="password" theme="dark">
@@ -512,6 +516,11 @@ export function SignupForm({ token = '' }: SignupFormProps) {
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
               />
+              {field.state.meta.errors.length > 0 && (
+                <FieldDescription className="text-destructive">
+                  {String(field.state.meta.errors[0])}
+                </FieldDescription>
+              )}
               {field.state.value && (
                 <div className="mt-2">
                   <div className="mb-1 flex items-center gap-3">

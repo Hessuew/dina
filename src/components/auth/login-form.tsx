@@ -5,6 +5,7 @@ import { Field, FieldGroup } from '@/components/ui/field'
 import { useAppForm } from '@/hooks/form'
 import { useMutation } from '@/hooks/useMutation'
 import { loginFn } from '@/routes/_authed'
+import { loginSchema } from '@/schemas/auth.schema'
 
 function getUserFriendlyError(message: string): string {
   const lowerMessage = message.toLowerCase()
@@ -176,7 +177,10 @@ export function LoginForm({ verified = false }: LoginFormProps) {
               >
                 <div className="min-h-76 border border-white/10 bg-white/3 p-5 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.4)]">
                   <FieldGroup>
-                    <form.AppField name="email">
+                    <form.AppField
+                      name="email"
+                      validators={{ onSubmit: loginSchema.shape.email }}
+                    >
                       {(field) => (
                         <field.TextField
                           id="email-v2"
@@ -188,7 +192,10 @@ export function LoginForm({ verified = false }: LoginFormProps) {
                       )}
                     </form.AppField>
 
-                    <form.AppField name="password">
+                    <form.AppField
+                      name="password"
+                      validators={{ onSubmit: loginSchema.shape.password }}
+                    >
                       {(field) => (
                         <field.TextField
                           id="password-v2"
