@@ -84,16 +84,10 @@ type ProfileFormData = {
   bio: string
 }
 
-type ProfileFormErrors = Partial<Record<keyof ProfileFormData, string>>
-
-const emptyProfileForm: ProfileFormData = { fullName: '', email: '', bio: '' }
-
 type PasswordFormData = {
   newPassword: string
   confirmPassword: string
 }
-
-type PasswordFormErrors = Partial<Record<keyof PasswordFormData, string>>
 
 const emptyPasswordForm: PasswordFormData = {
   newPassword: '',
@@ -123,38 +117,6 @@ function getProfileInitialValues(
   }
 }
 
-function extractProfileErrors(
-  issues: Array<{ path: Array<PropertyKey>; message: string }>,
-): ProfileFormErrors {
-  const errors: ProfileFormErrors = {}
-
-  for (const issue of issues) {
-    const key = issue.path[0]
-    if (typeof key !== 'string' || !(key in emptyProfileForm)) continue
-
-    const field = key as keyof ProfileFormData
-    if (!errors[field]) errors[field] = issue.message
-  }
-
-  return errors
-}
-
-function extractPasswordErrors(
-  issues: Array<{ path: Array<PropertyKey>; message: string }>,
-): PasswordFormErrors {
-  const errors: PasswordFormErrors = {}
-
-  for (const issue of issues) {
-    const key = issue.path[0]
-    if (typeof key !== 'string' || !(key in emptyPasswordForm)) continue
-
-    const field = key as keyof PasswordFormData
-    if (!errors[field]) errors[field] = issue.message
-  }
-
-  return errors
-}
-
 export function ProfileModal({
   open,
   onOpenChange,
@@ -162,8 +124,6 @@ export function ProfileModal({
   onProfileUpdate,
 }: ProfileModalProps) {
   const [showPasswordForm, setShowPasswordForm] = useState(false)
-  const [profileErrors, setProfileErrors] = useState<ProfileFormErrors>({})
-  const [passwordErrors, setPasswordErrors] = useState<PasswordFormErrors>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const initials = user.fullName
@@ -212,53 +172,24 @@ export function ProfileModal({
   const profileForm = useAppForm({
     defaultValues: getProfileInitialValues(user),
     onSubmit: ({ value }) => {
-      const result = updateProfileSchema.safeParse({
-        fullName: value.fullName,
-        email: value.email,
-        bio: value.bio || undefined,
+      updateProfileMutation.mutate({
+        data: {
+          fullName: value.fullName,
+          email: value.email,
+          bio: value.bio || undefined,
+        },
       })
-
-      if (!result.success) {
-        setProfileErrors(extractProfileErrors(result.error.issues))
-        return
-      }
-
-      setProfileErrors({})
-      updateProfileMutation.mutate({ data: result.data })
     },
   })
 
   const passwordForm = useAppForm({
     defaultValues: emptyPasswordForm,
     onSubmit: ({ value }) => {
-      if (value.newPassword !== value.confirmPassword) {
-        setPasswordErrors({ confirmPassword: 'Passwords do not match' })
-        return
-      }
-
-      const result = updatePasswordSchema.safeParse({
-        newPassword: value.newPassword,
+      updatePasswordMutation.mutate({
+        data: { newPassword: value.newPassword },
       })
-
-      if (!result.success) {
-        setPasswordErrors(extractPasswordErrors(result.error.issues))
-        return
-      }
-
-      setPasswordErrors({})
-      updatePasswordMutation.mutate({ data: result.data })
     },
   })
-
-  const clearProfileError = (field: keyof ProfileFormData) => {
-    if (!profileErrors[field]) return
-    setProfileErrors((prev) => ({ ...prev, [field]: undefined }))
-  }
-
-  const clearPasswordError = (field: keyof PasswordFormData) => {
-    if (!passwordErrors[field]) return
-    setPasswordErrors((prev) => ({ ...prev, [field]: undefined }))
-  }
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -291,8 +222,6 @@ export function ProfileModal({
 
   useEffect(() => {
     if (!open) return
-    setProfileErrors({})
-    setPasswordErrors({})
     profileForm.reset(getProfileInitialValues(user))
     passwordForm.reset(emptyPasswordForm)
   }, [open, user, profileForm, passwordForm])
@@ -390,7 +319,10 @@ export function ProfileModal({
 
                 <FieldGroup className="gap-5">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <profileForm.AppField name="email">
+                    <profileForm.AppField
+                      name="email"
+                      validators={{ onSubmit: updateProfileSchema.shape.email }}
+                    >
                       {(field) => (
                         <field.TextField
                           id="email"
@@ -398,19 +330,20 @@ export function ProfileModal({
                           type="email"
                           required
                           description="Changing your email will require verification"
-                          error={profileErrors.email}
-                          onValueChange={() => clearProfileError('email')}
                         />
                       )}
                     </profileForm.AppField>
-                    <profileForm.AppField name="fullName">
+                    <profileForm.AppField
+                      name="fullName"
+                      validators={{
+                        onSubmit: updateProfileSchema.shape.fullName,
+                      }}
+                    >
                       {(field) => (
                         <field.TextField
                           id="fullName"
                           label="Full Name"
                           required
-                          error={profileErrors.fullName}
-                          onValueChange={() => clearProfileError('fullName')}
                         />
                       )}
                     </profileForm.AppField>
@@ -461,29 +394,39 @@ export function ProfileModal({
                 </Button>
               ) : (
                 <FieldGroup className="gap-5">
-                  <passwordForm.AppField name="newPassword">
+                  <passwordForm.AppField
+                    name="newPassword"
+                    validators={{
+                      onSubmit: updatePasswordSchema.shape.newPassword,
+                    }}
+                  >
                     {(field) => (
                       <field.TextField
                         id="newPassword"
                         label="New Password"
                         type="password"
                         required
-                        error={passwordErrors.newPassword}
-                        onValueChange={() => clearPasswordError('newPassword')}
                       />
                     )}
                   </passwordForm.AppField>
-                  <passwordForm.AppField name="confirmPassword">
+                  <passwordForm.AppField
+                    name="confirmPassword"
+                    validators={{
+                      onSubmit: ({ value, fieldApi }) => {
+                        const newPassword =
+                          fieldApi.form.state.values.newPassword
+                        if (value !== newPassword)
+                          return 'Passwords do not match'
+                        return undefined
+                      },
+                    }}
+                  >
                     {(field) => (
                       <field.TextField
                         id="confirmPassword"
                         label="Confirm New Password"
                         type="password"
                         required
-                        error={passwordErrors.confirmPassword}
-                        onValueChange={() =>
-                          clearPasswordError('confirmPassword')
-                        }
                       />
                     )}
                   </passwordForm.AppField>
@@ -505,7 +448,6 @@ export function ProfileModal({
                       onClick={() => {
                         setShowPasswordForm(false)
                         passwordForm.reset(emptyPasswordForm)
-                        setPasswordErrors({})
                       }}
                     >
                       Cancel

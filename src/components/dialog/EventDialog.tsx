@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import {
   AlertTriangleIcon,
   CalendarIcon,
@@ -8,9 +8,10 @@ import {
   UserIcon,
   VideoIcon,
 } from 'lucide-react'
+import { z } from 'zod'
 import { format } from 'date-fns'
 import type { CalendarEventRow } from '@/utils/event/events'
-import { createEventSchema, updateEventSchema } from '@/schemas/event.schema'
+import { createEventSchema } from '@/schemas/event.schema'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
@@ -63,41 +64,7 @@ const dialogStyle = {
   backgroundPosition: 'center',
 }
 
-type EventFieldErrors = Partial<
-  Record<
-    | 'title'
-    | 'description'
-    | 'startTime'
-    | 'endTime'
-    | 'location'
-    | 'zoomLink'
-    | 'category',
-    string
-  >
->
-
-const EVENT_FORM_KEYS = new Set<string>([
-  'title',
-  'description',
-  'startTime',
-  'endTime',
-  'location',
-  'zoomLink',
-  'category',
-])
-
-function extractFieldErrors(
-  issues: Array<{ path: Array<PropertyKey>; message: string }>,
-): EventFieldErrors {
-  const errors: EventFieldErrors = {}
-  for (const issue of issues) {
-    const key = issue.path[0]
-    if (typeof key !== 'string' || !EVENT_FORM_KEYS.has(key)) continue
-    const field = key as keyof EventFieldErrors
-    if (!errors[field]) errors[field] = issue.message
-  }
-  return errors
-}
+const requiredDateTimeString = z.string().min(1, 'This field is required')
 
 function getDefaultValues(mode: EventDialogMode, event?: CalendarEventRow) {
   if ((mode === 'edit' || mode === 'view') && event) {
@@ -128,8 +95,6 @@ export function EventDialog({
   mode,
   event,
 }: EventDialogProps) {
-  const [submitErrors, setSubmitErrors] = useState<EventFieldErrors>({})
-
   const { createMutation, updateMutation, deleteMutation, isAnyPending } =
     useEntityMutation({
       createFn: createEvent,
@@ -146,8 +111,8 @@ export function EventDialog({
       const shared = {
         title: value.title,
         description: value.description || undefined,
-        startTime: value.startTime ? new Date(value.startTime) : undefined,
-        endTime: value.endTime ? new Date(value.endTime) : undefined,
+        startTime: new Date(value.startTime),
+        endTime: new Date(value.endTime),
         location: value.location || undefined,
         zoomLink: value.zoomLink || undefined,
         category: (value.category || undefined) as
@@ -158,49 +123,19 @@ export function EventDialog({
       }
 
       if (mode === 'create') {
-        const result = createEventSchema.safeParse(shared)
-        if (!result.success) {
-          setSubmitErrors(extractFieldErrors(result.error.issues))
-          return
-        }
-        if (result.data.endTime <= result.data.startTime) {
-          setSubmitErrors({ endTime: 'End time must be after start time' })
-          return
-        }
-        setSubmitErrors({})
-        createMutation.mutate({ data: result.data })
+        createMutation.mutate({ data: shared })
         return
       }
 
       if (!event) return
-
-      const result = updateEventSchema.safeParse({
-        ...shared,
-        eventId: event.id,
-      })
-      if (!result.success) {
-        setSubmitErrors(extractFieldErrors(result.error.issues))
-        return
-      }
-      if (result.data.endTime <= result.data.startTime) {
-        setSubmitErrors({ endTime: 'End time must be after start time' })
-        return
-      }
-      setSubmitErrors({})
-      updateMutation.mutate({ data: result.data })
+      updateMutation.mutate({ data: { ...shared, eventId: event.id } })
     },
   })
 
   useEffect(() => {
     if (!open) return
-    setSubmitErrors({})
     form.reset(getDefaultValues(mode, event))
   }, [open, mode, event, form])
-
-  const clearError = (field: keyof EventFieldErrors) => {
-    if (!submitErrors[field]) return
-    setSubmitErrors((prev) => ({ ...prev, [field]: undefined }))
-  }
 
   if (mode === 'delete') {
     return (
@@ -339,7 +274,10 @@ export function EventDialog({
       <DialogBody>
         <FieldGroup className="mt-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <form.AppField name="title">
+            <form.AppField
+              name="title"
+              validators={{ onSubmit: createEventSchema.shape.title }}
+            >
               {(field) => (
                 <field.TextField
                   id="event-title"
@@ -347,32 +285,41 @@ export function EventDialog({
                   required
                   className="sm:col-span-2"
                   placeholder="Event title"
-                  error={submitErrors.title}
-                  onValueChange={() => clearError('title')}
                 />
               )}
             </form.AppField>
-            <form.AppField name="startTime">
+            <form.AppField
+              name="startTime"
+              validators={{ onSubmit: requiredDateTimeString }}
+            >
               {(field) => (
                 <field.TextField
                   id="event-start"
                   label="Start Time"
                   required
                   type="datetime-local"
-                  error={submitErrors.startTime}
-                  onValueChange={() => clearError('startTime')}
                 />
               )}
             </form.AppField>
-            <form.AppField name="endTime">
+            <form.AppField
+              name="endTime"
+              validators={{
+                onSubmit: ({ value, fieldApi }) => {
+                  if (!value) return 'End time is required'
+                  const startTime = fieldApi.form.state.values.startTime
+                  if (startTime && new Date(value) <= new Date(startTime)) {
+                    return 'End time must be after start time'
+                  }
+                  return undefined
+                },
+              }}
+            >
               {(field) => (
                 <field.TextField
                   id="event-end"
                   label="End Time"
                   required
                   type="datetime-local"
-                  error={submitErrors.endTime}
-                  onValueChange={() => clearError('endTime')}
                 />
               )}
             </form.AppField>

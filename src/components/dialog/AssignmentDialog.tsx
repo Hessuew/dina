@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import {
   createAssignmentSchema,
   gradeSubmissionSchema,
-  updateAssignmentSchema,
 } from '@/schemas/assignment.schema'
 import { Button } from '@/components/ui/button'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
@@ -39,8 +38,6 @@ type AssignmentFormData = {
   status: string
 }
 
-type AssignmentFormErrors = Partial<Record<keyof AssignmentFormData, string>>
-
 const emptyAssignmentForm: AssignmentFormData = {
   title: '',
   description: '',
@@ -53,8 +50,6 @@ type GradingFormData = {
   grade: number
   feedback: string
 }
-
-type GradingFormErrors = Partial<Record<keyof GradingFormData, string>>
 
 const emptyGradingForm: GradingFormData = {
   grade: 0,
@@ -112,38 +107,6 @@ function getGradingInitialValues(
   }
 }
 
-function extractAssignmentErrors(
-  issues: Array<{ path: Array<PropertyKey>; message: string }>,
-): AssignmentFormErrors {
-  const errors: AssignmentFormErrors = {}
-
-  for (const issue of issues) {
-    const key = issue.path[0]
-    if (typeof key !== 'string' || !(key in emptyAssignmentForm)) continue
-
-    const field = key as keyof AssignmentFormData
-    if (!errors[field]) errors[field] = issue.message
-  }
-
-  return errors
-}
-
-function extractGradingErrors(
-  issues: Array<{ path: Array<PropertyKey>; message: string }>,
-): GradingFormErrors {
-  const errors: GradingFormErrors = {}
-
-  for (const issue of issues) {
-    const key = issue.path[0]
-    if (typeof key !== 'string' || !(key in emptyGradingForm)) continue
-
-    const field = key as keyof GradingFormData
-    if (!errors[field]) errors[field] = issue.message
-  }
-
-  return errors
-}
-
 export function AssignmentDialog({
   open,
   onOpenChange,
@@ -155,9 +118,6 @@ export function AssignmentDialog({
   onDeleteSuccess,
 }: AssignmentDialogProps) {
   const router = useRouter()
-  const [submitErrors, setSubmitErrors] = useState<AssignmentFormErrors>({})
-  const [gradeErrors, setGradeErrors] = useState<GradingFormErrors>({})
-
   const { createMutation, updateMutation, deleteMutation, isAnyPending } =
     useEntityMutation({
       createFn: createAssignment,
@@ -195,37 +155,18 @@ export function AssignmentDialog({
 
       if (mode === 'create') {
         if (!lessonId) return
-
-        const result = createAssignmentSchema.safeParse({
-          ...shared,
-          lessonId,
-        })
-
-        if (!result.success) {
-          setSubmitErrors(extractAssignmentErrors(result.error.issues))
-          return
-        }
-
-        setSubmitErrors({})
-        createMutation.mutate({ data: result.data })
+        createMutation.mutate({ data: { ...shared, lessonId } })
         return
       }
 
       if (!assignment) return
-
-      const result = updateAssignmentSchema.safeParse({
-        ...shared,
-        assignmentId: assignment.id,
-        status: value.status as 'draft' | 'published' | 'closed',
+      updateMutation.mutate({
+        data: {
+          ...shared,
+          assignmentId: assignment.id,
+          status: value.status as 'draft' | 'published' | 'closed',
+        },
       })
-
-      if (!result.success) {
-        setSubmitErrors(extractAssignmentErrors(result.error.issues))
-        return
-      }
-
-      setSubmitErrors({})
-      updateMutation.mutate({ data: result.data })
     },
   })
 
@@ -233,33 +174,19 @@ export function AssignmentDialog({
     defaultValues: getGradingInitialValues(submission),
     onSubmit: ({ value }) => {
       if (!submission || !assignment) return
-
-      const result = gradeSubmissionSchema.safeParse({
-        submissionId: submission.id,
-        assignmentId: assignment.id,
-        grade: value.grade,
-        feedback: value.feedback || undefined,
+      gradeMutation.mutate({
+        data: {
+          submissionId: submission.id,
+          assignmentId: assignment.id,
+          grade: value.grade,
+          feedback: value.feedback || undefined,
+        },
       })
-
-      if (!result.success) {
-        setGradeErrors(extractGradingErrors(result.error.issues))
-        return
-      }
-
-      setGradeErrors({})
-      gradeMutation.mutate({ data: result.data })
     },
   })
 
-  const clearSubmitError = (field: keyof AssignmentFormData) => {
-    if (!submitErrors[field]) return
-    setSubmitErrors((prev) => ({ ...prev, [field]: undefined }))
-  }
-
   useEffect(() => {
     if (!open) return
-    setSubmitErrors({})
-    setGradeErrors({})
     assignmentForm.reset(getAssignmentInitialValues(assignment, mode))
     gradeForm.reset(getGradingInitialValues(submission))
   }, [open, mode, assignment, submission, assignmentForm, gradeForm])
@@ -378,7 +305,10 @@ export function AssignmentDialog({
                   </div>
                 )}
                 <FieldGroup>
-                  <gradeForm.AppField name="grade">
+                  <gradeForm.AppField
+                    name="grade"
+                    validators={{ onSubmit: gradeSubmissionSchema.shape.grade }}
+                  >
                     {(field) => (
                       <field.NumberField
                         id="grade"
@@ -386,14 +316,6 @@ export function AssignmentDialog({
                         min={0}
                         max={assignment?.maxGrade ?? 100}
                         placeholder="0"
-                        error={gradeErrors.grade}
-                        onValueChange={() => {
-                          if (gradeErrors.grade)
-                            setGradeErrors((prev) => ({
-                              ...prev,
-                              grade: undefined,
-                            }))
-                        }}
                       />
                     )}
                   </gradeForm.AppField>
@@ -452,27 +374,29 @@ export function AssignmentDialog({
       <DialogBody>
         <FieldGroup className="mt-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <assignmentForm.AppField name="title">
+            <assignmentForm.AppField
+              name="title"
+              validators={{ onSubmit: createAssignmentSchema.shape.title }}
+            >
               {(field) => (
                 <field.TextField
                   id="title"
                   label="Title"
                   required
                   className="sm:col-span-2"
-                  error={submitErrors.title}
-                  onValueChange={() => clearSubmitError('title')}
                 />
               )}
             </assignmentForm.AppField>
-            <assignmentForm.AppField name="dueDate">
+            <assignmentForm.AppField
+              name="dueDate"
+              validators={{ onSubmit: createAssignmentSchema.shape.dueDate }}
+            >
               {(field) => (
                 <field.TextField
                   id="dueDate"
                   label="Due Date"
                   required
                   type="datetime-local"
-                  error={submitErrors.dueDate}
-                  onValueChange={() => clearSubmitError('dueDate')}
                 />
               )}
             </assignmentForm.AppField>
@@ -483,8 +407,6 @@ export function AssignmentDialog({
                   label="Maximum Grade"
                   min={0}
                   placeholder="100"
-                  error={submitErrors.maxGrade}
-                  onValueChange={() => clearSubmitError('maxGrade')}
                 />
               )}
             </assignmentForm.AppField>

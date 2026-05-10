@@ -13,10 +13,8 @@ import { useFieldContext } from '@/hooks/form-context'
 interface BaseAppFieldProps {
   label: string
   required?: boolean
-  error?: string
   description?: string
   className?: string
-  onValueChange?: () => void
 }
 
 interface TextFieldProps extends BaseAppFieldProps {
@@ -49,7 +47,6 @@ interface SwitchFieldProps {
   id: string
   label: string
   className?: string
-  onValueChange?: () => void
 }
 
 function getFirstError(errors: Array<unknown>): string | undefined {
@@ -64,78 +61,57 @@ function getFirstError(errors: Array<unknown>): string | undefined {
 
 export function TextField(props: TextFieldProps) {
   const field = useFieldContext<string>()
-  const { error, onValueChange, ...fieldProps } = props
 
   return (
     <FormFieldInput
-      {...fieldProps}
+      {...props}
       value={field.state.value}
-      onChange={(value) => {
-        field.handleChange(value)
-        onValueChange?.()
-      }}
-      error={error ?? getFirstError(field.state.meta.errors)}
+      onChange={(value) => field.handleChange(value)}
+      error={getFirstError(field.state.meta.errors)}
     />
   )
 }
 
 export function NumberField(props: NumberFieldProps) {
   const field = useFieldContext<number>()
-  const { error, onValueChange, ...fieldProps } = props
 
   return (
     <FormFieldNumberInput
-      {...fieldProps}
+      {...props}
       value={field.state.value}
-      onChange={(value) => {
-        field.handleChange(value)
-        onValueChange?.()
-      }}
-      error={error ?? getFirstError(field.state.meta.errors)}
+      onChange={(value) => field.handleChange(value)}
+      error={getFirstError(field.state.meta.errors)}
     />
   )
 }
 
 export function TextAreaField(props: TextAreaFieldProps) {
   const field = useFieldContext<string>()
-  const { error, onValueChange, ...fieldProps } = props
 
   return (
     <FormFieldTextarea
-      {...fieldProps}
+      {...props}
       value={field.state.value}
-      onChange={(value) => {
-        field.handleChange(value)
-        onValueChange?.()
-      }}
-      error={error ?? getFirstError(field.state.meta.errors)}
+      onChange={(value) => field.handleChange(value)}
+      error={getFirstError(field.state.meta.errors)}
     />
   )
 }
 
 export function SelectField(props: SelectFieldProps) {
   const field = useFieldContext<string>()
-  const { error, onValueChange, ...fieldProps } = props
 
   return (
     <FormFieldSelect
-      {...fieldProps}
+      {...props}
       value={field.state.value}
-      onChange={(value) => {
-        field.handleChange(value)
-        onValueChange?.()
-      }}
-      error={error ?? getFirstError(field.state.meta.errors)}
+      onChange={(value) => field.handleChange(value)}
+      error={getFirstError(field.state.meta.errors)}
     />
   )
 }
 
-export function SwitchField({
-  id,
-  label,
-  className,
-  onValueChange,
-}: SwitchFieldProps) {
+export function SwitchField({ id, label, className }: SwitchFieldProps) {
   const field = useFieldContext<boolean>()
 
   return (
@@ -144,10 +120,7 @@ export function SwitchField({
         <Switch
           id={id}
           checked={field.state.value}
-          onCheckedChange={(value) => {
-            field.handleChange(value)
-            onValueChange?.()
-          }}
+          onCheckedChange={(value) => field.handleChange(value)}
         />
         <FieldLabel htmlFor={id} className="text-sm text-[#AFA28F]">
           {label}

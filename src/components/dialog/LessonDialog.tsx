@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { toast } from 'sonner'
-import { createLessonSchema, updateLessonSchema } from '@/schemas/lesson.schema'
+import { createLessonSchema } from '@/schemas/lesson.schema'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { DialogBody } from '@/components/ui/dialog'
 import { FieldGroup } from '@/components/ui/field'
@@ -16,8 +16,6 @@ type LessonFormData = {
   duration: number
   isPublished: boolean
 }
-
-type LessonFieldErrors = Partial<Record<keyof LessonFormData, string>>
 
 const emptyFormData: LessonFormData = {
   title: '',
@@ -61,22 +59,6 @@ function getInitialValues(
   }
 }
 
-function extractFieldErrors(
-  issues: Array<{ path: Array<PropertyKey>; message: string }>,
-): LessonFieldErrors {
-  const errors: LessonFieldErrors = {}
-
-  for (const issue of issues) {
-    const key = issue.path[0]
-    if (typeof key !== 'string' || !(key in emptyFormData)) continue
-
-    const field = key as keyof LessonFormData
-    if (!errors[field]) errors[field] = issue.message
-  }
-
-  return errors
-}
-
 export function LessonDialog({
   open,
   onOpenChange,
@@ -85,8 +67,6 @@ export function LessonDialog({
   lessonCount = 0,
   initialData,
 }: LessonDialogProps) {
-  const [submitErrors, setSubmitErrors] = useState<LessonFieldErrors>({})
-
   const { createMutation, updateMutation, deleteMutation, isAnyPending } =
     useEntityMutation({
       createFn: createLesson,
@@ -109,55 +89,27 @@ export function LessonDialog({
       }
 
       if (mode === 'create') {
-        const result = createLessonSchema.safeParse({
-          ...shared,
-          courseId,
-          orderIndex: lessonCount,
-        })
-
-        if (!result.success) {
-          setSubmitErrors(extractFieldErrors(result.error.issues))
-          return
-        }
-
         if (lessonCount >= 3) {
           toast.error('Maximum 3 lessons allowed per course')
           return
         }
-
-        setSubmitErrors({})
-        createMutation.mutate({ data: result.data })
+        createMutation.mutate({
+          data: { ...shared, courseId, orderIndex: lessonCount },
+        })
         return
       }
 
       if (!initialData) return
-
-      const result = updateLessonSchema.safeParse({
-        ...shared,
-        lessonId: initialData.lessonId,
-        courseId,
+      updateMutation.mutate({
+        data: { ...shared, lessonId: initialData.lessonId, courseId },
       })
-
-      if (!result.success) {
-        setSubmitErrors(extractFieldErrors(result.error.issues))
-        return
-      }
-
-      setSubmitErrors({})
-      updateMutation.mutate({ data: result.data })
     },
   })
 
   useEffect(() => {
     if (!open) return
-    setSubmitErrors({})
     form.reset(getInitialValues(initialData, mode))
   }, [open, initialData, mode, form])
-
-  const clearError = (field: keyof LessonFormData) => {
-    if (!submitErrors[field]) return
-    setSubmitErrors((prev) => ({ ...prev, [field]: undefined }))
-  }
 
   if (mode === 'delete') {
     return (
@@ -195,7 +147,10 @@ export function LessonDialog({
       <DialogBody>
         <FieldGroup className="mt-6 gap-8">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <form.AppField name="title">
+            <form.AppField
+              name="title"
+              validators={{ onSubmit: createLessonSchema.shape.title }}
+            >
               {(field) => (
                 <field.TextField
                   id="lesson-title"
@@ -203,8 +158,6 @@ export function LessonDialog({
                   required
                   className="sm:col-span-2"
                   placeholder="Lesson title"
-                  error={submitErrors.title}
-                  onValueChange={() => clearError('title')}
                 />
               )}
             </form.AppField>
@@ -215,8 +168,6 @@ export function LessonDialog({
                   label="Scheduled Time"
                   required
                   type="datetime-local"
-                  error={submitErrors.scheduledTime}
-                  onValueChange={() => clearError('scheduledTime')}
                 />
               )}
             </form.AppField>
@@ -226,8 +177,6 @@ export function LessonDialog({
                   id="lesson-duration"
                   label="Duration (minutes)"
                   placeholder="60"
-                  error={submitErrors.duration}
-                  onValueChange={() => clearError('duration')}
                 />
               )}
             </form.AppField>

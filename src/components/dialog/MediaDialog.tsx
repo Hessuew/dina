@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { MediaLibraryRow } from '@/utils/library/library'
-import { createMediaSchema, updateMediaSchema } from '@/schemas/media.schema'
+import { createMediaSchema } from '@/schemas/media.schema'
 import {
   createLibraryMedia,
   deleteLibraryMedia,
@@ -34,8 +34,6 @@ type MediaFormData = {
   url: string
   isPublished: boolean
 }
-
-type MediaFieldErrors = Partial<Record<keyof MediaFormData, string>>
 
 type MediaDialogProps = {
   open: boolean
@@ -73,22 +71,6 @@ function getInitialValues(
   }
 }
 
-function extractFieldErrors(
-  issues: Array<{ path: Array<PropertyKey>; message: string }>,
-): MediaFieldErrors {
-  const errors: MediaFieldErrors = {}
-
-  for (const issue of issues) {
-    const key = issue.path[0]
-    if (typeof key !== 'string' || !(key in emptyFormData)) continue
-
-    const field = key as keyof MediaFormData
-    if (!errors[field]) errors[field] = issue.message
-  }
-
-  return errors
-}
-
 export function MediaDialog({
   open,
   onOpenChange,
@@ -105,8 +87,6 @@ export function MediaDialog({
     setUploading,
   } = useFileUpload()
 
-  const [submitErrors, setSubmitErrors] = useState<MediaFieldErrors>({})
-
   const { createMutation, updateMutation, deleteMutation, isAnyPending } =
     useEntityMutation({
       createFn: createLibraryMedia,
@@ -118,87 +98,8 @@ export function MediaDialog({
   const form = useAppForm({
     defaultValues: getInitialValues(media, mode),
     onSubmit: async ({ value }) => {
-      const urlForValidation =
-        value.url || (value.kind === 'pdf' && fileObject ? 'upload' : '')
-
-      if (mode === 'create') {
-        const result = createMediaSchema.safeParse({
-          title: value.title,
-          category: value.category,
-          description: value.description,
-          isPublished: value.isPublished,
-          kind: value.kind,
-          url: urlForValidation,
-          fileSize: fileObject?.size,
-        })
-
-        if (!result.success) {
-          setSubmitErrors(extractFieldErrors(result.error.issues))
-          return
-        }
-
-        let url = result.data.url
-        let fileSize = result.data.fileSize
-
-        if (value.kind === 'pdf' && fileObject) {
-          setUploading(true)
-          try {
-            const uploaded = await uploadMediaPdfFn({
-              data: {
-                fileData: fileData!,
-                fileName: fileObject.name,
-                fileType: fileObject.type,
-                fileSize: fileObject.size,
-              },
-            })
-
-            if (uploaded.fileUrl) {
-              url = uploaded.fileUrl
-              fileSize = fileObject.size
-            }
-          } catch (error) {
-            toast.error(toUserError(error).message)
-            setUploading(false)
-            return
-          }
-          setUploading(false)
-        }
-
-        setSubmitErrors({})
-        createMutation.mutate({
-          data: {
-            title: result.data.title,
-            category: result.data.category,
-            description: result.data.description,
-            isPublished: result.data.isPublished,
-            kind: result.data.kind,
-            url,
-            fileSize,
-          },
-        })
-        return
-      }
-
-      if (!media) return
-
-      const result = updateMediaSchema.safeParse({
-        mediaId: media.id,
-        title: value.title,
-        category: value.category,
-        description: value.description,
-        isPublished: value.isPublished,
-        kind: value.kind,
-        url: urlForValidation,
-        fileSize: fileObject?.size,
-      })
-
-      if (!result.success) {
-        setSubmitErrors(extractFieldErrors(result.error.issues))
-        return
-      }
-
-      let url = result.data.url
-      let fileSize = result.data.fileSize
+      let url = value.url
+      let fileSize: number | undefined
 
       if (value.kind === 'pdf' && fileObject) {
         setUploading(true)
@@ -209,10 +110,9 @@ export function MediaDialog({
               fileName: fileObject.name,
               fileType: fileObject.type,
               fileSize: fileObject.size,
-              oldUrl: media.fileUrl,
+              ...(mode === 'edit' && media ? { oldUrl: media.fileUrl } : {}),
             },
           })
-
           if (uploaded.fileUrl) {
             url = uploaded.fileUrl
             fileSize = fileObject.size
@@ -225,33 +125,31 @@ export function MediaDialog({
         setUploading(false)
       }
 
-      setSubmitErrors({})
-      updateMutation.mutate({
-        data: {
-          mediaId: result.data.mediaId,
-          title: result.data.title,
-          category: result.data.category,
-          description: result.data.description,
-          isPublished: result.data.isPublished,
-          kind: result.data.kind,
-          url,
-          fileSize,
-        },
-      })
+      const payload = {
+        title: value.title,
+        category: value.category,
+        description: value.description || undefined,
+        isPublished: value.isPublished,
+        kind: value.kind,
+        url,
+        fileSize,
+      }
+
+      if (mode === 'create') {
+        createMutation.mutate({ data: payload })
+        return
+      }
+
+      if (!media) return
+      updateMutation.mutate({ data: { ...payload, mediaId: media.id } })
     },
   })
 
   useEffect(() => {
     if (!open) return
-    setSubmitErrors({})
     clearFile()
     form.reset(getInitialValues(media, mode))
   }, [open, media, mode, form, clearFile])
-
-  const clearError = (field: keyof MediaFormData) => {
-    if (!submitErrors[field]) return
-    setSubmitErrors((prev) => ({ ...prev, [field]: undefined }))
-  }
 
   if (mode === 'delete') {
     return (
@@ -288,7 +186,10 @@ export function MediaDialog({
       <DialogBody>
         <FieldGroup className="mt-6 gap-8">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <form.AppField name="title">
+            <form.AppField
+              name="title"
+              validators={{ onSubmit: createMediaSchema.shape.title }}
+            >
               {(field) => (
                 <field.TextField
                   id="media-title"
@@ -296,21 +197,20 @@ export function MediaDialog({
                   required
                   className="sm:col-span-2"
                   placeholder="Lesson recap video"
-                  error={submitErrors.title}
-                  onValueChange={() => clearError('title')}
                 />
               )}
             </form.AppField>
 
-            <form.AppField name="category">
+            <form.AppField
+              name="category"
+              validators={{ onSubmit: createMediaSchema.shape.category }}
+            >
               {(field) => (
                 <field.TextField
                   id="media-category"
                   label="Category"
                   required
                   placeholder="Foundations"
-                  error={submitErrors.category}
-                  onValueChange={() => clearError('category')}
                 />
               )}
             </form.AppField>
@@ -334,7 +234,17 @@ export function MediaDialog({
 
             <form.Subscribe selector={(state) => state.values.kind}>
               {(kind) => (
-                <form.AppField name="url">
+                <form.AppField
+                  name="url"
+                  validators={{
+                    onSubmit: ({ value, fieldApi }) => {
+                      const currentKind = fieldApi.form.state.values.kind
+                      if (currentKind === 'pdf' && fileObject) return undefined
+                      if (!value) return 'URL is required'
+                      return undefined
+                    },
+                  }}
+                >
                   {(field) => (
                     <Field className="sm:col-span-2">
                       <FieldLabel
@@ -358,15 +268,12 @@ export function MediaDialog({
                             ? 'https://www.youtube.com/watch?v=...'
                             : 'https://.../file.pdf'
                         }
-                        className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${submitErrors.url ? 'border-red-500/60' : ''}`}
-                        onChange={(e) => {
-                          field.handleChange(e.target.value)
-                          clearError('url')
-                        }}
+                        className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50 ${field.state.meta.errors.length > 0 ? 'border-red-500/60' : ''}`}
+                        onChange={(e) => field.handleChange(e.target.value)}
                       />
-                      {submitErrors.url && (
+                      {field.state.meta.errors.length > 0 && (
                         <p className="text-[0.68rem] text-red-400">
-                          {submitErrors.url}
+                          {String(field.state.meta.errors[0])}
                         </p>
                       )}
                     </Field>
