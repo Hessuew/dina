@@ -7,6 +7,8 @@ import {
   updateAssignmentSchema,
 } from '@/schemas/assignment.schema'
 import { Button } from '@/components/ui/button'
+import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
+import { FormDialog } from '@/components/ui/form-dialog'
 import {
   Dialog,
   DialogBody,
@@ -16,17 +18,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { FieldGroup } from '@/components/ui/field'
+import { SelectItem } from '@/components/ui/select'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+  FormFieldInput,
+  FormFieldNumberInput,
+  FormFieldSelect,
+  FormFieldTextarea,
+} from '@/components/ui/form-field'
 import { useMutation } from '@/hooks/useMutation'
+import { useEntityMutation } from '@/hooks/useEntityMutation'
 import {
   createAssignment,
   deleteAssignment,
@@ -123,36 +124,21 @@ export function AssignmentDialog({
     }
   }, [open, mode, assignment, submission])
 
-  const createMutation = useMutation({
-    fn: createAssignment,
-    onSuccess: async () => {
-      toast.success('Assignment created successfully!')
-      onOpenChange(false)
-      await router.invalidate()
-    },
-  })
-
-  const updateMutation = useMutation({
-    fn: updateAssignment,
-    onSuccess: async () => {
-      toast.success('Assignment updated successfully!')
-      onOpenChange(false)
-      await router.invalidate()
-    },
-  })
-
-  const deleteMutation = useMutation({
-    fn: deleteAssignment,
-    onSuccess: async () => {
-      toast.success('Assignment deleted successfully!')
-      onOpenChange(false)
-      if (onDeleteSuccess) {
-        onDeleteSuccess()
-      } else {
-        await router.invalidate()
-      }
-    },
-  })
+  const { createMutation, updateMutation, deleteMutation, isAnyPending } =
+    useEntityMutation({
+      createFn: createAssignment,
+      updateFn: updateAssignment,
+      deleteFn: deleteAssignment,
+      invalidateRouter: false,
+      onSuccess: async () => {
+        onOpenChange(false)
+        if (onDeleteSuccess) {
+          onDeleteSuccess()
+        } else {
+          await router.invalidate()
+        }
+      },
+    })
 
   const gradeMutation = useMutation({
     fn: gradeSubmission,
@@ -163,11 +149,64 @@ export function AssignmentDialog({
     },
   })
 
-  const isPending =
-    createMutation.status === 'pending' ||
-    updateMutation.status === 'pending' ||
-    deleteMutation.status === 'pending' ||
-    gradeMutation.status === 'pending'
+  const isPending = isAnyPending
+
+  const handleSubmit = () => {
+    const parseResult =
+      mode === 'create'
+        ? createAssignmentSchema.safeParse({
+            lessonId: lessonId ?? '',
+            title: formData.title,
+            description: formData.description || undefined,
+            dueDate: formData.dueDate,
+            maxGrade: formData.maxGrade || undefined,
+          })
+        : updateAssignmentSchema.safeParse({
+            assignmentId: assignment?.id ?? '',
+            title: formData.title,
+            description: formData.description || undefined,
+            dueDate: formData.dueDate,
+            maxGrade: formData.maxGrade || undefined,
+            status: formData.status,
+          })
+
+    if (!parseResult.success) {
+      const errors: Record<string, string> = {}
+      for (const issue of parseResult.error.issues) {
+        const key = issue.path[0] as string
+        if (!errors[key]) errors[key] = issue.message
+      }
+      setFieldErrors(errors)
+      return
+    }
+
+    setFieldErrors({})
+
+    if (mode === 'create') {
+      if (!lessonId) return
+      createMutation.mutate({
+        data: {
+          lessonId,
+          title: formData.title,
+          description: formData.description,
+          dueDate: formData.dueDate,
+          maxGrade: formData.maxGrade,
+        },
+      })
+    } else {
+      if (!assignment) return
+      updateMutation.mutate({
+        data: {
+          assignmentId: assignment.id,
+          title: formData.title,
+          description: formData.description,
+          dueDate: formData.dueDate,
+          maxGrade: formData.maxGrade,
+          status: formData.status,
+        },
+      })
+    }
+  }
 
   const dialogStyle = {
     backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
@@ -176,67 +215,60 @@ export function AssignmentDialog({
   }
 
   if (mode === 'delete') {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
-          style={dialogStyle}
-          showCloseButton={false}
-        >
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-          <div className="relative">
-            <DialogHeader>
-              <div className="mb-1">
-                <div className="h-px w-8 bg-[#C5A059]/40" />
-                <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Confirm action
+    if (submissionCount > 0) {
+      return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent
+            className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
+            style={dialogStyle}
+            showCloseButton={false}
+          >
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
+            <div className="relative">
+              <DialogHeader>
+                <div className="mb-1">
+                  <div className="h-px w-8 bg-[#C5A059]/40" />
+                  <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                    Confirm action
+                  </div>
                 </div>
-              </div>
-              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-                Delete Assignment
-              </DialogTitle>
-              <DialogDescription className="text-[#AFA28F]">
-                {submissionCount > 0 ? (
-                  <>
-                    This assignment has {submissionCount} submission
-                    {submissionCount !== 1 ? 's' : ''}. Assignments with
-                    submissions cannot be deleted.
-                  </>
-                ) : (
-                  <>
-                    Are you sure you want to delete "{assignment?.title}"? This
-                    action cannot be undone.
-                  </>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-              <Button
-                variant="outline"
-                theme="dark"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              {submissionCount === 0 && (
+                <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
+                  Delete Assignment
+                </DialogTitle>
+                <DialogDescription className="text-[#AFA28F]">
+                  This assignment has {submissionCount} submission
+                  {submissionCount !== 1 ? 's' : ''}. Assignments with
+                  submissions cannot be deleted.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
                 <Button
-                  variant="destructive"
-                  className="rounded-none"
-                  onClick={() =>
-                    assignment &&
-                    deleteMutation.mutate({
-                      data: { assignmentId: assignment.id },
-                    })
-                  }
-                  disabled={isPending}
+                  variant="outline"
+                  theme="dark"
+                  onClick={() => onOpenChange(false)}
                 >
-                  {isPending ? 'Deleting...' : 'Delete'}
+                  Cancel
                 </Button>
-              )}
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )
+    }
+
+    return (
+      <DeleteConfirmDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        entityName="Assignment"
+        onConfirm={() =>
+          assignment &&
+          deleteMutation.mutate({
+            data: { assignmentId: assignment.id },
+          })
+        }
+        isDeleting={deleteMutation.isPending}
+      />
     )
   }
 
@@ -290,60 +322,36 @@ export function AssignmentDialog({
                   </div>
                 )}
                 <FieldGroup>
-                  <Field>
-                    <FieldLabel
-                      htmlFor="grade"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Grade (max: {assignment?.maxGrade ?? 100})
-                    </FieldLabel>
-                    <Input
-                      id="grade"
-                      type="number"
-                      min="0"
-                      max={assignment?.maxGrade ?? 100}
-                      value={gradingData.grade === 0 ? '' : gradingData.grade}
-                      placeholder="0"
-                      className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.grade ? 'border-red-500/60' : ''}`}
-                      onChange={(e) => {
-                        setGradingData({
-                          ...gradingData,
-                          grade:
-                            e.target.value === ''
-                              ? 0
-                              : parseInt(e.target.value) || 0,
-                        })
-                        if (fieldErrors.grade)
-                          setFieldErrors({ ...fieldErrors, grade: '' })
-                      }}
-                    />
-                    {fieldErrors.grade && (
-                      <p className="text-[0.68rem] text-red-400">
-                        {fieldErrors.grade}
-                      </p>
-                    )}
-                  </Field>
-                  <Field>
-                    <FieldLabel
-                      htmlFor="feedback"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Feedback
-                    </FieldLabel>
-                    <Textarea
-                      id="feedback"
-                      rows={4}
-                      placeholder="Provide feedback to the student..."
-                      value={gradingData.feedback}
-                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                      onChange={(e) =>
-                        setGradingData({
-                          ...gradingData,
-                          feedback: e.target.value,
-                        })
-                      }
-                    />
-                  </Field>
+                  <FormFieldNumberInput
+                    id="grade"
+                    label={`Grade (max: ${assignment?.maxGrade ?? 100})`}
+                    min={0}
+                    max={assignment?.maxGrade ?? 100}
+                    value={gradingData.grade}
+                    onChange={(value) => {
+                      setGradingData({
+                        ...gradingData,
+                        grade: value,
+                      })
+                      if (fieldErrors.grade)
+                        setFieldErrors({ ...fieldErrors, grade: '' })
+                    }}
+                    error={fieldErrors.grade}
+                    placeholder="0"
+                  />
+                  <FormFieldTextarea
+                    id="feedback"
+                    label="Feedback"
+                    value={gradingData.feedback}
+                    onChange={(value) =>
+                      setGradingData({
+                        ...gradingData,
+                        feedback: value,
+                      })
+                    }
+                    placeholder="Provide feedback to the student..."
+                    rows={4}
+                  />
                 </FieldGroup>
               </div>
             </DialogBody>
@@ -397,237 +405,94 @@ export function AssignmentDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
-        style={dialogStyle}
-        showCloseButton={false}
-      >
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-        <div className="relative flex min-h-0 flex-1 flex-col">
-          <DialogHeader>
-            <div className="mb-1">
-              <div className="h-px w-8 bg-[#C5A059]/40" />
-              <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                {mode === 'create' ? 'New assignment' : 'Edit assignment'}
-              </div>
-            </div>
-            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-              {mode === 'create' ? 'Create Assignment' : 'Edit Assignment'}
-            </DialogTitle>
-            <DialogDescription className="text-[#AFA28F]">
-              {mode === 'create'
-                ? 'Add a new assignment for this lesson'
-                : 'Update the assignment information'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogBody>
-            <FieldGroup className="mt-6">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field className="sm:col-span-2">
-                  <FieldLabel
-                    htmlFor="title"
-                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                  >
-                    Title <span className="text-[#C5A059]">*</span>
-                  </FieldLabel>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
-                    onChange={(e) => {
-                      setFormData({ ...formData, title: e.target.value })
-                      if (fieldErrors.title)
-                        setFieldErrors({ ...fieldErrors, title: '' })
-                    }}
-                  />
-                  {fieldErrors.title && (
-                    <p className="text-[0.68rem] text-red-400">
-                      {fieldErrors.title}
-                    </p>
-                  )}
-                </Field>
-                <Field>
-                  <FieldLabel
-                    htmlFor="dueDate"
-                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                  >
-                    Due Date <span className="text-[#C5A059]">*</span>
-                  </FieldLabel>
-                  <Input
-                    id="dueDate"
-                    type="datetime-local"
-                    value={formData.dueDate}
-                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.dueDate ? 'border-red-500/60' : ''}`}
-                    onChange={(e) => {
-                      setFormData({ ...formData, dueDate: e.target.value })
-                      if (fieldErrors.dueDate)
-                        setFieldErrors({ ...fieldErrors, dueDate: '' })
-                    }}
-                  />
-                  {fieldErrors.dueDate && (
-                    <p className="text-[0.68rem] text-red-400">
-                      {fieldErrors.dueDate}
-                    </p>
-                  )}
-                </Field>
-                <Field>
-                  <FieldLabel
-                    htmlFor="maxGrade"
-                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                  >
-                    Maximum Grade
-                  </FieldLabel>
-                  <Input
-                    id="maxGrade"
-                    type="number"
-                    min="0"
-                    value={formData.maxGrade === 0 ? '' : formData.maxGrade}
-                    placeholder="100"
-                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.maxGrade ? 'border-red-500/60' : ''}`}
-                    onChange={(e) => {
-                      setFormData({
-                        ...formData,
-                        maxGrade:
-                          e.target.value === ''
-                            ? 0
-                            : parseInt(e.target.value) || 0,
-                      })
-                      if (fieldErrors.maxGrade)
-                        setFieldErrors({ ...fieldErrors, maxGrade: '' })
-                    }}
-                  />
-                  {fieldErrors.maxGrade && (
-                    <p className="text-[0.68rem] text-red-400">
-                      {fieldErrors.maxGrade}
-                    </p>
-                  )}
-                </Field>
-                <Field>
-                  <FieldLabel
-                    htmlFor="status"
-                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                  >
-                    Status
-                  </FieldLabel>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        status: value as typeof formData.status,
-                      })
-                    }
-                  >
-                    <SelectTrigger className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="published">Published</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field className="sm:col-span-2">
-                  <FieldLabel
-                    htmlFor="description"
-                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                  >
-                    Description
-                  </FieldLabel>
-                  <Textarea
-                    id="description"
-                    rows={5}
-                    value={formData.description}
-                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                  />
-                </Field>
-              </div>
-            </FieldGroup>
-          </DialogBody>
-
-          <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-            <Button
-              variant="outline"
-              theme="dark"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              theme="dark"
-              onClick={() => {
-                const parseResult =
-                  mode === 'create'
-                    ? createAssignmentSchema.safeParse({
-                        lessonId: lessonId ?? '',
-                        title: formData.title,
-                        description: formData.description || undefined,
-                        dueDate: formData.dueDate,
-                        maxGrade: formData.maxGrade || undefined,
-                      })
-                    : updateAssignmentSchema.safeParse({
-                        assignmentId: assignment?.id ?? '',
-                        title: formData.title,
-                        description: formData.description || undefined,
-                        dueDate: formData.dueDate,
-                        maxGrade: formData.maxGrade || undefined,
-                        status: formData.status,
-                      })
-
-                if (!parseResult.success) {
-                  const errors: Record<string, string> = {}
-                  for (const issue of parseResult.error.issues) {
-                    const key = issue.path[0] as string
-                    if (!errors[key]) errors[key] = issue.message
-                  }
-                  setFieldErrors(errors)
-                  return
-                }
-
-                setFieldErrors({})
-
-                if (mode === 'create') {
-                  if (!lessonId) return
-                  createMutation.mutate({
-                    data: {
-                      lessonId,
-                      title: formData.title,
-                      description: formData.description,
-                      dueDate: formData.dueDate,
-                      maxGrade: formData.maxGrade,
-                    },
-                  })
-                } else {
-                  if (!assignment) return
-                  updateMutation.mutate({
-                    data: {
-                      assignmentId: assignment.id,
-                      title: formData.title,
-                      description: formData.description,
-                      dueDate: formData.dueDate,
-                      maxGrade: formData.maxGrade,
-                      status: formData.status,
-                    },
-                  })
-                }
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      mode={mode}
+      title={mode === 'create' ? 'Create Assignment' : 'Edit Assignment'}
+      subtitle={
+        mode === 'create'
+          ? 'Add a new assignment for this lesson'
+          : 'Update the assignment information'
+      }
+      maxWidth="3xl"
+      onSubmit={handleSubmit}
+      isSubmitting={isPending}
+      submitLabel={mode === 'create' ? 'Create Assignment' : 'Save Changes'}
+    >
+      <DialogBody>
+        <FieldGroup className="mt-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormFieldInput
+              id="title"
+              label="Title"
+              required
+              className="sm:col-span-2"
+              value={formData.title}
+              onChange={(value) => {
+                setFormData({ ...formData, title: value })
+                if (fieldErrors.title)
+                  setFieldErrors({ ...fieldErrors, title: '' })
               }}
-              disabled={isPending}
+              error={fieldErrors.title}
+            />
+            <FormFieldInput
+              id="dueDate"
+              label="Due Date"
+              required
+              type="datetime-local"
+              value={formData.dueDate}
+              onChange={(value) => {
+                setFormData({ ...formData, dueDate: value })
+                if (fieldErrors.dueDate)
+                  setFieldErrors({ ...fieldErrors, dueDate: '' })
+              }}
+              error={fieldErrors.dueDate}
+            />
+            <FormFieldNumberInput
+              id="maxGrade"
+              label="Maximum Grade"
+              min={0}
+              value={formData.maxGrade}
+              onChange={(value) => {
+                setFormData({
+                  ...formData,
+                  maxGrade: value,
+                })
+                if (fieldErrors.maxGrade)
+                  setFieldErrors({ ...fieldErrors, maxGrade: '' })
+              }}
+              error={fieldErrors.maxGrade}
+              placeholder="100"
+            />
+            <FormFieldSelect
+              id="status"
+              label="Status"
+              value={formData.status}
+              onChange={(value) =>
+                setFormData({
+                  ...formData,
+                  status: value as typeof formData.status,
+                })
+              }
             >
-              {isPending
-                ? 'Saving...'
-                : mode === 'create'
-                  ? 'Create Assignment'
-                  : 'Save Changes'}
-            </Button>
-          </DialogFooter>
-        </div>
-      </DialogContent>
-    </Dialog>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
+            </FormFieldSelect>
+            <FormFieldTextarea
+              id="description"
+              label="Description"
+              className="sm:col-span-2"
+              value={formData.description}
+              onChange={(value) =>
+                setFormData({ ...formData, description: value })
+              }
+              rows={5}
+            />
+          </div>
+        </FieldGroup>
+      </DialogBody>
+    </FormDialog>
   )
 }

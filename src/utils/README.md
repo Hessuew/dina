@@ -16,6 +16,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `cache.ts`: Per-request caching using AsyncLocalStorage.
   - `route.ts`: Route protection with redirect support.
   - `test-adapter.ts`: Test adapter for unit testing authorization logic.
+  - `permissions.ts`: UI permission calculation utility for entity-level permissions.
+    - `calculateEntityPermissions(role, entity, userId)`: Returns `{ isAdmin, isCourseTeacher, canEdit, canManage }`
+    - Used by server functions to return permissions to frontend, eliminating client-side permission logic duplication.
   - Usage: `authz(userId).perform('gradeAssignment').on(assignmentId)` (throws if not allowed)
   - Usage: `isAllowed(userId).perform('gradeAssignment').on(assignmentId)` (returns boolean)
 
@@ -54,6 +57,12 @@ This folder is primarily where TanStack Start server functions live (via `create
 
 - **Misc**
   - `imageUpload.ts`: server-side upload-related helpers.
+    - `uploadImageFn`: Generic image upload with automatic WebP conversion
+    - `uploadAvatarFn`: Avatar upload with profile update
+    - `uploadCourseThumbnailFn`: Course thumbnail upload with course update
+    - `fileToBase64`: Client-side utility to convert File to base64 string
+    - `convertToWebP`: Server-side utility to convert images to WebP format
+    - **WebP conversion**: All image uploads (JPEG, PNG, WebP) are automatically converted to WebP at 80% quality to reduce file size. GIF files are preserved (animations). PDF files are excluded from conversion.
   - `password.ts`: password-related helpers for auth flows.
   - `seo.ts`: metadata helper.
 

@@ -81,13 +81,13 @@ export function Header({ user }: HeaderProps) {
       {(isTeacher || isStudent) && (
         <Button
           onClick={handleToggleRole}
-          disabled={toggleRoleMutation.status === 'pending'}
+          disabled={toggleRoleMutation.isPending}
           variant="ghost"
           theme="dark"
           size="sm"
           className="text-xs text-[#C5A059] hover:bg-[#C5A059]/10 hover:text-[#D6B16E]"
         >
-          {toggleRoleMutation.status === 'pending'
+          {toggleRoleMutation.isPending
             ? 'Switching...'
             : isTeacher
               ? 'Switch to Student'

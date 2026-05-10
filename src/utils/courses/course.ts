@@ -12,7 +12,9 @@ import {
   submissions,
 } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth/auth'
+import { getSupabaseServerClient } from '@/utils/supabase'
 import { authz, withRequestCache } from '@/utils/authz'
+import { calculateEntityPermissions } from '@/utils/authz/permissions'
 import {
   AuthorizationError,
   NotFoundError,
@@ -190,16 +192,25 @@ export const getCourse = createServerFn({ method: 'POST' })
 
     const completedLessonIds = new Set(progress.map((item) => item.lessonId))
 
+    const courseWithTeachers = {
+      ...course,
+      teacher1Id: course.courseTeachers[0]?.teacherId ?? null,
+      teacher2Id: course.courseTeachers[1]?.teacherId ?? null,
+    }
+
+    const permissions = calculateEntityPermissions(
+      profile.role,
+      courseWithTeachers,
+      user.id,
+    )
+
     return {
-      course: {
-        ...course,
-        teacher1Id: course.courseTeachers[0]?.teacherId,
-        teacher2Id: course.courseTeachers[1]?.teacherId,
-      },
+      course: courseWithTeachers,
       role: profile.role,
       completedLessonIds: Array.from(completedLessonIds),
       assignmentData,
       user,
+      permissions,
     }
   })
 
@@ -310,6 +321,7 @@ export const deleteCourse = createServerFn({ method: 'POST' })
   .inputValidator(deleteCourseSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
+    const supabase = getSupabaseServerClient()
 
     return withRequestCache(async () => {
       const db = await getDb()
@@ -319,8 +331,34 @@ export const deleteCourse = createServerFn({ method: 'POST' })
         await authz(user.id).perform('deleteCourse').on('course', data.courseId)
       }
 
-      await db.delete(courses).where(eq(courses.id, data.courseId))
+      // Get course to retrieve thumbnail URL
+      const course = await db.query.courses.findFirst({
+        where: eq(courses.id, data.courseId),
+      })
 
-      return { success: true }
+      if (!course) {
+        throw new NotFoundError('Course not found', {
+          code: 'COURSE_NOT_FOUND',
+          details: { courseId: data.courseId },
+        })
+      }
+
+      // Delete thumbnail from Supabase Storage if exists
+      if (course.thumbnailUrl) {
+        const oldPath = course.thumbnailUrl.split('/').pop()
+        if (oldPath) {
+          const { error: deleteError } = await supabase.storage
+            .from('course-thumbnails')
+            .remove([oldPath])
+          if (deleteError) {
+            console.log('⚠️ Failed to delete course thumbnail', {
+              error: deleteError,
+            })
+          }
+        }
+      }
+
+      // Delete course record
+      await db.delete(courses).where(eq(courses.id, data.courseId))
     })
   })

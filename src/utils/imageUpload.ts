@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
+import sharp from 'sharp'
 import { getDb } from '@/db'
 import { courses, profiles } from '@/db/schema'
 import {
@@ -10,6 +11,29 @@ import {
 import { getCurrentUser } from '@/utils/auth/auth'
 import { getSupabaseServerClient } from '@/utils/supabase'
 import { AppError, NotFoundError, ValidationError } from '@/utils/errors'
+
+// Convert image buffer to WebP format at specified quality
+async function convertToWebP(
+  buffer: Buffer,
+  fileType: string,
+  quality = 80,
+): Promise<{ buffer: Buffer; fileType: string }> {
+  // Skip conversion for GIF (preserve animations)
+  if (fileType === 'image/gif') {
+    return { buffer, fileType }
+  }
+
+  // Convert JPEG, PNG, WebP to WebP
+  try {
+    const webpBuffer = await sharp(buffer).webp({ quality }).toBuffer()
+
+    return { buffer: webpBuffer, fileType: 'image/webp' }
+  } catch (error) {
+    // If conversion fails, return original buffer
+    console.error('WebP conversion failed, using original:', error)
+    return { buffer, fileType }
+  }
+}
 
 export const uploadImageFn = createServerFn({ method: 'POST' })
   .inputValidator(uploadImageSchema)
@@ -50,19 +74,26 @@ export const uploadImageFn = createServerFn({ method: 'POST' })
       }
     }
 
-    // Generate unique filename
-    const fileExt = data.fileName.split('.').pop()
-    const fileName = `${user.id}-${Date.now()}.${fileExt}`
-
     // Convert base64 to buffer
     const base64Data = data.fileData.split(',')[1]
     const buffer = Buffer.from(base64Data, 'base64')
 
+    // Convert to WebP (reduces file size while maintaining quality)
+    const { buffer: convertedBuffer, fileType: convertedFileType } =
+      await convertToWebP(buffer, data.fileType, 80)
+
+    // Generate filename with correct extension
+    const fileExt =
+      convertedFileType === 'image/webp'
+        ? 'webp'
+        : data.fileName.split('.').pop()
+    const finalFileName = `${user.id}-${Date.now()}.${fileExt}`
+
     // Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from(data.bucket)
-      .upload(fileName, buffer, {
-        contentType: data.fileType,
+      .upload(finalFileName, convertedBuffer, {
+        contentType: convertedFileType,
         upsert: false,
       })
 
@@ -78,7 +109,7 @@ export const uploadImageFn = createServerFn({ method: 'POST' })
     // Get public URL
     const { data: urlData } = supabase.storage
       .from(data.bucket)
-      .getPublicUrl(fileName)
+      .getPublicUrl(finalFileName)
 
     return {
       imageUrl: urlData.publicUrl,

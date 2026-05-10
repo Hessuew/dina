@@ -3,14 +3,14 @@ import { createServerFn } from '@tanstack/react-start'
 import { render } from '@react-email/render'
 import { eq } from 'drizzle-orm'
 import { Resend } from 'resend'
-import { getCurrentUser } from './auth/auth'
+import { getCurrentUser } from '@/utils/auth/auth'
 import {
   AppError,
   AuthorizationError,
   ConflictError,
   NotFoundError,
   ValidationError,
-} from './errors'
+} from '@/utils/errors'
 import { getDb } from '@/db'
 import { env } from '@/env'
 import { invitations, profiles } from '@/db/schema'

@@ -41,10 +41,10 @@ export function LandingOfficialInfo() {
                   Email
                 </div>
                 <a
-                  href="mailto:info@dina.academy"
+                  href="mailto:info@christ-dina.org"
                   className="text-sm text-[#2C2218] transition-colors hover:text-[#9B7A41]"
                 >
-                  info@dina.academy
+                  info@christ-dina.org
                 </a>
               </div>
             </div>
@@ -61,7 +61,7 @@ export function LandingOfficialInfo() {
                   href="tel:+358401234567"
                   className="text-sm text-[#2C2218] transition-colors hover:text-[#9B7A41]"
                 >
-                  +358 40 123 4567
+                  +44 753 464 5144
                 </a>
               </div>
             </div>
@@ -75,11 +75,9 @@ export function LandingOfficialInfo() {
                   Postal Address
                 </div>
                 <address className="text-sm leading-relaxed text-[#2C2218] not-italic">
-                  Disciplers of Nations Academy
+                  Custom House, 258 Prince Regent Lane
                   <br />
-                  Example Street 123
-                  <br />
-                  00100 Helsinki, Finland
+                  London E16 3JJ, United Kingdom
                 </address>
               </div>
             </div>

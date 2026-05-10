@@ -2,6 +2,7 @@ import { useRouter } from '@tanstack/react-router'
 import { ArrowRight, CalendarIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { StatusChip } from '@/components/ui/status-chip'
 import {
   Select,
   SelectContent,
@@ -80,26 +81,6 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
     return 'Draft'
   }
 
-  const submissionStatusToken = (assignment: Assignment) => {
-    const label = getSubmissionStatus(assignment)
-    const colorMap: Record<string, string> = {
-      Graded: 'border-[#C5A059]/40 text-[#9B7A41]',
-      Submitted: 'border-blue-300/60 text-blue-600',
-      Draft: 'border-[#1A1A1A]/12 text-[#8E816D]',
-      'Not Submitted': 'border-[#1A1A1A]/10 text-[#9B8C7C]',
-    }
-    return { label, color: colorMap[label] ?? colorMap['Not Submitted'] }
-  }
-
-  const assignmentStatusToken = (status: string) => {
-    const colorMap: Record<string, string> = {
-      published: 'border-[#C5A059]/40 text-[#9B7A41]',
-      closed: 'border-red-300/60 text-red-600',
-      draft: 'border-[#1A1A1A]/12 text-[#8E816D]',
-    }
-    return colorMap[status] ?? colorMap.draft
-  }
-
   return (
     <div className="space-y-10">
       {/* Header */}
@@ -156,7 +137,15 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {courseAssignments.map((assignment) => {
                 const overdue = isOverdue(assignment.dueDate)
-                const subToken = submissionStatusToken(assignment)
+                const submissionStatus = getSubmissionStatus(assignment)
+                const submissionVariant =
+                  submissionStatus === 'Graded'
+                    ? 'graded'
+                    : submissionStatus === 'Submitted'
+                      ? 'submitted'
+                      : submissionStatus === 'Draft'
+                        ? 'draft'
+                        : 'not-submitted'
 
                 return (
                   <div
@@ -166,19 +155,14 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                     <div className="bg-[#151515]/88 px-5 pt-5 pb-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="mt-1 h-px w-6 shrink-0 bg-[#C5A059]/40" />
-                        <span
-                          className={cn(
-                            'shrink-0 border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
+                        <StatusChip
+                          variant={
                             role === 'student'
-                              ? subToken.color
-                              : assignmentStatusToken(assignment.status),
-                          )}
-                        >
-                          {role === 'student'
-                            ? subToken.label
-                            : assignment.status.charAt(0).toUpperCase() +
-                              assignment.status.slice(1)}
-                        </span>
+                              ? submissionVariant
+                              : assignment.status
+                          }
+                          size="sm"
+                        />
                       </div>
                       <h4 className="mt-2 font-serif text-base leading-snug text-[#F8F4EC]">
                         {assignment.title}

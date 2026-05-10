@@ -32,6 +32,7 @@ import {
   filterAssignmentsForStudent,
   validateSubmissionWindow,
 } from '@/domain/assignment.service'
+import { calculateEntityPermissions } from '@/utils/authz/permissions'
 
 export const getLesson = createServerFn({ method: 'POST' })
   .inputValidator(getLessonSchema)
@@ -80,17 +81,26 @@ export const getLesson = createServerFn({ method: 'POST' })
       })
     }
 
+    const courseWithTeachers = {
+      id: lesson.course.id,
+      teacher1Id: lesson.course.courseTeachers[0]?.teacherId ?? null,
+      teacher2Id: lesson.course.courseTeachers[1]?.teacherId ?? null,
+    }
+
+    const permissions = calculateEntityPermissions(
+      profile.role,
+      courseWithTeachers,
+      user.id,
+    )
+
     return {
       lesson: {
         ...lesson,
-        course: {
-          id: lesson.course.id,
-          teacher1Id: lesson.course.courseTeachers[0]?.teacherId ?? null,
-          teacher2Id: lesson.course.courseTeachers[1]?.teacherId ?? null,
-        },
+        course: courseWithTeachers,
       },
       role: profile.role,
       user,
+      permissions,
     }
   })
 
@@ -195,24 +205,31 @@ export const getAssignment = createServerFn({ method: 'POST' })
       })
     }
 
+    const courseWithTeachers = {
+      id: assignment.lesson.course.id,
+      title: assignment.lesson.course.title,
+      teacher1Id: assignment.lesson.course.courseTeachers[0]?.teacherId ?? null,
+      teacher2Id: assignment.lesson.course.courseTeachers[1]?.teacherId ?? null,
+    }
+
+    const permissions = calculateEntityPermissions(
+      profile.role,
+      courseWithTeachers,
+      user.id,
+    )
+
     return {
       assignment: {
         ...assignment,
         lesson: {
           ...assignment.lesson,
-          course: {
-            id: assignment.lesson.course.id,
-            title: assignment.lesson.course.title,
-            teacher1Id:
-              assignment.lesson.course.courseTeachers[0]?.teacherId ?? null,
-            teacher2Id:
-              assignment.lesson.course.courseTeachers[1]?.teacherId ?? null,
-          },
+          course: courseWithTeachers,
         },
       },
       submission,
       role: profile.role,
       user,
+      permissions,
     }
   })
 
@@ -390,8 +407,6 @@ export const deleteAssignment = createServerFn({ method: 'POST' })
       }
 
       await db.delete(assignments).where(eq(assignments.id, data.assignmentId))
-
-      return { success: true }
     })
   })
 

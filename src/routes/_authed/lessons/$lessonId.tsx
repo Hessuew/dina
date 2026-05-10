@@ -2,7 +2,6 @@ import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import {
   CalendarIcon,
-  ChevronLeft,
   ClockIcon,
   PencilIcon,
   PlusIcon,
@@ -11,13 +10,18 @@ import {
 import { useState } from 'react'
 import { toast } from 'sonner'
 import z from 'zod'
-import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
+import type { StatusChipVariant } from '@/components/ui/status-chip'
 import { Button } from '@/components/ui/button'
+import { StatusChip } from '@/components/ui/status-chip'
 import { getAssignmentSubmissionCount, getLesson } from '@/utils/assignments'
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { LessonDialog } from '@/components/dialog/LessonDialog'
-import { cn } from '@/lib/utils'
-import { isUserCourseTeacher } from '@/utils/teachers'
+import { useDialogState } from '@/hooks/useDialogState'
+import { PageLayout } from '@/components/layout/page-layout'
+import { PageHeader } from '@/components/layout/page-header'
+import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
+import { DarkCard } from '@/components/ui/dark-card'
+import { EmptyState } from '@/components/ui/empty-state'
 
 const getLessonData = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ lessonId: z.uuid() }))
@@ -59,45 +63,22 @@ function LessonDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
   const search = Route.useSearch()
-  const { lesson, role, user } = loaderData
-  const [lessonDialogMode, setLessonDialogMode] = useState<
-    'edit' | 'delete' | null
-  >(null)
-  const [assignmentDialogMode, setAssignmentDialogMode] = useState<
-    'create' | 'edit' | 'delete' | null
-  >(null)
-  const [assignmentToAct, setAssignmentToAct] = useState<Assignment | null>(
-    null,
-  )
+  const { lesson, role, permissions } = loaderData
+  const lessonDialog = useDialogState()
+  const assignmentDialog = useDialogState<Assignment>()
   const [submissionCount, setSubmissionCount] = useState(0)
-  const isCourseTeacher =
-    isUserCourseTeacher(lesson.course, user.id) || role === 'admin'
-  const canEdit = role === 'teacher' || role === 'admin'
   const isPublished = lesson.isPublished ?? false
-  const showContent = isPublished || canEdit
+  const showContent = isPublished || permissions.canEdit
 
   const handleDeleteAssignmentClick = async (assignment: Assignment) => {
-    setAssignmentToAct(assignment)
-
     try {
       const result = await getAssignmentSubmissionCount({
         data: { assignmentId: assignment.id },
       })
       setSubmissionCount(result.count)
-      setAssignmentDialogMode('delete')
+      assignmentDialog.openDialog('delete', assignment)
     } catch (error: any) {
       toast.error(error.message || 'Failed to check submissions')
-    }
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'published':
-        return 'Published'
-      case 'closed':
-        return 'Closed'
-      default:
-        return 'Draft'
     }
   }
 
@@ -116,296 +97,216 @@ function LessonDetailComponent() {
   }
 
   return (
-    <div
-      className="relative isolate min-h-screen overflow-hidden"
-      style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(255,255,255,0.92), rgba(255,255,255,0.92)), url(${facultyBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.10),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.22),transparent_22%)]" />
-
-      <div className="relative mx-auto max-w-7xl px-6 py-10 sm:px-8 sm:py-12">
-        {/* Page header */}
-        <div className="mb-10">
-          <Button
-            variant="ghost"
-            theme="light"
-            size="sm"
-            className="mb-6 gap-1"
-            onClick={goBack}
-          >
-            <ChevronLeft className="size-3.5" />
-            Back
-          </Button>
-
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <div className="h-px w-10 bg-[#C5A059]/50" />
-              <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
-                {lesson.title}
-              </h1>
-              <div className="mt-3 flex items-center gap-4 text-[0.68rem] text-[#9B8C7C]">
-                {lesson.scheduledTime && (
-                  <div className="flex items-center gap-1.5">
-                    <CalendarIcon className="size-3" />
-                    <span>
-                      {new Date(lesson.scheduledTime).toLocaleDateString(
-                        'en-US',
-                        {
-                          month: 'long',
-                          day: 'numeric',
-                          year: 'numeric',
-                        },
-                      )}{' '}
-                      at{' '}
-                      {new Date(lesson.scheduledTime).toLocaleTimeString(
-                        'en-US',
-                        {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true,
-                        },
-                      )}
-                    </span>
-                  </div>
-                )}
-                {lesson.duration && (
-                  <div className="flex items-center gap-1.5">
-                    <ClockIcon className="size-3" />
-                    <span>{lesson.duration} min</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {canEdit && isCourseTeacher && (
-              <div className="flex items-center gap-3 pt-4">
-                <div
-                  className={cn(
-                    'border px-3 py-1.5 text-[0.62rem] font-medium tracking-[0.22em] uppercase',
-                    isPublished
-                      ? 'border-[#C5A059]/40 bg-[#C5A059]/8 text-[#9B7A41]'
-                      : 'border-white/12 bg-white/4 text-[#8E816D]',
-                  )}
-                >
-                  {isPublished ? 'Published' : 'Draft'}
-                </div>
-                <Button
-                  variant="ghost"
-                  theme="light"
-                  size="icon"
-                  className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
-                  onClick={() => setLessonDialogMode('edit')}
-                >
-                  <PencilIcon className="size-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  theme="light"
-                  size="icon"
-                  className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-red-300 hover:text-red-600"
-                  onClick={() => setLessonDialogMode('delete')}
-                >
-                  <TrashIcon className="size-3.5" />
-                </Button>
+    <PageLayout>
+      <PageHeader
+        title={lesson.title}
+        onBack={goBack}
+        metadata={
+          <>
+            {lesson.scheduledTime && (
+              <div className="flex items-center gap-1.5">
+                <CalendarIcon className="size-3" />
+                <span>
+                  {new Date(lesson.scheduledTime).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}{' '}
+                  at{' '}
+                  {new Date(lesson.scheduledTime).toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                  })}
+                </span>
               </div>
             )}
-          </div>
+            {lesson.duration && (
+              <div className="flex items-center gap-1.5">
+                <ClockIcon className="size-3" />
+                <span>{lesson.duration} min</span>
+              </div>
+            )}
+          </>
+        }
+        actions={
+          <EntityHeaderActions
+            status={isPublished ? 'published' : 'draft'}
+            canEdit={permissions.canEdit}
+            isCourseTeacher={permissions.isCourseTeacher}
+            onEdit={() => lessonDialog.openDialog('edit')}
+            onDelete={() => lessonDialog.openDialog('delete')}
+          />
+        }
+      />
+
+      {/* Main grid */}
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        {/* Left — lesson content */}
+        <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
+          <DarkCard label="Lesson Content">
+            {!showContent ? (
+              <div className="mt-8 text-center">
+                <p className="text-sm text-[#8E816D] italic">
+                  This lesson is not yet available.
+                </p>
+              </div>
+            ) : lesson.content ? (
+              <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
+                {lesson.content}
+              </p>
+            ) : (
+              <p className="mt-4 text-sm text-[#8E816D] italic">
+                No content provided.
+              </p>
+            )}
+          </DarkCard>
         </div>
 
-        {/* Main grid */}
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-          {/* Left — lesson content */}
-          <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
-            <div className="bg-[#151515]/88 px-6 py-6">
+        {/* Right — assignments */}
+        <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
+          <div className="flex items-center justify-between border-b border-white/8 px-6 py-5">
+            <div>
               <div className="h-px w-8 bg-[#C5A059]/40" />
               <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                Lesson Content
+                Assignments
               </div>
-              {!showContent ? (
-                <div className="mt-8 text-center">
-                  <p className="text-sm text-[#8E816D] italic">
-                    This lesson is not yet available.
-                  </p>
-                </div>
-              ) : lesson.content ? (
-                <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
-                  {lesson.content}
-                </p>
-              ) : (
-                <p className="mt-4 text-sm text-[#8E816D] italic">
-                  No content provided.
-                </p>
-              )}
+              <div className="mt-1 font-serif text-xl text-[#F8F4EC]">
+                {lesson.assignments.length}{' '}
+                {lesson.assignments.length === 1 ? 'Assignment' : 'Assignments'}
+              </div>
             </div>
-          </div>
-
-          {/* Right — assignments */}
-          <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
-            <div className="flex items-center justify-between border-b border-white/8 px-6 py-5">
-              <div>
-                <div className="h-px w-8 bg-[#C5A059]/40" />
-                <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Assignments
-                </div>
-                <div className="mt-1 font-serif text-xl text-[#F8F4EC]">
-                  {lesson.assignments.length}{' '}
-                  {lesson.assignments.length === 1
-                    ? 'Assignment'
-                    : 'Assignments'}
-                </div>
-              </div>
-              {canEdit && isCourseTeacher && (
-                <Button
-                  theme="dark"
-                  onClick={() => setAssignmentDialogMode('create')}
-                >
-                  <PlusIcon className="size-3.5" />
-                  Add Assignment
-                </Button>
-              )}
-            </div>
-
-            {lesson.assignments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <p className="text-sm text-[#AFA28F]">No assignments yet</p>
-                {canEdit && isCourseTeacher && (
-                  <Button
-                    theme="dark"
-                    className="mt-4"
-                    onClick={() => setAssignmentDialogMode('create')}
-                  >
-                    <PlusIcon className="size-3.5" />
-                    Create First Assignment
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="divide-y divide-white/8">
-                {lesson.assignments
-                  .filter((a: Assignment) =>
-                    role === 'student' ? a.status === 'published' : true,
-                  )
-                  .map((assignment: Assignment) => {
-                    const statusColors = {
-                      published: 'border-[#C5A059]/40 text-[#9B7A41]',
-                      closed: 'border-red-400/50 text-red-400',
-                      draft: 'border-white/12 text-[#8E816D]',
-                    }
-                    return (
-                      <div
-                        key={assignment.id}
-                        className="group flex items-start gap-4 px-6 py-5 transition-all hover:bg-white/5"
-                      >
-                        <div
-                          className="min-w-0 flex-1 cursor-pointer"
-                          onClick={() =>
-                            router.navigate({
-                              to: '/assignments/$assignmentId',
-                              params: { assignmentId: assignment.id },
-                              search: {
-                                calendarMonth: undefined,
-                                fromCalendar: false,
-                                fromDashboard: false,
-                              },
-                            })
-                          }
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-[0.62rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
-                              {assignment.title}
-                            </span>
-                            <span
-                              className={cn(
-                                'border px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] uppercase',
-                                statusColors[assignment.status],
-                              )}
-                            >
-                              {getStatusLabel(assignment.status)}
-                            </span>
-                          </div>
-                          {assignment.description && (
-                            <p className="mt-1 line-clamp-2 text-sm text-[#CFC6B7]">
-                              {assignment.description}
-                            </p>
-                          )}
-                          <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
-                            <div className="flex items-center gap-1">
-                              <CalendarIcon className="size-3" />
-                              <span>
-                                Due{' '}
-                                {new Date(
-                                  assignment.dueDate,
-                                ).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <span>Max: {assignment.maxGrade ?? 100} pts</span>
-                          </div>
-                        </div>
-                        {canEdit && isCourseTeacher && (
-                          <div className="flex shrink-0 items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              theme="dark"
-                              size="icon"
-                              className="size-7 border border-white/10 text-[#8E816D] hover:border-[#C5A059]/40 hover:text-[#D4B373]"
-                              onClick={() => {
-                                setAssignmentToAct(assignment)
-                                setAssignmentDialogMode('edit')
-                              }}
-                            >
-                              <PencilIcon className="size-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              theme="dark"
-                              size="icon"
-                              className="size-7 border border-white/10 text-[#8E816D] hover:border-red-400/50 hover:text-red-400"
-                              onClick={() =>
-                                handleDeleteAssignmentClick(assignment)
-                              }
-                            >
-                              <TrashIcon className="size-3" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-              </div>
+            {permissions.canEdit && permissions.isCourseTeacher && (
+              <Button
+                theme="dark"
+                onClick={() => assignmentDialog.openDialog('create')}
+              >
+                <PlusIcon className="size-3.5" />
+                Add Assignment
+              </Button>
             )}
           </div>
+
+          {lesson.assignments.length === 0 ? (
+            <EmptyState
+              message="No assignments yet"
+              actionLabel="Create First Assignment"
+              onAction={() => assignmentDialog.openDialog('create')}
+              showAction={permissions.canEdit && permissions.isCourseTeacher}
+              variant="dark"
+            />
+          ) : (
+            <div className="divide-y divide-white/8">
+              {lesson.assignments
+                .filter((a: Assignment) =>
+                  role === 'student' ? a.status === 'published' : true,
+                )
+                .map((assignment: Assignment) => {
+                  return (
+                    <div
+                      key={assignment.id}
+                      className="group flex items-start gap-4 px-6 py-5 transition-all hover:bg-white/5"
+                    >
+                      <div
+                        className="min-w-0 flex-1 cursor-pointer"
+                        onClick={() =>
+                          router.navigate({
+                            to: '/assignments/$assignmentId',
+                            params: { assignmentId: assignment.id },
+                            search: {
+                              calendarMonth: undefined,
+                              fromCalendar: false,
+                              fromDashboard: false,
+                            },
+                          })
+                        }
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-[0.62rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
+                            {assignment.title}
+                          </span>
+                          <StatusChip
+                            variant={assignment.status as StatusChipVariant}
+                            size="sm"
+                          />
+                        </div>
+                        {assignment.description && (
+                          <p className="mt-1 line-clamp-2 text-sm text-[#CFC6B7]">
+                            {assignment.description}
+                          </p>
+                        )}
+                        <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
+                          <div className="flex items-center gap-1">
+                            <CalendarIcon className="size-3" />
+                            <span>
+                              Due{' '}
+                              {new Date(
+                                assignment.dueDate,
+                              ).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <span>Max: {assignment.maxGrade ?? 100} pts</span>
+                        </div>
+                      </div>
+                      {permissions.canEdit && permissions.isCourseTeacher && (
+                        <div className="flex shrink-0 items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            theme="dark"
+                            size="icon"
+                            className="size-7 border border-white/10 text-[#8E816D] hover:border-[#C5A059]/40 hover:text-[#D4B373]"
+                            onClick={() => {
+                              assignmentDialog.openDialog('edit', assignment)
+                            }}
+                          >
+                            <PencilIcon className="size-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            theme="dark"
+                            size="icon"
+                            className="size-7 border border-white/10 text-[#8E816D] hover:border-red-400/50 hover:text-red-400"
+                            onClick={() =>
+                              handleDeleteAssignmentClick(assignment)
+                            }
+                          >
+                            <TrashIcon className="size-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Assignment Dialog (create / edit / delete) */}
-      {assignmentDialogMode !== null && (
+      {assignmentDialog.isOpen && (
         <AssignmentDialog
           open={true}
           onOpenChange={(open) => {
             if (!open) {
-              setAssignmentDialogMode(null)
-              setAssignmentToAct(null)
+              assignmentDialog.closeDialog()
               setSubmissionCount(0)
             }
           }}
-          mode={assignmentDialogMode}
+          mode={assignmentDialog.dialogMode as 'create' | 'edit' | 'delete'}
           lessonId={lesson.id}
-          assignment={assignmentToAct ?? undefined}
+          assignment={assignmentDialog.dialogItem}
           submissionCount={submissionCount}
         />
       )}
 
       {/* Lesson Dialog (edit / delete) */}
-      {lessonDialogMode !== null && (
+      {lessonDialog.isOpen && (
         <LessonDialog
           open={true}
           onOpenChange={(open) => {
-            if (!open) setLessonDialogMode(null)
+            if (!open) lessonDialog.closeDialog()
           }}
-          mode={lessonDialogMode}
+          mode={lessonDialog.dialogMode as 'edit' | 'delete'}
           courseId={lesson.course.id}
           initialData={{
             lessonId: lesson.id,
@@ -420,6 +321,6 @@ function LessonDetailComponent() {
           }}
         />
       )}
-    </div>
+    </PageLayout>
   )
 }

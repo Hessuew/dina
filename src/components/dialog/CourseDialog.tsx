@@ -1,42 +1,31 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
-import { useRouter } from '@tanstack/react-router'
 import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { toUserError } from '@/utils/errors'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { FormDialog } from '@/components/ui/form-dialog'
+import { DialogBody } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SelectItem } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
+import {
+  FormFieldInput,
+  FormFieldNumberInput,
+  FormFieldSelect,
+  FormFieldTextarea,
+} from '@/components/ui/form-field'
 import { createCourseSchema, updateCourseSchema } from '@/schemas/course.schema'
-import { useMutation } from '@/hooks/useMutation'
+import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { useAllTeachers } from '@/hooks/useAllTeachers'
+import { useFileUpload } from '@/hooks/useFileUpload'
 import { createCourse, updateCourse } from '@/utils/courses'
-import { fileToBase64, uploadCourseThumbnailFn } from '@/utils/imageUpload'
-import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
+import { uploadCourseThumbnailFn } from '@/utils/imageUpload'
 
 type CourseFormData = {
   title: string
   description: string
   thumbnailUrl: string | null
-  thumbnailFile: File | null
   teacher1Id: string | null
   teacher2Id: string | null
   orderIndex: number
@@ -64,7 +53,6 @@ const emptyFormData: CourseFormData = {
   title: '',
   description: '',
   thumbnailUrl: null,
-  thumbnailFile: null,
   teacher1Id: null,
   teacher2Id: null,
   orderIndex: 0,
@@ -78,9 +66,15 @@ export function CourseDialog({
   isAdmin,
   initialData,
 }: CourseDialogProps) {
-  const router = useRouter()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isUploading, setIsUploading] = useState(false)
+  const {
+    fileInputRef,
+    isUploading,
+    fileData,
+    fileObject,
+    handleFileChange,
+    clearFile,
+    setUploading,
+  } = useFileUpload()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const [formData, setFormData] = useState<CourseFormData>({ ...emptyFormData })
@@ -94,7 +88,6 @@ export function CourseDialog({
               title: initialData.title,
               description: initialData.description,
               thumbnailUrl: initialData.thumbnailUrl,
-              thumbnailFile: null,
               teacher1Id: initialData.teacher1Id,
               teacher2Id: initialData.teacher2Id,
               orderIndex: initialData.orderIndex,
@@ -118,7 +111,6 @@ export function CourseDialog({
             title: initialData.title,
             description: initialData.description,
             thumbnailUrl: initialData.thumbnailUrl,
-            thumbnailFile: null,
             teacher1Id: initialData.teacher1Id,
             teacher2Id: initialData.teacher2Id,
             orderIndex: initialData.orderIndex,
@@ -126,19 +118,19 @@ export function CourseDialog({
           }
         : { ...emptyFormData },
     )
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    clearFile()
   }
 
   const handleThumbnailUpload = async (courseId: string) => {
-    if (!formData.thumbnailFile) return
-    setIsUploading(true)
+    if (!fileObject) return
+    setUploading(true)
     try {
       await uploadCourseThumbnailFn({
         data: {
-          fileData: await fileToBase64(formData.thumbnailFile),
-          fileName: formData.thumbnailFile.name,
-          fileType: formData.thumbnailFile.type,
-          fileSize: formData.thumbnailFile.size,
+          fileData: fileData!,
+          fileName: fileObject.name,
+          fileType: fileObject.type,
+          fileSize: fileObject.size,
           courseId,
         },
       })
@@ -146,37 +138,23 @@ export function CourseDialog({
       console.error('Thumbnail upload error:', error)
       toast.error(toUserError(error).message)
     }
-    setIsUploading(false)
+    setUploading(false)
   }
 
-  const createMutation = useMutation({
-    fn: createCourse,
-    onSuccess: async (ctx) => {
-      if ('course' in ctx.data) {
-        await handleThumbnailUpload(ctx.data.course.id)
-        toast.success('Course created successfully!')
+  const { createMutation, updateMutation, isAnyPending } = useEntityMutation({
+    createFn: createCourse,
+    updateFn: updateCourse,
+    onSuccessMessage: (_mode) =>
+      `Course ${_mode === 'create' ? 'created' : 'updated'} successfully!`,
+    onSuccess: async ({ mode: _mode, data: _data }) => {
+      const data = _data as { course: { id: string } }
+      if ('course' in data) {
+        await handleThumbnailUpload(data.course.id)
         onOpenChange(false)
         resetForm()
-        await router.invalidate()
       }
     },
   })
-
-  const updateMutation = useMutation({
-    fn: updateCourse,
-    onSuccess: async (ctx) => {
-      if ('course' in ctx.data) {
-        await handleThumbnailUpload(ctx.data.course.id)
-        toast.success('Course updated successfully!')
-        onOpenChange(false)
-        resetForm()
-        await router.invalidate()
-      }
-    },
-  })
-
-  const mutation = mode === 'create' ? createMutation : updateMutation
-  const isPending = mutation.status === 'pending' || isUploading
 
   const handleSubmit = () => {
     const clientSchema =
@@ -241,332 +219,200 @@ export function CourseDialog({
     }
   }
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('File size must be less than 2MB')
-      return
-    }
-    const fileData = await fileToBase64(file)
-    setFormData({ ...formData, thumbnailUrl: fileData, thumbnailFile: file })
-  }
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
-        style={{
-          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-        showCloseButton={false}
-      >
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-
-        <div className="relative flex min-h-0 flex-1 flex-col">
-          <DialogHeader>
-            <div className="mb-1">
-              <div className="h-px w-8 bg-[#C5A059]/40" />
-              <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                {mode === 'create' ? 'New course' : 'Edit course'}
-              </div>
-            </div>
-            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-              {mode === 'create' ? 'Create Course' : 'Edit Course'}
-            </DialogTitle>
-            <DialogDescription className="text-[#AFA28F]">
-              {mode === 'create'
-                ? 'Add a new course and assign teachers'
-                : 'Update the course information'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogBody>
-            <FieldGroup className="mt-6 gap-8">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Field className="sm:col-span-2">
-                  <FieldLabel
-                    htmlFor="course-title"
-                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                  >
-                    Title <span className="text-[#C5A059]">*</span>
-                  </FieldLabel>
-                  <Input
-                    id="course-title"
-                    placeholder="Introduction to Programming"
-                    value={formData.title}
-                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
-                    onChange={(e) => {
-                      setFormData({ ...formData, title: e.target.value })
-                      if (fieldErrors.title)
-                        setFieldErrors({ ...fieldErrors, title: '' })
-                    }}
-                  />
-                  {fieldErrors.title && (
-                    <p className="text-[0.68rem] text-red-400">
-                      {fieldErrors.title}
-                    </p>
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      mode={mode}
+      title={mode === 'create' ? 'Create Course' : 'Edit Course'}
+      subtitle={
+        mode === 'create'
+          ? 'Add a new course and assign teachers'
+          : 'Update the course information'
+      }
+      maxWidth="3xl"
+      onSubmit={handleSubmit}
+      isSubmitting={isAnyPending || isUploading}
+      submitLabel={mode === 'create' ? 'Create Course' : 'Save Changes'}
+      loadingLabel={isUploading ? 'Uploading...' : undefined}
+    >
+      <DialogBody>
+        <FieldGroup className="mt-6 gap-8">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <FormFieldInput
+              id="course-title"
+              label="Title"
+              required
+              className="sm:col-span-2"
+              value={formData.title}
+              onChange={(value) => {
+                setFormData({ ...formData, title: value })
+                if (fieldErrors.title)
+                  setFieldErrors({ ...fieldErrors, title: '' })
+              }}
+              error={fieldErrors.title}
+              placeholder="Introduction to Programming"
+            />
+            <div className="sm:col-span-1" />
+            <FormFieldNumberInput
+              id="course-orderIndex"
+              label="Order Index"
+              min={0}
+              value={formData.orderIndex}
+              onChange={(value) =>
+                setFormData({
+                  ...formData,
+                  orderIndex: value,
+                })
+              }
+              description="Lower numbers appear first in course list"
+              placeholder="0"
+            />
+            {isAdmin && (
+              <>
+                <FormFieldSelect
+                  id="course-teacher1"
+                  label="Teacher 1"
+                  value={formData.teacher1Id ?? ''}
+                  onChange={(value) => {
+                    setFormData({ ...formData, teacher1Id: value })
+                    if (fieldErrors.teacher1Id)
+                      setFieldErrors({ ...fieldErrors, teacher1Id: '' })
+                  }}
+                  error={fieldErrors.teacher1Id}
+                  placeholder="Select first teacher"
+                >
+                  {teachers.length === 0 ? (
+                    <SelectItem value="none" disabled>
+                      No teachers available
+                    </SelectItem>
+                  ) : (
+                    teachers.map((teacher) => (
+                      <SelectItem key={teacher.id} value={teacher.id}>
+                        {teacher.fullName}
+                      </SelectItem>
+                    ))
                   )}
-                </Field>
-                <div className="sm:col-span-1" />
-                <Field>
-                  <FieldLabel
-                    htmlFor="course-orderIndex"
-                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                  >
-                    Order Index
-                  </FieldLabel>
-                  <Input
-                    id="course-orderIndex"
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={formData.orderIndex === 0 ? '' : formData.orderIndex}
-                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        orderIndex:
-                          e.target.value === ''
-                            ? 0
-                            : parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                  <p className="text-xs text-[#8E816D]">
-                    Lower numbers appear first in course list
-                  </p>
-                </Field>
-                {isAdmin && (
-                  <>
-                    <Field>
-                      <FieldLabel
-                        htmlFor="course-teacher1"
-                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                      >
-                        Teacher 1
-                      </FieldLabel>
-                      <Select
-                        value={formData.teacher1Id ?? undefined}
-                        onValueChange={(value) => {
-                          setFormData({ ...formData, teacher1Id: value })
-                          if (fieldErrors.teacher1Id)
-                            setFieldErrors({ ...fieldErrors, teacher1Id: '' })
-                        }}
-                      >
-                        <SelectTrigger
-                          className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
-                          id="course-teacher1"
-                        >
-                          <SelectValue placeholder="Select first teacher">
-                            {formData.teacher1Id
-                              ? teachers.find(
-                                  (t) => t.id === formData.teacher1Id,
-                                )?.fullName || 'Select first teacher'
-                              : 'Select first teacher'}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
-                          {teachers.length === 0 ? (
-                            <SelectItem value="none" disabled>
-                              No teachers available
-                            </SelectItem>
-                          ) : (
-                            teachers.map((teacher) => (
-                              <SelectItem key={teacher.id} value={teacher.id}>
-                                {teacher.fullName}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                      {fieldErrors.teacher1Id && (
-                        <p className="text-[0.68rem] text-red-400">
-                          {fieldErrors.teacher1Id}
-                        </p>
-                      )}
-                    </Field>
-                    <Field>
-                      <FieldLabel
-                        htmlFor="course-teacher2"
-                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                      >
-                        Teacher 2
-                      </FieldLabel>
-                      <Select
-                        value={formData.teacher2Id ?? undefined}
-                        onValueChange={(value) => {
-                          setFormData({ ...formData, teacher2Id: value })
-                          if (fieldErrors.teacher2Id)
-                            setFieldErrors({ ...fieldErrors, teacher2Id: '' })
-                        }}
-                      >
-                        <SelectTrigger
-                          className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
-                          id="course-teacher2"
-                        >
-                          <SelectValue placeholder="Select second teacher">
-                            {formData.teacher2Id
-                              ? teachers.find(
-                                  (t) => t.id === formData.teacher2Id,
-                                )?.fullName || 'Select second teacher'
-                              : 'Select second teacher'}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
-                          {teachers.length === 0 ? (
-                            <SelectItem value="none" disabled>
-                              No teachers available
-                            </SelectItem>
-                          ) : (
-                            teachers
-                              .filter((t) => t.id !== formData.teacher1Id)
-                              .map((teacher) => (
-                                <SelectItem key={teacher.id} value={teacher.id}>
-                                  {teacher.fullName}
-                                </SelectItem>
-                              ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                      {fieldErrors.teacher2Id && (
-                        <p className="text-[0.68rem] text-red-400">
-                          {fieldErrors.teacher2Id}
-                        </p>
-                      )}
-                    </Field>
-                  </>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field>
-                  <FieldLabel
-                    htmlFor="course-description"
-                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                  >
-                    Description
-                  </FieldLabel>
-                  <Textarea
-                    id="course-description"
-                    placeholder="Describe what students will learn in this course"
-                    rows={10}
-                    value={formData.description}
-                    className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.description ? 'border-red-500/60' : ''}`}
-                    onChange={(e) => {
-                      setFormData({ ...formData, description: e.target.value })
-                      if (fieldErrors.description)
-                        setFieldErrors({ ...fieldErrors, description: '' })
-                    }}
-                  />
-                  {fieldErrors.description && (
-                    <p className="text-[0.68rem] text-red-400">
-                      {fieldErrors.description}
-                    </p>
+                </FormFieldSelect>
+                <FormFieldSelect
+                  id="course-teacher2"
+                  label="Teacher 2"
+                  value={formData.teacher2Id ?? ''}
+                  onChange={(value) => {
+                    setFormData({ ...formData, teacher2Id: value })
+                    if (fieldErrors.teacher2Id)
+                      setFieldErrors({ ...fieldErrors, teacher2Id: '' })
+                  }}
+                  error={fieldErrors.teacher2Id}
+                  placeholder="Select second teacher"
+                >
+                  {teachers.length === 0 ? (
+                    <SelectItem value="none" disabled>
+                      No teachers available
+                    </SelectItem>
+                  ) : (
+                    teachers
+                      .filter((t) => t.id !== formData.teacher1Id)
+                      .map((teacher) => (
+                        <SelectItem key={teacher.id} value={teacher.id}>
+                          {teacher.fullName}
+                        </SelectItem>
+                      ))
                   )}
-                </Field>
-                <Field>
-                  <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-                    Course Thumbnail
-                  </FieldLabel>
-                  <div className="space-y-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    {formData.thumbnailUrl ? (
-                      <div className="relative aspect-video w-full max-w-sm overflow-hidden border border-white/10">
-                        <img
-                          src={formData.thumbnailUrl}
-                          alt="Course thumbnail"
-                          className="size-full object-cover"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="absolute top-2 right-2 rounded-none border-white/20 bg-black/40 text-white hover:bg-black/60"
-                          onClick={() => {
-                            setFormData({
-                              ...formData,
-                              thumbnailUrl: null,
-                              thumbnailFile: null,
-                            })
-                            if (fileInputRef.current)
-                              fileInputRef.current.value = ''
-                          }}
-                        >
-                          <XIcon className="size-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        theme="dark"
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full max-w-sm rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
-                      >
-                        <UploadIcon className="mr-2 size-4" />
-                        Upload Thumbnail
-                      </Button>
-                    )}
-                    <p className="text-xs text-[#8E816D]">
-                      JPG, PNG, WebP or GIF. Max 2MB.
-                    </p>
-                  </div>
-                </Field>
-              </div>
+                </FormFieldSelect>
+              </>
+            )}
+          </div>
 
-              {mode === 'edit' && (
-                <Field>
-                  <div className="flex items-center gap-3">
-                    <Switch
-                      id="course-published"
-                      checked={formData.isPublished}
-                      onCheckedChange={(checked) =>
-                        setFormData({ ...formData, isPublished: checked })
-                      }
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormFieldTextarea
+              id="course-description"
+              label="Description"
+              value={formData.description}
+              onChange={(value) => {
+                setFormData({ ...formData, description: value })
+                if (fieldErrors.description)
+                  setFieldErrors({ ...fieldErrors, description: '' })
+              }}
+              error={fieldErrors.description}
+              placeholder="Describe what students will learn in this course"
+              rows={10}
+            />
+            <Field>
+              <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+                Course Thumbnail
+              </FieldLabel>
+              <div className="space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                {fileData || formData.thumbnailUrl ? (
+                  <div className="relative aspect-video w-full max-w-sm overflow-hidden border border-white/10">
+                    <img
+                      src={fileData || formData.thumbnailUrl!}
+                      alt="Course thumbnail"
+                      className="size-full object-cover"
                     />
-                    <FieldLabel
-                      htmlFor="course-published"
-                      className="text-sm text-[#AFA28F]"
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="absolute top-2 right-2 rounded-none border-white/20 bg-black/40 text-white hover:bg-black/60"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          thumbnailUrl: null,
+                        })
+                        clearFile()
+                      }}
                     >
-                      Publish course
-                    </FieldLabel>
+                      <XIcon className="size-4" />
+                    </Button>
                   </div>
-                </Field>
-              )}
-            </FieldGroup>
-          </DialogBody>
+                ) : (
+                  <Button
+                    theme="dark"
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full max-w-sm rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
+                  >
+                    <UploadIcon className="mr-2 size-4" />
+                    Upload Thumbnail
+                  </Button>
+                )}
+                <p className="text-xs text-[#8E816D]">
+                  JPG, PNG, WebP or GIF. Max 2MB.
+                </p>
+              </div>
+            </Field>
+          </div>
 
-          <DialogFooter className="mt-6 rounded-none border-white/8 bg-white/3">
-            <Button
-              variant="outline"
-              theme="dark"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button theme="dark" onClick={handleSubmit} disabled={isPending}>
-              {isUploading
-                ? 'Uploading...'
-                : isPending
-                  ? mode === 'create'
-                    ? 'Creating...'
-                    : 'Saving...'
-                  : mode === 'create'
-                    ? 'Create Course'
-                    : 'Save Changes'}
-            </Button>
-          </DialogFooter>
-        </div>
-      </DialogContent>
-    </Dialog>
+          {mode === 'edit' && (
+            <Field>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="course-published"
+                  checked={formData.isPublished}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, isPublished: checked })
+                  }
+                />
+                <FieldLabel
+                  htmlFor="course-published"
+                  className="text-sm text-[#AFA28F]"
+                >
+                  Publish course
+                </FieldLabel>
+              </div>
+            </Field>
+          )}
+        </FieldGroup>
+      </DialogBody>
+    </FormDialog>
   )
 }

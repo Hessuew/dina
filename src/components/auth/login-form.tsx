@@ -209,15 +209,13 @@ export function LoginForm({ verified = false }: LoginFormProps) {
                       <button
                         type="submit"
                         disabled={
-                          loginMutation.status === 'pending' ||
+                          loginMutation.isPending ||
                           (loginMutation.data !== undefined &&
                             !loginMutation.data.error)
                         }
                         className="group inline-flex h-11 cursor-pointer items-center justify-center gap-3 border border-[#C5A059]/55 bg-linear-to-b from-[#2A2A2A] to-[#111111] px-8 font-serif text-base tracking-[0.12em] text-[#E9D9B4] shadow-[0_28px_60px_-28px_rgba(0,0,0,0.7)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[#C5A059]/55 disabled:hover:text-[#E9D9B4]"
                       >
-                        {loginMutation.status === 'pending'
-                          ? 'Signing in...'
-                          : 'Sign In'}
+                        {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
                       </button>
                     </Field>
                   </FieldGroup>

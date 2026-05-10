@@ -1,4 +1,3 @@
-import { useRouter } from '@tanstack/react-router'
 import { Trash2Icon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -24,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { useMutation } from '@/hooks/useMutation'
+import { useEntityMutation } from '@/hooks/useEntityMutation'
 import {
   createZoomLink,
   deleteZoomLink,
@@ -102,7 +101,6 @@ export function ZoomLinkDialog({
   dialogState,
   onOpenChange,
 }: ZoomLinkDialogProps) {
-  const router = useRouter()
   const [form, setForm] = useState<ZoomFormState>(emptyForm)
   const link = dialogState?.mode === 'edit' ? dialogState.link : null
   const open = dialogState !== null
@@ -112,35 +110,18 @@ export function ZoomLinkDialog({
     setForm(link ? linkToForm(link) : emptyForm)
   }, [link, open])
 
-  const createMutation = useMutation({
-    fn: createZoomLink,
-    onSuccess: async () => {
-      toast.success('Zoom link created')
-      onOpenChange(false)
-      await router.invalidate()
-    },
-  })
-  const updateMutation = useMutation({
-    fn: updateZoomLink,
-    onSuccess: async () => {
-      toast.success('Zoom link updated')
-      onOpenChange(false)
-      await router.invalidate()
-    },
-  })
-  const deleteMutation = useMutation({
-    fn: deleteZoomLink,
-    onSuccess: async () => {
-      toast.success('Zoom link deleted')
-      onOpenChange(false)
-      await router.invalidate()
-    },
-  })
+  const { createMutation, updateMutation, deleteMutation, isAnyPending } =
+    useEntityMutation({
+      createFn: createZoomLink,
+      updateFn: updateZoomLink,
+      deleteFn: deleteZoomLink,
+      onSuccessMessage: (mode) => `Zoom link ${mode}d`,
+      onSuccess: () => {
+        onOpenChange(false)
+      },
+    })
 
-  const isPending =
-    createMutation.status === 'pending' ||
-    updateMutation.status === 'pending' ||
-    deleteMutation.status === 'pending'
+  const isPending = isAnyPending
 
   const handleSubmit = () => {
     if (!form.title || !form.zoomUrl || !form.meetingId || !form.passcode) {
@@ -284,6 +265,9 @@ export function ZoomLinkDialog({
                   label="Order"
                   setForm={setForm}
                   valueKey="orderIndex"
+                  onChange={(value) =>
+                    setForm({ ...form, orderIndex: String(value) })
+                  }
                 />
                 <Field className="sm:col-span-2">
                   <FieldLabel
@@ -350,6 +334,7 @@ function ZoomInput({
   setForm,
   valueKey,
   wide = false,
+  onChange,
 }: {
   form: ZoomFormState
   id: string
@@ -362,6 +347,7 @@ function ZoomInput({
     'meetingId' | 'orderIndex' | 'passcode' | 'title' | 'zoomUrl'
   >
   wide?: boolean
+  onChange?: (value: string | number) => void
 }) {
   return (
     <Field className={wide ? 'sm:col-span-2' : undefined}>
@@ -375,9 +361,19 @@ function ZoomInput({
         value={form[valueKey]}
         className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
         placeholder={placeholder}
-        onChange={(event) =>
-          setForm({ ...form, [valueKey]: event.target.value })
-        }
+        onChange={(event) => {
+          const value =
+            inputType === 'number'
+              ? event.target.value === ''
+                ? 0
+                : Number(event.target.value)
+              : event.target.value
+          if (onChange) {
+            onChange(value)
+          } else {
+            setForm({ ...form, [valueKey]: event.target.value })
+          }
+        }}
       />
     </Field>
   )

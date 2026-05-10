@@ -1,22 +1,21 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import {
   ExternalLinkIcon,
-  EyeIcon,
   FileTextIcon,
-  PencilIcon,
   PlusIcon,
-  Trash2Icon,
 } from 'lucide-react'
-import { useState } from 'react'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { MediaLibraryRow } from '@/utils/library'
+import { useDialogState } from '@/hooks/useDialogState'
 import { MediaDialog } from '@/components/dialog/MediaDialog'
 import { Button } from '@/components/ui/button'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { getLibraryMedia } from '@/utils/library'
-import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
+import { PageLayout } from '@/components/layout/page-layout'
+import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
+import { createCrudActions } from '@/components/table/functions/createCrudActions'
 
 export const Route = createFileRoute('/_authed/library/')({
   loader: async () => {
@@ -24,12 +23,6 @@ export const Route = createFileRoute('/_authed/library/')({
   },
   component: LibraryComponent,
 })
-
-type DialogState =
-  | { mode: 'create' }
-  | { mode: 'edit'; media: MediaLibraryRow }
-  | { mode: 'delete'; media: MediaLibraryRow }
-  | null
 
 const columnHelper = createColumnHelper<MediaLibraryRow>()
 
@@ -80,12 +73,8 @@ function LibraryComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
   const { media, viewer } = loaderData
-  const [dialogState, setDialogState] = useState<DialogState>(null)
-
-  const isOpen = dialogState !== null
-  const dialogMode = dialogState?.mode ?? 'create'
-  const dialogMedia =
-    dialogState && dialogState.mode !== 'create' ? dialogState.media : undefined
+  const { isOpen, dialogMode, dialogItem: dialogMedia, openDialog, closeDialog } =
+    useDialogState<MediaLibraryRow>()
 
   const canCreate = viewer.role === 'teacher' || viewer.role === 'admin'
 
@@ -170,15 +159,16 @@ function LibraryComponent() {
       },
     }),
     createButtonColumn([
-      {
-        icon: EyeIcon,
-        label: 'View',
-        onClick: (row) =>
+      ...createCrudActions<MediaLibraryRow>({
+        onView: (row) =>
           router.navigate({
             to: '/library/$mediaId',
             params: { mediaId: row.id },
           }),
-      },
+        onEdit: (row) => openDialog('edit', row),
+        onDelete: (row) => openDialog('delete', row),
+        canManage: (row) => canManageRow(row),
+      }),
       {
         icon: ExternalLinkIcon,
         label: 'Go',
@@ -189,96 +179,68 @@ function LibraryComponent() {
             'noopener,noreferrer',
           ),
       },
-      {
-        icon: PencilIcon,
-        label: 'Edit',
-        show: (row) => canManageRow(row),
-        onClick: (row) => setDialogState({ mode: 'edit', media: row }),
-      },
-      {
-        icon: Trash2Icon,
-        label: 'Delete',
-        show: (row) => canManageRow(row),
-        onClick: (row) => setDialogState({ mode: 'delete', media: row }),
-      },
     ]),
   ]
 
   return (
-    <div
-      className="relative isolate min-h-screen overflow-hidden"
-      style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(255,255,255,0.92), rgba(255,255,255,0.92)), url(${facultyBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.10),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.22),transparent_22%)]" />
-      <div className="relative mx-auto max-w-7xl px-6 py-10 sm:px-8 sm:py-12">
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <div className="h-px w-8 bg-[#9B7A41]/50" />
-            <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-              Resources
-            </div>
-            <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
-              Library
-            </h1>
-            <p className="mt-2 text-sm text-[#5E5549]">
-              Browse videos and documents shared by teachers
-            </p>
+    <PageLayout>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <div className="h-px w-8 bg-[#9B7A41]/50" />
+          <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+            Resources
           </div>
-
-          {canCreate && (
-            <Button
-              theme="light"
-              onClick={() => setDialogState({ mode: 'create' })}
-            >
-              <PlusIcon className="size-4" />
-              Add Media
-            </Button>
-          )}
+          <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
+            Library
+          </h1>
+          <p className="mt-2 text-sm text-[#5E5549]">
+            Browse videos and documents shared by teachers
+          </p>
         </div>
 
-        {media.length === 0 ? (
-          <div className="flex flex-col items-center justify-center border border-dashed border-[#1A1A1A]/20 bg-[#EDE8DE]/40 p-16 text-center">
-            <FileTextIcon className="mb-3 size-8 text-[#9B7A41]/50" />
-            <h3 className="font-serif text-lg text-[#1C1815]">No media yet</h3>
-            <p className="mt-2 text-sm text-[#5E5549]">
-              {canCreate
-                ? 'Add the first library item to get started'
-                : 'Check back later for new materials'}
-            </p>
-            {canCreate && (
-              <Button
-                theme="light"
-                className="mt-4"
-                onClick={() => setDialogState({ mode: 'create' })}
-              >
-                <PlusIcon className="size-4" />
-                Add Media
-              </Button>
-            )}
-          </div>
-        ) : (
-          <div className={cn(viewer.role === 'student' && 'mt-2')}>
-            <DataTable
-              columns={columns}
-              data={media}
-              pageSize={15}
-              searchPlaceholder="Search library…"
-            />
-          </div>
+        {canCreate && (
+          <Button
+            theme="light"
+            onClick={() => openDialog('create')}
+          >
+            <PlusIcon className="size-4" />
+            Add Media
+          </Button>
         )}
       </div>
+
+      {media.length === 0 ? (
+        <EmptyState
+          icon={FileTextIcon}
+          heading="No media yet"
+          description={
+            canCreate
+              ? 'Add the first library item to get started'
+              : 'Check back later for new materials'
+          }
+          actionLabel="Add Media"
+          onAction={() => openDialog('create')}
+          showAction={canCreate}
+          variant="light"
+        />
+      ) : (
+        <div className={cn(viewer.role === 'student' && 'mt-2')}>
+          <DataTable
+            columns={columns}
+            data={media}
+            pageSize={15}
+            searchPlaceholder="Search library…"
+          />
+        </div>
+      )}
 
       <MediaDialog
         key={`${dialogMode}-${dialogMedia?.id}`}
         open={isOpen}
-        onOpenChange={(open) => !open && setDialogState(null)}
-        mode={dialogMode}
+        onOpenChange={(open) => !open && closeDialog()}
+        mode={dialogMode as 'create' | 'edit' | 'delete'}
         media={dialogMedia}
       />
-    </div>
+    </PageLayout>
   )
 }

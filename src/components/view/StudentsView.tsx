@@ -1,10 +1,10 @@
 import { format } from 'date-fns'
-import { EyeIcon } from 'lucide-react'
 import { useRouter } from '@tanstack/react-router'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { StudentWithStats } from '@/types/student'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
+import { createCrudActions } from '@/components/table/functions/createCrudActions'
 
 type StudentsViewProps = {
   students: Array<StudentWithStats>
@@ -101,18 +101,16 @@ export function StudentsView({ students }: StudentsViewProps) {
       header: 'Avg Grade',
       id: 'avgGrade',
     }),
-    createButtonColumn([
-      {
-        icon: EyeIcon,
-        label: 'View',
-        onClick: (student) =>
+    createButtonColumn(
+      createCrudActions<StudentWithStats>({
+        onView: (student) =>
           router.navigate({
             to: '/students/$studentId',
             params: { studentId: student.id },
             search: { fromDashboard: false },
           }),
-      },
-    ]),
+      }),
+    ),
   ]
 
   return (

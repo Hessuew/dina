@@ -13,8 +13,8 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import type { CommentWithAuthor, PostWithDetails } from '@/domain'
-import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Textarea } from '@/components/ui/textarea'
 import {
   DropdownMenu,
@@ -203,119 +203,109 @@ function PostsComponent() {
   }
 
   return (
-    <div
-      className="relative isolate min-h-screen"
-      style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(255,255,255,0.92), rgba(255,255,255,0.92)), url(${facultyBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.10),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.22),transparent_22%)]" />
-      <div className="relative mx-auto max-w-6xl px-6 py-10 sm:px-8 sm:py-12">
-        <div className="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
-          {/* Channels */}
-          <div className="hidden self-start lg:sticky lg:top-10 lg:block">
-            <div className="border border-[#1A1A1A]/10 bg-white/60 p-5 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.08)]">
-              <div className="h-px w-8 bg-[#9B7A41]/50" />
-              <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-                Channels
-              </div>
-              <div className="mt-4 flex flex-col gap-1.5">
-                {channels.map((ch) => (
-                  <Button
-                    key={ch.id}
-                    type="button"
-                    variant="ghost"
-                    theme="lightGhost"
-                    onClick={() => handleSelectChannel(ch.id)}
-                    className={cn(
-                      'flex h-9 w-full cursor-pointer items-center justify-between border px-3 py-2 text-left shadow-none transition-all hover:translate-y-0',
-                      ch.id === selectedChannel
-                        ? 'border-[#C5A059]/42 bg-white/70 hover:border-[#C5A059]/60'
-                        : 'border-[#1A1A1A]/10 bg-white/40 hover:border-[#C5A059]/30',
-                    )}
-                  >
-                    <span className="text-sm text-[#1C1815]">{ch.name}</span>
-                  </Button>
-                ))}
-              </div>
+    <PageLayout>
+      <div className="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+        {/* Channels */}
+        <div className="hidden self-start lg:sticky lg:top-10 lg:block">
+          <div className="border border-[#1A1A1A]/10 bg-white/60 p-5 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.08)]">
+            <div className="h-px w-8 bg-[#9B7A41]/50" />
+            <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+              Channels
             </div>
-          </div>
-
-          {/* Main */}
-          <div className="min-w-0">
-            {/* Header */}
-            <div className="mb-8">
-              <div className="h-px w-8 bg-[#9B7A41]/50" />
-              <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-                Community
-              </div>
-              <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
-                Posts
-              </h1>
-              <p className="mt-2 text-sm text-[#5E5549]">
-                {selectedChannel === 'general'
-                  ? 'General channel'
-                  : `Channel: ${channels.find((c) => c.id === selectedChannel)?.name ?? ''}`}
-              </p>
-            </div>
-
-            <PostComposer
-              currentUser={currentUser}
-              courseId={selectedCourseId}
-              onCreated={handlePostCreated}
-            />
-
-            <div className="mt-8 flex flex-col gap-6">
-              {allPosts.length === 0 ? (
-                <div className="border border-dashed border-[#1A1A1A]/20 bg-[#EDE8DE]/40 p-16 text-center">
-                  <MessageCircle className="mx-auto mb-3 size-8 text-[#9B7A41]/50" />
-                  <h3 className="font-serif text-lg text-[#1C1815]">
-                    No posts yet
-                  </h3>
-                  <p className="mt-2 text-sm text-[#5E5549]">
-                    Be the first to share something with the community
-                  </p>
-                </div>
-              ) : (
-                allPosts.map((post) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    currentUser={currentUser}
-                    canModerate={canModerate}
-                    onUpdated={handlePostUpdated}
-                    onDeleted={handlePostDeleted}
-                  />
-                ))
-              )}
-            </div>
-
-            {/* Load more */}
-            {nextCursor && (
-              <div className="mt-8 text-center">
+            <div className="mt-4 flex flex-col gap-1.5">
+              {channels.map((ch) => (
                 <Button
-                  theme="light"
-                  variant="outline"
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Loading…
-                    </>
-                  ) : (
-                    'Load more'
+                  key={ch.id}
+                  type="button"
+                  variant="ghost"
+                  theme="lightGhost"
+                  onClick={() => handleSelectChannel(ch.id)}
+                  className={cn(
+                    'flex h-9 w-full cursor-pointer items-center justify-between border px-3 py-2 text-left shadow-none transition-all hover:translate-y-0',
+                    ch.id === selectedChannel
+                      ? 'border-[#C5A059]/42 bg-white/70 hover:border-[#C5A059]/60'
+                      : 'border-[#1A1A1A]/10 bg-white/40 hover:border-[#C5A059]/30',
                   )}
+                >
+                  <span className="text-sm text-[#1C1815]">{ch.name}</span>
                 </Button>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         </div>
+
+        {/* Main */}
+        <div className="min-w-0">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="h-px w-8 bg-[#9B7A41]/50" />
+            <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+              Community
+            </div>
+            <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
+              Posts
+            </h1>
+            <p className="mt-2 text-sm text-[#5E5549]">
+              {selectedChannel === 'general'
+                ? 'General channel'
+                : `Channel: ${channels.find((c) => c.id === selectedChannel)?.name ?? ''}`}
+            </p>
+          </div>
+
+          <PostComposer
+            currentUser={currentUser}
+            courseId={selectedCourseId}
+            onCreated={handlePostCreated}
+          />
+
+          <div className="mt-8 flex flex-col gap-6">
+            {allPosts.length === 0 ? (
+              <div className="border border-dashed border-[#1A1A1A]/20 bg-[#EDE8DE]/40 p-16 text-center">
+                <MessageCircle className="mx-auto mb-3 size-8 text-[#9B7A41]/50" />
+                <h3 className="font-serif text-lg text-[#1C1815]">
+                  No posts yet
+                </h3>
+                <p className="mt-2 text-sm text-[#5E5549]">
+                  Be the first to share something with the community
+                </p>
+              </div>
+            ) : (
+              allPosts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  currentUser={currentUser}
+                  canModerate={canModerate}
+                  onUpdated={handlePostUpdated}
+                  onDeleted={handlePostDeleted}
+                />
+              ))
+            )}
+          </div>
+
+          {/* Load more */}
+          {nextCursor && (
+            <div className="mt-8 text-center">
+              <Button
+                theme="light"
+                variant="outline"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Loading…
+                  </>
+                ) : (
+                  'Load more'
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </PageLayout>
   )
 }
 
@@ -388,9 +378,9 @@ function PostComposer({
               theme="light"
               size="sm"
               onClick={handleSubmit}
-              disabled={!content.trim() || mutation.status === 'pending'}
+              disabled={!content.trim() || mutation.isPending}
             >
-              {mutation.status === 'pending' ? (
+              {mutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />
               ) : (
                 <SendIcon className="size-3.5" />
@@ -665,9 +655,7 @@ function PostCard({
                     data: { postId: post.id, content: editContent.trim() },
                   })
                 }
-                disabled={
-                  !editContent.trim() || updateMutation.status === 'pending'
-                }
+                disabled={!editContent.trim() || updateMutation.isPending}
               >
                 Save
               </Button>
@@ -977,9 +965,7 @@ function CommentItem({
                     },
                   })
                 }
-                disabled={
-                  !editContent.trim() || editMutation.status === 'pending'
-                }
+                disabled={!editContent.trim() || editMutation.isPending}
                 className="h-7 text-xs"
               >
                 Save
@@ -1124,9 +1110,9 @@ function CommentComposer({
           size="icon"
           className="size-8"
           onClick={handleSubmit}
-          disabled={!content.trim() || mutation.status === 'pending'}
+          disabled={!content.trim() || mutation.isPending}
         >
-          {mutation.status === 'pending' ? (
+          {mutation.isPending ? (
             <Loader2 className="size-3 animate-spin" />
           ) : (
             <SendIcon className="size-3" />
@@ -1136,3 +1122,5 @@ function CommentComposer({
     </div>
   )
 }
+
+// ── Comment Composer ───────────────────────────────────────────────────────────

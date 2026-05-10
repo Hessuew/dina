@@ -103,6 +103,4 @@ export const deleteEvent = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const db = await getDb()
     await db.delete(calendarEvents).where(eq(calendarEvents.id, data.eventId))
-
-    return { success: true }
   })

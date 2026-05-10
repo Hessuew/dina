@@ -263,7 +263,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        disabled={resetMutation.status === 'pending'}
+                        disabled={resetMutation.isPending}
                         theme="dark"
                       />
                       <div className="mt-2">
@@ -301,7 +301,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                         name="confirm-password"
                         type="password"
                         required
-                        disabled={resetMutation.status === 'pending'}
+                        disabled={resetMutation.isPending}
                         theme="dark"
                       />
                       <FieldDescription theme="dark">
@@ -312,10 +312,10 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                     <Field className="pt-2">
                       <button
                         type="submit"
-                        disabled={resetMutation.status === 'pending'}
+                        disabled={resetMutation.isPending}
                         className="group inline-flex h-11 cursor-pointer items-center justify-center gap-3 border border-[#C5A059]/55 bg-linear-to-b from-[#2A2A2A] to-[#111111] px-8 font-serif text-base tracking-[0.12em] text-[#E9D9B4] shadow-[0_28px_60px_-28px_rgba(0,0,0,0.7)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[#C5A059]/55 disabled:hover:text-[#E9D9B4]"
                       >
-                        {resetMutation.status === 'pending'
+                        {resetMutation.isPending
                           ? 'Resetting Password...'
                           : 'Reset Password'}
                       </button>

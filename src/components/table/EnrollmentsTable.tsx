@@ -7,8 +7,9 @@ import { useServerFn } from '@tanstack/react-start'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import { toUserError } from '@/utils/errors'
-import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
+import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
+import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import {
   Dialog,
   DialogContent,
@@ -24,13 +25,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { DataTable } from '@/components/table/DataTable'
+import { IconButton } from '@/components/table/IconButton'
 import { EnrollmentStatusChip } from '@/components/table/chips'
 import { useMutation } from '@/hooks/useMutation'
 import {
@@ -140,12 +137,6 @@ export function EnrollmentsTable({
       ),
       header: 'Full legal name',
     }),
-    columnHelper.accessor('email', {
-      cell: (info) => (
-        <span className="text-[0.82rem] text-[#AFA28F]">{info.getValue()}</span>
-      ),
-      header: 'Email',
-    }),
     columnHelper.accessor('nationalityCitizenship', {
       cell: (info) => {
         const val = info.getValue()
@@ -202,55 +193,35 @@ export function EnrollmentsTable({
         return (
           <TooltipProvider delay={200}>
             <div className="flex items-center justify-end gap-1">
-              <Tooltip>
-                <TooltipTrigger>
-                  <Button
-                    size="icon"
-                    theme="dark"
-                    className="size-8 rounded-none border-none bg-transparent hover:bg-white/5"
-                    onClick={() =>
-                      router.navigate({
-                        to: '/enrollments/$enrollmentId',
-                        params: { enrollmentId: row.id },
-                      })
-                    }
-                  >
-                    <Eye className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>View</TooltipContent>
-              </Tooltip>
+              <IconButton
+                icon={() => <Eye className="size-3.5" />}
+                label="View"
+                onClick={() =>
+                  router.navigate({
+                    to: '/enrollments/$enrollmentId',
+                    params: { enrollmentId: row.id },
+                  })
+                }
+              />
 
-              <Tooltip>
-                <TooltipTrigger>
-                  <Button
-                    size="icon"
-                    theme="dark"
-                    className="size-8 rounded-none border-none bg-transparent hover:bg-white/5"
-                    onClick={() => {
-                      setSelectedEnrollmentId(row.id)
-                      setInviteDialogOpen(true)
-                    }}
-                    disabled={inviteMutation.status === 'pending'}
-                  >
-                    <Mail className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Send invitation</TooltipContent>
-              </Tooltip>
+              <IconButton
+                icon={Mail}
+                label="Send invitation"
+                onClick={() => {
+                  setSelectedEnrollmentId(row.id)
+                  setInviteDialogOpen(true)
+                }}
+                disabled={inviteMutation.isPending}
+              />
 
               <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      size="icon"
-                      theme="dark"
-                      className="size-8 rounded-none border-none bg-transparent hover:bg-white/5"
-                    >
-                      <MoreHorizontal className="size-3.5" />
-                    </Button>
-                  }
-                />
+                <DropdownMenuTrigger>
+                  <IconButton
+                    icon={MoreHorizontal}
+                    label="More options"
+                    onClick={() => {}}
+                  />
+                </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
                   className="rounded-none border border-white/10 bg-[#1A1716] text-[#F8F4EC]"
@@ -350,60 +321,27 @@ export function EnrollmentsTable({
                     data: { enrollmentId: selectedEnrollmentId },
                   })
                 }}
-                disabled={inviteMutation.status === 'pending'}
+                disabled={inviteMutation.isPending}
               >
-                {inviteMutation.status === 'pending' ? 'Sending…' : 'Send'}
+                {inviteMutation.isPending ? 'Sending…' : 'Send'}
               </Button>
             </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent
-          className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
-          style={{
-            backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-          showCloseButton={false}
-        >
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-          <div className="relative">
-            <DialogHeader>
-              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-                Delete enrollment
-              </DialogTitle>
-              <DialogDescription className="text-[#AFA28F]">
-                Delete this enrollment? This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-              <Button
-                variant="outline"
-                theme="dark"
-                onClick={() => setDeleteDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                className="rounded-none"
-                onClick={() => {
-                  if (!selectedEnrollmentId) return
-                  deleteMutation.mutate({
-                    data: { enrollmentId: selectedEnrollmentId },
-                  })
-                }}
-                disabled={deleteMutation.status === 'pending'}
-              >
-                {deleteMutation.status === 'pending' ? 'Deleting…' : 'Delete'}
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        entityName="Enrollment"
+        onConfirm={() => {
+          if (!selectedEnrollmentId) return
+          deleteMutation.mutate({
+            data: { enrollmentId: selectedEnrollmentId },
+          })
+        }}
+        isDeleting={deleteMutation.isPending}
+      />
     </>
   )
 }

@@ -8,10 +8,10 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { CalendarEvent, SpecialEventCategory } from '@/utils/calendar'
-import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { CalendarView } from '@/components/view/CalendarView'
 import { EventPreviewModal } from '@/components/dialog/EventPreviewModal'
 import { EventListSidebar } from '@/components/calendar/EventListSidebar'
+import { PageLayout } from '@/components/layout/page-layout'
 import {
   Select,
   SelectContent,
@@ -142,150 +142,140 @@ function CalendarComponent() {
   }
 
   return (
-    <div
-      className="relative isolate min-h-screen overflow-hidden"
-      style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(255,255,255,0.92), rgba(255,255,255,0.92)), url(${facultyBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.10),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.22),transparent_22%)]" />
-      <div className="relative mx-auto max-w-7xl px-6 py-10 sm:px-8 sm:py-12">
-        {/* Page header */}
-        <div className="mb-10">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <div className="h-px w-10 bg-[#C5A059]/50" />
-              <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">
-                Calendar
-              </h1>
-              <p className="mt-2 text-[0.72rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-                Lessons, assignments &amp; special events
-              </p>
-            </div>
-            {/* Filters */}
-            <div className="flex gap-2">
+    <PageLayout>
+      {/* Page header */}
+      <div className="mb-10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="h-px w-10 bg-[#C5A059]/50" />
+            <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">
+              Calendar
+            </h1>
+            <p className="mt-2 text-[0.72rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
+              Lessons, assignments &amp; special events
+            </p>
+          </div>
+          {/* Filters */}
+          <div className="flex gap-2">
+            <Select
+              value={selectedType}
+              onValueChange={(value) => setSelectedType(value ?? 'all')}
+            >
+              <SelectTrigger className="w-[148px] rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40">
+                <SelectValue>{TYPE_LABELS[selectedType]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent className="rounded-none">
+                <SelectItem textClass="text-black" value="all">
+                  All Events
+                </SelectItem>
+                <SelectItem textClass="text-black" value="lesson">
+                  Lessons
+                </SelectItem>
+                <SelectItem textClass="text-black" value="assignment">
+                  Assignments
+                </SelectItem>
+                <SelectItem textClass="text-black" value="special">
+                  Special
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {courses.length > 0 && (
               <Select
-                value={selectedType}
-                onValueChange={(value) => setSelectedType(value ?? 'all')}
+                value={selectedCourse}
+                onValueChange={(value) => setSelectedCourse(value ?? 'all')}
               >
-                <SelectTrigger className="w-[148px] rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40">
-                  <SelectValue>{TYPE_LABELS[selectedType]}</SelectValue>
+                <SelectTrigger className="w-[200px] rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40">
+                  <SelectValue>
+                    {selectedCourse === 'all'
+                      ? 'All Courses'
+                      : courses.find((c) => c.id === selectedCourse)?.name ||
+                        'All Courses'}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="rounded-none">
                   <SelectItem textClass="text-black" value="all">
-                    All Events
+                    All Courses
                   </SelectItem>
-                  <SelectItem textClass="text-black" value="lesson">
-                    Lessons
-                  </SelectItem>
-                  <SelectItem textClass="text-black" value="assignment">
-                    Assignments
-                  </SelectItem>
-                  <SelectItem textClass="text-black" value="special">
-                    Special
-                  </SelectItem>
+                  {courses.map((course) => (
+                    <SelectItem
+                      className="text-black"
+                      key={course.id}
+                      value={course.id}
+                    >
+                      {course.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              {courses.length > 0 && (
-                <Select
-                  value={selectedCourse}
-                  onValueChange={(value) => setSelectedCourse(value ?? 'all')}
-                >
-                  <SelectTrigger className="w-[200px] rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40">
-                    <SelectValue>
-                      {selectedCourse === 'all'
-                        ? 'All Courses'
-                        : courses.find((c) => c.id === selectedCourse)?.name ||
-                          'All Courses'}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-none">
-                    <SelectItem textClass="text-black" value="all">
-                      All Courses
-                    </SelectItem>
-                    {courses.map((course) => (
-                      <SelectItem
-                        className="text-black"
-                        key={course.id}
-                        value={course.id}
-                      >
-                        {course.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Two-column layout */}
-        <div className="flex flex-col gap-6 sm:flex-row">
-          {/* Sidebar — shows first on sm */}
-          <div className="order-1 w-full sm:order-2 sm:w-64 sm:shrink-0">
-            <div className="flex flex-col gap-4">
-              {/* Upcoming special events */}
-              <EventListSidebar
-                title="Special Events"
-                events={upcomingSpecials}
-                emptyMessage="No upcoming special events"
-                onEventClick={handleEventClick}
-                renderBadge={(event: CalendarEvent) => {
-                  const cat = event.specialCategory || 'other'
-                  const s = SPECIAL_STYLES[cat]
-                  const Icon = SPECIAL_ICON[cat]
-                  return (
-                    <>
-                      <span className={cn('size-1.5 rounded-full', s.dot)} />
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1 border px-1.5 py-0.5 text-[0.58rem] font-medium tracking-[0.14em] uppercase',
-                          s.chip,
-                        )}
-                      >
-                        <Icon className="size-2.5" />
-                        {s.label}
-                      </span>
-                    </>
-                  )
-                }}
-              />
-
-              {/* Upcoming events */}
-              <EventListSidebar
-                title="Upcoming"
-                events={upcomingEvents}
-                emptyMessage="No upcoming events"
-                onEventClick={handleEventClick}
-                renderBadge={(event: CalendarEvent) => (
-                  <span className="text-[0.58rem] font-medium tracking-[0.14em] text-[#C5A059] uppercase">
-                    {event.type}
-                  </span>
-                )}
-              />
-            </div>
-          </div>
-
-          {/* Calendar — takes all remaining width, shows second on sm */}
-          <div className="order-2 min-w-0 flex-1 sm:order-1">
-            <CalendarView
-              events={filteredEvents}
+      {/* Two-column layout */}
+      <div className="flex flex-col gap-6 sm:flex-row">
+        {/* Sidebar — shows first on sm */}
+        <div className="order-1 w-full sm:order-2 sm:w-64 sm:shrink-0">
+          <div className="flex flex-col gap-4">
+            {/* Upcoming special events */}
+            <EventListSidebar
+              title="Special Events"
+              events={upcomingSpecials}
+              emptyMessage="No upcoming special events"
               onEventClick={handleEventClick}
-              initialDate={currentMonth}
-              onDateChange={handleDateChange}
+              renderBadge={(event: CalendarEvent) => {
+                const cat = event.specialCategory || 'other'
+                const s = SPECIAL_STYLES[cat]
+                const Icon = SPECIAL_ICON[cat]
+                return (
+                  <>
+                    <span className={cn('size-1.5 rounded-full', s.dot)} />
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 border px-1.5 py-0.5 text-[0.58rem] font-medium tracking-[0.14em] uppercase',
+                        s.chip,
+                      )}
+                    >
+                      <Icon className="size-2.5" />
+                      {s.label}
+                    </span>
+                  </>
+                )
+              }}
+            />
+
+            {/* Upcoming events */}
+            <EventListSidebar
+              title="Upcoming"
+              events={upcomingEvents}
+              emptyMessage="No upcoming events"
+              onEventClick={handleEventClick}
+              renderBadge={(event: CalendarEvent) => (
+                <span className="text-[0.58rem] font-medium tracking-[0.14em] text-[#C5A059] uppercase">
+                  {event.type}
+                </span>
+              )}
             />
           </div>
         </div>
 
-        <EventPreviewModal
-          event={selectedEvent}
-          open={modalOpen}
-          onOpenChange={setModalOpen}
-          currentMonth={currentMonth}
-        />
+        {/* Calendar — takes all remaining width, shows second on sm */}
+        <div className="order-2 min-w-0 flex-1 sm:order-1">
+          <CalendarView
+            events={filteredEvents}
+            onEventClick={handleEventClick}
+            initialDate={currentMonth}
+            onDateChange={handleDateChange}
+          />
+        </div>
       </div>
-    </div>
+
+      <EventPreviewModal
+        event={selectedEvent}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        currentMonth={currentMonth}
+      />
+    </PageLayout>
   )
 }
