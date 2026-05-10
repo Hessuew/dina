@@ -1,8 +1,8 @@
 import { Link, useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import facultyBackground from '@/assets/images/bg/bg_hero.webp'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { Field, FieldGroup } from '@/components/ui/field'
+import { useAppForm } from '@/hooks/form'
 import { useMutation } from '@/hooks/useMutation'
 import { loginFn } from '@/routes/_authed'
 
@@ -62,16 +62,17 @@ export function LoginForm({ verified = false }: LoginFormProps) {
     },
   })
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const formData = new FormData(e.target as HTMLFormElement)
-    loginMutation.mutate({
-      data: {
-        email: formData.get('email') as string,
-        password: formData.get('password') as string,
-      },
-    })
-  }
+  const form = useAppForm({
+    defaultValues: { email: '', password: '' },
+    onSubmit: ({ value }) => {
+      loginMutation.mutate({
+        data: {
+          email: value.email,
+          password: value.password,
+        },
+      })
+    },
+  })
 
   return (
     <section
@@ -166,35 +167,37 @@ export function LoginForm({ verified = false }: LoginFormProps) {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  void form.handleSubmit()
+                }}
+              >
                 <div className="min-h-76 border border-white/10 bg-white/3 p-5 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.4)]">
                   <FieldGroup>
-                    <Field>
-                      <FieldLabel htmlFor="email-v2" theme="dark">
-                        Email
-                      </FieldLabel>
-                      <Input
-                        id="email-v2"
-                        name="email"
-                        type="email"
-                        placeholder="your@email.com"
-                        required
-                        theme="dark"
-                      />
-                    </Field>
+                    <form.AppField name="email">
+                      {(field) => (
+                        <field.TextField
+                          id="email-v2"
+                          label="Email"
+                          type="email"
+                          placeholder="your@email.com"
+                          required
+                        />
+                      )}
+                    </form.AppField>
 
-                    <Field>
-                      <FieldLabel theme="dark" htmlFor="password-v2">
-                        Password
-                      </FieldLabel>
-                      <Input
-                        id="password-v2"
-                        name="password"
-                        type="password"
-                        required
-                        theme="dark"
-                      />
-                    </Field>
+                    <form.AppField name="password">
+                      {(field) => (
+                        <field.TextField
+                          id="password-v2"
+                          label="Password"
+                          type="password"
+                          required
+                        />
+                      )}
+                    </form.AppField>
 
                     <div className="flex w-full items-center justify-end">
                       <Link
