@@ -19,8 +19,10 @@ interface BaseFormFieldProps {
   className?: string
 }
 
+export type FormFieldType = 'text' | 'email' | 'password' | 'tel' | 'number' | 'datetime-local'
+
 interface FormFieldTextInputProps extends BaseFormFieldProps {
-  type?: 'text' | 'datetime-local'
+  type?: FormFieldType
   value: string
   onChange: (value: string) => void
   placeholder?: string
