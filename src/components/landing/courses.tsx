@@ -213,7 +213,13 @@ export function LandingCourseShowcase() {
                 </div>
 
                 <div className="max-w-60 border border-white/12 bg-black/24 px-4 py-4 shadow-[0_24px_40px_-30px_rgba(0,0,0,0.55)] backdrop-blur-sm">
-                  <img src={activeCourse.image} alt={activeCourse.title} />
+                  <img
+                    key={activeCourse.id}
+                    src={activeCourse.image}
+                    alt={activeCourse.title}
+                    className="animate-in fade-in h-full w-full object-cover duration-1500"
+                    loading="lazy"
+                  />
                 </div>
               </div>
             </LandingFeaturePanelHeader>

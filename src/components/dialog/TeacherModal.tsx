@@ -1,4 +1,4 @@
-import { HashIcon, XIcon } from 'lucide-react'
+import { XIcon } from 'lucide-react'
 import type { TeacherWithCourse } from '@/types/teacher'
 import { Button } from '@/components/ui/button'
 import {
@@ -98,20 +98,9 @@ export function TeacherModal({
                   )}
                 </div>
 
-                {/* Characteristic */}
-                {teacher.bio && (
-                  <div className="flex items-center gap-3 text-sm text-[#CFC6B7]">
-                    <HashIcon className="size-4 shrink-0 text-[#C5A059]/60" />
-                    <span className="line-clamp-1">
-                      Wisdom, character, and experience
-                    </span>
-                  </div>
-                )}
-
                 {/* Bio */}
                 {teacher.bio && (
                   <div>
-                    <div className="h-px w-8 bg-[#C5A059]/40" />
                     <div className="mt-3 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                       About
                     </div>

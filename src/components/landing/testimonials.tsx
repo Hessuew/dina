@@ -28,7 +28,8 @@ const testimonials: Array<TestimonialItem> = [
     id: 'ella',
     name: 'Ella O.',
     role: 'Pastor, -',
-    quote: '',
+    quote:
+      'Discipleship has been instrumental in my walk with God and relationship with people. Through discipleship, I further learn what love is. LOVE: Let Others Verify Exponentially. Discipleship shows me what 2nd Corinthians 3:18 says and inspires me to emulate it. My discipleship journey has been one of growth and clarity. I have gotten scripture based answers to concerns which has taught me to search the scriptures for guidance in all walks of life.',
     theme: 'Ground',
   },
   {
@@ -60,7 +61,6 @@ const testimonials: Array<TestimonialItem> = [
     role: 'Pastor, -',
     quote:
       'Discipleship has rooted me in the Word of God. It builds and guides me with God, at work, and in daily life. I receive scripture-based answers to difficult questions, reminders of God’s love and care, and are built to serve Jesus wholeheartedly. Through discipleship, I learn the in-depth Word of God, how to apply it daily, and gain structure for personal and spiritual growth. It is a light in my life I feel incredibly privileged to have.',
-
     theme: 'Walls',
   },
   {
@@ -236,15 +236,15 @@ export function LandingTestimonialsSection() {
                     onClick={() => setActiveIndex(index)}
                     aria-hidden={!isVisible}
                     tabIndex={isVisible ? 0 : -1}
-                    className={`absolute top-0 left-1/2 flex h-full w-76 flex-col justify-between overflow-hidden border px-6 py-7 text-left shadow-[0_34px_72px_-44px_rgba(0,0,0,0.72)] backdrop-blur-sm transition-[transform,opacity,filter,background-color,border-color] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-92 lg:w-116 xl:w-124 ${
+                    className={`absolute top-0 left-1/2 flex h-full w-76 flex-col justify-between overflow-hidden border px-4 py-5 text-left shadow-[0_34px_72px_-44px_rgba(0,0,0,0.72)] backdrop-blur-sm transition-[transform,opacity,filter,background-color,border-color] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-92 lg:w-116 lg:px-6 lg:py-7 xl:w-124 ${
                       isFocused
                         ? 'cursor-default border-[#C5A059]/50 bg-[#0F0D0C]/92'
                         : 'cursor-pointer border-[#C5A059]/20 bg-black/60 hover:border-[#C5A059]/35 hover:bg-black/75'
                     }`}
                     style={getCardMotionStyle(offset)}
                   >
-                    <div className="relative flex min-h-full flex-col justify-between gap-4">
-                      <div className="space-y-6">
+                    <div className="relative flex min-h-full flex-col justify-between gap-2 lg:gap-4">
+                      <div className="space-y-2 md:space-y-6">
                         <div className="inline-flex items-center gap-3 text-[0.6rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
                           <span className="h-px w-6 bg-[#C5A059]/45" />
                           {item.theme}
@@ -255,7 +255,7 @@ export function LandingTestimonialsSection() {
                         </blockquote>
                       </div>
 
-                      <div className="border-t border-white/8 pt-4 lg:pt-6">
+                      <div className="border-t border-white/8 pt-2 lg:pt-6">
                         <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
                           Testimony
                         </div>
