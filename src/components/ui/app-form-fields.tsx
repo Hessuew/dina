@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { FormFieldType } from '@/components/ui/form-field'
 import { Field, FieldLabel } from '@/components/ui/field'
 import {
   FormFieldInput,
@@ -20,7 +21,7 @@ interface BaseAppFieldProps {
 
 interface TextFieldProps extends BaseAppFieldProps {
   id: string
-  type?: 'text' | 'datetime-local'
+  type?: FormFieldType
   placeholder?: string
 }
 

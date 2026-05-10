@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { UploadIcon, XIcon } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { eq } from 'drizzle-orm'
 import { AppError, toUserError } from '@/utils/errors'
@@ -13,15 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { FieldGroup } from '@/components/ui/field'
 import { useMutation } from '@/hooks/useMutation'
+import { useAppForm } from '@/hooks/form'
 import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth/auth'
@@ -84,6 +78,28 @@ const updatePasswordFn = createServerFn({ method: 'POST' })
     }
   })
 
+type ProfileFormData = {
+  fullName: string
+  email: string
+  bio: string
+}
+
+type ProfileFormErrors = Partial<Record<keyof ProfileFormData, string>>
+
+const emptyProfileForm: ProfileFormData = { fullName: '', email: '', bio: '' }
+
+type PasswordFormData = {
+  newPassword: string
+  confirmPassword: string
+}
+
+type PasswordFormErrors = Partial<Record<keyof PasswordFormData, string>>
+
+const emptyPasswordForm: PasswordFormData = {
+  newPassword: '',
+  confirmPassword: '',
+}
+
 type ProfileModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -97,6 +113,48 @@ type ProfileModalProps = {
   onProfileUpdate?: () => void
 }
 
+function getProfileInitialValues(
+  user: ProfileModalProps['user'],
+): ProfileFormData {
+  return {
+    fullName: user.fullName ?? '',
+    email: user.email,
+    bio: user.bio ?? '',
+  }
+}
+
+function extractProfileErrors(
+  issues: Array<{ path: Array<PropertyKey>; message: string }>,
+): ProfileFormErrors {
+  const errors: ProfileFormErrors = {}
+
+  for (const issue of issues) {
+    const key = issue.path[0]
+    if (typeof key !== 'string' || !(key in emptyProfileForm)) continue
+
+    const field = key as keyof ProfileFormData
+    if (!errors[field]) errors[field] = issue.message
+  }
+
+  return errors
+}
+
+function extractPasswordErrors(
+  issues: Array<{ path: Array<PropertyKey>; message: string }>,
+): PasswordFormErrors {
+  const errors: PasswordFormErrors = {}
+
+  for (const issue of issues) {
+    const key = issue.path[0]
+    if (typeof key !== 'string' || !(key in emptyPasswordForm)) continue
+
+    const field = key as keyof PasswordFormData
+    if (!errors[field]) errors[field] = issue.message
+  }
+
+  return errors
+}
+
 export function ProfileModal({
   open,
   onOpenChange,
@@ -104,6 +162,8 @@ export function ProfileModal({
   onProfileUpdate,
 }: ProfileModalProps) {
   const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [profileErrors, setProfileErrors] = useState<ProfileFormErrors>({})
+  const [passwordErrors, setPasswordErrors] = useState<PasswordFormErrors>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const initials = user.fullName
@@ -142,23 +202,62 @@ export function ProfileModal({
     onSuccess: () => {
       toast.success('Password changed successfully')
       setShowPasswordForm(false)
+      passwordForm.reset(emptyPasswordForm)
     },
     onError: (error) => {
       toast.error(toUserError(error).message)
     },
   })
 
-  const handleProfileSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const formData = new FormData(e.target as HTMLFormElement)
+  const profileForm = useAppForm({
+    defaultValues: getProfileInitialValues(user),
+    onSubmit: ({ value }) => {
+      const result = updateProfileSchema.safeParse({
+        fullName: value.fullName,
+        email: value.email,
+        bio: value.bio || undefined,
+      })
 
-    updateProfileMutation.mutate({
-      data: {
-        fullName: formData.get('fullName') as string,
-        email: formData.get('email') as string,
-        bio: formData.get('bio') as string,
-      },
-    })
+      if (!result.success) {
+        setProfileErrors(extractProfileErrors(result.error.issues))
+        return
+      }
+
+      setProfileErrors({})
+      updateProfileMutation.mutate({ data: result.data })
+    },
+  })
+
+  const passwordForm = useAppForm({
+    defaultValues: emptyPasswordForm,
+    onSubmit: ({ value }) => {
+      if (value.newPassword !== value.confirmPassword) {
+        setPasswordErrors({ confirmPassword: 'Passwords do not match' })
+        return
+      }
+
+      const result = updatePasswordSchema.safeParse({
+        newPassword: value.newPassword,
+      })
+
+      if (!result.success) {
+        setPasswordErrors(extractPasswordErrors(result.error.issues))
+        return
+      }
+
+      setPasswordErrors({})
+      updatePasswordMutation.mutate({ data: result.data })
+    },
+  })
+
+  const clearProfileError = (field: keyof ProfileFormData) => {
+    if (!profileErrors[field]) return
+    setProfileErrors((prev) => ({ ...prev, [field]: undefined }))
+  }
+
+  const clearPasswordError = (field: keyof PasswordFormData) => {
+    if (!passwordErrors[field]) return
+    setPasswordErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,24 +289,13 @@ export function ProfileModal({
     reader.readAsDataURL(file)
   }
 
-  const handlePasswordSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const formData = new FormData(e.target as HTMLFormElement)
-
-    const newPassword = formData.get('newPassword') as string
-    const confirmPassword = formData.get('confirmPassword') as string
-
-    if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match')
-      return
-    }
-
-    updatePasswordMutation.mutate({
-      data: {
-        newPassword,
-      },
-    })
-  }
+  useEffect(() => {
+    if (!open) return
+    setProfileErrors({})
+    setPasswordErrors({})
+    profileForm.reset(getProfileInitialValues(user))
+    passwordForm.reset(emptyPasswordForm)
+  }, [open, user, profileForm, passwordForm])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -300,74 +388,56 @@ export function ProfileModal({
                   </div>
                 </div>
 
-                <form onSubmit={handleProfileSubmit}>
-                  <FieldGroup className="gap-5">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <Field>
-                        <FieldLabel
-                          htmlFor="email"
-                          className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                        >
-                          Email
-                        </FieldLabel>
-                        <Input
+                <FieldGroup className="gap-5">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <profileForm.AppField name="email">
+                      {(field) => (
+                        <field.TextField
                           id="email"
-                          name="email"
+                          label="Email"
                           type="email"
-                          defaultValue={user.email}
                           required
-                          className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                          description="Changing your email will require verification"
+                          error={profileErrors.email}
+                          onValueChange={() => clearProfileError('email')}
                         />
-                        <FieldDescription className="text-[#8E816D]">
-                          Changing your email will require verification
-                        </FieldDescription>
-                      </Field>
-                      <Field>
-                        <FieldLabel
-                          htmlFor="fullName"
-                          className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                        >
-                          Full Name
-                        </FieldLabel>
-                        <Input
+                      )}
+                    </profileForm.AppField>
+                    <profileForm.AppField name="fullName">
+                      {(field) => (
+                        <field.TextField
                           id="fullName"
-                          name="fullName"
-                          type="text"
-                          defaultValue={user.fullName}
+                          label="Full Name"
                           required
-                          className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                          error={profileErrors.fullName}
+                          onValueChange={() => clearProfileError('fullName')}
                         />
-                      </Field>
-                    </div>
-                    <Field>
-                      <FieldLabel
-                        htmlFor="bio"
-                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                      >
-                        Bio
-                      </FieldLabel>
-                      <Textarea
+                      )}
+                    </profileForm.AppField>
+                  </div>
+                  <profileForm.AppField name="bio">
+                    {(field) => (
+                      <field.TextAreaField
                         id="bio"
-                        name="bio"
+                        label="Bio"
                         placeholder="Tell us about yourself..."
-                        defaultValue={user.bio || ''}
                         rows={8}
-                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
                       />
-                    </Field>
-                    <div className="flex justify-end">
-                      <Button
-                        type="submit"
-                        theme="dark"
-                        disabled={updateProfileMutation.isPending}
-                      >
-                        {updateProfileMutation.isPending
-                          ? 'Saving...'
-                          : 'Save Changes'}
-                      </Button>
-                    </div>
-                  </FieldGroup>
-                </form>
+                    )}
+                  </profileForm.AppField>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      theme="dark"
+                      onClick={() => void profileForm.handleSubmit()}
+                      disabled={updateProfileMutation.isPending}
+                    >
+                      {updateProfileMutation.isPending
+                        ? 'Saving...'
+                        : 'Save Changes'}
+                    </Button>
+                  </div>
+                </FieldGroup>
               </div>
             )}
 
@@ -390,59 +460,58 @@ export function ProfileModal({
                   Change Password
                 </Button>
               ) : (
-                <form onSubmit={handlePasswordSubmit}>
-                  <FieldGroup className="gap-5">
-                    <Field>
-                      <FieldLabel
-                        htmlFor="newPassword"
-                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                      >
-                        New Password
-                      </FieldLabel>
-                      <Input
+                <FieldGroup className="gap-5">
+                  <passwordForm.AppField name="newPassword">
+                    {(field) => (
+                      <field.TextField
                         id="newPassword"
-                        name="newPassword"
+                        label="New Password"
                         type="password"
                         required
-                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                        error={passwordErrors.newPassword}
+                        onValueChange={() => clearPasswordError('newPassword')}
                       />
-                    </Field>
-                    <Field>
-                      <FieldLabel
-                        htmlFor="confirmPassword"
-                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                      >
-                        Confirm New Password
-                      </FieldLabel>
-                      <Input
+                    )}
+                  </passwordForm.AppField>
+                  <passwordForm.AppField name="confirmPassword">
+                    {(field) => (
+                      <field.TextField
                         id="confirmPassword"
-                        name="confirmPassword"
+                        label="Confirm New Password"
                         type="password"
                         required
-                        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+                        error={passwordErrors.confirmPassword}
+                        onValueChange={() =>
+                          clearPasswordError('confirmPassword')
+                        }
                       />
-                    </Field>
-                    <div className="flex items-center gap-3">
-                      <Button
-                        type="submit"
-                        theme="dark"
-                        disabled={updatePasswordMutation.isPending}
-                      >
-                        {updatePasswordMutation.isPending
-                          ? 'Updating...'
-                          : 'Update Password'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        theme="dark"
-                        onClick={() => setShowPasswordForm(false)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </FieldGroup>
-                </form>
+                    )}
+                  </passwordForm.AppField>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      type="button"
+                      theme="dark"
+                      onClick={() => void passwordForm.handleSubmit()}
+                      disabled={updatePasswordMutation.isPending}
+                    >
+                      {updatePasswordMutation.isPending
+                        ? 'Updating...'
+                        : 'Update Password'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      theme="dark"
+                      onClick={() => {
+                        setShowPasswordForm(false)
+                        passwordForm.reset(emptyPasswordForm)
+                        setPasswordErrors({})
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </FieldGroup>
               )}
             </div>
           </DialogBody>
