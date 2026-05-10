@@ -1,6 +1,5 @@
 import { Trash2Icon } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
 import type { ZoomLinkRow, ZoomLinkSection } from '@/utils/zoomLink/zoomLinks'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
@@ -14,7 +13,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -22,26 +20,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
+import { useAppForm } from '@/hooks/form'
 import {
   createZoomLink,
   deleteZoomLink,
   updateZoomLink,
 } from '@/utils/zoomLink/zoomLinks'
+import {
+  createZoomLinkSchema,
+  updateZoomLinkSchema,
+} from '@/schemas/zoomLink.schema'
 
 type ZoomCourse = { id: string; title: string }
 
-type ZoomFormState = {
+type ZoomFormData = {
   title: string
   description: string
-  section: ZoomLinkSection
+  section: string
   courseId: string
   zoomUrl: string
   meetingId: string
   passcode: string
-  orderIndex: string
+  orderIndex: number
 }
+
+type ZoomFormErrors = Partial<Record<keyof ZoomFormData, string>>
 
 export type ZoomLinkDialogState =
   | { mode: 'create' }
@@ -54,7 +58,7 @@ type ZoomLinkDialogProps = {
   onOpenChange: (open: boolean) => void
 }
 
-const emptyForm: ZoomFormState = {
+const emptyZoomForm: ZoomFormData = {
   title: '',
   description: '',
   section: 'general_class_lecture',
@@ -62,7 +66,7 @@ const emptyForm: ZoomFormState = {
   zoomUrl: '',
   meetingId: '',
   passcode: '',
-  orderIndex: '0',
+  orderIndex: 0,
 }
 
 const sectionTitle: Record<ZoomLinkSection, string> = {
@@ -70,30 +74,37 @@ const sectionTitle: Record<ZoomLinkSection, string> = {
   discipleship_group: 'Discipleship Groups',
 }
 
-function linkToForm(link: ZoomLinkRow): ZoomFormState {
-  return {
-    title: link.title,
-    description: link.description ?? '',
-    section: link.section,
-    courseId: link.courseId ?? 'none',
-    zoomUrl: link.zoomUrl,
-    meetingId: link.meetingId,
-    passcode: link.passcode,
-    orderIndex: String(link.orderIndex),
+function getInitialValues(dialogState: ZoomLinkDialogState): ZoomFormData {
+  if (dialogState?.mode === 'edit') {
+    const link = dialogState.link
+    return {
+      title: link.title,
+      description: link.description ?? '',
+      section: link.section,
+      courseId: link.courseId ?? 'none',
+      zoomUrl: link.zoomUrl,
+      meetingId: link.meetingId,
+      passcode: link.passcode,
+      orderIndex: link.orderIndex,
+    }
   }
+  return emptyZoomForm
 }
 
-function buildPayload(form: ZoomFormState) {
-  return {
-    title: form.title,
-    description: form.description || undefined,
-    section: form.section,
-    courseId: form.courseId === 'none' ? undefined : form.courseId,
-    zoomUrl: form.zoomUrl,
-    meetingId: form.meetingId,
-    passcode: form.passcode,
-    orderIndex: Number(form.orderIndex || 0),
+function extractZoomErrors(
+  issues: Array<{ path: Array<PropertyKey>; message: string }>,
+): ZoomFormErrors {
+  const errors: ZoomFormErrors = {}
+
+  for (const issue of issues) {
+    const key = issue.path[0]
+    if (typeof key !== 'string' || !(key in emptyZoomForm)) continue
+
+    const field = key as keyof ZoomFormData
+    if (!errors[field]) errors[field] = issue.message
   }
+
+  return errors
 }
 
 export function ZoomLinkDialog({
@@ -101,14 +112,9 @@ export function ZoomLinkDialog({
   dialogState,
   onOpenChange,
 }: ZoomLinkDialogProps) {
-  const [form, setForm] = useState<ZoomFormState>(emptyForm)
+  const [submitErrors, setSubmitErrors] = useState<ZoomFormErrors>({})
   const link = dialogState?.mode === 'edit' ? dialogState.link : null
   const open = dialogState !== null
-
-  useEffect(() => {
-    if (!open) return
-    setForm(link ? linkToForm(link) : emptyForm)
-  }, [link, open])
 
   const { createMutation, updateMutation, deleteMutation, isAnyPending } =
     useEntityMutation({
@@ -121,28 +127,65 @@ export function ZoomLinkDialog({
       },
     })
 
-  const isPending = isAnyPending
+  const zoomForm = useAppForm({
+    defaultValues: getInitialValues(dialogState),
+    onSubmit: ({ value }) => {
+      const payload = {
+        title: value.title,
+        description: value.description || undefined,
+        section: value.section as ZoomLinkSection,
+        courseId: value.courseId === 'none' ? undefined : value.courseId,
+        zoomUrl: value.zoomUrl,
+        meetingId: value.meetingId,
+        passcode: value.passcode,
+        orderIndex: Number.isFinite(value.orderIndex)
+          ? value.orderIndex
+          : undefined,
+      }
 
-  const handleSubmit = () => {
-    if (!form.title || !form.zoomUrl || !form.meetingId || !form.passcode) {
-      toast.error('Title, Zoom link, meeting ID, and passcode are required')
-      return
-    }
+      if (link) {
+        const result = updateZoomLinkSchema.safeParse({
+          zoomLinkId: link.id,
+          ...payload,
+        })
 
-    if (link) {
-      updateMutation.mutate({
-        data: { zoomLinkId: link.id, ...buildPayload(form) },
-      })
-      return
-    }
+        if (!result.success) {
+          setSubmitErrors(extractZoomErrors(result.error.issues))
+          return
+        }
 
-    createMutation.mutate({ data: buildPayload(form) })
+        setSubmitErrors({})
+        updateMutation.mutate({ data: result.data })
+        return
+      }
+
+      const result = createZoomLinkSchema.safeParse(payload)
+
+      if (!result.success) {
+        setSubmitErrors(extractZoomErrors(result.error.issues))
+        return
+      }
+
+      setSubmitErrors({})
+      createMutation.mutate({ data: result.data })
+    },
+  })
+
+  const clearZoomError = (field: keyof ZoomFormData) => {
+    if (!submitErrors[field]) return
+    setSubmitErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
   const handleDelete = () => {
     if (!link) return
     deleteMutation.mutate({ data: { zoomLinkId: link.id } })
   }
+
+  useEffect(() => {
+    if (!open) return
+    setSubmitErrors({})
+    zoomForm.reset(getInitialValues(dialogState))
+  }, [open, dialogState, zoomForm])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -176,117 +219,136 @@ export function ZoomLinkDialog({
           <DialogBody>
             <FieldGroup className="mt-6">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field>
-                  <FieldLabel className="text-[#9B7A41]" htmlFor="zoom-section">
-                    Section
-                  </FieldLabel>
-                  <Select
-                    value={form.section}
-                    onValueChange={(value) =>
-                      setForm({ ...form, section: value as ZoomLinkSection })
-                    }
-                  >
-                    <SelectTrigger className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
-                      <SelectValue>{sectionTitle[form.section]}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none border-white/12">
-                      <SelectItem value="general_class_lecture">
-                        General Class Lectures
-                      </SelectItem>
-                      <SelectItem value="discipleship_group">
-                        Discipleship Groups
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field>
-                  <FieldLabel className="text-[#9B7A41]" htmlFor="zoom-course">
-                    Course
-                  </FieldLabel>
-                  <Select
-                    value={form.courseId}
-                    onValueChange={(value) =>
-                      setForm({ ...form, courseId: value ?? 'none' })
-                    }
-                  >
-                    <SelectTrigger className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
-                      <SelectValue>
-                        {courseLabel(courses, form.courseId)}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none border-white/12">
-                      <SelectItem value="none">No course</SelectItem>
-                      {courses.map((course) => (
-                        <SelectItem key={course.id} value={course.id}>
-                          {course.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <ZoomInput
-                  form={form}
-                  id="zoom-title"
-                  label="Title"
-                  placeholder="Ground course discipleship group"
-                  setForm={setForm}
-                  valueKey="title"
-                  wide
-                />
-                <ZoomInput
-                  form={form}
-                  id="zoom-url"
-                  label="Zoom Link"
-                  placeholder="https://zoom.us/j/..."
-                  setForm={setForm}
-                  valueKey="zoomUrl"
-                  wide
-                />
-                <ZoomInput
-                  form={form}
-                  id="zoom-meeting-id"
-                  label="Meeting ID"
-                  placeholder="123 456 7890"
-                  setForm={setForm}
-                  valueKey="meetingId"
-                />
-                <ZoomInput
-                  form={form}
-                  id="zoom-passcode"
-                  label="Passcode"
-                  placeholder="Passcode"
-                  setForm={setForm}
-                  valueKey="passcode"
-                />
-                <ZoomInput
-                  form={form}
-                  id="zoom-order"
-                  inputType="number"
-                  label="Order"
-                  setForm={setForm}
-                  valueKey="orderIndex"
-                  onChange={(value) =>
-                    setForm({ ...form, orderIndex: String(value) })
-                  }
-                />
-                <Field className="sm:col-span-2">
-                  <FieldLabel
-                    className="text-[#9B7A41]"
-                    htmlFor="zoom-description"
-                  >
-                    Description
-                  </FieldLabel>
-                  <Textarea
-                    id="zoom-description"
-                    value={form.description}
-                    rows={4}
-                    className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                    placeholder="Optional meeting note"
-                    onChange={(event) =>
-                      setForm({ ...form, description: event.target.value })
-                    }
-                  />
-                </Field>
+                <zoomForm.AppField name="section">
+                  {(field) => (
+                    <Field>
+                      <FieldLabel
+                        className="text-[#9B7A41]"
+                        htmlFor="zoom-section"
+                      >
+                        Section
+                      </FieldLabel>
+                      <Select
+                        value={field.state.value}
+                        onValueChange={(value) =>
+                          field.handleChange(value ?? field.state.value)
+                        }
+                      >
+                        <SelectTrigger className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
+                          <SelectValue>
+                            {sectionTitle[field.state.value as ZoomLinkSection]}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="rounded-none border-white/12">
+                          <SelectItem value="general_class_lecture">
+                            General Class Lectures
+                          </SelectItem>
+                          <SelectItem value="discipleship_group">
+                            Discipleship Groups
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  )}
+                </zoomForm.AppField>
+                <zoomForm.AppField name="courseId">
+                  {(field) => (
+                    <Field>
+                      <FieldLabel
+                        className="text-[#9B7A41]"
+                        htmlFor="zoom-course"
+                      >
+                        Course
+                      </FieldLabel>
+                      <Select
+                        value={field.state.value}
+                        onValueChange={(value) =>
+                          field.handleChange(value ?? 'none')
+                        }
+                      >
+                        <SelectTrigger className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
+                          <SelectValue>
+                            {courseLabel(courses, field.state.value)}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="rounded-none border-white/12">
+                          <SelectItem value="none">No course</SelectItem>
+                          {courses.map((course) => (
+                            <SelectItem key={course.id} value={course.id}>
+                              {course.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  )}
+                </zoomForm.AppField>
+                <zoomForm.AppField name="title">
+                  {(field) => (
+                    <field.TextField
+                      id="zoom-title"
+                      label="Title"
+                      placeholder="Ground course discipleship group"
+                      required
+                      error={submitErrors.title}
+                      onValueChange={() => clearZoomError('title')}
+                      className="sm:col-span-2"
+                    />
+                  )}
+                </zoomForm.AppField>
+                <zoomForm.AppField name="zoomUrl">
+                  {(field) => (
+                    <field.TextField
+                      id="zoom-url"
+                      label="Zoom Link"
+                      placeholder="https://zoom.us/j/..."
+                      required
+                      error={submitErrors.zoomUrl}
+                      onValueChange={() => clearZoomError('zoomUrl')}
+                      className="sm:col-span-2"
+                    />
+                  )}
+                </zoomForm.AppField>
+                <zoomForm.AppField name="meetingId">
+                  {(field) => (
+                    <field.TextField
+                      id="zoom-meeting-id"
+                      label="Meeting ID"
+                      placeholder="123 456 7890"
+                      required
+                      error={submitErrors.meetingId}
+                      onValueChange={() => clearZoomError('meetingId')}
+                    />
+                  )}
+                </zoomForm.AppField>
+                <zoomForm.AppField name="passcode">
+                  {(field) => (
+                    <field.TextField
+                      id="zoom-passcode"
+                      label="Passcode"
+                      placeholder="Passcode"
+                      required
+                      error={submitErrors.passcode}
+                      onValueChange={() => clearZoomError('passcode')}
+                    />
+                  )}
+                </zoomForm.AppField>
+                <zoomForm.AppField name="orderIndex">
+                  {(field) => (
+                    <field.NumberField id="zoom-order" label="Order" min={0} />
+                  )}
+                </zoomForm.AppField>
+                <zoomForm.AppField name="description">
+                  {(field) => (
+                    <field.TextAreaField
+                      id="zoom-description"
+                      label="Description"
+                      placeholder="Optional meeting note"
+                      rows={4}
+                      className="sm:col-span-2"
+                    />
+                  )}
+                </zoomForm.AppField>
               </div>
             </FieldGroup>
           </DialogBody>
@@ -296,7 +358,7 @@ export function ZoomLinkDialog({
               <Button
                 variant="destructive"
                 className="mr-auto rounded-none"
-                disabled={isPending}
+                disabled={isAnyPending}
                 onClick={handleDelete}
               >
                 <Trash2Icon className="size-4" />
@@ -310,8 +372,12 @@ export function ZoomLinkDialog({
             >
               Cancel
             </Button>
-            <Button theme="dark" disabled={isPending} onClick={handleSubmit}>
-              {isPending ? 'Saving...' : 'Save Link'}
+            <Button
+              theme="dark"
+              disabled={isAnyPending}
+              onClick={() => void zoomForm.handleSubmit()}
+            >
+              {isAnyPending ? 'Saving...' : 'Save Link'}
             </Button>
           </DialogFooter>
         </div>
@@ -323,58 +389,4 @@ export function ZoomLinkDialog({
 function courseLabel(courses: Array<ZoomCourse>, courseId: string): string {
   if (courseId === 'none') return 'No course'
   return courses.find((course) => course.id === courseId)?.title ?? 'No course'
-}
-
-function ZoomInput({
-  form,
-  id,
-  inputType = 'text',
-  label,
-  placeholder,
-  setForm,
-  valueKey,
-  wide = false,
-  onChange,
-}: {
-  form: ZoomFormState
-  id: string
-  inputType?: string
-  label: string
-  placeholder?: string
-  setForm: React.Dispatch<React.SetStateAction<ZoomFormState>>
-  valueKey: keyof Pick<
-    ZoomFormState,
-    'meetingId' | 'orderIndex' | 'passcode' | 'title' | 'zoomUrl'
-  >
-  wide?: boolean
-  onChange?: (value: string | number) => void
-}) {
-  return (
-    <Field className={wide ? 'sm:col-span-2' : undefined}>
-      <FieldLabel className="text-[#9B7A41]" htmlFor={id}>
-        {label}
-      </FieldLabel>
-      <Input
-        id={id}
-        type={inputType}
-        min={inputType === 'number' ? '0' : undefined}
-        value={form[valueKey]}
-        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-        placeholder={placeholder}
-        onChange={(event) => {
-          const value =
-            inputType === 'number'
-              ? event.target.value === ''
-                ? 0
-                : Number(event.target.value)
-              : event.target.value
-          if (onChange) {
-            onChange(value)
-          } else {
-            setForm({ ...form, [valueKey]: event.target.value })
-          }
-        }}
-      />
-    </Field>
-  )
 }
