@@ -19,7 +19,13 @@ interface BaseFormFieldProps {
   className?: string
 }
 
-export type FormFieldType = 'text' | 'email' | 'password' | 'tel' | 'number' | 'datetime-local'
+export type FormFieldType =
+  | 'text'
+  | 'email'
+  | 'password'
+  | 'tel'
+  | 'number'
+  | 'datetime-local'
 
 interface FormFieldTextInputProps extends BaseFormFieldProps {
   type?: FormFieldType
@@ -65,7 +71,7 @@ export function FormFieldInput({
         placeholder={placeholder}
         className={inputClassName}
       />
-      {error && <p className="text-[0.68rem] text-red-400">{error}</p>}
+      {error && <p className="text-destructive text-[0.68rem]">{error}</p>}
       {description && !error && (
         <p className="text-xs text-[#8E816D]">{description}</p>
       )}
@@ -125,7 +131,7 @@ export function FormFieldNumberInput({
         step={step}
         className={inputClassName}
       />
-      {error && <p className="text-[0.68rem] text-red-400">{error}</p>}
+      {error && <p className="text-destructive text-[0.68rem]">{error}</p>}
       {description && !error && (
         <p className="text-xs text-[#8E816D]">{description}</p>
       )}
@@ -177,7 +183,7 @@ export function FormFieldTextarea({
         rows={rows}
         className={textareaClassName}
       />
-      {error && <p className="text-[0.68rem] text-red-400">{error}</p>}
+      {error && <p className="text-destructive text-[0.68rem]">{error}</p>}
       {description && !error && (
         <p className="text-xs text-[#8E816D]">{description}</p>
       )}
@@ -228,7 +234,7 @@ export function FormFieldSelect({
           {children}
         </SelectContent>
       </Select>
-      {error && <p className="text-[0.68rem] text-red-400">{error}</p>}
+      {error && <p className="text-destructive text-[0.68rem]">{error}</p>}
       {description && !error && (
         <p className="text-xs text-[#8E816D]">{description}</p>
       )}

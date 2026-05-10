@@ -140,7 +140,7 @@ export function EnrolmentForm() {
             fullLegalName: value.fullLegalName,
             preferredName: optionalText(value.preferredName),
             email: value.email,
-            yearOfBirth: value.yearOfBirth,
+            yearOfBirth: Number(value.yearOfBirth),
             gender: value.gender as 'male' | 'female',
             nationalityCitizenship: optionalText(value.nationalityCitizenship),
             phoneWhatsApp: value.phoneWhatsApp,

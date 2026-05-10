@@ -18,7 +18,7 @@ interface BaseEmailProps {
 
 export function BaseEmail({ preview, heading, children }: BaseEmailProps) {
   // const baseUrl = process.env.VITE_SITE_URL || 'http://localhost:5173'
-  const baseUrl = 'https://files.catbox.moe/69jh23.webp'
+  const baseUrl = '	https://christ-dina.org/assets/bg_hero-CU-t5jGy.webp'
 
   return (
     <Html>
