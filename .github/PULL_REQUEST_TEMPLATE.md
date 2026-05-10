@@ -1,56 +1,44 @@
-<!-- WHen generation the pr template do not remove any fields -->
+# 🚀 Pull Request
 
-# Pull Request
+## Summary
 
-<!-- # 🚀 Pull Request -->
+<!-- A concise 1-2 sentence summary of what this PR does -->
 
-## 📝 Description (short summary, TL;DR)
+## Context
 
-<!-- Provide a clear and concise description of your changes -->
+<!-- Why are we making this change? What problem does it solve? -->
 
-### What changed?
+## Changes
 
-<!-- What did you change? Write all the changes you made here -->
+<!-- List of specific changes -->
 
-## 📌 Additional Notes
+## Testing
 
-<!-- Add any other context about the PR here -->
+<!-- How did you test this change? -->
 
-## 🔗 Related Issues
+## Type of Change
+
+<!-- Mark the applicable type with ✓ -->
+
+- ✓ Bug fix
+- ✓ New feature
+- ✓ Breaking change
+- ✓ Refactoring
+- ✓ UI update
+- ✓ Documentation
+- ✓ Performance
+
+## Checklist
+
+<!-- Mark completed items with ✓ -->
+
+- ✓ Self-reviewed
+- ✓ Tests added/updated
+- ✓ Documentation updated
+- ✓ No new warnings/errors
+
+## Related
 
 <!-- Link related issues below using #issue-number -->
 
-🔄 Closes #
-
--
-
-## 🔍 Type of Change
-
-<!-- Put an `x` in all the boxes that apply -->
-
-- [ ] 🐛 Bug fix (non-breaking change which fixes an issue)
-- [ ] ✨ New feature (non-breaking change which adds functionality)
-- [ ] 💥 Breaking change (would cause existing functionality to not work)
-- [ ] 📚 Documentation update
-- [ ] 🎨 Style/UI update
-- [ ] ♻️ Code refactoring
-- [ ] 📦 Dependency update
-- [ ] 🧪 Test update
-- [ ] 🔧 Configuration change
-
-## ✅ Checklist
-
-<!-- Put an `x` in all the boxes that apply -->
-
-### Code Quality
-
-- [ ] 👀 I have performed a self-review
-- [ ] 💬 I have added necessary comments
-- [ ] ⚠️ No new warnings or errors are generated
-- [ ] ⚡ I have added/updated tests
-
-### Git Hygiene
-
-- [ ] 🔍 My commits are small and have clear messages
-- [ ] 🔀 I have rebased on the latest main branch
-- [ ] 🧩 This PR is focused on a single change
+Closes #
