@@ -110,15 +110,16 @@ export function ZoomLinkDialog({
     setForm(link ? linkToForm(link) : emptyForm)
   }, [link, open])
 
-  const { createMutation, updateMutation, deleteMutation, isAnyPending } = useEntityMutation({
-    createFn: createZoomLink,
-    updateFn: updateZoomLink,
-    deleteFn: deleteZoomLink,
-    onSuccessMessage: (mode) => `Zoom link ${mode}d`,
-    onSuccess: () => {
-      onOpenChange(false)
-    },
-  })
+  const { createMutation, updateMutation, deleteMutation, isAnyPending } =
+    useEntityMutation({
+      createFn: createZoomLink,
+      updateFn: updateZoomLink,
+      deleteFn: deleteZoomLink,
+      onSuccessMessage: (mode) => `Zoom link ${mode}d`,
+      onSuccess: () => {
+        onOpenChange(false)
+      },
+    })
 
   const isPending = isAnyPending
 
@@ -264,6 +265,9 @@ export function ZoomLinkDialog({
                   label="Order"
                   setForm={setForm}
                   valueKey="orderIndex"
+                  onChange={(value) =>
+                    setForm({ ...form, orderIndex: String(value) })
+                  }
                 />
                 <Field className="sm:col-span-2">
                   <FieldLabel
@@ -330,6 +334,7 @@ function ZoomInput({
   setForm,
   valueKey,
   wide = false,
+  onChange,
 }: {
   form: ZoomFormState
   id: string
@@ -342,6 +347,7 @@ function ZoomInput({
     'meetingId' | 'orderIndex' | 'passcode' | 'title' | 'zoomUrl'
   >
   wide?: boolean
+  onChange?: (value: string | number) => void
 }) {
   return (
     <Field className={wide ? 'sm:col-span-2' : undefined}>
@@ -355,9 +361,19 @@ function ZoomInput({
         value={form[valueKey]}
         className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
         placeholder={placeholder}
-        onChange={(event) =>
-          setForm({ ...form, [valueKey]: event.target.value })
-        }
+        onChange={(event) => {
+          const value =
+            inputType === 'number'
+              ? event.target.value === ''
+                ? 0
+                : Number(event.target.value)
+              : event.target.value
+          if (onChange) {
+            onChange(value)
+          } else {
+            setForm({ ...form, [valueKey]: event.target.value })
+          }
+        }}
       />
     </Field>
   )

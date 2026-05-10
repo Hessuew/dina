@@ -22,15 +22,13 @@ import { FormDialog } from '@/components/ui/form-dialog'
 import { DialogBody } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SelectItem } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
+import {
+  FormFieldInput,
+  FormFieldSelect,
+  FormFieldTextarea,
+} from '@/components/ui/form-field'
 
 type MediaDialogMode = 'create' | 'edit' | 'delete'
 
@@ -114,14 +112,15 @@ export function MediaDialog({
     clearFile()
   }, [open, mode, media])
 
-  const { createMutation, updateMutation, deleteMutation, isAnyPending } = useEntityMutation({
-    createFn: createLibraryMedia,
-    updateFn: updateLibraryMedia,
-    deleteFn: deleteLibraryMedia,
-    onSuccess: () => {
-      onOpenChange(false)
-    },
-  })
+  const { createMutation, updateMutation, deleteMutation, isAnyPending } =
+    useEntityMutation({
+      createFn: createLibraryMedia,
+      updateFn: updateLibraryMedia,
+      deleteFn: deleteLibraryMedia,
+      onSuccess: () => {
+        onOpenChange(false)
+      },
+    })
 
   const isPending = isAnyPending || isUploading
 
@@ -308,87 +307,52 @@ export function MediaDialog({
       <DialogBody>
         <FieldGroup className="mt-6 gap-8">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field className="sm:col-span-2">
-              <FieldLabel
-                htmlFor="media-title"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Name <span className="text-[#C5A059]">*</span>
-              </FieldLabel>
-              <Input
-                id="media-title"
-                value={formData.title}
-                placeholder="Lesson recap video"
-                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
-                onChange={(e) => {
-                  setFormData({ ...formData, title: e.target.value })
-                  if (fieldErrors.title)
-                    setFieldErrors({ ...fieldErrors, title: '' })
-                }}
-              />
-              {fieldErrors.title && (
-                <p className="text-[0.68rem] text-red-400">
-                  {fieldErrors.title}
-                </p>
-              )}
-            </Field>
+            <FormFieldInput
+              id="media-title"
+              label="Name"
+              required
+              className="sm:col-span-2"
+              value={formData.title}
+              onChange={(value) => {
+                setFormData({ ...formData, title: value })
+                if (fieldErrors.title)
+                  setFieldErrors({ ...fieldErrors, title: '' })
+              }}
+              error={fieldErrors.title}
+              placeholder="Lesson recap video"
+            />
 
-            <Field>
-              <FieldLabel
-                htmlFor="media-category"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Category <span className="text-[#C5A059]">*</span>
-              </FieldLabel>
-              <Input
-                id="media-category"
-                value={formData.category}
-                placeholder="Foundations"
-                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.category ? 'border-red-500/60' : ''}`}
-                onChange={(e) => {
-                  setFormData({ ...formData, category: e.target.value })
-                  if (fieldErrors.category)
-                    setFieldErrors({ ...fieldErrors, category: '' })
-                }}
-              />
-              {fieldErrors.category && (
-                <p className="text-[0.68rem] text-red-400">
-                  {fieldErrors.category}
-                </p>
-              )}
-            </Field>
+            <FormFieldInput
+              id="media-category"
+              label="Category"
+              required
+              value={formData.category}
+              onChange={(value) => {
+                setFormData({ ...formData, category: value })
+                if (fieldErrors.category)
+                  setFieldErrors({ ...fieldErrors, category: '' })
+              }}
+              error={fieldErrors.category}
+              placeholder="Foundations"
+            />
 
-            <Field>
-              <FieldLabel
-                htmlFor="media-kind"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Type
-              </FieldLabel>
-              <Select
-                value={formData.kind}
-                onValueChange={(value) => {
-                  const kind = value as MediaFormData['kind']
-                  setFormData({
-                    ...formData,
-                    kind,
-                    pdfFile: null,
-                  })
-                  clearFile()
-                }}
-              >
-                <SelectTrigger
-                  className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
-                  id="media-kind"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
-                  <SelectItem value="youtube">YouTube</SelectItem>
-                  <SelectItem value="pdf">PDF</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
+            <FormFieldSelect
+              id="media-kind"
+              label="Type"
+              value={formData.kind}
+              onChange={(value) => {
+                const kind = value as MediaFormData['kind']
+                setFormData({
+                  ...formData,
+                  kind,
+                  pdfFile: null,
+                })
+                clearFile()
+              }}
+            >
+              <SelectItem value="youtube">YouTube</SelectItem>
+              <SelectItem value="pdf">PDF</SelectItem>
+            </FormFieldSelect>
 
             <Field className="sm:col-span-2">
               <FieldLabel
@@ -483,27 +447,20 @@ export function MediaDialog({
               </Field>
             )}
 
-            <Field className="sm:col-span-2">
-              <FieldLabel
-                htmlFor="media-description"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Description
-              </FieldLabel>
-              <Textarea
-                id="media-description"
-                rows={6}
-                value={formData.description}
-                placeholder="Short summary for students"
-                className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    description: e.target.value,
-                  })
-                }
-              />
-            </Field>
+            <FormFieldTextarea
+              id="media-description"
+              label="Description"
+              className="sm:col-span-2"
+              value={formData.description}
+              onChange={(value) =>
+                setFormData({
+                  ...formData,
+                  description: value,
+                })
+              }
+              placeholder="Short summary for students"
+              rows={6}
+            />
 
             <Field className="sm:col-span-2">
               <div className="flex items-center gap-3">

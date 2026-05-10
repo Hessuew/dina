@@ -5,9 +5,12 @@ import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { DialogBody } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
+import {
+  FormFieldInput,
+  FormFieldNumberInput,
+  FormFieldTextarea,
+} from '@/components/ui/form-field'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { createLesson, deleteLesson, updateLesson } from '@/utils/courses'
 
@@ -74,14 +77,15 @@ export function LessonDialog({
     }
   }, [open, initialData, mode])
 
-  const { createMutation, updateMutation, deleteMutation, isAnyPending } = useEntityMutation({
-    createFn: createLesson,
-    updateFn: updateLesson,
-    deleteFn: deleteLesson,
-    onSuccess: () => {
-      onOpenChange(false)
-    },
-  })
+  const { createMutation, updateMutation, deleteMutation, isAnyPending } =
+    useEntityMutation({
+      createFn: createLesson,
+      updateFn: updateLesson,
+      deleteFn: deleteLesson,
+      onSuccess: () => {
+        onOpenChange(false)
+      },
+    })
 
   const isPending = isAnyPending
 
@@ -180,100 +184,57 @@ export function LessonDialog({
       <DialogBody>
         <FieldGroup className="mt-6 gap-8">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field className="sm:col-span-2">
-              <FieldLabel
-                htmlFor="lesson-title"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Title <span className="text-[#C5A059]">*</span>
-              </FieldLabel>
-              <Input
-                id="lesson-title"
-                placeholder="Lesson title"
-                value={formData.title}
-                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
-                onChange={(e) => {
-                  setFormData({ ...formData, title: e.target.value })
-                  if (fieldErrors.title)
-                    setFieldErrors({ ...fieldErrors, title: '' })
-                }}
-              />
-              {fieldErrors.title && (
-                <p className="text-[0.68rem] text-red-400">
-                  {fieldErrors.title}
-                </p>
-              )}
-            </Field>
-            <Field>
-              <FieldLabel
-                htmlFor="lesson-time"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Scheduled Time <span className="text-[#C5A059]">*</span>
-              </FieldLabel>
-              <Input
-                id="lesson-time"
-                type="datetime-local"
-                value={formData.scheduledTime}
-                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.scheduledTime ? 'border-red-500/60' : ''}`}
-                onChange={(e) => {
-                  setFormData({
-                    ...formData,
-                    scheduledTime: e.target.value,
-                  })
-                  if (fieldErrors.scheduledTime)
-                    setFieldErrors({ ...fieldErrors, scheduledTime: '' })
-                }}
-              />
-              {fieldErrors.scheduledTime && (
-                <p className="text-[0.68rem] text-red-400">
-                  {fieldErrors.scheduledTime}
-                </p>
-              )}
-            </Field>
-            <Field>
-              <FieldLabel
-                htmlFor="lesson-duration"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Duration (minutes)
-              </FieldLabel>
-              <Input
-                id="lesson-duration"
-                type="number"
-                placeholder="60"
-                value={formData.duration}
-                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.duration ? 'border-red-500/60' : ''}`}
-                onChange={(e) => {
-                  setFormData({ ...formData, duration: e.target.value })
-                  if (fieldErrors.duration)
-                    setFieldErrors({ ...fieldErrors, duration: '' })
-                }}
-              />
-              {fieldErrors.duration && (
-                <p className="text-[0.68rem] text-red-400">
-                  {fieldErrors.duration}
-                </p>
-              )}
-            </Field>
-            <Field className="sm:col-span-2">
-              <FieldLabel
-                htmlFor="lesson-content"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Content
-              </FieldLabel>
-              <Textarea
-                id="lesson-content"
-                placeholder="Lesson content or description"
-                rows={8}
-                value={formData.content}
-                className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                onChange={(e) =>
-                  setFormData({ ...formData, content: e.target.value })
-                }
-              />
-            </Field>
+            <FormFieldInput
+              id="lesson-title"
+              label="Title"
+              required
+              className="sm:col-span-2"
+              value={formData.title}
+              onChange={(value) => {
+                setFormData({ ...formData, title: value })
+                if (fieldErrors.title)
+                  setFieldErrors({ ...fieldErrors, title: '' })
+              }}
+              error={fieldErrors.title}
+              placeholder="Lesson title"
+            />
+            <FormFieldInput
+              id="lesson-time"
+              label="Scheduled Time"
+              required
+              type="datetime-local"
+              value={formData.scheduledTime}
+              onChange={(value) => {
+                setFormData({
+                  ...formData,
+                  scheduledTime: value,
+                })
+                if (fieldErrors.scheduledTime)
+                  setFieldErrors({ ...fieldErrors, scheduledTime: '' })
+              }}
+              error={fieldErrors.scheduledTime}
+            />
+            <FormFieldNumberInput
+              id="lesson-duration"
+              label="Duration (minutes)"
+              placeholder="60"
+              value={formData.duration === '' ? 0 : Number(formData.duration)}
+              onChange={(value) => {
+                setFormData({ ...formData, duration: String(value) })
+                if (fieldErrors.duration)
+                  setFieldErrors({ ...fieldErrors, duration: '' })
+              }}
+              error={fieldErrors.duration}
+            />
+            <FormFieldTextarea
+              id="lesson-content"
+              label="Content"
+              className="sm:col-span-2"
+              value={formData.content}
+              onChange={(value) => setFormData({ ...formData, content: value })}
+              placeholder="Lesson content or description"
+              rows={8}
+            />
             <Field>
               <div className="flex items-center gap-3">
                 <Switch

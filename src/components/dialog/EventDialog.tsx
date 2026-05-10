@@ -23,16 +23,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { FieldGroup } from '@/components/ui/field'
+import { SelectItem } from '@/components/ui/select'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+  FormFieldInput,
+  FormFieldSelect,
+  FormFieldTextarea,
+} from '@/components/ui/form-field'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { createEvent, deleteEvent, updateEvent } from '@/utils/event/events'
 import { cn } from '@/lib/utils'
@@ -117,14 +114,15 @@ export function EventDialog({
     }
   }, [open, mode, event])
 
-  const { createMutation, updateMutation, deleteMutation, isAnyPending } = useEntityMutation({
-    createFn: createEvent,
-    updateFn: updateEvent,
-    deleteFn: deleteEvent,
-    onSuccess: () => {
-      onOpenChange(false)
-    },
-  })
+  const { createMutation, updateMutation, deleteMutation, isAnyPending } =
+    useEntityMutation({
+      createFn: createEvent,
+      updateFn: updateEvent,
+      deleteFn: deleteEvent,
+      onSuccess: () => {
+        onOpenChange(false)
+      },
+    })
 
   const isPending = isAnyPending
 
@@ -317,162 +315,93 @@ export function EventDialog({
       <DialogBody>
         <FieldGroup className="mt-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field className="sm:col-span-2">
-              <FieldLabel
-                htmlFor="event-title"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Title <span className="text-[#C5A059]">*</span>
-              </FieldLabel>
-              <Input
-                id="event-title"
-                placeholder="Event title"
-                value={formData.title}
-                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
-                onChange={(e) => {
-                  setFormData({ ...formData, title: e.target.value })
-                  if (fieldErrors.title)
-                    setFieldErrors({ ...fieldErrors, title: '' })
-                }}
-              />
-              {fieldErrors.title && (
-                <p className="text-[0.68rem] text-red-400">
-                  {fieldErrors.title}
-                </p>
-              )}
-            </Field>
-            <Field>
-              <FieldLabel
-                htmlFor="event-start"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Start Time <span className="text-[#C5A059]">*</span>
-              </FieldLabel>
-              <Input
-                id="event-start"
-                type="datetime-local"
-                value={formData.startTime}
-                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.startTime ? 'border-red-500/60' : ''}`}
-                onChange={(e) => {
-                  setFormData({ ...formData, startTime: e.target.value })
-                  if (fieldErrors.startTime)
-                    setFieldErrors({ ...fieldErrors, startTime: '' })
-                }}
-              />
-              {fieldErrors.startTime && (
-                <p className="text-[0.68rem] text-red-400">
-                  {fieldErrors.startTime}
-                </p>
-              )}
-            </Field>
-            <Field>
-              <FieldLabel
-                htmlFor="event-end"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                End Time <span className="text-[#C5A059]">*</span>
-              </FieldLabel>
-              <Input
-                id="event-end"
-                type="datetime-local"
-                value={formData.endTime}
-                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.endTime ? 'border-red-500/60' : ''}`}
-                onChange={(e) => {
-                  setFormData({ ...formData, endTime: e.target.value })
-                  if (fieldErrors.endTime)
-                    setFieldErrors({ ...fieldErrors, endTime: '' })
-                }}
-              />
-              {fieldErrors.endTime && (
-                <p className="text-[0.68rem] text-red-400">
-                  {fieldErrors.endTime}
-                </p>
-              )}
-            </Field>
-            <Field>
-              <FieldLabel
-                htmlFor="event-category"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Category
-              </FieldLabel>
-              <Select
-                value={formData.category}
-                onValueChange={(value) =>
-                  setFormData({
-                    ...formData,
-                    category: value as EventFormData['category'],
-                  })
-                }
-              >
-                <SelectTrigger className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
-                  <SelectValue placeholder="Select category">
-                    {formData.category
-                      ? formData.category.charAt(0).toUpperCase() +
-                        formData.category.slice(1)
-                      : 'Select category'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="rounded-none border-white/12">
-                  <SelectItem value="chapel">Chapel</SelectItem>
-                  <SelectItem value="exam">Exam</SelectItem>
-                  <SelectItem value="personal">Personal</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel
-                htmlFor="event-location"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Location
-              </FieldLabel>
-              <Input
-                id="event-location"
-                placeholder="Room or address"
-                value={formData.location}
-                className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                onChange={(e) =>
-                  setFormData({ ...formData, location: e.target.value })
-                }
-              />
-            </Field>
-            <Field className="sm:col-span-2">
-              <FieldLabel
-                htmlFor="event-zoom"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Zoom Link
-              </FieldLabel>
-              <Input
-                id="event-zoom"
-                placeholder="https://zoom.us/j/..."
-                value={formData.zoomLink}
-                className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                onChange={(e) =>
-                  setFormData({ ...formData, zoomLink: e.target.value })
-                }
-              />
-            </Field>
-            <Field className="sm:col-span-2">
-              <FieldLabel
-                htmlFor="event-description"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Description
-              </FieldLabel>
-              <Textarea
-                id="event-description"
-                rows={5}
-                placeholder="Event description"
-                value={formData.description}
-                className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-              />
-            </Field>
+            <FormFieldInput
+              id="event-title"
+              label="Title"
+              required
+              className="sm:col-span-2"
+              value={formData.title}
+              onChange={(value) => {
+                setFormData({ ...formData, title: value })
+                if (fieldErrors.title)
+                  setFieldErrors({ ...fieldErrors, title: '' })
+              }}
+              error={fieldErrors.title}
+              placeholder="Event title"
+            />
+            <FormFieldInput
+              id="event-start"
+              label="Start Time"
+              required
+              type="datetime-local"
+              value={formData.startTime}
+              onChange={(value) => {
+                setFormData({ ...formData, startTime: value })
+                if (fieldErrors.startTime)
+                  setFieldErrors({ ...fieldErrors, startTime: '' })
+              }}
+              error={fieldErrors.startTime}
+            />
+            <FormFieldInput
+              id="event-end"
+              label="End Time"
+              required
+              type="datetime-local"
+              value={formData.endTime}
+              onChange={(value) => {
+                setFormData({ ...formData, endTime: value })
+                if (fieldErrors.endTime)
+                  setFieldErrors({ ...fieldErrors, endTime: '' })
+              }}
+              error={fieldErrors.endTime}
+            />
+            <FormFieldSelect
+              id="event-category"
+              label="Category"
+              value={formData.category}
+              onChange={(value) =>
+                setFormData({
+                  ...formData,
+                  category: value as EventFormData['category'],
+                })
+              }
+              placeholder="Select category"
+            >
+              <SelectItem value="chapel">Chapel</SelectItem>
+              <SelectItem value="exam">Exam</SelectItem>
+              <SelectItem value="personal">Personal</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </FormFieldSelect>
+            <FormFieldInput
+              id="event-location"
+              label="Location"
+              value={formData.location}
+              onChange={(value) =>
+                setFormData({ ...formData, location: value })
+              }
+              placeholder="Room or address"
+            />
+            <FormFieldInput
+              id="event-zoom"
+              label="Zoom Link"
+              className="sm:col-span-2"
+              value={formData.zoomLink}
+              onChange={(value) =>
+                setFormData({ ...formData, zoomLink: value })
+              }
+              placeholder="https://zoom.us/j/..."
+            />
+            <FormFieldTextarea
+              id="event-description"
+              label="Description"
+              className="sm:col-span-2"
+              value={formData.description}
+              onChange={(value) =>
+                setFormData({ ...formData, description: value })
+              }
+              placeholder="Event description"
+              rows={5}
+            />
           </div>
         </FieldGroup>
       </DialogBody>

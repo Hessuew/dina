@@ -18,16 +18,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { FieldGroup } from '@/components/ui/field'
+import { SelectItem } from '@/components/ui/select'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+  FormFieldInput,
+  FormFieldNumberInput,
+  FormFieldSelect,
+  FormFieldTextarea,
+} from '@/components/ui/form-field'
 import { useMutation } from '@/hooks/useMutation'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import {
@@ -126,20 +124,21 @@ export function AssignmentDialog({
     }
   }, [open, mode, assignment, submission])
 
-  const { createMutation, updateMutation, deleteMutation, isAnyPending } = useEntityMutation({
-    createFn: createAssignment,
-    updateFn: updateAssignment,
-    deleteFn: deleteAssignment,
-    invalidateRouter: false,
-    onSuccess: async () => {
-      onOpenChange(false)
-      if (onDeleteSuccess) {
-        onDeleteSuccess()
-      } else {
-        await router.invalidate()
-      }
-    },
-  })
+  const { createMutation, updateMutation, deleteMutation, isAnyPending } =
+    useEntityMutation({
+      createFn: createAssignment,
+      updateFn: updateAssignment,
+      deleteFn: deleteAssignment,
+      invalidateRouter: false,
+      onSuccess: async () => {
+        onOpenChange(false)
+        if (onDeleteSuccess) {
+          onDeleteSuccess()
+        } else {
+          await router.invalidate()
+        }
+      },
+    })
 
   const gradeMutation = useMutation({
     fn: gradeSubmission,
@@ -323,60 +322,36 @@ export function AssignmentDialog({
                   </div>
                 )}
                 <FieldGroup>
-                  <Field>
-                    <FieldLabel
-                      htmlFor="grade"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Grade (max: {assignment?.maxGrade ?? 100})
-                    </FieldLabel>
-                    <Input
-                      id="grade"
-                      type="number"
-                      min="0"
-                      max={assignment?.maxGrade ?? 100}
-                      value={gradingData.grade === 0 ? '' : gradingData.grade}
-                      placeholder="0"
-                      className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.grade ? 'border-red-500/60' : ''}`}
-                      onChange={(e) => {
-                        setGradingData({
-                          ...gradingData,
-                          grade:
-                            e.target.value === ''
-                              ? 0
-                              : parseInt(e.target.value) || 0,
-                        })
-                        if (fieldErrors.grade)
-                          setFieldErrors({ ...fieldErrors, grade: '' })
-                      }}
-                    />
-                    {fieldErrors.grade && (
-                      <p className="text-[0.68rem] text-red-400">
-                        {fieldErrors.grade}
-                      </p>
-                    )}
-                  </Field>
-                  <Field>
-                    <FieldLabel
-                      htmlFor="feedback"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Feedback
-                    </FieldLabel>
-                    <Textarea
-                      id="feedback"
-                      rows={4}
-                      placeholder="Provide feedback to the student..."
-                      value={gradingData.feedback}
-                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                      onChange={(e) =>
-                        setGradingData({
-                          ...gradingData,
-                          feedback: e.target.value,
-                        })
-                      }
-                    />
-                  </Field>
+                  <FormFieldNumberInput
+                    id="grade"
+                    label={`Grade (max: ${assignment?.maxGrade ?? 100})`}
+                    min={0}
+                    max={assignment?.maxGrade ?? 100}
+                    value={gradingData.grade}
+                    onChange={(value) => {
+                      setGradingData({
+                        ...gradingData,
+                        grade: value,
+                      })
+                      if (fieldErrors.grade)
+                        setFieldErrors({ ...fieldErrors, grade: '' })
+                    }}
+                    error={fieldErrors.grade}
+                    placeholder="0"
+                  />
+                  <FormFieldTextarea
+                    id="feedback"
+                    label="Feedback"
+                    value={gradingData.feedback}
+                    onChange={(value) =>
+                      setGradingData({
+                        ...gradingData,
+                        feedback: value,
+                      })
+                    }
+                    placeholder="Provide feedback to the student..."
+                    rows={4}
+                  />
                 </FieldGroup>
               </div>
             </DialogBody>
@@ -448,126 +423,73 @@ export function AssignmentDialog({
       <DialogBody>
         <FieldGroup className="mt-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field className="sm:col-span-2">
-              <FieldLabel
-                htmlFor="title"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Title <span className="text-[#C5A059]">*</span>
-              </FieldLabel>
-              <Input
-                id="title"
-                value={formData.title}
-                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
-                onChange={(e) => {
-                  setFormData({ ...formData, title: e.target.value })
-                  if (fieldErrors.title)
-                    setFieldErrors({ ...fieldErrors, title: '' })
-                }}
-              />
-              {fieldErrors.title && (
-                <p className="text-[0.68rem] text-red-400">
-                  {fieldErrors.title}
-                </p>
-              )}
-            </Field>
-            <Field>
-              <FieldLabel
-                htmlFor="dueDate"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Due Date <span className="text-[#C5A059]">*</span>
-              </FieldLabel>
-              <Input
-                id="dueDate"
-                type="datetime-local"
-                value={formData.dueDate}
-                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50${fieldErrors.dueDate ? 'border-red-500/60' : ''}`}
-                onChange={(e) => {
-                  setFormData({ ...formData, dueDate: e.target.value })
-                  if (fieldErrors.dueDate)
-                    setFieldErrors({ ...fieldErrors, dueDate: '' })
-                }}
-              />
-              {fieldErrors.dueDate && (
-                <p className="text-[0.68rem] text-red-400">
-                  {fieldErrors.dueDate}
-                </p>
-              )}
-            </Field>
-            <Field>
-              <FieldLabel
-                htmlFor="maxGrade"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Maximum Grade
-              </FieldLabel>
-              <Input
-                id="maxGrade"
-                type="number"
-                min="0"
-                value={formData.maxGrade === 0 ? '' : formData.maxGrade}
-                placeholder="100"
-                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.maxGrade ? 'border-red-500/60' : ''}`}
-                onChange={(e) => {
-                  setFormData({
-                    ...formData,
-                    maxGrade:
-                      e.target.value === '' ? 0 : parseInt(e.target.value) || 0,
-                  })
-                  if (fieldErrors.maxGrade)
-                    setFieldErrors({ ...fieldErrors, maxGrade: '' })
-                }}
-              />
-              {fieldErrors.maxGrade && (
-                <p className="text-[0.68rem] text-red-400">
-                  {fieldErrors.maxGrade}
-                </p>
-              )}
-            </Field>
-            <Field>
-              <FieldLabel
-                htmlFor="status"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Status
-              </FieldLabel>
-              <Select
-                value={formData.status}
-                onValueChange={(value) =>
-                  setFormData({
-                    ...formData,
-                    status: value as typeof formData.status,
-                  })
-                }
-              >
-                <SelectTrigger className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field className="sm:col-span-2">
-              <FieldLabel
-                htmlFor="description"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Description
-              </FieldLabel>
-              <Textarea
-                id="description"
-                rows={5}
-                value={formData.description}
-                className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-              />
-            </Field>
+            <FormFieldInput
+              id="title"
+              label="Title"
+              required
+              className="sm:col-span-2"
+              value={formData.title}
+              onChange={(value) => {
+                setFormData({ ...formData, title: value })
+                if (fieldErrors.title)
+                  setFieldErrors({ ...fieldErrors, title: '' })
+              }}
+              error={fieldErrors.title}
+            />
+            <FormFieldInput
+              id="dueDate"
+              label="Due Date"
+              required
+              type="datetime-local"
+              value={formData.dueDate}
+              onChange={(value) => {
+                setFormData({ ...formData, dueDate: value })
+                if (fieldErrors.dueDate)
+                  setFieldErrors({ ...fieldErrors, dueDate: '' })
+              }}
+              error={fieldErrors.dueDate}
+            />
+            <FormFieldNumberInput
+              id="maxGrade"
+              label="Maximum Grade"
+              min={0}
+              value={formData.maxGrade}
+              onChange={(value) => {
+                setFormData({
+                  ...formData,
+                  maxGrade: value,
+                })
+                if (fieldErrors.maxGrade)
+                  setFieldErrors({ ...fieldErrors, maxGrade: '' })
+              }}
+              error={fieldErrors.maxGrade}
+              placeholder="100"
+            />
+            <FormFieldSelect
+              id="status"
+              label="Status"
+              value={formData.status}
+              onChange={(value) =>
+                setFormData({
+                  ...formData,
+                  status: value as typeof formData.status,
+                })
+              }
+            >
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
+            </FormFieldSelect>
+            <FormFieldTextarea
+              id="description"
+              label="Description"
+              className="sm:col-span-2"
+              value={formData.description}
+              onChange={(value) =>
+                setFormData({ ...formData, description: value })
+              }
+              rows={5}
+            />
           </div>
         </FieldGroup>
       </DialogBody>

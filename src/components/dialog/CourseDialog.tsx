@@ -7,16 +7,14 @@ import { Button } from '@/components/ui/button'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { DialogBody } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SelectItem } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
+import {
+  FormFieldInput,
+  FormFieldNumberInput,
+  FormFieldSelect,
+  FormFieldTextarea,
+} from '@/components/ui/form-field'
 import { createCourseSchema, updateCourseSchema } from '@/schemas/course.schema'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { useAllTeachers } from '@/hooks/useAllTeachers'
@@ -241,183 +239,105 @@ export function CourseDialog({
       <DialogBody>
         <FieldGroup className="mt-6 gap-8">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field className="sm:col-span-2">
-              <FieldLabel
-                htmlFor="course-title"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Title <span className="text-[#C5A059]">*</span>
-              </FieldLabel>
-              <Input
-                id="course-title"
-                placeholder="Introduction to Programming"
-                value={formData.title}
-                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.title ? 'border-red-500/60' : ''}`}
-                onChange={(e) => {
-                  setFormData({ ...formData, title: e.target.value })
-                  if (fieldErrors.title)
-                    setFieldErrors({ ...fieldErrors, title: '' })
-                }}
-              />
-              {fieldErrors.title && (
-                <p className="text-[0.68rem] text-red-400">
-                  {fieldErrors.title}
-                </p>
-              )}
-            </Field>
+            <FormFieldInput
+              id="course-title"
+              label="Title"
+              required
+              className="sm:col-span-2"
+              value={formData.title}
+              onChange={(value) => {
+                setFormData({ ...formData, title: value })
+                if (fieldErrors.title)
+                  setFieldErrors({ ...fieldErrors, title: '' })
+              }}
+              error={fieldErrors.title}
+              placeholder="Introduction to Programming"
+            />
             <div className="sm:col-span-1" />
-            <Field>
-              <FieldLabel
-                htmlFor="course-orderIndex"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Order Index
-              </FieldLabel>
-              <Input
-                id="course-orderIndex"
-                type="number"
-                min="0"
-                placeholder="0"
-                value={formData.orderIndex === 0 ? '' : formData.orderIndex}
-                className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    orderIndex:
-                      e.target.value === '' ? 0 : parseInt(e.target.value) || 0,
-                  })
-                }
-              />
-              <p className="text-xs text-[#8E816D]">
-                Lower numbers appear first in course list
-              </p>
-            </Field>
+            <FormFieldNumberInput
+              id="course-orderIndex"
+              label="Order Index"
+              min={0}
+              value={formData.orderIndex}
+              onChange={(value) =>
+                setFormData({
+                  ...formData,
+                  orderIndex: value,
+                })
+              }
+              description="Lower numbers appear first in course list"
+              placeholder="0"
+            />
             {isAdmin && (
               <>
-                <Field>
-                  <FieldLabel
-                    htmlFor="course-teacher1"
-                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                  >
-                    Teacher 1
-                  </FieldLabel>
-                  <Select
-                    value={formData.teacher1Id ?? undefined}
-                    onValueChange={(value) => {
-                      setFormData({ ...formData, teacher1Id: value })
-                      if (fieldErrors.teacher1Id)
-                        setFieldErrors({ ...fieldErrors, teacher1Id: '' })
-                    }}
-                  >
-                    <SelectTrigger
-                      className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
-                      id="course-teacher1"
-                    >
-                      <SelectValue placeholder="Select first teacher">
-                        {formData.teacher1Id
-                          ? teachers.find((t) => t.id === formData.teacher1Id)
-                              ?.fullName || 'Select first teacher'
-                          : 'Select first teacher'}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
-                      {teachers.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          No teachers available
-                        </SelectItem>
-                      ) : (
-                        teachers.map((teacher) => (
-                          <SelectItem key={teacher.id} value={teacher.id}>
-                            {teacher.fullName}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {fieldErrors.teacher1Id && (
-                    <p className="text-[0.68rem] text-red-400">
-                      {fieldErrors.teacher1Id}
-                    </p>
+                <FormFieldSelect
+                  id="course-teacher1"
+                  label="Teacher 1"
+                  value={formData.teacher1Id ?? ''}
+                  onChange={(value) => {
+                    setFormData({ ...formData, teacher1Id: value })
+                    if (fieldErrors.teacher1Id)
+                      setFieldErrors({ ...fieldErrors, teacher1Id: '' })
+                  }}
+                  error={fieldErrors.teacher1Id}
+                  placeholder="Select first teacher"
+                >
+                  {teachers.length === 0 ? (
+                    <SelectItem value="none" disabled>
+                      No teachers available
+                    </SelectItem>
+                  ) : (
+                    teachers.map((teacher) => (
+                      <SelectItem key={teacher.id} value={teacher.id}>
+                        {teacher.fullName}
+                      </SelectItem>
+                    ))
                   )}
-                </Field>
-                <Field>
-                  <FieldLabel
-                    htmlFor="course-teacher2"
-                    className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                  >
-                    Teacher 2
-                  </FieldLabel>
-                  <Select
-                    value={formData.teacher2Id ?? undefined}
-                    onValueChange={(value) => {
-                      setFormData({ ...formData, teacher2Id: value })
-                      if (fieldErrors.teacher2Id)
-                        setFieldErrors({ ...fieldErrors, teacher2Id: '' })
-                    }}
-                  >
-                    <SelectTrigger
-                      className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]"
-                      id="course-teacher2"
-                    >
-                      <SelectValue placeholder="Select second teacher">
-                        {formData.teacher2Id
-                          ? teachers.find((t) => t.id === formData.teacher2Id)
-                              ?.fullName || 'Select second teacher'
-                          : 'Select second teacher'}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
-                      {teachers.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          No teachers available
+                </FormFieldSelect>
+                <FormFieldSelect
+                  id="course-teacher2"
+                  label="Teacher 2"
+                  value={formData.teacher2Id ?? ''}
+                  onChange={(value) => {
+                    setFormData({ ...formData, teacher2Id: value })
+                    if (fieldErrors.teacher2Id)
+                      setFieldErrors({ ...fieldErrors, teacher2Id: '' })
+                  }}
+                  error={fieldErrors.teacher2Id}
+                  placeholder="Select second teacher"
+                >
+                  {teachers.length === 0 ? (
+                    <SelectItem value="none" disabled>
+                      No teachers available
+                    </SelectItem>
+                  ) : (
+                    teachers
+                      .filter((t) => t.id !== formData.teacher1Id)
+                      .map((teacher) => (
+                        <SelectItem key={teacher.id} value={teacher.id}>
+                          {teacher.fullName}
                         </SelectItem>
-                      ) : (
-                        teachers
-                          .filter((t) => t.id !== formData.teacher1Id)
-                          .map((teacher) => (
-                            <SelectItem key={teacher.id} value={teacher.id}>
-                              {teacher.fullName}
-                            </SelectItem>
-                          ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {fieldErrors.teacher2Id && (
-                    <p className="text-[0.68rem] text-red-400">
-                      {fieldErrors.teacher2Id}
-                    </p>
+                      ))
                   )}
-                </Field>
+                </FormFieldSelect>
               </>
             )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field>
-              <FieldLabel
-                htmlFor="course-description"
-                className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-              >
-                Description
-              </FieldLabel>
-              <Textarea
-                id="course-description"
-                placeholder="Describe what students will learn in this course"
-                rows={10}
-                value={formData.description}
-                className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50${fieldErrors.description ? 'border-red-500/60' : ''}`}
-                onChange={(e) => {
-                  setFormData({ ...formData, description: e.target.value })
-                  if (fieldErrors.description)
-                    setFieldErrors({ ...fieldErrors, description: '' })
-                }}
-              />
-              {fieldErrors.description && (
-                <p className="text-[0.68rem] text-red-400">
-                  {fieldErrors.description}
-                </p>
-              )}
-            </Field>
+            <FormFieldTextarea
+              id="course-description"
+              label="Description"
+              value={formData.description}
+              onChange={(value) => {
+                setFormData({ ...formData, description: value })
+                if (fieldErrors.description)
+                  setFieldErrors({ ...fieldErrors, description: '' })
+              }}
+              error={fieldErrors.description}
+              placeholder="Describe what students will learn in this course"
+              rows={10}
+            />
             <Field>
               <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
                 Course Thumbnail
