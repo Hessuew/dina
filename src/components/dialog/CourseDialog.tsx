@@ -1,23 +1,16 @@
 import { useEffect, useState } from 'react'
-import { z } from 'zod'
 import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { toUserError } from '@/utils/errors'
 import { Button } from '@/components/ui/button'
-import { FormDialog } from '@/components/ui/form-dialog'
 import { DialogBody } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { FormDialog } from '@/components/ui/form-dialog'
 import { SelectItem } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import {
-  FormFieldInput,
-  FormFieldNumberInput,
-  FormFieldSelect,
-  FormFieldTextarea,
-} from '@/components/ui/form-field'
 import { createCourseSchema, updateCourseSchema } from '@/schemas/course.schema'
-import { useEntityMutation } from '@/hooks/useEntityMutation'
+import { useAppForm } from '@/hooks/form'
 import { useAllTeachers } from '@/hooks/useAllTeachers'
+import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import { createCourse, updateCourse } from '@/utils/courses'
 import { uploadCourseThumbnailFn } from '@/utils/imageUpload'
@@ -25,11 +18,21 @@ import { uploadCourseThumbnailFn } from '@/utils/imageUpload'
 type CourseFormData = {
   title: string
   description: string
-  thumbnailUrl: string | null
-  teacher1Id: string | null
-  teacher2Id: string | null
   orderIndex: number
+  teacher1Id: string
+  teacher2Id: string
   isPublished: boolean
+}
+
+type CourseFieldErrors = Partial<Record<keyof CourseFormData, string>>
+
+const emptyFormData: CourseFormData = {
+  title: '',
+  description: '',
+  orderIndex: 0,
+  teacher1Id: '',
+  teacher2Id: '',
+  isPublished: false,
 }
 
 type CourseDialogProps = {
@@ -49,14 +52,35 @@ type CourseDialogProps = {
   }
 }
 
-const emptyFormData: CourseFormData = {
-  title: '',
-  description: '',
-  thumbnailUrl: null,
-  teacher1Id: null,
-  teacher2Id: null,
-  orderIndex: 0,
-  isPublished: false,
+function getInitialValues(
+  initialData: CourseDialogProps['initialData'],
+): CourseFormData {
+  if (!initialData) return { ...emptyFormData }
+
+  return {
+    title: initialData.title,
+    description: initialData.description,
+    orderIndex: initialData.orderIndex,
+    teacher1Id: initialData.teacher1Id ?? '',
+    teacher2Id: initialData.teacher2Id ?? '',
+    isPublished: initialData.isPublished,
+  }
+}
+
+function extractFieldErrors(
+  issues: Array<{ path: Array<PropertyKey>; message: string }>,
+): CourseFieldErrors {
+  const errors: CourseFieldErrors = {}
+
+  for (const issue of issues) {
+    const key = issue.path[0]
+    if (typeof key !== 'string' || !(key in emptyFormData)) continue
+
+    const field = key as keyof CourseFormData
+    if (!errors[field]) errors[field] = issue.message
+  }
+
+  return errors
 }
 
 export function CourseDialog({
@@ -75,50 +99,14 @@ export function CourseDialog({
     clearFile,
     setUploading,
   } = useFileUpload()
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
-  const [formData, setFormData] = useState<CourseFormData>({ ...emptyFormData })
-
-  useEffect(() => {
-    if (open) {
-      setFieldErrors({})
-      setFormData(
-        initialData
-          ? {
-              title: initialData.title,
-              description: initialData.description,
-              thumbnailUrl: initialData.thumbnailUrl,
-              teacher1Id: initialData.teacher1Id,
-              teacher2Id: initialData.teacher2Id,
-              orderIndex: initialData.orderIndex,
-              isPublished: initialData.isPublished,
-            }
-          : { ...emptyFormData },
-      )
-    }
-  }, [open, initialData])
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
+  const [submitErrors, setSubmitErrors] = useState<CourseFieldErrors>({})
 
   const { teachers, error: teachersError } = useAllTeachers(open && isAdmin)
 
   if (teachersError) {
     console.error('Failed to load teachers:', teachersError)
-  }
-
-  const resetForm = () => {
-    setFormData(
-      initialData
-        ? {
-            title: initialData.title,
-            description: initialData.description,
-            thumbnailUrl: initialData.thumbnailUrl,
-            teacher1Id: initialData.teacher1Id,
-            teacher2Id: initialData.teacher2Id,
-            orderIndex: initialData.orderIndex,
-            isPublished: initialData.isPublished,
-          }
-        : { ...emptyFormData },
-    )
-    clearFile()
   }
 
   const handleThumbnailUpload = async (courseId: string) => {
@@ -146,77 +134,78 @@ export function CourseDialog({
     updateFn: updateCourse,
     onSuccessMessage: (_mode) =>
       `Course ${_mode === 'create' ? 'created' : 'updated'} successfully!`,
-    onSuccess: async ({ mode: _mode, data: _data }) => {
+    onSuccess: async ({ data: _data }) => {
       const data = _data as { course: { id: string } }
       if ('course' in data) {
         await handleThumbnailUpload(data.course.id)
+        clearFile()
+        setThumbnailUrl(null)
         onOpenChange(false)
-        resetForm()
       }
     },
   })
 
-  const handleSubmit = () => {
-    const clientSchema =
-      mode === 'create'
-        ? createCourseSchema
-        : updateCourseSchema.extend({
-            courseId: z.string().default(initialData?.courseId ?? ''),
-          })
-
-    const parseResult = clientSchema.safeParse({
-      title: formData.title,
-      description: formData.description,
-      teacher1Id: formData.teacher1Id ?? undefined,
-      teacher2Id: formData.teacher2Id ?? undefined,
-      orderIndex: formData.orderIndex,
-      courseId: initialData?.courseId ?? '',
-      isPublished: formData.isPublished,
-    })
-
-    if (!parseResult.success) {
-      const errors: Record<string, string> = {}
-      for (const issue of parseResult.error.issues) {
-        const key = issue.path[0] as string
-        if (!errors[key]) errors[key] = issue.message
+  const form = useAppForm({
+    defaultValues: getInitialValues(initialData),
+    onSubmit: ({ value }) => {
+      const shared = {
+        title: value.title,
+        description: value.description,
+        orderIndex: value.orderIndex,
+        teacher1Id: value.teacher1Id || undefined,
+        teacher2Id: value.teacher2Id || undefined,
+        isPublished: value.isPublished,
       }
-      setFieldErrors(errors)
-      return
-    }
 
-    if (isAdmin && formData.teacher1Id && formData.teacher2Id) {
-      if (formData.teacher1Id === formData.teacher2Id) {
-        setFieldErrors({ teacher2Id: 'Please select 2 different teachers' })
+      if (isAdmin && shared.teacher1Id && shared.teacher2Id) {
+        if (shared.teacher1Id === shared.teacher2Id) {
+          setSubmitErrors({ teacher2Id: 'Please select 2 different teachers' })
+          return
+        }
+      }
+
+      if (mode === 'create') {
+        const result = createCourseSchema.safeParse(shared)
+
+        if (!result.success) {
+          setSubmitErrors(extractFieldErrors(result.error.issues))
+          return
+        }
+
+        setSubmitErrors({})
+        createMutation.mutate({ data: result.data })
         return
       }
-    }
 
-    setFieldErrors({})
+      if (!initialData) return
 
-    if (mode === 'create') {
-      createMutation.mutate({
-        data: {
-          title: formData.title,
-          description: formData.description,
-          teacher1Id: formData.teacher1Id ?? undefined,
-          teacher2Id: formData.teacher2Id ?? undefined,
-          orderIndex: formData.orderIndex,
-        },
+      const result = updateCourseSchema.safeParse({
+        ...shared,
+        courseId: initialData.courseId,
+        thumbnailUrl: thumbnailUrl || undefined,
       })
-    } else if (initialData) {
-      updateMutation.mutate({
-        data: {
-          courseId: initialData.courseId,
-          title: formData.title,
-          description: formData.description,
-          isPublished: formData.isPublished,
-          teacher1Id: formData.teacher1Id || undefined,
-          teacher2Id: formData.teacher2Id || undefined,
-          thumbnailUrl: formData.thumbnailUrl || undefined,
-          orderIndex: formData.orderIndex,
-        },
-      })
-    }
+
+      if (!result.success) {
+        setSubmitErrors(extractFieldErrors(result.error.issues))
+        return
+      }
+
+      setSubmitErrors({})
+      updateMutation.mutate({ data: result.data })
+    },
+  })
+
+  useEffect(() => {
+    if (!open) return
+    setSubmitErrors({})
+    setThumbnailUrl(initialData?.thumbnailUrl ?? null)
+    if (mode === 'create') clearFile()
+    form.reset(getInitialValues(initialData))
+  }, [open, initialData, mode, form, clearFile])
+
+  const clearError = (field: keyof CourseFormData) => {
+    if (!submitErrors[field]) return
+    setSubmitErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
   return (
@@ -231,7 +220,7 @@ export function CourseDialog({
           : 'Update the course information'
       }
       maxWidth="3xl"
-      onSubmit={handleSubmit}
+      onSubmit={() => void form.handleSubmit()}
       isSubmitting={isAnyPending || isUploading}
       submitLabel={mode === 'create' ? 'Create Course' : 'Save Changes'}
       loadingLabel={isUploading ? 'Uploading...' : undefined}
@@ -239,105 +228,100 @@ export function CourseDialog({
       <DialogBody>
         <FieldGroup className="mt-6 gap-8">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <FormFieldInput
-              id="course-title"
-              label="Title"
-              required
-              className="sm:col-span-2"
-              value={formData.title}
-              onChange={(value) => {
-                setFormData({ ...formData, title: value })
-                if (fieldErrors.title)
-                  setFieldErrors({ ...fieldErrors, title: '' })
-              }}
-              error={fieldErrors.title}
-              placeholder="Introduction to Programming"
-            />
+            <form.AppField name="title">
+              {(field) => (
+                <field.TextField
+                  id="course-title"
+                  label="Title"
+                  required
+                  className="sm:col-span-2"
+                  placeholder="Introduction to Programming"
+                  error={submitErrors.title}
+                  onValueChange={() => clearError('title')}
+                />
+              )}
+            </form.AppField>
             <div className="sm:col-span-1" />
-            <FormFieldNumberInput
-              id="course-orderIndex"
-              label="Order Index"
-              min={0}
-              value={formData.orderIndex}
-              onChange={(value) =>
-                setFormData({
-                  ...formData,
-                  orderIndex: value,
-                })
-              }
-              description="Lower numbers appear first in course list"
-              placeholder="0"
-            />
+            <form.AppField name="orderIndex">
+              {(field) => (
+                <field.NumberField
+                  id="course-orderIndex"
+                  label="Order Index"
+                  min={0}
+                  placeholder="0"
+                  description="Lower numbers appear first in course list"
+                />
+              )}
+            </form.AppField>
             {isAdmin && (
               <>
-                <FormFieldSelect
-                  id="course-teacher1"
-                  label="Teacher 1"
-                  value={formData.teacher1Id ?? ''}
-                  onChange={(value) => {
-                    setFormData({ ...formData, teacher1Id: value })
-                    if (fieldErrors.teacher1Id)
-                      setFieldErrors({ ...fieldErrors, teacher1Id: '' })
-                  }}
-                  error={fieldErrors.teacher1Id}
-                  placeholder="Select first teacher"
-                >
-                  {teachers.length === 0 ? (
-                    <SelectItem value="none" disabled>
-                      No teachers available
-                    </SelectItem>
-                  ) : (
-                    teachers.map((teacher) => (
-                      <SelectItem key={teacher.id} value={teacher.id}>
-                        {teacher.fullName}
-                      </SelectItem>
-                    ))
-                  )}
-                </FormFieldSelect>
-                <FormFieldSelect
-                  id="course-teacher2"
-                  label="Teacher 2"
-                  value={formData.teacher2Id ?? ''}
-                  onChange={(value) => {
-                    setFormData({ ...formData, teacher2Id: value })
-                    if (fieldErrors.teacher2Id)
-                      setFieldErrors({ ...fieldErrors, teacher2Id: '' })
-                  }}
-                  error={fieldErrors.teacher2Id}
-                  placeholder="Select second teacher"
-                >
-                  {teachers.length === 0 ? (
-                    <SelectItem value="none" disabled>
-                      No teachers available
-                    </SelectItem>
-                  ) : (
-                    teachers
-                      .filter((t) => t.id !== formData.teacher1Id)
-                      .map((teacher) => (
-                        <SelectItem key={teacher.id} value={teacher.id}>
-                          {teacher.fullName}
+                <form.AppField name="teacher1Id">
+                  {(field) => (
+                    <field.SelectField
+                      id="course-teacher1"
+                      label="Teacher 1"
+                      placeholder="Select first teacher"
+                      error={submitErrors.teacher1Id}
+                      onValueChange={() => clearError('teacher1Id')}
+                    >
+                      {teachers.length === 0 ? (
+                        <SelectItem value="none" disabled>
+                          No teachers available
                         </SelectItem>
-                      ))
+                      ) : (
+                        teachers.map((teacher) => (
+                          <SelectItem key={teacher.id} value={teacher.id}>
+                            {teacher.fullName}
+                          </SelectItem>
+                        ))
+                      )}
+                    </field.SelectField>
                   )}
-                </FormFieldSelect>
+                </form.AppField>
+                <form.AppField name="teacher2Id">
+                  {(field) => (
+                    <field.SelectField
+                      id="course-teacher2"
+                      label="Teacher 2"
+                      placeholder="Select second teacher"
+                      error={submitErrors.teacher2Id}
+                      onValueChange={() => clearError('teacher2Id')}
+                    >
+                      {teachers.length === 0 ? (
+                        <SelectItem value="none" disabled>
+                          No teachers available
+                        </SelectItem>
+                      ) : (
+                        teachers
+                          .filter(
+                            (t) => t.id !== form.getFieldValue('teacher1Id'),
+                          )
+                          .map((teacher) => (
+                            <SelectItem key={teacher.id} value={teacher.id}>
+                              {teacher.fullName}
+                            </SelectItem>
+                          ))
+                      )}
+                    </field.SelectField>
+                  )}
+                </form.AppField>
               </>
             )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormFieldTextarea
-              id="course-description"
-              label="Description"
-              value={formData.description}
-              onChange={(value) => {
-                setFormData({ ...formData, description: value })
-                if (fieldErrors.description)
-                  setFieldErrors({ ...fieldErrors, description: '' })
-              }}
-              error={fieldErrors.description}
-              placeholder="Describe what students will learn in this course"
-              rows={10}
-            />
+            <form.AppField name="description">
+              {(field) => (
+                <field.TextAreaField
+                  id="course-description"
+                  label="Description"
+                  placeholder="Describe what students will learn in this course"
+                  rows={10}
+                  error={submitErrors.description}
+                  onValueChange={() => clearError('description')}
+                />
+              )}
+            </form.AppField>
             <Field>
               <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
                 Course Thumbnail
@@ -350,10 +334,10 @@ export function CourseDialog({
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                {fileData || formData.thumbnailUrl ? (
+                {fileData || thumbnailUrl ? (
                   <div className="relative aspect-video w-full max-w-sm overflow-hidden border border-white/10">
                     <img
-                      src={fileData || formData.thumbnailUrl!}
+                      src={fileData || thumbnailUrl!}
                       alt="Course thumbnail"
                       className="size-full object-cover"
                     />
@@ -363,10 +347,7 @@ export function CourseDialog({
                       size="sm"
                       className="absolute top-2 right-2 rounded-none border-white/20 bg-black/40 text-white hover:bg-black/60"
                       onClick={() => {
-                        setFormData({
-                          ...formData,
-                          thumbnailUrl: null,
-                        })
+                        setThumbnailUrl(null)
                         clearFile()
                       }}
                     >
@@ -393,23 +374,14 @@ export function CourseDialog({
           </div>
 
           {mode === 'edit' && (
-            <Field>
-              <div className="flex items-center gap-3">
-                <Switch
+            <form.AppField name="isPublished">
+              {(field) => (
+                <field.SwitchField
                   id="course-published"
-                  checked={formData.isPublished}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, isPublished: checked })
-                  }
+                  label="Publish course"
                 />
-                <FieldLabel
-                  htmlFor="course-published"
-                  className="text-sm text-[#AFA28F]"
-                >
-                  Publish course
-                </FieldLabel>
-              </div>
-            </Field>
+              )}
+            </form.AppField>
           )}
         </FieldGroup>
       </DialogBody>
