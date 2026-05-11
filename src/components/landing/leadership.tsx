@@ -8,8 +8,8 @@ import keneImage from '@/assets/images/lecturers/kene.webp'
 import mahiImage from '@/assets/images/lecturers/mahi.webp'
 import sadeImage from '@/assets/images/lecturers/sade.webp'
 import {
+  LandingImageSection,
   LandingScriptureSectionHeader,
-  LandingSection,
   LandingSectionContainer,
 } from '@/components/landing/primitives'
 
@@ -122,13 +122,11 @@ function MemberCard({ member }: { member: LeadershipMember }) {
 
 export function LandingLeadershipSection() {
   return (
-    <LandingSection
+    <LandingImageSection
+      backgroundImageUrl={graphiteBackground}
+      gradientFrom="rgba(10,10,11,0.92)"
+      gradientTo="rgba(16,16,17,0.96)"
       className="border-b border-[#C5A059]/14 bg-[#121212] text-[#F8F4EC]"
-      style={{
-        backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.92), rgba(16,16,17,0.96)), url(${graphiteBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.1),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.04),transparent_28%)]" />
 
@@ -180,6 +178,6 @@ export function LandingLeadershipSection() {
           </div>
         </div>
       </LandingSectionContainer>
-    </LandingSection>
+    </LandingImageSection>
   )
 }

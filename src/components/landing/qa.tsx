@@ -1,8 +1,8 @@
 import { ArrowRight } from 'lucide-react'
 import marbleTexture from '@/assets/images/bg/bg_hero.webp'
 import {
+  LandingImageSection,
   LandingScriptureSectionHeader,
-  LandingSection,
   LandingSectionContainer,
 } from '@/components/landing/primitives'
 
@@ -53,13 +53,11 @@ const qaItems: Array<QAItem> = [
 
 export function LandingQASection() {
   return (
-    <LandingSection
+    <LandingImageSection
+      backgroundImageUrl={marbleTexture}
+      gradientFrom="rgba(247,244,238,0.96)"
+      gradientTo="rgba(247,244,238,0.98)"
       className="border-b border-[#C5A059]/14"
-      style={{
-        backgroundImage: `linear-gradient(180deg, rgba(247,244,238,0.96), rgba(247,244,238,0.98)), url(${marbleTexture})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.08),transparent_40%)]" />
 
@@ -110,6 +108,6 @@ export function LandingQASection() {
           <div className="border-t border-[#C5A059]/20 pt-8 text-center"></div>
         </div>
       </LandingSectionContainer>
-    </LandingSection>
+    </LandingImageSection>
   )
 }

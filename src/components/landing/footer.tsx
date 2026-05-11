@@ -2,19 +2,17 @@ import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 import footerBackground from '@/assets/images/bg/bg_footer.webp'
 import {
-  LandingSection,
+  LandingImageSection,
   LandingSectionContainer,
 } from '@/components/landing/primitives'
 
 export function LandingFooter() {
   return (
-    <LandingSection
+    <LandingImageSection
+      backgroundImageUrl={footerBackground}
+      gradientFrom="rgba(8,6,5,0.65)"
+      gradientTo="rgba(10,8,7,0.75)"
       className="min-h-screen text-[#F7F4EE]"
-      style={{
-        backgroundImage: `linear-gradient(180deg, rgba(8,6,5,0.65), rgba(10,8,7,0.75)), url(${footerBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(197,160,89,0.08),transparent_50%)]" />
 
@@ -61,6 +59,6 @@ export function LandingFooter() {
           </div>
         </div>
       </LandingSectionContainer>
-    </LandingSection>
+    </LandingImageSection>
   )
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import type { LandingShowcaseItem } from '@/components/landing/types'
 import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
 import houseGround from '@/assets/images/house/house_ground.webp'
 import houseFoundation from '@/assets/images/house/house_foundation.webp'
@@ -11,18 +11,15 @@ import {
   LandingFeaturePanel,
   LandingFeaturePanelBody,
   LandingFeaturePanelHeader,
+  LandingImageSection,
   LandingItemGrid,
   LandingScriptureSectionHeader,
-  LandingSection,
   LandingSectionContainer,
 } from '@/components/landing/primitives'
+import { useCarousel } from '@/components/landing/hooks'
 
-type CourseShowcaseItem = {
-  id: string
-  number: string
-  title: string
+type CourseShowcaseItem = LandingShowcaseItem & {
   eyebrow: string
-  description: string
   lessons: [string, string, string]
   image: string
 }
@@ -111,30 +108,18 @@ const courseShowcaseItems: Array<CourseShowcaseItem> = [
 ]
 
 export function LandingCourseShowcase() {
-  const [activeIndex, setActiveIndex] = useState(0)
+  const { activeIndex, setActiveIndex, goToPrevious, goToNext } = useCarousel(
+    courseShowcaseItems.length,
+  )
   const activeCourse = courseShowcaseItems[activeIndex]
 
-  const goToPrevious = () => {
-    setActiveIndex((currentIndex) =>
-      currentIndex === 0 ? courseShowcaseItems.length - 1 : currentIndex - 1,
-    )
-  }
-
-  const goToNext = () => {
-    setActiveIndex((currentIndex) =>
-      currentIndex === courseShowcaseItems.length - 1 ? 0 : currentIndex + 1,
-    )
-  }
-
   return (
-    <LandingSection
+    <LandingImageSection
       id="courses"
+      backgroundImageUrl={graphiteBackground}
+      gradientFrom="rgba(10,10,11,0.9)"
+      gradientTo="rgba(16,16,17,0.95)"
       className="border-b border-[#C5A059]/14 bg-[#121212] text-[#F8F4EC]"
-      style={{
-        backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${graphiteBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.06),transparent_22%)]" />
       <div className="absolute right-[8%] bottom-24 h-px w-16 bg-white/12 lg:w-24" />
@@ -266,6 +251,6 @@ export function LandingCourseShowcase() {
           </LandingFeaturePanel>
         </div>
       </LandingSectionContainer>
-    </LandingSection>
+    </LandingImageSection>
   )
 }

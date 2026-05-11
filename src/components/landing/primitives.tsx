@@ -66,6 +66,12 @@ type LandingActiveItemNavProps = {
   className?: string
 }
 
+type LandingImageSectionProps = LandingSectionProps & {
+  backgroundImageUrl: string
+  gradientFrom: string
+  gradientTo: string
+}
+
 type LandingItemGridProps = {
   items: Array<any>
   activeIndex: number
@@ -86,6 +92,25 @@ export function LandingSection({ className, ...props }: LandingSectionProps) {
     <section
       {...props}
       className={cn('relative isolate overflow-hidden', className)}
+    />
+  )
+}
+
+export function LandingImageSection({
+  backgroundImageUrl,
+  gradientFrom,
+  gradientTo,
+  ...props
+}: LandingImageSectionProps) {
+  return (
+    <LandingSection
+      {...props}
+      style={{
+        backgroundImage: `linear-gradient(180deg, ${gradientFrom}, ${gradientTo}), url(${backgroundImageUrl})`,
+        backgroundPosition: 'center',
+        backgroundSize: 'cover',
+        ...(props.style || {}),
+      }}
     />
   )
 }

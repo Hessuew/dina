@@ -542,6 +542,88 @@ This animation must be defined in the Tailwind config / global CSS.
 
 ---
 
+## Component Patterns
+
+## Feature Panel
+
+Right-panel component with image header and detail body. Used for showcasing items with visual context.
+
+**Structure:**
+
+- Image header with overlay text
+- Body with title, description, and supporting content
+- Sharp corners (no border-radius)
+- Gold accent borders on dark surfaces
+
+**Usage:** `LandingFeaturePanel`, `LandingFeaturePanelHeader`, `LandingFeaturePanelBody`
+
+## Selector Grid
+
+Grid of selectable items with active state styling.
+
+**Structure:**
+
+- Grid layout with configurable columns
+- Active item gets gold accent border and background
+- Non-active items have subtle borders
+- Arrow icon on active item
+
+**Usage:** `LandingItemGrid`
+
+## Navigation Controls
+
+Prev/next navigation with label and active value display.
+
+**Structure:**
+
+- Label on left
+- Active value in center
+- Prev button on left
+- Next button on right
+- Subtle borders and hover states
+
+**Usage:** `LandingActiveItemNav`
+
+## Image Section Wrapper
+
+Background section with image and gradient overlay. Replaces manual background styling.
+
+**Structure:**
+
+- Background image with gradient overlay
+- Accepts all LandingSection props
+- Consistent background positioning and sizing
+
+**Usage:** `LandingImageSection`
+
+**Props:**
+
+- `backgroundImageUrl`: string - image path
+- `gradientFrom`: string - top gradient color (rgba)
+- `gradientTo`: string - bottom gradient color (rgba)
+- All LandingSection props (id, className, etc.)
+
+## Carousel Hook
+
+Shared carousel logic for navigating through item lists.
+
+**Structure:**
+
+- Active index state
+- goToPrevious/goToNext functions with circular navigation
+- setActiveIndex for manual selection
+
+**Usage:** `useCarousel(itemCount)`
+
+**Returns:**
+
+- `activeIndex`: number - current active item
+- `setActiveIndex`: (index: number) => void - set active index
+- `goToPrevious`: () => void - navigate to previous item
+- `goToNext`: () => void - navigate to next item
+
+---
+
 ## Quick Checklist
 
 Before shipping any new public-facing UI:

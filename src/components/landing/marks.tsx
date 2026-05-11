@@ -1,17 +1,17 @@
-import { useState } from 'react'
+import type { LandingItemBase } from '@/components/landing/types'
 import marksBackground from '@/assets/images/bg/bg_marks.webp'
 import {
   LandingActiveItemNav,
   LandingFeaturePanel,
   LandingFeaturePanelBody,
   LandingFeaturePanelHeader,
+  LandingImageSection,
   LandingScriptureSectionHeader,
-  LandingSection,
   LandingSectionContainer,
 } from '@/components/landing/primitives'
+import { useCarousel } from '@/components/landing/hooks'
 
-type MarkItem = {
-  id: string
+type MarkItem = LandingItemBase & {
   title: string
   quote: string
   quote2?: string
@@ -74,30 +74,16 @@ const marks: Array<MarkItem> = [
 ]
 
 export function LandingMarksSection() {
-  const [activeIndex, setActiveIndex] = useState(0)
+  const { activeIndex, goToPrevious, goToNext } = useCarousel(marks.length)
   const activeMark = marks[activeIndex]
 
-  const goToPrevious = () => {
-    setActiveIndex((currentIndex) =>
-      currentIndex === 0 ? marks.length - 1 : currentIndex - 1,
-    )
-  }
-
-  const goToNext = () => {
-    setActiveIndex((currentIndex) =>
-      currentIndex === marks.length - 1 ? 0 : currentIndex + 1,
-    )
-  }
-
   return (
-    <LandingSection
+    <LandingImageSection
       id="marks"
+      backgroundImageUrl={marksBackground}
+      gradientFrom="rgba(10,10,11,0.9)"
+      gradientTo="rgba(16,16,17,0.95)"
       className="min-h-screen border-b border-[#C5A059]/14 text-[#F7F4EE]"
-      style={{
-        backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${marksBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.14),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.06),transparent_22%)]" />
       <div className="absolute right-[8%] bottom-24 h-px w-16 bg-white/12 lg:w-24" />
@@ -192,6 +178,6 @@ export function LandingMarksSection() {
           </LandingFeaturePanel>
         </div>
       </LandingSectionContainer>
-    </LandingSection>
+    </LandingImageSection>
   )
 }

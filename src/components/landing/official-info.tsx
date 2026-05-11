@@ -1,20 +1,18 @@
 import { Landmark, Mail, MapPin, Phone } from 'lucide-react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import {
+  LandingImageSection,
   LandingScriptureSectionHeader,
-  LandingSection,
   LandingSectionContainer,
 } from '@/components/landing/primitives'
 
 export function LandingOfficialInfo() {
   return (
-    <LandingSection
+    <LandingImageSection
+      backgroundImageUrl={facultyBackground}
+      gradientFrom="rgba(255, 255, 255, 0.9)"
+      gradientTo="rgba(255, 255, 255, 0.9)"
       className="text-[#1C1815]"
-      style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url(${facultyBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(197,160,89,0.08),transparent_50%)]" />
 
@@ -112,6 +110,6 @@ export function LandingOfficialInfo() {
           </div>
         </div>
       </LandingSectionContainer>
-    </LandingSection>
+    </LandingImageSection>
   )
 }
