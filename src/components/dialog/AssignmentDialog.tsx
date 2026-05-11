@@ -20,14 +20,9 @@ import {
 } from '@/components/ui/dialog'
 import { FieldGroup } from '@/components/ui/field'
 import { SelectItem } from '@/components/ui/select'
-import {
-  FormFieldInput,
-  FormFieldNumberInput,
-  FormFieldSelect,
-  FormFieldTextarea,
-} from '@/components/ui/form-field'
 import { useMutation } from '@/hooks/useMutation'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
+import { useAppForm } from '@/hooks/form'
 import {
   createAssignment,
   deleteAssignment,
@@ -35,6 +30,36 @@ import {
   updateAssignment,
 } from '@/utils/assignments/assignments'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
+
+type AssignmentFormData = {
+  title: string
+  description: string
+  dueDate: string
+  maxGrade: number
+  status: string
+}
+
+type AssignmentFormErrors = Partial<Record<keyof AssignmentFormData, string>>
+
+const emptyAssignmentForm: AssignmentFormData = {
+  title: '',
+  description: '',
+  dueDate: '',
+  maxGrade: 100,
+  status: 'draft',
+}
+
+type GradingFormData = {
+  grade: number
+  feedback: string
+}
+
+type GradingFormErrors = Partial<Record<keyof GradingFormData, string>>
+
+const emptyGradingForm: GradingFormData = {
+  grade: 0,
+  feedback: '',
+}
 
 type AssignmentDialogProps = {
   open: boolean
@@ -61,6 +86,64 @@ type AssignmentDialogProps = {
   onDeleteSuccess?: () => void
 }
 
+function getAssignmentInitialValues(
+  assignment: AssignmentDialogProps['assignment'],
+  mode: AssignmentDialogProps['mode'],
+): AssignmentFormData {
+  if (!assignment || mode === 'create') return { ...emptyAssignmentForm }
+
+  return {
+    title: assignment.title,
+    description: assignment.description ?? '',
+    dueDate: new Date(assignment.dueDate).toISOString().slice(0, 16),
+    maxGrade: assignment.maxGrade ?? 100,
+    status: assignment.status,
+  }
+}
+
+function getGradingInitialValues(
+  submission: AssignmentDialogProps['submission'],
+): GradingFormData {
+  if (!submission) return { ...emptyGradingForm }
+
+  return {
+    grade: submission.grade ?? 0,
+    feedback: submission.feedback ?? '',
+  }
+}
+
+function extractAssignmentErrors(
+  issues: Array<{ path: Array<PropertyKey>; message: string }>,
+): AssignmentFormErrors {
+  const errors: AssignmentFormErrors = {}
+
+  for (const issue of issues) {
+    const key = issue.path[0]
+    if (typeof key !== 'string' || !(key in emptyAssignmentForm)) continue
+
+    const field = key as keyof AssignmentFormData
+    if (!errors[field]) errors[field] = issue.message
+  }
+
+  return errors
+}
+
+function extractGradingErrors(
+  issues: Array<{ path: Array<PropertyKey>; message: string }>,
+): GradingFormErrors {
+  const errors: GradingFormErrors = {}
+
+  for (const issue of issues) {
+    const key = issue.path[0]
+    if (typeof key !== 'string' || !(key in emptyGradingForm)) continue
+
+    const field = key as keyof GradingFormData
+    if (!errors[field]) errors[field] = issue.message
+  }
+
+  return errors
+}
+
 export function AssignmentDialog({
   open,
   onOpenChange,
@@ -72,57 +155,8 @@ export function AssignmentDialog({
   onDeleteSuccess,
 }: AssignmentDialogProps) {
   const router = useRouter()
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-
-  const emptyForm = {
-    title: '',
-    description: '',
-    dueDate: '',
-    maxGrade: 100,
-    status: 'draft' as const,
-  }
-
-  const [formData, setFormData] = useState(
-    mode === 'create'
-      ? emptyForm
-      : {
-          title: assignment?.title ?? '',
-          description: assignment?.description || '',
-          dueDate: assignment
-            ? new Date(assignment.dueDate).toISOString().slice(0, 16)
-            : '',
-          maxGrade: assignment?.maxGrade ?? 100,
-          status: assignment?.status ?? ('draft' as const),
-        },
-  )
-
-  const [gradingData, setGradingData] = useState({
-    grade: submission?.grade ?? 0,
-    feedback: submission?.feedback ?? '',
-  })
-
-  useEffect(() => {
-    if (open) {
-      setFieldErrors({})
-      if (mode === 'create') {
-        setFormData(emptyForm)
-      } else if (mode === 'edit' && assignment) {
-        setFormData({
-          title: assignment.title,
-          description: assignment.description || '',
-          dueDate: new Date(assignment.dueDate).toISOString().slice(0, 16),
-          maxGrade: assignment.maxGrade ?? 100,
-          status: assignment.status,
-        })
-      }
-      if (mode === 'grade' && submission) {
-        setGradingData({
-          grade: submission.grade ?? 0,
-          feedback: submission.feedback ?? '',
-        })
-      }
-    }
-  }, [open, mode, assignment, submission])
+  const [submitErrors, setSubmitErrors] = useState<AssignmentFormErrors>({})
+  const [gradeErrors, setGradeErrors] = useState<GradingFormErrors>({})
 
   const { createMutation, updateMutation, deleteMutation, isAnyPending } =
     useEntityMutation({
@@ -149,64 +183,86 @@ export function AssignmentDialog({
     },
   })
 
-  const isPending = isAnyPending
-
-  const handleSubmit = () => {
-    const parseResult =
-      mode === 'create'
-        ? createAssignmentSchema.safeParse({
-            lessonId: lessonId ?? '',
-            title: formData.title,
-            description: formData.description || undefined,
-            dueDate: formData.dueDate,
-            maxGrade: formData.maxGrade || undefined,
-          })
-        : updateAssignmentSchema.safeParse({
-            assignmentId: assignment?.id ?? '',
-            title: formData.title,
-            description: formData.description || undefined,
-            dueDate: formData.dueDate,
-            maxGrade: formData.maxGrade || undefined,
-            status: formData.status,
-          })
-
-    if (!parseResult.success) {
-      const errors: Record<string, string> = {}
-      for (const issue of parseResult.error.issues) {
-        const key = issue.path[0] as string
-        if (!errors[key]) errors[key] = issue.message
+  const assignmentForm = useAppForm({
+    defaultValues: getAssignmentInitialValues(assignment, mode),
+    onSubmit: ({ value }) => {
+      const shared = {
+        title: value.title,
+        description: value.description || undefined,
+        dueDate: value.dueDate,
+        maxGrade: value.maxGrade > 0 ? value.maxGrade : undefined,
       }
-      setFieldErrors(errors)
-      return
-    }
 
-    setFieldErrors({})
+      if (mode === 'create') {
+        if (!lessonId) return
 
-    if (mode === 'create') {
-      if (!lessonId) return
-      createMutation.mutate({
-        data: {
+        const result = createAssignmentSchema.safeParse({
+          ...shared,
           lessonId,
-          title: formData.title,
-          description: formData.description,
-          dueDate: formData.dueDate,
-          maxGrade: formData.maxGrade,
-        },
-      })
-    } else {
+        })
+
+        if (!result.success) {
+          setSubmitErrors(extractAssignmentErrors(result.error.issues))
+          return
+        }
+
+        setSubmitErrors({})
+        createMutation.mutate({ data: result.data })
+        return
+      }
+
       if (!assignment) return
-      updateMutation.mutate({
-        data: {
-          assignmentId: assignment.id,
-          title: formData.title,
-          description: formData.description,
-          dueDate: formData.dueDate,
-          maxGrade: formData.maxGrade,
-          status: formData.status,
-        },
+
+      const result = updateAssignmentSchema.safeParse({
+        ...shared,
+        assignmentId: assignment.id,
+        status: value.status as 'draft' | 'published' | 'closed',
       })
-    }
+
+      if (!result.success) {
+        setSubmitErrors(extractAssignmentErrors(result.error.issues))
+        return
+      }
+
+      setSubmitErrors({})
+      updateMutation.mutate({ data: result.data })
+    },
+  })
+
+  const gradeForm = useAppForm({
+    defaultValues: getGradingInitialValues(submission),
+    onSubmit: ({ value }) => {
+      if (!submission || !assignment) return
+
+      const result = gradeSubmissionSchema.safeParse({
+        submissionId: submission.id,
+        assignmentId: assignment.id,
+        grade: value.grade,
+        feedback: value.feedback || undefined,
+      })
+
+      if (!result.success) {
+        setGradeErrors(extractGradingErrors(result.error.issues))
+        return
+      }
+
+      setGradeErrors({})
+      gradeMutation.mutate({ data: result.data })
+    },
+  })
+
+  const clearSubmitError = (field: keyof AssignmentFormData) => {
+    if (!submitErrors[field]) return
+    setSubmitErrors((prev) => ({ ...prev, [field]: undefined }))
   }
+
+  useEffect(() => {
+    if (!open) return
+    setSubmitErrors({})
+    setGradeErrors({})
+    assignmentForm.reset(getAssignmentInitialValues(assignment, mode))
+    gradeForm.reset(getGradingInitialValues(submission))
+  }, [open, mode, assignment, submission, assignmentForm, gradeForm])
 
   const dialogStyle = {
     backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
@@ -322,36 +378,35 @@ export function AssignmentDialog({
                   </div>
                 )}
                 <FieldGroup>
-                  <FormFieldNumberInput
-                    id="grade"
-                    label={`Grade (max: ${assignment?.maxGrade ?? 100})`}
-                    min={0}
-                    max={assignment?.maxGrade ?? 100}
-                    value={gradingData.grade}
-                    onChange={(value) => {
-                      setGradingData({
-                        ...gradingData,
-                        grade: value,
-                      })
-                      if (fieldErrors.grade)
-                        setFieldErrors({ ...fieldErrors, grade: '' })
-                    }}
-                    error={fieldErrors.grade}
-                    placeholder="0"
-                  />
-                  <FormFieldTextarea
-                    id="feedback"
-                    label="Feedback"
-                    value={gradingData.feedback}
-                    onChange={(value) =>
-                      setGradingData({
-                        ...gradingData,
-                        feedback: value,
-                      })
-                    }
-                    placeholder="Provide feedback to the student..."
-                    rows={4}
-                  />
+                  <gradeForm.AppField name="grade">
+                    {(field) => (
+                      <field.NumberField
+                        id="grade"
+                        label={`Grade (max: ${assignment?.maxGrade ?? 100})`}
+                        min={0}
+                        max={assignment?.maxGrade ?? 100}
+                        placeholder="0"
+                        error={gradeErrors.grade}
+                        onValueChange={() => {
+                          if (gradeErrors.grade)
+                            setGradeErrors((prev) => ({
+                              ...prev,
+                              grade: undefined,
+                            }))
+                        }}
+                      />
+                    )}
+                  </gradeForm.AppField>
+                  <gradeForm.AppField name="feedback">
+                    {(field) => (
+                      <field.TextAreaField
+                        id="feedback"
+                        label="Feedback"
+                        placeholder="Provide feedback to the student..."
+                        rows={4}
+                      />
+                    )}
+                  </gradeForm.AppField>
                 </FieldGroup>
               </div>
             </DialogBody>
@@ -366,36 +421,10 @@ export function AssignmentDialog({
               </Button>
               <Button
                 theme="dark"
-                onClick={() => {
-                  if (!submission) return
-                  const gradeParseResult = gradeSubmissionSchema.safeParse({
-                    submissionId: submission.id,
-                    assignmentId: assignment?.id ?? '',
-                    grade: gradingData.grade,
-                    feedback: gradingData.feedback,
-                  })
-                  if (!gradeParseResult.success) {
-                    const errors: Record<string, string> = {}
-                    for (const issue of gradeParseResult.error.issues) {
-                      const key = issue.path[0] as string
-                      if (!errors[key]) errors[key] = issue.message
-                    }
-                    setFieldErrors(errors)
-                    return
-                  }
-                  setFieldErrors({})
-                  gradeMutation.mutate({
-                    data: {
-                      submissionId: submission.id,
-                      assignmentId: assignment?.id ?? '',
-                      grade: gradingData.grade,
-                      feedback: gradingData.feedback,
-                    },
-                  })
-                }}
-                disabled={isPending}
+                onClick={() => void gradeForm.handleSubmit()}
+                disabled={gradeMutation.isPending}
               >
-                {isPending ? 'Saving...' : 'Save Grade'}
+                {gradeMutation.isPending ? 'Saving...' : 'Save Grade'}
               </Button>
             </DialogFooter>
           </div>
@@ -416,80 +445,68 @@ export function AssignmentDialog({
           : 'Update the assignment information'
       }
       maxWidth="3xl"
-      onSubmit={handleSubmit}
-      isSubmitting={isPending}
+      onSubmit={() => void assignmentForm.handleSubmit()}
+      isSubmitting={isAnyPending}
       submitLabel={mode === 'create' ? 'Create Assignment' : 'Save Changes'}
     >
       <DialogBody>
         <FieldGroup className="mt-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormFieldInput
-              id="title"
-              label="Title"
-              required
-              className="sm:col-span-2"
-              value={formData.title}
-              onChange={(value) => {
-                setFormData({ ...formData, title: value })
-                if (fieldErrors.title)
-                  setFieldErrors({ ...fieldErrors, title: '' })
-              }}
-              error={fieldErrors.title}
-            />
-            <FormFieldInput
-              id="dueDate"
-              label="Due Date"
-              required
-              type="datetime-local"
-              value={formData.dueDate}
-              onChange={(value) => {
-                setFormData({ ...formData, dueDate: value })
-                if (fieldErrors.dueDate)
-                  setFieldErrors({ ...fieldErrors, dueDate: '' })
-              }}
-              error={fieldErrors.dueDate}
-            />
-            <FormFieldNumberInput
-              id="maxGrade"
-              label="Maximum Grade"
-              min={0}
-              value={formData.maxGrade}
-              onChange={(value) => {
-                setFormData({
-                  ...formData,
-                  maxGrade: value,
-                })
-                if (fieldErrors.maxGrade)
-                  setFieldErrors({ ...fieldErrors, maxGrade: '' })
-              }}
-              error={fieldErrors.maxGrade}
-              placeholder="100"
-            />
-            <FormFieldSelect
-              id="status"
-              label="Status"
-              value={formData.status}
-              onChange={(value) =>
-                setFormData({
-                  ...formData,
-                  status: value as typeof formData.status,
-                })
-              }
-            >
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="published">Published</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
-            </FormFieldSelect>
-            <FormFieldTextarea
-              id="description"
-              label="Description"
-              className="sm:col-span-2"
-              value={formData.description}
-              onChange={(value) =>
-                setFormData({ ...formData, description: value })
-              }
-              rows={5}
-            />
+            <assignmentForm.AppField name="title">
+              {(field) => (
+                <field.TextField
+                  id="title"
+                  label="Title"
+                  required
+                  className="sm:col-span-2"
+                  error={submitErrors.title}
+                  onValueChange={() => clearSubmitError('title')}
+                />
+              )}
+            </assignmentForm.AppField>
+            <assignmentForm.AppField name="dueDate">
+              {(field) => (
+                <field.TextField
+                  id="dueDate"
+                  label="Due Date"
+                  required
+                  type="datetime-local"
+                  error={submitErrors.dueDate}
+                  onValueChange={() => clearSubmitError('dueDate')}
+                />
+              )}
+            </assignmentForm.AppField>
+            <assignmentForm.AppField name="maxGrade">
+              {(field) => (
+                <field.NumberField
+                  id="maxGrade"
+                  label="Maximum Grade"
+                  min={0}
+                  placeholder="100"
+                  error={submitErrors.maxGrade}
+                  onValueChange={() => clearSubmitError('maxGrade')}
+                />
+              )}
+            </assignmentForm.AppField>
+            <assignmentForm.AppField name="status">
+              {(field) => (
+                <field.SelectField id="status" label="Status">
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </field.SelectField>
+              )}
+            </assignmentForm.AppField>
+            <assignmentForm.AppField name="description">
+              {(field) => (
+                <field.TextAreaField
+                  id="description"
+                  label="Description"
+                  className="sm:col-span-2"
+                  rows={5}
+                />
+              )}
+            </assignmentForm.AppField>
           </div>
         </FieldGroup>
       </DialogBody>
