@@ -25,11 +25,7 @@ import {
 } from '@/components/ui/dialog'
 import { FieldGroup } from '@/components/ui/field'
 import { SelectItem } from '@/components/ui/select'
-import {
-  FormFieldInput,
-  FormFieldSelect,
-  FormFieldTextarea,
-} from '@/components/ui/form-field'
+import { useAppForm } from '@/hooks/form'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { createEvent, deleteEvent, updateEvent } from '@/utils/event/events'
 import { cn } from '@/lib/utils'
@@ -61,30 +57,69 @@ const CATEGORY_CHIP: Record<string, string> = {
   personal: 'border-sky-500/30 bg-sky-950/40 text-sky-300',
 }
 
-type EventFormData = {
-  title: string
-  description: string
-  startTime: string
-  endTime: string
-  location: string
-  zoomLink: string
-  category: 'exam' | 'chapel' | 'personal' | ''
-}
-
-const emptyForm: EventFormData = {
-  title: '',
-  description: '',
-  startTime: '',
-  endTime: '',
-  location: '',
-  zoomLink: '',
-  category: '',
-}
-
 const dialogStyle = {
   backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
   backgroundSize: 'cover',
   backgroundPosition: 'center',
+}
+
+type EventFieldErrors = Partial<
+  Record<
+    | 'title'
+    | 'description'
+    | 'startTime'
+    | 'endTime'
+    | 'location'
+    | 'zoomLink'
+    | 'category',
+    string
+  >
+>
+
+const EVENT_FORM_KEYS = new Set<string>([
+  'title',
+  'description',
+  'startTime',
+  'endTime',
+  'location',
+  'zoomLink',
+  'category',
+])
+
+function extractFieldErrors(
+  issues: Array<{ path: Array<PropertyKey>; message: string }>,
+): EventFieldErrors {
+  const errors: EventFieldErrors = {}
+  for (const issue of issues) {
+    const key = issue.path[0]
+    if (typeof key !== 'string' || !EVENT_FORM_KEYS.has(key)) continue
+    const field = key as keyof EventFieldErrors
+    if (!errors[field]) errors[field] = issue.message
+  }
+  return errors
+}
+
+function getDefaultValues(mode: EventDialogMode, event?: CalendarEventRow) {
+  if ((mode === 'edit' || mode === 'view') && event) {
+    return {
+      title: event.title,
+      description: event.description ?? '',
+      startTime: new Date(event.startTime).toISOString().slice(0, 16),
+      endTime: new Date(event.endTime).toISOString().slice(0, 16),
+      location: event.location ?? '',
+      zoomLink: event.zoomLink ?? '',
+      category: event.category ?? '',
+    }
+  }
+  return {
+    title: '',
+    description: '',
+    startTime: '',
+    endTime: '',
+    location: '',
+    zoomLink: '',
+    category: '',
+  }
 }
 
 export function EventDialog({
@@ -93,26 +128,7 @@ export function EventDialog({
   mode,
   event,
 }: EventDialogProps) {
-  const [formData, setFormData] = useState<EventFormData>(emptyForm)
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    if (!open) return
-    setFieldErrors({})
-    if ((mode === 'edit' || mode === 'view') && event) {
-      setFormData({
-        title: event.title,
-        description: event.description ?? '',
-        startTime: new Date(event.startTime).toISOString().slice(0, 16),
-        endTime: new Date(event.endTime).toISOString().slice(0, 16),
-        location: event.location ?? '',
-        zoomLink: event.zoomLink ?? '',
-        category: event.category ?? '',
-      })
-    } else {
-      setFormData(emptyForm)
-    }
-  }, [open, mode, event])
+  const [submitErrors, setSubmitErrors] = useState<EventFieldErrors>({})
 
   const { createMutation, updateMutation, deleteMutation, isAnyPending } =
     useEntityMutation({
@@ -124,58 +140,66 @@ export function EventDialog({
       },
     })
 
-  const isPending = isAnyPending
-
-  const handleSubmit = () => {
-    const parseData = {
-      title: formData.title,
-      description: formData.description,
-      startTime: formData.startTime ? new Date(formData.startTime) : undefined,
-      endTime: formData.endTime ? new Date(formData.endTime) : undefined,
-      location: formData.location,
-      zoomLink: formData.zoomLink,
-      category: formData.category || undefined,
-      eventId: event?.id ?? '',
-    }
-
-    const parseResult =
-      mode === 'create'
-        ? createEventSchema.safeParse(parseData)
-        : updateEventSchema.safeParse(parseData)
-
-    if (!parseResult.success) {
-      const errors: Record<string, string> = {}
-      for (const issue of parseResult.error.issues) {
-        const key = issue.path[0] as string
-        if (!errors[key]) errors[key] = issue.message
+  const form = useAppForm({
+    defaultValues: getDefaultValues(mode, event),
+    onSubmit: ({ value }) => {
+      const shared = {
+        title: value.title,
+        description: value.description || undefined,
+        startTime: value.startTime ? new Date(value.startTime) : undefined,
+        endTime: value.endTime ? new Date(value.endTime) : undefined,
+        location: value.location || undefined,
+        zoomLink: value.zoomLink || undefined,
+        category: (value.category || undefined) as
+          | 'exam'
+          | 'chapel'
+          | 'personal'
+          | undefined,
       }
-      setFieldErrors(errors)
-      return
-    }
 
-    const startDate = new Date(formData.startTime)
-    const endDate = new Date(formData.endTime)
-    if (endDate <= startDate) {
-      setFieldErrors({ endTime: 'End time must be after start time' })
-      return
-    }
+      if (mode === 'create') {
+        const result = createEventSchema.safeParse(shared)
+        if (!result.success) {
+          setSubmitErrors(extractFieldErrors(result.error.issues))
+          return
+        }
+        if (result.data.endTime <= result.data.startTime) {
+          setSubmitErrors({ endTime: 'End time must be after start time' })
+          return
+        }
+        setSubmitErrors({})
+        createMutation.mutate({ data: result.data })
+        return
+      }
 
-    setFieldErrors({})
+      if (!event) return
 
-    const payload = {
-      title: formData.title,
-      description: formData.description || undefined,
-      startTime: startDate,
-      endTime: endDate,
-      location: formData.location || undefined,
-      zoomLink: formData.zoomLink || undefined,
-      category: formData.category || undefined,
-    }
-    if (mode === 'create') {
-      createMutation.mutate({ data: payload })
-    } else if (mode === 'edit' && event) {
-      updateMutation.mutate({ data: { eventId: event.id, ...payload } })
-    }
+      const result = updateEventSchema.safeParse({
+        ...shared,
+        eventId: event.id,
+      })
+      if (!result.success) {
+        setSubmitErrors(extractFieldErrors(result.error.issues))
+        return
+      }
+      if (result.data.endTime <= result.data.startTime) {
+        setSubmitErrors({ endTime: 'End time must be after start time' })
+        return
+      }
+      setSubmitErrors({})
+      updateMutation.mutate({ data: result.data })
+    },
+  })
+
+  useEffect(() => {
+    if (!open) return
+    setSubmitErrors({})
+    form.reset(getDefaultValues(mode, event))
+  }, [open, mode, event, form])
+
+  const clearError = (field: keyof EventFieldErrors) => {
+    if (!submitErrors[field]) return
+    setSubmitErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
   if (mode === 'delete') {
@@ -308,100 +332,93 @@ export function EventDialog({
           : 'Update the event information'
       }
       maxWidth="2xl"
-      onSubmit={handleSubmit}
-      isSubmitting={isPending}
+      onSubmit={() => void form.handleSubmit()}
+      isSubmitting={isAnyPending}
       submitLabel={mode === 'create' ? 'Create Event' : 'Save Changes'}
     >
       <DialogBody>
         <FieldGroup className="mt-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormFieldInput
-              id="event-title"
-              label="Title"
-              required
-              className="sm:col-span-2"
-              value={formData.title}
-              onChange={(value) => {
-                setFormData({ ...formData, title: value })
-                if (fieldErrors.title)
-                  setFieldErrors({ ...fieldErrors, title: '' })
-              }}
-              error={fieldErrors.title}
-              placeholder="Event title"
-            />
-            <FormFieldInput
-              id="event-start"
-              label="Start Time"
-              required
-              type="datetime-local"
-              value={formData.startTime}
-              onChange={(value) => {
-                setFormData({ ...formData, startTime: value })
-                if (fieldErrors.startTime)
-                  setFieldErrors({ ...fieldErrors, startTime: '' })
-              }}
-              error={fieldErrors.startTime}
-            />
-            <FormFieldInput
-              id="event-end"
-              label="End Time"
-              required
-              type="datetime-local"
-              value={formData.endTime}
-              onChange={(value) => {
-                setFormData({ ...formData, endTime: value })
-                if (fieldErrors.endTime)
-                  setFieldErrors({ ...fieldErrors, endTime: '' })
-              }}
-              error={fieldErrors.endTime}
-            />
-            <FormFieldSelect
-              id="event-category"
-              label="Category"
-              value={formData.category}
-              onChange={(value) =>
-                setFormData({
-                  ...formData,
-                  category: value as EventFormData['category'],
-                })
-              }
-              placeholder="Select category"
-            >
-              <SelectItem value="chapel">Chapel</SelectItem>
-              <SelectItem value="exam">Exam</SelectItem>
-              <SelectItem value="personal">Personal</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </FormFieldSelect>
-            <FormFieldInput
-              id="event-location"
-              label="Location"
-              value={formData.location}
-              onChange={(value) =>
-                setFormData({ ...formData, location: value })
-              }
-              placeholder="Room or address"
-            />
-            <FormFieldInput
-              id="event-zoom"
-              label="Zoom Link"
-              className="sm:col-span-2"
-              value={formData.zoomLink}
-              onChange={(value) =>
-                setFormData({ ...formData, zoomLink: value })
-              }
-              placeholder="https://zoom.us/j/..."
-            />
-            <FormFieldTextarea
-              id="event-description"
-              label="Description"
-              className="sm:col-span-2"
-              value={formData.description}
-              onChange={(value) =>
-                setFormData({ ...formData, description: value })
-              }
-              placeholder="Event description"
-              rows={5}
-            />
+            <form.AppField name="title">
+              {(field) => (
+                <field.TextField
+                  id="event-title"
+                  label="Title"
+                  required
+                  className="sm:col-span-2"
+                  placeholder="Event title"
+                  error={submitErrors.title}
+                  onValueChange={() => clearError('title')}
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="startTime">
+              {(field) => (
+                <field.TextField
+                  id="event-start"
+                  label="Start Time"
+                  required
+                  type="datetime-local"
+                  error={submitErrors.startTime}
+                  onValueChange={() => clearError('startTime')}
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="endTime">
+              {(field) => (
+                <field.TextField
+                  id="event-end"
+                  label="End Time"
+                  required
+                  type="datetime-local"
+                  error={submitErrors.endTime}
+                  onValueChange={() => clearError('endTime')}
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="category">
+              {(field) => (
+                <field.SelectField
+                  id="event-category"
+                  label="Category"
+                  placeholder="Select category"
+                >
+                  <SelectItem value="chapel">Chapel</SelectItem>
+                  <SelectItem value="exam">Exam</SelectItem>
+                  <SelectItem value="personal">Personal</SelectItem>
+                </field.SelectField>
+              )}
+            </form.AppField>
+            <form.AppField name="location">
+              {(field) => (
+                <field.TextField
+                  id="event-location"
+                  label="Location"
+                  placeholder="Room or address"
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="zoomLink">
+              {(field) => (
+                <field.TextField
+                  id="event-zoom"
+                  label="Zoom Link"
+                  className="sm:col-span-2"
+                  placeholder="https://zoom.us/j/..."
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="description">
+              {(field) => (
+                <field.TextAreaField
+                  id="event-description"
+                  label="Description"
+                  className="sm:col-span-2"
+                  placeholder="Event description"
+                  rows={5}
+                />
+              )}
+            </form.AppField>
           </div>
         </FieldGroup>
       </DialogBody>
