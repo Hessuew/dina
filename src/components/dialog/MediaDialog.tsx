@@ -21,6 +21,7 @@ import { FormDialog } from '@/components/ui/form-dialog'
 import { Input } from '@/components/ui/input'
 import { SelectItem } from '@/components/ui/select'
 import { FormFieldSelect } from '@/components/ui/form-field'
+import { LIBRARY_TOPICS, type LibraryTopic } from '@/lib/library-topics'
 
 type MediaDialogMode = 'create' | 'edit' | 'delete'
 
@@ -127,7 +128,7 @@ export function MediaDialog({
 
       const payload = {
         title: value.title,
-        category: value.category,
+        category: value.category as LibraryTopic,
         description: value.description || undefined,
         isPublished: value.isPublished,
         kind: value.kind,
@@ -206,12 +207,25 @@ export function MediaDialog({
               validators={{ onSubmit: createMediaSchema.shape.category }}
             >
               {(field) => (
-                <field.TextField
+                <FormFieldSelect
                   id="media-category"
                   label="Category"
                   required
-                  placeholder="Foundations"
-                />
+                  value={field.state.value}
+                  onChange={(value) => field.handleChange(value)}
+                  placeholder="Select topic..."
+                  error={
+                    field.state.meta.errors.length > 0
+                      ? String(field.state.meta.errors[0])
+                      : undefined
+                  }
+                >
+                  {LIBRARY_TOPICS.map((topic) => (
+                    <SelectItem key={topic} value={topic}>
+                      {topic}
+                    </SelectItem>
+                  ))}
+                </FormFieldSelect>
               )}
             </form.AppField>
 
