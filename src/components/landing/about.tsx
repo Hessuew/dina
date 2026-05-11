@@ -16,22 +16,22 @@ type TimelineEvent = {
 
 const timeline: Array<TimelineEvent> = [
   {
-    month: 'June',
+    month: 'July',
     label: 'School Begins',
     description: 'Formation journey starts with foundational teaching',
   },
   {
-    month: 'September',
+    month: 'October',
     label: 'First Semester Exam',
     description: 'Assessment of biblical foundations and early formation',
   },
   {
-    month: 'December',
+    month: 'January',
     label: 'Second Semester Exam',
     description: 'Evaluation of growth, discipleship practice, and maturity',
   },
   {
-    month: 'February',
+    month: 'March',
     label: 'Graduation',
     description: 'Oral examination, defense, and award ceremony',
   },
@@ -217,7 +217,7 @@ export function LandingAboutSection() {
                     Duration
                   </div>
                   <div className="mt-2 font-serif text-xl leading-tight text-[#F8F4EC]">
-                    June - February
+                    July - March
                   </div>
                 </div>
               </div>

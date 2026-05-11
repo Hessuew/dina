@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
-import andrewImage from '@/assets/images/lecturers/andrew.jpg'
+import andrewImage from '@/assets/images/lecturers/andrew.webp'
 import akosyaImage from '@/assets/images/lecturers/akosya.webp'
+import blessingImage from '@/assets/images/lecturers/blessing.webp'
+import ellaImage from '@/assets/images/lecturers/ella.webp'
+import emmanuelImage from '@/assets/images/lecturers/emmanuel.webp'
+import ezinneImage from '@/assets/images/lecturers/ezinne.webp'
 import juhaniImage from '@/assets/images/lecturers/juhani.webp'
-import mahiImage from '@/assets/images/lecturers/mahi.png'
-import sadeImage from '@/assets/images/lecturers/sade.jpeg'
-import ezinneImage from '@/assets/images/lecturers/ezinne.jpg'
+import keneImage from '@/assets/images/lecturers/kene.webp'
+import mahiImage from '@/assets/images/lecturers/mahi.webp'
+import sadeImage from '@/assets/images/lecturers/sade.webp'
 import {
   LandingActiveItemNav,
   LandingFeaturePanel,
@@ -48,7 +52,8 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Ella O.',
         title: '',
-        bio: '',
+        bio: 'Emmanuella is an experienced Sustainability and Climate Change Consultant advising public and private organisations locally and globally. She helps organisations design and implement ESG and sustainability transformation strategies.',
+        image: ellaImage,
       },
     ],
   },
@@ -67,7 +72,7 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Akosua O.',
         title: '',
-        bio: 'Currently pursuing a degree in Computer Science.',
+        bio: 'Akosua is studying computer science and is passionate about faith, discipleship, and sharing the Gospel. Through church ministry, evangelism, and teaching, she continues growing in prayer, biblical understanding, and service.',
         image: akosyaImage,
       },
     ],
@@ -81,7 +86,8 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Emmanuel E.',
         title: '',
-        bio: '',
+        bio: 'Emmanuel Ebenezer is a Minister of the Gospel and author focused on salvation, healing, deliverance, and revival. Based in Ogun State, Nigeria, he leads gospel outreaches, writes Christian books, and uses media and technology to help believers grow spiritually worldwide.',
+        image: emmanuelImage,
       },
       {
         name: 'Ezinne O.',
@@ -100,13 +106,14 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Sade P.',
         title: '',
-        bio: 'I am a Christian with a passion for teaching Christ and spreading the gospel of our Lord and saviour Jesus.',
+        bio: 'Sade is a Psychiatrist passionate about teaching and mentoring the next generation of doctors. She works across inpatient and community settings, delivering compassionate, evidence-based, and holistic patient-centred care.',
         image: sadeImage,
       },
       {
         name: 'Blessing A.',
         title: '',
-        bio: '',
+        bio: 'Blessing is a medical doctor and solution-focused practitioner with a special interest in lifestyle medicine, addiction support, and youth counselling, with a passion for helping people achieve lasting wellbeing.',
+        image: blessingImage,
       },
     ],
   },
@@ -119,12 +126,13 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Kene O.',
         title: '',
-        bio: '',
+        bio: 'Kene is a Capital Markets and Derivatives solicitor dual qualified in England, Wales, and Nigeria. She contributes to international financial industry working groups, promoting collaboration, market standards, and innovation.',
+        image: keneImage,
       },
       {
         name: 'Mahidere A.',
         title: '',
-        bio: 'I am Mahidere W. Ali (Preferred: Mahi). I currently live in Finland and am an epidemiology researcher with a medical background. God brought me to Finland to renew my life and calling.',
+        bio: 'Mahidere W. Ali (Mahi) is an epidemiology researcher with a medical background based in Finland. She believes God brought her to Finland to renew her life, strengthen her faith, and restore her calling.',
         image: mahiImage,
       },
     ],
@@ -282,9 +290,11 @@ export function LandingTeacherSection() {
                     {lecturer.image ? (
                       <div className="h-20 w-20 shrink-0 overflow-hidden border border-[#C5A059]/30 bg-black/24 backdrop-blur-sm">
                         <img
+                          key={lecturer.name}
                           src={lecturer.image}
                           alt={lecturer.name}
-                          className="h-full w-full object-cover"
+                          className="animate-in fade-in h-full w-full object-cover duration-1500"
+                          loading="lazy"
                         />
                       </div>
                     ) : (

@@ -1,10 +1,12 @@
 import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
-import andrewImage from '@/assets/images/lecturers/andrew.jpg'
+import andrewImage from '@/assets/images/lecturers/andrew.webp'
 import akosyaImage from '@/assets/images/lecturers/akosya.webp'
+import emmanuelImage from '@/assets/images/lecturers/emmanuel.webp'
+import ezinneImage from '@/assets/images/lecturers/ezinne.webp'
 import juhaniImage from '@/assets/images/lecturers/juhani.webp'
-import mahiImage from '@/assets/images/lecturers/mahi.png'
-import sadeImage from '@/assets/images/lecturers/sade.jpeg'
-import ezinneImage from '@/assets/images/lecturers/ezinne.jpg'
+import keneImage from '@/assets/images/lecturers/kene.webp'
+import mahiImage from '@/assets/images/lecturers/mahi.webp'
+import sadeImage from '@/assets/images/lecturers/sade.webp'
 import {
   LandingScriptureSectionHeader,
   LandingSection,
@@ -51,11 +53,13 @@ const directors: Array<LeadershipMember> = [
     name: 'Kene O.',
     role: 'Director of Legal Affairs',
     category: 'directors',
+    image: keneImage,
   },
   {
     name: 'Emmanuel E.',
     role: 'Director of Intercession',
     category: 'directors',
+    image: emmanuelImage,
   },
   {
     name: 'Obi C.',
@@ -93,6 +97,7 @@ function MemberCard({ member }: { member: LeadershipMember }) {
               src={member.image}
               alt={member.name}
               className="h-16 w-16 object-cover"
+              loading="lazy"
             />
           ) : (
             <div className="flex h-16 w-16 items-center justify-center border border-white/12 bg-white/4 font-serif text-[1.4rem] tracking-[-0.02em] text-[#C5A059]">
@@ -152,7 +157,7 @@ export function LandingLeadershipSection() {
                 </div>
                 <div className="h-px flex-1 bg-white/8" />
               </div>
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <div className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-5">
                 {executives.map((member) => (
                   <MemberCard key={member.name} member={member} />
                 ))}
@@ -166,7 +171,7 @@ export function LandingLeadershipSection() {
                 </div>
                 <div className="h-px flex-1 bg-white/8" />
               </div>
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <div className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-5">
                 {directors.map((member) => (
                   <MemberCard key={member.name} member={member} />
                 ))}

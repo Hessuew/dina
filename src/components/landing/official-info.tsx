@@ -1,4 +1,4 @@
-import { FileText, Landmark, Mail, MapPin, Phone } from 'lucide-react'
+import { Landmark, Mail, MapPin, Phone } from 'lucide-react'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import {
   LandingScriptureSectionHeader,
@@ -79,23 +79,6 @@ export function LandingOfficialInfo() {
                   <br />
                   London E16 3JJ, United Kingdom
                 </address>
-              </div>
-            </div>
-
-            <div className="group space-y-4 border border-[#C5A059]/20 bg-white/70 p-6 backdrop-blur-sm transition-all hover:border-[#C5A059]/50 hover:bg-white/90">
-              <div className="flex h-12 w-12 items-center justify-center rounded-sm border border-[#C5A059]/30 bg-[#C5A059]/10">
-                <FileText className="h-5 w-5 text-[#9B7A41]" />
-              </div>
-              <div>
-                <div className="mb-2 text-[0.65rem] font-medium tracking-[0.25em] text-[#8A7355] uppercase">
-                  Registration
-                </div>
-                <div className="space-y-1 text-sm text-[#2C2218]">
-                  <div>Business ID: 1234567-8</div>
-                  <div className="text-xs text-[#8A7355]">
-                    Registered in England
-                  </div>
-                </div>
               </div>
             </div>
 

@@ -230,8 +230,9 @@ export function EnrolmentForm() {
           <img
             key={currentStepConfig.id}
             src={currentStepConfig.image}
-            alt=""
-            className="animate-in fade-in h-full w-full object-cover duration-500"
+            alt={currentStepConfig.title}
+            className="animate-in fade-in h-full w-full object-cover duration-1500"
+            loading="lazy"
           />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.28),rgba(0,0,0,0.62)),linear-gradient(180deg,rgba(0,0,0,0.12),rgba(0,0,0,0.68))]" />
           <div className="absolute inset-x-0 bottom-0 p-10 xl:p-14">
@@ -700,6 +701,7 @@ export function EnrolmentForm() {
               src={currentStepConfig.image}
               alt=""
               className="animate-in fade-in h-full w-full object-cover duration-1500"
+              loading="lazy"
             />
             <div className="absolute inset-0 bg-linear-to-t from-black/44 to-transparent" />
           </div>
