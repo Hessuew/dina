@@ -3,8 +3,8 @@ import { MediaCard } from '@/components/library/MediaCard'
 
 type LibraryShelfProps = {
   topic: string
-  ebooks: MediaLibraryRow[]
-  audioVisual: MediaLibraryRow[]
+  ebooks: Array<MediaLibraryRow>
+  audioVisual: Array<MediaLibraryRow>
   viewerRole: 'student' | 'teacher' | 'admin'
 }
 
