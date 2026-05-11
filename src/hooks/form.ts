@@ -5,6 +5,7 @@ import {
   SelectField,
   SwitchField,
   TextAreaField,
+  TextAreaFieldWithWordCount,
   TextField,
 } from '@/components/ui/app-form-fields'
 
@@ -13,6 +14,7 @@ export const { useAppForm } = createFormHook({
     TextField,
     SelectField,
     TextAreaField,
+    TextAreaFieldWithWordCount,
     NumberField,
     SwitchField,
   },
