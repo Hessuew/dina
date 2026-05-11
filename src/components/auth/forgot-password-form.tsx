@@ -3,18 +3,13 @@ import { Link } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { toast } from 'sonner'
 import graphiteBackground from '@/assets/images/bg/bg_courses.webp'
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { Field, FieldDescription, FieldGroup } from '@/components/ui/field'
+import { useAppForm } from '@/hooks/form'
 import { useMutation } from '@/hooks/useMutation'
 import { requestPasswordResetFn } from '@/routes/forgot-password'
+import { requestPasswordResetSchema } from '@/schemas/auth.schema'
 
 export function ForgotPasswordForm() {
-  const [email, setEmail] = useState('')
   const [resendCooldown, setResendCooldown] = useState(0)
   const [requestSent, setRequestSent] = useState(false)
 
@@ -46,23 +41,16 @@ export function ForgotPasswordForm() {
     }
   }, [resendCooldown])
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-
-    if (resendCooldown > 0) {
-      toast.error(`Please wait ${resendCooldown} seconds before trying again`)
-      return
-    }
-
-    const formData = new FormData(e.target as HTMLFormElement)
-    const emailValue = formData.get('email') as string
-
-    resetMutation.mutate({
-      data: {
-        email: emailValue,
-      },
-    })
-  }
+  const form = useAppForm({
+    defaultValues: { email: '' },
+    onSubmit: ({ value }) => {
+      if (resendCooldown > 0) {
+        toast.error(`Please wait ${resendCooldown} seconds before trying again`)
+        return
+      }
+      resetMutation.mutate({ data: { email: value.email } })
+    },
+  })
 
   return (
     <section
@@ -159,25 +147,31 @@ export function ForgotPasswordForm() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  void form.handleSubmit()
+                }}
+              >
                 <div className="min-h-76 border border-white/10 bg-white/3 p-5 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.4)]">
                   <FieldGroup>
-                    <Field>
-                      <FieldLabel htmlFor="email" theme="dark">
-                        Email Address
-                      </FieldLabel>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="your@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        disabled={resetMutation.isPending}
-                        theme="dark"
-                      />
-                    </Field>
+                    <form.AppField
+                      name="email"
+                      validators={{
+                        onSubmit: requestPasswordResetSchema.shape.email,
+                      }}
+                    >
+                      {(field) => (
+                        <field.TextField
+                          id="email"
+                          label="Email Address"
+                          type="email"
+                          placeholder="your@email.com"
+                          required
+                        />
+                      )}
+                    </form.AppField>
 
                     <Field className="pt-2">
                       <button
@@ -191,13 +185,6 @@ export function ForgotPasswordForm() {
                             ? `Resend in ${resendCooldown}s`
                             : 'Send Reset Link'}
                       </button>
-
-                      {resetMutation.data?.message &&
-                        !resetMutation.data.success && (
-                          <p className="text-sm text-red-400">
-                            {resetMutation.data.message}
-                          </p>
-                        )}
 
                       <FieldDescription
                         theme="dark"

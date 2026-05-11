@@ -26,7 +26,6 @@ import {
 } from '@/components/ui/select'
 import { useAppForm } from '@/hooks/form'
 import { createEnrollment } from '@/utils/enrolment/enrollments'
-import { cn } from '@/lib/utils'
 
 function required({ value }: { value: string }) {
   return !value.trim() ? 'This field is required' : undefined
@@ -126,49 +125,9 @@ const STEPS = [
 
 type EnrolmentFieldName = (typeof STEPS)[number]['fields'][number]
 
-const FIELD_VALIDATORS: Partial<
-  Record<EnrolmentFieldName, (value: string) => string | undefined>
-> = {
-  fullLegalName: (value) => required({ value }),
-  email: (value) => validEmail({ value }),
-  phoneWhatsApp: (value) => required({ value }),
-  yearOfBirth: (value) => validYear({ value }),
-  gender: (value) => requiredSelect({ value }),
-  aboutYourself: (value) => required({ value }) || maxWords(200)({ value }),
-  expectationsAlignment: (value) =>
-    required({ value }) || maxWords(200)({ value }),
-}
-
-function getFieldError(
-  fieldName: EnrolmentFieldName,
-  value: string,
-): string | undefined {
-  return FIELD_VALIDATORS[fieldName]?.(value)
-}
-
-function StableFieldError({ error }: { error?: string }) {
-  return (
-    <div className="relative h-0">
-      <FieldDescription
-        aria-hidden={!error}
-        theme="dark"
-        className={cn(
-          'absolute top-1 right-0 left-0 leading-4',
-          error ? 'text-destructive' : 'invisible',
-        )}
-      >
-        {error || 'No field error'}
-      </FieldDescription>
-    </div>
-  )
-}
-
 export function EnrolmentForm() {
   const [submitted, setSubmitted] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
-  const [attemptedFields, setAttemptedFields] = useState<
-    ReadonlySet<EnrolmentFieldName>
-  >(() => new Set())
 
   const createEnrollmentFn = useServerFn(createEnrollment)
 
@@ -203,37 +162,29 @@ export function EnrolmentForm() {
 
   const currentStepConfig = STEPS[currentStep]
 
-  const getManualError = (
-    fieldName: EnrolmentFieldName,
-    value: string,
-  ): string | undefined => {
-    if (!attemptedFields.has(fieldName)) return undefined
-    return getFieldError(fieldName, value)
-  }
-
-  const getVisibleError = (
-    fieldName: EnrolmentFieldName,
-    value: string,
-    metaErrors: Array<unknown>,
-    isTouched: boolean,
-  ): string | undefined => {
-    if (metaErrors.length > 0 && isTouched) return String(metaErrors[0])
-    return getManualError(fieldName, value)
-  }
-
   const validateCurrentStep = (): boolean => {
     const values = form.state.values
-    const invalidFields = currentStepConfig.fields.filter((fieldName) =>
-      Boolean(getFieldError(fieldName, values[fieldName])),
-    )
-
-    if (invalidFields.length === 0) return true
-
-    setAttemptedFields((previous) => {
-      const next = new Set(previous)
-      currentStepConfig.fields.forEach((fieldName) => next.add(fieldName))
-      return next
+    const hasErrors = currentStepConfig.fields.some((fieldName) => {
+      const v = values[fieldName]
+      switch (fieldName) {
+        case 'fullLegalName':
+        case 'phoneWhatsApp':
+          return Boolean(required({ value: v }))
+        case 'email':
+          return Boolean(validEmail({ value: v }))
+        case 'yearOfBirth':
+          return Boolean(validYear({ value: v }))
+        case 'gender':
+          return Boolean(requiredSelect({ value: v }))
+        case 'aboutYourself':
+        case 'expectationsAlignment':
+          return Boolean(required({ value: v }) || maxWords(200)({ value: v }))
+        default:
+          return false
+      }
     })
+
+    if (!hasErrors) return true
     toast.error('Please complete this step before continuing.')
     return false
   }
@@ -340,331 +291,273 @@ export function EnrolmentForm() {
     switch (fieldName) {
       case 'fullLegalName':
         return (
-          <form.Field name="fullLegalName" validators={{ onChange: required }}>
-            {(field) => {
-              const error = getVisibleError(
-                'fullLegalName',
-                field.state.value,
-                field.state.meta.errors,
-                field.state.meta.isTouched,
-              )
-
-              return (
-                <Field>
-                  <FieldLabel
-                    className="normal-case"
-                    htmlFor="enrol-full-legal-name"
-                    theme="dark"
-                  >
-                    Full legal name
-                  </FieldLabel>
-                  <Input
-                    id="enrol-full-legal-name"
-                    name="fullLegalName"
-                    type="text"
-                    placeholder="John Doe"
-                    theme="dark"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    required
-                  />
-                  <StableFieldError error={error} />
-                </Field>
-              )
-            }}
+          <form.Field name="fullLegalName" validators={{ onBlur: required }}>
+            {(field) => (
+              <Field>
+                <FieldLabel
+                  className="normal-case"
+                  htmlFor="enrol-full-legal-name"
+                  theme="dark"
+                >
+                  Full legal name
+                </FieldLabel>
+                <Input
+                  id="enrol-full-legal-name"
+                  name="fullLegalName"
+                  type="text"
+                  placeholder="John Doe"
+                  theme="dark"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  required
+                />
+                {field.state.meta.errors[0] && (
+                  <FieldDescription theme="dark" className="text-destructive">
+                    {String(field.state.meta.errors[0])}
+                  </FieldDescription>
+                )}
+              </Field>
+            )}
           </form.Field>
         )
       case 'preferredName':
         return (
           <form.Field name="preferredName">
-            {(field) => {
-              const error = getVisibleError(
-                'preferredName',
-                field.state.value,
-                field.state.meta.errors,
-                field.state.meta.isTouched,
-              )
-              return (
-                <Field>
-                  <FieldLabel
-                    className="normal-case"
-                    htmlFor="enrol-preferred-name"
-                    theme="dark"
-                  >
-                    Preferred name
-                  </FieldLabel>
-                  <Input
-                    id="enrol-preferred-name"
-                    name="preferredName"
-                    type="text"
-                    placeholder="John"
-                    theme="dark"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                  />
-                  <StableFieldError error={error} />
-                </Field>
-              )
-            }}
+            {(field) => (
+              <Field>
+                <FieldLabel
+                  className="normal-case"
+                  htmlFor="enrol-preferred-name"
+                  theme="dark"
+                >
+                  Preferred name
+                </FieldLabel>
+                <Input
+                  id="enrol-preferred-name"
+                  name="preferredName"
+                  type="text"
+                  placeholder="John"
+                  theme="dark"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                />
+              </Field>
+            )}
           </form.Field>
         )
       case 'email':
         return (
-          <form.Field name="email" validators={{ onChange: validEmail }}>
-            {(field) => {
-              const error = getVisibleError(
-                'email',
-                field.state.value,
-                field.state.meta.errors,
-                field.state.meta.isTouched,
-              )
-
-              return (
-                <Field>
-                  <FieldLabel
-                    className="normal-case"
-                    htmlFor="enrol-email"
-                    theme="dark"
-                  >
-                    Email
-                  </FieldLabel>
-                  <Input
-                    id="enrol-email"
-                    name="email"
-                    type="email"
-                    placeholder="your@email.com"
-                    theme="dark"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    required
-                  />
-                  <StableFieldError error={error} />
-                </Field>
-              )
-            }}
+          <form.Field name="email" validators={{ onBlur: validEmail }}>
+            {(field) => (
+              <Field>
+                <FieldLabel
+                  className="normal-case"
+                  htmlFor="enrol-email"
+                  theme="dark"
+                >
+                  Email
+                </FieldLabel>
+                <Input
+                  id="enrol-email"
+                  name="email"
+                  type="email"
+                  placeholder="your@email.com"
+                  theme="dark"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  required
+                />
+                {field.state.meta.errors[0] && (
+                  <FieldDescription theme="dark" className="text-destructive">
+                    {String(field.state.meta.errors[0])}
+                  </FieldDescription>
+                )}
+              </Field>
+            )}
           </form.Field>
         )
       case 'phoneWhatsApp':
         return (
-          <form.Field name="phoneWhatsApp" validators={{ onChange: required }}>
-            {(field) => {
-              const error = getVisibleError(
-                'phoneWhatsApp',
-                field.state.value,
-                field.state.meta.errors,
-                field.state.meta.isTouched,
-              )
-
-              return (
-                <Field>
-                  <FieldLabel
-                    className="normal-case"
-                    htmlFor="enrol-phone"
-                    theme="dark"
-                  >
-                    Phone number (WhatsApp)
-                  </FieldLabel>
-                  <Input
-                    id="enrol-phone"
-                    name="phoneWhatsApp"
-                    type="tel"
-                    placeholder="+358 40 123 4567"
-                    theme="dark"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    required
-                  />
-                  <StableFieldError error={error} />
-                </Field>
-              )
-            }}
+          <form.Field name="phoneWhatsApp" validators={{ onBlur: required }}>
+            {(field) => (
+              <Field>
+                <FieldLabel
+                  className="normal-case"
+                  htmlFor="enrol-phone"
+                  theme="dark"
+                >
+                  Phone number (WhatsApp)
+                </FieldLabel>
+                <Input
+                  id="enrol-phone"
+                  name="phoneWhatsApp"
+                  type="tel"
+                  placeholder="+358 40 123 4567"
+                  theme="dark"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  required
+                />
+                {field.state.meta.errors[0] && (
+                  <FieldDescription theme="dark" className="text-destructive">
+                    {String(field.state.meta.errors[0])}
+                  </FieldDescription>
+                )}
+              </Field>
+            )}
           </form.Field>
         )
       case 'yearOfBirth':
         return (
-          <form.Field name="yearOfBirth" validators={{ onChange: validYear }}>
-            {(field) => {
-              const error = getVisibleError(
-                'yearOfBirth',
-                field.state.value,
-                field.state.meta.errors,
-                field.state.meta.isTouched,
-              )
-
-              return (
-                <Field>
-                  <FieldLabel
-                    className="normal-case"
-                    htmlFor="enrol-yob"
-                    theme="dark"
-                  >
-                    Year of birth
-                  </FieldLabel>
-                  <Input
-                    id="enrol-yob"
-                    name="yearOfBirth"
-                    type="number"
-                    placeholder="1996"
-                    theme="dark"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    required
-                  />
-                  <StableFieldError error={error} />
-                </Field>
-              )
-            }}
+          <form.Field name="yearOfBirth" validators={{ onBlur: validYear }}>
+            {(field) => (
+              <Field>
+                <FieldLabel
+                  className="normal-case"
+                  htmlFor="enrol-yob"
+                  theme="dark"
+                >
+                  Year of birth
+                </FieldLabel>
+                <Input
+                  id="enrol-yob"
+                  name="yearOfBirth"
+                  type="number"
+                  placeholder="1996"
+                  theme="dark"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  required
+                />
+                {field.state.meta.errors[0] && (
+                  <FieldDescription theme="dark" className="text-destructive">
+                    {String(field.state.meta.errors[0])}
+                  </FieldDescription>
+                )}
+              </Field>
+            )}
           </form.Field>
         )
       case 'gender':
         return (
-          <form.Field name="gender" validators={{ onChange: requiredSelect }}>
-            {(field) => {
-              const error = getVisibleError(
-                'gender',
-                field.state.value,
-                field.state.meta.errors,
-                field.state.meta.isTouched,
-              )
-
-              return (
-                <Field>
-                  <FieldLabel
-                    className="normal-case"
-                    htmlFor="enrol-gender"
-                    theme="dark"
+          <form.Field name="gender" validators={{ onBlur: requiredSelect }}>
+            {(field) => (
+              <Field>
+                <FieldLabel
+                  className="normal-case"
+                  htmlFor="enrol-gender"
+                  theme="dark"
+                >
+                  Gender
+                </FieldLabel>
+                <Select
+                  value={field.state.value || undefined}
+                  onValueChange={(value) => {
+                    field.handleChange(value ?? '')
+                    void field.validate('blur')
+                  }}
+                >
+                  <SelectTrigger
+                    id="enrol-gender"
+                    className="w-full rounded-none border-white/14 bg-black/20 text-[#F8F4EC] data-[size=default]:h-11"
                   >
-                    Gender
-                  </FieldLabel>
-                  <Select
-                    value={field.state.value || undefined}
-                    onValueChange={(value) => field.handleChange(value ?? '')}
-                  >
-                    <SelectTrigger
-                      id="enrol-gender"
-                      className="w-full rounded-none border-white/14 bg-black/20 text-[#F8F4EC] data-[size=default]:h-11"
-                    >
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none border-white/10 bg-[#1A1716] text-[#F8F4EC]">
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <StableFieldError error={error} />
-                </Field>
-              )
-            }}
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-none border-white/10 bg-[#1A1716] text-[#F8F4EC]">
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+                {field.state.meta.errors[0] && (
+                  <FieldDescription theme="dark" className="text-destructive">
+                    {String(field.state.meta.errors[0])}
+                  </FieldDescription>
+                )}
+              </Field>
+            )}
           </form.Field>
         )
       case 'nationalityCitizenship':
         return (
           <form.Field name="nationalityCitizenship">
-            {(field) => {
-              const error = getVisibleError(
-                'nationalityCitizenship',
-                field.state.value,
-                field.state.meta.errors,
-                field.state.meta.isTouched,
-              )
-              return (
-                <Field>
-                  <FieldLabel
-                    className="normal-case"
-                    htmlFor="enrol-nationality"
-                    theme="dark"
-                  >
-                    Nationality / citizenship
-                  </FieldLabel>
-                  <Input
-                    id="enrol-nationality"
-                    name="nationalityCitizenship"
-                    type="text"
-                    placeholder="Finnish"
-                    theme="dark"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                  />
-                  <StableFieldError error={error} />
-                </Field>
-              )
-            }}
+            {(field) => (
+              <Field>
+                <FieldLabel
+                  className="normal-case"
+                  htmlFor="enrol-nationality"
+                  theme="dark"
+                >
+                  Nationality / citizenship
+                </FieldLabel>
+                <Input
+                  id="enrol-nationality"
+                  name="nationalityCitizenship"
+                  type="text"
+                  placeholder="Finnish"
+                  theme="dark"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                />
+              </Field>
+            )}
           </form.Field>
         )
       case 'currentCity':
         return (
           <form.Field name="currentCity">
-            {(field) => {
-              const error = getVisibleError(
-                'currentCity',
-                field.state.value,
-                field.state.meta.errors,
-                field.state.meta.isTouched,
-              )
-              return (
-                <Field>
-                  <FieldLabel
-                    className="normal-case"
-                    htmlFor="enrol-city"
-                    theme="dark"
-                  >
-                    Current city
-                  </FieldLabel>
-                  <Input
-                    id="enrol-city"
-                    name="currentCity"
-                    type="text"
-                    placeholder="Helsinki"
-                    theme="dark"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                  />
-                  <StableFieldError error={error} />
-                </Field>
-              )
-            }}
+            {(field) => (
+              <Field>
+                <FieldLabel
+                  className="normal-case"
+                  htmlFor="enrol-city"
+                  theme="dark"
+                >
+                  Current city
+                </FieldLabel>
+                <Input
+                  id="enrol-city"
+                  name="currentCity"
+                  type="text"
+                  placeholder="Helsinki"
+                  theme="dark"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                />
+              </Field>
+            )}
           </form.Field>
         )
       case 'currentCountry':
         return (
           <form.Field name="currentCountry">
-            {(field) => {
-              const error = getVisibleError(
-                'currentCountry',
-                field.state.value,
-                field.state.meta.errors,
-                field.state.meta.isTouched,
-              )
-              return (
-                <Field>
-                  <FieldLabel
-                    className="normal-case"
-                    htmlFor="enrol-country"
-                    theme="dark"
-                  >
-                    Current country
-                  </FieldLabel>
-                  <Input
-                    id="enrol-country"
-                    name="currentCountry"
-                    type="text"
-                    placeholder="Finland"
-                    theme="dark"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                  />
-                  <StableFieldError error={error} />
-                </Field>
-              )
-            }}
+            {(field) => (
+              <Field>
+                <FieldLabel
+                  className="normal-case"
+                  htmlFor="enrol-country"
+                  theme="dark"
+                >
+                  Current country
+                </FieldLabel>
+                <Input
+                  id="enrol-country"
+                  name="currentCountry"
+                  type="text"
+                  placeholder="Finland"
+                  theme="dark"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                />
+              </Field>
+            )}
           </form.Field>
         )
       case 'churchAffiliations':
@@ -697,115 +590,91 @@ export function EnrolmentForm() {
         return (
           <form.Field
             name="aboutYourself"
-            validators={{ onChange: (v) => required(v) || maxWords(200)(v) }}
+            validators={{ onBlur: (v) => required(v) || maxWords(200)(v) }}
           >
-            {(field) => {
-              const error = getVisibleError(
-                'aboutYourself',
-                field.state.value,
-                field.state.meta.errors,
-                field.state.meta.isTouched,
-              )
-
-              return (
-                <Field>
-                  <FieldLabel
-                    className="normal-case"
-                    htmlFor="enrol-about"
-                    theme="dark"
-                  >
-                    Tell us about yourself and why you are interested in this
-                    program
-                  </FieldLabel>
-                  <textarea
-                    id="enrol-about"
-                    name="aboutYourself"
-                    placeholder="Write up to 200 words..."
-                    rows={6}
-                    required
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    className="w-full resize-none border border-white/12 bg-[#1A1A1A] px-3 py-2.5 text-sm leading-7 text-[#F8F4EC] placeholder:text-[#5A5248] focus:border-[#C5A059]/50 focus:ring-1 focus:ring-[#C5A059]/30 focus:outline-none"
-                  />
-                  <div className="flex items-start justify-between gap-4">
-                    {error ? (
-                      <FieldDescription
-                        theme="dark"
-                        className="text-destructive"
-                      >
-                        {error}
-                      </FieldDescription>
-                    ) : (
-                      <FieldDescription theme="dark">
-                        Maximum 200 words.
-                      </FieldDescription>
-                    )}
-                    <span className="shrink-0 text-[0.62rem] text-[#5A5248]">
-                      {countWords(field.state.value)} words
-                    </span>
-                  </div>
-                </Field>
-              )
-            }}
+            {(field) => (
+              <Field>
+                <FieldLabel
+                  className="normal-case"
+                  htmlFor="enrol-about"
+                  theme="dark"
+                >
+                  Tell us about yourself and why you are interested in this
+                  program
+                </FieldLabel>
+                <textarea
+                  id="enrol-about"
+                  name="aboutYourself"
+                  placeholder="Write up to 200 words..."
+                  rows={6}
+                  required
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  className="w-full resize-none border border-white/12 bg-[#1A1A1A] px-3 py-2.5 text-sm leading-7 text-[#F8F4EC] placeholder:text-[#5A5248] focus:border-[#C5A059]/50 focus:ring-1 focus:ring-[#C5A059]/30 focus:outline-none"
+                />
+                <div className="flex items-start justify-between gap-4">
+                  {field.state.meta.errors[0] ? (
+                    <FieldDescription theme="dark" className="text-destructive">
+                      {String(field.state.meta.errors[0])}
+                    </FieldDescription>
+                  ) : (
+                    <FieldDescription theme="dark">
+                      Maximum 200 words.
+                    </FieldDescription>
+                  )}
+                  <span className="shrink-0 text-[0.62rem] text-[#5A5248]">
+                    {countWords(field.state.value)} words
+                  </span>
+                </div>
+              </Field>
+            )}
           </form.Field>
         )
       case 'expectationsAlignment':
         return (
           <form.Field
             name="expectationsAlignment"
-            validators={{ onChange: (v) => required(v) || maxWords(200)(v) }}
+            validators={{ onBlur: (v) => required(v) || maxWords(200)(v) }}
           >
-            {(field) => {
-              const error = getVisibleError(
-                'expectationsAlignment',
-                field.state.value,
-                field.state.meta.errors,
-                field.state.meta.isTouched,
-              )
-
-              return (
-                <Field>
-                  <FieldLabel
-                    className="normal-case"
-                    htmlFor="enrol-expectations"
-                    theme="dark"
-                  >
-                    Tell us what you expect to achieve at the end of this
-                    program, and how it would align with your personal pursuit
-                    of Jesus Christ.
-                  </FieldLabel>
-                  <textarea
-                    id="enrol-expectations"
-                    name="expectationsAlignment"
-                    placeholder="Write up to 200 words..."
-                    rows={6}
-                    required
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    className="w-full resize-none border border-white/12 bg-[#1A1A1A] px-3 py-2.5 text-sm leading-7 text-[#F8F4EC] placeholder:text-[#5A5248] focus:border-[#C5A059]/50 focus:ring-1 focus:ring-[#C5A059]/30 focus:outline-none"
-                  />
-                  <div className="flex items-start justify-between gap-4">
-                    {error ? (
-                      <FieldDescription
-                        theme="dark"
-                        className="text-destructive"
-                      >
-                        {error}
-                      </FieldDescription>
-                    ) : (
-                      <FieldDescription theme="dark">
-                        Maximum 200 words.
-                      </FieldDescription>
-                    )}
-                    <span className="shrink-0 text-[0.62rem] text-[#5A5248]">
-                      {countWords(field.state.value)} words
-                    </span>
-                  </div>
-                </Field>
-              )
-            }}
+            {(field) => (
+              <Field>
+                <FieldLabel
+                  className="normal-case"
+                  htmlFor="enrol-expectations"
+                  theme="dark"
+                >
+                  Tell us what you expect to achieve at the end of this program,
+                  and how it would align with your personal pursuit of Jesus
+                  Christ.
+                </FieldLabel>
+                <textarea
+                  id="enrol-expectations"
+                  name="expectationsAlignment"
+                  placeholder="Write up to 200 words..."
+                  rows={6}
+                  required
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  className="w-full resize-none border border-white/12 bg-[#1A1A1A] px-3 py-2.5 text-sm leading-7 text-[#F8F4EC] placeholder:text-[#5A5248] focus:border-[#C5A059]/50 focus:ring-1 focus:ring-[#C5A059]/30 focus:outline-none"
+                />
+                <div className="flex items-start justify-between gap-4">
+                  {field.state.meta.errors[0] ? (
+                    <FieldDescription theme="dark" className="text-destructive">
+                      {String(field.state.meta.errors[0])}
+                    </FieldDescription>
+                  ) : (
+                    <FieldDescription theme="dark">
+                      Maximum 200 words.
+                    </FieldDescription>
+                  )}
+                  <span className="shrink-0 text-[0.62rem] text-[#5A5248]">
+                    {countWords(field.state.value)} words
+                  </span>
+                </div>
+              </Field>
+            )}
           </form.Field>
         )
       default:

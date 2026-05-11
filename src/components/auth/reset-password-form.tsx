@@ -4,15 +4,11 @@ import { useServerFn } from '@tanstack/react-start'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import aboutBackground from '@/assets/images/bg/bg_lecturers.webp'
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { Field, FieldDescription, FieldGroup } from '@/components/ui/field'
+import { useAppForm } from '@/hooks/form'
 import { useMutation } from '@/hooks/useMutation'
 import { resetPasswordFn, validateResetTokenFn } from '@/routes/reset-password'
+import { resetPasswordSchema } from '@/schemas/auth.schema'
 import { calculatePasswordStrength } from '@/utils/password'
 
 interface ResetPasswordFormProps {
@@ -20,14 +16,12 @@ interface ResetPasswordFormProps {
 }
 
 export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
-  const [password, setPassword] = useState('')
   const [isValidating, setIsValidating] = useState(true)
   const [tokenValid, setTokenValid] = useState(false)
   const [tokenError, setTokenError] = useState<string | null>(null)
   const router = useRouter()
 
   const validateTokenFn = useServerFn(validateResetTokenFn)
-  const passwordStrength = calculatePasswordStrength(password || '')
 
   const resetMutation = useMutation<
     { data: { token: string; newPassword: string } },
@@ -46,6 +40,15 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       }
     },
   })
+
+  const form = useAppForm({
+    defaultValues: { password: '', confirmPassword: '' },
+    onSubmit: ({ value }) => {
+      resetMutation.mutate({ data: { token, newPassword: value.password } })
+    },
+  })
+
+  const passwordStrength = calculatePasswordStrength(form.state.values.password)
 
   useEffect(() => {
     if (!token) {
@@ -72,31 +75,6 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         setIsValidating(false)
       })
   }, [token, validateTokenFn])
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-
-    const formData = new FormData(e.target as HTMLFormElement)
-    const passwordValue = formData.get('password') as string
-    const confirmPassword = formData.get('confirm-password') as string
-
-    if (passwordValue !== confirmPassword) {
-      toast.error('Passwords do not match')
-      return
-    }
-
-    if (passwordValue.length < 8) {
-      toast.error('Password must be at least 8 characters')
-      return
-    }
-
-    resetMutation.mutate({
-      data: {
-        token,
-        newPassword: passwordValue,
-      },
-    })
-  }
 
   if (isValidating) {
     return (
@@ -248,66 +226,78 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
             </div>
 
             <div className="gap-5 border-x border-b border-white/10 bg-[#151515]/88 px-6 py-7 sm:px-8 sm:py-8">
-              <form onSubmit={handleSubmit}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  void form.handleSubmit()
+                }}
+              >
                 <div className="min-h-76 border border-white/10 bg-white/3 p-5 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.4)]">
                   <FieldGroup>
-                    <Field>
-                      <FieldLabel htmlFor="password" theme="dark">
-                        New Password
-                      </FieldLabel>
-                      <Input
-                        id="password"
-                        name="password"
-                        type="password"
-                        minLength={8}
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        disabled={resetMutation.isPending}
-                        theme="dark"
-                      />
-                      <div className="mt-2">
-                        <div className="mb-1 flex items-center gap-2">
-                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
-                            <div
-                              className={`h-full transition-all duration-300 ${passwordStrength.color}`}
-                              style={{
-                                width: `${(passwordStrength.score / 4) * 100}%`,
-                              }}
-                            />
-                          </div>
-                          <span className="text-xs font-medium text-[#D3CAC0]">
-                            {passwordStrength.label}
-                          </span>
-                        </div>
-                        {passwordStrength.suggestions.length > 0 && (
-                          <ul className="space-y-0.5 text-xs text-[#C9C0B6]">
-                            {passwordStrength.suggestions.map(
-                              (suggestion, i) => (
-                                <li key={i}>• {suggestion}</li>
-                              ),
+                    <form.AppField
+                      name="password"
+                      validators={{
+                        onSubmit: resetPasswordSchema.shape.newPassword,
+                      }}
+                    >
+                      {(field) => (
+                        <>
+                          <field.TextField
+                            id="reset-password"
+                            label="New Password"
+                            type="password"
+                            required
+                          />
+                          <div className="mt-2">
+                            <div className="mb-1 flex items-center gap-2">
+                              <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+                                <div
+                                  className={`h-full transition-all duration-300 ${passwordStrength.color}`}
+                                  style={{
+                                    width: `${(passwordStrength.score / 4) * 100}%`,
+                                  }}
+                                />
+                              </div>
+                              <span className="text-xs font-medium text-[#D3CAC0]">
+                                {passwordStrength.label}
+                              </span>
+                            </div>
+                            {passwordStrength.suggestions.length > 0 && (
+                              <ul className="space-y-0.5 text-xs text-[#C9C0B6]">
+                                {passwordStrength.suggestions.map(
+                                  (suggestion, i) => (
+                                    <li key={i}>• {suggestion}</li>
+                                  ),
+                                )}
+                              </ul>
                             )}
-                          </ul>
-                        )}
-                      </div>
-                    </Field>
+                          </div>
+                        </>
+                      )}
+                    </form.AppField>
 
-                    <Field>
-                      <FieldLabel htmlFor="confirm-password" theme="dark">
-                        Confirm New Password
-                      </FieldLabel>
-                      <Input
-                        id="confirm-password"
-                        name="confirm-password"
-                        type="password"
-                        required
-                        disabled={resetMutation.isPending}
-                        theme="dark"
-                      />
-                      <FieldDescription theme="dark">
-                        Please confirm your new password.
-                      </FieldDescription>
-                    </Field>
+                    <form.AppField
+                      name="confirmPassword"
+                      validators={{
+                        onSubmit: ({ value, fieldApi }) => {
+                          if (!value) return 'Please confirm your password'
+                          if (value !== fieldApi.form.state.values.password)
+                            return 'Passwords do not match'
+                          return undefined
+                        },
+                      }}
+                    >
+                      {(field) => (
+                        <field.TextField
+                          id="confirm-password"
+                          label="Confirm New Password"
+                          type="password"
+                          required
+                          description="Please confirm your new password."
+                        />
+                      )}
+                    </form.AppField>
 
                     <Field className="pt-2">
                       <button
