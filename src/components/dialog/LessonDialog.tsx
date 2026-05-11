@@ -2,15 +2,10 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { createLessonSchema, updateLessonSchema } from '@/schemas/lesson.schema'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
-import { FormDialog } from '@/components/ui/form-dialog'
 import { DialogBody } from '@/components/ui/dialog'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Switch } from '@/components/ui/switch'
-import {
-  FormFieldInput,
-  FormFieldNumberInput,
-  FormFieldTextarea,
-} from '@/components/ui/form-field'
+import { FieldGroup } from '@/components/ui/field'
+import { FormDialog } from '@/components/ui/form-dialog'
+import { useAppForm } from '@/hooks/form'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { createLesson, deleteLesson, updateLesson } from '@/utils/courses'
 
@@ -18,15 +13,17 @@ type LessonFormData = {
   title: string
   content: string
   scheduledTime: string
-  duration: string
+  duration: number
   isPublished: boolean
 }
+
+type LessonFieldErrors = Partial<Record<keyof LessonFormData, string>>
 
 const emptyFormData: LessonFormData = {
   title: '',
   content: '',
   scheduledTime: '',
-  duration: '',
+  duration: 0,
   isPublished: false,
 }
 
@@ -47,6 +44,39 @@ type LessonDialogProps = {
   }
 }
 
+function getInitialValues(
+  initialData: LessonDialogProps['initialData'],
+  mode: LessonDialogProps['mode'],
+): LessonFormData {
+  if (!initialData || mode === 'create') return { ...emptyFormData }
+
+  return {
+    title: initialData.title,
+    content: initialData.content ?? '',
+    scheduledTime: initialData.scheduledTime
+      ? new Date(initialData.scheduledTime).toISOString().slice(0, 16)
+      : '',
+    duration: initialData.duration ?? 0,
+    isPublished: initialData.isPublished ?? false,
+  }
+}
+
+function extractFieldErrors(
+  issues: Array<{ path: Array<PropertyKey>; message: string }>,
+): LessonFieldErrors {
+  const errors: LessonFieldErrors = {}
+
+  for (const issue of issues) {
+    const key = issue.path[0]
+    if (typeof key !== 'string' || !(key in emptyFormData)) continue
+
+    const field = key as keyof LessonFormData
+    if (!errors[field]) errors[field] = issue.message
+  }
+
+  return errors
+}
+
 export function LessonDialog({
   open,
   onOpenChange,
@@ -55,97 +85,78 @@ export function LessonDialog({
   lessonCount = 0,
   initialData,
 }: LessonDialogProps) {
-  const [formData, setFormData] = useState<LessonFormData>({ ...emptyFormData })
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    if (open) {
-      setFieldErrors({})
-      if (initialData && mode !== 'create') {
-        setFormData({
-          title: initialData.title,
-          content: initialData.content || '',
-          scheduledTime: initialData.scheduledTime
-            ? new Date(initialData.scheduledTime).toISOString().slice(0, 16)
-            : '',
-          duration: initialData.duration?.toString() || '',
-          isPublished: initialData.isPublished ?? false,
-        })
-      } else {
-        setFormData({ ...emptyFormData })
-      }
-    }
-  }, [open, initialData, mode])
+  const [submitErrors, setSubmitErrors] = useState<LessonFieldErrors>({})
 
   const { createMutation, updateMutation, deleteMutation, isAnyPending } =
     useEntityMutation({
       createFn: createLesson,
       updateFn: updateLesson,
       deleteFn: deleteLesson,
-      onSuccess: () => {
-        onOpenChange(false)
-      },
+      onSuccess: () => onOpenChange(false),
     })
 
-  const isPending = isAnyPending
-
-  const handleSubmit = () => {
-    const schema = mode === 'create' ? createLessonSchema : updateLessonSchema
-    const parseData = {
-      lessonId: initialData?.lessonId ?? '',
-      courseId,
-      title: formData.title,
-      content: formData.content || undefined,
-      scheduledTime: formData.scheduledTime
-        ? new Date(formData.scheduledTime)
-        : undefined,
-      duration: formData.duration ? parseInt(formData.duration) : undefined,
-      orderIndex: lessonCount,
-      isPublished: formData.isPublished,
-    }
-
-    const parseResult = schema.safeParse(parseData)
-    if (!parseResult.success) {
-      const errors: Record<string, string> = {}
-      for (const issue of parseResult.error.issues) {
-        const key = issue.path[0] as string
-        if (!errors[key]) errors[key] = issue.message
+  const form = useAppForm({
+    defaultValues: getInitialValues(initialData, mode),
+    onSubmit: ({ value }) => {
+      const shared = {
+        title: value.title,
+        content: value.content || undefined,
+        scheduledTime: value.scheduledTime
+          ? new Date(value.scheduledTime)
+          : undefined,
+        duration: value.duration > 0 ? value.duration : undefined,
+        isPublished: value.isPublished,
       }
-      setFieldErrors(errors)
-      return
-    }
 
-    setFieldErrors({})
+      if (mode === 'create') {
+        const result = createLessonSchema.safeParse({
+          ...shared,
+          courseId,
+          orderIndex: lessonCount,
+        })
 
-    if (mode === 'create') {
-      if (lessonCount >= 3) {
-        toast.error('Maximum 3 lessons allowed per course')
+        if (!result.success) {
+          setSubmitErrors(extractFieldErrors(result.error.issues))
+          return
+        }
+
+        if (lessonCount >= 3) {
+          toast.error('Maximum 3 lessons allowed per course')
+          return
+        }
+
+        setSubmitErrors({})
+        createMutation.mutate({ data: result.data })
         return
       }
-      createMutation.mutate({
-        data: {
-          courseId,
-          title: formData.title,
-          content: formData.content || undefined,
-          scheduledTime: new Date(formData.scheduledTime),
-          duration: formData.duration ? parseInt(formData.duration) : undefined,
-          orderIndex: lessonCount,
-          isPublished: formData.isPublished,
-        },
+
+      if (!initialData) return
+
+      const result = updateLessonSchema.safeParse({
+        ...shared,
+        lessonId: initialData.lessonId,
+        courseId,
       })
-    } else if (initialData) {
-      updateMutation.mutate({
-        data: {
-          lessonId: initialData.lessonId,
-          courseId,
-          title: formData.title,
-          content: formData.content || undefined,
-          scheduledTime: new Date(formData.scheduledTime),
-          duration: formData.duration ? parseInt(formData.duration) : undefined,
-          isPublished: formData.isPublished,
-        },
-      })
-    }
+
+      if (!result.success) {
+        setSubmitErrors(extractFieldErrors(result.error.issues))
+        return
+      }
+
+      setSubmitErrors({})
+      updateMutation.mutate({ data: result.data })
+    },
+  })
+
+  useEffect(() => {
+    if (!open) return
+    setSubmitErrors({})
+    form.reset(getInitialValues(initialData, mode))
+  }, [open, initialData, mode, form])
+
+  const clearError = (field: keyof LessonFormData) => {
+    if (!submitErrors[field]) return
+    setSubmitErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
   if (mode === 'delete') {
@@ -177,81 +188,68 @@ export function LessonDialog({
           : 'Update the lesson information'
       }
       maxWidth="3xl"
-      onSubmit={handleSubmit}
-      isSubmitting={isPending}
+      onSubmit={() => void form.handleSubmit()}
+      isSubmitting={isAnyPending}
       submitLabel={mode === 'create' ? 'Create Lesson' : 'Save Changes'}
     >
       <DialogBody>
         <FieldGroup className="mt-6 gap-8">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormFieldInput
-              id="lesson-title"
-              label="Title"
-              required
-              className="sm:col-span-2"
-              value={formData.title}
-              onChange={(value) => {
-                setFormData({ ...formData, title: value })
-                if (fieldErrors.title)
-                  setFieldErrors({ ...fieldErrors, title: '' })
-              }}
-              error={fieldErrors.title}
-              placeholder="Lesson title"
-            />
-            <FormFieldInput
-              id="lesson-time"
-              label="Scheduled Time"
-              required
-              type="datetime-local"
-              value={formData.scheduledTime}
-              onChange={(value) => {
-                setFormData({
-                  ...formData,
-                  scheduledTime: value,
-                })
-                if (fieldErrors.scheduledTime)
-                  setFieldErrors({ ...fieldErrors, scheduledTime: '' })
-              }}
-              error={fieldErrors.scheduledTime}
-            />
-            <FormFieldNumberInput
-              id="lesson-duration"
-              label="Duration (minutes)"
-              placeholder="60"
-              value={formData.duration === '' ? 0 : Number(formData.duration)}
-              onChange={(value) => {
-                setFormData({ ...formData, duration: String(value) })
-                if (fieldErrors.duration)
-                  setFieldErrors({ ...fieldErrors, duration: '' })
-              }}
-              error={fieldErrors.duration}
-            />
-            <FormFieldTextarea
-              id="lesson-content"
-              label="Content"
-              className="sm:col-span-2"
-              value={formData.content}
-              onChange={(value) => setFormData({ ...formData, content: value })}
-              placeholder="Lesson content or description"
-              rows={8}
-            />
-            <Field>
-              <div className="flex items-center gap-3">
-                <Switch
-                  id="lesson-published"
-                  checked={formData.isPublished}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, isPublished: checked })
-                  }
+            <form.AppField name="title">
+              {(field) => (
+                <field.TextField
+                  id="lesson-title"
+                  label="Title"
+                  required
+                  className="sm:col-span-2"
+                  placeholder="Lesson title"
+                  error={submitErrors.title}
+                  onValueChange={() => clearError('title')}
                 />
-                <FieldLabel
-                  htmlFor="lesson-published"
-                  className="text-sm text-[#AFA28F]"
-                >
-                  Publish lesson
-                </FieldLabel>
-              </div>
-            </Field>
+              )}
+            </form.AppField>
+            <form.AppField name="scheduledTime">
+              {(field) => (
+                <field.TextField
+                  id="lesson-time"
+                  label="Scheduled Time"
+                  required
+                  type="datetime-local"
+                  error={submitErrors.scheduledTime}
+                  onValueChange={() => clearError('scheduledTime')}
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="duration">
+              {(field) => (
+                <field.NumberField
+                  id="lesson-duration"
+                  label="Duration (minutes)"
+                  placeholder="60"
+                  error={submitErrors.duration}
+                  onValueChange={() => clearError('duration')}
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="content">
+              {(field) => (
+                <field.TextAreaField
+                  id="lesson-content"
+                  label="Content"
+                  className="sm:col-span-2"
+                  placeholder="Lesson content or description"
+                  rows={8}
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="isPublished">
+              {(field) => (
+                <field.SwitchField
+                  id="lesson-published"
+                  label="Publish lesson"
+                />
+              )}
+            </form.AppField>
           </div>
         </FieldGroup>
       </DialogBody>

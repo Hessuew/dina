@@ -18,6 +18,7 @@ This folder contains:
   - Includes `DeleteConfirmDialog` for standardized delete confirmation flows.
   - Includes `FormDialog` for standardized form dialog structure with background styling, mode-based labels, and default footer with Cancel/Submit buttons.
   - Includes `StatusChip` for standardized status badges with auto-capitalization, size variants (sm/md), and strict design system color tokens. Variants: published, draft, closed, submitted, graded, not-submitted.
+  - Includes `app-form-fields.tsx` — TanStack Form-aware field components (`TextField`, `NumberField`, `TextAreaField`, `SelectField`, `SwitchField`) that read from `useFieldContext()` internally and render existing DINA design-system primitives. Use these inside `form.AppField` render-prop children.
 
 - **`navigation/`**
   - App shell components: sidebar, header, catch boundary, not-found page.
@@ -49,6 +50,7 @@ This folder contains:
 - **Add a new feature dialog or view**
   - Place in `components/dialog/*` or `components/view/*`.
   - Keep data fetching in routes/server functions; keep components focused on rendering + callbacks.
+  - For forms: use `useAppForm` from `src/hooks/form.ts`. Define form values as UI-shaped types (strings for date inputs, numbers for numeric fields). Build the server payload inside `onSubmit`, validate with the existing Zod schema there, and surface field errors via a local `submitErrors` state bridged to field `error` props. Use `form.reset(values)` inside a `useEffect` on `open` to initialize/reset the form.
 
 - **Update global nav**
   - Edit `components/navigation/*`.
