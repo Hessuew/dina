@@ -20,7 +20,7 @@ export function isLibraryTopic(value: string): value is LibraryTopic {
 type GroupableMedia = { category: string; fileType: string }
 
 export function buildShelves<T extends GroupableMedia>(
-  media: T[],
+  media: readonly T[],
 ): Map<string, { ebooks: T[]; audioVisual: T[] }> {
   const shelves = new Map<string, { ebooks: T[]; audioVisual: T[] }>()
   for (const item of media) {
