@@ -27,7 +27,7 @@ This folder contains:
   - Page layout wrappers: PageLayout for consistent page background and container structure; PageHeader for detail page headers with back button, gold line, title, metadata, and actions; EntityHeaderActions for standardized StatusChip + edit/delete button pattern with permission logic.
 
 - **Feature component families**
-  - `auth/`: signup/login/reset/enrolment forms.
+  - `auth/`: signup/login/reset/enrolment forms. Public auth pages compose the shared layout primitives in `auth-layout.tsx`: `AuthPageShell`, `AuthFeaturePanel`, `AuthFormSurface`, reset-token state helpers, and `EnrolmentPageShell`.
   - `dialog/`: dialogs for profile, invitations, teachers, event previews.
   - `card/`: card-style feature components.
   - `view/`: composite “page section” components for feature pages.
@@ -40,6 +40,7 @@ This folder contains:
 
 - **Composition**
   - Prefer composing feature UI from `ui/*` primitives and small feature components.
+  - Auth forms should keep form state and mutations local, while reusing `components/auth/auth-layout.tsx` for public page shells, feature panels, and inner form surfaces.
 
 ## Common Change Recipes
 

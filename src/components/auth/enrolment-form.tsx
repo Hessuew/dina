@@ -9,6 +9,7 @@ import houseFraming from '@/assets/images/house/house_framing.webp'
 import houseWalls from '@/assets/images/house/house_walls.webp'
 import houseInterior from '@/assets/images/house/house_interior.webp'
 import houseRoof from '@/assets/images/house/house_roof.webp'
+import { EnrolmentPageShell } from '@/components/auth/auth-layout'
 import { Button } from '@/components/ui/button'
 import { FieldDescription, FieldGroup } from '@/components/ui/field'
 import { SelectItem } from '@/components/ui/select'
@@ -213,44 +214,21 @@ export function EnrolmentForm() {
   }, [currentStep, handleNext, handleBack])
 
   const pageShell = (rightPanel: React.ReactNode) => (
-    <section className="relative isolate min-h-svh overflow-hidden bg-[#111111] text-[#F8F4EC]">
-      <div className="grid min-h-svh lg:grid-cols-2">
-        <aside className="relative hidden min-h-svh overflow-hidden lg:block">
-          <img
-            key={currentStepConfig.id}
-            src={currentStepConfig.image}
-            alt={currentStepConfig.title}
-            className="animate-in fade-in h-full w-full object-cover duration-1500"
-            loading="lazy"
-          />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.28),rgba(0,0,0,0.62)),linear-gradient(180deg,rgba(0,0,0,0.12),rgba(0,0,0,0.68))]" />
-          <div className="absolute inset-x-0 bottom-0 p-10 xl:p-14">
-            <div className="max-w-md border border-white/12 bg-black/28 p-6 backdrop-blur-sm">
-              <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
-                Enrolment 2026
-              </div>
-              <h1 className="mt-4 font-serif text-[clamp(3rem,5vw,5.5rem)] leading-[0.9] tracking-[-0.055em] text-white">
-                Apply for enrolment
-              </h1>
-              <p className="mt-5 text-sm leading-7 tracking-[0.04em] text-[#E6DDCF]">
-                "Through desire a man, having separated himself, seeketh and
-                intermeddleth with all wisdom."
-              </p>
-            </div>
-          </div>
-        </aside>
-
-        <div className="relative flex min-h-svh flex-col items-center justify-center bg-[#151515] px-5 pt-24 pb-10 sm:px-8 lg:px-12 lg:pt-20">
-          <div className="p-6 text-center lg:hidden">
-            <h1 className="mt-4 font-serif text-[clamp(3rem,5vw,5.5rem)] leading-[0.9] tracking-[-0.055em] text-white">
-              Apply for enrolment
-            </h1>
-          </div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.06),transparent_24%)]" />
-          <div className="relative w-full max-w-xl">{rightPanel}</div>
-        </div>
-      </div>
-    </section>
+    <EnrolmentPageShell
+      image={currentStepConfig.image}
+      imageAlt={currentStepConfig.title}
+      imageKey={currentStepConfig.id}
+      label="Enrolment 2026"
+      title="Apply for enrolment"
+      quote={
+        <>
+          "Through desire a man, having separated himself, seeketh and
+          intermeddleth with all wisdom."
+        </>
+      }
+    >
+      {rightPanel}
+    </EnrolmentPageShell>
   )
 
   if (submitted) {
