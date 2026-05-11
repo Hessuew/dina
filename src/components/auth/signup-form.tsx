@@ -17,6 +17,7 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from '@/components/ui/input-otp'
+import { useAppForm } from '@/hooks/form'
 import { useMutation } from '@/hooks/useMutation'
 import { resendOtpFn, signupFn, verifyOtpFn } from '@/routes/signup'
 import {
@@ -78,8 +79,6 @@ interface SignupFormProps {
 }
 
 export function SignupForm({ token = '' }: SignupFormProps) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [isCheckingEmail, setIsCheckingEmail] = useState(false)
   const [invitationValid, setInvitationValid] = useState(false)
   const [invitationError, setInvitationError] = useState<string | null>(null)
@@ -89,6 +88,29 @@ export function SignupForm({ token = '' }: SignupFormProps) {
   const [showOtpInput, setShowOtpInput] = useState(false)
   const [otpValue, setOtpValue] = useState('')
   const [resendCooldown, setResendCooldown] = useState(0)
+
+  const form = useAppForm({
+    defaultValues: {
+      email: '',
+      name: '',
+      password: '',
+      confirmPassword: '',
+    },
+    onSubmit: async ({ value }) => {
+      if (!invitationValid) {
+        setInvitationError('Please enter a valid email with an invitation')
+        return
+      }
+      signupMutation.mutate({
+        data: {
+          email: value.email,
+          password: value.password,
+          fullName: value.name || undefined,
+          token,
+        },
+      })
+    },
+  })
 
   const signupMutation = useMutation<
     {
@@ -120,7 +142,9 @@ export function SignupForm({ token = '' }: SignupFormProps) {
   const checkEmailFn = useServerFn(checkInvitationByEmail)
   const getTokenFn = useServerFn(getInvitationByToken)
 
-  const passwordStrength = calculatePasswordStrength(password || '')
+  const passwordStrength = calculatePasswordStrength(
+    form.state.values.password || '',
+  )
 
   const verifyOtpMutation = useMutation<
     {
@@ -148,7 +172,6 @@ export function SignupForm({ token = '' }: SignupFormProps) {
           description: 'Redirecting to dashboard...',
         })
 
-        // Auto-login successful, redirect to dashboard
         await router.invalidate()
         router.navigate({ to: '/dashboard', search: { verified: true } })
       } else {
@@ -172,7 +195,6 @@ export function SignupForm({ token = '' }: SignupFormProps) {
     },
   })
 
-  // Resend cooldown timer
   useEffect(() => {
     if (resendCooldown > 0) {
       const timer = setTimeout(() => {
@@ -182,13 +204,12 @@ export function SignupForm({ token = '' }: SignupFormProps) {
     }
   }, [resendCooldown])
 
-  // Auto-fill email from token on mount
   useEffect(() => {
     if (token) {
       setIsLoadingToken(true)
       getTokenFn({ data: { token } })
         .then((result) => {
-          setEmail(result.invitation.email)
+          form.setFieldValue('email', result.invitation.email)
           setInvitationValid(true)
           setInvitationRole(result.invitation.role)
         })
@@ -206,13 +227,14 @@ export function SignupForm({ token = '' }: SignupFormProps) {
   }, [token, getTokenFn])
 
   const handleEmailBlur = async () => {
-    if (!email || email.length < 3) return
+    const emailValue = form.state.values.email
+    if (!emailValue || emailValue.length < 3) return
 
     setIsCheckingEmail(true)
     setInvitationError(null)
 
     try {
-      const result = await checkEmailFn({ data: { email } })
+      const result = await checkEmailFn({ data: { email: emailValue } })
       setInvitationValid(true)
       setInvitationRole(result.invitation.role)
       setInvitationError(null)
@@ -228,41 +250,13 @@ export function SignupForm({ token = '' }: SignupFormProps) {
     }
   }
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-
-    if (!invitationValid) {
-      setInvitationError('Please enter a valid email with an invitation')
-      return
-    }
-
-    const formData = new FormData(e.target as HTMLFormElement)
-    const passwordValue = formData.get('password') as string
-    const confirmPassword = formData.get('confirm-password') as string
-    const tokenField = formData.get('token') as string
-
-    if (passwordValue !== confirmPassword) {
-      alert('Passwords do not match')
-      return
-    }
-
-    signupMutation.mutate({
-      data: {
-        email,
-        password: passwordValue,
-        fullName: formData.get('name') as string,
-        token: tokenField,
-      },
-    })
-  }
-
   const handleOtpComplete = (value: string) => {
     setOtpValue(value)
     if (value.length === 6) {
       verifyOtpMutation.mutate({
         data: {
-          email,
-          password,
+          email: form.state.values.email,
+          password: form.state.values.password,
           otp: value,
           invitationToken: token,
         },
@@ -274,7 +268,7 @@ export function SignupForm({ token = '' }: SignupFormProps) {
     if (resendCooldown > 0) return
     resendOtpMutation.mutate({
       data: {
-        email,
+        email: form.state.values.email,
         invitationToken: token,
       },
     })
@@ -377,7 +371,7 @@ export function SignupForm({ token = '' }: SignupFormProps) {
           </div>
           <p className="text-sm leading-6 text-[#D6CCBE]">
             Enter the code sent to{' '}
-            <span className="text-[#E9D9B4]">{email}</span>
+            <span className="text-[#E9D9B4]">{form.state.values.email}</span>
           </p>
         </div>
 
@@ -432,120 +426,154 @@ export function SignupForm({ token = '' }: SignupFormProps) {
   }
 
   return pageShell(
-    <form onSubmit={handleSubmit}>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        void form.handleSubmit()
+      }}
+    >
       <FieldGroup>
-        <Field>
-          <FieldLabel htmlFor="email" theme="dark">
-            Email
-          </FieldLabel>
-          <div className="relative">
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onBlur={handleEmailBlur}
-              required
-              theme="dark"
-              disabled={invitationValid || isLoadingToken}
-            />
-            {(isCheckingEmail || isLoadingToken) && (
-              <div className="absolute top-1/2 right-3 -translate-y-1/2">
-                <Loader2 className="h-4 w-4 animate-spin text-[#9B8A73]" />
+        <form.Field name="email">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="email" theme="dark">
+                Email
+              </FieldLabel>
+              <div className="relative">
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={handleEmailBlur}
+                  required
+                  theme="dark"
+                  disabled={invitationValid || isLoadingToken}
+                />
+                {(isCheckingEmail || isLoadingToken) && (
+                  <div className="absolute top-1/2 right-3 -translate-y-1/2">
+                    <Loader2 className="h-4 w-4 animate-spin text-[#9B8A73]" />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          {isCheckingEmail && (
-            <FieldDescription theme="dark">Checking email...</FieldDescription>
-          )}
-          {isLoadingToken && (
-            <FieldDescription theme="dark">
-              Loading invitation...
-            </FieldDescription>
-          )}
-          {invitationError && (
-            <FieldDescription className="text-destructive">
-              {invitationError}
-            </FieldDescription>
-          )}
-          {invitationValid && invitationRole && (
-            <FieldDescription className="text-[#6FCF97]">
-              ✓ Invited as {invitationRole}
-            </FieldDescription>
-          )}
-        </Field>
-
-        <Field>
-          <FieldLabel htmlFor="name" theme="dark">
-            Full Name
-          </FieldLabel>
-          <Input
-            id="name"
-            name="name"
-            type="text"
-            placeholder="John Doe"
-            required
-            theme="dark"
-            disabled={!invitationValid}
-          />
-        </Field>
-
-        <Field>
-          <FieldLabel htmlFor="password" theme="dark">
-            Password
-          </FieldLabel>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            minLength={8}
-            required
-            theme="dark"
-            disabled={!invitationValid}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {password && (
-            <div className="mt-2">
-              <div className="mb-1 flex items-center gap-3">
-                <div className="h-1 flex-1 overflow-hidden bg-white/10">
-                  <div
-                    className={`h-full transition-all duration-300 ${passwordStrength.color}`}
-                    style={{ width: `${(passwordStrength.score / 4) * 100}%` }}
-                  />
-                </div>
-                <span className="text-[0.65rem] font-medium tracking-[0.16em] text-[#9B8A73] uppercase">
-                  {passwordStrength.label}
-                </span>
-              </div>
-              {passwordStrength.suggestions.length > 0 && (
-                <ul className="space-y-0.5 text-[0.7rem] text-[#8E816D]">
-                  {passwordStrength.suggestions.map((suggestion, i) => (
-                    <li key={i}>· {suggestion}</li>
-                  ))}
-                </ul>
+              {isCheckingEmail && (
+                <FieldDescription theme="dark">
+                  Checking email...
+                </FieldDescription>
               )}
-            </div>
+              {isLoadingToken && (
+                <FieldDescription theme="dark">
+                  Loading invitation...
+                </FieldDescription>
+              )}
+              {invitationError && (
+                <FieldDescription className="text-destructive">
+                  {invitationError}
+                </FieldDescription>
+              )}
+              {invitationValid && invitationRole && (
+                <FieldDescription className="text-[#6FCF97]">
+                  ✓ Invited as {invitationRole}
+                </FieldDescription>
+              )}
+            </Field>
           )}
-        </Field>
+        </form.Field>
 
-        <Field>
-          <FieldLabel htmlFor="confirm-password" theme="dark">
-            Confirm Password
-          </FieldLabel>
-          <Input
-            id="confirm-password"
-            name="confirm-password"
-            type="password"
-            required
-            theme="dark"
-            disabled={!invitationValid}
-          />
-        </Field>
+        <form.AppField name="name">
+          {(field) => (
+            <field.TextField
+              id="name"
+              label="Full Name"
+              type="text"
+              placeholder="John Doe"
+              required
+            />
+          )}
+        </form.AppField>
 
-        <input type="hidden" name="token" value={token} />
+        <form.Field name="password">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="password" theme="dark">
+                Password
+              </FieldLabel>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                minLength={8}
+                required
+                theme="dark"
+                disabled={!invitationValid}
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+              />
+              {field.state.value && (
+                <div className="mt-2">
+                  <div className="mb-1 flex items-center gap-3">
+                    <div className="h-1 flex-1 overflow-hidden bg-white/10">
+                      <div
+                        className={`h-full transition-all duration-300 ${passwordStrength.color}`}
+                        style={{
+                          width: `${(passwordStrength.score / 4) * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-[0.65rem] font-medium tracking-[0.16em] text-[#9B8A73] uppercase">
+                      {passwordStrength.label}
+                    </span>
+                  </div>
+                  {passwordStrength.suggestions.length > 0 && (
+                    <ul className="space-y-0.5 text-[0.7rem] text-[#8E816D]">
+                      {passwordStrength.suggestions.map((suggestion, i) => (
+                        <li key={i}>· {suggestion}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </Field>
+          )}
+        </form.Field>
+
+        <form.Field
+          name="confirmPassword"
+          validators={{
+            onChangeListenTo: ['password'],
+            onChange: ({ value, fieldApi }) =>
+              value !== fieldApi.form.getFieldValue('password')
+                ? 'Passwords do not match'
+                : undefined,
+          }}
+        >
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="confirm-password" theme="dark">
+                Confirm Password
+              </FieldLabel>
+              <Input
+                id="confirm-password"
+                name="confirm-password"
+                type="password"
+                required
+                theme="dark"
+                disabled={!invitationValid}
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+              />
+              {field.state.meta.errors.length > 0 &&
+                field.state.meta.isTouched && (
+                  <FieldDescription className="text-destructive">
+                    {String(field.state.meta.errors[0])}
+                  </FieldDescription>
+                )}
+            </Field>
+          )}
+        </form.Field>
 
         <Field className="pt-2">
           <button
