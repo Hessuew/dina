@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { useForm } from '@tanstack/react-form'
 import { CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
@@ -25,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useAppForm } from '@/hooks/form'
 import { createEnrollment } from '@/utils/enrolment/enrollments'
 import { cn } from '@/lib/utils'
 
@@ -172,7 +172,7 @@ export function EnrolmentForm() {
 
   const createEnrollmentFn = useServerFn(createEnrollment)
 
-  const form = useForm({
+  const form = useAppForm({
     defaultValues: ENROLMENT_DEFAULT_VALUES,
     onSubmit: async ({ value }) => {
       try {
