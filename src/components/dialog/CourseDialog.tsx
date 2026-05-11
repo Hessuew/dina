@@ -83,6 +83,10 @@ function extractFieldErrors(
   return errors
 }
 
+/**
+ * CourseDialog component for creating and editing courses
+ * Uses FormDialog for consistent dialog structure
+ */
 export function CourseDialog({
   open,
   onOpenChange,
