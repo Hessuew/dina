@@ -1,5 +1,5 @@
 import { Trash2Icon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import type { ZoomLinkRow, ZoomLinkSection } from '@/utils/zoomLink/zoomLinks'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
@@ -27,10 +27,7 @@ import {
   deleteZoomLink,
   updateZoomLink,
 } from '@/utils/zoomLink/zoomLinks'
-import {
-  createZoomLinkSchema,
-  updateZoomLinkSchema,
-} from '@/schemas/zoomLink.schema'
+import { createZoomLinkSchema } from '@/schemas/zoomLink.schema'
 
 type ZoomCourse = { id: string; title: string }
 
@@ -44,8 +41,6 @@ type ZoomFormData = {
   passcode: string
   orderIndex: number
 }
-
-type ZoomFormErrors = Partial<Record<keyof ZoomFormData, string>>
 
 export type ZoomLinkDialogState =
   | { mode: 'create' }
@@ -91,28 +86,11 @@ function getInitialValues(dialogState: ZoomLinkDialogState): ZoomFormData {
   return emptyZoomForm
 }
 
-function extractZoomErrors(
-  issues: Array<{ path: Array<PropertyKey>; message: string }>,
-): ZoomFormErrors {
-  const errors: ZoomFormErrors = {}
-
-  for (const issue of issues) {
-    const key = issue.path[0]
-    if (typeof key !== 'string' || !(key in emptyZoomForm)) continue
-
-    const field = key as keyof ZoomFormData
-    if (!errors[field]) errors[field] = issue.message
-  }
-
-  return errors
-}
-
 export function ZoomLinkDialog({
   courses,
   dialogState,
   onOpenChange,
 }: ZoomLinkDialogProps) {
-  const [submitErrors, setSubmitErrors] = useState<ZoomFormErrors>({})
   const link = dialogState?.mode === 'edit' ? dialogState.link : null
   const open = dialogState !== null
 
@@ -144,37 +122,13 @@ export function ZoomLinkDialog({
       }
 
       if (link) {
-        const result = updateZoomLinkSchema.safeParse({
-          zoomLinkId: link.id,
-          ...payload,
-        })
-
-        if (!result.success) {
-          setSubmitErrors(extractZoomErrors(result.error.issues))
-          return
-        }
-
-        setSubmitErrors({})
-        updateMutation.mutate({ data: result.data })
+        updateMutation.mutate({ data: { zoomLinkId: link.id, ...payload } })
         return
       }
 
-      const result = createZoomLinkSchema.safeParse(payload)
-
-      if (!result.success) {
-        setSubmitErrors(extractZoomErrors(result.error.issues))
-        return
-      }
-
-      setSubmitErrors({})
-      createMutation.mutate({ data: result.data })
+      createMutation.mutate({ data: payload })
     },
   })
-
-  const clearZoomError = (field: keyof ZoomFormData) => {
-    if (!submitErrors[field]) return
-    setSubmitErrors((prev) => ({ ...prev, [field]: undefined }))
-  }
 
   const handleDelete = () => {
     if (!link) return
@@ -183,7 +137,6 @@ export function ZoomLinkDialog({
 
   useEffect(() => {
     if (!open) return
-    setSubmitErrors({})
     zoomForm.reset(getInitialValues(dialogState))
   }, [open, dialogState, zoomForm])
 
@@ -283,53 +236,59 @@ export function ZoomLinkDialog({
                     </Field>
                   )}
                 </zoomForm.AppField>
-                <zoomForm.AppField name="title">
+                <zoomForm.AppField
+                  name="title"
+                  validators={{ onSubmit: createZoomLinkSchema.shape.title }}
+                >
                   {(field) => (
                     <field.TextField
                       id="zoom-title"
                       label="Title"
                       placeholder="Ground course discipleship group"
                       required
-                      error={submitErrors.title}
-                      onValueChange={() => clearZoomError('title')}
                       className="sm:col-span-2"
                     />
                   )}
                 </zoomForm.AppField>
-                <zoomForm.AppField name="zoomUrl">
+                <zoomForm.AppField
+                  name="zoomUrl"
+                  validators={{ onSubmit: createZoomLinkSchema.shape.zoomUrl }}
+                >
                   {(field) => (
                     <field.TextField
                       id="zoom-url"
                       label="Zoom Link"
                       placeholder="https://zoom.us/j/..."
                       required
-                      error={submitErrors.zoomUrl}
-                      onValueChange={() => clearZoomError('zoomUrl')}
                       className="sm:col-span-2"
                     />
                   )}
                 </zoomForm.AppField>
-                <zoomForm.AppField name="meetingId">
+                <zoomForm.AppField
+                  name="meetingId"
+                  validators={{
+                    onSubmit: createZoomLinkSchema.shape.meetingId,
+                  }}
+                >
                   {(field) => (
                     <field.TextField
                       id="zoom-meeting-id"
                       label="Meeting ID"
                       placeholder="123 456 7890"
                       required
-                      error={submitErrors.meetingId}
-                      onValueChange={() => clearZoomError('meetingId')}
                     />
                   )}
                 </zoomForm.AppField>
-                <zoomForm.AppField name="passcode">
+                <zoomForm.AppField
+                  name="passcode"
+                  validators={{ onSubmit: createZoomLinkSchema.shape.passcode }}
+                >
                   {(field) => (
                     <field.TextField
                       id="zoom-passcode"
                       label="Passcode"
                       placeholder="Passcode"
                       required
-                      error={submitErrors.passcode}
-                      onValueChange={() => clearZoomError('passcode')}
                     />
                   )}
                 </zoomForm.AppField>

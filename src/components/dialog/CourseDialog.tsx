@@ -7,7 +7,7 @@ import { DialogBody } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { SelectItem } from '@/components/ui/select'
-import { createCourseSchema, updateCourseSchema } from '@/schemas/course.schema'
+import { createCourseSchema } from '@/schemas/course.schema'
 import { useAppForm } from '@/hooks/form'
 import { useAllTeachers } from '@/hooks/useAllTeachers'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
@@ -23,8 +23,6 @@ type CourseFormData = {
   teacher2Id: string
   isPublished: boolean
 }
-
-type CourseFieldErrors = Partial<Record<keyof CourseFormData, string>>
 
 const emptyFormData: CourseFormData = {
   title: '',
@@ -67,26 +65,6 @@ function getInitialValues(
   }
 }
 
-function extractFieldErrors(
-  issues: Array<{ path: Array<PropertyKey>; message: string }>,
-): CourseFieldErrors {
-  const errors: CourseFieldErrors = {}
-
-  for (const issue of issues) {
-    const key = issue.path[0]
-    if (typeof key !== 'string' || !(key in emptyFormData)) continue
-
-    const field = key as keyof CourseFormData
-    if (!errors[field]) errors[field] = issue.message
-  }
-
-  return errors
-}
-
-/**
- * CourseDialog component for creating and editing courses
- * Uses FormDialog for consistent dialog structure
- */
 export function CourseDialog({
   open,
   onOpenChange,
@@ -105,7 +83,6 @@ export function CourseDialog({
   } = useFileUpload()
 
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
-  const [submitErrors, setSubmitErrors] = useState<CourseFieldErrors>({})
 
   const { teachers, error: teachersError } = useAllTeachers(open && isAdmin)
 
@@ -161,56 +138,28 @@ export function CourseDialog({
         isPublished: value.isPublished,
       }
 
-      if (isAdmin && shared.teacher1Id && shared.teacher2Id) {
-        if (shared.teacher1Id === shared.teacher2Id) {
-          setSubmitErrors({ teacher2Id: 'Please select 2 different teachers' })
-          return
-        }
-      }
-
       if (mode === 'create') {
-        const result = createCourseSchema.safeParse(shared)
-
-        if (!result.success) {
-          setSubmitErrors(extractFieldErrors(result.error.issues))
-          return
-        }
-
-        setSubmitErrors({})
-        createMutation.mutate({ data: result.data })
+        createMutation.mutate({ data: shared })
         return
       }
 
       if (!initialData) return
-
-      const result = updateCourseSchema.safeParse({
-        ...shared,
-        courseId: initialData.courseId,
-        thumbnailUrl: thumbnailUrl || undefined,
+      updateMutation.mutate({
+        data: {
+          ...shared,
+          courseId: initialData.courseId,
+          thumbnailUrl: thumbnailUrl || undefined,
+        },
       })
-
-      if (!result.success) {
-        setSubmitErrors(extractFieldErrors(result.error.issues))
-        return
-      }
-
-      setSubmitErrors({})
-      updateMutation.mutate({ data: result.data })
     },
   })
 
   useEffect(() => {
     if (!open) return
-    setSubmitErrors({})
     setThumbnailUrl(initialData?.thumbnailUrl ?? null)
     if (mode === 'create') clearFile()
     form.reset(getInitialValues(initialData))
   }, [open, initialData, mode, form, clearFile])
-
-  const clearError = (field: keyof CourseFormData) => {
-    if (!submitErrors[field]) return
-    setSubmitErrors((prev) => ({ ...prev, [field]: undefined }))
-  }
 
   return (
     <FormDialog
@@ -232,7 +181,10 @@ export function CourseDialog({
       <DialogBody>
         <FieldGroup className="mt-6 gap-8">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <form.AppField name="title">
+            <form.AppField
+              name="title"
+              validators={{ onSubmit: createCourseSchema.shape.title }}
+            >
               {(field) => (
                 <field.TextField
                   id="course-title"
@@ -240,8 +192,6 @@ export function CourseDialog({
                   required
                   className="sm:col-span-2"
                   placeholder="Introduction to Programming"
-                  error={submitErrors.title}
-                  onValueChange={() => clearError('title')}
                 />
               )}
             </form.AppField>
@@ -265,8 +215,6 @@ export function CourseDialog({
                       id="course-teacher1"
                       label="Teacher 1"
                       placeholder="Select first teacher"
-                      error={submitErrors.teacher1Id}
-                      onValueChange={() => clearError('teacher1Id')}
                     >
                       {teachers.length === 0 ? (
                         <SelectItem value="none" disabled>
@@ -282,14 +230,27 @@ export function CourseDialog({
                     </field.SelectField>
                   )}
                 </form.AppField>
-                <form.AppField name="teacher2Id">
+                <form.AppField
+                  name="teacher2Id"
+                  validators={{
+                    onSubmit: ({ value, fieldApi }) => {
+                      const teacher1Id = fieldApi.form.state.values.teacher1Id
+                      if (
+                        value !== '' &&
+                        teacher1Id !== '' &&
+                        value === teacher1Id
+                      ) {
+                        return 'Please select 2 different teachers'
+                      }
+                      return undefined
+                    },
+                  }}
+                >
                   {(field) => (
                     <field.SelectField
                       id="course-teacher2"
                       label="Teacher 2"
                       placeholder="Select second teacher"
-                      error={submitErrors.teacher2Id}
-                      onValueChange={() => clearError('teacher2Id')}
                     >
                       {teachers.length === 0 ? (
                         <SelectItem value="none" disabled>
@@ -314,15 +275,16 @@ export function CourseDialog({
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <form.AppField name="description">
+            <form.AppField
+              name="description"
+              validators={{ onSubmit: createCourseSchema.shape.description }}
+            >
               {(field) => (
                 <field.TextAreaField
                   id="course-description"
                   label="Description"
                   placeholder="Describe what students will learn in this course"
                   rows={10}
-                  error={submitErrors.description}
-                  onValueChange={() => clearError('description')}
                 />
               )}
             </form.AppField>
