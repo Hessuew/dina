@@ -41,7 +41,7 @@ export function MediaCard({ item, viewerRole }: MediaCardProps) {
       params={{ mediaId: item.id }}
       className="group flex w-44 shrink-0 flex-col gap-2"
     >
-      <div className="relative aspect-video overflow-hidden border border-white/10 bg-black/20">
+      <div className="relative aspect-video overflow-hidden border border-[#C5A059]/20 bg-[#1C1815]/8">
         {thumbnailUrl ? (
           <img
             src={thumbnailUrl}
@@ -49,29 +49,29 @@ export function MediaCard({ item, viewerRole }: MediaCardProps) {
             className="size-full object-cover transition-transform group-hover:scale-[1.02]"
           />
         ) : (
-          <div className="flex size-full items-center justify-center text-[#8E816D]">
+          <div className="flex size-full items-center justify-center text-[#9B7A41]/60">
             <FileTextIcon className="size-5" />
           </div>
         )}
-        <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-black/10 via-transparent to-black/50" />
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-black/5 via-transparent to-black/20" />
       </div>
       <div className="flex flex-col gap-1.5">
-        <p className="line-clamp-2 text-xs font-medium leading-snug text-[#F8F4EC]">
+        <p className="line-clamp-2 text-xs font-medium leading-snug text-[#1C1815]">
           {item.title}
         </p>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="border border-white/12 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-widest text-[#8E816D] uppercase">
+          <span className="border border-[#9B7A41]/30 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-widest text-[#5E5549] uppercase">
             {item.fileType === 'document'
               ? 'PDF'
               : item.fileType === 'audio'
                 ? 'Audio'
                 : 'Video'}
           </span>
-          <span className="border border-white/12 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-widest text-[#8E816D] uppercase">
+          <span className="border border-[#9B7A41]/30 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-widest text-[#5E5549] uppercase">
             {item.category}
           </span>
           {viewerRole !== 'student' && !item.isPublished && (
-            <span className="border border-white/12 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-widest text-[#8E816D] uppercase">
+            <span className="border border-[#9B7A41]/30 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-widest text-[#5E5549] uppercase">
               Draft
             </span>
           )}
