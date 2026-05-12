@@ -4,6 +4,7 @@ import footerBackground from '@/assets/images/bg/bg_footer.webp'
 import {
   LandingImageSection,
   LandingSectionContainer,
+  LandingSectionOverlay,
 } from '@/components/landing/primitives'
 
 export function LandingFooter() {
@@ -14,7 +15,11 @@ export function LandingFooter() {
       gradientTo="rgba(10,8,7,0.75)"
       className="min-h-screen text-[#F7F4EE]"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(197,160,89,0.08),transparent_50%)]" />
+      <LandingSectionOverlay
+        gradientFrom="rgba(197,160,89,0.08)"
+        gradientPosition="center"
+        gradientStop="50%"
+      />
 
       <LandingSectionContainer className="py-20 sm:py-24 lg:py-12">
         <div className="flex min-h-[70vh] flex-col justify-between text-center lg:min-h-[80vh]">

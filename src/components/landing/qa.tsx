@@ -4,6 +4,7 @@ import {
   LandingImageSection,
   LandingScriptureSectionHeader,
   LandingSectionContainer,
+  LandingSectionOverlay,
 } from '@/components/landing/primitives'
 
 type QAItem = {
@@ -59,7 +60,10 @@ export function LandingQASection() {
       gradientTo="rgba(247,244,238,0.98)"
       className="border-b border-[#C5A059]/14"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.08),transparent_40%)]" />
+      <LandingSectionOverlay
+        gradientFrom="rgba(197,160,89,0.08)"
+        gradientStop="40%"
+      />
 
       <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="mx-auto max-w-6xl space-y-14">

@@ -8,6 +8,7 @@ import {
   LandingImageSection,
   LandingScriptureSectionHeader,
   LandingSectionContainer,
+  LandingSectionOverlay,
 } from '@/components/landing/primitives'
 import { useCarousel } from '@/components/landing/hooks'
 
@@ -85,8 +86,10 @@ export function LandingMarksSection() {
       gradientTo="rgba(16,16,17,0.95)"
       className="min-h-screen border-b border-[#C5A059]/14 text-[#F7F4EE]"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.14),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.06),transparent_22%)]" />
-      <div className="absolute right-[8%] bottom-24 h-px w-16 bg-white/12 lg:w-24" />
+      <LandingSectionOverlay
+        secondaryGradientFrom="rgba(255,255,255,0.06)"
+        linePosition="right"
+      />
 
       <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.88fr)_minmax(24rem,1.12fr)] lg:gap-20">
