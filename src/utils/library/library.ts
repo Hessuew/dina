@@ -17,6 +17,7 @@ import {
   ValidationError,
 } from '@/utils/errors'
 import { getSupabaseServerClient } from '@/utils/supabase'
+import { calculateEntityPermissions } from '@/utils/authz/permissions'
 
 export type MediaLibraryRow = {
   id: string
@@ -83,8 +84,15 @@ export const getLibraryMediaItem = createServerFn({ method: 'POST' })
       })
     }
 
+    const permissions = calculateEntityPermissions(
+      profile.role,
+      { teacher1Id: row.uploaderId, teacher2Id: null },
+      user.id,
+    )
+
     return {
       media: row as MediaLibraryRow,
+      permissions,
       viewer: {
         id: user.id,
         role: profile.role,

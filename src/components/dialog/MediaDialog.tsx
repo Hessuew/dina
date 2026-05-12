@@ -41,6 +41,7 @@ type MediaDialogProps = {
   onOpenChange: (open: boolean) => void
   mode: MediaDialogMode
   media?: MediaLibraryRow
+  onSuccess?: () => void
 }
 
 const emptyFormData: MediaFormData = {
@@ -77,6 +78,7 @@ export function MediaDialog({
   onOpenChange,
   mode,
   media,
+  onSuccess,
 }: MediaDialogProps) {
   const {
     fileInputRef,
@@ -93,7 +95,10 @@ export function MediaDialog({
       createFn: createLibraryMedia,
       updateFn: updateLibraryMedia,
       deleteFn: deleteLibraryMedia,
-      onSuccess: () => onOpenChange(false),
+      onSuccess: () => {
+        onOpenChange(false)
+        onSuccess?.()
+      },
     })
 
   const form = useAppForm({

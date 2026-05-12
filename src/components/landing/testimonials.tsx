@@ -29,7 +29,7 @@ const testimonials: Array<TestimonialItem> = [
     name: 'Ella O.',
     role: 'Pastor, -',
     quote:
-      'Discipleship has been instrumental in my walk with God and relationship with people. Through discipleship, I further learn what love is. LOVE: Let Others Verify Exponentially. Discipleship shows me what 2nd Corinthians 3:18 says and inspires me to emulate it. My discipleship journey has been one of growth and clarity. I have gotten scripture based answers to concerns which has taught me to search the scriptures for guidance in all walks of life.',
+      'Discipleship has been instrumental in my walk with God and relationship with people. Through discipleship, I further learn what love is. LOVE: Let Others Verify Experientially. Discipleship shows me what 2nd Corinthians 3:18 says and inspires me to emulate it. My discipleship journey has been one of growth and clarity. I have gotten scripture based answers to concerns which has taught me to search the scriptures for guidance in all walks of life.',
     theme: 'Ground',
   },
   {
@@ -105,7 +105,8 @@ const testimonials: Array<TestimonialItem> = [
     id: 'ugo',
     name: 'Ugo O.',
     role: 'Pastor, -',
-    quote: '',
+    quote:
+      'My discipleship story mirrors the prodigal son — turning away from the matchless love of Christ and humbly returning to the only place where true joy, peace, and love are found. I am forever grateful to have been discipled back into the body of Christ. To be part of His kingdom of priests is a privilege, and to have the pleasure of discipling others into that same freedom and fullness is an honor.',
     theme: 'Rooftop',
   },
 ]
