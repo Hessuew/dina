@@ -152,35 +152,22 @@ export function EnrolmentForm() {
 
   const currentStepConfig = STEPS[currentStep]
 
-  const validateCurrentStep = (): boolean => {
-    const values = form.state.values
-    const hasErrors = currentStepConfig.fields.some((fieldName) => {
-      const v = values[fieldName]
-      switch (fieldName) {
-        case 'fullLegalName':
-        case 'phoneWhatsApp':
-          return Boolean(required({ value: v }))
-        case 'email':
-          return Boolean(validEmail({ value: v }))
-        case 'yearOfBirth':
-          return Boolean(validYear({ value: v }))
-        case 'gender':
-          return Boolean(required({ value: v }))
-        case 'aboutYourself':
-        case 'expectationsAlignment':
-          return Boolean(requiredTextWithMaxWords(200)({ value: v }))
-        default:
-          return false
-      }
-    })
-
-    if (!hasErrors) return true
-    toast.error('Please complete this step before continuing.')
-    return false
+  const validateCurrentStep = async (): Promise<boolean> => {
+    const results = await Promise.all(
+      currentStepConfig.fields.map((fieldName) =>
+        form.validateField(fieldName, 'change'),
+      ),
+    )
+    const hasErrors = results.some((errors) => errors.length > 0)
+    if (hasErrors) {
+      toast.error('Please complete this step before continuing.')
+      return false
+    }
+    return true
   }
 
-  const handleNext = () => {
-    if (!validateCurrentStep()) return
+  const handleNext = async () => {
+    if (!(await validateCurrentStep())) return
 
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1)
@@ -201,9 +188,9 @@ export function EnrolmentForm() {
 
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
-        handleNext()
+        void handleNext()
       } else if (e.key === 'ArrowRight') {
-        handleNext()
+        void handleNext()
       } else if (e.key === 'ArrowLeft' && currentStep > 0) {
         handleBack()
       }
@@ -261,7 +248,11 @@ export function EnrolmentForm() {
         return (
           <form.AppField
             name="fullLegalName"
-            validators={{ onBlur: required, onSubmit: required }}
+            validators={{
+              onChange: required,
+              onBlur: required,
+              onSubmit: required,
+            }}
           >
             {(field) => (
               <field.TextField
@@ -289,7 +280,11 @@ export function EnrolmentForm() {
         return (
           <form.AppField
             name="email"
-            validators={{ onBlur: validEmail, onSubmit: validEmail }}
+            validators={{
+              onChange: validEmail,
+              onBlur: validEmail,
+              onSubmit: validEmail,
+            }}
           >
             {(field) => (
               <field.TextField
@@ -306,7 +301,11 @@ export function EnrolmentForm() {
         return (
           <form.AppField
             name="phoneWhatsApp"
-            validators={{ onBlur: required, onSubmit: required }}
+            validators={{
+              onChange: required,
+              onBlur: required,
+              onSubmit: required,
+            }}
           >
             {(field) => (
               <field.TextField
@@ -323,7 +322,11 @@ export function EnrolmentForm() {
         return (
           <form.AppField
             name="yearOfBirth"
-            validators={{ onBlur: validYear, onSubmit: validYear }}
+            validators={{
+              onChange: validYear,
+              onBlur: validYear,
+              onSubmit: validYear,
+            }}
           >
             {(field) => (
               <field.NumberField
@@ -339,7 +342,11 @@ export function EnrolmentForm() {
         return (
           <form.AppField
             name="gender"
-            validators={{ onBlur: required, onSubmit: required }}
+            validators={{
+              onChange: required,
+              onBlur: required,
+              onSubmit: required,
+            }}
           >
             {(field) => (
               <field.SelectField id="enrol-gender" label="Gender" required>
@@ -402,7 +409,7 @@ export function EnrolmentForm() {
           <form.AppField
             name="aboutYourself"
             validators={{
-              onBlur: requiredTextWithMaxWords(200),
+              onChange: requiredTextWithMaxWords(200),
               onSubmit: requiredTextWithMaxWords(200),
             }}
           >
@@ -423,7 +430,7 @@ export function EnrolmentForm() {
           <form.AppField
             name="expectationsAlignment"
             validators={{
-              onBlur: requiredTextWithMaxWords(200),
+              onChange: requiredTextWithMaxWords(200),
               onSubmit: requiredTextWithMaxWords(200),
             }}
           >
@@ -450,8 +457,7 @@ export function EnrolmentForm() {
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
-        if (!validateCurrentStep()) return
-        form.handleSubmit()
+        void handleNext()
       }}
     >
       <div className="flex flex-1 flex-col">
