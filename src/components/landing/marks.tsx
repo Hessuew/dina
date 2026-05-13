@@ -91,9 +91,9 @@ export function LandingMarksSection() {
         linePosition="right"
       />
 
-      <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
+      <LandingSectionContainer className="px-0 py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.88fr)_minmax(24rem,1.12fr)] lg:gap-20">
-          <div className="space-y-10">
+          <div className="space-y-10 px-5 sm:px-0">
             <LandingScriptureSectionHeader
               eyebrowLabel="Presence of God"
               eyebrowTopLineCount={2}
@@ -124,7 +124,7 @@ export function LandingMarksSection() {
 
           <LandingFeaturePanel key={activeMark.id}>
             <LandingFeaturePanelHeader backgroundImageUrl={marksBackground}>
-              <div className="relative min-h-84 space-y-8 p-6 sm:p-8 lg:h-100">
+              <div className="relative min-h-84 space-y-8 p-4 sm:p-8 lg:h-100">
                 <div>
                   <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
                     Mark {activeIndex + 1} of {marks.length}
@@ -163,7 +163,7 @@ export function LandingMarksSection() {
               </div>
             </LandingFeaturePanelHeader>
 
-            <LandingFeaturePanelBody className="px-6 py-7 sm:px-8 sm:py-8">
+            <LandingFeaturePanelBody className="px-4 py-5 sm:px-8 sm:py-8">
               {activeMark.example && (
                 <div
                   className="animate-[fadeInSlideRight_0.7s_ease-out_forwards] opacity-0"

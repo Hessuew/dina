@@ -130,9 +130,9 @@ export function LandingCourseShowcase() {
         linePosition="right"
       />
 
-      <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
+      <LandingSectionContainer className="px-0 py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(24rem,1.15fr)] lg:gap-20">
-          <div className="space-y-10">
+          <div className="space-y-10 px-5 sm:px-0">
             <LandingScriptureSectionHeader
               eyebrowLabel="Curriculum Architecture"
               headline="Six courses"
@@ -188,7 +188,7 @@ export function LandingCourseShowcase() {
 
           <LandingFeaturePanel>
             <LandingFeaturePanelHeader backgroundImageUrl={graphiteBackground}>
-              <div className="relative flex min-h-84 flex-col justify-between p-6 sm:p-8 lg:min-h-100">
+              <div className="relative flex min-h-84 flex-col justify-between p-4 sm:p-8 lg:min-h-100">
                 <div className="flex items-start justify-between gap-6">
                   <div>
                     <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
@@ -215,7 +215,7 @@ export function LandingCourseShowcase() {
               </div>
             </LandingFeaturePanelHeader>
 
-            <LandingFeaturePanelBody className="grid gap-8 px-6 py-7 sm:px-8 sm:py-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
+            <LandingFeaturePanelBody className="grid gap-8 px-4 py-5 sm:px-8 sm:py-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
               <div>
                 <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                   Course description
