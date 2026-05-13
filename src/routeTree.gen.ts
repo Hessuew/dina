@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailChangeRouteImport } from './routes/verify-email-change'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LogoutRouteImport } from './routes/logout'
@@ -37,6 +38,11 @@ import { Route as AuthedEnrollmentsEnrollmentIdRouteImport } from './routes/_aut
 import { Route as AuthedCoursesCourseIdRouteImport } from './routes/_authed/courses/$courseId'
 import { Route as AuthedAssignmentsAssignmentIdRouteImport } from './routes/_authed/assignments/$assignmentId'
 
+const VerifyEmailChangeRoute = VerifyEmailChangeRouteImport.update({
+  id: '/verify-email-change',
+  path: '/verify-email-change',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/logout': typeof LogoutRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/verify-email-change': typeof VerifyEmailChangeRoute
   '/calendar': typeof AuthedCalendarRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/events': typeof AuthedEventsRoute
@@ -210,6 +217,7 @@ export interface FileRoutesByTo {
   '/logout': typeof LogoutRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/verify-email-change': typeof VerifyEmailChangeRoute
   '/calendar': typeof AuthedCalendarRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/events': typeof AuthedEventsRoute
@@ -240,6 +248,7 @@ export interface FileRoutesById {
   '/logout': typeof LogoutRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/verify-email-change': typeof VerifyEmailChangeRoute
   '/_authed/calendar': typeof AuthedCalendarRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/events': typeof AuthedEventsRoute
@@ -270,6 +279,7 @@ export interface FileRouteTypes {
     | '/logout'
     | '/reset-password'
     | '/signup'
+    | '/verify-email-change'
     | '/calendar'
     | '/dashboard'
     | '/events'
@@ -298,6 +308,7 @@ export interface FileRouteTypes {
     | '/logout'
     | '/reset-password'
     | '/signup'
+    | '/verify-email-change'
     | '/calendar'
     | '/dashboard'
     | '/events'
@@ -327,6 +338,7 @@ export interface FileRouteTypes {
     | '/logout'
     | '/reset-password'
     | '/signup'
+    | '/verify-email-change'
     | '/_authed/calendar'
     | '/_authed/dashboard'
     | '/_authed/events'
@@ -357,11 +369,19 @@ export interface RootRouteChildren {
   LogoutRoute: typeof LogoutRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  VerifyEmailChangeRoute: typeof VerifyEmailChangeRoute
   ApiUploadImageRoute: typeof ApiUploadImageRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email-change': {
+      id: '/verify-email-change'
+      path: '/verify-email-change'
+      fullPath: '/verify-email-change'
+      preLoaderRoute: typeof VerifyEmailChangeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -608,6 +628,7 @@ const rootRouteChildren: RootRouteChildren = {
   LogoutRoute: LogoutRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  VerifyEmailChangeRoute: VerifyEmailChangeRoute,
   ApiUploadImageRoute: ApiUploadImageRoute,
 }
 export const routeTree = rootRouteImport

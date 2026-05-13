@@ -17,6 +17,8 @@ export type AppErrorCode =
   | 'INVITATION_EXPIRED'
   | 'TEACHER_PAIR_INVALID'
   | 'EMAIL_UPDATE_FAILED'
+  | 'EMAIL_CHANGE_RATE_LIMITED'
+  | 'EMAIL_SEND_FAILED'
   | 'PASSWORD_UPDATE_FAILED'
 
 export type AppErrorDetails = Record<string, unknown>
