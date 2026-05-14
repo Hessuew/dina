@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { LIBRARY_TOPICS } from '@/lib/library-topics'
 
-export const mediaKindEnum = z.enum(['youtube', 'pdf'])
+export const mediaKindEnum = z.enum(['youtube', 'document'])
 
 export const createMediaSchema = z.object({
   title: z.string().min(1, 'Name is required'),
@@ -11,6 +11,7 @@ export const createMediaSchema = z.object({
   kind: mediaKindEnum,
   url: z.string().min(1, 'URL is required'),
   fileSize: z.number().int().positive().optional(),
+  courseId: z.uuid().optional(),
 })
 
 export const updateMediaSchema = createMediaSchema.extend({
@@ -38,3 +39,4 @@ export type UpdateMediaInput = z.infer<typeof updateMediaSchema>
 export type DeleteMediaInput = z.infer<typeof deleteMediaSchema>
 export type GetMediaInput = z.infer<typeof getMediaSchema>
 export type UploadMediaPdfInput = z.infer<typeof uploadMediaPdfSchema>
+export type MediaKind = z.infer<typeof mediaKindEnum>

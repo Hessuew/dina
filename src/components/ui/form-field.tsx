@@ -230,7 +230,7 @@ export function FormFieldSelect({
         <SelectTrigger className={selectTriggerClassName} id={id}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent className="rounded-none border-white/12 bg-[#1C1A17]">
+        <SelectContent className="rounded-none border-white/12 bg-white">
           {children}
         </SelectContent>
       </Select>

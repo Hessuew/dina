@@ -34,7 +34,13 @@ export type MediaLibraryRow = {
   updatedAt: Date
 }
 
-function toFileType(kind: 'youtube' | 'pdf'): MediaLibraryRow['fileType'] {
+const DOCUMENT_MIME_TYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]
+
+function toFileType(kind: 'youtube' | 'document'): MediaLibraryRow['fileType'] {
   return kind === 'youtube' ? 'video' : 'document'
 }
 
@@ -120,7 +126,7 @@ export const createLibraryMedia = createServerFn({ method: 'POST' })
       .insert(mediaLibrary)
       .values({
         uploaderId: user.id,
-        courseId: null,
+        courseId: data.courseId ?? null,
         title: data.title,
         category: data.category,
         description: data.description ?? null,
@@ -253,8 +259,8 @@ export const uploadMediaPdfFn = createServerFn({ method: 'POST' })
       })
     }
 
-    if (data.fileType !== 'application/pdf') {
-      throw new ValidationError('Only PDF files are allowed', {
+    if (!DOCUMENT_MIME_TYPES.includes(data.fileType)) {
+      throw new ValidationError('Only PDF, PPTX, and DOCX files are allowed', {
         details: { fileType: data.fileType },
       })
     }
@@ -289,7 +295,7 @@ export const uploadMediaPdfFn = createServerFn({ method: 'POST' })
       throw new AppError({
         code: 'STORAGE_UPLOAD_FAILED',
         status: 502,
-        userMessage: 'Failed to upload PDF',
+        userMessage: 'Failed to upload file',
         internalMessage: uploadError.message,
       })
     }

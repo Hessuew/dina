@@ -4,8 +4,7 @@ description: >
   Connects Graphite PR stacks to Linear issues using deterministic semantic
   matching, confidence scoring, and safe mutation workflows.
 
-  Uses Graphite MCP to link Linear issues to Graphite branches/stacks on the
-  Graphite side
+  Links PRs to Linear issues using Linear's `links` field (Linear-side linking).
 
   Supports:
     - linking PRs to existing Linear issues
@@ -221,9 +220,9 @@ Before searching for Linear issues, determine how to group the PRs based on thei
 
 1. Create parent issue with overall refactor context
 2. Create sub-issues for each page/component
-3. Link each PR to its corresponding sub-issue
-4. Link all sub-issues to parent issue using Linear's `parentId` field
-5. Add PR URLs as attachments to both sub-issue and parent issue
+3. Link all sub-issues to parent issue using Linear's `parentId` field
+4. Add PR URLs to each sub-issue using Linear's `links` field
+5. Add all PR URLs to parent issue using Linear's `links` field
 
 ---
 
@@ -443,10 +442,10 @@ If likely duplicate:
 
 Before linking:
 
-Check if Linear issue is already linked to Graphite branch using Graphite MCP:
+Check if PR URL is already in Linear issue's `links` field using Linear MCP:
 
 ```bash
-gt branch show --json
+mcp1_get_issue <issue-id>
 ```
 
 If already linked:
@@ -458,9 +457,15 @@ If already linked:
 
 Repeated runs must:
 
-- avoid duplicate links
 - avoid duplicate issue creation
-- avoid duplicate Graphite resource attachments
+- avoid duplicate PR URL entries within a Linear issue
+- avoid creating the same PR → issue association more than once
+
+Allow:
+
+- multiple PR URLs on the same issue
+- multiple Graphite stacks contributing to one issue
+- multiple PRs within a stack linking to one issue
 
 ---
 
@@ -486,8 +491,8 @@ For each PR independently:
 
 - Search for existing Linear issues
 - Score matches
-- Create or link to issue using Graphite MCP
-- Use Graphite MCP to attach Linear issue ID to Graphite branch
+- Create or link to issue
+- Add PR URL to issue's `links` field using Linear MCP
 - Verify linking
 
 #### Case 2: Same Feature (Stacked Implementation)
@@ -495,7 +500,7 @@ For each PR independently:
 - Search for existing Linear issues using combined signals
 - Score matches against all PRs
 - Create one issue with all PRs as sections
-- Use Graphite MCP to attach Linear issue ID to each Graphite branch in the stack
+- Add all PR URLs to issue's `links` field using Linear MCP
 - Verify linking
 
 #### Case 3: Wide Refactor with Sub-Issues
@@ -504,20 +509,21 @@ For each PR independently:
 2. For each PR:
    - Create sub-issue with page/component-specific details
    - Set `parentId` to parent issue
-   - Use Graphite MCP to attach sub-issue Linear ID to corresponding Graphite branch
-3. Verify all linkings
+   - Add PR URL to sub-issue's `links` field using Linear MCP
+3. Add PR URL only to corresponding sub-issue
+   - Parent issue relationship is maintained through parentId.
+   - Do not duplicate PR URLs on parent issues.
+4. Verify all linkings
 
 ### Verification step
 
-After linking:
-
-Use Graphite MCP to verify Linear issue is attached to Graphite branch:
+Use Linear MCP to verify PR URLs are in issue's `links` field:
 
 ```bash
-gt branch show --json
+mcp1_get_issue <issue-id>
 ```
 
-Verify resource exists.
+Verify links array contains the PR URLs.
 
 After issue creation:
 
@@ -568,22 +574,31 @@ Dry-run enabled:
 
 ### Failure classes
 
-| Failure                                      | Recovery                  |
-| -------------------------------------------- | ------------------------- |
-| Linear issue creation failed                 | abort linking             |
-| Graphite MCP link failed after issue created | show recovery command     |
-| Verification failed                          | mark operation incomplete |
-| Candidate search timeout                     | retry once                |
+| Failure                      | Recovery                  |
+| ---------------------------- | ------------------------- |
+| Linear issue creation failed | abort linking             |
+| Linear link addition failed  | show recovery command     |
+| Verification failed          | mark operation incomplete |
+| Candidate search timeout     | retry once                |
 
 ### Recovery output example
 
 ```
 Issue created successfully: ENG-532
 
-Graphite MCP linking failed.
+Linear link addition failed.
 
 Recovery command:
-Use Graphite MCP to attach Linear issue ENG-532 to branch
+Use Linear MCP to add PR URL to ENG-532 links field:
+mcp1_save_issue {
+  "id": "ENG-532",
+  "links": [
+    {
+      "title": "PR #123: Description",
+      "url": "https://github.com/Hessuew/dina/pull/123"
+    }
+  ]
+}
 ```
 
 ---
@@ -645,16 +660,16 @@ Grouping: Case 1 (Distinct Features)
 
 PR #1: fix(auth): improve mobile responsiveness
   → Linked to ENG-142 (91% confidence)
-  → Verification: Graphite MCP resource link confirmed
+  → Verification: PR URL in Linear links confirmed
 
 PR #2: feat(landing): tighten padding across sections
   → Created new issue ENG-613
   → Team: Platform
-  → Verification: Issue creation + Graphite MCP link confirmed
+  → Verification: Issue creation + PR URL in Linear links confirmed
 
 PR #3: refactor(utils): extract authorization module
   → Linked to ENG-28 (87% confidence)
-  → Verification: Graphite MCP resource link confirmed
+  → Verification: PR URL in Linear links confirmed
 ```
 
 ### Case 2: Same Feature (Single Issue with Sections)
@@ -673,14 +688,14 @@ Created new issue CHR-50: Implement custom email change verification flow
 Team:
 Christ-dina
 
-Linked PRs (via Graphite MCP):
+Linked PRs (via Linear links):
 - PR #172: Schema Changes
 - PR #173: Backend Flow with Resend
 - PR #174: Verification Route
 
 Verification:
 - Issue creation confirmed
-- All 3 PR branches linked to CHR-50 via Graphite MCP
+- All 3 PR URLs in CHR-50 links field
 ```
 
 ### Case 3: Wide Refactor (Parent + Sub-Issues)
@@ -709,7 +724,8 @@ Platform
 Verification:
 - Parent issue creation confirmed
 - All 5 sub-issues created with parentId=ENG-600
-- All 5 PR branches linked to respective sub-issues via Graphite MCP
+- All 5 PR URLs in respective sub-issues links fields
+- All 5 PR URLs in parent issue links field
 ```
 
 ### Existing issue linked (legacy format)
@@ -730,10 +746,10 @@ Reasons:
 - matching commit terminology
 
 Action:
-Linked existing issue via Graphite MCP
+Linked existing issue via Linear links
 
 Verification:
-Graphite MCP resource link confirmed
+PR URL in Linear links confirmed
 ```
 
 ---

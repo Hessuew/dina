@@ -48,7 +48,7 @@ function MediaDetailComponent() {
             theme="light"
             size="sm"
             className="mb-6 gap-1"
-            onClick={() => router.navigate({ to: '/library' })}
+            onClick={() => router.history.back()}
           >
             <ChevronLeftIcon className="size-3.5" />
             Back
@@ -178,7 +178,7 @@ function MediaDetailComponent() {
         media={dialogMedia}
         onSuccess={() => {
           if (dialogMode === 'delete') {
-            router.navigate({ to: '/library' })
+            router.history.back()
           }
         }}
       />

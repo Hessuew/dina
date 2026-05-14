@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { MediaLibraryRow } from '@/utils/library/library'
+import type { LibraryTopic } from '@/lib/library-topics'
 import { createMediaSchema } from '@/schemas/media.schema'
 import {
   createLibraryMedia,
@@ -21,11 +22,11 @@ import { FormDialog } from '@/components/ui/form-dialog'
 import { Input } from '@/components/ui/input'
 import { SelectItem } from '@/components/ui/select'
 import { FormFieldSelect } from '@/components/ui/form-field'
-import { LIBRARY_TOPICS, type LibraryTopic } from '@/lib/library-topics'
+import { LIBRARY_TOPICS } from '@/lib/library-topics'
 
 type MediaDialogMode = 'create' | 'edit' | 'delete'
 
-type MediaKind = 'youtube' | 'pdf'
+type MediaKind = 'youtube' | 'document'
 
 type MediaFormData = {
   title: string
@@ -41,8 +42,15 @@ type MediaDialogProps = {
   onOpenChange: (open: boolean) => void
   mode: MediaDialogMode
   media?: MediaLibraryRow
+  courseId?: string
   onSuccess?: () => void
 }
+
+const DOCUMENT_ACCEPT = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+].join(',')
 
 const emptyFormData: MediaFormData = {
   title: '',
@@ -54,14 +62,17 @@ const emptyFormData: MediaFormData = {
 }
 
 function fromFileType(fileType: MediaLibraryRow['fileType']): MediaKind {
-  return fileType === 'document' ? 'pdf' : 'youtube'
+  return fileType === 'document' ? 'document' : 'youtube'
 }
 
 function getInitialValues(
   media: MediaDialogProps['media'],
   mode: MediaDialogMode,
+  courseId: string | undefined,
 ): MediaFormData {
-  if (!media || mode === 'create') return { ...emptyFormData }
+  if (!media || mode === 'create') {
+    return { ...emptyFormData, kind: courseId ? 'document' : 'youtube' }
+  }
 
   return {
     title: media.title,
@@ -78,6 +89,7 @@ export function MediaDialog({
   onOpenChange,
   mode,
   media,
+  courseId,
   onSuccess,
 }: MediaDialogProps) {
   const {
@@ -102,12 +114,12 @@ export function MediaDialog({
     })
 
   const form = useAppForm({
-    defaultValues: getInitialValues(media, mode),
+    defaultValues: getInitialValues(media, mode, courseId),
     onSubmit: async ({ value }) => {
       let url = value.url
       let fileSize: number | undefined
 
-      if (value.kind === 'pdf' && fileObject) {
+      if (value.kind === 'document' && fileObject) {
         setUploading(true)
         try {
           const uploaded = await uploadMediaPdfFn({
@@ -139,6 +151,7 @@ export function MediaDialog({
         kind: value.kind,
         url,
         fileSize,
+        courseId,
       }
 
       if (mode === 'create') {
@@ -154,8 +167,8 @@ export function MediaDialog({
   useEffect(() => {
     if (!open) return
     clearFile()
-    form.reset(getInitialValues(media, mode))
-  }, [open, media, mode, form, clearFile])
+    form.reset(getInitialValues(media, mode, courseId))
+  }, [open, media, mode, form, clearFile, courseId])
 
   if (mode === 'delete') {
     return (
@@ -246,7 +259,7 @@ export function MediaDialog({
                   }}
                 >
                   <SelectItem value="youtube">YouTube</SelectItem>
-                  <SelectItem value="pdf">PDF</SelectItem>
+                  <SelectItem value="document">Document</SelectItem>
                 </FormFieldSelect>
               )}
             </form.AppField>
@@ -258,7 +271,8 @@ export function MediaDialog({
                   validators={{
                     onSubmit: ({ value, fieldApi }) => {
                       const currentKind = fieldApi.form.state.values.kind
-                      if (currentKind === 'pdf' && fileObject) return undefined
+                      if (currentKind === 'document' && fileObject)
+                        return undefined
                       if (!value) return 'URL is required'
                       return undefined
                     },
@@ -270,7 +284,7 @@ export function MediaDialog({
                         htmlFor="media-url"
                         className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
                       >
-                        {kind === 'youtube' ? 'YouTube URL' : 'PDF URL'}
+                        {kind === 'youtube' ? 'YouTube URL' : 'Document URL'}
                         {kind === 'youtube' || !fileObject ? (
                           <span className="text-[#C5A059]">*</span>
                         ) : (
@@ -303,15 +317,15 @@ export function MediaDialog({
 
             <form.AppField name="kind">
               {(field) =>
-                field.state.value === 'pdf' ? (
+                field.state.value === 'document' ? (
                   <Field className="sm:col-span-2">
                     <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-                      Upload PDF (optional)
+                      Upload Document (optional)
                     </FieldLabel>
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="application/pdf"
+                      accept={DOCUMENT_ACCEPT}
                       onChange={handleFileChange}
                       className="hidden"
                     />
@@ -322,7 +336,7 @@ export function MediaDialog({
                             {fileObject.name}
                           </div>
                           <div className="mt-1 text-xs text-[#8E816D]">
-                            PDF will be uploaded on save
+                            File will be uploaded on save
                           </div>
                         </div>
                         <Button
@@ -345,10 +359,12 @@ export function MediaDialog({
                         className="w-full rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
                       >
                         <UploadIcon className="mr-2 size-4" />
-                        Upload PDF
+                        Upload Document
                       </Button>
                     )}
-                    <p className="text-xs text-[#8E816D]">PDF. Max 25MB.</p>
+                    <p className="text-xs text-[#8E816D]">
+                      PDF, PPTX, or DOCX. Max 25MB.
+                    </p>
                   </Field>
                 ) : null
               }
