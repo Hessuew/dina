@@ -160,7 +160,8 @@ Order:
 
 For each stack:
 
-- ensure working tree contains only intended slice (no repo manipulation steps)
+- stage only the files for this stack slice:  
+  `git add <files-for-this-stack>`
 - run:  
   `gt c --ai --no-interactive`
 - stacks are created on TOP of current Graphite branch context
