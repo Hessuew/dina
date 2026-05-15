@@ -258,31 +258,23 @@ function CourseDetailComponent() {
                         />
                         {permissions.canEdit && permissions.isCourseTeacher && (
                           <div
-                            className="absolute top-1 left-1 hidden gap-1 group-hover:flex"
+                            className="absolute top-1 left-1 hidden group-hover:flex"
                             onClick={(e) => e.preventDefault()}
                           >
-                            <Button
-                              variant="ghost"
+                            <EntityHeaderActions
+                              status="published"
+                              canEdit={permissions.canEdit}
+                              isCourseTeacher={permissions.isCourseTeacher}
+                              showStatus={false}
                               theme="dark"
-                              size="icon"
-                              className="size-6 border border-white/10 bg-black/60 text-[#8E816D] hover:border-[#C5A059]/40 hover:text-[#D4B373]"
-                              onClick={() =>
+                              size="sm"
+                              onEdit={() =>
                                 materialDialog.openDialog('edit', material)
                               }
-                            >
-                              <PencilIcon className="size-2.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              theme="dark"
-                              size="icon"
-                              className="size-6 border border-white/10 bg-black/60 text-[#8E816D] hover:border-red-400/50 hover:text-red-400"
-                              onClick={() =>
+                              onDelete={() =>
                                 materialDialog.openDialog('delete', material)
                               }
-                            >
-                              <TrashIcon className="size-2.5" />
-                            </Button>
+                            />
                           </div>
                         )}
                       </div>

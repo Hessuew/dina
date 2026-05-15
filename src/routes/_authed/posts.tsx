@@ -3,10 +3,8 @@ import { createServerFn } from '@tanstack/react-start'
 import {
   Loader2,
   MessageCircle,
-  PencilIcon,
   SendIcon,
   SmilePlus,
-  Trash2Icon,
   XIcon,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -15,6 +13,10 @@ import { formatDistanceToNow } from 'date-fns'
 import type { CommentWithAuthor, PostWithDetails } from '@/domain'
 import { Button } from '@/components/ui/button'
 import { PageLayout } from '@/components/layout/page-layout'
+import {
+  DeleteActionButton2,
+  EditActionButton,
+} from '@/components/layout/entity-header-actions'
 import { Textarea } from '@/components/ui/textarea'
 import {
   DropdownMenu,
@@ -595,33 +597,23 @@ function PostCard({
         {(isAuthor || canDelete) && (
           <div className="flex items-center gap-1">
             {isAuthor && (
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                theme="lightGhost"
-                className="size-8 rounded-none border-none bg-transparent text-[#8E816D] shadow-none hover:translate-y-0 hover:bg-black/5 hover:text-[#1C1815]"
+              <EditActionButton
                 onClick={() => {
                   setEditContent(post.content)
                   setIsEditing(true)
                 }}
-              >
-                <PencilIcon className="size-3.5" />
-              </Button>
+                theme="lightGhost"
+                size="md"
+              />
             )}
             {canDelete && (
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                theme="lightGhost"
-                className="size-8 rounded-none border-none bg-transparent text-[#8E816D] shadow-none hover:translate-y-0 hover:bg-black/5 hover:text-red-600"
+              <DeleteActionButton2
                 onClick={() =>
                   deleteMutation.mutate({ data: { postId: post.id } })
                 }
-              >
-                <Trash2Icon className="size-3.5" />
-              </Button>
+                theme="lightGhost"
+                size="md"
+              />
             )}
           </div>
         )}
@@ -902,35 +894,25 @@ function CommentItem({
           {(isAuthor || canDelete) && (
             <div className="ml-auto flex gap-1">
               {isAuthor && (
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  theme="lightGhost"
+                <EditActionButton
                   onClick={() => {
                     setEditContent(comment.content)
                     setIsEditing(true)
                   }}
-                  className="size-8 rounded-none border-none bg-transparent text-[#8E816D] shadow-none hover:translate-y-0 hover:bg-black/5 hover:text-[#1C1815]"
-                >
-                  <PencilIcon className="size-3.5" />
-                </Button>
+                  theme="lightGhost"
+                  size="md"
+                />
               )}
               {canDelete && (
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  theme="lightGhost"
+                <DeleteActionButton2
                   onClick={() =>
                     deleteMutation.mutate({
                       data: { commentId: comment.id },
                     })
                   }
-                  className="size-8 rounded-none border-none bg-transparent text-[#8E816D] shadow-none hover:translate-y-0 hover:bg-black/5 hover:text-red-600"
-                >
-                  <Trash2Icon className="size-3.5" />
-                </Button>
+                  theme="lightGhost"
+                  size="md"
+                />
               )}
             </div>
           )}

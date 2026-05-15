@@ -1,12 +1,6 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import {
-  CalendarIcon,
-  ClockIcon,
-  PencilIcon,
-  PlusIcon,
-  TrashIcon,
-} from 'lucide-react'
+import { CalendarIcon, ClockIcon, PlusIcon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import z from 'zod'
@@ -249,29 +243,21 @@ function LessonDetailComponent() {
                         </div>
                       </div>
                       {permissions.canEdit && permissions.isCourseTeacher && (
-                        <div className="flex shrink-0 items-center gap-2">
-                          <Button
-                            variant="ghost"
+                        <div className="flex shrink-0 items-center">
+                          <EntityHeaderActions
+                            status="published"
+                            canEdit={permissions.canEdit}
+                            isCourseTeacher={permissions.isCourseTeacher}
+                            showStatus={false}
                             theme="dark"
-                            size="icon"
-                            className="size-7 border border-white/10 text-[#8E816D] hover:border-[#C5A059]/40 hover:text-[#D4B373]"
-                            onClick={() => {
+                            size="lg"
+                            onEdit={() =>
                               assignmentDialog.openDialog('edit', assignment)
-                            }}
-                          >
-                            <PencilIcon className="size-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            theme="dark"
-                            size="icon"
-                            className="size-7 border border-white/10 text-[#8E816D] hover:border-red-400/50 hover:text-red-400"
-                            onClick={() =>
+                            }
+                            onDelete={() =>
                               handleDeleteAssignmentClick(assignment)
                             }
-                          >
-                            <TrashIcon className="size-3" />
-                          </Button>
+                          />
                         </div>
                       )}
                     </div>
