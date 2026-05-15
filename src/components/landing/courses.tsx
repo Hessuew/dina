@@ -82,9 +82,9 @@ const courseShowcaseItems: Array<CourseShowcaseItem> = [
     id: 'interior',
     number: '05',
     title: 'Interior',
-    eyebrow: "Peter's Encounter, Following & Transformation",
+    eyebrow: 'Following Jesus: From encounter to transformation',
     description:
-      'A personal case study in discipleship — from first encounter with Jesus to fully transformed character',
+      'A personal case study based on Peter the disciple - from first encounter with Jesus to fully transformed character.',
     lessons: [
       "Peter's Encounter",
       'Following Jesus',
