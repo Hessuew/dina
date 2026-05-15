@@ -1,18 +1,19 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import {
-  ChevronLeftIcon,
-  ExternalLinkIcon,
-  FileTextIcon,
-  PencilIcon,
-  TrashIcon,
-  VideoIcon,
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { FileTextIcon, VideoIcon } from 'lucide-react'
+import { Suspense, lazy } from 'react'
 import { PageLayout } from '@/components/layout/page-layout'
+import { PageHeader } from '@/components/layout/page-header'
+import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { cn } from '@/lib/utils'
 import { getLibraryMediaItem } from '@/utils/library'
 import { useDialogState } from '@/hooks/useDialogState'
 import { MediaDialog } from '@/components/dialog/MediaDialog'
+
+const PdfViewer = lazy(() =>
+  import('@/components/library/PdfViewer').then((m) => ({
+    default: m.PdfViewer,
+  })),
+)
 
 export const Route = createFileRoute('/_authed/library/$mediaId')({
   loader: async ({ params }) => {
@@ -21,14 +22,27 @@ export const Route = createFileRoute('/_authed/library/$mediaId')({
   component: MediaDetailComponent,
 })
 
-function normalizeUrl(url: string): string {
-  return /^https?:\/\//i.test(url) ? url : `https://${url}`
+function getYoutubeVideoId(url: string): string | null {
+  try {
+    const u = new URL(url)
+    if (u.hostname === 'youtu.be') return u.pathname.replace('/', '') || null
+    if (u.hostname === 'www.youtube.com' || u.hostname === 'youtube.com') {
+      if (u.searchParams.get('v')) return u.searchParams.get('v')
+      if (u.pathname.startsWith('/embed/'))
+        return u.pathname.split('/embed/')[1]?.split('/')[0] ?? null
+    }
+  } catch {}
+  return null
+}
+
+function getFileExtension(url: string): string {
+  return url.split('?')[0].split('.').pop()?.toLowerCase() ?? ''
 }
 
 function MediaDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
-  const { media, viewer, permissions } = loaderData
+  const { media, viewerUrl, viewer, permissions } = loaderData
   const {
     isOpen,
     dialogMode,
@@ -38,30 +52,18 @@ function MediaDetailComponent() {
   } = useDialogState<typeof media>()
 
   const isVideo = media.fileType === 'video'
+  const ext = getFileExtension(media.fileUrl)
+  const isPdf = ext === 'pdf'
+  const isOffice = ext === 'pptx' || ext === 'docx'
+  const videoId = isVideo ? getYoutubeVideoId(media.fileUrl) : null
 
   return (
     <PageLayout>
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div className="mb-10 flex-1">
-          <Button
-            variant="ghost"
-            theme="light"
-            size="sm"
-            className="mb-6 gap-1"
-            onClick={() => router.history.back()}
-          >
-            <ChevronLeftIcon className="size-3.5" />
-            Back
-          </Button>
-
-          <div className="h-px w-8 bg-[#9B7A41]/50" />
-          <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-            Library
-          </div>
-          <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
-            {media.title}
-          </h1>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+      <PageHeader
+        title={media.title}
+        onBack={() => router.history.back()}
+        metadata={
+          <>
             <span className="border border-[#1A1A1A]/10 bg-white/50 px-3 py-1 text-[0.68rem] font-medium tracking-[0.22em] text-[#4E463D] uppercase">
               {media.category}
             </span>
@@ -77,47 +79,18 @@ function MediaDetailComponent() {
                 {media.isPublished ? 'Published' : 'Draft'}
               </span>
             )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {permissions.canManage && (
-            <>
-              <Button
-                variant="ghost"
-                theme="light"
-                size="icon"
-                className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
-                onClick={() => openDialog('edit', media)}
-              >
-                <PencilIcon className="size-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                theme="light"
-                size="icon"
-                className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-red-300 hover:text-red-600"
-                onClick={() => openDialog('delete', media)}
-              >
-                <TrashIcon className="size-3.5" />
-              </Button>
-            </>
-          )}
-          <Button
-            theme="light"
-            onClick={() =>
-              window.open(
-                normalizeUrl(media.fileUrl),
-                '_blank',
-                'noopener,noreferrer',
-              )
-            }
-          >
-            <ExternalLinkIcon className="size-4" />
-            Go
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <EntityHeaderActions
+            status={media.isPublished ? 'published' : 'draft'}
+            canEdit={permissions.canEdit}
+            isCourseTeacher={permissions.isCourseTeacher}
+            onEdit={() => openDialog('edit', media)}
+            onDelete={() => openDialog('delete', media)}
+          />
+        }
+      />
 
       {media.description && (
         <div className="mb-8 border border-[#1A1A1A]/10 bg-white/60 p-6 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.08)]">
@@ -143,26 +116,59 @@ function MediaDetailComponent() {
             )}
           </div>
         </div>
-        <div className="px-6 py-8">
-          <p className="text-sm leading-7 text-[#D6CCBE]">
-            {isVideo
-              ? 'Open this YouTube video in a new tab.'
-              : 'Open this PDF in a new tab.'}
-          </p>
-          <Button
-            theme="dark"
-            className="mt-5"
-            onClick={() =>
-              window.open(
-                normalizeUrl(media.fileUrl),
-                '_blank',
-                'noopener,noreferrer',
-              )
-            }
-          >
-            <ExternalLinkIcon className="size-4" />
-            Open
-          </Button>
+
+        <div className="overflow-hidden">
+          {isVideo && videoId && (
+            <div className="aspect-video w-full">
+              <iframe
+                src={`https://www.youtube.com/embed/${videoId}`}
+                className="size-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          )}
+
+          {isVideo && !videoId && (
+            <p className="px-6 py-8 text-sm text-[#8E816D]">
+              Invalid video URL.
+            </p>
+          )}
+
+          {isPdf && viewerUrl && (
+            <div className="p-4">
+              <Suspense
+                fallback={
+                  <div className="py-12 text-center text-sm text-[#8E816D]">
+                    Loading…
+                  </div>
+                }
+              >
+                <PdfViewer url={viewerUrl} />
+              </Suspense>
+            </div>
+          )}
+
+          {isPdf && !viewerUrl && (
+            <p className="px-6 py-8 text-sm text-[#8E816D]">
+              Document unavailable.
+            </p>
+          )}
+
+          {isOffice && viewerUrl && (
+            <div className="aspect-4/3 w-full">
+              <iframe
+                src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(viewerUrl)}`}
+                className="size-full border-0"
+              />
+            </div>
+          )}
+
+          {isOffice && !viewerUrl && (
+            <p className="px-6 py-8 text-sm text-[#8E816D]">
+              Document unavailable.
+            </p>
+          )}
         </div>
       </div>
 
