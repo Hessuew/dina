@@ -1,0 +1,1 @@
+ALTER TABLE "media_library" ADD COLUMN "thumbnail_url" text;

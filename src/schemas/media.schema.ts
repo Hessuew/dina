@@ -34,9 +34,18 @@ export const uploadMediaPdfSchema = z.object({
   oldUrl: z.string().optional(),
 })
 
+export const uploadMediaThumbnailSchema = z.object({
+  mediaId: z.uuid(),
+  fileData: z.string().min(1),
+  fileName: z.string().min(1),
+  fileType: z.string().min(1),
+  fileSize: z.number().int().nonnegative(),
+})
+
 export type CreateMediaInput = z.infer<typeof createMediaSchema>
 export type UpdateMediaInput = z.infer<typeof updateMediaSchema>
 export type DeleteMediaInput = z.infer<typeof deleteMediaSchema>
 export type GetMediaInput = z.infer<typeof getMediaSchema>
 export type UploadMediaPdfInput = z.infer<typeof uploadMediaPdfSchema>
+export type UploadMediaThumbnailInput = z.infer<typeof uploadMediaThumbnailSchema>
 export type MediaKind = z.infer<typeof mediaKindEnum>
