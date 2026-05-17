@@ -14,8 +14,9 @@ import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { getLibraryMedia } from '@/utils/library'
 import { PageLayout } from '@/components/layout/page-layout'
 import { EmptyState } from '@/components/ui/empty-state'
-import { cn } from '@/lib/utils'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
+import { LIBRARY_TOPICS, buildShelves } from '@/lib/library-topics'
+import { LibraryShelf } from '@/components/library/LibraryShelf'
 
 export const Route = createFileRoute('/_authed/library/')({
   loader: async () => {
@@ -199,10 +200,7 @@ function LibraryComponent() {
         </div>
 
         {canCreate && (
-          <Button
-            theme="light"
-            onClick={() => openDialog('create')}
-          >
+          <Button theme="light" onClick={() => openDialog('create')}>
             <PlusIcon className="size-4" />
             Add Media
           </Button>
@@ -224,14 +222,60 @@ function LibraryComponent() {
           variant="light"
         />
       ) : (
-        <div className={cn(viewer.role === 'student' && 'mt-2')}>
-          <DataTable
-            columns={columns}
-            data={media}
-            pageSize={15}
-            searchPlaceholder="Search library…"
-          />
-        </div>
+        <>
+          {(() => {
+            const shelves = buildShelves(media)
+            const topics = LIBRARY_TOPICS.filter((topic) => {
+              const s = shelves.get(topic)
+              return (s?.ebooks.length ?? 0) > 0 || (s?.audioVisual.length ?? 0) > 0
+            })
+
+            if (topics.length === 0) {
+              return (
+                <p className="text-sm text-[#8E816D]">
+                  No content has been organized into shelves yet.
+                </p>
+              )
+            }
+
+            return (
+              <div className="flex flex-col gap-12">
+                {topics.map((topic) => {
+                  const shelf = shelves.get(topic)!
+                  return (
+                    <LibraryShelf
+                      key={topic}
+                      topic={topic}
+                      ebooks={shelf.ebooks}
+                      audioVisual={shelf.audioVisual}
+                      viewerRole={viewer.role}
+                    />
+                  )
+                })}
+              </div>
+            )
+          })()}
+
+          {canCreate && (
+            <div className="mt-16">
+              <div className="mb-6">
+                <div className="h-px w-8 bg-[#9B7A41]/50" />
+                <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+                  Manage
+                </div>
+                <h2 className="mt-1 font-serif text-xl tracking-[-0.02em] text-[#1C1815]">
+                  All Media
+                </h2>
+              </div>
+              <DataTable
+                columns={columns}
+                data={media}
+                pageSize={15}
+                searchPlaceholder="Search library…"
+              />
+            </div>
+          )}
+        </>
       )}
 
       <MediaDialog
