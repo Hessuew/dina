@@ -39,7 +39,7 @@ export function MediaCard({ item, viewerRole }: MediaCardProps) {
     <Link
       to="/library/$mediaId"
       params={{ mediaId: item.id }}
-      className="group flex w-44 flex-shrink-0 flex-col gap-2"
+      className="group flex w-44 shrink-0 flex-col gap-2"
     >
       <div className="relative aspect-video overflow-hidden border border-white/10 bg-black/20">
         {thumbnailUrl ? (
@@ -60,14 +60,14 @@ export function MediaCard({ item, viewerRole }: MediaCardProps) {
           {item.title}
         </p>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="border border-white/12 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-[0.1em] text-[#8E816D] uppercase">
+          <span className="border border-white/12 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-widest text-[#8E816D] uppercase">
             {item.fileType === 'document' ? 'PDF' : 'Video'}
           </span>
-          <span className="border border-white/12 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-[0.1em] text-[#8E816D] uppercase">
+          <span className="border border-white/12 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-widest text-[#8E816D] uppercase">
             {item.category}
           </span>
           {viewerRole !== 'student' && !item.isPublished && (
-            <span className="border border-white/12 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-[0.1em] text-[#8E816D] uppercase">
+            <span className="border border-white/12 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-widest text-[#8E816D] uppercase">
               Draft
             </span>
           )}
