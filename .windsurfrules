@@ -7,7 +7,7 @@
 - [documentation/ARCHITECTURAL_DECISIONS.md](documentation/ARCHITECTURAL_DECISIONS.md) — architectural decisions and rationale
 - [documentation/BUSINESS_RULES.md](documentation/BUSINESS_RULES.md) — business rules and domain logic
 
-Before any change: read the relevant documentation above and the nearest directory `README.md`.
+Before any change: read relevant docs above + nearest dir `README.md`.
 
 ## Architecture Overview
 
@@ -21,79 +21,78 @@ Before any change: read the relevant documentation above and the nearest directo
 
 ## Cross-Cutting Invariants
 
-- Auth boundaries: `src/routes/_authed/**` routes require authentication via `src/routes/_authed.tsx`
-- DB connections: Always use `getDb()` from `src/db/index.ts`, never instantiate ad-hoc
-- Cloudflare Hyperdrive: Supported via `HYPERDRIVE.connectionString` binding
-- Root context: `context.user` is the single source of truth for authenticated user data
+- Auth boundaries: `src/routes/_authed/**` require auth via `src/routes/_authed.tsx`
+- DB: always `getDb()` from `src/db/index.ts`, never ad-hoc
+- Cloudflare Hyperdrive: `HYPERDRIVE.connectionString` binding
+- Root context: `context.user` = single source of truth for authed user
 
 ## Documentation Contract (Update in Same PR)
 
 **Routing changes**: Update `src/routes/README.md` and/or `src/routes/_authed/README.md`
 **Root context changes**: Update `documentation/ENGINEERING_GUIDE.md` and `src/routes/README.md`
-**DB schema changes**: Update `src/db/README.md` (and any related deep dives)
+**DB schema changes**: Update `src/db/README.md` (+ related deep dives)
 **Utility module changes**: Update `src/utils/README.md`
 **New component subsystems**: Update `src/components/README.md`
 **Design system changes**: Update `documentation/DESIGN_SYSTEM.md`
 
-**Deep dive docs**: Only create for keystone modules (>250 lines, high impact, non-obvious invariants). Structure: Purpose, Responsibilities, Invariants, Key exports, Change recipes.
+**Deep dive docs**: Only for keystone modules (>250 lines, high impact, non-obvious invariants). Structure: Purpose, Responsibilities, Invariants, Key exports, Change recipes.
 
-**Documentation style**: Prefer directory-level `README.md` over file-level docs. Document "why" and invariants, not obvious code.
+**Doc style**: Prefer dir-level `README.md` over file-level. Document why + invariants, not obvious code.
 
 ## Design System
 
-See [documentation/DESIGN_SYSTEM.md](documentation/DESIGN_SYSTEM.md) for complete design system.
+See [documentation/DESIGN_SYSTEM.md](documentation/DESIGN_SYSTEM.md).
 
 **Critical constraints:**
 - Zero border-radius on premium surfaces (sharp 90-degree corners)
-- Use exact color tokens from documentation/DESIGN_SYSTEM.md — never invent new hex values
+- Exact color tokens from documentation/DESIGN_SYSTEM.md — never invent hex values
 - Restrained motion: `hover:-translate-y-0.5`, `group-hover:translate-x-0.5` only
 
 ## Working Patterns
 
-- **Bug fixing**: Prefer minimal upstream fixes over downstream workarounds. Identify root cause first. Add regression tests.
-- **Code changes**: Use minimal, focused edits. Follow existing style. Write general-purpose solutions.
-- **Verification**: Use available automated testing (Playwright, unit tests) when possible.
-- **Parallel tool calls**: Default to parallel execution for independent operations (reads, searches).
-- **Import organization**: Imports at top of file. Separate imports for new edits.
+- **Bug fixing**: Minimal upstream fix > downstream workaround. Root cause first. Regression tests.
+- **Code changes**: Minimal focused edits. Match existing style. General-purpose solutions.
+- **Verification**: Use Playwright/unit tests when possible.
+- **Parallel tool calls**: Default parallel for independent ops (reads, searches).
+- **Import organization**: Imports at top. Separate imports for new edits.
 
 ## Code Quality Standards
 
-- Functions >30 lines: likely doing too much — split
-- Logic duplicated >2 times: extract to utility
-- Any `any` type in TypeScript: replace with real types
-- Components >3 props: consider grouping into object
-- Missing error handling on async ops: add try/catch
-- After implementation: review for above issues
+- Functions >30 lines: split
+- Logic duped >2×: extract to utility
+- `any` in TypeScript: replace with real types
+- Components >3 props: group into object
+- Missing error handling on async: add try/catch
+- After impl: review above
 
 ## Self-Improvement Mechanism
 
-After completing any task, if you identify patterns that could benefit the codebase:
+After any task, if patterns found:
 
-1. **Pattern detection**: If you see repeated code structure, missing abstractions, or inconsistent patterns
-2. **Documentation gaps**: If you encounter areas lacking clear guidance in documentation/ENGINEERING_GUIDE.md or documentation/DESIGN_SYSTEM.md
-3. **Tooling opportunities**: If workflows could be automated or streamlined
-4. **Design inconsistencies**: If visual patterns diverge from documentation/DESIGN_SYSTEM.md without justification
+1. **Pattern detection**: repeated code, missing abstractions, inconsistent patterns
+2. **Documentation gaps**: areas lacking guidance in documentation/ENGINEERING_GUIDE.md or documentation/DESIGN_SYSTEM.md
+3. **Tooling opportunities**: automatable workflows
+4. **Design inconsistencies**: visual patterns diverging from documentation/DESIGN_SYSTEM.md without justification
 
-**Action**: Propose improvements to the user with:
-- Specific observation (what you noticed)
-- Impact assessment (why it matters)
-- Concrete suggestion (what to change)
-- Priority level (high/medium/low)
+**Action**: Propose to user with:
+- Specific observation
+- Impact assessment
+- Concrete suggestion
+- Priority (high/medium/low)
 
-**Documentation updates**: If a new pattern emerges as standard across the codebase, update documentation/DESIGN_SYSTEM.md. If engineering patterns shift, update documentation/ENGINEERING_GUIDE.md.
+**Doc updates**: New standard pattern → update documentation/DESIGN_SYSTEM.md. Engineering pattern shift → update documentation/ENGINEERING_GUIDE.md.
 
-**Rule additions**: If you discover a new invariant or working pattern that should be enforced, add it to this file (.windsurfrules).
+**Rule additions**: New invariant/pattern discovered → add to this file (.windsurfrules).
 
 ## Quick Checklist Before Shipping
 
-- Read documentation/ENGINEERING_GUIDE.md, documentation/DESIGN_SYSTEM.md, and relevant directory README
-- Updated all affected documentation files
-- Used exact color tokens from documentation/DESIGN_SYSTEM.md
-- Followed component patterns from documentation/DESIGN_SYSTEM.md
+- Read documentation/ENGINEERING_GUIDE.md, documentation/DESIGN_SYSTEM.md, relevant dir README
+- Updated all affected docs
+- Exact color tokens from documentation/DESIGN_SYSTEM.md
+- Component patterns from documentation/DESIGN_SYSTEM.md
 - Zero border-radius on premium surfaces
-- Used `getDb()` for database access
-- Added error handling on async operations
-- No `any` types in TypeScript
-- Functions are focused and under 30 lines
-- Considered self-improvement opportunities
-
+- `getDb()` for DB access
+- Error handling on async ops
+- No `any` types
+- Functions focused, <30 lines
+- Self-improvement opportunities considered
