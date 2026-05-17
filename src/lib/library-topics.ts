@@ -14,15 +14,15 @@ export const LIBRARY_TOPICS = [
 export type LibraryTopic = (typeof LIBRARY_TOPICS)[number]
 
 export function isLibraryTopic(value: string): value is LibraryTopic {
-  return (LIBRARY_TOPICS as readonly string[]).includes(value)
+  return (LIBRARY_TOPICS as ReadonlyArray<string>).includes(value)
 }
 
 export type GroupableMedia = { category: string; fileType: string }
 
 export function buildShelves<T extends GroupableMedia>(
-  media: readonly T[],
-): Map<string, { ebooks: T[]; audioVisual: T[] }> {
-  const shelves = new Map<string, { ebooks: T[]; audioVisual: T[] }>()
+  media: ReadonlyArray<T>,
+): Map<string, { ebooks: Array<T>; audioVisual: Array<T> }> {
+  const shelves = new Map<string, { ebooks: Array<T>; audioVisual: Array<T> }>()
   for (const item of media) {
     if (!isLibraryTopic(item.category)) continue
     if (!shelves.has(item.category)) {
