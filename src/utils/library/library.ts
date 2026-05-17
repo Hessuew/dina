@@ -8,6 +8,7 @@ import {
   getMediaSchema,
   updateMediaSchema,
   uploadMediaPdfSchema,
+  uploadMediaThumbnailSchema,
 } from '@/schemas/media.schema'
 import { getCurrentUser, getUserProfile } from '@/utils/auth/auth'
 import {
@@ -16,19 +17,26 @@ import {
   NotFoundError,
   ValidationError,
 } from '@/utils/errors'
-import { getSupabaseAdminClient, getSupabaseServerClient } from '@/utils/supabase'
+import {
+  getSupabaseAdminClient,
+  getSupabaseServerClient,
+} from '@/utils/supabase'
+import { uploadImageFn } from '@/utils/imageUpload'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
 
 export type MediaLibraryRow = {
   id: string
   uploaderId: string
   courseId: string | null
+  courseName?: string
+  courseNumber?: number
   title: string
   category: string
   description: string | null
   fileUrl: string
   fileType: 'video' | 'audio' | 'document' | 'image' | 'other'
   fileSize: number | null
+  thumbnailUrl: string | null
   isPublished: boolean
   createdAt: Date
   updatedAt: Date
@@ -50,14 +58,33 @@ export const getLibraryMedia = createServerFn({ method: 'POST' }).handler(
     const profile = await getUserProfile(user.id)
     const db = await getDb()
 
-    const rows = await db.query.mediaLibrary.findMany({
+    const rows = (await db.query.mediaLibrary.findMany({
       where:
         profile.role === 'student' ? (t) => eq(t.isPublished, true) : undefined,
       orderBy: (t, { desc }) => [desc(t.createdAt)],
-    })
+      with: {
+        course: {
+          columns: {
+            id: true,
+            title: true,
+            orderIndex: true,
+          },
+        },
+      },
+    })) as Array<
+      MediaLibraryRow & {
+        course?: { id: string; title: string; orderIndex: number }
+      }
+    >
+
+    const mediaWithCourseName = rows.map((row) => ({
+      ...row,
+      courseName: row.course?.title,
+      courseNumber: row.course != null ? row.course.orderIndex + 1 : undefined,
+    })) as Array<MediaLibraryRow>
 
     return {
-      media: rows as Array<MediaLibraryRow>,
+      media: mediaWithCourseName,
       viewer: {
         id: user.id,
         role: profile.role,
@@ -99,14 +126,19 @@ export const getLibraryMediaItem = createServerFn({ method: 'POST' })
     let viewerUrl: string | null = null
     if (row.fileType === 'document') {
       const supabase = getSupabaseAdminClient()
-      const match = row.fileUrl.match(/\/object\/(?:public|sign)\/media-library\/([^?]+)/)
+      const match = row.fileUrl.match(
+        /\/object\/(?:public|sign)\/media-library\/([^?]+)/,
+      )
       const filePath = match?.[1]
       if (filePath) {
         const { data: signedData, error: signedError } = await supabase.storage
           .from('media-library')
           .createSignedUrl(filePath, 3600)
         if (signedError) {
-          console.error('Failed to create signed URL', { filePath, error: signedError.message })
+          console.error('Failed to create signed URL', {
+            filePath,
+            error: signedError.message,
+          })
         }
         viewerUrl = signedData?.signedUrl ?? null
       }
@@ -325,4 +357,49 @@ export const uploadMediaPdfFn = createServerFn({ method: 'POST' })
       success: true,
       fileUrl: urlData.publicUrl,
     }
+  })
+
+export const uploadMediaThumbnailFn = createServerFn({ method: 'POST' })
+  .inputValidator(uploadMediaThumbnailSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    const profile = await getUserProfile(user.id)
+
+    if (profile.role === 'student') {
+      throw new AuthorizationError('Teacher access required', {
+        code: 'ROLE_REQUIRED',
+        internalMessage: 'Student attempted to upload media thumbnail',
+        details: { role: profile.role },
+      })
+    }
+
+    const db = await getDb()
+
+    const existing = await db.query.mediaLibrary.findFirst({
+      where: eq(mediaLibrary.id, data.mediaId),
+    })
+
+    if (!existing) {
+      throw new NotFoundError('Media not found', {
+        details: { mediaId: data.mediaId },
+      })
+    }
+
+    const uploadResult = await uploadImageFn({
+      data: {
+        fileData: data.fileData,
+        fileName: data.fileName,
+        fileType: data.fileType,
+        fileSize: data.fileSize,
+        bucket: 'media-thumbnails',
+        oldUrl: existing.thumbnailUrl || undefined,
+      },
+    })
+
+    await db
+      .update(mediaLibrary)
+      .set({ thumbnailUrl: uploadResult.imageUrl, updatedAt: new Date() })
+      .where(eq(mediaLibrary.id, data.mediaId))
+
+    return { thumbnailUrl: uploadResult.imageUrl }
   })
