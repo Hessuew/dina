@@ -8,6 +8,7 @@ import {
   FormFieldTextarea,
 } from '@/components/ui/form-field'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { useFieldContext } from '@/hooks/form-context'
 
 interface BaseAppFieldProps {
@@ -41,6 +42,19 @@ interface SelectFieldProps extends BaseAppFieldProps {
   id: string
   placeholder?: string
   children: ReactNode
+}
+
+interface TextAreaFieldWithWordCountProps extends BaseAppFieldProps {
+  id: string
+  placeholder?: string
+  rows?: number
+  maxWords: number
+}
+
+function countWords(value: string): number {
+  const trimmed = value.trim()
+  if (!trimmed) return 0
+  return trimmed.split(/\s+/).filter(Boolean).length
 }
 
 interface SwitchFieldProps {
@@ -132,6 +146,48 @@ export function SwitchField({ id, label, className }: SwitchFieldProps) {
         <FieldLabel htmlFor={id} className="text-sm text-[#AFA28F]">
           {label}
         </FieldLabel>
+      </div>
+    </Field>
+  )
+}
+
+export function TextAreaFieldWithWordCount(
+  props: TextAreaFieldWithWordCountProps,
+) {
+  const field = useFieldContext<string>()
+  const wordCount = countWords(field.state.value)
+  const error = getFirstError(field.state.meta.errors)
+
+  return (
+    <Field className={props.className}>
+      <FieldLabel
+        htmlFor={props.id}
+        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+      >
+        {props.label}{' '}
+        {props.required && <span className="text-[#C5A059]">*</span>}
+      </FieldLabel>
+      <Textarea
+        id={props.id}
+        value={field.state.value}
+        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+          field.handleChange(e.target.value)
+        }
+        placeholder={props.placeholder}
+        rows={props.rows}
+        className="w-full resize-none border border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+      />
+      <div className="flex items-start justify-between gap-4">
+        {error ? (
+          <p className="text-destructive text-[0.68rem]">{error}</p>
+        ) : (
+          <p className="text-xs text-[#8E816D]">
+            Maximum {props.maxWords} words.
+          </p>
+        )}
+        <span className="shrink-0 text-[0.62rem] text-[#5A5248]">
+          {wordCount} words
+        </span>
       </div>
     </Field>
   )
