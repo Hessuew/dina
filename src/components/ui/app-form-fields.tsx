@@ -170,12 +170,11 @@ export function TextAreaFieldWithWordCount(
       <Textarea
         id={props.id}
         value={field.state.value}
-        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-          field.handleChange(e.target.value)
-        }
+        onChange={(e) => field.handleChange(e.target.value)}
+        onBlur={() => field.handleBlur()}
         placeholder={props.placeholder}
         rows={props.rows}
-        className="w-full resize-none border border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+        className="w-full resize-none rounded-none border border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
       />
       <div className="flex items-start justify-between gap-4">
         {error ? (

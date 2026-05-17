@@ -269,20 +269,14 @@ export function ProfileModal({
 
             {!showPasswordForm && (
               <div className="mt-8">
-                <div className="mb-4 flex items-center gap-2">
-                  <div className="h-px w-8 bg-[#C5A059]/40" />
-                  <span className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                    Profile
-                  </span>
-                </div>
-
-                <div className="mb-6 flex items-center gap-5">
+                <div className="mb-6 flex items-start gap-5">
                   <div className="shrink-0">
                     {user.avatarUrl ? (
                       <img
                         src={user.avatarUrl}
                         alt={user.fullName || user.email}
-                        className="size-16 border border-white/10 object-cover"
+                        className="size-32 border border-white/10 object-cover"
+                        loading="lazy"
                       />
                     ) : (
                       <div className="flex size-16 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-xl text-[#E9D9B4]">
