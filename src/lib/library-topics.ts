@@ -17,7 +17,7 @@ export function isLibraryTopic(value: string): value is LibraryTopic {
   return (LIBRARY_TOPICS as readonly string[]).includes(value)
 }
 
-type GroupableMedia = { category: string; fileType: string }
+export type GroupableMedia = { category: string; fileType: string }
 
 export function buildShelves<T extends GroupableMedia>(
   media: readonly T[],
