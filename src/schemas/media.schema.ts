@@ -1,11 +1,12 @@
 import { z } from 'zod'
+import { LIBRARY_TOPICS } from '@/lib/library-topics'
 
 export const mediaKindEnum = z.enum(['youtube', 'pdf'])
 
 export const createMediaSchema = z.object({
   title: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
-  category: z.string().min(1, 'Category is required'),
+  category: z.enum([...LIBRARY_TOPICS]),
   isPublished: z.boolean().optional().default(false),
   kind: mediaKindEnum,
   url: z.string().min(1, 'URL is required'),
