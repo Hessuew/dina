@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import type { LandingNumberedItem } from '@/components/landing/types'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import andrewImage from '@/assets/images/lecturers/andrew.webp'
 import akosyaImage from '@/assets/images/lecturers/akosya.webp'
@@ -15,11 +15,12 @@ import {
   LandingFeaturePanel,
   LandingFeaturePanelBody,
   LandingFeaturePanelHeader,
+  LandingImageSection,
   LandingItemGrid,
   LandingScriptureSectionHeader,
-  LandingSection,
   LandingSectionContainer,
 } from '@/components/landing/primitives'
+import { useCarousel } from '@/components/landing/hooks'
 
 type Lecturer = {
   name: string
@@ -28,9 +29,7 @@ type Lecturer = {
   image?: string
 }
 
-type LecturerPair = {
-  id: string
-  number: string
+type LecturerPair = LandingNumberedItem & {
   course: string
   theme: string
   lecturers: [Lecturer, Lecturer]
@@ -86,7 +85,7 @@ const lecturerPairs: Array<LecturerPair> = [
       {
         name: 'Emmanuel E.',
         title: '',
-        bio: 'Emmanuel Ebenezer is a Minister of the Gospel and author focused on salvation, healing, deliverance, and revival. Based in Ogun State, Nigeria, he leads gospel outreaches, writes Christian books, and uses media and technology to help believers grow spiritually worldwide.',
+        bio: 'Emmanuel Ebenezer is a Gospel minister, author, web developer, and brand specialist from Nigeria, dedicated to proclaiming the Gospel of Jesus through outreaches, Christian books, and global digital ministry platforms.',
         image: emmanuelImage,
       },
       {
@@ -158,30 +157,18 @@ const lecturerPairs: Array<LecturerPair> = [
 ]
 
 export function LandingTeacherSection() {
-  const [activeIndex, setActiveIndex] = useState(0)
+  const { activeIndex, setActiveIndex, goToPrevious, goToNext } = useCarousel(
+    lecturerPairs.length,
+  )
   const activePair = lecturerPairs[activeIndex]
 
-  const goToPrevious = () => {
-    setActiveIndex((currentIndex) =>
-      currentIndex === 0 ? lecturerPairs.length - 1 : currentIndex - 1,
-    )
-  }
-
-  const goToNext = () => {
-    setActiveIndex((currentIndex) =>
-      currentIndex === lecturerPairs.length - 1 ? 0 : currentIndex + 1,
-    )
-  }
-
   return (
-    <LandingSection
+    <LandingImageSection
       id="teachers"
+      backgroundImageUrl={facultyBackground}
+      gradientFrom="rgba(255, 255, 255, 0.9)"
+      gradientTo="rgba(255, 255, 255, 0.9)"
       className="border-b border-[#1A1A1A]/10 text-[#1C1815]"
-      style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url(${facultyBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.12),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.28),transparent_22%)]" />
       <div className="absolute right-[8%] bottom-24 h-px w-16 bg-[#1A1A1A]/12 lg:w-24" />
@@ -332,6 +319,6 @@ export function LandingTeacherSection() {
           </LandingFeaturePanel>
         </div>
       </LandingSectionContainer>
-    </LandingSection>
+    </LandingImageSection>
   )
 }

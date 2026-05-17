@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 import marbleTexture from '@/assets/images/bg/bg_hero.webp'
 import heroEmblem from '@/assets/images/bg/logo.webp'
 import {
-  LandingSection,
+  LandingImageSection,
   LandingSectionContainer,
   LandingSectionEyebrow,
 } from '@/components/landing/primitives'
@@ -69,14 +69,12 @@ function HeroVisual() {
 
 export function LandingHeroEditorial({ user }: LandingHeroProps) {
   return (
-    <LandingSection
+    <LandingImageSection
       id="home"
+      backgroundImageUrl={marbleTexture}
+      gradientFrom="rgba(255,255,255,0.82)"
+      gradientTo="rgba(248,244,236,0.9)"
       className="border-b border-[#1A1A1A]/10"
-      style={{
-        backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.45) 22%, rgba(248,244,236,0.9) 100%), url(${marbleTexture})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
     >
       <div className="absolute bottom-24 left-[8%] h-px w-16 bg-[#1A1A1A]/10 lg:w-24" />
 
@@ -109,6 +107,6 @@ export function LandingHeroEditorial({ user }: LandingHeroProps) {
           <HeroVisual />
         </div>
       </LandingSectionContainer>
-    </LandingSection>
+    </LandingImageSection>
   )
 }

@@ -3,8 +3,8 @@ import {
   LandingFeaturePanel,
   LandingFeaturePanelBody,
   LandingFeaturePanelHeader,
+  LandingImageSection,
   LandingScriptureSectionHeader,
-  LandingSection,
   LandingSectionContainer,
 } from '@/components/landing/primitives'
 
@@ -39,14 +39,12 @@ const timeline: Array<TimelineEvent> = [
 
 export function LandingAboutSection() {
   return (
-    <LandingSection
+    <LandingImageSection
       id="about"
+      backgroundImageUrl={aboutBackground}
+      gradientFrom="rgba(10,14,20,0.9)"
+      gradientTo="rgba(12,16,22,0.95)"
       className="border-b border-[#C5A059]/14 text-[#F7F4EE]"
-      style={{
-        backgroundImage: `linear-gradient(180deg, rgba(10,14,20,0.9), rgba(12,16,22,0.95)), url(${aboutBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.06),transparent_22%)]" />
 
@@ -254,6 +252,6 @@ export function LandingAboutSection() {
           </LandingFeaturePanel>
         </div>
       </LandingSectionContainer>
-    </LandingSection>
+    </LandingImageSection>
   )
 }

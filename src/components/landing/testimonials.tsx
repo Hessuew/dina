@@ -1,14 +1,14 @@
-import { useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import type { LandingItemBase } from '@/components/landing/types'
 import testimonialBackground from '@/assets/images/bg/bg_testimonials.webp'
 import {
-  LandingSection,
+  LandingActiveItemNav,
+  LandingImageSection,
   LandingSectionContainer,
   LandingSectionEyebrowCentered,
 } from '@/components/landing/primitives'
+import { useCarousel } from '@/components/landing/hooks'
 
-type TestimonialItem = {
-  id: string
+type TestimonialItem = LandingItemBase & {
   name: string
   role: string
   quote: string
@@ -52,7 +52,8 @@ const testimonials: Array<TestimonialItem> = [
     id: 'emmanuel-e',
     name: 'Emmanuel E.',
     role: 'Pastor, -',
-    quote: '',
+    quote:
+      'Over the years, following Christ in the school of discipleship has continually been transforming me to become more like Christ. The Holy Spirit is accomplishing this work in my life, both personally and through men full of the Holy Spirit who also follow Christ.',
     theme: 'Walls',
   },
   {
@@ -162,29 +163,17 @@ function getCardMotionStyle(offset: number) {
 }
 
 export function LandingTestimonialsSection() {
-  const [activeIndex, setActiveIndex] = useState(0)
-
-  const goToPrevious = () => {
-    setActiveIndex((currentIndex) =>
-      currentIndex === 0 ? testimonials.length - 1 : currentIndex - 1,
-    )
-  }
-
-  const goToNext = () => {
-    setActiveIndex((currentIndex) =>
-      currentIndex === testimonials.length - 1 ? 0 : currentIndex + 1,
-    )
-  }
+  const { activeIndex, setActiveIndex, goToPrevious, goToNext } = useCarousel(
+    testimonials.length,
+  )
 
   return (
-    <LandingSection
+    <LandingImageSection
       id="testimonials"
+      backgroundImageUrl={testimonialBackground}
+      gradientFrom="rgba(14,13,17,0.922)"
+      gradientTo="rgba(10,10,12,0.97)"
       className="border-b border-[#C5A059]/14 text-[#F7F4EE]"
-      style={{
-        backgroundImage: `linear-gradient(180deg, rgba(14,13,17,0.922), rgba(10,10,12,0.97)), url(${testimonialBackground})`,
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      }}
     >
       <LandingSectionContainer className="py-18 sm:py-22 lg:py-28">
         <div className="space-y-16">
@@ -199,27 +188,18 @@ export function LandingTestimonialsSection() {
               "And when James, Cephas, and John, who seemed to be pillars"
             </blockquote>
 
-            <div className="flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={goToPrevious}
-                className="inline-flex h-11 w-11 items-center justify-center border border-white/12 bg-white/6 text-[#F8F4EC] transition-all duration-500 ease-out hover:border-[#C5A059]/50 hover:bg-white/10"
-                aria-label="Show previous testimony"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <div className="text-sm font-medium tracking-[0.2em] text-[#9B8A73] uppercase">
-                {activeIndex + 1} / {testimonials.length}
-              </div>
-              <button
-                type="button"
-                onClick={goToNext}
-                className="inline-flex h-11 w-11 items-center justify-center border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_26px_40px_-28px_rgba(0,0,0,0.4)] transition-all duration-500 ease-out hover:border-[#D6B16E] hover:text-white"
-                aria-label="Show next testimony"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+            <LandingActiveItemNav
+              label="Testimony"
+              activeValue={`${activeIndex + 1} / ${testimonials.length}`}
+              onPrevious={goToPrevious}
+              onNext={goToNext}
+              borderColor="border-white/10"
+              prevButtonClass="border-white/12 bg-white/6 text-[#F8F4EC] hover:border-[#C5A059]/50 hover:bg-white/10"
+              nextButtonClass="border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E] hover:text-white"
+              labelColor="text-[#9B8A73]"
+              valueColor="text-[#9B8A73]"
+              className="mx-auto max-w-xs"
+            />
           </div>
 
           <div className="space-y-8">
@@ -322,6 +302,6 @@ export function LandingTestimonialsSection() {
           </div>
         </div>
       </LandingSectionContainer>
-    </LandingSection>
+    </LandingImageSection>
   )
 }
