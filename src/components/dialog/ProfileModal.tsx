@@ -87,7 +87,9 @@ export function ProfileModal({
     onSuccess: (ctx) => {
       if (ctx.data.emailChangePending && ctx.data.pendingEmail) {
         setPendingEmailSent(ctx.data.pendingEmail)
-        toast.success('Profile updated. Check your inbox to verify your new email.')
+        toast.success(
+          'Profile updated. Check your inbox to verify your new email.',
+        )
       } else {
         toast.success('Profile updated successfully')
       }
@@ -224,22 +226,22 @@ export function ProfileModal({
 
             {!showPasswordForm && (
               <div className="mt-8">
-                <div className="mb-6 flex items-start gap-5">
+                <div className="mb-8 flex items-center gap-6">
                   <div className="shrink-0">
                     {user.avatarUrl ? (
                       <img
                         src={user.avatarUrl}
                         alt={user.fullName || user.email}
-                        className="size-32 border border-white/10 object-cover"
+                        className="size-24 border border-white/10 object-cover"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="flex size-16 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-xl text-[#E9D9B4]">
+                      <div className="flex size-24 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-2xl text-[#E9D9B4]">
                         {initials}
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-3">
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -266,7 +268,7 @@ export function ProfileModal({
                   </div>
                 </div>
 
-                <FieldGroup className="gap-5">
+                <FieldGroup>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <profileForm.AppField
                       name="email"
@@ -328,7 +330,7 @@ export function ProfileModal({
             )}
 
             {/* Password section */}
-            <div className="mt-10 border-t border-white/8 pt-8">
+            <div className="mt-12 border-t border-white/8 pt-8">
               <div className="mb-4 flex items-center gap-2">
                 <div className="h-px w-8 bg-[#C5A059]/40" />
                 <span className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
@@ -346,7 +348,7 @@ export function ProfileModal({
                   Change Password
                 </Button>
               ) : (
-                <FieldGroup className="gap-5">
+                <FieldGroup>
                   <passwordForm.AppField
                     name="newPassword"
                     validators={{
