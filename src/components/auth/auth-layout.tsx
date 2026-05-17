@@ -281,7 +281,7 @@ export function AuthPageShell({
 
       <div
         className={cn(
-          'relative mx-auto max-w-[calc(100%-2rem)] px-5 py-18 sm:max-w-[calc(100%-4rem)] sm:px-6 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24',
+          'relative mx-auto px-3 py-18 sm:max-w-[calc(100%-4rem)] sm:px-6 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24',
           containerClassName,
         )}
       >
@@ -291,7 +291,7 @@ export function AuthPageShell({
             columnClassName,
           )}
         >
-          <div className="flex h-full flex-1 flex-col justify-between space-y-10">
+          <div className="hidden h-full flex-1 flex-col justify-between space-y-10 lg:flex">
             <AuthPageIntro
               eyebrow={eyebrow}
               title={title}
@@ -301,6 +301,18 @@ export function AuthPageShell({
               titleClassName={titleClassName}
             />
             <AuthPageFooter theme={theme} />
+          </div>
+
+          <div className="mb-8 w-full text-center lg:hidden">
+            <h1
+              className={cn(
+                'font-serif text-[clamp(2.5rem,5vw,4rem)] leading-[0.92] tracking-[-0.055em]',
+                theme.title,
+                titleClassName,
+              )}
+            >
+              {title}
+            </h1>
           </div>
 
           {children}
@@ -318,7 +330,7 @@ export function AuthFeaturePanel({
   brandLabelClassName = 'text-[#E9D9B4]',
 }: AuthFeaturePanelProps) {
   return (
-    <div className="relative border border-white/10 bg-[#171717]/72 p-4 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:p-6">
+    <div className="relative border border-white/10 bg-[#171717]/72 p-3.5 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:p-6">
       <AuthFeatureVisual
         backgroundImage={backgroundImage}
         chip={chip}
@@ -326,7 +338,7 @@ export function AuthFeaturePanel({
         brandLabelClassName={brandLabelClassName}
       />
 
-      <div className="gap-5 border-x border-b border-white/10 bg-[#151515]/88 px-6 py-7 sm:px-8 sm:py-8">
+      <div className="gap-5 border-x border-b border-white/10 bg-[#151515]/88 px-4 py-5 sm:px-8 sm:py-8">
         {children}
       </div>
     </div>
@@ -337,7 +349,7 @@ export function AuthFormSurface({ children, className }: AuthFormSurfaceProps) {
   return (
     <div
       className={cn(
-        'min-h-76 border border-white/10 bg-white/3 p-5 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.4)]',
+        'min-h-76 border border-white/10 bg-white/3 p-4 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.4)] sm:p-5',
         className,
       )}
     >
