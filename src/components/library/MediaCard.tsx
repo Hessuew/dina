@@ -61,7 +61,11 @@ export function MediaCard({ item, viewerRole }: MediaCardProps) {
         </p>
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="border border-white/12 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-widest text-[#8E816D] uppercase">
-            {item.fileType === 'document' ? 'PDF' : 'Video'}
+            {item.fileType === 'document'
+              ? 'PDF'
+              : item.fileType === 'audio'
+                ? 'Audio'
+                : 'Video'}
           </span>
           <span className="border border-white/12 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-widest text-[#8E816D] uppercase">
             {item.category}
