@@ -10,6 +10,8 @@ import juhaniImage from '@/assets/images/lecturers/juhani.webp'
 import keneImage from '@/assets/images/lecturers/kene.webp'
 import mahiImage from '@/assets/images/lecturers/mahi.webp'
 import sadeImage from '@/assets/images/lecturers/sade.webp'
+import obiImage from '@/assets/images/lecturers/obi.webp'
+import ugoImage from '@/assets/images/lecturers/ugo.webp'
 import {
   LandingActiveItemNav,
   LandingFeaturePanel,
@@ -147,11 +149,13 @@ const lecturerPairs: Array<LecturerPair> = [
         name: 'Obi C.',
         title: '',
         bio: '',
+        image: obiImage,
       },
       {
         name: 'Ugo O.',
         title: '',
-        bio: '',
+        bio: 'EU Qualified Medical Doctor with over 10 years of experience spanning clinical medicine and the pharmaceutical industry. My personal and professional interests are embedded ultimately in work that affects the quality of life of patients, consumers, and society.',
+        image: ugoImage,
       },
     ],
   },

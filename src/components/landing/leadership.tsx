@@ -7,6 +7,8 @@ import juhaniImage from '@/assets/images/lecturers/juhani.webp'
 import keneImage from '@/assets/images/lecturers/kene.webp'
 import mahiImage from '@/assets/images/lecturers/mahi.webp'
 import sadeImage from '@/assets/images/lecturers/sade.webp'
+import obiImage from '@/assets/images/lecturers/obi.webp'
+import ugoImage from '@/assets/images/lecturers/ugo.webp'
 import {
   LandingImageSection,
   LandingScriptureSectionHeader,
@@ -28,7 +30,12 @@ const executives: Array<LeadershipMember> = [
     category: 'executive',
     image: mahiImage,
   },
-  { name: 'Dr. Ugo O.', role: 'President', category: 'executive' },
+  {
+    name: 'Dr. Ugo O.',
+    role: 'President',
+    category: 'executive',
+    image: ugoImage,
+  },
   {
     name: 'Ezinne O.',
     role: 'Vice-President',
@@ -66,6 +73,7 @@ const directors: Array<LeadershipMember> = [
     name: 'Obi C.',
     role: 'Director of Operation',
     category: 'directors',
+    image: obiImage,
   },
   {
     name: 'Dr. Sade P.',

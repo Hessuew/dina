@@ -3,12 +3,16 @@ import {
   ChevronLeftIcon,
   ExternalLinkIcon,
   FileTextIcon,
+  PencilIcon,
+  TrashIcon,
   VideoIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageLayout } from '@/components/layout/page-layout'
 import { cn } from '@/lib/utils'
 import { getLibraryMediaItem } from '@/utils/library'
+import { useDialogState } from '@/hooks/useDialogState'
+import { MediaDialog } from '@/components/dialog/MediaDialog'
 
 export const Route = createFileRoute('/_authed/library/$mediaId')({
   loader: async ({ params }) => {
@@ -24,7 +28,14 @@ function normalizeUrl(url: string): string {
 function MediaDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
-  const { media, viewer } = loaderData
+  const { media, viewer, permissions } = loaderData
+  const {
+    isOpen,
+    dialogMode,
+    dialogItem: dialogMedia,
+    openDialog,
+    closeDialog,
+  } = useDialogState<typeof media>()
 
   const isVideo = media.fileType === 'video'
 
@@ -69,19 +80,43 @@ function MediaDetailComponent() {
           </div>
         </div>
 
-        <Button
-          theme="light"
-          onClick={() =>
-            window.open(
-              normalizeUrl(media.fileUrl),
-              '_blank',
-              'noopener,noreferrer',
-            )
-          }
-        >
-          <ExternalLinkIcon className="size-4" />
-          Go
-        </Button>
+        <div className="flex items-center gap-2">
+          {permissions.canManage && (
+            <>
+              <Button
+                variant="ghost"
+                theme="light"
+                size="icon"
+                className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-[#C5A059]/40 hover:text-[#9B7A41]"
+                onClick={() => openDialog('edit', media)}
+              >
+                <PencilIcon className="size-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                theme="light"
+                size="icon"
+                className="size-8 border border-[#1A1A1A]/12 bg-white/60 text-[#5E5549] hover:border-red-300 hover:text-red-600"
+                onClick={() => openDialog('delete', media)}
+              >
+                <TrashIcon className="size-3.5" />
+              </Button>
+            </>
+          )}
+          <Button
+            theme="light"
+            onClick={() =>
+              window.open(
+                normalizeUrl(media.fileUrl),
+                '_blank',
+                'noopener,noreferrer',
+              )
+            }
+          >
+            <ExternalLinkIcon className="size-4" />
+            Go
+          </Button>
+        </div>
       </div>
 
       {media.description && (
@@ -130,6 +165,23 @@ function MediaDetailComponent() {
           </Button>
         </div>
       </div>
+
+      <MediaDialog
+        key={`${dialogMode}-${dialogMedia?.id}`}
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeDialog()
+          }
+        }}
+        mode={dialogMode as 'create' | 'edit' | 'delete'}
+        media={dialogMedia}
+        onSuccess={() => {
+          if (dialogMode === 'delete') {
+            router.navigate({ to: '/library' })
+          }
+        }}
+      />
     </PageLayout>
   )
 }
