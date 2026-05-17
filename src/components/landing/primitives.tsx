@@ -243,7 +243,7 @@ export function LandingFeaturePanel({
     <div
       {...props}
       className={cn(
-        'relative border border-white/10 bg-[#171717]/72 p-4 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:p-6',
+        'relative border border-white/10 bg-[#171717]/72 p-3.5 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:p-6',
         className,
       )}
     />

@@ -182,9 +182,9 @@ export function LandingTeacherSection() {
         lineColor="#1A1A1A/12"
       />
 
-      <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
+      <LandingSectionContainer className="px-0 py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.82fr)_minmax(24rem,1.18fr)] lg:gap-20">
-          <div className="space-y-10">
+          <div className="space-y-10 px-5 sm:px-0">
             <LandingScriptureSectionHeader
               eyebrowLabel="Teaching Faculty"
               eyebrowTone="deep"
@@ -250,7 +250,7 @@ export function LandingTeacherSection() {
 
           <LandingFeaturePanel>
             <LandingFeaturePanelHeader backgroundImageUrl={facultyBackground}>
-              <div className="relative flex min-h-84 flex-col justify-between p-6 sm:p-8 lg:min-h-100">
+              <div className="relative flex min-h-84 flex-col justify-between p-4 sm:p-8 lg:min-h-100">
                 <div className="flex items-start justify-between gap-6">
                   <div>
                     <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
@@ -276,11 +276,11 @@ export function LandingTeacherSection() {
               </div>
             </LandingFeaturePanelHeader>
 
-            <LandingFeaturePanelBody className="grid gap-5 px-6 py-7 sm:px-8 sm:py-8 lg:grid-cols-2">
+            <LandingFeaturePanelBody className="grid gap-5 px-3 py-5 sm:px-8 sm:py-8 lg:grid-cols-2">
               {activePair.lecturers.map((lecturer, index) => (
                 <div
                   key={`${activePair.id}-${lecturer.name}`}
-                  className="min-h-108 border border-white/10 bg-white/3 p-5 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.4)]"
+                  className="min-h-108 border border-white/10 bg-white/3 px-3 py-5 shadow-[0_22px_36px_-30px_rgba(0,0,0,0.4)]"
                 >
                   <div className="flex items-start gap-4">
                     {lecturer.image ? (

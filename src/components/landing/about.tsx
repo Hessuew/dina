@@ -54,9 +54,9 @@ export function LandingAboutSection() {
         secondaryGradientPosition="bottom_right"
       />
 
-      <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
+      <LandingSectionContainer className="px-0 py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.88fr)_minmax(24rem,1.12fr)] lg:gap-20">
-          <div className="space-y-7">
+          <div className="space-y-7 px-5 sm:px-0">
             <LandingScriptureSectionHeader
               eyebrowLabel="Program Overview"
               headline="Overview"
@@ -206,7 +206,7 @@ export function LandingAboutSection() {
 
           <LandingFeaturePanel>
             <LandingFeaturePanelHeader backgroundImageUrl={aboutBackground}>
-              <div className="relative flex min-h-72 flex-col justify-between p-6 sm:p-8 lg:min-h-84">
+              <div className="relative flex min-h-72 flex-col justify-between p-4 sm:p-8 lg:min-h-84">
                 <div>
                   <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
                     9-Month Journey
@@ -227,7 +227,7 @@ export function LandingAboutSection() {
               </div>
             </LandingFeaturePanelHeader>
 
-            <LandingFeaturePanelBody className="px-6 py-7 sm:px-8 sm:py-6">
+            <LandingFeaturePanelBody className="px-4 py-5 sm:px-8 sm:py-6">
               <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
                 Academic Calendar
               </div>
