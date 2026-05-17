@@ -106,6 +106,13 @@
       "when": 1778103568008,
       "tag": "0017_purple_shooting_star",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1778705639756,
+      "tag": "0018_email_change_verification",
+      "breakpoints": true
     }
   ]
 }

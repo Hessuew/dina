@@ -1,9 +1,7 @@
-import { createServerFn } from '@tanstack/react-start'
 import { UploadIcon, XIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { eq } from 'drizzle-orm'
-import { AppError, toUserError } from '@/utils/errors'
+import { toUserError } from '@/utils/errors'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,67 +14,12 @@ import {
 import { FieldGroup } from '@/components/ui/field'
 import { useMutation } from '@/hooks/useMutation'
 import { useAppForm } from '@/hooks/form'
-import { getDb } from '@/db'
-import { profiles } from '@/db/schema'
-import { getCurrentUser } from '@/utils/auth/auth'
 import { uploadAvatarFn } from '@/utils/imageUpload'
-import { getSupabaseServerClient } from '@/utils/supabase'
+import { updatePasswordFn, updateProfileFn } from '@/utils/profile'
 import {
   updatePasswordSchema,
   updateProfileSchema,
 } from '@/schemas/profile.schema'
-
-const updateProfileFn = createServerFn({ method: 'POST' })
-  .inputValidator(updateProfileSchema)
-  .handler(async ({ data }) => {
-    const user = await getCurrentUser()
-    const supabase = getSupabaseServerClient()
-
-    if (data.email !== user.email) {
-      const { error } = await supabase.auth.updateUser({
-        email: data.email,
-      })
-
-      if (error) {
-        throw new AppError({
-          code: 'EMAIL_UPDATE_FAILED',
-          status: 400,
-          userMessage: error.message,
-          internalMessage: `Supabase auth error: ${error.message}`,
-        })
-      }
-    }
-    const db = await getDb()
-
-    await db
-      .update(profiles)
-      .set({
-        fullName: data.fullName,
-        email: data.email,
-        bio: data.bio,
-        updatedAt: new Date(),
-      })
-      .where(eq(profiles.id, user.id))
-  })
-
-const updatePasswordFn = createServerFn({ method: 'POST' })
-  .inputValidator(updatePasswordSchema)
-  .handler(async ({ data }) => {
-    const supabase = getSupabaseServerClient()
-
-    const { error } = await supabase.auth.updateUser({
-      password: data.newPassword,
-    })
-
-    if (error) {
-      throw new AppError({
-        code: 'PASSWORD_UPDATE_FAILED',
-        status: 400,
-        userMessage: error.message,
-        internalMessage: `Supabase auth error: ${error.message}`,
-      })
-    }
-  })
 
 type ProfileFormData = {
   fullName: string
@@ -124,6 +67,7 @@ export function ProfileModal({
   onProfileUpdate,
 }: ProfileModalProps) {
   const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [pendingEmailSent, setPendingEmailSent] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const initials = user.fullName
@@ -135,10 +79,18 @@ export function ProfileModal({
         .slice(0, 2)
     : user.email.slice(0, 2).toUpperCase()
 
-  const updateProfileMutation = useMutation({
+  const updateProfileMutation = useMutation<
+    Parameters<typeof updateProfileFn>[0],
+    { emailChangePending: boolean; pendingEmail: string | undefined }
+  >({
     fn: updateProfileFn,
-    onSuccess: () => {
-      toast.success('Profile updated successfully')
+    onSuccess: (ctx) => {
+      if (ctx.data.emailChangePending && ctx.data.pendingEmail) {
+        setPendingEmailSent(ctx.data.pendingEmail)
+        toast.success('Profile updated. Check your inbox to verify your new email.')
+      } else {
+        toast.success('Profile updated successfully')
+      }
       onProfileUpdate?.()
     },
     onError: (error) => {
@@ -221,7 +173,10 @@ export function ProfileModal({
   }
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setPendingEmailSent(null)
+      return
+    }
     profileForm.reset(getProfileInitialValues(user))
     passwordForm.reset(emptyPasswordForm)
   }, [open, user, profileForm, passwordForm])
@@ -323,7 +278,11 @@ export function ProfileModal({
                           label="Email"
                           type="email"
                           required
-                          description="Changing your email will require verification"
+                          description={
+                            pendingEmailSent
+                              ? `Verification sent to ${pendingEmailSent}. Click the link to confirm.`
+                              : 'Changing your email will require verification'
+                          }
                         />
                       )}
                     </profileForm.AppField>
