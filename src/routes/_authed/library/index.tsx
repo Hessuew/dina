@@ -79,6 +79,12 @@ function LibraryComponent() {
 
   const canCreate = viewer.role === 'teacher' || viewer.role === 'admin'
 
+  const shelves = buildShelves(media)
+  const shelfTopics = LIBRARY_TOPICS.filter((topic) => {
+    const s = shelves.get(topic)
+    return (s?.ebooks.length ?? 0) > 0 || (s?.audioVisual.length ?? 0) > 0
+  })
+
   const canManageRow = (row: MediaLibraryRow) => {
     if (viewer.role === 'admin') return true
     if (viewer.role === 'teacher') return row.uploaderId === viewer.id
@@ -223,38 +229,27 @@ function LibraryComponent() {
         />
       ) : (
         <>
-          {(() => {
-            const shelves = buildShelves(media)
-            const topics = LIBRARY_TOPICS.filter((topic) => {
-              const s = shelves.get(topic)
-              return (s?.ebooks.length ?? 0) > 0 || (s?.audioVisual.length ?? 0) > 0
-            })
-
-            if (topics.length === 0) {
-              return (
-                <p className="text-sm text-[#8E816D]">
-                  No content has been organized into shelves yet.
-                </p>
-              )
-            }
-
-            return (
-              <div className="flex flex-col gap-12">
-                {topics.map((topic) => {
-                  const shelf = shelves.get(topic)!
-                  return (
-                    <LibraryShelf
-                      key={topic}
-                      topic={topic}
-                      ebooks={shelf.ebooks}
-                      audioVisual={shelf.audioVisual}
-                      viewerRole={viewer.role}
-                    />
-                  )
-                })}
-              </div>
-            )
-          })()}
+          {shelfTopics.length === 0 ? (
+            <p className="text-sm text-[#8E816D]">
+              No content has been organized into shelves yet.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-12">
+              {shelfTopics.map((topic) => {
+                const shelf = shelves.get(topic)
+                if (!shelf) return null
+                return (
+                  <LibraryShelf
+                    key={topic}
+                    topic={topic}
+                    ebooks={shelf.ebooks}
+                    audioVisual={shelf.audioVisual}
+                    viewerRole={viewer.role}
+                  />
+                )
+              })}
+            </div>
+          )}
 
           {canCreate && (
             <div className="mt-16">
