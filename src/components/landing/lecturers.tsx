@@ -19,6 +19,7 @@ import {
   LandingItemGrid,
   LandingScriptureSectionHeader,
   LandingSectionContainer,
+  LandingSectionOverlay,
 } from '@/components/landing/primitives'
 import { useCarousel } from '@/components/landing/hooks'
 
@@ -170,8 +171,12 @@ export function LandingTeacherSection() {
       gradientTo="rgba(255, 255, 255, 0.9)"
       className="border-b border-[#1A1A1A]/10 text-[#1C1815]"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.12),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.28),transparent_22%)]" />
-      <div className="absolute right-[8%] bottom-24 h-px w-16 bg-[#1A1A1A]/12 lg:w-24" />
+      <LandingSectionOverlay
+        gradientFrom="rgba(197,160,89,0.12)"
+        secondaryGradientFrom="rgba(255,255,255,0.28)"
+        linePosition="right"
+        lineColor="#1A1A1A/12"
+      />
 
       <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.82fr)_minmax(24rem,1.18fr)] lg:gap-20">

@@ -5,6 +5,7 @@ import {
   LandingImageSection,
   LandingSectionContainer,
   LandingSectionEyebrow,
+  LandingSectionOverlay,
 } from '@/components/landing/primitives'
 import { cn } from '@/lib/utils'
 
@@ -76,7 +77,7 @@ export function LandingHeroEditorial({ user }: LandingHeroProps) {
       gradientTo="rgba(248,244,236,0.9)"
       className="border-b border-[#1A1A1A]/10"
     >
-      <div className="absolute bottom-24 left-[8%] h-px w-16 bg-[#1A1A1A]/10 lg:w-24" />
+      <LandingSectionOverlay linePosition="left" lineColor="#1A1A1A/10" />
 
       <LandingSectionContainer className="pt-28 pb-20 sm:pt-32 sm:pb-22 lg:pt-36 lg:pb-24">
         <div className="grid min-h-[calc(100svh-14rem)] grid-cols-1 items-start gap-14 lg:grid-cols-[minmax(0,1.02fr)_minmax(24rem,0.98fr)] lg:gap-20">

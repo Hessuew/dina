@@ -11,6 +11,7 @@ import {
   LandingImageSection,
   LandingScriptureSectionHeader,
   LandingSectionContainer,
+  LandingSectionOverlay,
 } from '@/components/landing/primitives'
 
 type LeadershipMember = {
@@ -128,7 +129,12 @@ export function LandingLeadershipSection() {
       gradientTo="rgba(16,16,17,0.96)"
       className="border-b border-[#C5A059]/14 bg-[#121212] text-[#F8F4EC]"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(197,160,89,0.1),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.04),transparent_28%)]" />
+      <LandingSectionOverlay
+        gradientFrom="rgba(197,160,89,0.1)"
+        gradientStop="36%"
+        secondaryGradientFrom="rgba(255,255,255,0.04)"
+        secondaryGradientStop="28%"
+      />
 
       <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="space-y-16">

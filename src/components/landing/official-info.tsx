@@ -4,6 +4,7 @@ import {
   LandingImageSection,
   LandingScriptureSectionHeader,
   LandingSectionContainer,
+  LandingSectionOverlay,
 } from '@/components/landing/primitives'
 
 export function LandingOfficialInfo() {
@@ -14,7 +15,11 @@ export function LandingOfficialInfo() {
       gradientTo="rgba(255, 255, 255, 0.9)"
       className="text-[#1C1815]"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(197,160,89,0.08),transparent_50%)]" />
+      <LandingSectionOverlay
+        gradientFrom="rgba(197,160,89,0.08)"
+        gradientPosition="center"
+        gradientStop="50%"
+      />
 
       <LandingSectionContainer className="py-16 sm:py-20 lg:py-24">
         <div className="mx-auto max-w-6xl space-y-14">

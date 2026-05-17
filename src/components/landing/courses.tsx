@@ -15,6 +15,7 @@ import {
   LandingItemGrid,
   LandingScriptureSectionHeader,
   LandingSectionContainer,
+  LandingSectionOverlay,
 } from '@/components/landing/primitives'
 import { useCarousel } from '@/components/landing/hooks'
 
@@ -121,8 +122,13 @@ export function LandingCourseShowcase() {
       gradientTo="rgba(16,16,17,0.95)"
       className="border-b border-[#C5A059]/14 bg-[#121212] text-[#F8F4EC]"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.06),transparent_22%)]" />
-      <div className="absolute right-[8%] bottom-24 h-px w-16 bg-white/12 lg:w-24" />
+      <LandingSectionOverlay
+        gradientPosition="top_left"
+        gradientStop="28%"
+        secondaryGradientFrom="rgba(255,255,255,0.06)"
+        secondaryGradientPosition="bottom_right"
+        linePosition="right"
+      />
 
       <LandingSectionContainer className="py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(24rem,1.15fr)] lg:gap-20">

@@ -96,6 +96,60 @@ export function LandingSection({ className, ...props }: LandingSectionProps) {
   )
 }
 
+type LandingSectionOverlayProps = {
+  gradientFrom?: string
+  gradientTo?: string
+  gradientPosition?:
+    | 'top_left'
+    | 'top_right'
+    | 'bottom_left'
+    | 'bottom_right'
+    | 'center'
+  gradientStop?: string
+  secondaryGradientFrom?: string
+  secondaryGradientTo?: string
+  secondaryGradientPosition?:
+    | 'top_left'
+    | 'top_right'
+    | 'bottom_left'
+    | 'bottom_right'
+  secondaryGradientStop?: string
+  linePosition?: 'left' | 'right' | null
+  lineColor?: string
+}
+
+export function LandingSectionOverlay({
+  gradientFrom = 'rgba(197,160,89,0.14)',
+  gradientTo = 'transparent',
+  gradientPosition = 'top_right',
+  gradientStop = '24%',
+  secondaryGradientFrom,
+  secondaryGradientTo = 'transparent',
+  secondaryGradientPosition = 'bottom_left',
+  secondaryGradientStop = '22%',
+  linePosition = null,
+  lineColor = 'white/12',
+}: LandingSectionOverlayProps) {
+  const primaryGradient = `radial-gradient(circle_at_${gradientPosition},${gradientFrom}),${gradientTo},${gradientStop})`
+  const secondaryGradient = secondaryGradientFrom
+    ? `,radial-gradient(circle_at_${secondaryGradientPosition},${secondaryGradientFrom}),${secondaryGradientTo},${secondaryGradientStop})`
+    : ''
+
+  return (
+    <>
+      <div
+        className="absolute inset-0"
+        style={{ background: primaryGradient + secondaryGradient }}
+      />
+      {linePosition && (
+        <div
+          className={`absolute ${linePosition === 'left' ? 'left-[8%]' : 'right-[8%]'} bottom-24 h-px w-16 bg-${lineColor} lg:w-24`}
+        />
+      )}
+    </>
+  )
+}
+
 export function LandingImageSection({
   backgroundImageUrl,
   gradientFrom,
