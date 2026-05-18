@@ -4,6 +4,7 @@ import { getDb } from '@/db'
 import { courseTeachers, profiles } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth/auth'
 import { authz, withRequestCache } from '@/utils/authz'
+import { sortTeachers } from './domain/teachers.domain'
 
 export const getTeachers = createServerFn({ method: 'POST' }).handler(
   async () => {
@@ -46,12 +47,7 @@ export const getTeachers = createServerFn({ method: 'POST' }).handler(
       }),
     )
 
-    const sortedTeachers = teachersWithCourses.sort((a, b) => {
-      if (a.course?.orderIndex && b.course?.orderIndex) {
-        return a.course.orderIndex - b.course.orderIndex
-      }
-      return a.createdAt.getTime() - b.createdAt.getTime()
-    })
+    const sortedTeachers = sortTeachers(teachersWithCourses)
 
     return { teachers: sortedTeachers }
   },
