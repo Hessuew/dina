@@ -8,7 +8,7 @@ import {
   findStudentById,
   findStudentSubmissions,
   findSubmittedSubmissionsForStudent,
-} from './repository/student.repository'
+} from './repository'
 import {
   buildAssignmentsWithSubmissions,
   buildStudentWithStats,
