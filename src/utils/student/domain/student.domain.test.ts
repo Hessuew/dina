@@ -14,7 +14,7 @@ const makeSub = (overrides: {
   status: overrides.status ?? 'submitted',
   grade: overrides.grade ?? null,
   assignment: {
-    maxGrade: overrides.maxGrade ?? 100,
+    maxGrade: 'maxGrade' in overrides ? overrides.maxGrade : 100,
     lesson: { course: { id: overrides.courseId ?? 'c-1' } },
   },
 })
