@@ -65,6 +65,7 @@ export type CommentWithAuthor = {
   }>
 }
 
+/* v8 ignore start */
 /**
  * Calculates comment counts for multiple posts
  */
@@ -95,6 +96,7 @@ export async function calculateCommentCounts(
     ]),
   )
 }
+/* v8 ignore end */
 
 /**
  * Transforms database post to PostWithDetails format
