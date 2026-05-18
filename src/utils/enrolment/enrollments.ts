@@ -1,10 +1,11 @@
-import crypto from 'node:crypto'
 import { createServerFn } from '@tanstack/react-start'
 import { render } from '@react-email/render'
-import { eq } from 'drizzle-orm'
 import { Resend } from 'resend'
-import { getDb } from '@/db'
-import { enrollments, invitations, profiles } from '@/db/schema'
+import {
+  generateInvitationExpiry,
+  generateSecureToken,
+  isInvitationResendable,
+} from '@/utils/enrolment/domain/enrolment.domain'
 import { env } from '@/env'
 import { InvitationEmail } from '@/emails/InvitationEmail'
 import { getCurrentUser } from '@/utils/auth/auth'
@@ -22,33 +23,37 @@ import {
   sendInvitationForEnrollmentSchema,
   updateEnrollmentStatusSchema,
 } from '@/schemas/enrollment.schema'
-
-function generateSecureToken(): string {
-  return crypto.randomBytes(32).toString('hex')
-}
+import {
+  deleteEnrollmentById,
+  deleteInvitationById,
+  findAllEnrollments,
+  findEnrollmentById,
+  findInvitationByEmail,
+  findProfileById,
+  insertEnrollment,
+  insertInvitation,
+  markEnrollmentInvitationSent,
+  updateEnrollmentStatusById,
+  updateInvitationToken,
+} from '@/utils/enrolment/repository/enrolment.repository'
 
 export const createEnrollment = createServerFn({ method: 'POST' })
   .inputValidator(createEnrollmentSchema)
   .handler(async ({ data }) => {
-    const db = await getDb()
-
-    const [enrollment] = await db
-      .insert(enrollments)
-      .values({
-        fullLegalName: data.fullLegalName,
-        preferredName: data.preferredName,
-        email: data.email,
-        yearOfBirth: data.yearOfBirth,
-        gender: data.gender,
-        nationalityCitizenship: data.nationalityCitizenship,
-        phoneWhatsApp: data.phoneWhatsApp,
-        currentCity: data.currentCity,
-        currentCountry: data.currentCountry,
-        churchAffiliations: data.churchAffiliations,
-        aboutYourself: data.aboutYourself,
-        expectationsAlignment: data.expectationsAlignment,
-      })
-      .returning()
+    const enrollment = await insertEnrollment({
+      fullLegalName: data.fullLegalName,
+      preferredName: data.preferredName,
+      email: data.email,
+      yearOfBirth: data.yearOfBirth,
+      gender: data.gender,
+      nationalityCitizenship: data.nationalityCitizenship,
+      phoneWhatsApp: data.phoneWhatsApp,
+      currentCity: data.currentCity,
+      currentCountry: data.currentCountry,
+      churchAffiliations: data.churchAffiliations,
+      aboutYourself: data.aboutYourself,
+      expectationsAlignment: data.expectationsAlignment,
+    })
 
     return { enrollment }
   })
@@ -60,11 +65,7 @@ export const getEnrollments = createServerFn({ method: 'POST' }).handler(
     return withRequestCache(async () => {
       await authz(user.id).hasRole('admin')
 
-      const db = await getDb()
-
-      const allEnrollments = await db.query.enrollments.findMany({
-        orderBy: (e, { desc }) => [desc(e.createdAt)],
-      })
+      const allEnrollments = await findAllEnrollments()
 
       return { enrollments: allEnrollments }
     })
@@ -79,11 +80,7 @@ export const getEnrollmentById = createServerFn({ method: 'GET' })
     return withRequestCache(async () => {
       await authz(user.id).hasRole('admin')
 
-      const db = await getDb()
-
-      const enrollment = await db.query.enrollments.findFirst({
-        where: eq(enrollments.id, data.enrollmentId),
-      })
+      const enrollment = await findEnrollmentById(data.enrollmentId)
 
       if (!enrollment) {
         throw new NotFoundError('Enrollment not found', {
@@ -104,15 +101,7 @@ export const updateEnrollmentStatus = createServerFn({ method: 'POST' })
     return withRequestCache(async () => {
       await authz(user.id).hasRole('admin')
 
-      const db = await getDb()
-
-      await db
-        .update(enrollments)
-        .set({
-          status: data.status,
-          updatedAt: new Date(),
-        })
-        .where(eq(enrollments.id, data.enrollmentId))
+      await updateEnrollmentStatusById(data.enrollmentId, data.status)
 
       return
     })
@@ -126,9 +115,7 @@ export const deleteEnrollment = createServerFn({ method: 'POST' })
     return withRequestCache(async () => {
       await authz(user.id).hasRole('admin')
 
-      const db = await getDb()
-
-      await db.delete(enrollments).where(eq(enrollments.id, data.enrollmentId))
+      await deleteEnrollmentById(data.enrollmentId)
 
       return
     })
@@ -142,15 +129,9 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
     return withRequestCache(async () => {
       await authz(user.id).hasRole('admin')
 
-      const db = await getDb()
+      const profile = await findProfileById(user.id)
 
-      const profile = await db.query.profiles.findFirst({
-        where: eq(profiles.id, user.id),
-      })
-
-      const enrollment = await db.query.enrollments.findFirst({
-        where: eq(enrollments.id, data.enrollmentId),
-      })
+      const enrollment = await findEnrollmentById(data.enrollmentId)
 
       if (!enrollment) {
         throw new NotFoundError('Enrollment not found', {
@@ -159,27 +140,22 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
         })
       }
 
-      const existingInvitation = await db.query.invitations.findFirst({
-        where: eq(invitations.email, enrollment.email),
-      })
+      const existingInvitation = await findInvitationByEmail(enrollment.email)
 
       const token = generateSecureToken()
-      const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + 7)
+      const expiresAt = generateInvitationExpiry()
 
       const inviteLink = `${env.APP_URL || 'http://localhost:3000'}/signup?token=${token}`
-      const email = profile?.fullName || profile?.email || user.email
-      if (!email) {
+      const senderName = profile?.fullName || profile?.email || user.email
+      if (!senderName) {
         throw new ValidationError('Email not found', {
           details: { userId: user.id, profileId: profile?.id },
         })
       }
 
-      const invitedByName: string = email
-
       const emailHtml = await render(
         InvitationEmail({
-          invitedByName,
+          invitedByName: senderName,
           role: 'student',
           inviteLink,
         }),
@@ -188,7 +164,7 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
       const resend = new Resend(env.RESEND_API_KEY)
 
       if (existingInvitation) {
-        if (existingInvitation.status !== 'pending') {
+        if (!isInvitationResendable(existingInvitation)) {
           throw new ConflictError(
             'An invitation already exists for this email',
             {
@@ -201,14 +177,7 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
           )
         }
 
-        await db
-          .update(invitations)
-          .set({
-            token,
-            expiresAt,
-            updatedAt: new Date(),
-          })
-          .where(eq(invitations.id, existingInvitation.id))
+        await updateInvitationToken(existingInvitation.id, token, expiresAt)
 
         const { error: emailError } = await resend.emails.send({
           from: env.RESEND_FROM_EMAIL,
@@ -226,29 +195,19 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
           })
         }
 
-        await db
-          .update(enrollments)
-          .set({
-            invitationSent: true,
-            invitationId: existingInvitation.id,
-            updatedAt: new Date(),
-          })
-          .where(eq(enrollments.id, enrollment.id))
+        await markEnrollmentInvitationSent(enrollment.id, existingInvitation.id)
 
         return { invitationId: existingInvitation.id }
       }
 
-      const [invitation] = await db
-        .insert(invitations)
-        .values({
-          email: enrollment.email,
-          role: 'student',
-          token,
-          expiresAt,
-          status: 'pending',
-          invitedBy: user.id,
-        })
-        .returning()
+      const invitation = await insertInvitation({
+        email: enrollment.email,
+        role: 'student',
+        token,
+        expiresAt,
+        status: 'pending',
+        invitedBy: user.id,
+      })
 
       const { error: emailError } = await resend.emails.send({
         from: env.RESEND_FROM_EMAIL,
@@ -258,7 +217,7 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
       })
 
       if (emailError) {
-        await db.delete(invitations).where(eq(invitations.id, invitation.id))
+        await deleteInvitationById(invitation.id)
         throw new AppError({
           code: 'STORAGE_UPLOAD_FAILED',
           status: 500,
@@ -267,14 +226,7 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
         })
       }
 
-      await db
-        .update(enrollments)
-        .set({
-          invitationSent: true,
-          invitationId: invitation.id,
-          updatedAt: new Date(),
-        })
-        .where(eq(enrollments.id, enrollment.id))
+      await markEnrollmentInvitationSent(enrollment.id, invitation.id)
 
       return { invitationId: invitation.id }
     })
