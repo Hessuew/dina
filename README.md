@@ -1,4 +1,4 @@
-# TanStack Start - Supabase Example
+# TanStack Start - Christ-Dina
 
 A TanStack Start example demonstrating integration with Supabase for authentication and database.
 
