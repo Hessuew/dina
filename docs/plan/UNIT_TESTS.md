@@ -27,13 +27,30 @@ src/utils/student/
 
 Cross-cutting root domain (grade, assignment, post, student services) stays in `src/domain/` as-is.
 
+## Utils refactor order
+
+Each row = one cycle of: extract repository → extract domain → write tests → verify coverage.
+Update status as each folder is completed.
+
+| # | Folder | Status | Domain functions extracted |
+|---|--------|--------|---------------------------|
+| ✅ | `student` | DONE | `buildStudentWithStats`, `buildAverageGradeByCourse`, `buildAssignmentsWithSubmissions` |
+| 1 | `calendar` | DONE | `buildCalendarEvents(lessons, assignments, specialEvents)` |
+| 2 | `enrolment` | TODO | `generateInvitationExpiry()`, `isInvitationResendable(invitation)` |
+| 3 | `event` | TODO | *(none — pure CRUD, repository split only)* |
+| 4 | `profile` | TODO | `checkEmailChangeRateLimit(lastRequestAt)` |
+| 5 | `teachers` | TODO | `sortTeachers(teachers)` |
+| 6 | `zoomLink` | TODO | *(none — repository split only)* |
+
+Folders marked *(none)* skip the `domain/` layer — they only need the repository split.
+
 ## What to test (priority order)
 
 1. **`src/domain/`** — Root cross-cutting pure logic. Done. 100% covered.
-2. **`src/utils/**/domain/`** — Per-feature pure logic. One domain at a time. Start with student.
-3. **`src/utils/authz/permissions.ts`** — Role/permission combinations (already pure, no layer refactor needed)
-4. **`src/utils/password.ts`** — Password strength boundary cases
-5. **`src/utils/errors.ts`** — Error class hierarchy and transformations
+2. **`src/utils/**/domain/`** — Per-feature pure logic. See refactor order above.
+3. **`src/utils/authz/permissions.ts`** — Done. Role/permission combinations.
+4. **`src/utils/password.ts`** — Done. Password strength boundary cases.
+5. **`src/utils/errors.ts`** — Done. Error class hierarchy and transformations.
 6. **`src/schemas/`** — Zod schema valid/invalid parsing
 7. **`src/hooks/`** — Custom hooks (needs jsdom + @testing-library/react)
 8. **`src/components/`** — Only critical interactive widgets
