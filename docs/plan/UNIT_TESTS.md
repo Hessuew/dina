@@ -32,23 +32,24 @@ Cross-cutting root domain (grade, assignment, post, student services) stays in `
 Each row = one cycle of: extract repository → extract domain → write tests → verify coverage.
 Update status as each folder is completed.
 
-| # | Folder | Status | Domain functions extracted |
-|---|--------|--------|---------------------------|
-| ✅ | `student` | DONE | `buildStudentWithStats`, `buildAverageGradeByCourse`, `buildAssignmentsWithSubmissions` |
-| 1 | `calendar` | DONE | `buildCalendarEvents(lessons, assignments, specialEvents)` |
-| 2 | `enrolment` | DONE | `generateSecureToken()`, `generateInvitationExpiry()`, `isInvitationResendable(invitation)` |
-| 3 | `event` | N/A | *(pure CRUD, no domain logic — repository split skipped)* |
-| 4 | `profile` | DONE | `checkEmailChangeRateLimit(lastRequestAt, now)` — returns `number \| null` |
-| 5 | `teachers` | DONE | `sortTeachers(teachers)` — fixes `orderIndex === 0` bug, grouped sort |
-| 6 | `zoomLink` | N/A | *(pure CRUD, no domain logic — repository split skipped)* |
-| 7 | `courses` | DONE | `buildAssignmentStats(courseAssignments, studentSubmissions)`, `extractTeacherIds(courseTeachers)`, `validateSameTeacher(teacher1Id, teacher2Id)`, `validateTeacherRoles(teachers, teacher1Id, teacher2Id, allowAdmin)` — `lesson.ts` N/A (pure CRUD) |
+| #   | Folder      | Status | Domain functions extracted                                                                                                                                                                                                                            |
+| --- | ----------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅  | `student`   | DONE   | `buildStudentWithStats`, `buildAverageGradeByCourse`, `buildAssignmentsWithSubmissions`                                                                                                                                                               |
+| 1   | `calendar`  | DONE   | `buildCalendarEvents(lessons, assignments, specialEvents)`                                                                                                                                                                                            |
+| 2   | `enrolment` | DONE   | `generateSecureToken()`, `generateInvitationExpiry()`, `isInvitationResendable(invitation)`                                                                                                                                                           |
+| 3   | `event`     | N/A    | _(pure CRUD, no domain logic — repository split skipped)_                                                                                                                                                                                             |
+| 4   | `profile`   | DONE   | `checkEmailChangeRateLimit(lastRequestAt, now)` — returns `number \| null`                                                                                                                                                                            |
+| 5   | `teachers`  | DONE   | `sortTeachers(teachers)` — fixes `orderIndex === 0` bug, grouped sort                                                                                                                                                                                 |
+| 6   | `zoomLink`  | N/A    | _(pure CRUD, no domain logic — repository split skipped)_                                                                                                                                                                                             |
+| 7   | `courses`   | DONE   | `buildAssignmentStats(courseAssignments, studentSubmissions)`, `extractTeacherIds(courseTeachers)`, `validateSameTeacher(teacher1Id, teacher2Id)`, `validateTeacherRoles(teachers, teacher1Id, teacher2Id, allowAdmin)` — `lesson.ts` N/A (pure CRUD) |
+| 8   | `library`   | DONE   | `toFileType(kind)`, `buildMediaListItems(rows)`, `canManageMedia(role, userId, uploaderId)`, `validatePdfUpload(fileSize, fileType)`, `extractPdfFilePath(fileUrl)`                                                                                   |
 
 Folders marked N/A have no extractable domain logic. Repository split is only worth doing when a domain layer follows.
 
 ## What to test (priority order)
 
 1. **`src/domain/`** — Root cross-cutting pure logic. Done. 100% covered.
-2. **`src/utils/**/domain/`** — Per-feature pure logic. See refactor order above.
+2. **`src/utils/**/domain/`\*\* — Per-feature pure logic. See refactor order above.
 3. **`src/utils/authz/permissions.ts`** — Done. Role/permission combinations.
 4. **`src/utils/password.ts`** — Done. Password strength boundary cases.
 5. **`src/utils/errors.ts`** — Done. Error class hierarchy and transformations.
@@ -96,7 +97,9 @@ One assertion per test when possible. Multiple only when they form a single logi
 ### Error assertions
 
 ```ts
-expect(() => validateSubmissionWindow(assignment, now)).toThrow('Assignment is not open for submissions')
+expect(() => validateSubmissionWindow(assignment, now)).toThrow(
+  'Assignment is not open for submissions',
+)
 ```
 
 ## Coverage thresholds (vitest.config.ts)
@@ -113,6 +116,7 @@ coverage: {
 ## Expanding scope later
 
 When adding hooks or component tests:
+
 1. Add `environment: 'jsdom'` or per-file `@vitest-environment jsdom` annotation
 2. Add `include` patterns for the new scope
 3. Write a new ADR updating scope and any new conventions
