@@ -1,6 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import {
-  ExternalLinkIcon,
   FileTextIcon,
   PlusIcon,
 } from 'lucide-react'
@@ -107,11 +106,10 @@ function LibraryComponent() {
               type="button"
               className="group relative aspect-video w-28 overflow-hidden border border-white/10 bg-black/20"
               onClick={() =>
-                window.open(
-                  normalizeUrl(row.fileUrl),
-                  '_blank',
-                  'noopener,noreferrer',
-                )
+                router.navigate({
+                  to: '/library/$mediaId',
+                  params: { mediaId: row.id },
+                })
               }
             >
               {thumb ? (
@@ -176,16 +174,6 @@ function LibraryComponent() {
         onDelete: (row) => openDialog('delete', row),
         canManage: (row) => canManageRow(row),
       }),
-      {
-        icon: ExternalLinkIcon,
-        label: 'Go',
-        onClick: (row) =>
-          window.open(
-            normalizeUrl(row.fileUrl),
-            '_blank',
-            'noopener,noreferrer',
-          ),
-      },
     ]),
   ]
 

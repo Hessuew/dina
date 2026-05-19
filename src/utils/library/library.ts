@@ -16,7 +16,7 @@ import {
   NotFoundError,
   ValidationError,
 } from '@/utils/errors'
-import { getSupabaseServerClient } from '@/utils/supabase'
+import { getSupabaseAdminClient, getSupabaseServerClient } from '@/utils/supabase'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
 
 export type MediaLibraryRow = {
@@ -96,8 +96,25 @@ export const getLibraryMediaItem = createServerFn({ method: 'POST' })
       user.id,
     )
 
+    let viewerUrl: string | null = null
+    if (row.fileType === 'document') {
+      const supabase = getSupabaseAdminClient()
+      const match = row.fileUrl.match(/\/object\/(?:public|sign)\/media-library\/([^?]+)/)
+      const filePath = match?.[1]
+      if (filePath) {
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from('media-library')
+          .createSignedUrl(filePath, 3600)
+        if (signedError) {
+          console.error('Failed to create signed URL', { filePath, error: signedError.message })
+        }
+        viewerUrl = signedData?.signedUrl ?? null
+      }
+    }
+
     return {
       media: row as MediaLibraryRow,
+      viewerUrl,
       permissions,
       viewer: {
         id: user.id,

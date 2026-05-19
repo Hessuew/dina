@@ -1,0 +1,104 @@
+import { useEffect, useRef, useState } from 'react'
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import * as pdfjsLib from 'pdfjs-dist'
+import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
+import { Button } from '@/components/ui/button'
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
+
+export function PdfViewer({ url }: { url: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
+  const [pageNum, setPageNum] = useState(1)
+  const [numPages, setNumPages] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    setLoading(true)
+    setError(false)
+    setPageNum(1)
+    const task = pdfjsLib.getDocument({ url })
+    task.promise
+      .then((doc) => {
+        setPdf(doc)
+        setNumPages(doc.numPages)
+        setLoading(false)
+      })
+      .catch(() => {
+        setLoading(false)
+        setError(true)
+      })
+    return () => {
+      task.destroy()
+    }
+  }, [url])
+
+  useEffect(() => {
+    if (!pdf || !canvasRef.current) return
+    const canvas = canvasRef.current
+    let renderTask: RenderTask | null = null
+
+    pdf.getPage(pageNum).then((page) => {
+      const containerWidth = canvas.parentElement?.clientWidth ?? 800
+      const baseViewport = page.getViewport({ scale: 1 })
+      const scale = containerWidth / baseViewport.width
+      const viewport = page.getViewport({ scale })
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+
+      canvas.height = viewport.height
+      canvas.width = viewport.width
+
+      renderTask = page.render({ canvas, canvasContext: ctx, viewport })
+      renderTask.promise.catch(() => {})
+    })
+
+    return () => {
+      renderTask?.cancel()
+    }
+  }, [pdf, pageNum])
+
+  if (error) {
+    return (
+      <div className="py-12 text-center text-sm text-[#8E816D]">
+        Unable to load document.
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      {loading && (
+        <div className="py-12 text-sm text-[#8E816D]">Loading…</div>
+      )}
+      <canvas ref={canvasRef} className="w-full" />
+      {numPages > 1 && (
+        <div className="flex items-center gap-4 pb-2">
+          <Button
+            variant="ghost"
+            theme="dark"
+            size="sm"
+            onClick={() => setPageNum((p) => Math.max(1, p - 1))}
+            disabled={pageNum <= 1}
+          >
+            Previous
+          </Button>
+          <span className="text-xs text-[#8E816D]">
+            {pageNum} / {numPages}
+          </span>
+          <Button
+            variant="ghost"
+            theme="dark"
+            size="sm"
+            onClick={() => setPageNum((p) => Math.min(numPages, p + 1))}
+            disabled={pageNum >= numPages}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
