@@ -1,5 +1,5 @@
-import { calculateAverageGrade } from '@/domain/grade.service'
 import type { StudentWithStats } from '@/types/student'
+import { calculateAverageGrade } from '@/domain/grade.service'
 
 type CourseBasic = { id: string; title: string }
 
@@ -49,9 +49,13 @@ export function buildAverageGradeByCourse(
     .map((course) => {
       const grades = submissions
         .filter(
-          (sub) => sub.assignment.lesson.course.id === course.id && sub.grade !== null,
+          (sub) =>
+            sub.assignment.lesson.course.id === course.id && sub.grade !== null,
         )
-        .map((sub) => ({ grade: sub.grade!, maxGrade: sub.assignment.maxGrade ?? 100 }))
+        .map((sub) => ({
+          grade: sub.grade!,
+          maxGrade: sub.assignment.maxGrade ?? 100,
+        }))
       if (grades.length === 0) return null
       return {
         courseId: course.id,
@@ -78,7 +82,8 @@ export function buildStudentWithStats(
     enrollmentCount: courseList.length,
     assignmentStats: {
       totalAssignments: totalAssignmentCount,
-      submittedAssignments: submissions.filter((s) => s.status !== 'draft').length,
+      submittedAssignments: submissions.filter((s) => s.status !== 'draft')
+        .length,
       averageGradeByCourse: buildAverageGradeByCourse(courseList, submissions),
     },
   }
