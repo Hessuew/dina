@@ -129,9 +129,26 @@ function LibraryComponent() {
         }
 
         return (
-          <div className="flex aspect-video w-28 items-center justify-center border border-white/10 bg-black/20 text-[#8E816D]">
-            <FileTextIcon className="size-4" />
-          </div>
+          <button
+            type="button"
+            className="group relative flex aspect-video w-28 items-center justify-center overflow-hidden border border-white/10 bg-black/20 text-[#8E816D]"
+            onClick={() =>
+              router.navigate({
+                to: '/library/$mediaId',
+                params: { mediaId: row.id },
+              })
+            }
+          >
+            {row.thumbnailUrl ? (
+              <img
+                src={row.thumbnailUrl}
+                alt={row.title}
+                className="size-full object-cover transition-transform group-hover:scale-[1.02]"
+              />
+            ) : (
+              <FileTextIcon className="size-4" />
+            )}
+          </button>
         )
       },
     }),
