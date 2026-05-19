@@ -1,13 +1,13 @@
 /* v8 ignore start */
 import { eq } from 'drizzle-orm'
-import type { getDb } from '@/db'
+import { getDb } from '@/db'
 import { courseTeachers } from '@/db/schema'
 
-type Db = Awaited<ReturnType<typeof getDb>>
-
-export async function findCourseTeachers(db: Db, courseId: string) {
+export async function findCourseTeachers(courseId: string) {
+  const db = await getDb()
   return db.query.courseTeachers.findMany({
     where: eq(courseTeachers.courseId, courseId),
+    orderBy: (ct, { asc }) => [asc(ct.createdAt)],
     with: {
       teacher: {
         columns: {
@@ -21,19 +21,18 @@ export async function findCourseTeachers(db: Db, courseId: string) {
   })
 }
 
-export async function deleteTeacherAssignments(db: Db, courseId: string) {
-  await db.delete(courseTeachers).where(eq(courseTeachers.courseId, courseId))
-}
-
-export async function insertTeacherAssignments(
-  db: Db,
+export async function replaceTeacherAssignments(
   courseId: string,
   teacher1Id: string,
   teacher2Id: string,
 ) {
-  await db.insert(courseTeachers).values([
-    { courseId, teacherId: teacher1Id },
-    { courseId, teacherId: teacher2Id },
-  ])
+  const db = await getDb()
+  await db.transaction(async (tx) => {
+    await tx.delete(courseTeachers).where(eq(courseTeachers.courseId, courseId))
+    await tx.insert(courseTeachers).values([
+      { courseId, teacherId: teacher1Id },
+      { courseId, teacherId: teacher2Id },
+    ])
+  })
 }
 /* v8 ignore end */

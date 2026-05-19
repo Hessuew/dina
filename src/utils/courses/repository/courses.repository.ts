@@ -1,30 +1,43 @@
 /* v8 ignore start */
 import { eq } from 'drizzle-orm'
-import type { getDb } from '@/db'
+import { getDb } from '@/db'
 import { courses } from '@/db/schema'
 
-type Db = Awaited<ReturnType<typeof getDb>>
-
-export async function findAllCourses(db: Db) {
+export async function findAllCourses(includeUnpublishedLessons: boolean) {
+  const db = await getDb()
   return db.query.courses.findMany({
     with: {
-      courseTeachers: { with: { teacher: true } },
-      lessons: { orderBy: (l, { asc }) => [asc(l.orderIndex)] },
+      courseTeachers: {
+        with: { teacher: true },
+        orderBy: (ct, { asc }) => [asc(ct.createdAt)],
+      },
+      lessons: {
+        where: includeUnpublishedLessons
+          ? undefined
+          : (l) => eq(l.isPublished, true),
+        orderBy: (l, { asc }) => [asc(l.orderIndex)],
+      },
     },
     orderBy: (c, { asc }) => [asc(c.orderIndex)],
   })
 }
 
 export async function findCourseWithDetails(
-  db: Db,
   courseId: string,
   includeUnpublished: boolean,
 ) {
+  const db = await getDb()
   return db.query.courses.findFirst({
     where: eq(courses.id, courseId),
     with: {
-      courseTeachers: { with: { teacher: true } },
-      lessons: { orderBy: (l, { asc }) => [asc(l.orderIndex)] },
+      courseTeachers: {
+        with: { teacher: true },
+        orderBy: (ct, { asc }) => [asc(ct.createdAt)],
+      },
+      lessons: {
+        where: includeUnpublished ? undefined : (l) => eq(l.isPublished, true),
+        orderBy: (l, { asc }) => [asc(l.orderIndex)],
+      },
       mediaFiles: {
         where: includeUnpublished ? undefined : (t) => eq(t.isPublished, true),
         orderBy: (t, { desc }) => [desc(t.createdAt)],
@@ -33,33 +46,32 @@ export async function findCourseWithDetails(
   })
 }
 
-export async function findCourseById(db: Db, courseId: string) {
+export async function findCourseById(courseId: string) {
+  const db = await getDb()
   return db.query.courses.findFirst({
     where: eq(courses.id, courseId),
   })
 }
 
-export async function findAllCourseIds(db: Db) {
+export async function findAllCourseIds() {
+  const db = await getDb()
   const result = await db.query.courses.findMany({ columns: { id: true } })
   return result.map((c) => c.id)
 }
 
-export async function insertCourse(
-  db: Db,
-  values: {
-    title: string
-    description: string
-    thumbnailUrl: string | null
-    isPublished: boolean
-    orderIndex: number
-  },
-) {
+export async function insertCourse(values: {
+  title: string
+  description: string
+  thumbnailUrl: string | null
+  isPublished: boolean
+  orderIndex: number
+}) {
+  const db = await getDb()
   const [course] = await db.insert(courses).values(values).returning()
   return course
 }
 
 export async function updateCourseById(
-  db: Db,
   courseId: string,
   values: {
     title: string
@@ -70,6 +82,7 @@ export async function updateCourseById(
     updatedAt: Date
   },
 ) {
+  const db = await getDb()
   const [course] = await db
     .update(courses)
     .set(values)
@@ -78,7 +91,8 @@ export async function updateCourseById(
   return course
 }
 
-export async function deleteCourseById(db: Db, courseId: string) {
+export async function deleteCourseById(courseId: string) {
+  const db = await getDb()
   await db.delete(courses).where(eq(courses.id, courseId))
 }
 /* v8 ignore end */

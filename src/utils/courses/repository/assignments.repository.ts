@@ -1,18 +1,18 @@
 /* v8 ignore start */
 import { eq, inArray } from 'drizzle-orm'
-import type { getDb } from '@/db'
+import { getDb } from '@/db'
 import { assignments, courses, lessons } from '@/db/schema'
 
-type Db = Awaited<ReturnType<typeof getDb>>
-
-export async function findAssignmentsByLessonIds(db: Db, lessonIds: string[]) {
+export async function findAssignmentsByLessonIds(lessonIds: Array<string>) {
   if (lessonIds.length === 0) return []
+  const db = await getDb()
   return db.query.assignments.findMany({
     where: inArray(assignments.lessonId, lessonIds),
   })
 }
 
-export async function findAssignmentCalendarEvents(db: Db, courseIds: string[]) {
+export async function findAssignmentCalendarEvents(courseIds: Array<string>) {
+  const db = await getDb()
   return db
     .select({
       id: assignments.id,
