@@ -76,14 +76,16 @@ const testimonials: Array<TestimonialItem> = [
     id: 'blessing',
     name: 'Blessing A.',
     role: 'Pastor, -',
-    quote: '',
+    quote:
+      'Raised in a Christian home and active in church from a young age, I later came to a personal surrender to God through His mercy at a crusade. My discipleship journey continues by His grace as I grow in faith, serve in youth ministry, and participate in evangelism. I desire to help others discover their identity, draw closer to God, and experience wholeness in every area of life.',
     theme: 'Framing',
   },
   {
     id: 'kene',
     name: 'Kene O.',
     role: 'Pastor, -',
-    quote: '',
+    quote:
+      'I am blessed to be discipled by the Holy Spirit. Through His guidance, I am connected to people of faith who have helped shape and sharpen my walk with God. Discipleship is teaching me to deny self, take up my cross, and follow Jesus Christ in word and action, sharing the gospel with respect and love, while growing in understanding and knowledge of God’s Word and love.',
     theme: 'Covering',
   },
   {

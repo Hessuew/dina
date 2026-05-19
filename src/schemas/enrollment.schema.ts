@@ -13,7 +13,9 @@ export const createEnrollmentSchema = z.object({
     .number()
     .int('Year of birth must be a whole number')
     .min(1900, 'Year of birth must be reasonable')
-    .max(new Date().getFullYear(), 'Year of birth cannot be in the future'),
+    .refine((year) => year <= new Date().getFullYear(), {
+      message: 'Year of birth cannot be in the future',
+    }),
   gender: z.enum(['male', 'female'], {
     message: 'Gender must be either male or female',
   }),

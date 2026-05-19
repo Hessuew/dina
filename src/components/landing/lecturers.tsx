@@ -122,7 +122,7 @@ const lecturerPairs: Array<LecturerPair> = [
   {
     id: 'mission-and-culture',
     number: '05',
-    course: "Peter's Encounter, Following & Transformation",
+    course: 'Following Jesus: From encounter to transformation',
     theme: 'Interior',
     lecturers: [
       {

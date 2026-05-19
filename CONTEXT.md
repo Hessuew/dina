@@ -17,3 +17,7 @@ Location: `components/ui/dark-card.tsx`
 ## Course Material
 
 A `mediaLibrary` record with a `courseId` set — same table, same model as library items. Teachers upload PDF, PPTX, or DOCX files directly from the course description page. Students see only published materials (`isPublished = true`); teachers see all. Clicking a material navigates to `/library/$mediaId` (no raw download exposed). Course materials also appear in the global library page.
+
+**eBook** — a PDF `mediaLibrary` record. Rendered in-browser via `pdfjs-dist` (no download button). The raw storage URL is never sent to the client.
+
+**Viewer URL** — a 1-hour Supabase signed URL generated server-side in `getLibraryMediaItem`. Used as the viewer src for documents. Expires on page reload (which refreshes it). Only generated for `fileType === 'document'`; video embeds use the stored YouTube URL directly.

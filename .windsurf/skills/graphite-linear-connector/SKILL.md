@@ -492,6 +492,7 @@ For each PR independently:
 - Search for existing Linear issues
 - Score matches
 - Create or link to issue
+  - When creating new issues: apply the workspace's recommended template (only 1 named "recommended")
 - Add PR URL to issue's `links` field using Linear MCP
 - Verify linking
 
@@ -500,14 +501,17 @@ For each PR independently:
 - Search for existing Linear issues using combined signals
 - Score matches against all PRs
 - Create one issue with all PRs as sections
+  - When creating new issues: apply the workspace's recommended template (only 1 named "recommended")
 - Add all PR URLs to issue's `links` field using Linear MCP
 - Verify linking
 
 #### Case 3: Wide Refactor with Sub-Issues
 
 1. Create parent issue with overall refactor context
+   - When creating new issues: apply the workspace's recommended template (only 1 named "recommended")
 2. For each PR:
    - Create sub-issue with page/component-specific details
+     - When creating new issues: apply the workspace's recommended template (only 1 named "recommended")
    - Set `parentId` to parent issue
    - Add PR URL to sub-issue's `links` field using Linear MCP
 3. Add PR URL only to corresponding sub-issue
