@@ -6,43 +6,43 @@
 
 **Decision:** Admin approval required
 
-Students cannot self-enroll in courses. The workflow is:
+Students no self-enroll. Workflow:
 
-1. Student creates account and browses available courses
-2. Student requests enrollment in a course
-3. Admin reviews and approves/rejects enrollment request
-4. Upon approval, enrollment status changes from `pending` to `active`
+1. Student create account, browse courses
+2. Student request enrollment
+3. Admin approve/reject
+4. Approval → status `pending` → `active`
 
 **Implementation Notes:**
 
-- Enrollment table has `status` field: `pending`, `active`, `completed`, `dropped`
-- Admin dashboard needs enrollment approval interface
-- Email notifications for enrollment requests and approvals
+- Enrollment table `status`: `pending`, `active`, `completed`, `dropped`
+- Admin dashboard need approval UI
+- Email notify on request/approval
 
 ### 2. Payment Integration
 
 **Decision:** No payment required
 
-All courses are free. No payment gateway integration needed.
+All courses free. No payment gateway.
 
 **Implementation Notes:**
 
-- No Stripe or payment processing
-- Remove any payment-related fields from future planning
-- Focus on educational content delivery
+- No Stripe
+- Remove payment fields from planning
+- Focus education delivery
 
 ### 3. Course Structure
 
 **Decision:** Fixed curriculum
 
-Courses follow a structured, sequential curriculum rather than flexible module selection.
+Sequential curriculum, not flexible.
 
 **Implementation Notes:**
 
-- Students progress through modules in order
-- Prerequisites can be enforced
-- Linear learning path per course
-- Modules and lessons have `order_index` for sequencing
+- Students progress modules in order
+- Prerequisites enforceable
+- Linear path per course
+- Modules/lessons have `order_index`
 
 ### 4. Grading System
 
@@ -58,58 +58,44 @@ Courses follow a structured, sequential curriculum rather than flexible module s
 
 **Implementation Notes:**
 
-- Store numeric grade (0-100) in `submissions.grade`
-- Calculate letter grade on display
-- Add grade calculation utility function
-- Show both numeric and letter grades in UI
+- Store numeric (0-100) in `submissions.grade`
+- Calculate letter on display
+- Add grade calc utility
+- Show both numeric + letter in UI
 
 ### 5. Video Hosting
 
 **Decision:** External service (Zoom)
 
-Live sessions and video content will use Zoom.
-
 **Implementation Notes:**
 
-- Store Zoom meeting links in `lessons.video_url`
-- No need for video upload/storage infrastructure
-- Consider adding Zoom meeting ID and password fields
-- Integration with Zoom API for scheduling (future enhancement)
+- Store Zoom links in `lessons.video_url`
+- No video upload infra needed
+- Consider zoom_meeting_id + password fields
+- Zoom API scheduling (future)
 
 ### 6. Email Service
 
 **Decision:** Supabase Auth emails
 
-Use Supabase's built-in email functionality for authentication and notifications.
-
 **Implementation Notes:**
 
 - Configure Supabase email templates
-- Use Supabase triggers for notification emails
-- Custom SMTP can be configured in Supabase dashboard if needed
-- Email notifications for:
-  - Account verification
-  - Password reset
-  - Enrollment status changes
-  - New assignments
-  - Inquiry responses
+- Use Supabase triggers for notifications
+- Custom SMTP via Supabase dashboard if needed
+- Notify for: account verify, password reset, enrollment changes, new assignments, inquiry responses
 
 ### 7. Localization
 
 **Decision:** English only
 
-No multi-language support in initial version.
-
 **Implementation Notes:**
 
-- All UI text in English
-- Database content in English
-- No i18n library needed initially
-- Can add localization in future if needed
+- All UI/DB in English
+- No i18n needed initially
+- Localization future option
 
 ## Database Schema Updates Needed
-
-Based on these decisions, update the schema:
 
 ### 1. Add Letter Grade Calculation Function
 
@@ -138,8 +124,7 @@ ADD COLUMN scheduled_time TIMESTAMPTZ;
 
 ### 3. Enrollment Approval Workflow
 
-The existing `enrollments` table already supports this with the `status` enum.
-Just need to implement the admin approval UI.
+Existing `enrollments` table already support with `status` enum. Need admin approval UI only.
 
 ## Feature Priority Updates
 
@@ -168,41 +153,41 @@ Just need to implement the admin approval UI.
 
 ### Enrollment Flow
 
-- Clear "Request Enrollment" button on course pages
-- Status indicator showing "Pending Approval"
-- Notification when approved/rejected
+- "Request Enrollment" button on course pages
+- Status show "Pending Approval"
+- Notify on approve/reject
 
 ### Grading Display
 
-- Show both numeric score and letter grade
-- Color coding: A (green), B (blue), C (yellow), D (orange), F (red)
+- Show numeric + letter grade
+- Color: A (green), B (blue), C (yellow), D (orange), F (red)
 - Grade summary on student dashboard
 
 ### Video Access
 
-- Prominent "Join Zoom Session" button for live classes
-- Display scheduled time for upcoming sessions
-- Archive recorded sessions (links only, not files)
+- "Join Zoom Session" button for live classes
+- Show scheduled time for upcoming sessions
+- Archive recorded sessions (links only)
 
 ## Security Considerations
 
 ### Enrollment Approval
 
-- Only admins can approve enrollments
-- RLS policies prevent students from changing their own status
-- Audit log for enrollment changes
+- Only admins approve
+- RLS prevent students changing own status
+- Audit log for changes
 
 ### Grading
 
-- Only course teacher or admin can assign grades
-- Students can view but not modify grades
-- Grade history tracking
+- Only teacher/admin assign grades
+- Students view only, no modify
+- Grade history tracked
 
 ## Next Implementation Steps
 
 1. **Update Database Schema**
    - Add letter grade function
-   - Add Zoom meeting fields (optional)
+   - Add Zoom fields (optional)
 
 2. **Create Admin Enrollment Approval UI**
    - List pending enrollments
@@ -210,12 +195,12 @@ Just need to implement the admin approval UI.
    - Email notifications
 
 3. **Implement Grading System**
-   - Grade input interface for teachers
-   - Letter grade calculation
+   - Grade input for teachers
+   - Letter grade calc
    - Grade display for students
 
 4. **Add Zoom Integration**
-   - Zoom link input in lesson creation
+   - Zoom link in lesson creation
    - "Join Session" buttons
    - Scheduled time display
 

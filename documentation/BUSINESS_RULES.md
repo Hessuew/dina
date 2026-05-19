@@ -21,36 +21,36 @@
 
 ### Backend Architecture
 
-- **Authentication:** Supabase for user authentication and session management
-- **Database:** Supabase PostgreSQL (accessed via Drizzle ORM)
-  - Connection: Supabase connection pooler for performance
-  - Authorization: Application-level checks (no RLS)
-  - Storage: Supabase Storage for media files
+- **Authentication:** Supabase for user auth + session mgmt
+- **Database:** Supabase PostgreSQL via Drizzle ORM
+  - Connection: Supabase connection pooler for perf
+  - Authorization: App-level checks (no RLS)
+  - Storage: Supabase Storage for media
   - Real-time: Supabase Realtime subscriptions (when needed)
-- **ORM:** Drizzle ORM for type-safe database queries
-- **Server Functions:** TanStack Start server functions for API logic
+- **ORM:** Drizzle ORM for type-safe DB queries
+- **Server Functions:** TanStack Start server fns for API logic
 - **State Management:**
   - Server state via TanStack Start
   - Client state via React Context where needed
 
 ### Database Design Principles
 
-- **Authorization:** App-level authorization using Supabase user IDs
-- **Role-based access control (RBAC):** Implemented in application code
-- Use UUID for primary keys (Supabase user IDs for profiles)
-- Include `created_at` and `updated_at` timestamps
-- Soft deletes where appropriate (use `deleted_at` field)
-- Normalize data but denormalize for performance where needed
+- **Authorization:** App-level using Supabase user IDs
+- **RBAC:** Implemented in app code
+- UUID primary keys (Supabase user IDs for profiles)
+- Include `created_at` + `updated_at` timestamps
+- Soft deletes where appropriate (`deleted_at` field)
+- Normalize data, denormalize for perf where needed
 
 ### Authorization Pattern
 
-All authorization is handled in application code using helper functions from `src/utils/auth.ts`:
+All auth handled in app code via helpers from `src/utils/auth.ts`:
 
-- **Route Protection:** Use `beforeLoad` to check authentication and authorization
-- **Server Functions:** Call `getCurrentUser()` at the start of server functions that require authentication
+- **Route Protection:** Use `beforeLoad` for auth/authz checks
+- **Server Functions:** Call `getCurrentUser()` at start of protected fns
 - **Role Checks:** Use `requireRole()`, `requireAdmin()`, `requireTeacher()`
-- **Resource Access:** Use `requireTeacherOfCourse()` (and feature-specific access checks as needed)
-- **Query Filtering:** Always filter queries by user ownership (e.g., `studentId`, `teacherId`)
+- **Resource Access:** Use `requireTeacherOfCourse()` + feature-specific checks
+- **Query Filtering:** Always filter by user ownership (`studentId`, `teacherId`)
 
 **Example - Protected Route:**
 
@@ -80,27 +80,27 @@ const getMyEnrollments = createServerFn({ method: 'GET' }).handler(async () => {
 
 ### TypeScript
 
-- Use strict mode
-- No `any` types - use `unknown` or proper types
-- Define interfaces for all data structures
-- Use type inference where obvious
+- Strict mode
+- No `any` — use `unknown` or proper types
+- Interfaces for all data structures
+- Type inference where obvious
 - Export types alongside components/functions
 
 ### React Components
 
 - Functional components only (no class components)
-- Use hooks for state and side effects
-- One component per file (except small related components)
-- Props interfaces defined above component
-- Use `React.FC` sparingly, prefer explicit typing
+- Hooks for state + side effects
+- One component per file (except small related)
+- Props interfaces above component
+- Prefer explicit typing over `React.FC`
 
 ### File Naming Conventions
 
-- Components: PascalCase (e.g., `StudentDashboard.tsx`)
-- Utilities: camelCase (e.g., `formatDate.ts`)
-- Routes: kebab-case following TanStack Router conventions
-- Types: PascalCase with `.types.ts` suffix
-- Constants: UPPER_SNAKE_CASE in `constants.ts` files
+- Components: PascalCase (`StudentDashboard.tsx`)
+- Utilities: camelCase (`formatDate.ts`)
+- Routes: kebab-case per TanStack Router conventions
+- Types: PascalCase + `.types.ts` suffix
+- Constants: UPPER_SNAKE_CASE in `constants.ts`
 
 ### Code Organization
 
@@ -128,12 +128,12 @@ src/
 
 ### Styling Guidelines
 
-- Use TailwindCSS utility classes
-- Create custom components for repeated patterns
-- Use CSS variables for theming
+- TailwindCSS utility classes
+- Custom components for repeated patterns
+- CSS variables for theming
 - Mobile-first responsive design
-- Support dark mode from the start
-- Maintain consistent spacing (use Tailwind spacing scale)
+- Dark mode from start
+- Consistent spacing (Tailwind spacing scale)
 
 ### Component Patterns
 
@@ -168,10 +168,10 @@ export function StudentCard({ student, onSelect }: StudentCardProps) {
 
 ### Role Hierarchy
 
-1. **Visitor** - Unauthenticated users (public access only)
-2. **Student** - Authenticated students (course access, inquiries)
-3. **Teacher** - Authenticated teachers (course management, student management)
-4. **Admin** - Full system access (user management, system settings)
+1. **Visitor** - Unauthenticated (public only)
+2. **Student** - Authenticated (course access, inquiries)
+3. **Teacher** - Authenticated (course mgmt, student mgmt)
+4. **Admin** - Full access (user mgmt, system settings)
 
 ### Permission Matrix
 
@@ -190,14 +190,14 @@ export function StudentCard({ student, onSelect }: StudentCardProps) {
 
 ### Naming Conventions
 
-- Tables: plural, snake_case (e.g., `courses`, `user_enrollments`)
-- Columns: snake_case (e.g., `created_at`, `user_id`)
-- Foreign keys: `{table}_id` (e.g., `course_id`, `user_id`)
-- Junction tables: `{table1}_{table2}` (e.g., `course_students`)
+- Tables: plural snake_case (`courses`, `user_enrollments`)
+- Columns: snake_case (`created_at`, `user_id`)
+- Foreign keys: `{table}_id` (`course_id`, `user_id`)
+- Junction tables: `{table1}_{table2}` (`course_students`)
 
 ### Standard Fields
 
-All tables should include:
+All tables include:
 
 ```sql
 id UUID PRIMARY KEY DEFAULT uuid_generate_v4()
@@ -244,12 +244,12 @@ const updateCourse = createServerFn({ method: 'POST' }).handler(
 
 ### Error Handling
 
-- Always handle authentication errors gracefully
+- Handle auth errors gracefully
 - Return user-friendly error messages
-- Log errors for debugging (but not sensitive data)
-- Use try-catch for async operations
-- Validate input data before processing
-- Throw descriptive errors from auth utilities
+- Log errors for debug (not sensitive data)
+- try-catch for async ops
+- Validate input before processing
+- Throw descriptive errors from auth utils
 
 ---
 
@@ -257,29 +257,29 @@ const updateCourse = createServerFn({ method: 'POST' }).handler(
 
 ### Authentication
 
-- Use Supabase for all authentication
-- Supabase handles email verification, password requirements, and session management
-- User sessions are managed via HTTP-only cookies by Supabase
-- Always call `getCurrentUser()` in server functions that require authentication
+- Supabase for all auth
+- Supabase handles email verification, password rules, session mgmt
+- Sessions via HTTP-only cookies by Supabase
+- Always call `getCurrentUser()` in protected server fns
 
 ### Authorization
 
-- **Always check authorization on the server** - never trust client-side checks
-- Use authorization utilities from `src/utils/auth.ts`
-- Filter all database queries by user ownership (studentId, teacherId, etc.)
-- Validate user permissions before any data mutation
-- Use `beforeLoad` in routes to protect entire route trees
-- For admin-only operations, use `requireAdmin(userId)`
-- For teacher operations, use `requireTeacherOfCourse(userId, courseId)`
-- For student operations, filter by `studentId = userId`
+- **Always check authz on server** — never trust client-side
+- Use auth utils from `src/utils/auth.ts`
+- Filter all DB queries by user ownership
+- Validate permissions before any mutation
+- Use `beforeLoad` to protect route trees
+- Admin ops: `requireAdmin(userId)`
+- Teacher ops: `requireTeacherOfCourse(userId, courseId)`
+- Student ops: filter by `studentId = userId`
 
 ### Data Protection
 
 - Sanitize user inputs
-- Use parameterized queries (drizzle handles this)
-- Implement rate limiting for sensitive operations
+- Parameterized queries (drizzle handles this)
+- Rate limiting for sensitive ops
 - Encrypt sensitive data at rest
-- Use HTTPS only
+- HTTPS only
 
 ---
 
@@ -287,17 +287,17 @@ const updateCourse = createServerFn({ method: 'POST' }).handler(
 
 ### Optimization Strategies
 
-- Lazy load routes and heavy components
-- Implement pagination for large lists
-- Use Supabase indexes for frequently queried fields
+- Lazy load routes + heavy components
+- Pagination for large lists
+- Supabase indexes for frequently queried fields
 - Cache static data where appropriate
-- Optimize images (WebP format, proper sizing)
+- Optimize images (WebP, proper sizing)
 - Minimize bundle size (code splitting)
 
 ### Real-time Subscriptions
 
-- Only subscribe to necessary data
-- Unsubscribe when component unmounts
+- Subscribe only to necessary data
+- Unsubscribe on component unmount
 - Use filters to reduce data transfer
 - Batch updates where possible
 
@@ -307,7 +307,7 @@ const updateCourse = createServerFn({ method: 'POST' }).handler(
 
 ### Testing Priorities (Future)
 
-1. Critical user flows (authentication, enrollment, course access)
+1. Critical user flows (auth, enrollment, course access)
 2. Payment processing (if implemented)
 3. Data integrity (RLS policies, permissions)
 4. Form validations
@@ -317,8 +317,8 @@ const updateCourse = createServerFn({ method: 'POST' }).handler(
 
 - Vitest for unit tests
 - React Testing Library for component tests
-- Playwright for E2E tests
-- Supabase local development for database tests
+- Playwright for E2E
+- Supabase local dev for DB tests
 
 ---
 
@@ -326,8 +326,8 @@ const updateCourse = createServerFn({ method: 'POST' }).handler(
 
 ### Branch Strategy
 
-- `main` - Production-ready code
-- `develop` - Development branch
+- `main` - Production-ready
+- `develop` - Dev branch
 - `feature/*` - Feature branches
 - `fix/*` - Bug fix branches
 
@@ -348,7 +348,7 @@ test: add enrollment flow tests
 
 ## Environment Variables
 
-Required environment variables:
+Required:
 
 ```env
 # Supabase
@@ -363,14 +363,14 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key (admin operations only)
 
 ## Accessibility Requirements
 
-- Semantic HTML elements
+- Semantic HTML
 - ARIA labels where needed
-- Keyboard navigation support
-- Screen reader compatibility
+- Keyboard navigation
+- Screen reader compat
 - Sufficient color contrast (WCAG AA)
 - Focus indicators
 - Alt text for images
-- Form labels and error messages
+- Form labels + error messages
 
 ---
 
@@ -378,13 +378,13 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key (admin operations only)
 
 ### Before Starting a Feature
 
-1. Review the plan document
-2. Check database schema requirements
+1. Review plan doc
+2. Check DB schema requirements
 3. Create necessary types
 4. Implement RLS policies
 5. Build UI components
 6. Test functionality
-7. Update documentation
+7. Update docs
 
 ---
 
@@ -392,10 +392,10 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key (admin operations only)
 
 ### Code Documentation
 
-- JSDoc comments for complex functions
-- README for each major feature
-- API documentation for server functions
-- Database schema documentation
+- JSDoc for complex functions
+- README per major feature
+- API docs for server functions
+- DB schema docs
 
 ---
 
@@ -404,9 +404,9 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key (admin operations only)
 ### Monitoring
 
 - Error tracking (future: Sentry)
-- Performance monitoring
+- Perf monitoring
 - User analytics
-- Database performance
+- DB performance
 
 ---
 
