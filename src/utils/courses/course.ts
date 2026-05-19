@@ -111,6 +111,18 @@ export const getCourse = createServerFn({ method: 'POST' })
     const user = await getCurrentUser()
     const db = await getDb()
 
+    const profile = await db.query.profiles.findFirst({
+      where: eq(profiles.id, user.id),
+    })
+
+    if (!profile) {
+      throw new NotFoundError('Profile not found', {
+        details: { userId: user.id },
+      })
+    }
+
+    const isTeacherOrAdmin = profile.role !== 'student'
+
     const course = await db.query.courses.findFirst({
       where: eq(courses.id, data.courseId),
       with: {
@@ -122,6 +134,10 @@ export const getCourse = createServerFn({ method: 'POST' })
         lessons: {
           orderBy: (lessons, { asc }) => [asc(lessons.orderIndex)],
         },
+        mediaFiles: {
+          where: isTeacherOrAdmin ? undefined : (t) => eq(t.isPublished, true),
+          orderBy: (t, { desc }) => [desc(t.createdAt)],
+        },
       },
     })
 
@@ -129,16 +145,6 @@ export const getCourse = createServerFn({ method: 'POST' })
       throw new NotFoundError('Course not found', {
         code: 'COURSE_NOT_FOUND',
         details: { courseId: data.courseId },
-      })
-    }
-
-    const profile = await db.query.profiles.findFirst({
-      where: eq(profiles.id, user.id),
-    })
-
-    if (!profile) {
-      throw new NotFoundError('Profile not found', {
-        details: { userId: user.id },
       })
     }
 
