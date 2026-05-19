@@ -31,17 +31,24 @@ const verifyEmailChangeFn = createServerFn({ method: 'POST' })
     })
 
     if (!user) {
-      return { success: false, message: 'Invalid or expired verification link.' }
+      return {
+        success: false,
+        message: 'Invalid or expired verification link.',
+      }
     }
 
     if (!user.emailChangeTokenExpiresAt) {
-      return { success: false, message: 'Invalid or expired verification link.' }
+      return {
+        success: false,
+        message: 'Invalid or expired verification link.',
+      }
     }
 
     if (new Date() > user.emailChangeTokenExpiresAt) {
       return {
         success: false,
-        message: 'This verification link has expired. Please request a new email change.',
+        message:
+          'This verification link has expired. Please request a new email change.',
       }
     }
 
@@ -53,14 +60,17 @@ const verifyEmailChangeFn = createServerFn({ method: 'POST' })
     }
 
     if (!user.pendingEmail) {
-      return { success: false, message: 'Invalid or expired verification link.' }
+      return {
+        success: false,
+        message: 'Invalid or expired verification link.',
+      }
     }
 
     const supabaseAdmin = getSupabaseAdminClient()
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      user.id,
-      { email: user.pendingEmail },
-    )
+    const { error: updateError } =
+      await supabaseAdmin.auth.admin.updateUserById(user.id, {
+        email: user.pendingEmail,
+      })
 
     if (updateError) {
       await db
@@ -114,7 +124,10 @@ function VerifyEmailChangeComp() {
     verify({ data: { token } })
       .then((res) => setResult(res))
       .catch(() =>
-        setResult({ success: false, message: 'Verification failed. Please try again.' }),
+        setResult({
+          success: false,
+          message: 'Verification failed. Please try again.',
+        }),
       )
       .finally(() => setIsVerifying(false))
   }, [token, verify])
