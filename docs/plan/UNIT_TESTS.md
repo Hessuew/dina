@@ -1,0 +1,100 @@
+# Unit Testing Plan
+
+## Goal
+
+Trustworthy tests that act as a release signal: if `bun run test` passes, the business logic is correct.
+
+## Commands
+
+```bash
+bun run test           # run all tests (CI gate)
+bun run test:coverage  # run with 100% coverage check on domain layers
+```
+
+## Layer architecture (per feature in src/utils/)
+
+Each feature in `src/utils/` is split into three layers. Only the domain layer is tested:
+
+```
+src/utils/student/
+  students.ts                    ← service: thin orchestrator (createServerFn, no direct DB)
+  repository/
+    student.repository.ts        ← all DB/Drizzle calls — /* v8 ignore start/end */
+  domain/
+    student.domain.ts            ← pure business logic, no IO
+    student.domain.test.ts       ← 100% coverage enforced ← TESTS LIVE HERE
+```
+
+Cross-cutting root domain (grade, assignment, post, student services) stays in `src/domain/` as-is.
+
+## What to test (priority order)
+
+1. **`src/domain/`** — Root cross-cutting pure logic. Done. 100% covered.
+2. **`src/utils/**/domain/`** — Per-feature pure logic. One domain at a time. Start with student.
+3. **`src/utils/authz/permissions.ts`** — Role/permission combinations (already pure, no layer refactor needed)
+4. **`src/utils/password.ts`** — Password strength boundary cases
+5. **`src/utils/errors.ts`** — Error class hierarchy and transformations
+6. **`src/schemas/`** — Zod schema valid/invalid parsing
+7. **`src/hooks/`** — Custom hooks (needs jsdom + @testing-library/react)
+8. **`src/components/`** — Only critical interactive widgets
+
+## What NOT to test
+
+- Repository functions — all DB-touching. Wrap with `/* v8 ignore start/end */`.
+- Service files (`createServerFn` orchestrators) — framework glue. Mark with `/* v8 ignore */`.
+- Barrel `index.ts` re-export files.
+
+## Per-feature refactor checklist
+
+When adding tests to a new utils feature, do this first:
+
+1. **Extract repository** — move all Drizzle queries to `repository/<feature>.repository.ts`, add `/* v8 ignore start/end */`
+2. **Extract domain** — move pure logic to `domain/<feature>.domain.ts`
+3. **Slim down service** — update `<feature>.ts` to call only repository + domain functions, no direct DB imports
+4. **Write tests** — co-located `domain/<feature>.domain.test.ts`
+5. **Verify coverage** — `bun run test:coverage` must stay at 100%
+
+## Test file patterns
+
+### Factory helpers (avoids repetition, hides irrelevant fields)
+
+```ts
+const makeAssignment = (overrides: Partial<...> = {}): Assignment =>
+  ({ id: 'a-1', status: 'published', dueDate: new Date('2099-01-01'), ...overrides }) as Assignment
+```
+
+Use `as Type` to cast partial objects — TypeScript structural typing means only used fields matter.
+
+### Arrange-Act-Assert in one `it` block
+
+```ts
+it('returns 0 for empty array', () => {
+  expect(calculateAverageGrade([])).toBe(0)
+})
+```
+
+One assertion per test when possible. Multiple only when they form a single logical unit.
+
+### Error assertions
+
+```ts
+expect(() => validateSubmissionWindow(assignment, now)).toThrow('Assignment is not open for submissions')
+```
+
+## Coverage thresholds (vitest.config.ts)
+
+```ts
+coverage: {
+  provider: 'v8',
+  include: ['src/domain/**', 'src/utils/**/domain/**'],
+  exclude: ['src/domain/index.ts'],
+  thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },
+}
+```
+
+## Expanding scope later
+
+When adding hooks or component tests:
+1. Add `environment: 'jsdom'` or per-file `@vitest-environment jsdom` annotation
+2. Add `include` patterns for the new scope
+3. Write a new ADR updating scope and any new conventions
