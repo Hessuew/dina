@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { MediaLibraryRow } from '@/utils/library/library'
@@ -9,6 +9,7 @@ import {
   deleteLibraryMedia,
   updateLibraryMedia,
   uploadMediaPdfFn,
+  uploadMediaThumbnailFn,
 } from '@/utils/library/library'
 import { toUserError } from '@/utils/errors'
 import { useAppForm } from '@/hooks/form'
@@ -79,9 +80,13 @@ function getInitialValues(
     category: media.category,
     description: media.description ?? '',
     kind: fromFileType(media.fileType),
-    url: media.fileUrl,
+    url: '',
     isPublished: media.isPublished,
   }
+}
+
+function getFilenameFromUrl(url: string): string {
+  return url.split('?')[0].split('/').pop() ?? url
 }
 
 export function MediaDialog({
@@ -92,22 +97,35 @@ export function MediaDialog({
   courseId,
   onSuccess,
 }: MediaDialogProps) {
-  const {
-    fileInputRef,
-    isUploading,
-    fileData,
-    fileObject,
-    handleFileChange,
-    clearFile,
-    setUploading,
-  } = useFileUpload()
+  const docUpload = useFileUpload()
+  const thumbUpload = useFileUpload()
+  const [existingDocUrl, setExistingDocUrl] = useState<string | null>(null)
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
 
   const { createMutation, updateMutation, deleteMutation, isAnyPending } =
     useEntityMutation({
       createFn: createLibraryMedia,
       updateFn: updateLibraryMedia,
       deleteFn: deleteLibraryMedia,
-      onSuccess: () => {
+      onSuccess: async ({ data }) => {
+        const mediaId = (data as { media: { id: string } }).media.id
+        if (thumbUpload.fileObject) {
+          try {
+            await uploadMediaThumbnailFn({
+              data: {
+                mediaId,
+                fileData: thumbUpload.fileData!,
+                fileName: thumbUpload.fileObject.name,
+                fileType: thumbUpload.fileObject.type,
+                fileSize: thumbUpload.fileObject.size,
+              },
+            })
+          } catch (error) {
+            toast.error(toUserError(error).message)
+          }
+        }
+        thumbUpload.clearFile()
+        setThumbnailUrl(null)
         onOpenChange(false)
         onSuccess?.()
       },
@@ -119,28 +137,35 @@ export function MediaDialog({
       let url = value.url
       let fileSize: number | undefined
 
-      if (value.kind === 'document' && fileObject) {
-        setUploading(true)
-        try {
-          const uploaded = await uploadMediaPdfFn({
-            data: {
-              fileData: fileData!,
-              fileName: fileObject.name,
-              fileType: fileObject.type,
-              fileSize: fileObject.size,
-              ...(mode === 'edit' && media ? { oldUrl: media.fileUrl } : {}),
-            },
-          })
-          if (uploaded.fileUrl) {
-            url = uploaded.fileUrl
-            fileSize = fileObject.size
+      if (value.kind === 'document') {
+        if (docUpload.fileObject) {
+          docUpload.setUploading(true)
+          try {
+            const uploaded = await uploadMediaPdfFn({
+              data: {
+                fileData: docUpload.fileData!,
+                fileName: docUpload.fileObject.name,
+                fileType: docUpload.fileObject.type,
+                fileSize: docUpload.fileObject.size,
+                ...(mode === 'edit' && media ? { oldUrl: media.fileUrl } : {}),
+              },
+            })
+            if (uploaded.fileUrl) {
+              url = uploaded.fileUrl
+              fileSize = docUpload.fileObject.size
+            }
+          } catch (error) {
+            toast.error(toUserError(error).message)
+            docUpload.setUploading(false)
+            return
           }
-        } catch (error) {
-          toast.error(toUserError(error).message)
-          setUploading(false)
+          docUpload.setUploading(false)
+        } else if (existingDocUrl) {
+          url = existingDocUrl
+        } else {
+          toast.error('Please upload a document file')
           return
         }
-        setUploading(false)
       }
 
       const payload = {
@@ -164,11 +189,18 @@ export function MediaDialog({
     },
   })
 
+  const clearDocFile = docUpload.clearFile
+  const clearThumbFile = thumbUpload.clearFile
+
   useEffect(() => {
     if (!open) return
-    clearFile()
+    const isDocEdit = mode === 'edit' && media?.fileType === 'document'
+    setExistingDocUrl(isDocEdit ? media.fileUrl : null)
+    setThumbnailUrl(media?.thumbnailUrl ?? null)
+    clearDocFile()
+    clearThumbFile()
     form.reset(getInitialValues(media, mode, courseId))
-  }, [open, media, mode, form, clearFile, courseId])
+  }, [open, media, mode, form, courseId, clearDocFile, clearThumbFile])
 
   if (mode === 'delete') {
     return (
@@ -198,9 +230,11 @@ export function MediaDialog({
       }
       maxWidth="3xl"
       onSubmit={() => void form.handleSubmit()}
-      isSubmitting={isAnyPending || isUploading}
+      isSubmitting={
+        isAnyPending || docUpload.isUploading || thumbUpload.isUploading
+      }
       submitLabel={mode === 'create' ? 'Create Media' : 'Save Changes'}
-      loadingLabel={isUploading ? 'Uploading...' : undefined}
+      loadingLabel={docUpload.isUploading ? 'Uploading...' : undefined}
     >
       <DialogBody>
         <FieldGroup className="mt-6 gap-8">
@@ -255,7 +289,11 @@ export function MediaDialog({
                   value={field.state.value}
                   onChange={(value) => {
                     field.handleChange(value as MediaKind)
-                    if (value === 'youtube') clearFile()
+                    if (value === 'youtube') {
+                      docUpload.clearFile()
+                      thumbUpload.clearFile()
+                      setThumbnailUrl(null)
+                    }
                   }}
                 >
                   <SelectItem value="youtube">YouTube</SelectItem>
@@ -264,133 +302,238 @@ export function MediaDialog({
               )}
             </form.AppField>
 
+            {/* YouTube URL — only for video kind */}
             <form.Subscribe selector={(state) => state.values.kind}>
-              {(kind) => (
-                <form.AppField
-                  name="url"
-                  validators={{
-                    onSubmit: ({ value, fieldApi }) => {
-                      const currentKind = fieldApi.form.state.values.kind
-                      if (currentKind === 'document' && fileObject)
+              {(kind) =>
+                kind === 'youtube' ? (
+                  <form.AppField
+                    name="url"
+                    validators={{
+                      onSubmit: ({ value }) => {
+                        if (!value) return 'URL is required'
                         return undefined
-                      if (!value) return 'URL is required'
-                      return undefined
-                    },
-                  }}
-                >
-                  {(field) => (
-                    <Field className="sm:col-span-2">
-                      <FieldLabel
-                        htmlFor="media-url"
-                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                      >
-                        {kind === 'youtube' ? 'YouTube URL' : 'Document URL'}
-                        {kind === 'youtube' || !fileObject ? (
-                          <span className="text-[#C5A059]">*</span>
-                        ) : (
-                          <span className="text-[#8E816D]">
-                            (optional if file uploaded)
-                          </span>
-                        )}
-                      </FieldLabel>
-                      <Input
-                        id="media-url"
-                        value={field.state.value}
-                        placeholder={
-                          kind === 'youtube'
-                            ? 'https://www.youtube.com/watch?v=...'
-                            : 'https://.../file.pdf'
-                        }
-                        className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50 ${field.state.meta.errors.length > 0 ? 'border-red-500/60' : ''}`}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                      />
-                      {field.state.meta.errors.length > 0 && (
-                        <p className="text-[0.68rem] text-red-400">
-                          {String(field.state.meta.errors[0])}
-                        </p>
-                      )}
-                    </Field>
-                  )}
-                </form.AppField>
-              )}
-            </form.Subscribe>
-
-            <form.AppField name="kind">
-              {(field) =>
-                field.state.value === 'document' ? (
-                  <Field className="sm:col-span-2">
-                    <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-                      Upload Document (optional)
-                    </FieldLabel>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept={DOCUMENT_ACCEPT}
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    {fileObject ? (
-                      <div className="flex items-center justify-between border border-white/10 bg-black/20 px-4 py-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm text-[#F8F4EC]">
-                            {fileObject.name}
-                          </div>
-                          <div className="mt-1 text-xs text-[#8E816D]">
-                            File will be uploaded on save
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          theme="dark"
-                          size="icon"
-                          className="rounded-none"
-                          onClick={clearFile}
+                      },
+                    }}
+                  >
+                    {(field) => (
+                      <Field className="sm:col-span-2">
+                        <FieldLabel
+                          htmlFor="media-url"
+                          className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
                         >
-                          <XIcon className="size-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        theme="dark"
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
-                      >
-                        <UploadIcon className="mr-2 size-4" />
-                        Upload Document
-                      </Button>
+                          YouTube URL
+                          <span className="text-[#C5A059]">*</span>
+                        </FieldLabel>
+                        <Input
+                          id="media-url"
+                          value={field.state.value}
+                          placeholder="https://www.youtube.com/watch?v=..."
+                          className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50 ${field.state.meta.errors.length > 0 ? 'border-red-500/60' : ''}`}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                        />
+                        {field.state.meta.errors.length > 0 && (
+                          <p className="text-[0.68rem] text-red-400">
+                            {String(field.state.meta.errors[0])}
+                          </p>
+                        )}
+                      </Field>
                     )}
-                    <p className="text-xs text-[#8E816D]">
-                      PDF, PPTX, or DOCX. Max 25MB.
-                    </p>
-                  </Field>
+                  </form.AppField>
                 ) : null
               }
-            </form.AppField>
+            </form.Subscribe>
 
-            <form.AppField name="description">
-              {(field) => (
-                <field.TextAreaField
-                  id="media-description"
-                  label="Description"
-                  className="sm:col-span-2"
-                  placeholder="Short summary for students"
-                  rows={6}
-                />
-              )}
-            </form.AppField>
+            {/* Document upload + thumbnail — only for document kind */}
+            <form.Subscribe selector={(state) => state.values.kind}>
+              {(kind) =>
+                kind === 'document' ? (
+                  <>
+                    {/* Document file upload */}
+                    <Field className="sm:col-span-2">
+                      <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+                        Document File
+                        {mode === 'create' && (
+                          <span className="text-[#C5A059]">*</span>
+                        )}
+                      </FieldLabel>
+                      <input
+                        ref={docUpload.fileInputRef}
+                        type="file"
+                        accept={DOCUMENT_ACCEPT}
+                        onChange={docUpload.handleFileChange}
+                        className="hidden"
+                      />
+                      {docUpload.fileObject ? (
+                        <div className="flex items-center justify-between border border-white/10 bg-black/20 px-4 py-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm text-[#F8F4EC]">
+                              {docUpload.fileObject.name}
+                            </div>
+                            <div className="mt-1 text-xs text-[#8E816D]">
+                              File will be uploaded on save
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            theme="dark"
+                            size="icon"
+                            className="rounded-none"
+                            onClick={docUpload.clearFile}
+                          >
+                            <XIcon className="size-4" />
+                          </Button>
+                        </div>
+                      ) : existingDocUrl ? (
+                        <div className="flex items-center justify-between border border-white/10 bg-black/20 px-4 py-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm text-[#F8F4EC]">
+                              {getFilenameFromUrl(existingDocUrl)}
+                            </div>
+                            <div className="mt-1 text-xs text-[#8E816D]">
+                              Current file — upload a new one to replace
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            theme="dark"
+                            size="sm"
+                            className="shrink-0 rounded-none border-white/12"
+                            onClick={() =>
+                              docUpload.fileInputRef.current?.click()
+                            }
+                          >
+                            Replace
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          theme="dark"
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            docUpload.fileInputRef.current?.click()
+                          }
+                          className="w-full rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
+                        >
+                          <UploadIcon className="mr-2 size-4" />
+                          Upload Document
+                        </Button>
+                      )}
+                      <p className="text-xs text-[#8E816D]">
+                        PDF, PPTX, or DOCX. Max 25MB.
+                      </p>
+                    </Field>
 
-            <form.AppField name="isPublished">
-              {(field) => (
-                <field.SwitchField
-                  id="media-published"
-                  label="Published"
-                  className="sm:col-span-2"
-                />
-              )}
-            </form.AppField>
+                    {/* Description + Thumbnail side by side */}
+                    <form.AppField name="description">
+                      {(field) => (
+                        <field.TextAreaField
+                          id="media-description"
+                          label="Description"
+                          placeholder="Short summary for students"
+                          rows={6}
+                        />
+                      )}
+                    </form.AppField>
+
+                    <Field>
+                      <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+                        Thumbnail
+                      </FieldLabel>
+                      <div className="space-y-2">
+                        <input
+                          ref={thumbUpload.fileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          onChange={thumbUpload.handleFileChange}
+                          className="hidden"
+                        />
+                        {thumbUpload.fileData || thumbnailUrl ? (
+                          <div className="relative aspect-video w-full overflow-hidden border border-white/10">
+                            <img
+                              src={thumbUpload.fileData || thumbnailUrl!}
+                              alt="Media thumbnail"
+                              className="size-full object-cover"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="absolute top-2 right-2 rounded-none border-white/20 bg-black/40 text-white hover:bg-black/60"
+                              onClick={() => {
+                                thumbUpload.clearFile()
+                                setThumbnailUrl(null)
+                              }}
+                            >
+                              <XIcon className="size-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            theme="dark"
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                              thumbUpload.fileInputRef.current?.click()
+                            }
+                            className="w-full rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
+                          >
+                            <UploadIcon className="mr-2 size-4" />
+                            Upload Thumbnail
+                          </Button>
+                        )}
+                        <p className="text-xs text-[#8E816D]">
+                          JPG, PNG, WebP or GIF. Max 2MB.
+                        </p>
+                      </div>
+                    </Field>
+
+                    <form.AppField name="isPublished">
+                      {(field) => (
+                        <field.SwitchField
+                          id="media-published"
+                          label="Published"
+                          className="sm:col-span-2"
+                        />
+                      )}
+                    </form.AppField>
+                  </>
+                ) : null
+              }
+            </form.Subscribe>
+
+            {/* Fields shown only for youtube kind */}
+            <form.Subscribe selector={(state) => state.values.kind}>
+              {(kind) =>
+                kind === 'youtube' ? (
+                  <>
+                    <form.AppField name="description">
+                      {(field) => (
+                        <field.TextAreaField
+                          id="media-description"
+                          label="Description"
+                          className="sm:col-span-2"
+                          placeholder="Short summary for students"
+                          rows={6}
+                        />
+                      )}
+                    </form.AppField>
+
+                    <form.AppField name="isPublished">
+                      {(field) => (
+                        <field.SwitchField
+                          id="media-published"
+                          label="Published"
+                          className="sm:col-span-2"
+                        />
+                      )}
+                    </form.AppField>
+                  </>
+                ) : null
+              }
+            </form.Subscribe>
           </div>
         </FieldGroup>
       </DialogBody>
