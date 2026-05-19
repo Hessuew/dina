@@ -113,6 +113,13 @@
       "when": 1778705639756,
       "tag": "0018_email_change_verification",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1778880275870,
+      "tag": "0019_chemical_black_tarantula",
+      "breakpoints": true
     }
   ]
 }

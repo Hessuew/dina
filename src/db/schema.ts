@@ -602,6 +602,7 @@ export const mediaLibrary = pgTable(
     fileUrl: text('file_url').notNull(),
     fileType: mediaTypeEnum('file_type').notNull(),
     fileSize: integer('file_size'),
+    thumbnailUrl: text('thumbnail_url'),
     isPublished: boolean('is_published').notNull().default(false),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
