@@ -1,6 +1,7 @@
 import { useRouter } from '@tanstack/react-router'
 import { ArrowRight, CalendarIcon } from 'lucide-react'
 import { useState } from 'react'
+import type { AssignmentStatus, SubmissionStatus } from '@/types/database.types'
 import { Button } from '@/components/ui/button'
 import { StatusChip } from '@/components/ui/status-chip'
 import {
@@ -18,7 +19,7 @@ export type Assignment = {
   description: string | null
   dueDate: Date
   maxGrade: number | null
-  status: 'draft' | 'published' | 'closed'
+  status: AssignmentStatus
   lesson: {
     id: string
     title: string
@@ -30,7 +31,7 @@ export type Assignment = {
   }
   submission?: {
     id: string
-    status: 'draft' | 'submitted' | 'graded' | 'returned'
+    status: SubmissionStatus
     grade: number | null
     submittedAt: Date | null
   } | null

@@ -4,13 +4,16 @@ import {
   buildAverageGradeByCourse,
   buildStudentWithStats,
 } from './student.domain'
+import type { SubmissionStatus } from '@/types/database.types'
 
-const makeSub = (overrides: {
-  courseId?: string
-  grade?: number | null
-  status?: string
-  maxGrade?: number | null
-} = {}) => ({
+const makeSub = (
+  overrides: {
+    courseId?: string
+    grade?: number | null
+    status?: string
+    maxGrade?: number | null
+  } = {},
+) => ({
   status: overrides.status ?? 'submitted',
   grade: overrides.grade ?? null,
   assignment: {
@@ -19,13 +22,15 @@ const makeSub = (overrides: {
   },
 })
 
-const makeStudent = (overrides: Partial<{
-  id: string
-  fullName: string
-  email: string
-  avatarUrl: string | null
-  createdAt: Date
-}> = {}) => ({
+const makeStudent = (
+  overrides: Partial<{
+    id: string
+    fullName: string
+    email: string
+    avatarUrl: string | null
+    createdAt: Date
+  }> = {},
+) => ({
   id: 's-1',
   fullName: 'Jane Doe',
   email: 'jane@test.com',
@@ -34,16 +39,18 @@ const makeStudent = (overrides: Partial<{
   ...overrides,
 })
 
-const makeAssignmentRow = (overrides: Partial<{
-  assignmentId: string
-  assignmentTitle: string
-  assignmentDueDate: Date
-  assignmentMaxGrade: number | null
-  courseId: string
-  courseTitle: string
-  lessonId: string
-  lessonTitle: string
-}> = {}) => ({
+const makeAssignmentRow = (
+  overrides: Partial<{
+    assignmentId: string
+    assignmentTitle: string
+    assignmentDueDate: Date
+    assignmentMaxGrade: number | null
+    courseId: string
+    courseTitle: string
+    lessonId: string
+    lessonTitle: string
+  }> = {},
+) => ({
   assignmentId: 'a-1',
   assignmentTitle: 'Assignment 1',
   assignmentDueDate: new Date('2099-01-01'),
@@ -55,15 +62,17 @@ const makeAssignmentRow = (overrides: Partial<{
   ...overrides,
 })
 
-const makeSubmissionRow = (overrides: Partial<{
-  id: string
-  assignmentId: string
-  status: 'draft' | 'submitted' | 'graded' | 'returned'
-  grade: number | null
-  submittedAt: Date | null
-  gradedAt: Date | null
-  feedback: string | null
-}> = {}) => ({
+const makeSubmissionRow = (
+  overrides: Partial<{
+    id: string
+    assignmentId: string
+    status: SubmissionStatus
+    grade: number | null
+    submittedAt: Date | null
+    gradedAt: Date | null
+    feedback: string | null
+  }> = {},
+) => ({
   id: 'sub-1',
   assignmentId: 'a-1',
   status: 'submitted',
@@ -80,7 +89,9 @@ describe('buildAverageGradeByCourse', () => {
   })
 
   it('excludes courses with no matching submissions', () => {
-    expect(buildAverageGradeByCourse([{ id: 'c-1', title: 'C1' }], [])).toEqual([])
+    expect(buildAverageGradeByCourse([{ id: 'c-1', title: 'C1' }], [])).toEqual(
+      [],
+    )
   })
 
   it('excludes courses where all submissions have null grade', () => {
@@ -96,7 +107,14 @@ describe('buildAverageGradeByCourse', () => {
       [{ id: 'c-1', title: 'Course 1' }],
       [makeSub({ grade: 80 })],
     )
-    expect(result).toEqual([{ courseId: 'c-1', courseTitle: 'Course 1', averageGrade: 80, maxGrade: 100 }])
+    expect(result).toEqual([
+      {
+        courseId: 'c-1',
+        courseTitle: 'Course 1',
+        averageGrade: 80,
+        maxGrade: 100,
+      },
+    ])
   })
 
   it('uses assignment maxGrade for percentage calculation', () => {
@@ -118,7 +136,10 @@ describe('buildAverageGradeByCourse', () => {
   it('only includes submissions matching the course', () => {
     const result = buildAverageGradeByCourse(
       [{ id: 'c-1', title: 'C1' }],
-      [makeSub({ grade: 80, courseId: 'c-1' }), makeSub({ grade: 20, courseId: 'c-2' })],
+      [
+        makeSub({ grade: 80, courseId: 'c-1' }),
+        makeSub({ grade: 20, courseId: 'c-2' }),
+      ],
     )
     expect(result[0].averageGrade).toBe(80)
   })
@@ -135,7 +156,10 @@ describe('buildStudentWithStats', () => {
   it('sets enrollmentCount to the number of courses', () => {
     const result = buildStudentWithStats(
       makeStudent(),
-      [{ id: 'c-1', title: 'C1' }, { id: 'c-2', title: 'C2' }],
+      [
+        { id: 'c-1', title: 'C1' },
+        { id: 'c-2', title: 'C2' },
+      ],
       [],
       0,
     )
@@ -174,7 +198,9 @@ describe('buildAssignmentsWithSubmissions', () => {
   })
 
   it('excludes assignments with no matching submission', () => {
-    expect(buildAssignmentsWithSubmissions([makeAssignmentRow()], [])).toEqual([])
+    expect(buildAssignmentsWithSubmissions([makeAssignmentRow()], [])).toEqual(
+      [],
+    )
   })
 
   it('maps assignmentId to id and assignmentTitle to title', () => {
@@ -197,7 +223,10 @@ describe('buildAssignmentsWithSubmissions', () => {
 
   it('returns only matched assignments when there is partial overlap', () => {
     const result = buildAssignmentsWithSubmissions(
-      [makeAssignmentRow({ assignmentId: 'a-1' }), makeAssignmentRow({ assignmentId: 'a-2' })],
+      [
+        makeAssignmentRow({ assignmentId: 'a-1' }),
+        makeAssignmentRow({ assignmentId: 'a-2' }),
+      ],
       [makeSubmissionRow({ assignmentId: 'a-2', id: 'sub-2' })],
     )
     expect(result).toHaveLength(1)

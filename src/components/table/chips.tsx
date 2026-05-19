@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   XCircle,
 } from 'lucide-react'
+import type { AssignmentStatus, SubmissionStatus } from '@/types/database.types'
 import { cn } from '@/lib/utils'
 
 type RoleChipProps = {
@@ -168,7 +169,7 @@ export function EnrollmentStatusChip({
 }
 
 type SubmissionStatusChipProps = {
-  status: 'draft' | 'submitted' | 'graded' | 'returned'
+  status: SubmissionStatus
   className?: string
 }
 
@@ -217,7 +218,7 @@ export function SubmissionStatusChip({
 }
 
 type AssignmentStatusChipProps = {
-  status: 'draft' | 'published' | 'closed'
+  status: AssignmentStatus
   className?: string
 }
 

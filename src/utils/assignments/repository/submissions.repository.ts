@@ -1,5 +1,6 @@
 /* v8 ignore start */
 import { and, eq } from 'drizzle-orm'
+import type { SubmissionStatus } from '@/types/database.types'
 import { getDb } from '@/db'
 import { submissions } from '@/db/schema'
 
@@ -28,7 +29,7 @@ export async function insertSubmission(values: {
   studentId: string
   content: string | null
   fileUrl: string | null
-  status: 'draft' | 'submitted' | 'graded' | 'returned'
+  status: SubmissionStatus
   submittedAt: Date | null
 }) {
   const db = await getDb()
@@ -41,7 +42,7 @@ export async function updateSubmission(
   values: {
     content: string | null
     fileUrl: string | null
-    status: 'draft' | 'submitted' | 'graded' | 'returned'
+    status: SubmissionStatus
     submittedAt: Date | null
     updatedAt: Date
   },

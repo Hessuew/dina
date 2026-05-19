@@ -1,5 +1,6 @@
 /* v8 ignore start */
 import { eq, inArray } from 'drizzle-orm'
+import type { AssignmentStatus } from '@/types/database.types'
 import { getDb } from '@/db'
 import { assignments, courseTeachers, submissions } from '@/db/schema'
 
@@ -138,7 +139,7 @@ export async function updateAssignmentById(
     description: string | null
     dueDate: Date
     maxGrade: number
-    status?: 'draft' | 'published' | 'closed'
+    status?: AssignmentStatus
     updatedAt: Date
   },
 ) {

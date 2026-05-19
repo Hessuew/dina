@@ -1,3 +1,5 @@
+import type { SubmissionStatus } from './database.types'
+
 export type StudentWithStats = {
   id: string
   fullName: string
@@ -41,7 +43,7 @@ export type StudentDetailWithAssignments = {
     lessonTitle: string
     submission: {
       id: string
-      status: 'draft' | 'submitted' | 'graded' | 'returned'
+      status: SubmissionStatus
       grade: number | null
       submittedAt: Date | null
       gradedAt: Date | null
