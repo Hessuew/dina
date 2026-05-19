@@ -41,6 +41,7 @@ Update status as each folder is completed.
 | 4 | `profile` | DONE | `checkEmailChangeRateLimit(lastRequestAt, now)` — returns `number \| null` |
 | 5 | `teachers` | DONE | `sortTeachers(teachers)` — fixes `orderIndex === 0` bug, grouped sort |
 | 6 | `zoomLink` | N/A | *(pure CRUD, no domain logic — repository split skipped)* |
+| 7 | `courses` | DONE | `buildAssignmentStats(courseAssignments, studentSubmissions)`, `extractTeacherIds(courseTeachers)`, `validateSameTeacher(teacher1Id, teacher2Id)`, `validateTeacherRoles(teachers, teacher1Id, teacher2Id, allowAdmin)` — `lesson.ts` N/A (pure CRUD) |
 
 Folders marked N/A have no extractable domain logic. Repository split is only worth doing when a domain layer follows.
 

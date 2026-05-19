@@ -1,15 +1,23 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq, gt, inArray } from 'drizzle-orm'
-import { getDb } from '@/db'
+import {
+  deleteLessonById,
+  findAllCourseIds,
+  findAssignmentCalendarEvents,
+  findLessonCalendarEvents,
+  findProfileById,
+  findUpcomingLessons,
+  insertLesson,
+  updateLessonById,
+} from './repository'
 import {
   createLessonSchema,
   deleteLessonSchema,
   updateLessonSchema,
 } from '@/schemas/lesson.schema'
-import { assignments, courses, lessons, profiles } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth/auth'
 import { authz, withRequestCache } from '@/utils/authz'
 import { NotFoundError } from '@/utils/errors'
+import { getDb } from '@/db'
 
 export const createLesson = createServerFn({ method: 'POST' })
   .inputValidator(createLessonSchema)
@@ -21,20 +29,17 @@ export const createLesson = createServerFn({ method: 'POST' })
 
       await authz(user.id).perform('createLesson').on('course', data.courseId)
 
-      const [lesson] = await db
-        .insert(lessons)
-        .values({
-          courseId: data.courseId,
-          title: data.title,
-          content: data.content || null,
-          videoUrl: data.videoUrl || null,
-          thumbnailUrl: data.thumbnailUrl || null,
-          scheduledTime: data.scheduledTime || null,
-          duration: data.duration || null,
-          orderIndex: data.orderIndex,
-          isPublished: data.isPublished ?? false,
-        })
-        .returning()
+      const lesson = await insertLesson(db, {
+        courseId: data.courseId,
+        title: data.title,
+        content: data.content || null,
+        videoUrl: data.videoUrl || null,
+        thumbnailUrl: data.thumbnailUrl || null,
+        scheduledTime: data.scheduledTime || null,
+        duration: data.duration || null,
+        orderIndex: data.orderIndex,
+        isPublished: data.isPublished ?? false,
+      })
 
       return { lesson }
     })
@@ -50,21 +55,17 @@ export const updateLesson = createServerFn({ method: 'POST' })
 
       await authz(user.id).perform('editLesson').on('course', data.courseId)
 
-      const [lesson] = await db
-        .update(lessons)
-        .set({
-          title: data.title,
-          content: data.content || null,
-          videoUrl: data.videoUrl || null,
-          thumbnailUrl: data.thumbnailUrl || null,
-          scheduledTime: data.scheduledTime || null,
-          duration: data.duration || null,
-          orderIndex: data.orderIndex,
-          isPublished: data.isPublished,
-          updatedAt: new Date(),
-        })
-        .where(eq(lessons.id, data.lessonId))
-        .returning()
+      const lesson = await updateLessonById(db, data.lessonId, {
+        title: data.title,
+        content: data.content || null,
+        videoUrl: data.videoUrl || null,
+        thumbnailUrl: data.thumbnailUrl || null,
+        scheduledTime: data.scheduledTime || null,
+        duration: data.duration || null,
+        orderIndex: data.orderIndex,
+        isPublished: data.isPublished,
+        updatedAt: new Date(),
+      })
 
       return { lesson }
     })
@@ -79,8 +80,7 @@ export const deleteLesson = createServerFn({ method: 'POST' })
       const db = await getDb()
 
       await authz(user.id).perform('deleteLesson').on('course', data.courseId)
-
-      await db.delete(lessons).where(eq(lessons.id, data.lessonId))
+      await deleteLessonById(db, data.lessonId)
 
       return { success: true, lessonId: data.lessonId }
     })
@@ -91,34 +91,14 @@ export const getUpcomingLessons = createServerFn({ method: 'POST' }).handler(
     const user = await getCurrentUser()
     const db = await getDb()
 
-    const profile = await db.query.profiles.findFirst({
-      where: eq(profiles.id, user.id),
-    })
-
+    const profile = await findProfileById(db, user.id)
     if (!profile) {
       throw new NotFoundError('Profile not found', {
         details: { userId: user.id },
       })
     }
 
-    const now = new Date()
-
-    // For both students and teachers, show ALL lessons from all courses
-    const upcomingLessons = await db
-      .select({
-        id: lessons.id,
-        title: lessons.title,
-        scheduledTime: lessons.scheduledTime,
-        thumbnailUrl: lessons.thumbnailUrl,
-        courseId: lessons.courseId,
-        courseName: courses.title,
-        isPublished: lessons.isPublished,
-      })
-      .from(lessons)
-      .innerJoin(courses, eq(lessons.courseId, courses.id))
-      .where(and(gt(lessons.scheduledTime, now), eq(lessons.isPublished, true)))
-      .orderBy(lessons.scheduledTime)
-      .limit(5)
+    const upcomingLessons = await findUpcomingLessons(db, new Date())
 
     return {
       lessons: upcomingLessons.map((l) => ({
@@ -138,53 +118,23 @@ export const getCalendarEvents = createServerFn({ method: 'POST' }).handler(
     const user = await getCurrentUser()
     const db = await getDb()
 
-    const profile = await db.query.profiles.findFirst({
-      where: eq(profiles.id, user.id),
-    })
-
+    const profile = await findProfileById(db, user.id)
     if (!profile) {
       throw new NotFoundError('Profile not found', {
         details: { userId: user.id },
       })
     }
 
-    const courseIds = (
-      await db.query.courses.findMany({
-        columns: { id: true },
-      })
-    ).map((c) => c.id)
+    const courseIds = await findAllCourseIds(db)
+    if (courseIds.length === 0) return { events: [] }
 
-    if (courseIds.length === 0) {
-      return { events: [] }
-    }
-
-    const upcomingLessons = await db
-      .select({
-        id: lessons.id,
-        title: lessons.title,
-        scheduledTime: lessons.scheduledTime,
-        courseId: lessons.courseId,
-        courseName: courses.title,
-      })
-      .from(lessons)
-      .innerJoin(courses, eq(lessons.courseId, courses.id))
-      .where(inArray(courses.id, courseIds))
-
-    const upcomingAssignments = await db
-      .select({
-        id: assignments.id,
-        title: assignments.title,
-        dueDate: assignments.dueDate,
-        courseId: lessons.courseId,
-        courseName: courses.title,
-      })
-      .from(assignments)
-      .innerJoin(lessons, eq(assignments.lessonId, lessons.id))
-      .innerJoin(courses, eq(lessons.courseId, courses.id))
-      .where(inArray(courses.id, courseIds))
+    const [lessonEvents, assignmentEvents] = await Promise.all([
+      findLessonCalendarEvents(db, courseIds),
+      findAssignmentCalendarEvents(db, courseIds),
+    ])
 
     const events = [
-      ...upcomingLessons
+      ...lessonEvents
         .filter((l) => l.scheduledTime)
         .map((l) => ({
           id: l.id,
@@ -194,7 +144,7 @@ export const getCalendarEvents = createServerFn({ method: 'POST' }).handler(
           courseId: l.courseId,
           courseName: l.courseName,
         })),
-      ...upcomingAssignments.map((a) => ({
+      ...assignmentEvents.map((a) => ({
         id: a.id,
         title: a.title,
         date: a.dueDate,

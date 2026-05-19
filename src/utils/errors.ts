@@ -20,6 +20,7 @@ export type AppErrorCode =
   | 'EMAIL_CHANGE_RATE_LIMITED'
   | 'EMAIL_SEND_FAILED'
   | 'PASSWORD_UPDATE_FAILED'
+  | 'STORAGE_OPERATION_FAILED'
 
 export type AppErrorDetails = Record<string, unknown>
 
