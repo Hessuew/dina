@@ -14,6 +14,7 @@ import {
   updatePasswordSchema,
   updateProfileSchema,
 } from '@/schemas/profile.schema'
+import { checkEmailChangeRateLimit } from '@/utils/profile/domain/profile.domain'
 
 export const updateProfileFn = createServerFn({ method: 'POST' })
   .inputValidator(updateProfileSchema)
@@ -27,25 +28,21 @@ export const updateProfileFn = createServerFn({ method: 'POST' })
         columns: { lastEmailChangeRequestAt: true },
       })
 
-      if (profile?.lastEmailChangeRequestAt) {
-        const timeSince =
-          Date.now() - profile.lastEmailChangeRequestAt.getTime()
-        if (timeSince < 60 * 1000) {
-          const waitSeconds = Math.ceil((60 * 1000 - timeSince) / 1000)
-          throw new AppError({
-            code: 'EMAIL_CHANGE_RATE_LIMITED',
-            status: 429,
-            userMessage: `Please wait ${waitSeconds} seconds before requesting another email change.`,
-            internalMessage: `Rate limited email change for user ${user.id}`,
-          })
-        }
+      const waitSeconds = checkEmailChangeRateLimit(
+        profile?.lastEmailChangeRequestAt ?? null,
+        new Date(),
+      )
+      if (waitSeconds !== null) {
+        throw new AppError({
+          code: 'EMAIL_CHANGE_RATE_LIMITED',
+          status: 429,
+          userMessage: `Please wait ${waitSeconds} seconds before requesting another email change.`,
+          internalMessage: `Rate limited email change for user ${user.id}`,
+        })
       }
 
       const token = crypto.randomBytes(32).toString('hex')
-      const tokenHash = crypto
-        .createHash('sha256')
-        .update(token)
-        .digest('hex')
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
       await db

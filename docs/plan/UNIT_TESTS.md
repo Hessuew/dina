@@ -36,13 +36,13 @@ Update status as each folder is completed.
 |---|--------|--------|---------------------------|
 | ✅ | `student` | DONE | `buildStudentWithStats`, `buildAverageGradeByCourse`, `buildAssignmentsWithSubmissions` |
 | 1 | `calendar` | DONE | `buildCalendarEvents(lessons, assignments, specialEvents)` |
-| 2 | `enrolment` | TODO | `generateInvitationExpiry()`, `isInvitationResendable(invitation)` |
-| 3 | `event` | TODO | *(none — pure CRUD, repository split only)* |
-| 4 | `profile` | TODO | `checkEmailChangeRateLimit(lastRequestAt)` |
-| 5 | `teachers` | TODO | `sortTeachers(teachers)` |
-| 6 | `zoomLink` | TODO | *(none — repository split only)* |
+| 2 | `enrolment` | DONE | `generateSecureToken()`, `generateInvitationExpiry()`, `isInvitationResendable(invitation)` |
+| 3 | `event` | N/A | *(pure CRUD, no domain logic — repository split skipped)* |
+| 4 | `profile` | DONE | `checkEmailChangeRateLimit(lastRequestAt, now)` — returns `number \| null` |
+| 5 | `teachers` | DONE | `sortTeachers(teachers)` — fixes `orderIndex === 0` bug, grouped sort |
+| 6 | `zoomLink` | N/A | *(pure CRUD, no domain logic — repository split skipped)* |
 
-Folders marked *(none)* skip the `domain/` layer — they only need the repository split.
+Folders marked N/A have no extractable domain logic. Repository split is only worth doing when a domain layer follows.
 
 ## What to test (priority order)
 
