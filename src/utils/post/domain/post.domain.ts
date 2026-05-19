@@ -1,11 +1,3 @@
-import { and, inArray, isNull, sql } from 'drizzle-orm'
-import { postComments } from '@/db/schema'
-
-// Db type is the Drizzle database instance returned by getDb()
-// Using 'any' here is acceptable since the function only uses standard Drizzle query builder methods
-// which are type-safe at the call site
-type Db = any
-
 export type PostChannel =
   | { id: 'general'; name: 'General'; courseId: null }
   | { id: string; name: string; courseId: string }
@@ -65,42 +57,8 @@ export type CommentWithAuthor = {
   }>
 }
 
-/* v8 ignore start */
-/**
- * Calculates comment counts for multiple posts
- */
-export async function calculateCommentCounts(
-  db: Db,
-  postIds: Array<string>,
-): Promise<Record<string, number>> {
-  if (postIds.length === 0) return {}
+export type ReactionAction = 'added' | 'updated' | 'removed'
 
-  const countRows = await db
-    .select({
-      postId: postComments.postId,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(postComments)
-    .where(
-      and(
-        inArray(postComments.postId, postIds),
-        isNull(postComments.deletedAt),
-      ),
-    )
-    .groupBy(postComments.postId)
-
-  return Object.fromEntries(
-    countRows.map((r: { postId: string; count: number }) => [
-      r.postId,
-      r.count,
-    ]),
-  )
-}
-/* v8 ignore end */
-
-/**
- * Transforms database post to PostWithDetails format
- */
 export function transformPostWithDetails(
   post: {
     id: string
@@ -144,23 +102,6 @@ export function transformPostWithDetails(
   }
 }
 
-/**
- * Determines reaction action (added/updated/removed) based on existing reaction
- */
-export type ReactionAction = 'added' | 'updated' | 'removed'
-
-export function determineReactionAction(
-  existing: { emoji: string } | null | undefined,
-  emoji: string,
-): ReactionAction {
-  if (!existing) return 'added'
-  if (existing.emoji === emoji) return 'removed'
-  return 'updated'
-}
-
-/**
- * Transforms database comment to CommentWithAuthor format
- */
 export function transformCommentWithAuthor(comment: {
   id: string
   content: string
@@ -177,4 +118,13 @@ export function transformCommentWithAuthor(comment: {
     author: comment.author,
     reactions: comment.reactions,
   }
+}
+
+export function determineReactionAction(
+  existing: { emoji: string } | null | undefined,
+  emoji: string,
+): ReactionAction {
+  if (!existing) return 'added'
+  if (existing.emoji === emoji) return 'removed'
+  return 'updated'
 }

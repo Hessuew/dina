@@ -26,7 +26,7 @@ export interface RecipientResult {
 
 export interface DeliveryAdapter {
   deliver: (
-    event: NotificationEvent,
+    event: PostCreatedEvent | CommentCreatedEvent,
     recipientIds: Array<string>,
   ) => Promise<void>
 }

@@ -1,10 +1,16 @@
 import { DatabaseDeliveryAdapter } from './delivery'
 import { getRecipients } from './recipients'
-import type { DeliveryAdapter, NotificationEvent } from './types'
+import type {
+  CommentCreatedEvent,
+  DeliveryAdapter,
+  PostCreatedEvent,
+} from './types'
 
 let deliveryAdapter: DeliveryAdapter = new DatabaseDeliveryAdapter()
 
-export async function emit(event: NotificationEvent): Promise<void> {
+export async function emit(
+  event: PostCreatedEvent | CommentCreatedEvent,
+): Promise<void> {
   const { recipientIds } = await getRecipients(event)
 
   if (recipientIds.length === 0) {

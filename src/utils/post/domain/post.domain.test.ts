@@ -3,7 +3,7 @@ import {
   determineReactionAction,
   transformCommentWithAuthor,
   transformPostWithDetails,
-} from '@/domain/post.service'
+} from '@/utils/post/domain/post.domain'
 
 const makeAuthor = () => ({
   id: 'user-1',
@@ -86,6 +86,15 @@ describe('transformPostWithDetails', () => {
     const originalOrder = basePost.comments.map((c) => c.id)
     transformPostWithDetails(basePost, 2)
     expect(basePost.comments.map((c) => c.id)).toEqual(originalOrder)
+  })
+
+  it('passes course through when present', () => {
+    const withCourse = {
+      ...basePost,
+      course: { id: 'c-1', title: 'Math 101' },
+    }
+    const result = transformPostWithDetails(withCourse, 0)
+    expect(result.course).toEqual({ id: 'c-1', title: 'Math 101' })
   })
 })
 
