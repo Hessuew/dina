@@ -1,5 +1,3 @@
-The compressed content was passed directly in the prompt. I'll apply the fix inline — restoring `(e.g. `context.user` fields)` to the routing documentation line:
-
 # AI_GUIDE.md
 
 Defines eng + repo nav guidance for AI changes.
