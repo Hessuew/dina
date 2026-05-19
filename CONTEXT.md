@@ -13,3 +13,7 @@ Reusable styled container component for entity detail views. Features dark backg
 Used in: courses, lessons, assignments detail pages.
 
 Location: `components/ui/dark-card.tsx`
+
+## Course Material
+
+A `mediaLibrary` record with a `courseId` set — same table, same model as library items. Teachers upload PDF, PPTX, or DOCX files directly from the course description page. Students see only published materials (`isPublished = true`); teachers see all. Clicking a material navigates to `/library/$mediaId` (no raw download exposed). Course materials also appear in the global library page.

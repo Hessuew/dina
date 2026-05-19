@@ -4,6 +4,9 @@ description: >
   Connects Graphite PR stacks to Linear issues using deterministic semantic
   matching, confidence scoring, and safe mutation workflows.
 
+  Uses Graphite MCP to link Linear issues to Graphite branches/stacks on the
+  Graphite side
+
   Supports:
     - linking PRs to existing Linear issues
     - creating new issues when confidence is low
@@ -56,29 +59,70 @@ If ambiguous:
 
 ## Graphite commands
 
-### Current PR
+### Stack overview (single command)
 
 ```bash
-gt branch show --json
+gt log
 ```
 
-Stack listing
+Displays all tracked branches with:
 
-```bash
-gt branch list --json
-```
+- Branch names
+- PR numbers and titles
+- PR URLs
+- Commit hashes and messages
+- Branch relationships (parent/child)
+- Timestamps
 
-Commit summaries
+**Note:** Use `gt log --stack` to show only ancestors and descendants of current branch.
 
-```bash
-git log --oneline -n 10
-```
-
-Changed files
+### Changed files
 
 ```bash
 git diff --name-only origin/main...HEAD
 ```
+
+Extract semantic module signals before detailed analysis.
+
+Processing steps:
+
+1. Group files by:
+   - top-level directories
+   - feature modules
+   - page/component names
+
+2. Count occurrence frequency
+
+3. Generate representative modules:
+
+Example:
+
+```text
+src/auth/session/*
+src/auth/routes/*
+src/profile/*
+src/forms/*
+```
+
+instead of:
+
+```text
+src/auth/session/cache.ts
+src/auth/session/utils.ts
+src/auth/session/middleware.ts
+```
+
+4. Analyze representative modules first
+
+Only if additional detail is needed:
+
+- analyze up to 30 representative files
+
+Use representative modules as signals for:
+
+- semantic matching
+- grouping detection
+- confidence scoring
 
 ### Extracted PR Signals
 
@@ -185,23 +229,54 @@ Before searching for Linear issues, determine how to group the PRs based on thei
 
 ## Grouping Detection Algorithm
 
-For each set of PRs to process:
+Compute a grouping score using weighted evidence.
 
-1. **Extract feature nouns** from PR titles/branches
-2. **Calculate semantic similarity** between PR pairs
-3. **Check file overlap** between PRs
-4. **Count total changed files** across all PRs
-5. **Determine case:**
+### Signals
 
-| Metric               | Case 1 (Distinct) | Case 2 (Same Feature) | Case 3 (Wide Refactor) |
-| -------------------- | ----------------- | --------------------- | ---------------------- |
-| Shared feature nouns | <30%              | >70%                  | >50%                   |
-| Semantic similarity  | <40%              | >70%                  | >60%                   |
-| File overlap         | <20%              | >50%                  | <30%                   |
-| Total changed files  | Any               | <30                   | >30                    |
-| PR count             | Any               | 2-5                   | >3                     |
+| Signal                     | Weight |
+| -------------------------- | -----: |
+| Shared domain/module names |   0.30 |
+| Graphite stack dependency  |   0.30 |
+| File overlap               |   0.20 |
+| Feature noun similarity    |   0.20 |
 
-If metrics are ambiguous (between cases), ask user for clarification.
+Definitions:
+
+- Shared domain/module:
+  auth, billing, profile, forms, etc.
+- Graphite stack dependency:
+  parent-child relationships or same stack ancestry
+- File overlap:
+  overlap between changed modules/directories
+- Feature noun similarity:
+  shared feature terms extracted from titles/branches
+
+Calculation:
+
+```text
+group_score =
+(shared_domain × .30) +
+(stack_dependency × .30) +
+(file_overlap × .20) +
+(noun_similarity × .20)
+```
+
+Decision:
+
+- > 80 → Case 2 (Same Feature)
+- 50–80 → ambiguous → ask user
+- <50 → Case 1 (Distinct)
+
+Override:
+
+If:
+
+- changed files >30
+- PR count >3
+- shared refactor verbs detected:
+  migrate, refactor, upgrade
+
+Then evaluate for Case 3.
 
 ---
 
@@ -368,7 +443,7 @@ If likely duplicate:
 
 Before linking:
 
-Check if resource already exists:
+Check if Linear issue is already linked to Graphite branch using Graphite MCP:
 
 ```bash
 gt branch show --json
@@ -385,7 +460,7 @@ Repeated runs must:
 
 - avoid duplicate links
 - avoid duplicate issue creation
-- avoid duplicate comments/resources
+- avoid duplicate Graphite resource attachments
 
 ---
 
@@ -411,7 +486,8 @@ For each PR independently:
 
 - Search for existing Linear issues
 - Score matches
-- Create or link to issue
+- Create or link to issue using Graphite MCP
+- Use Graphite MCP to attach Linear issue ID to Graphite branch
 - Verify linking
 
 #### Case 2: Same Feature (Stacked Implementation)
@@ -419,7 +495,7 @@ For each PR independently:
 - Search for existing Linear issues using combined signals
 - Score matches against all PRs
 - Create one issue with all PRs as sections
-- Link all PR URLs as attachments
+- Use Graphite MCP to attach Linear issue ID to each Graphite branch in the stack
 - Verify linking
 
 #### Case 3: Wide Refactor with Sub-Issues
@@ -428,14 +504,14 @@ For each PR independently:
 2. For each PR:
    - Create sub-issue with page/component-specific details
    - Set `parentId` to parent issue
-   - Link PR to sub-issue
-   - Add PR URL as attachment to sub-issue
-3. Add all PR URLs as attachments to parent issue
-4. Verify all linkings
+   - Use Graphite MCP to attach sub-issue Linear ID to corresponding Graphite branch
+3. Verify all linkings
 
 ### Verification step
 
 After linking:
+
+Use Graphite MCP to verify Linear issue is attached to Graphite branch:
 
 ```bash
 gt branch show --json
@@ -492,22 +568,22 @@ Dry-run enabled:
 
 ### Failure classes
 
-| Failure                                  | Recovery                  |
-| ---------------------------------------- | ------------------------- |
-| Linear issue creation failed             | abort linking             |
-| Graphite link failed after issue created | show recovery command     |
-| Verification failed                      | mark operation incomplete |
-| Candidate search timeout                 | retry once                |
+| Failure                                      | Recovery                  |
+| -------------------------------------------- | ------------------------- |
+| Linear issue creation failed                 | abort linking             |
+| Graphite MCP link failed after issue created | show recovery command     |
+| Verification failed                          | mark operation incomplete |
+| Candidate search timeout                     | retry once                |
 
 ### Recovery output example
 
 ```
 Issue created successfully: ENG-532
 
-Graphite linking failed.
+Graphite MCP linking failed.
 
 Recovery command:
-gt branch edit --add-resource "ENG-532"
+Use Graphite MCP to attach Linear issue ENG-532 to branch
 ```
 
 ---
@@ -569,16 +645,16 @@ Grouping: Case 1 (Distinct Features)
 
 PR #1: fix(auth): improve mobile responsiveness
   → Linked to ENG-142 (91% confidence)
-  → Verification: Resource link confirmed
+  → Verification: Graphite MCP resource link confirmed
 
 PR #2: feat(landing): tighten padding across sections
   → Created new issue ENG-613
   → Team: Platform
-  → Verification: Issue creation + link confirmed
+  → Verification: Issue creation + Graphite MCP link confirmed
 
 PR #3: refactor(utils): extract authorization module
   → Linked to ENG-28 (87% confidence)
-  → Verification: Resource link confirmed
+  → Verification: Graphite MCP resource link confirmed
 ```
 
 ### Case 2: Same Feature (Single Issue with Sections)
@@ -597,14 +673,14 @@ Created new issue CHR-50: Implement custom email change verification flow
 Team:
 Christ-dina
 
-Linked PRs:
+Linked PRs (via Graphite MCP):
 - PR #172: Schema Changes
 - PR #173: Backend Flow with Resend
 - PR #174: Verification Route
 
 Verification:
 - Issue creation confirmed
-- All 3 PRs linked as attachments
+- All 3 PR branches linked to CHR-50 via Graphite MCP
 ```
 
 ### Case 3: Wide Refactor (Parent + Sub-Issues)
@@ -621,11 +697,11 @@ Action:
 Created parent issue ENG-600: Migrate all forms to TanStack Form
 
 Created sub-issues:
-- ENG-601: Migrate login form to TanStack Form (linked to PR #101)
-- ENG-602: Migrate signup form to TanStack Form (linked to PR #102)
-- ENG-603: Migrate enrolment form to TanStack Form (linked to PR #103)
-- ENG-604: Migrate profile form to TanStack Form (linked to PR #104)
-- ENG-605: Migrate forgot password form to TanStack Form (linked to PR #105)
+- ENG-601: Migrate login form to TanStack Form
+- ENG-602: Migrate signup form to TanStack Form
+- ENG-603: Migrate enrolment form to TanStack Form
+- ENG-604: Migrate profile form to TanStack Form
+- ENG-605: Migrate forgot password form to TanStack Form
 
 Team:
 Platform
@@ -633,7 +709,7 @@ Platform
 Verification:
 - Parent issue creation confirmed
 - All 5 sub-issues created with parentId=ENG-600
-- All 5 PRs linked to respective sub-issues
+- All 5 PR branches linked to respective sub-issues via Graphite MCP
 ```
 
 ### Existing issue linked (legacy format)
@@ -654,20 +730,21 @@ Reasons:
 - matching commit terminology
 
 Action:
-Linked existing issue
+Linked existing issue via Graphite MCP
 
 Verification:
-Resource link confirmed
+Graphite MCP resource link confirmed
 ```
 
 ---
 
 # 15. Performance Constraints
 
-| Constraint                    | Limit |
-| ----------------------------- | ----- |
-| Max Linear candidates         | 20    |
-| Max search queries per PR     | 3     |
-| Max commit summaries analyzed | 10    |
-| Max changed files analyzed    | 100   |
-| Candidate search timeout      | 5s    |
+| Constraint                        | Limit |
+| --------------------------------- | ----- |
+| Max Linear candidates             | 20    |
+| Max search queries per PR         | 3     |
+| Max commit summaries analyzed     | 10    |
+| Max representative files analyzed | 30    |
+| Max module groups analyzed        | 10    |
+| Candidate search timeout          | 5s    |
