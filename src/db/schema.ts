@@ -87,6 +87,7 @@ export const profiles = pgTable(
     fullName: text('full_name').notNull(),
     role: userRoleEnum('role').notNull().default('student'),
     bio: text('bio'),
+    lecturerTitle: text('lecturer_title'),
     avatarUrl: text('avatar_url'),
     emailNotifications: boolean('email_notifications').default(true),
     notifyNewAssignments: boolean('notify_new_assignments').default(true),
@@ -98,7 +99,9 @@ export const profiles = pgTable(
     pendingEmail: text('pending_email'),
     emailChangeTokenHash: text('email_change_token_hash'),
     emailChangeTokenExpiresAt: timestamp('email_change_token_expires_at'),
-    emailChangeTokenAttempts: integer('email_change_token_attempts').default(0).notNull(),
+    emailChangeTokenAttempts: integer('email_change_token_attempts')
+      .default(0)
+      .notNull(),
     lastEmailChangeRequestAt: timestamp('last_email_change_request_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
