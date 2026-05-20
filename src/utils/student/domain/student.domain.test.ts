@@ -10,14 +10,14 @@ const makeSub = (
   overrides: {
     courseId?: string
     grade?: number | null
-    status?: string
+    status?: SubmissionStatus
     maxGrade?: number | null
   } = {},
 ) => ({
   status: overrides.status ?? 'submitted',
   grade: overrides.grade ?? null,
   assignment: {
-    maxGrade: 'maxGrade' in overrides ? overrides.maxGrade : 100,
+    maxGrade: 'maxGrade' in overrides ? (overrides.maxGrade ?? null) : 100,
     lesson: { course: { id: overrides.courseId ?? 'c-1' } },
   },
 })
@@ -75,7 +75,7 @@ const makeSubmissionRow = (
 ) => ({
   id: 'sub-1',
   assignmentId: 'a-1',
-  status: 'submitted',
+  status: 'submitted' as SubmissionStatus,
   grade: null,
   submittedAt: null,
   gradedAt: null,

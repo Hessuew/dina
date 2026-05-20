@@ -21,6 +21,8 @@ Database access layer and schema definitions.
   - Contains enums, tables, and relations for the app.
   - Acts as the schema source of truth for Drizzle queries.
   - Notable tables:
+    - `profiles`
+      - Stores authenticated user profile data, including optional `lecturer_title` metadata for teacher/lecturer display surfaces.
     - `media_library`
       - Stores org-wide library materials (YouTube links, PDFs, etc.).
       - Draft gating is modeled via `is_published`.
@@ -52,5 +54,5 @@ Database access layer and schema definitions.
 
 ## Related Docs
 
-- `documentation/ENGINEERING_GUIDE.md`
+- `docs/ENGINEERING_GUIDE.md`
 - `src/db/schema.md`
