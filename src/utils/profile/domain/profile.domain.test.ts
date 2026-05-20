@@ -3,6 +3,7 @@ import {
   calculateTokenExpiry,
   checkEmailChangeRateLimit,
   generateEmailChangeToken,
+  validateEmailChangeToken,
 } from './profile.domain'
 
 const at = (isoString: string) => new Date(isoString)
@@ -82,5 +83,43 @@ describe('calculateTokenExpiry', () => {
     const expectedMs = 24 * 60 * 60 * 1000
     expect(expiry.getTime()).toBeGreaterThanOrEqual(before + expectedMs)
     expect(expiry.getTime()).toBeLessThanOrEqual(after + expectedMs)
+  })
+})
+
+describe('validateEmailChangeToken', () => {
+  const base = {
+    emailChangeTokenExpiresAt: new Date('2099-01-01T00:00:00Z'),
+    emailChangeTokenAttempts: 0,
+    pendingEmail: 'new@test.com',
+  }
+  const now = new Date('2026-01-01T00:00:00Z')
+
+  it('returns valid when token is active and pendingEmail exists', () => {
+    expect(validateEmailChangeToken(base, now).valid).toBe(true)
+  })
+
+  it('returns invalid when emailChangeTokenExpiresAt is null', () => {
+    expect(
+      validateEmailChangeToken({ ...base, emailChangeTokenExpiresAt: null }, now).valid,
+    ).toBe(false)
+  })
+
+  it('returns invalid when token is expired', () => {
+    const result = validateEmailChangeToken(
+      { ...base, emailChangeTokenExpiresAt: new Date('2000-01-01T00:00:00Z') },
+      now,
+    )
+    expect(result.valid).toBe(false)
+    expect(result.message).toContain('expired')
+  })
+
+  it('returns invalid when attempts reach 5', () => {
+    const result = validateEmailChangeToken({ ...base, emailChangeTokenAttempts: 5 }, now)
+    expect(result.valid).toBe(false)
+    expect(result.message).toContain('Too many failed attempts')
+  })
+
+  it('returns invalid when pendingEmail is null', () => {
+    expect(validateEmailChangeToken({ ...base, pendingEmail: null }, now).valid).toBe(false)
   })
 })

@@ -36,3 +36,32 @@ export function generateEmailChangeToken(): {
 export function calculateTokenExpiry(): Date {
   return new Date(Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000)
 }
+
+export function validateEmailChangeToken(
+  record: {
+    emailChangeTokenExpiresAt: Date | null
+    emailChangeTokenAttempts: number
+    pendingEmail: string | null
+  },
+  now: Date,
+): { valid: boolean; message: string } {
+  if (!record.emailChangeTokenExpiresAt) {
+    return { valid: false, message: 'Invalid or expired verification link.' }
+  }
+  if (now > record.emailChangeTokenExpiresAt) {
+    return {
+      valid: false,
+      message: 'This verification link has expired. Please request a new email change.',
+    }
+  }
+  if (record.emailChangeTokenAttempts >= 5) {
+    return {
+      valid: false,
+      message: 'Too many failed attempts. Please request a new email change.',
+    }
+  }
+  if (!record.pendingEmail) {
+    return { valid: false, message: 'Invalid or expired verification link.' }
+  }
+  return { valid: true, message: 'Your email address has been updated.' }
+}
