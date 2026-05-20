@@ -11,7 +11,7 @@ import {
 import { Field, FieldDescription, FieldGroup } from '@/components/ui/field'
 import { useAppForm } from '@/hooks/form'
 import { useMutation } from '@/hooks/useMutation'
-import { requestPasswordResetFn } from '@/routes/forgot-password'
+import { requestPasswordResetFn } from '@/utils/password-reset'
 import { requestPasswordResetSchema } from '@/schemas/auth.schema'
 
 export function ForgotPasswordForm() {

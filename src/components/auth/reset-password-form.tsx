@@ -14,7 +14,7 @@ import {
 import { Field, FieldDescription, FieldGroup } from '@/components/ui/field'
 import { useAppForm } from '@/hooks/form'
 import { useMutation } from '@/hooks/useMutation'
-import { resetPasswordFn, validateResetTokenFn } from '@/routes/reset-password'
+import { resetPasswordFn, validateResetTokenFn } from '@/utils/password-reset'
 import { resetPasswordSchema } from '@/schemas/auth.schema'
 import { calculatePasswordStrength } from '@/utils/password'
 
