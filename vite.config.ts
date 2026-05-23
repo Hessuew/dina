@@ -11,20 +11,35 @@ import { cloudflare } from '@cloudflare/vite-plugin'
 const config = defineConfig(({ mode }) => {
   const isCloudflare = mode === 'cf' || mode === 'production'
 
+  const shimPath = fileURLToPath(
+    new URL('./src/cloudflare-shim.ts', import.meta.url),
+  )
+
   return {
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
         ...(!isCloudflare && {
-          'cloudflare:workers': fileURLToPath(
-            new URL('./src/cloudflare-shim.ts', import.meta.url),
-          ),
+          'cloudflare:workers': shimPath,
         }),
       },
     },
     plugins: [
       devtools(),
       isCloudflare && cloudflare({ viteEnvironment: { name: 'ssr' } }),
+      isCloudflare && {
+        name: 'cloudflare-workers-client-shim',
+        enforce: 'pre' as const,
+        resolveId(
+          id: string,
+          _importer: string | undefined,
+          opts: { ssr?: boolean },
+        ) {
+          if (id === 'cloudflare:workers' && !opts.ssr) {
+            return shimPath
+          }
+        },
+      },
       // this is the plugin that enables path aliases
       viteTsConfigPaths({
         projects: ['./tsconfig.json'],
