@@ -4,7 +4,7 @@ import { LandingCourseShowcase } from '@/components/landing/courses'
 import { LandingHeroEditorial } from '@/components/landing/hero'
 import { LandingMarksSection } from '@/components/landing/marks'
 import {
-  // LandingLecturerGemsSection,
+  LandingLecturerGemsSection,
   LandingTeacherSection,
 } from '@/components/landing/lecturers'
 import { LandingTestimonialsSection } from '@/components/landing/testimonials'
@@ -27,7 +27,7 @@ function Home() {
       <LandingAboutSection />
       <LandingCourseShowcase />
       <LandingTeacherSection />
-      {/* <LandingLecturerGemsSection /> */}
+      <LandingLecturerGemsSection />
       <LandingTestimonialsSection />
       <LandingMarksSection />
       <LandingQASection />

@@ -165,6 +165,9 @@ export function LandingAboutSection() {
                   Additional Curriculum
                 </div>
                 <p className="mt-3 text-base leading-8 text-[#D3CAC0]">
+                  How to manifest Jesus daily with signs and wonders
+                </p>
+                <p className="mt-3 text-base leading-8 text-[#D3CAC0]">
                   How to disciple others, explain beliefs clearly, and think,
                   respond & ask questions like Jesus did
                 </p>
