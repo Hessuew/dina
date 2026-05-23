@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
@@ -15,6 +15,13 @@ import { FieldDescription, FieldGroup } from '@/components/ui/field'
 import { SelectItem } from '@/components/ui/select'
 import { useAppForm } from '@/hooks/form'
 import { createEnrollment } from '@/utils/enrolment/enrollments'
+import { env } from '@/env'
+
+declare global {
+  interface Window {
+    gtag?: (...args: Array<unknown>) => void
+  }
+}
 
 function optionalText(value: string): string | undefined {
   const trimmed = value.trim()
@@ -115,9 +122,32 @@ const STEPS = [
 
 type EnrolmentFieldName = (typeof STEPS)[number]['fields'][number]
 
-export function EnrolmentForm() {
-  const [submitted, setSubmitted] = useState(false)
+interface EnrolmentFormProps {
+  success?: boolean
+}
+
+export function EnrolmentForm({ success }: EnrolmentFormProps) {
+  const router = useRouter()
+  const [submitted, setSubmitted] = useState(success === true)
   const [currentStep, setCurrentStep] = useState(0)
+
+  useEffect(() => {
+    if (success) {
+      setSubmitted(true)
+      if (typeof window !== 'undefined' && window.gtag) {
+        window.gtag('event', 'conversion', {
+          send_to: `${env.VITE_GOOGLE_ADS_ID}/-2LiCJCpp7AcEJ6zn81D`,
+          value: 1.0,
+          currency: 'EUR',
+        })
+      }
+      void router.navigate({
+        to: '/enrolment',
+        search: { success: undefined },
+        replace: true,
+      })
+    }
+  }, [success])
 
   const createEnrollmentFn = useServerFn(createEnrollment)
 
@@ -142,7 +172,7 @@ export function EnrolmentForm() {
           },
         })
 
-        setSubmitted(true)
+        await router.navigate({ to: '/enrolment', search: { success: true } })
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Submission failed'
         toast.error(message)
