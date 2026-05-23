@@ -75,6 +75,21 @@ export const enrollmentGenderEnum = pgEnum('enrollment_gender', [
   'female',
 ])
 
+export const gemstoneEnum = pgEnum('gemstone', [
+  'jasper',
+  'sapphire',
+  'chalcedony',
+  'emerald',
+  'sardonyx',
+  'sardius',
+  'chrysolite',
+  'beryl',
+  'topaz',
+  'chrysoprasus',
+  'jacinth',
+  'amethyst',
+])
+
 // ============================================================================
 // TABLES
 // ============================================================================
@@ -88,6 +103,7 @@ export const profiles = pgTable(
     role: userRoleEnum('role').notNull().default('student'),
     bio: text('bio'),
     lecturerTitle: text('lecturer_title'),
+    gemstone: gemstoneEnum('gemstone'),
     avatarUrl: text('avatar_url'),
     emailNotifications: boolean('email_notifications').default(true),
     notifyNewAssignments: boolean('notify_new_assignments').default(true),
