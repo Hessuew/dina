@@ -15,6 +15,67 @@ type TimelineEvent = {
   description: string
 }
 
+type ProgramStatProps = {
+  label: string
+  value: string
+  labelColor?: string
+  valueColor?: string
+}
+
+function ProgramStat({
+  label,
+  value,
+  labelColor = '#9B8A73',
+  valueColor = '#F8F4EC',
+}: ProgramStatProps) {
+  return (
+    <div>
+      <div
+        className="text-[0.68rem] font-medium tracking-[0.3em] uppercase"
+        style={{ color: labelColor }}
+      >
+        {label}
+      </div>
+      <div className="mt-2 font-serif text-2xl" style={{ color: valueColor }}>
+        {value}
+      </div>
+    </div>
+  )
+}
+
+type AwardRowProps = {
+  rank: number
+  label: string
+  prize: string
+}
+
+function AwardRow({ rank, label, prize }: AwardRowProps) {
+  const borderOpacity = rank === 1 ? '50' : rank === 2 ? '40' : '30'
+  const textColor = rank === 1 ? '#E9D9B4' : rank === 2 ? '#D3CAC0' : '#C9C0B6'
+  const paddingBottom = rank === 3 ? '1' : '3'
+  const borderBottom = rank === 3 ? 'border-b-0' : 'border-b'
+
+  return (
+    <div
+      className={`flex items-center justify-between ${borderBottom} border-[#C5A059]/20 pb-${paddingBottom}`}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className="flex h-8 w-8 items-center justify-center border bg-[#0A0908] font-serif text-sm"
+          style={{
+            borderColor: `rgba(197, 160, 89, 0.${borderOpacity})`,
+            color: textColor,
+          }}
+        >
+          {rank}
+        </div>
+        <span className="text-base text-[#D8D0C7]">{label}</span>
+      </div>
+      <span className="font-serif text-xl text-[#E9D9B4]">{prize}</span>
+    </div>
+  )
+}
+
 const timeline: Array<TimelineEvent> = [
   {
     month: 'July',
@@ -75,67 +136,26 @@ export function LandingAboutSection() {
 
             <div className="space-y-6 border-y border-white/10 py-6">
               <div className="grid gap-6 sm:grid-cols-2">
-                <div>
-                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
-                    Duration
-                  </div>
-                  <div className="mt-2 font-serif text-2xl text-[#F8F4EC]">
-                    9 Months
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
-                    Total Lessons
-                  </div>
-                  <div className="mt-2 font-serif text-2xl text-[#F8F4EC]">
-                    18 Lessons
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
-                    Cadence
-                  </div>
-                  <div className="mt-2 font-serif text-2xl text-[#F8F4EC]">
-                    3 / Month
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
-                    Class Length
-                  </div>
-                  <div className="mt-2 font-serif text-2xl text-[#F8F4EC]">
-                    2 Hours
-                  </div>
-                </div>
-              </div>
+                <ProgramStat label="Duration" value="9 Months" />
+                <ProgramStat label="Total Lessons" value="18 Lessons" />
+                <ProgramStat label="Cadence" value="3 / Month" />
+                <ProgramStat label="Time" value="Sat 9AM GMT +2" />
+                <ProgramStat label="Class Length" value="2 Hours" />
+                <ProgramStat
+                  label="Teaching Faculty"
+                  value="6 Lecturer Pairs"
+                />
+                <ProgramStat
+                  label="Personal Discipleship"
+                  value="Biweekly Sessions"
+                />
 
-              <div className="grid gap-6 sm:grid-cols-2">
-                <div>
-                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
-                    Teaching Faculty
-                  </div>
-                  <div className="mt-2 font-serif text-2xl text-[#F8F4EC]">
-                    6 Lecturer Pairs
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
-                    Personal Discipleship
-                  </div>
-                  <div className="mt-2 font-serif text-2xl text-[#F8F4EC]">
-                    Biweekly Sessions
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
-                  Tuition
-                </div>
-                <div className="mt-2 font-serif text-2xl text-[#E9D9B4]">
-                  Free
-                </div>
+                <ProgramStat
+                  label="Tuition"
+                  value="Free"
+                  labelColor="#D4B373"
+                  valueColor="#E9D9B4"
+                />
               </div>
             </div>
 
@@ -163,43 +183,9 @@ export function LandingAboutSection() {
                 Excellence Awards
               </div>
               <div className="mt-4 space-y-3">
-                <div className="flex items-center justify-between border-b border-[#C5A059]/20 pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center border border-[#C5A059]/50 bg-[#0A0908] font-serif text-sm text-[#E9D9B4]">
-                      1
-                    </div>
-                    <span className="text-base text-[#D8D0C7]">
-                      Best Student
-                    </span>
-                  </div>
-                  <span className="font-serif text-xl text-[#E9D9B4]">
-                    €500
-                  </span>
-                </div>
-                <div className="flex items-center justify-between border-b border-[#C5A059]/20 pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center border border-[#C5A059]/40 bg-[#0A0908] font-serif text-sm text-[#D3CAC0]">
-                      2
-                    </div>
-                    <span className="text-base text-[#D8D0C7]">
-                      Second Best
-                    </span>
-                  </div>
-                  <span className="font-serif text-xl text-[#E9D9B4]">
-                    €300
-                  </span>
-                </div>
-                <div className="flex items-center justify-between pb-1">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center border border-[#C5A059]/30 bg-[#0A0908] font-serif text-sm text-[#C9C0B6]">
-                      3
-                    </div>
-                    <span className="text-base text-[#D8D0C7]">Third Best</span>
-                  </div>
-                  <span className="font-serif text-xl text-[#E9D9B4]">
-                    €200
-                  </span>
-                </div>
+                <AwardRow rank={1} label="Best Student" prize="€500" />
+                <AwardRow rank={2} label="Second Best" prize="€300" />
+                <AwardRow rank={3} label="Third Best" prize="€200" />
               </div>
             </div>
           </div>

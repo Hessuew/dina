@@ -20,10 +20,14 @@ import {
   LandingImageSection,
   LandingItemGrid,
   LandingScriptureSectionHeader,
+  LandingSection,
   LandingSectionContainer,
+  LandingSectionEyebrowCentered,
   LandingSectionOverlay,
 } from '@/components/landing/primitives'
 import { useCarousel } from '@/components/landing/hooks'
+import { TeacherCard } from '@/components/card/TeacherCard'
+import type { TeacherWithCourse } from '@/types/teacher'
 
 type Lecturer = {
   name: string
@@ -313,5 +317,372 @@ export function LandingTeacherSection() {
         </div>
       </LandingSectionContainer>
     </LandingImageSection>
+  )
+}
+
+// ============================================================================
+// GEM CAROUSEL SECTION
+// ============================================================================
+
+const GEM_COLORS: Record<string, string> = {
+  jasper: '#8B2020',
+  sapphire: '#1E40AF',
+  chalcedony: '#8B9DC3',
+  emerald: '#065F46',
+  sardonyx: '#C2400C',
+  sardius: '#DC4A1E',
+  chrysolite: '#65A30D',
+  beryl: '#38BDF8',
+  topaz: '#D97706',
+  chrysoprasus: '#10B981',
+  jacinth: '#EA580C',
+  amethyst: '#7C3AED',
+}
+
+const GEM_BG_COLORS: Record<string, string> = {
+  jasper: '#130505',
+  sapphire: '#05091A',
+  chalcedony: '#0C0E14',
+  emerald: '#040F0B',
+  sardonyx: '#1A0805',
+  sardius: '#1C0806',
+  chrysolite: '#0C1304',
+  beryl: '#05131A',
+  topaz: '#1A1005',
+  chrysoprasus: '#041A0E',
+  jacinth: '#1A0804',
+  amethyst: '#100519',
+}
+
+const gemLecturers: Array<TeacherWithCourse> = [
+  {
+    id: 'gl-juhani',
+    fullName: 'Juhani J.',
+    email: '',
+    bio: null,
+    lecturerTitle: null,
+    gemstone: 'jasper',
+    avatarUrl: juhaniImage,
+    createdAt: new Date(0),
+    course: null,
+  },
+  {
+    id: 'gl-ella',
+    fullName: 'Ella O.',
+    email: '',
+    bio: null,
+    lecturerTitle: null,
+    gemstone: 'sapphire',
+    avatarUrl: ellaImage,
+    createdAt: new Date(0),
+    course: null,
+  },
+  {
+    id: 'gl-kene',
+    fullName: 'Kene O.',
+    email: '',
+    bio: null,
+    lecturerTitle: null,
+    gemstone: 'chalcedony',
+    avatarUrl: keneImage,
+    createdAt: new Date(0),
+    course: null,
+  },
+  {
+    id: 'gl-ezinne',
+    fullName: 'Ezinne O.',
+    email: '',
+    bio: null,
+    lecturerTitle: null,
+    gemstone: 'emerald',
+    avatarUrl: ezinneImage,
+    createdAt: new Date(0),
+    course: null,
+  },
+  {
+    id: 'gl-akosua',
+    fullName: 'Akosua O.',
+    email: '',
+    bio: null,
+    lecturerTitle: null,
+    gemstone: 'sardonyx',
+    avatarUrl: akosyaImage,
+    createdAt: new Date(0),
+    course: null,
+  },
+  {
+    id: 'gl-sade',
+    fullName: 'Sade P.',
+    email: '',
+    bio: null,
+    lecturerTitle: null,
+    gemstone: 'sardius',
+    avatarUrl: sadeImage,
+    createdAt: new Date(0),
+    course: null,
+  },
+  {
+    id: 'gl-chinomnso',
+    fullName: 'Chinomnso',
+    email: '',
+    bio: null,
+    lecturerTitle: null,
+    gemstone: 'chrysolite',
+    avatarUrl: null,
+    createdAt: new Date(0),
+    course: null,
+  },
+  {
+    id: 'gl-blessing',
+    fullName: 'Blessing A.',
+    email: '',
+    bio: null,
+    lecturerTitle: null,
+    gemstone: 'beryl',
+    avatarUrl: blessingImage,
+    createdAt: new Date(0),
+    course: null,
+  },
+  {
+    id: 'gl-ugo',
+    fullName: 'Ugo O.',
+    email: '',
+    bio: null,
+    lecturerTitle: null,
+    gemstone: 'topaz',
+    avatarUrl: ugoImage,
+    createdAt: new Date(0),
+    course: null,
+  },
+  {
+    id: 'gl-emmanuel',
+    fullName: 'Emmanuel E.',
+    email: '',
+    bio: null,
+    lecturerTitle: null,
+    gemstone: 'chrysoprasus',
+    avatarUrl: emmanuelImage,
+    createdAt: new Date(0),
+    course: null,
+  },
+  {
+    id: 'gl-mahi',
+    fullName: 'Mahidere A.',
+    email: '',
+    bio: null,
+    lecturerTitle: null,
+    gemstone: 'jacinth',
+    avatarUrl: mahiImage,
+    createdAt: new Date(0),
+    course: null,
+  },
+  {
+    id: 'gl-andrew',
+    fullName: 'Andrew A.',
+    email: '',
+    bio: null,
+    lecturerTitle: null,
+    gemstone: 'amethyst',
+    avatarUrl: andrewImage,
+    createdAt: new Date(0),
+    course: null,
+  },
+]
+
+function getGemRelativeOffset(activeIndex: number, itemIndex: number): number {
+  const total = gemLecturers.length
+  let offset = itemIndex - activeIndex
+  if (offset > total / 2) offset -= total
+  else if (offset < -total / 2) offset += total
+  return offset
+}
+
+function getGemCardMotionStyle(offset: number) {
+  const abs = Math.abs(offset)
+  const dir = offset > 0 ? 1 : -1
+
+  if (abs === 0) {
+    return {
+      transform: 'translateX(-50%) translateY(0) scale(1)',
+      opacity: 1,
+      zIndex: 30,
+      filter: 'blur(0px)',
+    }
+  }
+  if (abs === 1) {
+    return {
+      transform: `translateX(calc(-50% + ${dir * 58}%)) translateY(4%) scale(0.91)`,
+      opacity: 0.68,
+      zIndex: 20,
+      filter: 'blur(0.5px)',
+    }
+  }
+  if (abs === 2) {
+    return {
+      transform: `translateX(calc(-50% + ${dir * 86}%)) translateY(7%) scale(0.82)`,
+      opacity: 0.28,
+      zIndex: 10,
+      filter: 'blur(1.5px)',
+    }
+  }
+  return {
+    transform: `translateX(calc(-50% + ${dir * 100}%)) translateY(8%) scale(0.74)`,
+    opacity: 0,
+    zIndex: 0,
+    filter: 'blur(3px)',
+  }
+}
+
+export function LandingLecturerGemsSection() {
+  const { activeIndex, setActiveIndex, goToPrevious, goToNext } = useCarousel(
+    gemLecturers.length,
+  )
+
+  const active = gemLecturers[activeIndex]
+  const activeBg = active.gemstone
+    ? (GEM_BG_COLORS[active.gemstone] ?? '#08080A')
+    : '#08080A'
+
+  const half = Math.ceil(gemLecturers.length / 2)
+
+  return (
+    <LandingSection
+      id="teacher-gems"
+      className="border-b border-[#C5A059]/14 text-[#F7F4EE]"
+      style={{
+        backgroundColor: activeBg,
+        transition: 'background-color 900ms cubic-bezier(0.22,1,0.36,1)',
+      }}
+    >
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-[0.07]"
+        style={{ backgroundImage: `url(${facultyBackground})` }}
+      />
+
+      <LandingSectionContainer className="relative py-18 sm:py-22 lg:py-28">
+        <div className="space-y-14">
+          <div className="mx-auto max-w-3xl space-y-8 text-center">
+            <LandingSectionEyebrowCentered label="Stones and Names" />
+
+            <h2 className="font-serif text-[clamp(3.2rem,6vw,5.5rem)] leading-[0.9] tracking-[-0.055em] text-white">
+              The Twelve
+            </h2>
+
+            <LandingActiveItemNav
+              label="Lecturer"
+              activeValue={`${activeIndex + 1} / ${gemLecturers.length}`}
+              onPrevious={goToPrevious}
+              onNext={goToNext}
+              borderColor="border-white/10"
+              prevButtonClass="border-white/12 bg-white/6 text-[#F8F4EC] hover:border-[#C5A059]/50 hover:bg-white/10"
+              nextButtonClass="border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E] hover:text-white"
+              labelColor="text-[#9B8A73]"
+              valueColor="text-[#9B8A73]"
+              className="mx-auto max-w-xs"
+            />
+          </div>
+
+          <div className="space-y-10">
+            <div className="relative h-72 overflow-hidden sm:h-80 lg:h-96">
+              {gemLecturers.map((lecturer, index) => {
+                const offset = getGemRelativeOffset(activeIndex, index)
+                const isVisible = Math.abs(offset) <= 2
+
+                return (
+                  <div
+                    key={lecturer.id}
+                    aria-hidden={!isVisible}
+                    className="absolute top-0 left-1/2 w-48 cursor-pointer sm:w-56 lg:w-64"
+                    style={{
+                      ...getGemCardMotionStyle(offset),
+                      transition:
+                        'transform 700ms cubic-bezier(0.22,1,0.36,1), opacity 700ms cubic-bezier(0.22,1,0.36,1), filter 700ms cubic-bezier(0.22,1,0.36,1)',
+                    }}
+                    onClick={() => setActiveIndex(index)}
+                  >
+                    <TeacherCard
+                      teacher={lecturer}
+                      onClick={() => setActiveIndex(index)}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {gemLecturers.slice(0, half).map((lecturer, index) => {
+                  const isActive = index === activeIndex
+                  const gemColor = lecturer.gemstone
+                    ? GEM_COLORS[lecturer.gemstone]
+                    : undefined
+                  return (
+                    <button
+                      key={lecturer.id}
+                      type="button"
+                      onClick={() => setActiveIndex(index)}
+                      aria-label={`Show ${lecturer.fullName}`}
+                      className={`border px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.28em] uppercase transition-all duration-500 ease-out ${
+                        isActive && !gemColor
+                          ? 'border-[#C5A059]/42 bg-white/8 text-[#D4B373]'
+                          : !isActive
+                            ? 'border-white/10 bg-white/3 text-[#8E816D] hover:border-white/18 hover:bg-white/5'
+                            : ''
+                      }`}
+                      style={
+                        isActive && gemColor
+                          ? {
+                              borderColor: `${gemColor}66`,
+                              backgroundColor: 'rgba(255,255,255,0.06)',
+                              color: gemColor,
+                            }
+                          : undefined
+                      }
+                    >
+                      {lecturer.fullName}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {gemLecturers.slice(half).map((lecturer, index) => {
+                  const actualIndex = index + half
+                  const isActive = actualIndex === activeIndex
+                  const gemColor = lecturer.gemstone
+                    ? GEM_COLORS[lecturer.gemstone]
+                    : undefined
+                  return (
+                    <button
+                      key={lecturer.id}
+                      type="button"
+                      onClick={() => setActiveIndex(actualIndex)}
+                      aria-label={`Show ${lecturer.fullName}`}
+                      className={`border px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.28em] uppercase transition-all duration-500 ease-out ${
+                        isActive && !gemColor
+                          ? 'border-[#C5A059]/42 bg-white/8 text-[#D4B373]'
+                          : !isActive
+                            ? 'border-white/10 bg-white/3 text-[#8E816D] hover:border-white/18 hover:bg-white/5'
+                            : ''
+                      }`}
+                      style={
+                        isActive && gemColor
+                          ? {
+                              borderColor: `${gemColor}66`,
+                              backgroundColor: 'rgba(255,255,255,0.06)',
+                              color: gemColor,
+                            }
+                          : undefined
+                      }
+                    >
+                      {lecturer.fullName}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </LandingSectionContainer>
+    </LandingSection>
   )
 }
