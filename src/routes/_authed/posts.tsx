@@ -10,7 +10,10 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
-import type { CommentWithAuthor, PostWithDetails } from '@/domain'
+import type {
+  CommentWithAuthor,
+  PostWithDetails,
+} from '@/utils/post/domain/post.domain'
 import { Button } from '@/components/ui/button'
 import { PageLayout } from '@/components/layout/page-layout'
 import {
