@@ -127,6 +127,13 @@
       "when": 1779307653853,
       "tag": "0020_modern_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1779395482381,
+      "tag": "0021_peaceful_human_cannonball",
+      "breakpoints": true
     }
   ]
 }
