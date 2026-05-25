@@ -22,6 +22,7 @@ export function InvitationEmail({
       <Section style={inviterBox}>
         <Text style={inviterLabel}>Invited by</Text>
         <Text style={inviterName}>{invitedByName}</Text>
+        <Text style={inviterRole}>Director of IT</Text>
       </Section>
 
       <Text style={paragraph}>
@@ -80,6 +81,17 @@ const inviterName = {
   fontFamily: 'Georgia, "Times New Roman", Times, serif',
   margin: '0',
   letterSpacing: '-0.01em',
+}
+
+const inviterRole = {
+  color: '#9B7A41',
+  fontSize: '13px',
+  fontWeight: '500',
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase' as const,
+  margin: '4px 0 0 0',
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
 }
 
 const paragraph = {

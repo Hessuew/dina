@@ -284,7 +284,7 @@ function GemLecturerCard({
 
       {/* bottom frosted overlay — always visible, taller to fit name + bio */}
       <div
-        className="absolute inset-x-0 bottom-0 z-20 h-[40%] mask-[linear-gradient(to_bottom,transparent_0%,black_28%)] backdrop-blur-[5px]"
+        className="absolute inset-x-0 bottom-0 z-20 h-[40%] mask-[linear-gradient(to_bottom,transparent_0%,black_28%)]"
         style={{
           background:
             'linear-gradient(to bottom, transparent 0%, rgba(5,4,2,0.92) 100%)',
@@ -389,12 +389,25 @@ export function LandingLecturerGemsSection() {
                   <span className="text-[#C5A059] italic">Twelve Stones</span>
                 </>
               }
+              introText={
+                <>
+                  <span className="mb-2 block text-[0.6rem] font-medium tracking-[0.28em] text-[#9B7A41] uppercase">
+                    The DINA Anthem · A Song of Commanders
+                  </span>
+                  <span className="text-[#C5A059]">♫</span>{' '}
+                  <em>
+                    Command me Lord, Command me Lord,
+                    <br />
+                    That I may be, a commander,
+                    <br />
+                    Command me Lord, to lead battalions,
+                    <br />
+                    That will turn men's hearts, back to God
+                  </em>{' '}
+                  <span className="text-[#C5A059]">♫</span>
+                </>
+              }
               scriptures={[
-                {
-                  quote:
-                    'As they ministered to the Lord, and fasted, the Holy Ghost said, Separate me Barnabas and Saul for the work whereunto I have called them.',
-                  reference: 'Acts 13:2',
-                },
                 {
                   quote:
                     'After these things the Lord appointed other seventy also, and sent them two and two before his face.',
@@ -406,26 +419,32 @@ export function LandingLecturerGemsSection() {
             {/* Right: dark feature panel — active pair info + gems image */}
             <LandingFeaturePanel>
               <LandingFeaturePanelHeader backgroundImageUrl={facultyBackground}>
-                <div className="relative flex min-h-48 flex-col justify-between p-4 sm:p-6 lg:min-h-64">
+                <div className="relative flex min-h-48 flex-col justify-between gap-5 p-4 sm:p-6 lg:min-h-72">
                   <div className="flex items-start justify-between gap-6">
                     <div>
-                      <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-                        Pair {activePair.number}
+                      <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                        The Twelve Stones
                       </div>
-                      <div className="mt-3 max-w-[14ch] font-serif text-[clamp(1.4rem,3vw,2.8rem)] leading-[0.92] tracking-[-0.045em] text-white">
-                        {activePair.course}
+                      <div className="mt-3 max-w-[22ch] font-serif text-[clamp(1rem,2vw,1.5rem)] leading-tight tracking-[-0.02em] text-white/90 italic">
+                        "The foundations of the wall of the city were garnished
+                        with all manner of precious stones."
                       </div>
                     </div>
-                    <div className="border border-white/12 bg-black/18 px-3 py-2 text-[0.9rem] font-medium tracking-[0.26em] text-[#E9D9B4] uppercase">
-                      {activePair.number}
+                    <div className="shrink-0 border border-[#C5A059]/35 bg-black/24 px-3 py-2 text-[0.8rem] font-medium tracking-[0.26em] text-[#E9D9B4] uppercase">
+                      Rev. 21
                     </div>
                   </div>
-                  <div className="max-w-48 border border-white/12 bg-black/24 px-4 py-3 backdrop-blur-sm">
-                    <div className="text-[0.62rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
-                      Theme
+                  <div className="h-px w-full bg-[#C5A059]/20" />
+                  <div className="border border-white/12 bg-black/24 px-4 py-3 backdrop-blur-sm">
+                    <div className="text-[0.58rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
+                      The Twelve Foundations
                     </div>
-                    <div className="mt-2 font-serif text-xl leading-tight text-[#a29f97]">
-                      {activePair.theme}
+                    <div className="mt-2 text-[0.68rem] leading-[1.9] font-medium tracking-[0.18em] text-[#D4B373] uppercase">
+                      Jasper · Sapphire · Chalcedony · Emerald
+                      <br />
+                      Sardonyx · Sardius · Chrysolyte · Beryl
+                      <br />
+                      Topaz · Chrysoprasus · Jacinth · Amethyst
                     </div>
                   </div>
                 </div>
@@ -456,7 +475,7 @@ export function LandingLecturerGemsSection() {
             />
 
             {/* Pair carousel: 2 cards side by side per slot */}
-            <div className="relative h-96 overflow-hidden sm:h-104 lg:h-116">
+            <div className="relative h-96 overflow-hidden sm:h-104 lg:min-h-120">
               {PAIR_META.map((pair, index) => {
                 const offset = getGemRelativeOffset(activeIndex, index)
                 const isVisible = Math.abs(offset) <= 2
