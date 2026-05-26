@@ -41,11 +41,11 @@ export type EnrollmentRow = {
   id: string
   fullLegalName: string
   preferredName: string | null
-  email: string
+  email?: string
   yearOfBirth: number
   gender: 'male' | 'female'
   nationalityCitizenship: string | null
-  phoneWhatsApp: string
+  phoneWhatsApp?: string
   currentCity: string | null
   currentCountry: string | null
   churchAffiliations: string | null
@@ -59,8 +59,8 @@ export type EnrollmentRow = {
     | 'waitlisted'
     | 'withdrawn'
     | 'deferred'
-  invitationSent: boolean
-  invitationId: string | null
+  invitationSent?: boolean
+  invitationId?: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -68,6 +68,7 @@ export type EnrollmentRow = {
 type EnrollmentsTableProps = {
   enrollments: Array<EnrollmentRow>
   onRefresh: () => void
+  isAdmin: boolean
 }
 
 const columnHelper = createColumnHelper<EnrollmentRow>()
@@ -86,6 +87,7 @@ const STATUS_LABELS: Array<{ value: EnrollmentRow['status']; label: string }> =
 export function EnrollmentsTable({
   enrollments,
   onRefresh,
+  isAdmin,
 }: EnrollmentsTableProps) {
   const router = useRouter()
 
@@ -166,20 +168,24 @@ export function EnrollmentsTable({
       cell: (info) => <EnrollmentStatusChip status={info.getValue()} />,
       header: 'Status',
     }),
-    columnHelper.accessor('invitationSent', {
-      cell: (info) => {
-        const sent = info.getValue()
-        return sent ? (
-          <span className="inline-flex items-center gap-1.5 text-emerald-400">
-            <CheckCircle2 className="size-3.5" />
-            Sent
-          </span>
-        ) : (
-          <span className="text-[#8E816D]">—</span>
-        )
-      },
-      header: 'Invitation',
-    }),
+    ...(isAdmin
+      ? [
+          columnHelper.accessor('invitationSent', {
+            cell: (info) => {
+              const sent = info.getValue()
+              return sent ? (
+                <span className="inline-flex items-center gap-1.5 text-emerald-400">
+                  <CheckCircle2 className="size-3.5" />
+                  Sent
+                </span>
+              ) : (
+                <span className="text-[#8E816D]">—</span>
+              )
+            },
+            header: 'Invitation',
+          }),
+        ]
+      : []),
     columnHelper.accessor('createdAt', {
       cell: (info) => format(new Date(info.getValue()), 'MMM d, yyyy'),
       header: 'Submitted',
@@ -204,57 +210,61 @@ export function EnrollmentsTable({
                 }
               />
 
-              <IconButton
-                icon={Mail}
-                label="Send invitation"
-                onClick={() => {
-                  setSelectedEnrollmentId(row.id)
-                  setInviteDialogOpen(true)
-                }}
-                disabled={inviteMutation.isPending}
-              />
-
-              <DropdownMenu>
-                <DropdownMenuTrigger>
+              {isAdmin && (
+                <>
                   <IconButton
-                    icon={MoreHorizontal}
-                    label="More options"
-                    onClick={() => {}}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="rounded-none border border-white/10 bg-[#1A1716] text-[#F8F4EC]"
-                >
-                  {STATUS_LABELS.map((s) => (
-                    <DropdownMenuItem
-                      key={s.value}
-                      onClick={() =>
-                        updateStatusMutation.mutate({
-                          data: { enrollmentId: row.id, status: s.value },
-                        })
-                      }
-                      className={cn(
-                        'flex items-center justify-between',
-                        s.value === row.status && 'text-[#C5A059]',
-                      )}
-                    >
-                      {s.label}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator className="bg-white/10" />
-                  <DropdownMenuItem
-                    variant="destructive"
+                    icon={Mail}
+                    label="Send invitation"
                     onClick={() => {
                       setSelectedEnrollmentId(row.id)
-                      setDeleteDialogOpen(true)
+                      setInviteDialogOpen(true)
                     }}
-                  >
-                    <Trash2 className="size-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    disabled={inviteMutation.isPending}
+                  />
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger>
+                      <IconButton
+                        icon={MoreHorizontal}
+                        label="More options"
+                        onClick={() => {}}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="rounded-none border border-white/10 bg-[#1A1716] text-[#F8F4EC]"
+                    >
+                      {STATUS_LABELS.map((s) => (
+                        <DropdownMenuItem
+                          key={s.value}
+                          onClick={() =>
+                            updateStatusMutation.mutate({
+                              data: { enrollmentId: row.id, status: s.value },
+                            })
+                          }
+                          className={cn(
+                            'flex items-center justify-between',
+                            s.value === row.status && 'text-[#C5A059]',
+                          )}
+                        >
+                          {s.label}
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator className="bg-white/10" />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => {
+                          setSelectedEnrollmentId(row.id)
+                          setDeleteDialogOpen(true)
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              )}
             </div>
           </TooltipProvider>
         )

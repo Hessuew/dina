@@ -101,14 +101,14 @@ const teacherNavItems: Array<NavItem> = [
     url: '/events',
     icon: CalendarDaysIcon,
   },
-]
-
-const adminNavItems: Array<NavItem> = [
   {
     title: 'Enrollments',
     url: '/enrollments',
     icon: CookingPot,
   },
+]
+
+const adminNavItems: Array<NavItem> = [
   {
     title: 'User Management',
     url: '/invitations',

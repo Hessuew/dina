@@ -3,14 +3,16 @@ import { BaseEmail } from './BaseEmail'
 
 interface InvitationEmailProps {
   invitedByName: string
-  role: 'student' | 'teacher'
   inviteLink: string
+  lecturerTitle?: string | null
+  role: 'student' | 'teacher'
 }
 
 export function InvitationEmail({
   invitedByName,
-  role,
   inviteLink,
+  lecturerTitle,
+  role,
 }: InvitationEmailProps) {
   const roleLabel = role === 'teacher' ? 'Lecturer' : 'Student'
 
@@ -22,7 +24,7 @@ export function InvitationEmail({
       <Section style={inviterBox}>
         <Text style={inviterLabel}>Invited by</Text>
         <Text style={inviterName}>{invitedByName}</Text>
-        <Text style={inviterRole}>Director of IT</Text>
+        <Text style={inviterRole}>{lecturerTitle ?? 'Staff'}</Text>
       </Section>
 
       <Text style={paragraph}>
