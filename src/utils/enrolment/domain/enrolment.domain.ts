@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import type { invitations } from '@/db/schema'
+import type { enrollments, invitations } from '@/db/schema'
 
 type Invitation = typeof invitations.$inferSelect
 
@@ -15,4 +15,32 @@ export function generateInvitationExpiry(): Date {
 
 export function isInvitationResendable(invitation: Invitation): boolean {
   return invitation.status === 'pending'
+}
+
+type EnrollmentSelect = typeof enrollments.$inferSelect
+
+export type MaybeRedactedEnrollment = Omit<
+  EnrollmentSelect,
+  'email' | 'phoneWhatsApp' | 'invitationSent' | 'invitationId'
+> & {
+  email?: string
+  phoneWhatsApp?: string
+  invitationSent?: boolean
+  invitationId?: string | null
+}
+
+export function redactEnrollmentForTeacher(
+  enrollment: EnrollmentSelect,
+): Omit<
+  EnrollmentSelect,
+  'email' | 'phoneWhatsApp' | 'invitationSent' | 'invitationId'
+> {
+  const {
+    email: _e,
+    phoneWhatsApp: _p,
+    invitationSent: _is,
+    invitationId: _ii,
+    ...rest
+  } = enrollment
+  return rest
 }

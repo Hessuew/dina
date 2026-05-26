@@ -1,17 +1,24 @@
 import { createServerFn } from '@tanstack/react-start'
 import { render } from '@react-email/render'
 import { Resend } from 'resend'
+import type { MaybeRedactedEnrollment } from '@/utils/enrolment/domain/enrolment.domain'
 import {
   generateInvitationExpiry,
   generateSecureToken,
   isInvitationResendable,
+  redactEnrollmentForTeacher,
 } from '@/utils/enrolment/domain/enrolment.domain'
 import { env } from '@/env'
 import { InvitationEmail } from '@/emails/InvitationEmail'
 import { getCurrentUser } from '@/utils/auth/auth'
-import { authz, withRequestCache } from '@/utils/authz'
+import {
+  authz,
+  resolveAdminOrTeacherAccess,
+  withRequestCache,
+} from '@/utils/authz'
 import {
   AppError,
+  AuthorizationError,
   ConflictError,
   NotFoundError,
   ValidationError,
@@ -63,11 +70,25 @@ export const getEnrollments = createServerFn({ method: 'POST' }).handler(
     const user = await getCurrentUser()
 
     return withRequestCache(async () => {
-      await authz(user.id).hasRole('admin')
+      const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(user.id)
+      if (!isAdmin && !isTeacher) {
+        throw new AuthorizationError('admin or teacher access required', {
+          code: 'ROLE_REQUIRED',
+          details: {},
+        })
+      }
 
       const allEnrollments = await findAllEnrollments()
 
-      return { enrollments: allEnrollments }
+      if (!isAdmin) {
+        return {
+          enrollments: allEnrollments.map(
+            redactEnrollmentForTeacher,
+          ) as Array<MaybeRedactedEnrollment>,
+        }
+      }
+
+      return { enrollments: allEnrollments as Array<MaybeRedactedEnrollment> }
     })
   },
 )
@@ -78,7 +99,13 @@ export const getEnrollmentById = createServerFn({ method: 'GET' })
     const user = await getCurrentUser()
 
     return withRequestCache(async () => {
-      await authz(user.id).hasRole('admin')
+      const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(user.id)
+      if (!isAdmin && !isTeacher) {
+        throw new AuthorizationError('admin or teacher access required', {
+          code: 'ROLE_REQUIRED',
+          details: {},
+        })
+      }
 
       const enrollment = await findEnrollmentById(data.enrollmentId)
 
@@ -89,7 +116,15 @@ export const getEnrollmentById = createServerFn({ method: 'GET' })
         })
       }
 
-      return { enrollment }
+      if (!isAdmin) {
+        return {
+          enrollment: redactEnrollmentForTeacher(
+            enrollment,
+          ) as MaybeRedactedEnrollment,
+        }
+      }
+
+      return { enrollment: enrollment as MaybeRedactedEnrollment }
     })
   })
 
@@ -158,6 +193,7 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
           invitedByName: senderName,
           role: 'student',
           inviteLink,
+          lecturerTitle: profile?.lecturerTitle || null,
         }),
       )
 

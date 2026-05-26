@@ -26,6 +26,16 @@ export function isAllowed(userId: string) {
   return createAuthorizationBuilder(userId, service, false)
 }
 
+export async function resolveAdminOrTeacherAccess(
+  userId: string,
+): Promise<{ isAdmin: boolean; isTeacher: boolean }> {
+  const [isAdmin, isTeacher] = await Promise.all([
+    authz(userId).isAdmin(),
+    authz(userId).isRole('teacher'),
+  ])
+  return { isAdmin, isTeacher }
+}
+
 export { withRequestCache }
 export type { AuthorizationService, Role, Action, ResourceType } from './types'
 export { AuthorizationError } from '@/utils/errors'
