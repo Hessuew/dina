@@ -284,7 +284,7 @@ function GemLecturerCard({
 
       {/* bottom frosted overlay — always visible, taller to fit name + bio */}
       <div
-        className="absolute inset-x-0 bottom-0 z-20 h-[40%] mask-[linear-gradient(to_bottom,transparent_0%,black_28%)]"
+        className="absolute inset-x-0 bottom-0 z-20 h-[55%] mask-[linear-gradient(to_bottom,transparent_0%,black_28%)]"
         style={{
           background:
             'linear-gradient(to bottom, transparent 0%, rgba(5,4,2,0.92) 100%)',
@@ -296,9 +296,7 @@ function GemLecturerCard({
             {teacher.fullName}
           </h3>
           {teacher.bio && (
-            <p className="line-clamp-5 text-sm leading-[1.6] text-white/75">
-              {teacher.bio}
-            </p>
+            <p className="text-sm leading-[1.6] text-white/75">{teacher.bio}</p>
           )}
         </div>
       </div>
@@ -306,12 +304,42 @@ function GemLecturerCard({
   )
 }
 
-function getGemRelativeOffset(activeIndex: number, itemIndex: number): number {
-  const total = PAIR_META.length
+function getGemRelativeOffset(
+  activeIndex: number,
+  itemIndex: number,
+  total: number = PAIR_META.length,
+): number {
   let offset = itemIndex - activeIndex
   if (offset > total / 2) offset -= total
   else if (offset < -total / 2) offset += total
   return offset
+}
+
+function getMobileSingleCardMotionStyle(offset: number) {
+  const abs = Math.abs(offset)
+  const dir = offset > 0 ? 1 : -1
+  if (abs === 0) {
+    return {
+      transform: 'translateX(-50%) translateY(0) scale(1)',
+      opacity: 1,
+      zIndex: 30,
+      filter: 'blur(0px)',
+    }
+  }
+  if (abs === 1) {
+    return {
+      transform: `translateX(calc(-50% + ${dir * 120}%)) translateY(0) scale(0.92)`,
+      opacity: 0,
+      zIndex: 20,
+      filter: 'blur(0px)',
+    }
+  }
+  return {
+    transform: `translateX(calc(-50% + ${dir * 130}%)) translateY(0) scale(0.88)`,
+    opacity: 0,
+    zIndex: 0,
+    filter: 'blur(0px)',
+  }
 }
 
 function getGemCardMotionStyle(offset: number) {
@@ -354,6 +382,7 @@ export function LandingLecturerGemsSection() {
   const { activeIndex, setActiveIndex, goToPrevious, goToNext } = useCarousel(
     PAIR_META.length,
   )
+  const m = useCarousel(gemLecturers.length)
 
   const activePair = PAIR_META[activeIndex]
 
@@ -372,10 +401,10 @@ export function LandingLecturerGemsSection() {
         lineColor="#1A1A1A/12"
       />
 
-      <LandingSectionContainer className="relative py-18 sm:py-22 lg:py-28">
+      <LandingSectionContainer className="relative px-0 py-18 sm:py-22 lg:py-24">
         <div className="space-y-14">
-          {/* Two-column header */}
-          <div className="grid gap-12 lg:grid-cols-[minmax(0,0.90fr)_minmax(24rem,1.10fr)] lg:items-start lg:gap-12">
+          <div className="grid gap-12 px-5 sm:px-0 lg:grid-cols-[minmax(0,0.90fr)_minmax(24rem,1.10fr)] lg:items-start lg:gap-12">
+            {/* Two-column header */}
             {/* Left: scriptures + two-line headline */}
             <LandingScriptureSectionHeader
               eyebrowLabel="Teaching Faculty"
@@ -394,13 +423,14 @@ export function LandingLecturerGemsSection() {
                   <span className="mb-2 block text-[0.6rem] font-medium tracking-[0.28em] text-[#9B7A41] uppercase">
                     The DINA Anthem · A Song of Commanders
                   </span>
-                  <span className="text-[#C5A059]">♫</span>{' '}
+                  <span className="text-[#C5A059]">♫</span> <br />
                   <em>
                     Command me Lord,
                     <br />
                     Command me Lord,
                     <br />
                     That I may be, a commander,
+                    <br />
                     <br />
                     Command me Lord,
                     <br />
@@ -410,6 +440,7 @@ export function LandingLecturerGemsSection() {
                     <br />
                     back to God
                   </em>{' '}
+                  <br />
                   <span className="text-[#C5A059]">♫</span>
                 </>
               }
@@ -447,9 +478,9 @@ export function LandingLecturerGemsSection() {
                     </div>
                     <div className="mt-2 text-[0.68rem] leading-[1.9] font-medium tracking-[0.18em] text-[#D4B373] uppercase">
                       Jasper · Sapphire · Chalcedony · Emerald
-                      <br />
+                      <br className="hidden sm:block" />
                       Sardonyx · Sardius · Chrysolyte · Beryl
-                      <br />
+                      <br className="hidden sm:block" />
                       Topaz · Chrysoprasus · Jacinth · Amethyst
                     </div>
                   </div>
@@ -466,7 +497,72 @@ export function LandingLecturerGemsSection() {
             </LandingFeaturePanel>
           </div>
 
-          <div className="space-y-10">
+          {/* MOBILE: one lecturer at a time over all 12 */}
+          <div className="space-y-10 md:hidden">
+            <LandingActiveItemNav
+              className="items-center"
+              label="Active pair"
+              activeValue={`${PAIR_META[Math.floor(m.activeIndex / 2)].number}. ${PAIR_META[Math.floor(m.activeIndex / 2)].theme}`}
+              onPrevious={m.goToPrevious}
+              onNext={m.goToNext}
+              borderColor="border-[#1A1A1A]/10"
+              prevButtonClass="border-[#1A1A1A]/10 bg-[#FCFBF8]/74 text-[#1C1815] shadow-[0_22px_34px_-30px_rgba(0,0,0,0.24)] backdrop-blur-sm hover:border-[#C5A059]/50 hover:bg-white/80"
+              nextButtonClass="border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_26px_40px_-28px_rgba(0,0,0,0.4)] hover:border-[#D6B16E] hover:text-white"
+              labelColor="text-[#6e562d]"
+              valueColor="text-[#1C1815]"
+            />
+            <div className="relative h-144 overflow-hidden">
+              {gemLecturers.map((lecturer, index) => {
+                const offset = getGemRelativeOffset(
+                  m.activeIndex,
+                  index,
+                  gemLecturers.length,
+                )
+                const isVisible = Math.abs(offset) <= 1
+                return (
+                  <div
+                    key={lecturer.id}
+                    aria-hidden={!isVisible}
+                    className="absolute top-0 left-1/2 w-full"
+                    style={{
+                      height: '100%',
+                      ...getMobileSingleCardMotionStyle(offset),
+                      transition:
+                        'transform 700ms cubic-bezier(0.22,1,0.36,1), opacity 700ms cubic-bezier(0.22,1,0.36,1)',
+                    }}
+                  >
+                    <GemLecturerCard
+                      teacher={lecturer}
+                      onClick={() => m.setActiveIndex(index)}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {PAIR_META.map((pair, index) => {
+                const isActive = index === Math.floor(m.activeIndex / 2)
+                return (
+                  <button
+                    key={pair.id}
+                    type="button"
+                    onClick={() => m.setActiveIndex(index * 2)}
+                    aria-label={`Show ${pair.theme} lecturers`}
+                    className={`border px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.28em] uppercase transition-all duration-500 ease-out ${
+                      isActive
+                        ? 'border-[#C5A059]/42 bg-[#1A1716]/8 text-[#1C1815] shadow-[0_24px_44px_-34px_rgba(0,0,0,0.2)]'
+                        : 'border-[#1A1A1A]/10 bg-white/40 text-[#8A7B68] hover:border-[#1A1A1A]/18 hover:bg-white/60'
+                    }`}
+                  >
+                    {pair.theme}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* DESKTOP: pair 3D carousel (unchanged) */}
+          <div className="hidden space-y-10 md:block">
             <LandingActiveItemNav
               className="max-w-xs items-center"
               label="Active pair"
@@ -481,7 +577,7 @@ export function LandingLecturerGemsSection() {
             />
 
             {/* Pair carousel: 2 cards side by side per slot */}
-            <div className="relative h-96 overflow-hidden sm:h-104 lg:min-h-120">
+            <div className="relative h-96 overflow-hidden sm:h-104 md:h-112 lg:min-h-120">
               {PAIR_META.map((pair, index) => {
                 const offset = getGemRelativeOffset(activeIndex, index)
                 const isVisible = Math.abs(offset) <= 2
@@ -490,7 +586,7 @@ export function LandingLecturerGemsSection() {
                   <div
                     key={pair.id}
                     aria-hidden={!isVisible}
-                    className="absolute top-0 left-1/2 w-76 cursor-pointer sm:w-92 lg:w-200"
+                    className="absolute top-0 left-1/2 w-76 cursor-pointer sm:w-92 md:w-152 lg:w-200"
                     style={{
                       height: '100%',
                       ...getGemCardMotionStyle(offset),

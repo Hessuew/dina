@@ -15,7 +15,7 @@ type QAItem = {
 
 const qaItems: Array<QAItem> = [
   {
-    id: '',
+    id: 'why-join',
     question: 'Why should I join?',
     answer:
       'The body of Christ appears to lack depth, maturity, expected spiritual growth, and genuine, life-transforming encounters with God. If you seek to truly experience what Christianity is meant to be, DINA will help you.',
@@ -36,7 +36,7 @@ const qaItems: Array<QAItem> = [
     id: 'time-commitment',
     question: 'What is the weekly time commitment?',
     answer:
-      'Students attend three 2-hour classes per month, plus biweekly personal discipleship sessions (1–2 hours each). Additional time is needed for reading, assignments, and discipling at least one person throughout the program. Most students dedicate 6–10 hours per week.',
+      'Students attend three 2-hour classes per month, plus biweekly personal discipleship sessions (1–2 hours each). Additional time is needed for reading, assignments, and discipling at least one person throughout the program. Most students dedicate 4–7 hours per week.',
   },
   {
     id: 'location',

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { LandingItemBase } from '@/components/landing/types'
 import marksBackground from '@/assets/images/bg/bg_marks.webp'
 import {
@@ -18,6 +19,7 @@ type MarkItem = LandingItemBase & {
   quote2?: string
   description: string
   example: string
+  videoUrl?: string
 }
 
 const marks: Array<MarkItem> = [
@@ -72,7 +74,93 @@ const marks: Array<MarkItem> = [
     example:
       "When a revelation comes from heaven, you will know it. Before that moment, it may seem dull, even if it is indeed the word and correct. But then, oh, it’s as if the heavens open, and you find yourself savoring oven-hot, fresh manna from heaven's bakery in the morning dew.",
   },
+  {
+    id: 'psalm',
+    title: 'Psalm and Spiritual Song',
+    quote:
+      '"And be not drunk with wine, wherein is excess; but be filled with the Spirit; Speaking to yourselves in psalms and hymns and spiritual songs, singing and making melody in your heart to the Lord;" Eph 5:19',
+    description: '',
+    example: '',
+    videoUrl: 'https://www.youtube.com/embed/QOwyaJwklX4',
+  },
+  {
+    id: 'prophecy',
+    title: 'Prophecy',
+    quote:
+      '"But he that prophesieth speaketh unto men to edification, and exhortation, and comfort ... I would that ye all spake with tongues but rather that ye prophesied: for greater is he that prophesieth than he that speaketh with tongues, except he interpret, that the church may receive edifying." 1 Cor 14:3,5',
+    description: '',
+    example: '',
+    videoUrl: 'https://www.youtube.com/embed/IrNlv4G71Eg',
+  },
+  {
+    id: 'tongue',
+    title: 'Tongue and Interpretation',
+    quote:
+      '"Even so ye, forasmuch as ye are zealous of spiritual gifts, seek that ye may excel to the edifying of the church. Wherefore let him that speaketh in an unknown tongue pray that he may interpret." 1 Cor 14:12,13',
+    description: '',
+    example: '',
+    videoUrl: 'https://www.youtube.com/embed/ak7HZrWZ0mE',
+  },
 ]
+
+function YouTubeFacade({
+  embedUrl,
+  title,
+}: {
+  embedUrl: string
+  title: string
+}) {
+  const [activated, setActivated] = useState(false)
+  const videoId = embedUrl.split('/').pop()?.split('?')[0] ?? ''
+
+  if (activated) {
+    return (
+      <div className="aspect-video w-full">
+        <iframe
+          src={`${embedUrl}?autoplay=1`}
+          title={title}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="h-full w-full"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="group relative aspect-video w-full cursor-pointer"
+      onClick={() => setActivated(true)}
+      onKeyDown={(e) =>
+        (e.key === 'Enter' || e.key === ' ') && setActivated(true)
+      }
+      role="button"
+      tabIndex={0}
+      aria-label={`Play ${title}`}
+    >
+      <img
+        src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
+        alt={title}
+        className="h-full w-full object-cover"
+        loading="lazy"
+      />
+      <div className="absolute inset-0 bg-black/30 transition-colors group-hover:bg-black/20" />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <svg
+          viewBox="0 0 68 48"
+          className="h-12 w-17 transition-opacity group-hover:opacity-80"
+          aria-hidden="true"
+        >
+          <path
+            d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.63-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z"
+            fill="#f00"
+          />
+          <path d="M45 24 27 14v20" fill="#fff" />
+        </svg>
+      </div>
+    </div>
+  )
+}
 
 export function LandingMarksSection() {
   const { activeIndex, goToPrevious, goToNext } = useCarousel(marks.length)
@@ -124,7 +212,7 @@ export function LandingMarksSection() {
 
           <LandingFeaturePanel key={activeMark.id}>
             <LandingFeaturePanelHeader backgroundImageUrl={marksBackground}>
-              <div className="relative min-h-84 space-y-8 p-4 sm:p-8 lg:h-100">
+              <div className="relative h-104 space-y-8 overflow-hidden p-4 sm:h-96 sm:p-8 lg:h-100">
                 <div>
                   <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
                     Mark {activeIndex + 1} of {marks.length}
@@ -163,8 +251,18 @@ export function LandingMarksSection() {
               </div>
             </LandingFeaturePanelHeader>
 
-            <LandingFeaturePanelBody className="px-4 py-5 sm:px-8 sm:py-8">
-              {activeMark.example && (
+            <LandingFeaturePanelBody className="h-88 px-4 py-5 sm:px-8 sm:py-8 lg:h-88">
+              {activeMark.videoUrl ? (
+                <div
+                  className="animate-[fadeInSlideRight_0.7s_ease-out_forwards] opacity-0"
+                  style={{ animationDelay: '0.5s' }}
+                >
+                  <YouTubeFacade
+                    embedUrl={activeMark.videoUrl}
+                    title={activeMark.title}
+                  />
+                </div>
+              ) : activeMark.example ? (
                 <div
                   className="animate-[fadeInSlideRight_0.7s_ease-out_forwards] opacity-0"
                   style={{ animationDelay: '0.5s' }}
@@ -176,7 +274,7 @@ export function LandingMarksSection() {
                     {activeMark.example}
                   </p>
                 </div>
-              )}
+              ) : null}
             </LandingFeaturePanelBody>
           </LandingFeaturePanel>
         </div>
