@@ -20,6 +20,7 @@ import { env } from '@/env'
 declare global {
   interface Window {
     gtag?: (...args: Array<unknown>) => void
+    fbq?: (...args: Array<unknown>) => void
   }
 }
 
@@ -140,6 +141,9 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
           value: 1.0,
           currency: 'EUR',
         })
+      }
+      if (typeof window !== 'undefined' && window.fbq) {
+        window.fbq('track', 'Lead')
       }
       void router.navigate({
         to: '/enrolment',
