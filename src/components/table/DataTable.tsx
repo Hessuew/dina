@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, ChevronsUpDown, Search } from 'lucide-react'
 import {
   createColumnHelper,
@@ -9,7 +9,12 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
+import type {
+  ColumnDef,
+  OnChangeFn,
+  PaginationState,
+  SortingState,
+} from '@tanstack/react-table'
 import type { ComponentType } from 'react'
 import { Input } from '@/components/ui/input'
 import {
@@ -21,6 +26,13 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Table,
   TableBody,
   TableCell,
@@ -28,9 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  TooltipProvider,
-} from '@/components/ui/tooltip'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { IconButton } from '@/components/table/IconButton'
 
@@ -41,11 +51,23 @@ type ButtonConfig<TData> = {
   show?: (row: TData) => boolean
 }
 
+export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
+
 type DataTableProps<TData> = {
   columns: Array<ColumnDef<TData, any>>
   data: Array<TData>
   pageSize?: number
+  initialPage?: number
+  onPageChange?: (page: number) => void
+  onPageSizeChange?: (pageSize: number) => void
   searchPlaceholder?: string
+  // Server-side mode (opt-in — omit these to keep default client-side behavior)
+  rowCount?: number
+  initialSearch?: string
+  initialSortBy?: string
+  initialSortDir?: 'asc' | 'desc'
+  onSearchChange?: (search: string) => void
+  onSortingChange?: (sortBy: string | null, sortDir: 'asc' | 'desc') => void
 }
 
 export function createButtonColumn<TData>(
@@ -99,43 +121,97 @@ function buildPageWindow(current: number, total: number): Array<number | '…'> 
 export function DataTable<TData>({
   columns,
   data,
-  pageSize = 10,
+  pageSize: initialPageSize = 10,
+  initialPage,
+  onPageChange,
+  onPageSizeChange,
   searchPlaceholder = 'Search…',
+  rowCount,
+  initialSearch = '',
+  initialSortBy,
+  initialSortDir = 'desc',
+  onSearchChange,
+  onSortingChange,
 }: DataTableProps<TData>) {
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [globalFilter, setGlobalFilter] = useState('')
+  const isServerMode = rowCount !== undefined
+  const tableTopRef = useRef<HTMLDivElement>(null)
+
+  const initialSortingState: SortingState =
+    initialSortBy ? [{ id: initialSortBy, desc: initialSortDir === 'desc' }] : []
+
+  const [sorting, setSorting] = useState<SortingState>(initialSortingState)
+  const [globalFilter, setGlobalFilter] = useState(initialSearch)
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: initialPage ? initialPage - 1 : 0,
+    pageSize: initialPageSize,
+  })
+
+  const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
+    const next = typeof updater === 'function' ? updater(sorting) : updater
+    setSorting(next)
+    if (isServerMode && onSortingChange && next.length > 0) {
+      onSortingChange(next[0].id, next[0].desc ? 'desc' : 'asc')
+    } else if (isServerMode && onSortingChange && next.length === 0) {
+      onSortingChange(null, 'desc')
+    }
+  }
 
   const table = useReactTable({
     columns,
     data,
+    ...(isServerMode
+      ? {
+          manualPagination: true,
+          manualSorting: true,
+          manualFiltering: true,
+          rowCount,
+        }
+      : {}),
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    ...(isServerMode ? {} : { getFilteredRowModel: getFilteredRowModel() }),
     getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    ...(isServerMode ? {} : { getSortedRowModel: getSortedRowModel() }),
     globalFilterFn: 'includesString',
-    initialState: { pagination: { pageSize } },
-    onGlobalFilterChange: setGlobalFilter,
-    onSortingChange: setSorting,
-    state: { globalFilter, sorting },
+    onGlobalFilterChange: (value) => {
+      setGlobalFilter(value)
+      onSearchChange?.(value)
+    },
+    onPaginationChange: (updater) => {
+      const next = typeof updater === 'function' ? updater(pagination) : updater
+      setPagination(next)
+      if (next.pageSize !== pagination.pageSize) {
+        onPageSizeChange?.(next.pageSize)
+      } else if (next.pageIndex !== pagination.pageIndex) {
+        onPageChange?.(next.pageIndex + 1)
+        tableTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    },
+    onSortingChange: handleSortingChange,
+    state: { globalFilter, pagination, sorting },
   })
 
-  const { pageIndex } = table.getState().pagination
+  const { pageIndex, pageSize } = table.getState().pagination
   const pageCount = table.getPageCount()
-  const filteredTotal = table.getFilteredRowModel().rows.length
+  const filteredTotal = isServerMode
+    ? rowCount
+    : table.getFilteredRowModel().rows.length
   const start = pageIndex * pageSize + 1
   const end = Math.min((pageIndex + 1) * pageSize, filteredTotal)
   const pageWindow = buildPageWindow(pageIndex + 1, pageCount)
+  const sizeOptions = PAGE_SIZE_OPTIONS.includes(pageSize)
+    ? PAGE_SIZE_OPTIONS
+    : [...PAGE_SIZE_OPTIONS, pageSize].sort((a, b) => a - b)
 
   return (
-    <div className="flex flex-col gap-4">
+    <div ref={tableTopRef} className="flex flex-col gap-4">
       {/* Search bar */}
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-[#8E816D]" />
         <Input
           value={globalFilter}
           onChange={(e) => {
-            setGlobalFilter(e.target.value)
-            table.setPageIndex(0)
+            table.setGlobalFilter(e.target.value)
+            if (!isServerMode) table.setPageIndex(0)
           }}
           placeholder={searchPlaceholder}
           className="h-9 border-white/10 bg-[#1A1716] pl-8 text-[0.82rem] text-[#F8F4EC] placeholder:text-[#8E816D] focus-visible:border-[#C5A059]/40 focus-visible:ring-0"
@@ -219,12 +295,41 @@ export function DataTable<TData>({
         </Table>
       </div>
 
-      {/* Footer: count + pagination */}
+      {/* Footer: count + page size selector + pagination */}
       {pageCount > 1 && (
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-            {start}–{end} of {filteredTotal}
-          </span>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+              {start}–{end} of {filteredTotal}
+            </span>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+                Per page
+              </span>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(val) => {
+                  table.setPageSize(Number(val))
+                }}
+              >
+                <SelectTrigger className="h-7 w-16 rounded-sm border-white/10 bg-[#1A1716] text-[0.76rem] text-[#D6CCBE] focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-sm border border-white/10 bg-[#1A1716] text-[#F8F4EC]">
+                  {sizeOptions.map((size) => (
+                    <SelectItem
+                      key={size}
+                      value={String(size)}
+                      className="text-[0.76rem]"
+                    >
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           <Pagination className="mx-0 w-auto justify-end">
             <PaginationContent className="gap-1.5">

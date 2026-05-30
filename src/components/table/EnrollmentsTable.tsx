@@ -69,6 +69,16 @@ type EnrollmentsTableProps = {
   enrollments: Array<EnrollmentRow>
   onRefresh: () => void
   isAdmin: boolean
+  initialPage?: number
+  pageSize?: number
+  rowCount?: number
+  initialSearch?: string
+  initialSortBy?: string
+  initialSortDir?: 'asc' | 'desc'
+  onPageChange?: (page: number) => void
+  onPageSizeChange?: (pageSize: number) => void
+  onSearchChange?: (search: string) => void
+  onSortingChange?: (sortBy: string | null, sortDir: 'asc' | 'desc') => void
 }
 
 const columnHelper = createColumnHelper<EnrollmentRow>()
@@ -88,6 +98,16 @@ export function EnrollmentsTable({
   enrollments,
   onRefresh,
   isAdmin,
+  initialPage,
+  pageSize,
+  rowCount,
+  initialSearch,
+  initialSortBy,
+  initialSortDir,
+  onPageChange,
+  onPageSizeChange,
+  onSearchChange,
+  onSortingChange,
 }: EnrollmentsTableProps) {
   const router = useRouter()
 
@@ -290,8 +310,17 @@ export function EnrollmentsTable({
       <DataTable
         columns={columns}
         data={enrollments}
-        pageSize={10}
-        searchPlaceholder="Search by name, email, status…"
+        pageSize={pageSize ?? 10}
+        initialPage={initialPage}
+        rowCount={rowCount}
+        initialSearch={initialSearch}
+        initialSortBy={initialSortBy}
+        initialSortDir={initialSortDir}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+        onSearchChange={onSearchChange}
+        onSortingChange={onSortingChange}
+        searchPlaceholder="Search by name, status…"
       />
 
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
