@@ -20,4 +20,13 @@
       "id": "fc8915964fb8466c81f83fcd27e77833",
     },
   ],
+  "routes": [
+    {
+      "pattern": "christ-dina.org",
+      "zone_name": "christ-dina.org",
+      "custom_domain": true,
+    },
+  ],
+  "workers_dev": true,
+  "preview_urls": true,
 }
