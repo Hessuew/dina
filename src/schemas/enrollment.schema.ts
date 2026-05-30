@@ -64,6 +64,26 @@ export const sendInvitationForEnrollmentSchema = z.object({
   enrollmentId: z.uuid('Invalid enrollment ID'),
 })
 
+export const ENROLLMENT_SORT_KEYS = [
+  'fullLegalName',
+  'nationalityCitizenship',
+  'yearOfBirth',
+  'gender',
+  'status',
+  'invitationSent',
+  'createdAt',
+] as const
+
+export const getEnrollmentsSchema = z.object({
+  page: z.number().int().min(1).default(1),
+  pageSize: z
+    .union([z.literal(10), z.literal(20), z.literal(50), z.literal(100)])
+    .default(10),
+  search: z.string().default(''),
+  sortBy: z.enum(ENROLLMENT_SORT_KEYS).default('createdAt'),
+  sortDir: z.enum(['asc', 'desc']).default('desc'),
+})
+
 export type CreateEnrollmentInput = z.infer<typeof createEnrollmentSchema>
 export type GetEnrollmentByIdInput = z.infer<typeof getEnrollmentByIdSchema>
 export type UpdateEnrollmentStatusInput = z.infer<
@@ -73,3 +93,4 @@ export type DeleteEnrollmentInput = z.infer<typeof deleteEnrollmentSchema>
 export type SendInvitationForEnrollmentInput = z.infer<
   typeof sendInvitationForEnrollmentSchema
 >
+export type GetEnrollmentsInput = z.infer<typeof getEnrollmentsSchema>
