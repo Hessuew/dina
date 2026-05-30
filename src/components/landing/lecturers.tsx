@@ -13,6 +13,7 @@ import mahiImage from '@/assets/images/lecturers/mahi.webp'
 import sadeImage from '@/assets/images/lecturers/sade.webp'
 import obiImage from '@/assets/images/lecturers/obi.webp'
 import ugoImage from '@/assets/images/lecturers/ugo.webp'
+import { GEM_IMAGE_MAP } from '@/utils/gems'
 import {
   LandingActiveItemNav,
   LandingFeaturePanel,
@@ -292,9 +293,18 @@ function GemLecturerCard({
       >
         <div className="flex h-full flex-col justify-end gap-1.5 px-3 pb-4">
           <div className="h-px w-7 bg-white/20" />
-          <h3 className="font-serif text-xl leading-tight text-white italic">
-            {teacher.fullName}
-          </h3>
+          <div className="flex items-center gap-2">
+            {teacher.gemstone && GEM_IMAGE_MAP[teacher.gemstone] && (
+              <img
+                src={GEM_IMAGE_MAP[teacher.gemstone]}
+                alt={teacher.gemstone}
+                className="size-12 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+              />
+            )}
+            <h3 className="font-serif text-xl leading-tight text-white italic">
+              {teacher.fullName}
+            </h3>
+          </div>
           {teacher.bio && (
             <p className="text-sm leading-[1.6] text-white/75">{teacher.bio}</p>
           )}

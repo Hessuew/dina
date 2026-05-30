@@ -8,6 +8,7 @@ import {
   DialogHeader,
 } from '@/components/ui/dialog'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
+import { GEM_IMAGE_MAP } from '@/utils/gems'
 
 type TeacherModalProps = {
   teacher: TeacherWithCourse | null
@@ -102,9 +103,18 @@ export function TeacherModal({
                 {/* Name and role */}
                 <div>
                   <div className="h-px w-12 bg-[#C5A059]/50" />
-                  <h3 className="mt-5 font-serif text-[clamp(3rem,7vw,5.4rem)] leading-[0.88] tracking-[-0.06em] text-[#F8F4EC]">
-                    about me
-                  </h3>
+                  <div className="mt-5 flex items-end gap-4">
+                    {teacher.gemstone && GEM_IMAGE_MAP[teacher.gemstone] && (
+                      <img
+                        src={GEM_IMAGE_MAP[teacher.gemstone]}
+                        alt={teacher.gemstone}
+                        className="size-16 object-contain drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]"
+                      />
+                    )}
+                    <h3 className="font-serif text-[clamp(3rem,7vw,5.4rem)] leading-[0.88] tracking-[-0.06em] text-[#F8F4EC]">
+                      about me
+                    </h3>
+                  </div>
                 </div>
 
                 {/* Bio */}
