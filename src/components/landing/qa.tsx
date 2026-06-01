@@ -1,4 +1,5 @@
 import { ArrowRight } from 'lucide-react'
+import type { ReactNode } from 'react'
 import marbleTexture from '@/assets/images/bg/bg_hero.webp'
 import {
   LandingImageSection,
@@ -10,7 +11,7 @@ import {
 type QAItem = {
   id: string
   question: string
-  answer: string
+  answer: string | ReactNode
 }
 
 const qaItems: Array<QAItem> = [
@@ -49,6 +50,111 @@ const qaItems: Array<QAItem> = [
     question: 'What can I expect after completing the program?',
     answer:
       'Graduates are equipped with spiritual blessings from heavenly places, biblical foundations, character formation, and practical discipleship skills. Having experienced multiple revelations from heaven, their lives will never be the same.',
+  },
+  {
+    id: 'affiliated-ministry',
+    question: 'What ministry is DINA affiliated with?',
+    answer: (
+      <>
+        Flame the Freeze:{' '}
+        <a
+          href="https://flamethefreeze.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#C5A059] hover:underline"
+        >
+          flamethefreeze.com
+        </a>
+        <br />
+        Prayer Church Finland:{' '}
+        <a
+          href="https://rukouksenseurakunta.fi/en/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#C5A059] hover:underline"
+        >
+          rukouksenseurakunta.fi/en/
+        </a>
+      </>
+    ),
+  },
+  {
+    id: 'online-meetings',
+    question: 'Do you have an online weekly church meeting I can join?',
+    answer: (
+      <>
+        Yes, an alternate bi-weekly Saturday bible study or prayer meetings via
+        Zoom at 4pm (16:00) UK time. Bible study lasts 4 to 5 hours, while
+        prayer meetings last 5 to 12 hours.
+        <br />
+        Prayer meeting:{' '}
+        <a
+          href="https://flamethefreeze.zoom.us/j/82297139976?pwd=706512"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#C5A059] hover:underline"
+        >
+          Join Zoom
+        </a>
+        <br />
+        Bible study:{' '}
+        <a
+          href="https://flamethefreeze.zoom.us/j/89840579351?pwd=983643"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#C5A059] hover:underline"
+        >
+          Join Zoom
+        </a>
+      </>
+    ),
+  },
+  {
+    id: 'reading-materials',
+    question: 'Do you have reading materials to increase my faith in God?',
+    answer: (
+      <>
+        Yes, here is a free copy of Flame the Freeze ebook of recorded miracles,
+        healing and deliverances:{' '}
+        <a
+          href="https://drive.google.com/file/d/1D5npgHt176KLtaEir-OE61LcndzssEjp/view"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#C5A059] hover:underline"
+        >
+          Download ebook
+        </a>
+        <br />
+        Other book that can be purchased online is Operation Fraso Leon, which
+        is focused on being victorious in life's battles:{' '}
+        <a
+          href="https://www.amazon.com/Operation-Fraso-Leon-Andrew-Agbaje/dp/1916801315"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#C5A059] hover:underline"
+        >
+          Amazon
+        </a>
+      </>
+    ),
+  },
+  {
+    id: 'sermons',
+    question: 'Are there sermons I can listen to?',
+    answer: (
+      <>
+        Yes, kindly visit Flame the Freeze YouTube page for heavenly-baked
+        revelations and encounters:{' '}
+        <a
+          href="https://www.youtube.com/@flamethefreeze2613/playlists"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#C5A059] hover:underline"
+        >
+          YouTube playlists
+        </a>
+      </>
+    ),
   },
 ]
 
