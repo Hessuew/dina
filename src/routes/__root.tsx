@@ -133,8 +133,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
 
       <body>
-        <SidebarProvider defaultOpen={Boolean(user)}>
-          <AppSidebar user={user} role={role} />
+        <SidebarProvider
+          defaultOpen={Boolean(user)}
+          enableKeyboardShortcut={Boolean(user)}
+        >
+          {user && <AppSidebar user={user} role={role} />}
           <SidebarInset>
             <TooltipProvider>
               <Header user={user} />
