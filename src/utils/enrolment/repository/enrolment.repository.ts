@@ -1,6 +1,27 @@
-import { eq } from 'drizzle-orm'
+import { asc, count, desc, eq, ilike, or } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { enrollments, invitations, profiles } from '@/db/schema'
+
+const SORT_COLUMN_MAP = {
+  fullLegalName: enrollments.fullLegalName,
+  nationalityCitizenship: enrollments.nationalityCitizenship,
+  yearOfBirth: enrollments.yearOfBirth,
+  gender: enrollments.gender,
+  status: enrollments.status,
+  invitationSent: enrollments.invitationSent,
+  createdAt: enrollments.createdAt,
+} as const
+
+export type EnrollmentSortKey = keyof typeof SORT_COLUMN_MAP
+
+export type FindEnrollmentsPageInput = {
+  limit: number
+  offset: number
+  search: string
+  sortBy: EnrollmentSortKey
+  sortDir: 'asc' | 'desc'
+  includeEmail: boolean
+}
 
 /* v8 ignore start */
 export async function insertEnrollment(
@@ -11,11 +32,40 @@ export async function insertEnrollment(
   return enrollment
 }
 
-export async function findAllEnrollments() {
+export async function findEnrollmentsPage({
+  limit,
+  offset,
+  search,
+  sortBy,
+  sortDir,
+  includeEmail,
+}: FindEnrollmentsPageInput) {
   const db = await getDb()
-  return db.query.enrollments.findMany({
-    orderBy: (e, { desc }) => [desc(e.createdAt)],
-  })
+
+  const searchFilter =
+    search.trim().length > 0
+      ? or(
+          ilike(enrollments.fullLegalName, `%${search}%`),
+          ilike(enrollments.status, `%${search}%`),
+          ...(includeEmail ? [ilike(enrollments.email, `%${search}%`)] : []),
+        )
+      : undefined
+
+  const whereClause = searchFilter
+  const col = SORT_COLUMN_MAP[sortBy]
+  const orderExpr = sortDir === 'asc' ? asc(col) : desc(col)
+
+  const [rows, [{ total }]] = await Promise.all([
+    db.query.enrollments.findMany({
+      where: whereClause,
+      orderBy: orderExpr,
+      limit,
+      offset,
+    }),
+    db.select({ total: count() }).from(enrollments).where(whereClause),
+  ])
+
+  return { rows, total }
 }
 
 export async function findEnrollmentById(enrollmentId: string) {

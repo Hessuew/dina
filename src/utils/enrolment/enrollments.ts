@@ -27,14 +27,15 @@ import {
   createEnrollmentSchema,
   deleteEnrollmentSchema,
   getEnrollmentByIdSchema,
+  getEnrollmentsSchema,
   sendInvitationForEnrollmentSchema,
   updateEnrollmentStatusSchema,
 } from '@/schemas/enrollment.schema'
 import {
   deleteEnrollmentById,
   deleteInvitationById,
-  findAllEnrollments,
   findEnrollmentById,
+  findEnrollmentsPage,
   findInvitationByEmail,
   findProfileById,
   insertEnrollment,
@@ -65,8 +66,9 @@ export const createEnrollment = createServerFn({ method: 'POST' })
     return { enrollment }
   })
 
-export const getEnrollments = createServerFn({ method: 'POST' }).handler(
-  async () => {
+export const getEnrollments = createServerFn({ method: 'POST' })
+  .inputValidator(getEnrollmentsSchema)
+  .handler(async ({ data }) => {
     const user = await getCurrentUser()
 
     return withRequestCache(async () => {
@@ -78,20 +80,27 @@ export const getEnrollments = createServerFn({ method: 'POST' }).handler(
         })
       }
 
-      const allEnrollments = await findAllEnrollments()
+      const { rows, total } = await findEnrollmentsPage({
+        limit: data.pageSize,
+        offset: (data.page - 1) * data.pageSize,
+        search: data.search,
+        sortBy: data.sortBy,
+        sortDir: data.sortDir,
+        includeEmail: isAdmin,
+      })
 
       if (!isAdmin) {
         return {
-          enrollments: allEnrollments.map(
+          enrollments: rows.map(
             redactEnrollmentForTeacher,
           ) as Array<MaybeRedactedEnrollment>,
+          total,
         }
       }
 
-      return { enrollments: allEnrollments as Array<MaybeRedactedEnrollment> }
+      return { enrollments: rows as Array<MaybeRedactedEnrollment>, total }
     })
-  },
-)
+  })
 
 export const getEnrollmentById = createServerFn({ method: 'GET' })
   .inputValidator(getEnrollmentByIdSchema)
