@@ -42,3 +42,4 @@ Redaction is enforced in the server functions (`getEnrollments`, `getEnrollmentB
 - `redactEnrollmentForTeacher` helper added to `src/utils/enrolment/domain/enrolment.domain.ts`.
 - `EnrollmentsTable` and the detail page conditionally hide admin-only UI (status select, invite/delete actions, email, phone) when `isAdmin` is false.
 - Enrollments nav item moved from "For admins" sidebar section to "For teachers" (admins still see it there since they render both groups).
+- Server-side enrollment search (`findEnrollmentsPage`) excludes the `email` field from the `WHERE` clause when `includeEmail: false` (i.e. for teachers). This prevents teachers from probing for a redacted email value via the search box, which would otherwise reveal whether a given email exists in the dataset.
