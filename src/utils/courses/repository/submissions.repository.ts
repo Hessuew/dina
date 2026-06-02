@@ -1,16 +1,14 @@
 /* v8 ignore start */
 import { and, eq, inArray } from 'drizzle-orm'
-import type { getDb } from '@/db'
+import { getDb } from '@/db'
 import { submissions } from '@/db/schema'
 
-type Db = Awaited<ReturnType<typeof getDb>>
-
 export async function findStudentSubmissions(
-  db: Db,
   studentId: string,
-  assignmentIds: string[],
+  assignmentIds: Array<string>,
 ) {
   if (assignmentIds.length === 0) return []
+  const db = await getDb()
   return db.query.submissions.findMany({
     where: and(
       eq(submissions.studentId, studentId),

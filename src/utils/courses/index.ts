@@ -17,12 +17,11 @@ export {
 } from './lesson'
 
 // Teacher-course relationship management
+export { getCourseTeachers, updateCourseTeachers } from './teacher-assignment'
 export {
   validateTeacherPair,
   assignTeachersToCourse,
-  getCourseTeachers,
-  updateCourseTeachers,
-} from './teacher-assignment'
+} from './service/teacher-assignment.service'
 
 // Re-export getAllTeachers from teachers.ts for backward compatibility
 export { getAllTeachers } from '@/utils/teachers/teachers'

@@ -1,43 +1,39 @@
 /* v8 ignore start */
 import { and, eq, gt, inArray } from 'drizzle-orm'
-import type { getDb } from '@/db'
+import { getDb } from '@/db'
 import { courses, lessons } from '@/db/schema'
 
-type Db = Awaited<ReturnType<typeof getDb>>
-
-export async function insertLesson(
-  db: Db,
-  values: {
-    courseId: string
-    title: string
-    content: string | null
-    videoUrl: string | null
-    thumbnailUrl: string | null
-    scheduledTime: Date | string | null
-    duration: number | null
-    orderIndex: number
-    isPublished: boolean
-  },
-) {
+export async function insertLesson(values: {
+  courseId: string
+  title: string
+  content: string | null
+  videoUrl: string | null
+  thumbnailUrl: string | null
+  scheduledTime: Date | null
+  duration: number | null
+  orderIndex: number
+  isPublished: boolean
+}) {
+  const db = await getDb()
   const [lesson] = await db.insert(lessons).values(values).returning()
   return lesson
 }
 
 export async function updateLessonById(
-  db: Db,
   lessonId: string,
   values: {
     title: string
     content: string | null
     videoUrl: string | null
     thumbnailUrl: string | null
-    scheduledTime: Date | string | null
+    scheduledTime: Date | null
     duration: number | null
-    orderIndex: number
-    isPublished: boolean
+    orderIndex?: number
+    isPublished?: boolean
     updatedAt: Date
   },
 ) {
+  const db = await getDb()
   const [lesson] = await db
     .update(lessons)
     .set(values)
@@ -46,11 +42,13 @@ export async function updateLessonById(
   return lesson
 }
 
-export async function deleteLessonById(db: Db, lessonId: string) {
+export async function deleteLessonById(lessonId: string) {
+  const db = await getDb()
   await db.delete(lessons).where(eq(lessons.id, lessonId))
 }
 
-export async function findUpcomingLessons(db: Db, now: Date) {
+export async function findUpcomingLessons(now: Date) {
+  const db = await getDb()
   return db
     .select({
       id: lessons.id,
@@ -68,7 +66,8 @@ export async function findUpcomingLessons(db: Db, now: Date) {
     .limit(5)
 }
 
-export async function findLessonCalendarEvents(db: Db, courseIds: string[]) {
+export async function findLessonCalendarEvents(courseIds: Array<string>) {
+  const db = await getDb()
   return db
     .select({
       id: lessons.id,

@@ -24,6 +24,10 @@ export const deleteCourseSchema = z.object({
   courseId: z.uuid('Invalid course ID'),
 })
 
+export const getCourseSchema = z.object({
+  courseId: z.uuid('Invalid course ID'),
+})
+
 export const getCourseTeachersSchema = z.object({
   courseId: z.uuid('Invalid course ID'),
 })
@@ -34,6 +38,7 @@ export const updateCourseTeachersSchema = z.object({
   teacher2Id: z.uuid('Invalid teacher ID'),
 })
 
+export type GetCourseInput = z.infer<typeof getCourseSchema>
 export type CreateCourseInput = z.infer<typeof createCourseSchema>
 export type UpdateCourseInput = z.infer<typeof updateCourseSchema>
 export type DeleteCourseInput = z.infer<typeof deleteCourseSchema>
