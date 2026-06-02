@@ -27,7 +27,6 @@ import { useCarousel } from '@/components/landing/hooks'
 
 type Lecturer = {
   name: string
-  title: string
   bio: string
   image?: string
 }
@@ -47,13 +46,11 @@ const lecturerPairs: Array<LecturerPair> = [
     lecturers: [
       {
         name: 'Andrew A.',
-        title: '',
         bio: 'Professor Andrew is an award-winning physician and world-class scholar in preventing childhood obesity. He leads urFIT-child research group in Finland and a born-again Christian who demonstrates the power of the Holy Ghost daily.',
         image: andrewImage,
       },
       {
         name: 'Ella O.',
-        title: '',
         bio: 'Emmanuella is an experienced Sustainability and Climate Change Consultant advising public and private organisations locally and globally. She helps organisations design and implement ESG and sustainability transformation strategies.',
         image: ellaImage,
       },
@@ -67,13 +64,11 @@ const lecturerPairs: Array<LecturerPair> = [
     lecturers: [
       {
         name: 'Juhani J.',
-        title: '',
         bio: 'Juhani is an experienced software developer. His passion is to know the Holy Spirit and to see Finland turn to God, city by city. The fire of God is evident in his life, and through him the world will see Jesus.',
         image: juhaniImage,
       },
       {
         name: 'Akosua O.',
-        title: '',
         bio: 'Akosua is studying computer science and is passionate about faith, discipleship, and sharing the Gospel. Through church ministry, evangelism, and teaching, she continues growing in prayer, biblical understanding, and service.',
         image: akosyaImage,
       },
@@ -87,14 +82,12 @@ const lecturerPairs: Array<LecturerPair> = [
     lecturers: [
       {
         name: 'Emmanuel E.',
-        title: '',
-        bio: 'Emmanuel Ebenezer is a Gospel minister, author, web developer, and brand specialist from Nigeria, dedicated to proclaiming the Gospel of Jesus through outreaches, Christian books, and global digital ministry platforms.',
+        bio: 'Emmanuel is a Gospel minister, author, web developer, and brand specialist from Nigeria, dedicated to proclaiming the Gospel of Jesus through outreaches, Christian books, and global digital ministry platforms.',
         image: emmanuelImage,
       },
       {
         name: 'Ezinne O.',
-        title: '',
-        bio: 'Ezinne Onyeka is a disciple of the Lord, devoted daily to learning at His feet and loving Him wholeheartedly. She is also a Product Leader focused on AI enablement, managing the development and launch of AI voice and multimodal products across Europe.',
+        bio: 'Ezinne is a disciple of the Lord, devoted daily to learning at His feet and loving Him wholeheartedly. She is also a Product Leader focused on AI enablement, managing the development and launch of AI voice and multimodal products across Europe.',
         image: ezinneImage,
       },
     ],
@@ -107,14 +100,12 @@ const lecturerPairs: Array<LecturerPair> = [
     lecturers: [
       {
         name: 'Sade P.',
-        title: '',
         bio: 'Sade is a Psychiatrist passionate about teaching and mentoring the next generation of doctors. She works across inpatient and community settings, delivering compassionate, evidence-based, and holistic patient-centred care.',
         image: sadeImage,
       },
       {
         name: 'Blessing A.',
-        title: '',
-        bio: 'Blessing is a medical doctor and solution-focused practitioner with a special interest in lifestyle medicine, addiction support, and youth counselling, with a passion for helping people achieve lasting wellbeing.',
+        bio: 'Blessing is a Psychiatrist and solution-focused practitioner with a special interest in lifestyle medicine, addiction support, and youth counselling, with a passion for helping people achieve lasting wellbeing.',
         image: blessingImage,
       },
     ],
@@ -127,14 +118,12 @@ const lecturerPairs: Array<LecturerPair> = [
     lecturers: [
       {
         name: 'Kene O.',
-        title: '',
         bio: 'Kene is a Capital Markets and Derivatives solicitor dual qualified in England, Wales, and Nigeria. She contributes to international financial industry working groups, promoting collaboration, market standards, and innovation.',
         image: keneImage,
       },
       {
         name: 'Mahidere A.',
-        title: '',
-        bio: 'Mahidere W. Ali (Mahi) is an epidemiology researcher with a medical background based in Finland. She believes God brought her to Finland to renew her life, strengthen her faith, and restore her calling.',
+        bio: 'Mahidere (Mahi) is an epidemiology researcher with a medical background based in Finland. She believes God brought her to Finland to renew her life, strengthen her faith, and restore her calling.',
         image: mahiImage,
       },
     ],
@@ -147,13 +136,11 @@ const lecturerPairs: Array<LecturerPair> = [
     lecturers: [
       {
         name: 'Obi C.',
-        title: '',
-        bio: '',
+        bio: 'Obi is a private markets professional with experience in investor relations, family office advisory, fiduciary mandates, and private asset valuations across Jersey, Luxembourg, London, and China. He believes a fulfilled life is guided by God, wisdom, and eternal purpose.',
         image: obiImage,
       },
       {
         name: 'Ugo O.',
-        title: '',
         bio: 'EU Qualified Medical Doctor with over 10 years of experience spanning clinical medicine and the pharmaceutical industry. My personal and professional interests are embedded ultimately in work that affects the quality of life of patients, consumers, and society.',
         image: ugoImage,
       },
@@ -312,9 +299,6 @@ export function LandingTeacherSection() {
                       </div>
                       <div className="mt-2 font-serif text-[1.45rem] leading-tight text-[#F8F4EC]">
                         {lecturer.name}
-                      </div>
-                      <div className="mt-2 text-sm leading-6 text-[#C9C0B6]">
-                        {lecturer.title}
                       </div>
                     </div>
                   </div>

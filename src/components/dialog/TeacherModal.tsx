@@ -33,7 +33,7 @@ export function TeacherModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-2xl"
+        className="rounded-none border border-white/10 p-0 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-4xl lg:max-w-5xl"
         style={{
           backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
           backgroundSize: 'cover',
@@ -45,7 +45,7 @@ export function TeacherModal({
 
         <div className="relative flex min-h-0 flex-1 flex-col">
           {/* Header with close button */}
-          <DialogHeader>
+          <DialogHeader className="absolute top-4 right-4 z-20">
             <div className="flex items-start justify-end">
               <Button
                 variant="ghost"
@@ -59,52 +59,55 @@ export function TeacherModal({
             </div>
           </DialogHeader>
 
-          <DialogBody>
+          <DialogBody className="relative">
             {/* Two-column layout */}
-            <div className="grid gap-8 lg:grid-cols-[auto_1fr]">
+            <div className="grid min-h-[min(44rem,calc(100dvh-2rem))] lg:grid-cols-[minmax(16rem,0.92fr)_minmax(0,1.08fr)]">
               {/* Left: Image */}
-              <div className="shrink-0">
+              <div className="relative min-h-96 overflow-hidden border-b border-white/10 bg-[#171717] lg:min-h-176 lg:border-r lg:border-b-0">
                 {teacher.avatarUrl ? (
-                  <img
-                    src={teacher.avatarUrl}
-                    alt={teacher.fullName}
-                    className="size-28 border border-white/10 object-cover lg:size-32"
+                  <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{
+                      backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.04), rgba(7,7,8,0.74)), url(${teacher.avatarUrl})`,
+                    }}
+                    role="img"
+                    aria-label={teacher.fullName}
                   />
                 ) : (
-                  <div className="flex size-28 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-3xl text-[#E9D9B4] lg:size-32">
-                    {initials}
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#1A1716]">
+                    <div className="flex size-28 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-4xl text-[#E9D9B4] lg:size-36">
+                      {initials}
+                    </div>
                   </div>
                 )}
+                <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_38%,rgba(197,160,89,0.12)_100%)]" />
+                <div className="absolute inset-x-0 bottom-0 p-7 sm:p-9">
+                  <div className="h-px w-12 bg-[#C5A059]/50" />
+                  <h2 className="mt-4 font-serif text-4xl leading-none tracking-[-0.04em] text-white sm:text-5xl">
+                    {teacher.fullName}
+                  </h2>
+                </div>
               </div>
 
               {/* Right: Details */}
-              <div className="space-y-6">
+              <div className="flex min-h-0 flex-col justify-center bg-[#151515]/88 px-7 py-10 sm:px-10 lg:px-12">
                 {/* Name and role */}
                 <div>
-                  <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
-                    Faculty Member
-                  </div>
-                  <h2 className="mt-2 font-serif text-3xl text-[#F8F4EC] lg:text-4xl">
-                    {teacher.fullName}
-                  </h2>
-                  {teacher.course && (
-                    <div className="mt-3 flex items-center gap-2">
-                      <div className="h-px w-6 bg-[#C5A059]/40" />
-                      <span className="text-sm text-[#CFC6B7]">
-                        Teaching:{' '}
-                        {teacher.course.title.replace(/Stage \d+:/i, '')}
-                      </span>
+                  <div className="h-px w-12 bg-[#C5A059]/50" />
+                  <h3 className="mt-5 font-serif text-[clamp(3rem,7vw,5.4rem)] leading-[0.88] tracking-[-0.06em] text-[#F8F4EC]">
+                    About me
+                  </h3>
+                  {teacher.lecturerTitle && (
+                    <div className="mt-6 text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                      {teacher.lecturerTitle}
                     </div>
                   )}
                 </div>
 
                 {/* Bio */}
                 {teacher.bio && (
-                  <div>
-                    <div className="mt-3 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                      About
-                    </div>
-                    <p className="mt-3 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
+                  <div className="mt-8 border-t border-white/8 pt-7">
+                    <p className="text-sm leading-7 whitespace-pre-wrap text-[#D8D0C7] sm:text-base sm:leading-8">
                       {teacher.bio}
                     </p>
                   </div>

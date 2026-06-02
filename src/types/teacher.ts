@@ -3,6 +3,7 @@ export type Teacher = {
   fullName: string
   email: string
   bio: string | null
+  lecturerTitle: string | null
   avatarUrl: string | null
   createdAt: Date
 }
