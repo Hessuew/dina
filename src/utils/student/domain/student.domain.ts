@@ -1,10 +1,11 @@
 import type { StudentWithStats } from '@/types/student'
+import type { SubmissionStatus } from '@/types/database.types'
 import { calculateAverageGrade } from '@/domain/grade.service'
 
 type CourseBasic = { id: string; title: string }
 
 type SubmissionWithCourse = {
-  status: string
+  status: SubmissionStatus
   grade: number | null
   assignment: {
     maxGrade: number | null
@@ -26,7 +27,7 @@ type AssignmentRow = {
 type SubmissionRow = {
   id: string
   assignmentId: string
-  status: 'draft' | 'submitted' | 'graded' | 'returned'
+  status: SubmissionStatus
   grade: number | null
   submittedAt: Date | null
   gradedAt: Date | null

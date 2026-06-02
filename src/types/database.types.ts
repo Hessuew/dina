@@ -1,7 +1,7 @@
 export type UserRole = 'student' | 'teacher' | 'admin'
 export type InquiryStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
-export type AssignmentStatus = 'draft' | 'published' | 'archived'
-export type SubmissionStatus = 'pending' | 'submitted' | 'graded' | 'late'
+export type AssignmentStatus = 'draft' | 'published' | 'closed'
+export type SubmissionStatus = 'draft' | 'submitted' | 'graded' | 'returned'
 export type AnnouncementType = 'course' | 'system'
 export type MediaType = 'video' | 'document' | 'image' | 'audio' | 'other'
 

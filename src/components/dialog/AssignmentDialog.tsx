@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import type { AssignmentStatus } from '@/types/database.types'
 import {
   createAssignmentSchema,
   gradeSubmissionSchema,
@@ -35,7 +36,7 @@ type AssignmentFormData = {
   description: string
   dueDate: string
   maxGrade: number
-  status: string
+  status: AssignmentStatus
 }
 
 const emptyAssignmentForm: AssignmentFormData = {
@@ -67,7 +68,7 @@ type AssignmentDialogProps = {
     description: string | null
     dueDate: Date
     maxGrade: number | null
-    status: 'draft' | 'published' | 'closed'
+    status: AssignmentStatus
   }
   submission?: {
     id: string
@@ -164,7 +165,7 @@ export function AssignmentDialog({
         data: {
           ...shared,
           assignmentId: assignment.id,
-          status: value.status as 'draft' | 'published' | 'closed',
+          status: value.status,
         },
       })
     },
