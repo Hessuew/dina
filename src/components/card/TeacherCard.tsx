@@ -15,9 +15,7 @@ type TeacherCardProps = {
 
 export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
   const initials = getInitials(teacher.fullName)
-  const topLabel = teacher.gemstone
-    ? teacher.gemstone.toUpperCase()
-    : (teacher.lecturerTitle ?? undefined)
+  const topLabel = teacher.course?.title ?? teacher.lecturerTitle ?? undefined
 
   return (
     <div
@@ -46,7 +44,7 @@ export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
       {/* Gradient: darkens top and bottom, transparent in middle */}
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,4,2,0.72)_0%,transparent_32%,transparent_58%,rgba(5,4,2,0.88)_100%)]" />
 
-      {/* Top: gem name or lecturer title */}
+      {/* Top: course title or lecturer title */}
       {topLabel && (
         <div className="absolute inset-x-0 top-5 z-20 flex flex-col items-center gap-2 px-4">
           <span className="text-center text-[0.6rem] font-medium tracking-[0.32em] text-[#D4B373] uppercase">

@@ -396,13 +396,19 @@ export function LandingLecturerGemsSection() {
                   </span>
                   <span className="text-[#C5A059]">♫</span>{' '}
                   <em>
-                    Command me Lord, Command me Lord,
+                    Command me Lord,
+                    <br />
+                    Command me Lord,
                     <br />
                     That I may be, a commander,
                     <br />
-                    Command me Lord, to lead battalions,
+                    Command me Lord,
                     <br />
-                    That will turn men's hearts, back to God
+                    To lead battalions,
+                    <br />
+                    That will turn men's hearts,
+                    <br />
+                    back to God
                   </em>{' '}
                   <span className="text-[#C5A059]">♫</span>
                 </>
@@ -494,13 +500,13 @@ export function LandingLecturerGemsSection() {
                     onClick={() => setActiveIndex(index)}
                   >
                     <div className="relative h-full">
-                      <div className="absolute inset-y-0 left-0 w-[calc(50%-0.25rem)]">
+                      <div className="absolute inset-y-0 left-0 w-full sm:w-[calc(50%-0.25rem)]">
                         <GemLecturerCard
                           teacher={gemLecturers[index * 2]}
                           onClick={() => setActiveIndex(index)}
                         />
                       </div>
-                      <div className="absolute inset-y-0 right-0 w-[calc(50%-0.25rem)]">
+                      <div className="absolute inset-y-0 right-0 sm:w-[calc(50%-0.25rem)]">
                         <GemLecturerCard
                           teacher={gemLecturers[index * 2 + 1]}
                           onClick={() => setActiveIndex(index)}
