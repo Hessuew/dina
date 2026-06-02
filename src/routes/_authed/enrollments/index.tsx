@@ -4,12 +4,12 @@ import type { EnrollmentRow } from '@/components/table/EnrollmentsTable'
 import { Button } from '@/components/ui/button'
 import { EnrollmentsTable } from '@/components/table/EnrollmentsTable'
 import { PageLayout } from '@/components/layout/page-layout'
-import { checkAdminAccess } from '@/utils/auth/admin'
+import { checkTeacherAccess } from '@/utils/auth/admin'
 import { getEnrollments } from '@/utils/enrolment'
 
 export const Route = createFileRoute('/_authed/enrollments/')({
   beforeLoad: async () => {
-    await checkAdminAccess()
+    await checkTeacherAccess()
   },
   loader: async () => {
     const result = await getEnrollments()
@@ -20,7 +20,9 @@ export const Route = createFileRoute('/_authed/enrollments/')({
 
 function EnrollmentsPage() {
   const { enrollments } = Route.useLoaderData()
+  const { user } = Route.useRouteContext()
   const router = useRouter()
+  const isAdmin = user?.role === 'admin'
 
   const handleRefresh = () => {
     router.invalidate()
@@ -47,6 +49,7 @@ function EnrollmentsPage() {
       <EnrollmentsTable
         enrollments={enrollments as Array<EnrollmentRow>}
         onRefresh={handleRefresh}
+        isAdmin={isAdmin}
       />
     </PageLayout>
   )
