@@ -39,10 +39,11 @@ async function sendInvitationEmail(
   invitedByName: string,
   role: 'student' | 'teacher',
   token: string,
+  lecturerTitle?: string | null,
 ) {
   const inviteLink = `${env.APP_URL}/signup?token=${token}`
   const emailHtml = await render(
-    InvitationEmail({ invitedByName, role, inviteLink }),
+    InvitationEmail({ invitedByName, role, inviteLink, lecturerTitle }),
   )
   const resend = new Resend(env.RESEND_API_KEY)
   return resend.emails.send({
@@ -100,6 +101,7 @@ export async function createInvitationService(
     profile.fullName || profile.email,
     data.role,
     token,
+    profile.lecturerTitle,
   )
 
   if (emailError) {
@@ -258,6 +260,7 @@ export async function resendInvitationService(
     profile.fullName || profile.email,
     invitation.role as 'student' | 'teacher',
     token,
+    profile.lecturerTitle,
   )
 
   if (emailError) {
