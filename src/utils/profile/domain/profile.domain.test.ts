@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { checkEmailChangeRateLimit } from './profile.domain'
+import {
+  calculateTokenExpiry,
+  checkEmailChangeRateLimit,
+  generateEmailChangeToken,
+} from './profile.domain'
 
 const at = (isoString: string) => new Date(isoString)
 
@@ -42,5 +46,41 @@ describe('checkEmailChangeRateLimit', () => {
     const last = at('2026-01-01T12:00:00Z')
     const now = at('2026-01-01T12:00:59.001Z') // 59.001s later → 0.999s remaining
     expect(checkEmailChangeRateLimit(last, now)).toBe(1)
+  })
+})
+
+describe('generateEmailChangeToken', () => {
+  it('returns a token and tokenHash', () => {
+    const { token, tokenHash } = generateEmailChangeToken()
+    expect(typeof token).toBe('string')
+    expect(typeof tokenHash).toBe('string')
+  })
+
+  it('returns a 64-character hex token', () => {
+    const { token } = generateEmailChangeToken()
+    expect(token).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it('returns a 64-character hex tokenHash', () => {
+    const { tokenHash } = generateEmailChangeToken()
+    expect(tokenHash).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it('returns unique tokens on each call', () => {
+    const first = generateEmailChangeToken()
+    const second = generateEmailChangeToken()
+    expect(first.token).not.toBe(second.token)
+    expect(first.tokenHash).not.toBe(second.tokenHash)
+  })
+})
+
+describe('calculateTokenExpiry', () => {
+  it('returns a date approximately 24 hours in the future', () => {
+    const before = Date.now()
+    const expiry = calculateTokenExpiry()
+    const after = Date.now()
+    const expectedMs = 24 * 60 * 60 * 1000
+    expect(expiry.getTime()).toBeGreaterThanOrEqual(before + expectedMs)
+    expect(expiry.getTime()).toBeLessThanOrEqual(after + expectedMs)
   })
 })
