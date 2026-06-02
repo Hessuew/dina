@@ -17,11 +17,11 @@ export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
   const initials = getInitials(teacher.fullName)
   const topLabel = teacher.gemstone
     ? teacher.gemstone.toUpperCase()
-    : teacher.lecturerTitle ?? undefined
+    : (teacher.lecturerTitle ?? undefined)
 
   return (
     <div
-      className="group relative aspect-3/4 cursor-pointer overflow-hidden border border-[#C5A059]/40 bg-[#0F0C07] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] transition-all duration-300 hover:border-[#C5A059]/70 hover:shadow-[0_0_40px_rgba(197,160,89,0.12)]"
+      className="group relative aspect-3/4 cursor-pointer overflow-hidden border border-[#C5A059]/40 bg-[#0F0C07] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] transition-all duration-300 hover:border-[#C5A059]/70"
       onClick={onClick}
     >
       {/* Inner decorative gold border */}
@@ -59,7 +59,7 @@ export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
       {/* Bottom: teacher name */}
       <div className="absolute inset-x-0 bottom-5 z-20 flex flex-col items-center gap-2 px-4">
         <div className="h-px w-7 bg-[#C5A05988]" />
-        <h3 className="text-center font-serif text-base italic leading-tight text-[#F8F4EC] sm:text-lg">
+        <h3 className="text-center font-serif text-base leading-tight text-[#F8F4EC] italic sm:text-lg">
           {teacher.fullName}
         </h3>
       </div>

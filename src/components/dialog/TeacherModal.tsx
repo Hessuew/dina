@@ -80,6 +80,10 @@ export function TeacherModal({
                     </div>
                   </div>
                 )}
+
+                {/* Gradient: darkens top and bottom, transparent in middle */}
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,4,2,0.72)_0%,transparent_32%,transparent_58%,rgba(5,4,2,0.88)_100%)]" />
+
                 <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_38%,rgba(197,160,89,0.12)_100%)]" />
                 <div className="absolute inset-x-0 bottom-0 p-7 text-center sm:p-9">
                   {teacher.lecturerTitle && (
