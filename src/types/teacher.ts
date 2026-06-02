@@ -4,6 +4,7 @@ export type Teacher = {
   email: string
   bio: string | null
   lecturerTitle: string | null
+  gemstone: string | null
   avatarUrl: string | null
   createdAt: Date
 }

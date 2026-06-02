@@ -37,6 +37,21 @@ export const MEDIA_TYPE = {
   OTHER: 'other',
 } as const
 
+export const GEMSTONE = {
+  JASPER: 'jasper',
+  SAPPHIRE: 'sapphire',
+  CHALCEDONY: 'chalcedony',
+  EMERALD: 'emerald',
+  SARDONYX: 'sardonyx',
+  SARDIUS: 'sardius',
+  CHRYSOLITE: 'chrysolite',
+  BERYL: 'beryl',
+  TOPAZ: 'topaz',
+  CHRYSOPRASUS: 'chrysoprasus',
+  JACINTH: 'jacinth',
+  AMETHYST: 'amethyst',
+} as const
+
 export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
