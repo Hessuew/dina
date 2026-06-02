@@ -1,0 +1,2 @@
+CREATE TYPE "public"."gemstone" AS ENUM('jasper', 'sapphire', 'chalcedony', 'emerald', 'sardonyx', 'sardius', 'chrysolite', 'beryl', 'topaz', 'chrysoprasus', 'jacinth', 'amethyst');--> statement-breakpoint
+ALTER TABLE "profiles" ADD COLUMN "gemstone" "gemstone";
