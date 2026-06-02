@@ -9,6 +9,7 @@ import {
 import {
   updateProfileBasicService,
   updateProfileWithEmailChangeService,
+  verifyEmailChangeService,
 } from '@/utils/profile/service/profile.service'
 
 export const updateProfileFn = createServerFn({ method: 'POST' })
@@ -41,3 +42,7 @@ export const updatePasswordFn = createServerFn({ method: 'POST' })
       })
     }
   })
+
+export const verifyEmailChangeFn = createServerFn({ method: 'POST' })
+  .inputValidator((data: { token: string }) => data)
+  .handler(async ({ data }) => verifyEmailChangeService(data.token))

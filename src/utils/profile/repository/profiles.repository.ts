@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 
@@ -65,6 +65,40 @@ export async function updateProfileBasic(
     .set({
       fullName: data.fullName,
       bio: data.bio,
+      updatedAt: new Date(),
+    })
+    .where(eq(profiles.id, userId))
+}
+
+export async function findProfileByEmailChangeToken(tokenHash: string) {
+  const db = await getDb()
+  return db.query.profiles.findFirst({
+    where: eq(profiles.emailChangeTokenHash, tokenHash),
+  })
+}
+
+export async function incrementEmailChangeAttempts(userId: string) {
+  const db = await getDb()
+  await db
+    .update(profiles)
+    .set({
+      emailChangeTokenAttempts: sql`${profiles.emailChangeTokenAttempts} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(profiles.id, userId))
+}
+
+export async function completeEmailChange(userId: string, newEmail: string) {
+  const db = await getDb()
+  await db
+    .update(profiles)
+    .set({
+      email: newEmail,
+      pendingEmail: null,
+      emailChangeTokenHash: null,
+      emailChangeTokenExpiresAt: null,
+      emailChangeTokenAttempts: 0,
+      lastEmailChangeRequestAt: null,
       updatedAt: new Date(),
     })
     .where(eq(profiles.id, userId))
