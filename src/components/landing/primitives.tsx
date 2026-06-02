@@ -382,7 +382,7 @@ export function LandingActiveItemNav({
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-6 border-y py-5',
+        'flex flex-col justify-between gap-6 border-y py-5 sm:flex-row sm:items-center',
         borderColor,
         className,
       )}
