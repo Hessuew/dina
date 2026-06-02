@@ -1,8 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import {
-  FileTextIcon,
-  PlusIcon,
-} from 'lucide-react'
+import { FileTextIcon, PlusIcon } from 'lucide-react'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { MediaLibraryRow } from '@/utils/library'
@@ -73,8 +70,13 @@ function LibraryComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
   const { media, viewer } = loaderData
-  const { isOpen, dialogMode, dialogItem: dialogMedia, openDialog, closeDialog } =
-    useDialogState<MediaLibraryRow>()
+  const {
+    isOpen,
+    dialogMode,
+    dialogItem: dialogMedia,
+    openDialog,
+    closeDialog,
+  } = useDialogState<MediaLibraryRow>()
 
   const canCreate = viewer.role === 'teacher' || viewer.role === 'admin'
 
@@ -104,7 +106,7 @@ function LibraryComponent() {
           return (
             <button
               type="button"
-              className="group relative aspect-video w-28 overflow-hidden border border-white/10 bg-black/20"
+              className="group relative aspect-video w-28 border border-white/10 bg-black/20"
               onClick={() =>
                 router.navigate({
                   to: '/library/$mediaId',
@@ -131,7 +133,7 @@ function LibraryComponent() {
         return (
           <button
             type="button"
-            className="group relative flex aspect-video w-28 items-center justify-center overflow-hidden border border-white/10 bg-black/20 text-[#8E816D]"
+            className="group relative flex aspect-video w-28 items-center justify-center border border-white/10 bg-black/20 text-[#8E816D]"
             onClick={() =>
               router.navigate({
                 to: '/library/$mediaId',

@@ -28,7 +28,7 @@ export function LibraryShelf({
           <p className="text-[0.68rem] font-medium tracking-[0.25em] text-[#9B7A41] uppercase">
             eBooks
           </p>
-          <div className="flex gap-4 overflow-x-auto pb-2">
+          <div className="flex gap-4 pb-2">
             {ebooks.map((item) => (
               <MediaCard key={item.id} item={item} viewerRole={viewerRole} />
             ))}
@@ -41,7 +41,7 @@ export function LibraryShelf({
           <p className="text-[0.68rem] font-medium tracking-[0.25em] text-[#9B7A41] uppercase">
             Audio-Visual
           </p>
-          <div className="flex gap-4 overflow-x-auto pb-2">
+          <div className="flex gap-4 pb-2">
             {audioVisual.map((item) => (
               <MediaCard key={item.id} item={item} viewerRole={viewerRole} />
             ))}

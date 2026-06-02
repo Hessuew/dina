@@ -433,6 +433,36 @@ Gold-highlighted stat (Tuition, Awards):
 </div>
 ```
 
+### Library Media Card
+
+Landscape `aspect-3/2 w-80` card in horizontal-scroll shelves. Full-bleed thumbnail background, sharp corners only.
+
+```tsx
+<Link className="group relative flex aspect-3/2 w-80 shrink-0 overflow-hidden border border-[#C5A059]/40 bg-[#0F0C07] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#C5A059]/70 hover:shadow-[0_0_40px_rgba(197,160,89,0.12)]">
+  {/* Gradient: darken top + bottom, clear middle */}
+  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,4,2,0.72)_0%,transparent_35%,transparent_55%,rgba(5,4,2,0.88)_100%)]" />
+  {/* Inset decorative gold hairline */}
+  <div className="pointer-events-none absolute inset-[7px] z-10 border border-[#C5A059]/25 transition-colors duration-300 group-hover:border-[#C5A059]/45" />
+  {/* Video: centered play affordance (sharp, no border-radius) */}
+  <div className="flex size-12 items-center justify-center border border-[#C5A059]/45 bg-black/35 backdrop-blur-sm transition-all duration-300 group-hover:scale-110 group-hover:border-[#D6B16E]">
+    <PlayIcon className="size-5 fill-[#E9D9B4] text-[#E9D9B4]" />
+  </div>
+  {/* Doc: corner mark (sharp chip, top-left) */}
+  <div className="absolute top-3 left-3 z-20 border border-[#C5A059]/40 bg-black/50 p-1.5 backdrop-blur-sm">
+    <FileIcon className="size-4 text-[#D4B373]" />
+  </div>
+  {/* Bottom: gold hairline + serif title + gold category badge */}
+  <div className="h-px w-7 bg-[#C5A05988]" />
+  <span className="inline-flex items-center gap-1.5 border border-[#C5A059]/40 bg-black/50 px-2 py-0.5 text-[0.65rem] font-medium tracking-widest text-[#D4B373] uppercase">
+    <Icon className="size-3" />{category}
+  </span>
+</Link>
+```
+
+- All category badges use **gold** accent only (`border-[#C5A059]/40`, `text-[#D4B373]`); icon varies per category.
+- Thumbnail scale: `duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105`.
+- Course chip border: `border-[#C5A059]/30`. Draft badge: `border-[#9B7A41]/30`.
+
 ### Testimonial Card
 
 ```tsx

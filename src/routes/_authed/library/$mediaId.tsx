@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { FileTextIcon, VideoIcon } from 'lucide-react'
+import { ExternalLinkIcon, FileTextIcon, VideoIcon } from 'lucide-react'
 import { Suspense, lazy } from 'react'
+import { YouTubeEmbed } from '@/components/library/YouTubeEmbed'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
@@ -119,20 +120,24 @@ function MediaDetailComponent() {
 
         <div className="overflow-hidden">
           {isVideo && videoId && (
-            <div className="aspect-video w-full">
-              <iframe
-                src={`https://www.youtube.com/embed/${videoId}`}
-                className="size-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
+            <YouTubeEmbed videoId={videoId} originalUrl={media.fileUrl} />
           )}
 
           {isVideo && !videoId && (
-            <p className="px-6 py-8 text-sm text-[#8E816D]">
-              Invalid video URL.
-            </p>
+            <div className="flex flex-col items-center gap-5 px-6 py-14 text-center">
+              <p className="text-sm text-[#8E816D]">
+                This video URL could not be parsed for embedding.
+              </p>
+              <a
+                href={media.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-2 border border-[#C5A059]/35 bg-[#1A1716] px-5 py-2.5 text-[0.68rem] font-medium tracking-[0.2em] text-[#E9D9B4] uppercase transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
+              >
+                Open original link
+                <ExternalLinkIcon className="size-3 transition-transform group-hover:translate-x-0.5" />
+              </a>
+            </div>
           )}
 
           {isPdf && viewerUrl && (

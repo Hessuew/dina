@@ -1,19 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import {
-  BookOpenIcon,
-  CrownIcon,
-  FileIcon,
-  FileTextIcon,
-  HeartHandshakeIcon,
-  HeartIcon,
-  PlayIcon,
-  ShieldIcon,
-  SparklesIcon,
-  StarIcon,
-  SwordsIcon,
-  TrendingUpIcon,
-  UsersIcon,
-} from 'lucide-react'
+import { FileTextIcon, Music2Icon, PlayIcon } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { MediaLibraryRow } from '@/utils/library/library'
 
@@ -23,108 +9,53 @@ type MediaCardProps = {
 }
 
 type MediaTypeConfig = {
-  icon: LucideIcon
+  icon: LucideIcon | null
   label: string
-  circleBg: string
-}
-
-type CategoryConfig = {
-  icon: LucideIcon
-  text: string
-  border: string
+  badgeBg: string
+  badgeText: string
+  badgeBorder?: string
 }
 
 const MEDIA_TYPE_CONFIG = {
   video: {
     icon: PlayIcon,
     label: 'YouTube',
-    circleBg: 'bg-[#FF0000]',
+    badgeBg: '#FF0000',
+    badgeText: '#FFFFFF',
   } satisfies MediaTypeConfig,
   audio: {
-    icon: PlayIcon,
+    icon: Music2Icon,
     label: 'Audio',
-    circleBg: 'bg-[#FF0000]',
+    badgeBg: '#1A1A2E',
+    badgeText: '#B4B0FF',
+    badgeBorder: 'rgba(255,255,255,0.18)',
   } satisfies MediaTypeConfig,
   pdf: {
-    icon: FileTextIcon,
+    icon: null,
     label: 'PDF',
-    circleBg: 'bg-[#DC2626]',
+    badgeBg: '#C62828',
+    badgeText: '#FFFFFF',
   } satisfies MediaTypeConfig,
   pptx: {
-    icon: FileIcon,
-    label: 'PPTX',
-    circleBg: 'bg-[#D24726]',
+    icon: null,
+    label: 'PPT',
+    badgeBg: '#C43E1C',
+    badgeText: '#FFFFFF',
   } satisfies MediaTypeConfig,
   docx: {
-    icon: FileIcon,
-    label: 'DOCX',
-    circleBg: 'bg-[#2B579A]',
+    icon: null,
+    label: 'DOC',
+    badgeBg: '#185ABD',
+    badgeText: '#FFFFFF',
   } satisfies MediaTypeConfig,
   fallback: {
     icon: FileTextIcon,
     label: 'File',
-    circleBg: 'bg-[#C5A059]/80',
+    badgeBg: 'rgba(0,0,0,0.6)',
+    badgeText: '#D4B373',
+    badgeBorder: 'rgba(197,160,89,0.40)',
   } satisfies MediaTypeConfig,
 } as const
-
-const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
-  Wisdom: {
-    icon: BookOpenIcon,
-    text: 'text-[#D4B373]',
-    border: 'border-[#C5A059]/40',
-  },
-  Healing: {
-    icon: HeartIcon,
-    text: 'text-[#2DD4BF]',
-    border: 'border-[#2DD4BF]/30',
-  },
-  Miracles: {
-    icon: SparklesIcon,
-    text: 'text-[#C084FC]',
-    border: 'border-[#A855F7]/30',
-  },
-  Kingdom: {
-    icon: CrownIcon,
-    text: 'text-[#60A5FA]',
-    border: 'border-[#3B82F6]/30',
-  },
-  Faith: {
-    icon: StarIcon,
-    text: 'text-[#FB923C]',
-    border: 'border-[#F97316]/30',
-  },
-  Marriage: {
-    icon: HeartHandshakeIcon,
-    text: 'text-[#FB7185]',
-    border: 'border-[#F43F5E]/30',
-  },
-  Finance: {
-    icon: TrendingUpIcon,
-    text: 'text-[#34D399]',
-    border: 'border-[#10B981]/30',
-  },
-  'Church Growth': {
-    icon: UsersIcon,
-    text: 'text-[#22D3EE]',
-    border: 'border-[#06B6D4]/30',
-  },
-  "God's Generals Biography": {
-    icon: ShieldIcon,
-    text: 'text-[#FBBF24]',
-    border: 'border-[#F59E0B]/30',
-  },
-  'Spiritual Warfare': {
-    icon: SwordsIcon,
-    text: 'text-[#818CF8]',
-    border: 'border-[#6366F1]/30',
-  },
-}
-
-const FALLBACK_CATEGORY: CategoryConfig = {
-  icon: FileTextIcon,
-  text: 'text-[#D4B373]',
-  border: 'border-[#C5A059]/40',
-}
 
 function getYoutubeVideoId(url: string): string | null {
   try {
@@ -168,73 +99,96 @@ export function MediaCard({ item, viewerRole }: MediaCardProps) {
     : item.thumbnailUrl
 
   const mediaType = resolveMediaTypeConfig(item)
-  const MediaIcon = mediaType.icon
-
-  const categoryConfig = CATEGORY_CONFIG[item.category] ?? FALLBACK_CATEGORY
-  const CategoryIcon = categoryConfig.icon
+  const BadgeIcon = mediaType.icon
 
   return (
-    <Link
-      to="/library/$mediaId"
-      params={{ mediaId: item.id }}
-      className="group relative flex aspect-3/2 w-80 shrink-0 overflow-hidden border border-white/10 bg-[#0F0F0F]"
-    >
-      {/* Background image */}
+    <div className="group relative w-96 shrink-0">
+      {/* Blurred thumbnail aura behind card */}
       {thumbnailUrl ? (
-        <img
-          src={thumbnailUrl}
-          alt={item.title}
-          className="absolute inset-0 size-full object-cover transition-transform group-hover:scale-[1.02]"
+        <div
+          className="pointer-events-none absolute inset-0 opacity-45 blur-2xl transition-opacity duration-700 group-hover:opacity-70"
+          style={{
+            backgroundImage: `url(${thumbnailUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#1A1A1A]">
-          <FileTextIcon className="size-12 text-[#8E816D]" />
-        </div>
+        <div className="pointer-events-none absolute inset-0 bg-[#C5A059]/12 opacity-60 blur-2xl transition-opacity duration-700 group-hover:opacity-90" />
       )}
 
-      {/* Gradient overlay */}
-      <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-transparent via-black/20 to-black/80" />
-
-      {/* Top-left: Colored media type badge */}
-      <div className="absolute top-3 left-3">
-        <div
-          className={`flex h-8 w-8 items-center justify-center rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${mediaType.circleBg}`}
-        >
-          <MediaIcon className="size-4 text-white" />
-        </div>
-      </div>
-
-      {/* Top-right: Course number + draft badge */}
-      <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
-        {item.courseNumber != null && (
-          <span className="border border-white/20 bg-black/50 px-2 py-0.5 text-[0.65rem] font-medium tracking-widest text-[#F8F4EC] uppercase backdrop-blur-sm">
-            Course {item.courseNumber}
-          </span>
-        )}
-        {viewerRole !== 'student' && !item.isPublished && (
-          <div className="border border-[#9B7A41]/30 bg-black/60 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-widest text-white uppercase">
-            Draft
+      <Link
+        to="/library/$mediaId"
+        params={{ mediaId: item.id }}
+        className="relative flex aspect-3/2 w-full overflow-hidden border border-[#C5A059]/40 bg-[#0F0C07] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] transition-all duration-300 group-hover:-translate-y-0.5 group-hover:border-[#C5A059]/70 group-hover:shadow-[0_0_40px_rgba(197,160,89,0.12)]"
+      >
+        {/* Background image */}
+        {thumbnailUrl ? (
+          <img
+            src={thumbnailUrl}
+            alt={item.title}
+            className="absolute inset-0 size-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#1A1716]">
+            <FileTextIcon className="size-12 text-[#8E816D]" />
           </div>
         )}
-      </div>
 
-      {/* Bottom: Title, category badge, file type */}
-      <div className="absolute right-0 bottom-0 left-0 p-3">
-        <h3 className="line-clamp-2 font-serif text-sm leading-tight font-medium text-white">
-          {item.title}
-        </h3>
-        <div className="mt-2 flex items-center gap-2">
-          <span
-            className={`inline-flex items-center gap-1.5 border bg-black/50 px-2 py-0.5 text-[0.65rem] font-medium tracking-widest uppercase ${categoryConfig.border} ${categoryConfig.text}`}
-          >
-            <CategoryIcon className="size-3" />
-            {item.category}
-          </span>
-          <span className="text-[0.65rem] font-medium tracking-widest text-[#AFA28F] uppercase">
+        {/* Gradient: darken top + bottom, clear middle */}
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,4,2,0.72)_0%,transparent_35%,transparent_55%,rgba(5,4,2,0.92)_100%)]" />
+
+        {/* Inset decorative gold hairline */}
+        <div className="pointer-events-none absolute inset-[7px] z-10 border border-[#C5A059]/25 transition-colors duration-300 group-hover:border-[#C5A059]/45" />
+
+        {/* Format badge — top-left corner */}
+        <div
+          className="absolute top-3 left-3 z-20 flex items-center gap-1 px-2 py-1 shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+          style={{
+            backgroundColor: mediaType.badgeBg,
+            color: mediaType.badgeText,
+            border: mediaType.badgeBorder
+              ? `1px solid ${mediaType.badgeBorder}`
+              : 'none',
+          }}
+        >
+          {BadgeIcon && (
+            <BadgeIcon
+              className="size-2.5 shrink-0"
+              style={{
+                fill:
+                  mediaType.label === 'YouTube' ? mediaType.badgeText : 'none',
+                color: mediaType.badgeText,
+              }}
+            />
+          )}
+          <span className="text-[0.58rem] font-semibold tracking-[0.18em] uppercase">
             {mediaType.label}
           </span>
         </div>
-      </div>
-    </Link>
+
+        {/* Top-right: Course number + draft badge */}
+        <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-1">
+          {item.courseNumber != null && (
+            <span className="border border-[#C5A059]/30 bg-black/50 px-2 py-0.5 text-[0.65rem] font-medium tracking-widest text-[#F8F4EC] uppercase backdrop-blur-sm">
+              Course {item.courseNumber}
+            </span>
+          )}
+          {viewerRole !== 'student' && !item.isPublished && (
+            <div className="border border-[#9B7A41]/30 bg-black/60 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-widest text-white uppercase">
+              Draft
+            </div>
+          )}
+        </div>
+
+        {/* Bottom: gold divider, title, category badge, file type */}
+        <div className="absolute right-0 bottom-0 left-0 z-20 p-4">
+          <div className="h-px w-7 bg-[#C5A05988]" />
+          <h3 className="mt-2 line-clamp-2 font-serif text-base leading-tight font-medium text-white">
+            {item.title}
+          </h3>
+        </div>
+      </Link>
+    </div>
   )
 }
