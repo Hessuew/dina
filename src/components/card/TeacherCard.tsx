@@ -1,6 +1,4 @@
-import { ArrowRight } from 'lucide-react'
 import type { TeacherWithCourse } from '@/types/teacher'
-import { Button } from '@/components/ui/button'
 
 function getInitials(fullName: string): string {
   const names = fullName.trim().split(' ')
@@ -17,60 +15,53 @@ type TeacherCardProps = {
 
 export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
   const initials = getInitials(teacher.fullName)
+  const topLabel = teacher.gemstone
+    ? teacher.gemstone.toUpperCase()
+    : teacher.lecturerTitle ?? undefined
 
   return (
-    <div className="group flex h-full flex-col border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] transition-all hover:border-[#C5A059]/30">
-      {/* Image / avatar area — mirrors CourseCard image area */}
-      <div className="relative overflow-hidden border-b border-white/10">
-        {teacher.avatarUrl ? (
-          <div
-            className="relative min-h-48 bg-cover bg-center sm:min-h-56"
-            style={{
-              backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.18), rgba(7,7,8,0.68)), url(${teacher.avatarUrl})`,
-            }}
-          >
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_38%,rgba(197,160,89,0.10)_100%)]" />
-            <div className="relative flex min-h-48 flex-col justify-end p-5 sm:min-h-56 sm:p-6">
-              {/* Bottom: courses chip */}
-              <div className="flex items-end justify-between gap-3">
-                <div className="border border-[#C5A059]/40 bg-black/20 px-3 py-1.5 text-[0.62rem] font-medium tracking-[0.22em] text-[#D4B373] uppercase backdrop-blur-sm">
-                  {teacher.course?.title.replace(/Stage \d+:/i, '')}
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex min-h-48 items-center justify-center bg-[#1A1716] sm:min-h-56">
-            <div className="flex size-20 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-2xl text-[#E9D9B4]">
-              {initials}
-            </div>
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-          </div>
-        )}
-      </div>
+    <div
+      className="group relative aspect-3/4 cursor-pointer overflow-hidden border border-[#C5A059]/40 bg-[#0F0C07] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] transition-all duration-300 hover:border-[#C5A059]/70 hover:shadow-[0_0_40px_rgba(197,160,89,0.12)]"
+      onClick={onClick}
+    >
+      {/* Inner decorative gold border */}
+      <div className="pointer-events-none absolute inset-[7px] z-10 border border-[#C5A059]/25 transition-colors duration-300 group-hover:border-[#C5A059]/45" />
 
-      {/* Detail area */}
-      <div className="flex flex-1 flex-col justify-between bg-[#151515]/88 px-5 py-5 sm:px-6 sm:py-6">
-        <div>
-          <h3 className="font-serif text-lg leading-tight text-[#F8F4EC] sm:text-xl">
-            {teacher.fullName}
-          </h3>
-          {teacher.bio && (
-            <p className="mt-2 line-clamp-2 text-sm leading-6 whitespace-pre-wrap text-[#CFC6B7]">
-              {teacher.bio}
-            </p>
-          )}
+      {/* Full-bleed image or initials fallback */}
+      {teacher.avatarUrl ? (
+        <div
+          className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+          style={{ backgroundImage: `url(${teacher.avatarUrl})` }}
+          role="img"
+          aria-label={teacher.fullName}
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#1A1716]">
+          <div className="flex size-20 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-2xl text-[#E9D9B4]">
+            {initials}
+          </div>
         </div>
+      )}
 
-        {/* Footer */}
-        <div className="mt-4 flex items-center justify-between border-t border-white/8 pt-4">
-          <span className="text-[0.68rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
-            View profile
+      {/* Gradient: darkens top and bottom, transparent in middle */}
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,4,2,0.72)_0%,transparent_32%,transparent_58%,rgba(5,4,2,0.88)_100%)]" />
+
+      {/* Top: gem name or lecturer title */}
+      {topLabel && (
+        <div className="absolute inset-x-0 top-5 z-20 flex flex-col items-center gap-2 px-4">
+          <span className="text-center text-[0.6rem] font-medium tracking-[0.32em] text-[#D4B373] uppercase">
+            {topLabel}
           </span>
-          <Button theme="dark" size="icon" onClick={onClick}>
-            <ArrowRight className="size-3.5" />
-          </Button>
+          <div className="h-px w-7 bg-[#C5A05988]" />
         </div>
+      )}
+
+      {/* Bottom: teacher name */}
+      <div className="absolute inset-x-0 bottom-5 z-20 flex flex-col items-center gap-2 px-4">
+        <div className="h-px w-7 bg-[#C5A05988]" />
+        <h3 className="text-center font-serif text-base italic leading-tight text-[#F8F4EC] sm:text-lg">
+          {teacher.fullName}
+        </h3>
       </div>
     </div>
   )
