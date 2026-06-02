@@ -1,107 +1,13 @@
-import crypto from 'node:crypto'
 import { useEffect, useState } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { createServerFn, useServerFn } from '@tanstack/react-start'
-import { eq } from 'drizzle-orm'
+import { useServerFn } from '@tanstack/react-start'
 import { Loader2 } from 'lucide-react'
-import { getDb } from '@/db'
-import { profiles } from '@/db/schema'
-import { getSupabaseAdminClient } from '@/utils/supabase'
 import aboutBackground from '@/assets/images/bg/bg_lecturers.webp'
 import {
   AuthCenteredState,
   AuthLoadingState,
 } from '@/components/auth/auth-layout'
-
-const verifyEmailChangeFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: { token: string }) => data)
-  .handler(async ({ data }) => {
-    if (!data.token) {
-      return { success: false, message: 'No verification token provided.' }
-    }
-
-    const tokenHash = crypto
-      .createHash('sha256')
-      .update(data.token)
-      .digest('hex')
-
-    const db = await getDb()
-    const user = await db.query.profiles.findFirst({
-      where: eq(profiles.emailChangeTokenHash, tokenHash),
-    })
-
-    if (!user) {
-      return {
-        success: false,
-        message: 'Invalid or expired verification link.',
-      }
-    }
-
-    if (!user.emailChangeTokenExpiresAt) {
-      return {
-        success: false,
-        message: 'Invalid or expired verification link.',
-      }
-    }
-
-    if (new Date() > user.emailChangeTokenExpiresAt) {
-      return {
-        success: false,
-        message:
-          'This verification link has expired. Please request a new email change.',
-      }
-    }
-
-    if (user.emailChangeTokenAttempts >= 5) {
-      return {
-        success: false,
-        message: 'Too many failed attempts. Please request a new email change.',
-      }
-    }
-
-    if (!user.pendingEmail) {
-      return {
-        success: false,
-        message: 'Invalid or expired verification link.',
-      }
-    }
-
-    const supabaseAdmin = getSupabaseAdminClient()
-    const { error: updateError } =
-      await supabaseAdmin.auth.admin.updateUserById(user.id, {
-        email: user.pendingEmail,
-      })
-
-    if (updateError) {
-      await db
-        .update(profiles)
-        .set({
-          emailChangeTokenAttempts: user.emailChangeTokenAttempts + 1,
-          updatedAt: new Date(),
-        })
-        .where(eq(profiles.id, user.id))
-
-      return {
-        success: false,
-        message: 'Failed to update your email. Please try again.',
-      }
-    }
-
-    await db
-      .update(profiles)
-      .set({
-        email: user.pendingEmail,
-        pendingEmail: null,
-        emailChangeTokenHash: null,
-        emailChangeTokenExpiresAt: null,
-        emailChangeTokenAttempts: 0,
-        lastEmailChangeRequestAt: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(profiles.id, user.id))
-
-    return { success: true, message: 'Your email address has been updated.' }
-  })
+import { verifyEmailChangeFn } from '@/utils/profile'
 
 export const Route = createFileRoute('/verify-email-change')({
   validateSearch: (search: Record<string, unknown>) => ({

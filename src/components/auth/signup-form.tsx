@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/input-otp'
 import { useAppForm } from '@/hooks/form'
 import { useMutation } from '@/hooks/useMutation'
-import { resendOtpFn, signupFn, verifyOtpFn } from '@/routes/signup'
+import { resendOtpFn, signupFn, verifyOtpFn } from '@/utils/signup'
 import { signupSchema } from '@/schemas/auth.schema'
 import {
   checkInvitationByEmail,
