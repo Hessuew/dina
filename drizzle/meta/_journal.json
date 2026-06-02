@@ -120,6 +120,13 @@
       "when": 1778880275870,
       "tag": "0019_chemical_black_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1779307653853,
+      "tag": "0020_modern_bishop",
+      "breakpoints": true
     }
   ]
 }
