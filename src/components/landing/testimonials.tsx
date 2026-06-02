@@ -100,7 +100,8 @@ const testimonials: Array<TestimonialItem> = [
     id: 'obi',
     name: 'Obi C.',
     role: 'Pastor, -',
-    quote: '',
+    quote:
+      'Discipleship has been a refining journey through God’s Word, the Holy Spirit, and fellowship with other believers. It has helped me grow beyond religiosity into a more purposeful and assured walk with God. Through it, I am learning what it means to live according to God’s Word and purpose, finding greater clarity, joy, and direction. My desire is to share that same hope and purpose with others through the way I live, serve, and relate to them.  ',
     theme: 'Rooftop',
   },
   {
