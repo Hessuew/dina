@@ -33,7 +33,7 @@ This folder defines:
 - **Root context**
   - `context.user` is populated in `__root.tsx` and is the primary auth signal for routing.
   - If you change the shape of `context.user`, update:
-    - `documentation/ENGINEERING_GUIDE.md`
+    - `docs/ENGINEERING_GUIDE.md`
     - This README
 
 - **Authenticated routes**
@@ -56,6 +56,6 @@ This folder defines:
 
 ## Related Docs
 
-- `documentation/ENGINEERING_GUIDE.md`
-- `documentation/DESIGN_SYSTEM.md`
+- `docs/ENGINEERING_GUIDE.md`
+- `docs/DESIGN_SYSTEM.md`
 - `src/routes/_authed/README.md`

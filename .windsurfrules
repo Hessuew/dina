@@ -2,10 +2,10 @@
 
 ## Required Reading
 
-- [documentation/ENGINEERING_GUIDE.md](documentation/ENGINEERING_GUIDE.md) — engineering rules, architecture, documentation contract
-- [documentation/DESIGN_SYSTEM.md](documentation/DESIGN_SYSTEM.md) — design system, visual constraints, component patterns
-- [documentation/ARCHITECTURAL_DECISIONS.md](documentation/ARCHITECTURAL_DECISIONS.md) — architectural decisions and rationale
-- [documentation/BUSINESS_RULES.md](documentation/BUSINESS_RULES.md) — business rules and domain logic
+- [docs/ENGINEERING_GUIDE.md](docs/ENGINEERING_GUIDE.md) — engineering rules, architecture, docs contract
+- [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) — design system, visual constraints, component patterns
+- [docs/ARCHITECTURAL_DECISIONS.md](docs/ARCHITECTURAL_DECISIONS.md) — architectural decisions and rationale
+- [docs/BUSINESS_RULES.md](docs/BUSINESS_RULES.md) — business rules and domain logic
 
 Before any change: read relevant docs above + nearest dir `README.md`.
 
@@ -26,14 +26,14 @@ Before any change: read relevant docs above + nearest dir `README.md`.
 - Cloudflare Hyperdrive: `HYPERDRIVE.connectionString` binding
 - Root context: `context.user` = single source of truth for authed user
 
-## Documentation Contract (Update in Same PR)
+## docs Contract (Update in Same PR)
 
 **Routing changes**: Update `src/routes/README.md` and/or `src/routes/_authed/README.md`
-**Root context changes**: Update `documentation/ENGINEERING_GUIDE.md` and `src/routes/README.md`
+**Root context changes**: Update `docs/ENGINEERING_GUIDE.md` and `src/routes/README.md`
 **DB schema changes**: Update `src/db/README.md` (+ related deep dives)
 **Utility module changes**: Update `src/utils/README.md`
 **New component subsystems**: Update `src/components/README.md`
-**Design system changes**: Update `documentation/DESIGN_SYSTEM.md`
+**Design system changes**: Update `docs/DESIGN_SYSTEM.md`
 
 **Deep dive docs**: Only for keystone modules (>250 lines, high impact, non-obvious invariants). Structure: Purpose, Responsibilities, Invariants, Key exports, Change recipes.
 
@@ -41,11 +41,11 @@ Before any change: read relevant docs above + nearest dir `README.md`.
 
 ## Design System
 
-See [documentation/DESIGN_SYSTEM.md](documentation/DESIGN_SYSTEM.md).
+See [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
 
 **Critical constraints:**
 - Zero border-radius on premium surfaces (sharp 90-degree corners)
-- Exact color tokens from documentation/DESIGN_SYSTEM.md — never invent hex values
+- Exact color tokens from docs/DESIGN_SYSTEM.md — never invent hex values
 - Restrained motion: `hover:-translate-y-0.5`, `group-hover:translate-x-0.5` only
 
 ## Working Patterns
@@ -70,9 +70,9 @@ See [documentation/DESIGN_SYSTEM.md](documentation/DESIGN_SYSTEM.md).
 After any task, if patterns found:
 
 1. **Pattern detection**: repeated code, missing abstractions, inconsistent patterns
-2. **Documentation gaps**: areas lacking guidance in documentation/ENGINEERING_GUIDE.md or documentation/DESIGN_SYSTEM.md
+2. **docs gaps**: areas lacking guidance in docs/ENGINEERING_GUIDE.md or docs/DESIGN_SYSTEM.md
 3. **Tooling opportunities**: automatable workflows
-4. **Design inconsistencies**: visual patterns diverging from documentation/DESIGN_SYSTEM.md without justification
+4. **Design inconsistencies**: visual patterns diverging from docs/DESIGN_SYSTEM.md without justification
 
 **Action**: Propose to user with:
 - Specific observation
@@ -80,16 +80,16 @@ After any task, if patterns found:
 - Concrete suggestion
 - Priority (high/medium/low)
 
-**Doc updates**: New standard pattern → update documentation/DESIGN_SYSTEM.md. Engineering pattern shift → update documentation/ENGINEERING_GUIDE.md.
+**Doc updates**: New standard pattern → update docs/DESIGN_SYSTEM.md. Engineering pattern shift → update docs/ENGINEERING_GUIDE.md.
 
 **Rule additions**: New invariant/pattern discovered → add to this file (.windsurfrules).
 
 ## Quick Checklist Before Shipping
 
-- Read documentation/ENGINEERING_GUIDE.md, documentation/DESIGN_SYSTEM.md, relevant dir README
+- Read docs/ENGINEERING_GUIDE.md, docs/DESIGN_SYSTEM.md, relevant dir README
 - Updated all affected docs
-- Exact color tokens from documentation/DESIGN_SYSTEM.md
-- Component patterns from documentation/DESIGN_SYSTEM.md
+- Exact color tokens from docs/DESIGN_SYSTEM.md
+- Component patterns from docs/DESIGN_SYSTEM.md
 - Zero border-radius on premium surfaces
 - `getDb()` for DB access
 - Error handling on async ops

@@ -107,6 +107,6 @@ This folder is primarily where TanStack Start server functions live (via `create
 
 ## Related Docs
 
-- `documentation/ENGINEERING_GUIDE.md`
+- `docs/ENGINEERING_GUIDE.md`
 - `src/routes/README.md`
 - `src/db/README.md`
