@@ -177,7 +177,7 @@ export function MediaCard({ item, viewerRole }: MediaCardProps) {
     <Link
       to="/library/$mediaId"
       params={{ mediaId: item.id }}
-      className="group relative flex aspect-2/3 w-44 shrink-0 overflow-hidden border border-white/10 bg-[#0F0F0F]"
+      className="group relative flex aspect-3/2 w-80 shrink-0 overflow-hidden border border-white/10 bg-[#0F0F0F]"
     >
       {/* Background image */}
       {thumbnailUrl ? (
