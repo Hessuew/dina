@@ -43,6 +43,7 @@ Update status as each folder is completed.
 | 6   | `zoomLink`  | N/A    | _(pure CRUD, no domain logic — repository split skipped)_                                                                                                                                                                                             |
 | 7   | `courses`   | DONE   | `buildAssignmentStats(courseAssignments, studentSubmissions)`, `extractTeacherIds(courseTeachers)`, `validateSameTeacher(teacher1Id, teacher2Id)`, `validateTeacherRoles(teachers, teacher1Id, teacher2Id, allowAdmin)` — `lesson.ts` N/A (pure CRUD) |
 | 8   | `library`   | DONE   | `toFileType(kind)`, `buildMediaListItems(rows)`, `canManageMedia(role, userId, uploaderId)`, `validatePdfUpload(fileSize, fileType)`, `extractPdfFilePath(fileUrl)`                                                                                   |
+| 9   | `invitation` | DONE  | `generateSecureToken()`, `calculateInvitationExpiry(now)`, `validateInvitationActive(invitation, now)` |
 
 Folders marked N/A have no extractable domain logic. Repository split is only worth doing when a domain layer follows.
 

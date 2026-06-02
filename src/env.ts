@@ -8,7 +8,7 @@ export const env = createEnv({
   server: {
     SUPABASE_URL: z.url(),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-    APP_URL: z.url().optional(),
+    APP_URL: z.url(),
     RESEND_API_KEY: z.string().min(1),
     RESEND_FROM_EMAIL: z.email(),
     DATABASE_URL: z.string().optional(),
