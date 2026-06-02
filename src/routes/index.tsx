@@ -3,7 +3,10 @@ import { LandingAboutSection } from '@/components/landing/about'
 import { LandingCourseShowcase } from '@/components/landing/courses'
 import { LandingHeroEditorial } from '@/components/landing/hero'
 import { LandingMarksSection } from '@/components/landing/marks'
-import { LandingTeacherSection } from '@/components/landing/lecturers'
+import {
+  // LandingLecturerGemsSection,
+  LandingTeacherSection,
+} from '@/components/landing/lecturers'
 import { LandingTestimonialsSection } from '@/components/landing/testimonials'
 import { LandingQASection } from '@/components/landing/qa'
 import { LandingLeadershipSection } from '@/components/landing/leadership'
@@ -24,6 +27,7 @@ function Home() {
       <LandingAboutSection />
       <LandingCourseShowcase />
       <LandingTeacherSection />
+      {/* <LandingLecturerGemsSection /> */}
       <LandingTestimonialsSection />
       <LandingMarksSection />
       <LandingQASection />

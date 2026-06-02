@@ -41,7 +41,7 @@ export async function getLibraryMediaService(
   role: Role,
 ): Promise<{
   media: Array<MediaLibraryRow>
-  viewer: { id: string; role: string }
+  viewer: { id: string; role: Role }
 }> {
   const rows = await findAllMedia(role === 'student')
   const media = buildMediaListItems(rows)
@@ -56,7 +56,7 @@ export async function getLibraryMediaItemService(
   media: MediaLibraryRow
   viewerUrl: string | null
   permissions: ReturnType<typeof calculateEntityPermissions>
-  viewer: { id: string; role: string }
+  viewer: { id: string; role: Role }
 }> {
   const row = await findMediaById(data.mediaId)
 
