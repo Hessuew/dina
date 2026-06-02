@@ -170,19 +170,23 @@ export function StudentCard({ student, onSelect }: StudentCardProps) {
 
 1. **Visitor** - Unauthenticated (public only)
 2. **Student** - Authenticated (course access, inquiries)
-3. **Teacher** - Authenticated (course mgmt, student mgmt)
+3. **Teacher** - Authenticated (course mgmt, student mgmt, enrollment review read-only)
 4. **Admin** - Full access (user mgmt, system settings)
 
 ### Permission Matrix
 
-| Feature           | Visitor | Student | Teacher | Admin |
-| ----------------- | ------- | ------- | ------- | ----- |
-| Landing Page      | ✓       | ✓       | ✓       | ✓     |
-| View Courses      | ✗       | ✓       | ✓       | ✓     |
-| Submit Inquiries  | ✗       | ✓       | ✗       | ✓     |
-| Manage Courses    | ✗       | ✗       | ✓       | ✓     |
-| View All Students | ✗       | ✗       | ✓       | ✓     |
-| User Management   | ✗       | ✗       | ✗       | ✓     |
+| Feature                | Visitor | Student | Teacher | Admin |
+| ---------------------- | ------- | ------- | ------- | ----- |
+| Landing Page           | ✓       | ✓       | ✓       | ✓     |
+| View Courses           | ✗       | ✓       | ✓       | ✓     |
+| Submit Inquiries       | ✗       | ✓       | ✗       | ✓     |
+| Manage Courses         | ✗       | ✗       | ✓       | ✓     |
+| View All Students      | ✗       | ✗       | ✓       | ✓     |
+| View Enrollments¹      | ✗       | ✗       | ✓       | ✓     |
+| User Management        | ✗       | ✗       | ✗       | ✓     |
+| Manage Enrollments     | ✗       | ✗       | ✗       | ✓     |
+
+¹ Teacher view is read-only; email, phone/WhatsApp, and invitation tracking fields are redacted (stripped server-side).
 
 ---
 
