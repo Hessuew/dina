@@ -93,11 +93,18 @@ export function getRecipientsForCommentCreated(
 }
 
 export async function getRecipients(
-  event: NotificationEvent,
+  event: PostCreatedEvent | CommentCreatedEvent,
 ): Promise<RecipientResult> {
-  if (event.type === 'post_created') {
-    return getRecipientsForPostCreated(event as PostCreatedEvent)
+  switch (event.type) {
+    case 'post_created':
+      return getRecipientsForPostCreated(event)
+    case 'comment_created':
+      return getRecipientsForCommentCreated(event)
+    default: {
+      const _exhaustive: never = event
+      throw new Error(
+        `Unhandled notification event type: ${(_exhaustive as NotificationEvent).type}`,
+      )
+    }
   }
-
-  return getRecipientsForCommentCreated(event as CommentCreatedEvent)
 }

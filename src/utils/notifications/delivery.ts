@@ -9,7 +9,7 @@ import { postNotifications } from '@/db/schema'
 
 export class DatabaseDeliveryAdapter implements DeliveryAdapter {
   async deliver(
-    event: NotificationEvent,
+    event: PostCreatedEvent | CommentCreatedEvent,
     recipientIds: Array<string>,
   ): Promise<void> {
     if (recipientIds.length === 0) {
@@ -21,33 +21,36 @@ export class DatabaseDeliveryAdapter implements DeliveryAdapter {
     try {
       switch (event.type) {
         case 'post_created': {
-          const postEvent = event as PostCreatedEvent
           await db.insert(postNotifications).values(
             recipientIds.map((recipientId) => ({
               userId: recipientId,
               actorId: event.actorId,
               event: 'post_created' as const,
-              postId: postEvent.postId,
+              postId: event.postId,
               commentId: null,
             })),
           )
           break
         }
         case 'comment_created': {
-          const commentEvent = event as CommentCreatedEvent
           await db.insert(postNotifications).values(
             recipientIds.map((recipientId) => ({
               userId: recipientId,
               actorId: event.actorId,
               event: 'comment_created' as const,
-              postId: commentEvent.postId,
-              commentId: commentEvent.commentId,
+              postId: event.postId,
+              commentId: event.commentId,
             })),
           )
           break
         }
-        default:
-          console.error('Unknown notification event type:', event.type)
+        default: {
+          const _exhaustive: never = event
+          console.error(
+            'Unknown notification event type:',
+            (_exhaustive as NotificationEvent).type,
+          )
+        }
       }
     } catch (error) {
       console.error(
