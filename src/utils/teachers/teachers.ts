@@ -16,7 +16,6 @@ export const getTeachers = createServerFn({ method: 'POST' }).handler(
       teachers.map(async (teacher) => {
         const teacherAssignments = await findTeacherCourseAssignment(teacher.id)
 
-        // order by the teachers course orderIndex, and by the teacher's creation date
         return {
           id: teacher.id,
           fullName: teacher.fullName,
@@ -25,6 +24,8 @@ export const getTeachers = createServerFn({ method: 'POST' }).handler(
           avatarUrl: teacher.avatarUrl,
           createdAt: teacher.createdAt,
           course: teacherAssignments?.course,
+          lecturerTitle: teacher.lecturerTitle,
+          gemstone: teacher.gemstone ?? null,
         }
       }),
     )
