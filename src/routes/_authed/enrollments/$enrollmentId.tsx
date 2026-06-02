@@ -94,7 +94,7 @@ function EnrollmentDetailPage() {
     deleteFn: deleteFn,
     onSuccessMessage: () => 'Enrollment deleted',
     onSuccess: () => {
-      router.navigate({ to: '/enrollments' })
+      router.history.back()
     },
     invalidateRouter: false,
   })
@@ -110,7 +110,7 @@ function EnrollmentDetailPage() {
     <PageLayout>
       <PageHeader
         title={enrollment.fullLegalName}
-        onBack={() => router.navigate({ to: '/enrollments' })}
+        onBack={() => router.history.back()}
         responsiveTitle={false}
         metadata={
           <p className="text-[0.72rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
@@ -336,7 +336,6 @@ function EnrollmentDetailPage() {
               })
             }
             isDeleting={deleteMutation.isPending}
-            navigateTo="/enrollments"
           />
         </>
       )}
