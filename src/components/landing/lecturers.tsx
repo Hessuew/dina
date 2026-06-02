@@ -1,4 +1,5 @@
 import type { LandingNumberedItem } from '@/components/landing/types'
+import type { TeacherWithCourse } from '@/types/teacher'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import andrewImage from '@/assets/images/lecturers/andrew.webp'
 import akosyaImage from '@/assets/images/lecturers/akosya.webp'
@@ -26,8 +27,6 @@ import {
   LandingSectionOverlay,
 } from '@/components/landing/primitives'
 import { useCarousel } from '@/components/landing/hooks'
-import { TeacherCard } from '@/components/card/TeacherCard'
-import type { TeacherWithCourse } from '@/types/teacher'
 
 type Lecturer = {
   name: string
@@ -151,6 +150,33 @@ const lecturerPairs: Array<LecturerPair> = [
     ],
   },
 ]
+
+const LECTURER_BIO_MAP: Record<string, string> = {
+  'Andrew A.':
+    'Professor Andrew is an award-winning physician and world-class scholar in preventing childhood obesity. He leads urFIT-child research group in Finland and a born-again Christian who demonstrates the power of the Holy Ghost daily.',
+  'Ella O.':
+    'Emmanuella is an experienced Sustainability and Climate Change Consultant advising public and private organisations locally and globally. She helps organisations design and implement ESG and sustainability transformation strategies.',
+  'Juhani J.':
+    'Juhani is an experienced software developer. His passion is to know the Holy Spirit and to see Finland turn to God, city by city. The fire of God is evident in his life, and through him the world will see Jesus.',
+  'Akosua O.':
+    'Akosua is studying computer science and is passionate about faith, discipleship, and sharing the Gospel. Through church ministry, evangelism, and teaching, she continues growing in prayer, biblical understanding, and service.',
+  'Emmanuel E.':
+    'Emmanuel is a Gospel minister, author, web developer, and brand specialist from Nigeria, dedicated to proclaiming the Gospel of Jesus through outreaches, Christian books, and global digital ministry platforms.',
+  'Ezinne O.':
+    'Ezinne is a disciple of the Lord, devoted daily to learning at His feet and loving Him wholeheartedly. She is also a Product Leader focused on AI enablement, managing the development and launch of AI voice and multimodal products across Europe.',
+  'Sade P.':
+    'Sade is a Psychiatrist passionate about teaching and mentoring the next generation of doctors. She works across inpatient and community settings, delivering compassionate, evidence-based, and holistic patient-centred care.',
+  'Blessing A.':
+    'Blessing is a Psychiatrist and solution-focused practitioner with a special interest in lifestyle medicine, addiction support, and youth counselling, with a passion for helping people achieve lasting wellbeing.',
+  'Kene O.':
+    'Kene is a Capital Markets and Derivatives solicitor dual qualified in England, Wales, and Nigeria. She contributes to international financial industry working groups, promoting collaboration, market standards, and innovation.',
+  'Mahidere A.':
+    'Mahidere (Mahi) is an epidemiology researcher with a medical background based in Finland. She believes God brought her to Finland to renew her life, strengthen her faith, and restore her calling.',
+  Chinomnso:
+    'Obi is a private markets professional with experience in investor relations, family office advisory, fiduciary mandates, and private asset valuations across Jersey, Luxembourg, London, and China. He believes a fulfilled life is guided by God, wisdom, and eternal purpose.',
+  'Ugo O.':
+    'EU Qualified Medical Doctor with over 10 years of experience spanning clinical medicine and the pharmaceutical industry. Committed to work that affects the quality of life of patients, consumers, and society.',
+}
 
 export function LandingTeacherSection() {
   const { activeIndex, setActiveIndex, goToPrevious, goToNext } = useCarousel(
@@ -359,7 +385,7 @@ const gemLecturers: Array<TeacherWithCourse> = [
     id: 'gl-juhani',
     fullName: 'Juhani J.',
     email: '',
-    bio: null,
+    bio: LECTURER_BIO_MAP['Juhani J.'] ?? null,
     lecturerTitle: null,
     gemstone: 'jasper',
     avatarUrl: juhaniImage,
@@ -370,7 +396,7 @@ const gemLecturers: Array<TeacherWithCourse> = [
     id: 'gl-ella',
     fullName: 'Ella O.',
     email: '',
-    bio: null,
+    bio: LECTURER_BIO_MAP['Ella O.'] ?? null,
     lecturerTitle: null,
     gemstone: 'sapphire',
     avatarUrl: ellaImage,
@@ -381,7 +407,7 @@ const gemLecturers: Array<TeacherWithCourse> = [
     id: 'gl-kene',
     fullName: 'Kene O.',
     email: '',
-    bio: null,
+    bio: LECTURER_BIO_MAP['Kene O.'] ?? null,
     lecturerTitle: null,
     gemstone: 'chalcedony',
     avatarUrl: keneImage,
@@ -392,7 +418,7 @@ const gemLecturers: Array<TeacherWithCourse> = [
     id: 'gl-ezinne',
     fullName: 'Ezinne O.',
     email: '',
-    bio: null,
+    bio: LECTURER_BIO_MAP['Ezinne O.'] ?? null,
     lecturerTitle: null,
     gemstone: 'emerald',
     avatarUrl: ezinneImage,
@@ -403,7 +429,7 @@ const gemLecturers: Array<TeacherWithCourse> = [
     id: 'gl-akosua',
     fullName: 'Akosua O.',
     email: '',
-    bio: null,
+    bio: LECTURER_BIO_MAP['Akosua O.'] ?? null,
     lecturerTitle: null,
     gemstone: 'sardonyx',
     avatarUrl: akosyaImage,
@@ -414,7 +440,7 @@ const gemLecturers: Array<TeacherWithCourse> = [
     id: 'gl-sade',
     fullName: 'Sade P.',
     email: '',
-    bio: null,
+    bio: LECTURER_BIO_MAP['Sade P.'] ?? null,
     lecturerTitle: null,
     gemstone: 'sardius',
     avatarUrl: sadeImage,
@@ -425,10 +451,10 @@ const gemLecturers: Array<TeacherWithCourse> = [
     id: 'gl-chinomnso',
     fullName: 'Chinomnso',
     email: '',
-    bio: null,
+    bio: LECTURER_BIO_MAP['Chinomnso'] ?? null,
     lecturerTitle: null,
     gemstone: 'chrysolite',
-    avatarUrl: null,
+    avatarUrl: obiImage,
     createdAt: new Date(0),
     course: null,
   },
@@ -436,7 +462,7 @@ const gemLecturers: Array<TeacherWithCourse> = [
     id: 'gl-blessing',
     fullName: 'Blessing A.',
     email: '',
-    bio: null,
+    bio: LECTURER_BIO_MAP['Blessing A.'] ?? null,
     lecturerTitle: null,
     gemstone: 'beryl',
     avatarUrl: blessingImage,
@@ -447,7 +473,7 @@ const gemLecturers: Array<TeacherWithCourse> = [
     id: 'gl-ugo',
     fullName: 'Ugo O.',
     email: '',
-    bio: null,
+    bio: LECTURER_BIO_MAP['Ugo O.'] ?? null,
     lecturerTitle: null,
     gemstone: 'topaz',
     avatarUrl: ugoImage,
@@ -458,7 +484,7 @@ const gemLecturers: Array<TeacherWithCourse> = [
     id: 'gl-emmanuel',
     fullName: 'Emmanuel E.',
     email: '',
-    bio: null,
+    bio: LECTURER_BIO_MAP['Emmanuel E.'] ?? null,
     lecturerTitle: null,
     gemstone: 'chrysoprasus',
     avatarUrl: emmanuelImage,
@@ -469,7 +495,7 @@ const gemLecturers: Array<TeacherWithCourse> = [
     id: 'gl-mahi',
     fullName: 'Mahidere A.',
     email: '',
-    bio: null,
+    bio: LECTURER_BIO_MAP['Mahidere A.'] ?? null,
     lecturerTitle: null,
     gemstone: 'jacinth',
     avatarUrl: mahiImage,
@@ -480,7 +506,7 @@ const gemLecturers: Array<TeacherWithCourse> = [
     id: 'gl-andrew',
     fullName: 'Andrew A.',
     email: '',
-    bio: null,
+    bio: LECTURER_BIO_MAP['Andrew A.'] ?? null,
     lecturerTitle: null,
     gemstone: 'amethyst',
     avatarUrl: andrewImage,
@@ -488,6 +514,82 @@ const gemLecturers: Array<TeacherWithCourse> = [
     course: null,
   },
 ]
+
+function getGemInitials(fullName: string): string {
+  const names = fullName.trim().split(' ')
+  if (names.length === 1) return names[0].substring(0, 2).toUpperCase()
+  return (names[0][0] + names[names.length - 1][0]).toUpperCase()
+}
+
+function GemLecturerCard({
+  teacher,
+  onClick,
+}: {
+  teacher: TeacherWithCourse
+  onClick: () => void
+}) {
+  const gemColor = teacher.gemstone ? GEM_COLORS[teacher.gemstone] : undefined
+  const overlayGradient = gemColor
+    ? `linear-gradient(to bottom, transparent 0%, ${gemColor}CC 100%)`
+    : 'linear-gradient(to bottom, transparent 0%, rgba(5,4,2,0.92) 100%)'
+
+  return (
+    <div
+      className="group relative h-full w-full cursor-pointer overflow-hidden border border-[#C5A059]/40 bg-[#0F0C07] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] transition-all duration-300 hover:border-[#C5A059]/70 hover:shadow-[0_0_50px_rgba(197,160,89,0.15)]"
+      onClick={onClick}
+    >
+      {/* inner decorative gold border */}
+      <div className="pointer-events-none absolute inset-[7px] z-10 border border-[#C5A059]/20 transition-colors duration-300 group-hover:border-[#C5A059]/40" />
+
+      {/* full-bleed image or initials fallback */}
+      {teacher.avatarUrl ? (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${teacher.avatarUrl})` }}
+          role="img"
+          aria-label={teacher.fullName}
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#1A1716]">
+          <div className="flex size-20 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-2xl text-[#E9D9B4]">
+            {getGemInitials(teacher.fullName)}
+          </div>
+        </div>
+      )}
+
+      {/* top dark gradient for gem label readability */}
+      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/70 to-transparent" />
+
+      {/* top: gem stone name */}
+      {teacher.gemstone && (
+        <div className="absolute inset-x-0 top-5 z-20 flex flex-col items-center gap-2 px-4">
+          <span className="text-center text-[0.58rem] font-medium tracking-[0.36em] text-[#D4B373] uppercase">
+            {teacher.gemstone.toUpperCase()}
+          </span>
+          <div className="h-px w-6 bg-[#C5A05988]" />
+        </div>
+      )}
+
+      {/* bottom frosted overlay — gem-tinted gradient + faded backdrop-blur */}
+      <div
+        className="absolute inset-x-0 bottom-0 z-20 h-[40%] mask-[linear-gradient(to_bottom,transparent_0%,black_28%)] backdrop-blur-[5px]"
+        style={{ background: overlayGradient }}
+      >
+        <div className="flex h-full flex-col justify-end gap-1.5 px-4 pb-5">
+          <div className="h-px w-7 bg-white/20" />
+          <h3 className="font-serif text-[1.05rem] leading-tight text-white italic">
+            {teacher.fullName}
+          </h3>
+          {teacher.bio && (
+            <p className="text-[0.67rem] leading-[1.6] text-white/75">
+              {teacher.bio}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function getGemRelativeOffset(activeIndex: number, itemIndex: number): number {
   const total = gemLecturers.length
@@ -583,7 +685,7 @@ export function LandingLecturerGemsSection() {
           </div>
 
           <div className="space-y-10">
-            <div className="relative h-72 overflow-hidden sm:h-80 lg:h-96">
+            <div className="relative h-[22rem] overflow-hidden sm:h-[24rem] lg:h-[27rem]">
               {gemLecturers.map((lecturer, index) => {
                 const offset = getGemRelativeOffset(activeIndex, index)
                 const isVisible = Math.abs(offset) <= 2
@@ -592,15 +694,16 @@ export function LandingLecturerGemsSection() {
                   <div
                     key={lecturer.id}
                     aria-hidden={!isVisible}
-                    className="absolute top-0 left-1/2 w-48 cursor-pointer sm:w-56 lg:w-64"
+                    className="absolute top-0 left-1/2 w-56 cursor-pointer sm:w-64 lg:w-72"
                     style={{
+                      height: '100%',
                       ...getGemCardMotionStyle(offset),
                       transition:
                         'transform 700ms cubic-bezier(0.22,1,0.36,1), opacity 700ms cubic-bezier(0.22,1,0.36,1), filter 700ms cubic-bezier(0.22,1,0.36,1)',
                     }}
                     onClick={() => setActiveIndex(index)}
                   >
-                    <TeacherCard
+                    <GemLecturerCard
                       teacher={lecturer}
                       onClick={() => setActiveIndex(index)}
                     />
