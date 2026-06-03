@@ -1,6 +1,22 @@
-import { asc, count, desc, eq, ilike, or } from 'drizzle-orm'
+import {
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  ilike,
+  inArray,
+  or,
+  sql,
+} from 'drizzle-orm'
+import type { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
-import { enrollments, invitations, profiles } from '@/db/schema'
+import {
+  enrollmentEvaluations,
+  enrollments,
+  invitations,
+  profiles,
+} from '@/db/schema'
 
 const SORT_COLUMN_MAP = {
   fullLegalName: enrollments.fullLegalName,
@@ -12,7 +28,15 @@ const SORT_COLUMN_MAP = {
   createdAt: enrollments.createdAt,
 } as const
 
-export type EnrollmentSortKey = keyof typeof SORT_COLUMN_MAP
+export type EnrollmentSortKey = (typeof ENROLLMENT_SORT_KEYS)[number]
+
+export type EvaluationWithAuthor = {
+  enrollmentId: string
+  evaluatorId: string
+  evaluatorName: string
+  score: number | null
+  note: string | null
+}
 
 export type FindEnrollmentsPageInput = {
   limit: number
@@ -52,16 +76,36 @@ export async function findEnrollmentsPage({
       : undefined
 
   const whereClause = searchFilter
-  const col = SORT_COLUMN_MAP[sortBy]
-  const orderExpr = sortDir === 'asc' ? asc(col) : desc(col)
+
+  const evaluationSum = sql<number>`coalesce(sum(${enrollmentEvaluations.score}), 0)::int`
+  const evaluationCount = sql<number>`count(${enrollmentEvaluations.id})::int`
+
+  const primaryOrder =
+    sortBy === 'evaluationSum'
+      ? sortDir === 'asc'
+        ? asc(evaluationSum)
+        : desc(evaluationSum)
+      : sortDir === 'asc'
+        ? asc(SORT_COLUMN_MAP[sortBy])
+        : desc(SORT_COLUMN_MAP[sortBy])
 
   const [rows, [{ total }]] = await Promise.all([
-    db.query.enrollments.findMany({
-      where: whereClause,
-      orderBy: orderExpr,
-      limit,
-      offset,
-    }),
+    db
+      .select({
+        ...getTableColumns(enrollments),
+        evaluationSum,
+        evaluationCount,
+      })
+      .from(enrollments)
+      .leftJoin(
+        enrollmentEvaluations,
+        eq(enrollmentEvaluations.enrollmentId, enrollments.id),
+      )
+      .where(whereClause)
+      .groupBy(enrollments.id)
+      .orderBy(primaryOrder, desc(enrollments.createdAt))
+      .limit(limit)
+      .offset(offset),
     db.select({ total: count() }).from(enrollments).where(whereClause),
   ])
 
@@ -73,6 +117,52 @@ export async function findEnrollmentById(enrollmentId: string) {
   return db.query.enrollments.findFirst({
     where: eq(enrollments.id, enrollmentId),
   })
+}
+
+export async function findEvaluationsForEnrollments(
+  enrollmentIds: Array<string>,
+): Promise<Array<EvaluationWithAuthor>> {
+  if (enrollmentIds.length === 0) return []
+  const db = await getDb()
+  return db
+    .select({
+      enrollmentId: enrollmentEvaluations.enrollmentId,
+      evaluatorId: enrollmentEvaluations.evaluatorId,
+      evaluatorName: profiles.fullName,
+      score: enrollmentEvaluations.score,
+      note: enrollmentEvaluations.note,
+    })
+    .from(enrollmentEvaluations)
+    .innerJoin(profiles, eq(profiles.id, enrollmentEvaluations.evaluatorId))
+    .where(inArray(enrollmentEvaluations.enrollmentId, enrollmentIds))
+    .orderBy(asc(enrollmentEvaluations.createdAt))
+}
+
+export async function upsertEvaluation(
+  enrollmentId: string,
+  evaluatorId: string,
+  patch: { score?: number | null; note?: string },
+) {
+  const db = await getDb()
+  await db
+    .insert(enrollmentEvaluations)
+    .values({
+      enrollmentId,
+      evaluatorId,
+      score: patch.score ?? null,
+      note: patch.note ?? null,
+    })
+    .onConflictDoUpdate({
+      target: [
+        enrollmentEvaluations.enrollmentId,
+        enrollmentEvaluations.evaluatorId,
+      ],
+      set: {
+        ...(patch.score !== undefined ? { score: patch.score } : {}),
+        ...(patch.note !== undefined ? { note: patch.note } : {}),
+        updatedAt: new Date(),
+      },
+    })
 }
 
 export async function updateEnrollmentStatusById(

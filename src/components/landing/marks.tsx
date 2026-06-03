@@ -25,19 +25,20 @@ type MarkItem = LandingItemBase & {
 const marks: Array<MarkItem> = [
   {
     id: 'miracle-1-stammering',
-    title: 'Miracle 1',
-    quote: '',
+    title: 'Miracles (1)',
+    quote:
+      '"Now we know that God heareth not sinners: but if any man be a worshipper of God, and doeth his will, him he heareth. Since the world began was it not heard that any man opened the eyes of one that was born blind." Joh 9:31, 32',
     description: '',
     example: '',
     videoUrl: 'https://www.youtube.com/embed/Z1J0yjSdiVY',
   },
   {
     id: 'miracle-2-lung',
-    title: 'Miracle 2',
-    quote: '',
+    title: 'Miracles (2)',
+    quote:
+      '"(As it is written, I have made thee a father of many nations,) before him whom he believed, even God, who quickeneth the dead, and calleth those things which be not as though they were." Rom 4:17',
     description: '',
-    example:
-      '30-year-long tobacco smoke-induced lung disease supernaturally re-created with a new lung in April 2026 after being slain under the Holy Spirit power for two consecutive days.',
+    example: `30-year-long tobacco smoke-induced lung disease supernaturally re-created with a new lung in April 2026 after being slain under the Holy Spirit power for two consecutive days. She could never run without getting out of breath, but her friends were amazed and asked, “How is it possible that you're running and talking on the phone?”`,
   },
   {
     id: 'healing-covid',
@@ -51,16 +52,18 @@ const marks: Array<MarkItem> = [
   },
   {
     id: 'deliverance-demons',
-    title: 'Deliverance from Demons and Evil Spirits',
-    quote: '',
+    title: 'Deliverance',
+    quote:
+      '"Now when the sun was setting, all they that had any sick with divers diseases brought them unto him; and he laid his hands on every one of them, and healed them. And devils also came out of many, crying out, and saying, Thou art Christ the Son of God. And he rebuking them suffered them not to speak: for they knew that he was Christ." Luke 4:40, 41',
     description: '',
     example: '',
     videoUrl: 'https://www.youtube.com/embed/w320cJTEXcE',
   },
   {
     id: 'repentance-restoration',
-    title: 'Repentance, Restoration, and Revival',
-    quote: '',
+    title: 'Repentance, and Revival',
+    quote:
+      '"If my people, which are called by my name, shall humble themselves, and pray, and seek my face, and turn from their wicked ways; then will I hear from heaven, and will forgive their sin, and will heal their land." 2 Cro 7:14',
     description: '',
     example: '',
     videoUrl: 'https://www.youtube.com/embed/7qs0gvMAJOE',

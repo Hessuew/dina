@@ -53,11 +53,20 @@ type ButtonConfig<TData> = {
 
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
+// Approximate rendered heights, used to cap the scroll area to `maxRows` rows.
+// A body row's tallest cell is the size-8 (32px) action button + py-3 padding;
+// the header is h-11. Values rounded up so `maxRows` rows always fit without a
+// scrollbar, and row `maxRows + 1` triggers the internal scroll.
+const ROW_HEIGHT_PX = 58
+const HEADER_HEIGHT_PX = 46
+
 type DataTableProps<TData> = {
   columns: Array<ColumnDef<TData, any>>
   data: Array<TData>
   pageSize?: number
   initialPage?: number
+  // Cap the table to this many rows tall; rows beyond scroll within the table.
+  maxRows?: number
   onPageChange?: (page: number) => void
   onPageSizeChange?: (pageSize: number) => void
   searchPlaceholder?: string
@@ -123,6 +132,7 @@ export function DataTable<TData>({
   data,
   pageSize: initialPageSize = 10,
   initialPage,
+  maxRows,
   onPageChange,
   onPageSizeChange,
   searchPlaceholder = 'Search…',
@@ -220,7 +230,14 @@ export function DataTable<TData>({
 
       {/* Table */}
       <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
-        <Table>
+        <Table
+          containerClassName={maxRows ? 'overflow-y-auto' : undefined}
+          containerStyle={
+            maxRows
+              ? { maxHeight: HEADER_HEIGHT_PX + maxRows * ROW_HEIGHT_PX }
+              : undefined
+          }
+        >
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
@@ -232,7 +249,11 @@ export function DataTable<TData>({
                   return (
                     <TableHead
                       key={header.id}
-                      className="h-11 px-4 text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase"
+                      className={cn(
+                        'h-11 px-4 text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase',
+                        maxRows &&
+                          'sticky top-0 z-10 border-b border-white/10 bg-[#151515]',
+                      )}
                     >
                       {header.isPlaceholder ? null : (
                         <button

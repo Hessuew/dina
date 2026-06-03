@@ -298,7 +298,7 @@ function GemLecturerCard({
               <img
                 src={GEM_IMAGE_MAP[teacher.gemstone]}
                 alt={teacher.gemstone}
-                className="size-12 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+                className="size-10 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
               />
             )}
             <h3 className="font-serif text-xl leading-tight text-white italic">
@@ -500,7 +500,7 @@ export function LandingLecturerGemsSection() {
               labelColor="text-[#6e562d]"
               valueColor="text-[#1C1815]"
             />
-            <div className="relative h-144 overflow-hidden">
+            <div className="relative h-120 overflow-hidden">
               {gemLecturers.map((lecturer, index) => {
                 const offset = getGemRelativeOffset(
                   m.activeIndex,

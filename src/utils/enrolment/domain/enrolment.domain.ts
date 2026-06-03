@@ -29,6 +29,11 @@ export type MaybeRedactedEnrollment = Omit<
   invitationId?: string | null
 }
 
+export type EnrollmentWithEvaluation = MaybeRedactedEnrollment & {
+  evaluationSum: number
+  evaluationCount: number
+}
+
 export function redactEnrollmentForTeacher(
   enrollment: EnrollmentSelect,
 ): Omit<

@@ -1,6 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { Mail, Trash2 } from 'lucide-react'
-import { format } from 'date-fns'
 import { useState } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { toast } from 'sonner'
@@ -18,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
-import { EnrollmentStatusChip } from '@/components/table/chips'
+import { EnrollmentDetails } from '@/components/enrollment/EnrollmentDetails'
 import {
   Select,
   SelectContent,
@@ -102,10 +101,6 @@ function EnrollmentDetailPage() {
   const { user } = Route.useRouteContext()
   const isAdmin = user?.role === 'admin'
 
-  const address = [enrollment.currentCity, enrollment.currentCountry]
-    .filter(Boolean)
-    .join(', ')
-
   return (
     <PageLayout>
       <PageHeader
@@ -142,143 +137,36 @@ function EnrollmentDetailPage() {
         }
       />
 
-      <div className="border border-white/10 bg-[#151515]/88 p-6 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-              Status
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <EnrollmentStatusChip status={enrollment.status} />
-              {isAdmin && (
-                <Select
-                  value={enrollment.status}
-                  onValueChange={(value) =>
-                    statusMutation.mutate({
-                      data: {
-                        enrollmentId: enrollment.id,
-                        status: value as any,
-                      },
-                    })
-                  }
-                >
-                  <SelectTrigger className="h-9 rounded-none border-white/12 bg-[#1A1716] text-[#F8F4EC]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-none border-white/10 bg-[#1A1716] text-[#F8F4EC]">
-                    {STATUS_OPTIONS.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>
-                        {s.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-              Submitted
-            </div>
-            <div className="mt-2 text-sm text-[#D6CCBE]">
-              {format(new Date(enrollment.createdAt), 'MMM d, yyyy')}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-              Preferred name
-            </div>
-            <div className="mt-2 text-sm text-[#D6CCBE]">
-              {enrollment.preferredName || '—'}
-            </div>
-          </div>
-
-          {isAdmin && (
-            <div>
-              <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-                Email
-              </div>
-              <div className="mt-2 text-sm text-[#D6CCBE]">
-                {enrollment.email}
-              </div>
-            </div>
-          )}
-
-          {isAdmin && (
-            <div>
-              <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-                WhatsApp
-              </div>
-              <div className="mt-2 text-sm text-[#D6CCBE]">
-                {enrollment.phoneWhatsApp}
-              </div>
-            </div>
-          )}
-
-          <div>
-            <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-              Year of birth
-            </div>
-            <div className="mt-2 text-sm text-[#D6CCBE]">
-              {enrollment.yearOfBirth}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-              Gender
-            </div>
-            <div className="mt-2 text-sm text-[#D6CCBE]">
-              {enrollment.gender === 'male' ? 'Male' : 'Female'}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-              Nationality/citizenship
-            </div>
-            <div className="mt-2 text-sm text-[#D6CCBE]">
-              {enrollment.nationalityCitizenship || '—'}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-              Current address
-            </div>
-            <div className="mt-2 text-sm text-[#D6CCBE]">{address || '—'}</div>
-          </div>
-
-          <div className="sm:col-span-2">
-            <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-              Church affiliations
-            </div>
-            <div className="mt-2 text-sm leading-7 whitespace-pre-wrap text-[#D6CCBE]">
-              {enrollment.churchAffiliations || '—'}
-            </div>
-          </div>
-
-          <div className="sm:col-span-2">
-            <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-              About
-            </div>
-            <div className="mt-2 text-sm leading-7 whitespace-pre-wrap text-[#D6CCBE]">
-              {enrollment.aboutYourself}
-            </div>
-          </div>
-
-          <div className="sm:col-span-2">
-            <div className="text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-              Expectations
-            </div>
-            <div className="mt-2 text-sm leading-7 whitespace-pre-wrap text-[#D6CCBE]">
-              {enrollment.expectationsAlignment}
-            </div>
-          </div>
-        </div>
-      </div>
+      <EnrollmentDetails
+        enrollment={enrollment}
+        isAdmin={isAdmin}
+        statusAction={
+          isAdmin ? (
+            <Select
+              value={enrollment.status}
+              onValueChange={(value) =>
+                statusMutation.mutate({
+                  data: {
+                    enrollmentId: enrollment.id,
+                    status: value as (typeof STATUS_OPTIONS)[number]['value'],
+                  },
+                })
+              }
+            >
+              <SelectTrigger className="h-9 rounded-none border-white/12 bg-[#1A1716] text-[#F8F4EC]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-none border-white/10 bg-[#1A1716] text-[#F8F4EC]">
+                {STATUS_OPTIONS.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : undefined
+        }
+      />
 
       {isAdmin && (
         <>

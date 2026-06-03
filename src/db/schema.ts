@@ -1,9 +1,11 @@
 import {
   boolean,
+  check,
   integer,
   pgEnum,
   pgPolicy,
   pgTable,
+  smallint,
   text,
   timestamp,
   unique,
@@ -952,6 +954,51 @@ export const enrollments = pgTable(
       for: 'delete',
       to: authenticatedRole,
       using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+  ],
+)
+
+export const enrollmentEvaluations = pgTable(
+  'enrollment_evaluations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    enrollmentId: uuid('enrollment_id')
+      .notNull()
+      .references(() => enrollments.id, { onDelete: 'cascade' }),
+    evaluatorId: uuid('evaluator_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    score: smallint('score'),
+    note: text('note'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    unique('enrollment_evaluations_enrollment_evaluator_unique').on(
+      table.enrollmentId,
+      table.evaluatorId,
+    ),
+    check(
+      'enrollment_evaluations_score_range',
+      sql`${table.score} BETWEEN -9 AND 9`,
+    ),
+    // Teacher-users and admins (Evaluators) may read all evaluations.
+    pgPolicy('staff_view_evaluations', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'teacher')`,
+    }),
+    // Evaluators may only write their own evaluation row.
+    pgPolicy('staff_insert_own_evaluations', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`evaluator_id = auth.uid() AND (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'teacher')`,
+    }),
+    pgPolicy('staff_update_own_evaluations', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`evaluator_id = auth.uid()`,
+      withCheck: sql`evaluator_id = auth.uid()`,
     }),
   ],
 )

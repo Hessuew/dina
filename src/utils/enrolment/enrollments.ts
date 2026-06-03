@@ -1,7 +1,10 @@
 import { createServerFn } from '@tanstack/react-start'
 import { render } from '@react-email/render'
 import { Resend } from 'resend'
-import type { MaybeRedactedEnrollment } from '@/utils/enrolment/domain/enrolment.domain'
+import type {
+  EnrollmentWithEvaluation,
+  MaybeRedactedEnrollment,
+} from '@/utils/enrolment/domain/enrolment.domain'
 import {
   generateInvitationExpiry,
   generateSecureToken,
@@ -29,6 +32,8 @@ import {
   getEnrollmentByIdSchema,
   getEnrollmentsSchema,
   sendInvitationForEnrollmentSchema,
+  setEvaluationNoteSchema,
+  setEvaluationScoreSchema,
   updateEnrollmentStatusSchema,
 } from '@/schemas/enrollment.schema'
 import {
@@ -36,6 +41,7 @@ import {
   deleteInvitationById,
   findEnrollmentById,
   findEnrollmentsPage,
+  findEvaluationsForEnrollments,
   findInvitationByEmail,
   findProfileById,
   insertEnrollment,
@@ -43,6 +49,7 @@ import {
   markEnrollmentInvitationSent,
   updateEnrollmentStatusById,
   updateInvitationToken,
+  upsertEvaluation,
 } from '@/utils/enrolment/repository/enrolment.repository'
 
 export const createEnrollment = createServerFn({ method: 'POST' })
@@ -89,16 +96,19 @@ export const getEnrollments = createServerFn({ method: 'POST' })
         includeEmail: isAdmin,
       })
 
-      if (!isAdmin) {
-        return {
-          enrollments: rows.map(
-            redactEnrollmentForTeacher,
-          ) as Array<MaybeRedactedEnrollment>,
-          total,
-        }
-      }
+      const evaluations = await findEvaluationsForEnrollments(
+        rows.map((row) => row.id),
+      )
 
-      return { enrollments: rows as Array<MaybeRedactedEnrollment>, total }
+      const enrollmentsOut: Array<EnrollmentWithEvaluation> = rows.map((row) => {
+        const { evaluationSum, evaluationCount, ...enrollment } = row
+        const base = isAdmin
+          ? (enrollment as MaybeRedactedEnrollment)
+          : redactEnrollmentForTeacher(enrollment)
+        return { ...base, evaluationSum, evaluationCount }
+      })
+
+      return { enrollments: enrollmentsOut, total, evaluations }
     })
   })
 
@@ -274,5 +284,45 @@ export const sendInvitationForEnrollment = createServerFn({ method: 'POST' })
       await markEnrollmentInvitationSent(enrollment.id, invitation.id)
 
       return { invitationId: invitation.id }
+    })
+  })
+
+export const setEvaluationScore = createServerFn({ method: 'POST' })
+  .inputValidator(setEvaluationScoreSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+
+    return withRequestCache(async () => {
+      const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(user.id)
+      if (!isAdmin && !isTeacher) {
+        throw new AuthorizationError('admin or teacher access required', {
+          code: 'ROLE_REQUIRED',
+          details: {},
+        })
+      }
+
+      await upsertEvaluation(data.enrollmentId, user.id, { score: data.score })
+
+      return
+    })
+  })
+
+export const setEvaluationNote = createServerFn({ method: 'POST' })
+  .inputValidator(setEvaluationNoteSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+
+    return withRequestCache(async () => {
+      const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(user.id)
+      if (!isAdmin && !isTeacher) {
+        throw new AuthorizationError('admin or teacher access required', {
+          code: 'ROLE_REQUIRED',
+          details: {},
+        })
+      }
+
+      await upsertEvaluation(data.enrollmentId, user.id, { note: data.note })
+
+      return
     })
   })
