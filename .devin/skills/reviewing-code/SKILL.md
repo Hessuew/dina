@@ -1,5 +1,5 @@
 ---
-name: reviewing-code
+name: code-review
 description: >
   Perform a high-signal code review focused on correctness, maintainability,
   performance, operational reliability, and TypeScript safety.
@@ -18,11 +18,13 @@ description: >
 This skill performs a senior-engineer-grade review.
 
 It is optimized for:
+
 - high-signal feedback
 - low-token usage
 - production-relevant findings only
 
 The goal is to identify issues in:
+
 - correctness
 - maintainability
 - performance
@@ -61,7 +63,6 @@ Speculation, theory, and architectural redesign are out of scope.
 
 Understand the change — read the files or diff to understand what the code is supposed to do. Identify the scope (new feature, bug fix, refactor).
 
-
 ---
 
 # Review Areas
@@ -69,6 +70,7 @@ Understand the change — read the files or diff to understand what the code is 
 ## 1. Correctness
 
 Check for:
+
 - broken logic
 - incorrect assumptions
 - missing edge case handling
@@ -88,6 +90,7 @@ Focus only on realistic production-impacting issues.
 ## 2. Maintainability
 
 Check for:
+
 - unnecessary complexity
 - deeply nested logic
 - duplication creating maintenance burden
@@ -97,6 +100,7 @@ Check for:
 - hidden side effects
 
 Do NOT suggest abstractions unless:
+
 - duplication already exists
 - the current structure creates a concrete maintenance problem
 
@@ -105,6 +109,7 @@ Do NOT suggest abstractions unless:
 ## 3. Performance
 
 Check for:
+
 - accidental O(n²) behavior
 - N+1 queries
 - unnecessary rerenders
@@ -120,6 +125,7 @@ Avoid speculative micro-optimizations.
 ## 4. TypeScript Safety
 
 Check for:
+
 - unsafe `any`
 - dangerous type assertions
 - non-exhaustive union handling
@@ -134,6 +140,7 @@ Do NOT recommend excessive type-system complexity.
 ## 5. Operational Reliability
 
 Check for:
+
 - missing error handling
 - swallowed exceptions
 - unsafe retries
@@ -147,6 +154,7 @@ Check for:
 ## 6. Security
 
 Check for:
+
 - missing validation
 - unsafe SQL construction
 - auth/permission bypass risks
@@ -161,6 +169,7 @@ Only report concrete, credible risks.
 ## 7. Testing
 
 Check whether:
+
 - critical paths are covered
 - error cases are tested
 - async flows are tested safely
@@ -191,22 +200,26 @@ If any condition is NOT met → do not report the issue.
 Severity reflects production impact and urgency.
 
 ## 🔴 90–100 (Critical)
+
 - Production-breaking correctness issue
 - Security vulnerability
 - Data loss or corruption risk
 - Severe operational failure
 
 ## 🟠 75–89 (High)
+
 - Should be fixed before merge
 - Impacts correctness, reliability, performance, or maintainability in a meaningful way
 - Could cause production bugs or significant tech debt
 
 ## 🟡 50–74 (Low)
+
 - Nice-to-have improvement
 - Does not block merge
 - Minor maintainability or readability gain
 
 ## Below 50
+
 - Do not report
 
 ---
@@ -239,6 +252,7 @@ Each issue is a structured review card.
 [`apps/mobile/src/hooks/useDevicePolling.ts`](apps/mobile/src/hooks/useDevicePolling.ts)
 
 **Evidence**
+
 - async polling loop continues after component unmount
 
 **Why it matters**

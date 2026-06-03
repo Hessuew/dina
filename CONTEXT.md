@@ -35,3 +35,11 @@ A user with `profiles.role = 'student'` (default). Enrolled via an admin-sent in
 ### Affiliated Ministry
 
 External ministry organizations that DINA partners with or is spiritually connected to. Examples: Flame the Freeze, Prayer Church Finland. These are not database entities but external references used in marketing content.
+
+### Evaluator
+
+A Teacher-user or Admin acting on the enrollment review surface. An Evaluator records their own score and note for an enrollment. Distinct from the static landing **Lecturer**. Each Evaluator has at most one **Enrollment Evaluation** per enrollment; an Evaluator can read every Evaluator's evaluations but may only write their own.
+
+### Enrollment Evaluation
+
+One Evaluator's assessment of one enrollment: a nullable **score** from −9 to +9 and an optional **note**, stored as a single row per `(enrollment, evaluator)` in the `enrollment_evaluations` table. Scores aggregate on the enrollment list as a sortable **sum · evaluator-count**. An Enrollment Evaluation is independent of enrollment `status` — scoring never changes status (see ADR 0006). Captured in the keyboard-driven review overlay launched from the enrollments list.
