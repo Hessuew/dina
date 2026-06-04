@@ -285,7 +285,7 @@ export async function findAllTeacherIds(): Promise<Array<string>> {
   const rows = await db
     .select({ id: profiles.id })
     .from(profiles)
-    .where(eq(profiles.role, 'teacher'))
+    .where(inArray(profiles.role, ['teacher', 'admin']))
     .orderBy(asc(profiles.createdAt))
   return rows.map((r) => r.id)
 }
