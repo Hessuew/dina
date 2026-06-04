@@ -78,6 +78,7 @@ type EnrollmentsTableProps = {
   initialSearch?: string
   initialSortBy?: string
   initialSortDir?: 'asc' | 'desc'
+  isLoading?: boolean
   onPageChange?: (page: number) => void
   onPageSizeChange?: (pageSize: number) => void
   onSearchChange?: (search: string) => void
@@ -108,6 +109,7 @@ export function EnrollmentsTable({
   initialSearch,
   initialSortBy,
   initialSortDir,
+  isLoading = false,
   onPageChange,
   onPageSizeChange,
   onSearchChange,
@@ -302,19 +304,6 @@ export function EnrollmentsTable({
     }),
   ]
 
-  if (enrollments.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <h3 className="mb-2 font-serif text-lg text-[#F8F4EC]">
-          No enrollments yet
-        </h3>
-        <p className="text-sm text-[#8E816D]">
-          Public enrolment form submissions show up here.
-        </p>
-      </div>
-    )
-  }
-
   return (
     <>
       <DataTable
@@ -331,6 +320,13 @@ export function EnrollmentsTable({
         onPageSizeChange={onPageSizeChange}
         onSearchChange={onSearchChange}
         onSortingChange={onSortingChange}
+        isLoading={isLoading}
+        loadingLabel="Loading enrollments…"
+        emptyMessage={
+          initialSearch?.trim()
+            ? 'No matching enrollments'
+            : 'No enrollments yet. Public enrolment form submissions show up here.'
+        }
         searchPlaceholder="Search by name, status…"
       />
 

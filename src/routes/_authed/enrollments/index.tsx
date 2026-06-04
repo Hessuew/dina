@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { FileTextIcon } from 'lucide-react'
 import type { EnrollmentRow } from '@/components/table/EnrollmentsTable'
 import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.repository'
@@ -66,6 +66,7 @@ function EnrollmentsPage() {
   const router = useRouter()
   const { page, pageSize, search, sortBy, sortDir, review } = Route.useSearch()
   const isAdmin = user?.role === 'admin'
+  const [isListLoading, setIsListLoading] = useState(false)
 
   const reviewState = useEnrollmentReview({
     initialEnrollments: enrollments,
@@ -93,14 +94,30 @@ function EnrollmentsPage() {
       sortBy?: EnrollmentSortKey
       sortDir?: 'asc' | 'desc'
     }) => {
+      const next = {
+        page: params.page ?? page,
+        pageSize: params.pageSize ?? pageSize,
+        search: params.search ?? search,
+        sortBy: params.sortBy ?? sortBy,
+        sortDir: params.sortDir ?? sortDir,
+      }
+
+      if (
+        next.page === page &&
+        next.pageSize === pageSize &&
+        next.search === search &&
+        next.sortBy === sortBy &&
+        next.sortDir === sortDir
+      ) {
+        setIsListLoading(false)
+        return
+      }
+
+      setIsListLoading(true)
       router.navigate({
         to: '/enrollments',
         search: {
-          page: params.page ?? page,
-          pageSize: params.pageSize ?? pageSize,
-          search: params.search ?? search,
-          sortBy: params.sortBy ?? sortBy,
-          sortDir: params.sortDir ?? sortDir,
+          ...next,
           review: undefined,
         },
         replace: true,
@@ -109,6 +126,10 @@ function EnrollmentsPage() {
     },
     [router, page, pageSize, search, sortBy, sortDir],
   )
+
+  useEffect(() => {
+    setIsListLoading(false)
+  }, [enrollments, total, evaluations])
 
   useEffect(() => {
     return () => {
@@ -145,11 +166,17 @@ function EnrollmentsPage() {
         initialSearch={search}
         initialSortBy={sortBy}
         initialSortDir={sortDir}
+        isLoading={isListLoading}
         onPageChange={(p) => navigate({ page: p })}
         onPageSizeChange={(ps) => navigate({ page: 1, pageSize: ps })}
         onSearchChange={(s) => {
           if (searchDebounceRef.current)
             clearTimeout(searchDebounceRef.current)
+          if (s === search) {
+            setIsListLoading(false)
+            return
+          }
+          setIsListLoading(true)
           searchDebounceRef.current = setTimeout(() => {
             navigate({ page: 1, search: s })
           }, 300)
