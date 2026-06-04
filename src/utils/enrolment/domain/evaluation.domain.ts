@@ -15,16 +15,19 @@ export const ADMISSION_CATEGORY_OPTIONS = [
     value: 'new',
     shortcut: 'A',
     label: 'Admitted in the new young convert, new discipleship category',
+    shortLabel: 'new convert',
   },
   {
     value: 'emerging',
     shortcut: 'B',
     label: 'Admitted into emerging leaders discipleship category',
+    shortLabel: 'emerging leader',
   },
   {
     value: 'established',
     shortcut: 'C',
     label: 'Admitted into an established leaders discipleship category',
+    shortLabel: 'established leader',
   },
 ] as const
 
