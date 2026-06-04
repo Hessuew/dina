@@ -35,6 +35,7 @@ export type EvaluationWithAuthor = {
   evaluatorId: string
   evaluatorName: string
   score: number | null
+  admissionCategory: (typeof enrollmentEvaluations.$inferSelect)['admissionCategory']
   note: string | null
 }
 
@@ -130,6 +131,7 @@ export async function findEvaluationsForEnrollments(
       evaluatorId: enrollmentEvaluations.evaluatorId,
       evaluatorName: profiles.fullName,
       score: enrollmentEvaluations.score,
+      admissionCategory: enrollmentEvaluations.admissionCategory,
       note: enrollmentEvaluations.note,
     })
     .from(enrollmentEvaluations)
@@ -141,7 +143,11 @@ export async function findEvaluationsForEnrollments(
 export async function upsertEvaluation(
   enrollmentId: string,
   evaluatorId: string,
-  patch: { score?: number | null; note?: string },
+  patch: {
+    score?: number | null
+    admissionCategory?: (typeof enrollmentEvaluations.$inferSelect)['admissionCategory']
+    note?: string
+  },
 ) {
   const db = await getDb()
   await db
@@ -150,6 +156,7 @@ export async function upsertEvaluation(
       enrollmentId,
       evaluatorId,
       score: patch.score ?? null,
+      admissionCategory: patch.admissionCategory ?? null,
       note: patch.note ?? null,
     })
     .onConflictDoUpdate({
@@ -158,7 +165,17 @@ export async function upsertEvaluation(
         enrollmentEvaluations.evaluatorId,
       ],
       set: {
-        ...(patch.score !== undefined ? { score: patch.score } : {}),
+        ...(patch.score !== undefined
+          ? {
+              score: patch.score,
+              ...(!patch.score || patch.score < 3
+                ? { admissionCategory: null }
+                : {}),
+            }
+          : {}),
+        ...(patch.admissionCategory !== undefined
+          ? { admissionCategory: patch.admissionCategory }
+          : {}),
         ...(patch.note !== undefined ? { note: patch.note } : {}),
         updatedAt: new Date(),
       },

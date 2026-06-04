@@ -13,24 +13,45 @@ import {
 import type { RefObject } from 'react'
 import type { EnrollmentWithEvaluation } from '@/utils/enrolment/domain/enrolment.domain'
 import type { EvaluationWithAuthor } from '@/utils/enrolment/repository/enrolment.repository'
+import type {
+  AdmissionCategory,
+  EvaluationScore,
+} from '@/utils/enrolment/domain/evaluation.domain'
 import {
+  ADMISSION_CATEGORY_OPTIONS,
+  EVALUATION_SCORES,
+  EVALUATION_SCORE_LABELS,
   formatEvaluationSummary,
   formatScore,
   reduceScoreKey,
+  scoreRequiresAdmissionCategory,
 } from '@/utils/enrolment/domain/evaluation.domain'
 import { EnrollmentDetails } from '@/components/enrollment/EnrollmentDetails'
 import { useMutation } from '@/hooks/useMutation'
-import { setEvaluationNote, setEvaluationScore } from '@/utils/enrolment'
+import {
+  setEvaluationAdmissionCategory,
+  setEvaluationNote,
+  setEvaluationScore,
+} from '@/utils/enrolment'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
-const POSITIVE_SCORES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-const NEGATIVE_SCORES = [-1, -2, -3, -4, -5, -6, -7, -8, -9]
-
 function isTypingTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement
+  )
+}
+
+function formatAdmissionCategory(category: AdmissionCategory): string {
+  return (
+    ADMISSION_CATEGORY_OPTIONS.find((option) => option.value === category)
+      ?.label ?? category
   )
 }
 
@@ -47,22 +68,68 @@ function ScoreButton({
   active,
   onClick,
 }: {
-  value: number
+  value: EvaluationScore
   active: boolean
   onClick: () => void
+}) {
+  const label = EVALUATION_SCORE_LABELS[value]
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            onClick={onClick}
+            aria-label={`${value}: ${label}`}
+            className={cn(
+              'flex h-9 w-9 items-center justify-center rounded-none border text-sm tabular-nums transition-colors',
+              active
+                ? 'border-[#C5A059] bg-[#C5A059]/20 text-[#E9D9B4]'
+                : 'border-white/10 bg-[#1A1716] text-[#AFA28F] hover:border-white/25 hover:text-[#F8F4EC]',
+            )}
+          >
+            {value}
+          </button>
+        }
+      />
+      <TooltipContent className="bg-[#F8F4EC] text-[#1C1815]">
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+function AdmissionCategoryButton({
+  category,
+  shortcut,
+  label,
+  active,
+  disabled,
+  onClick,
+}: {
+  category: AdmissionCategory
+  shortcut: string
+  label: string
+  active: boolean
+  disabled: boolean
+  onClick: (category: AdmissionCategory) => void
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      disabled={disabled}
+      onClick={() => onClick(category)}
       className={cn(
-        'flex h-9 w-9 items-center justify-center rounded-none border text-sm tabular-nums transition-colors',
+        'flex h-9 items-center gap-2 rounded-none border px-3 text-sm transition-colors',
         active
           ? 'border-[#C5A059] bg-[#C5A059]/20 text-[#E9D9B4]'
           : 'border-white/10 bg-[#1A1716] text-[#AFA28F] hover:border-white/25 hover:text-[#F8F4EC]',
+        disabled &&
+          'pointer-events-none border-white/5 bg-[#111111] text-[#5F574D] opacity-55',
       )}
     >
-      {value > 0 ? `+${value}` : value}
+      <span className="font-serif text-base text-[#E9D9B4]">{shortcut}</span>
+      <span>{label}</span>
     </button>
   )
 }
@@ -157,7 +224,11 @@ type EvaluationOverlayProps = {
   onClose: () => void
   onLocalEvaluation: (
     enrollmentId: string,
-    patch: { score?: number | null; note?: string },
+    patch: {
+      score?: number | null
+      admissionCategory?: AdmissionCategory | null
+      note?: string
+    },
   ) => void
 }
 
@@ -175,24 +246,41 @@ export function EvaluationOverlay({
   onLocalEvaluation,
 }: EvaluationOverlayProps) {
   const scoreFn = useServerFn(setEvaluationScore)
+  const categoryFn = useServerFn(setEvaluationAdmissionCategory)
   const noteFn = useServerFn(setEvaluationNote)
 
   const scoreMutation = useMutation({
     fn: scoreFn,
     onError: () => {
-      onLocalEvaluation(enrollment.id, { score: pendingPrevScoreRef.current })
+      onLocalEvaluation(enrollment.id, {
+        score: pendingPrevScoreRef.current,
+        admissionCategory: pendingPrevAdmissionCategoryRef.current,
+      })
       toast.error('Failed to save score')
+    },
+  })
+  const categoryMutation = useMutation({
+    fn: categoryFn,
+    onError: () => {
+      onLocalEvaluation(enrollment.id, {
+        admissionCategory: pendingPrevAdmissionCategoryRef.current,
+      })
+      toast.error('Failed to save category')
     },
   })
   const noteMutation = useMutation({ fn: noteFn })
 
   const noteRef = useRef<HTMLTextAreaElement>(null)
   const pendingPrevScoreRef = useRef<number | null>(null)
-  const [negativeArmed, setNegativeArmed] = useState(false)
+  const pendingPrevAdmissionCategoryRef = useRef<AdmissionCategory | null>(null)
 
   const myEvaluation = evaluations.find((e) => e.evaluatorId === userId)
   const myScore = myEvaluation?.score ?? null
   const myNote = myEvaluation?.note ?? ''
+  const myAdmissionCategory = myEvaluation?.admissionCategory ?? null
+  const admissionCategoryEnabled = scoreRequiresAdmissionCategory(myScore)
+  const admissionCategoryMissing =
+    admissionCategoryEnabled && myAdmissionCategory === null
 
   const otherNotes = evaluations.filter(
     (e) => e.evaluatorId !== userId && e.note && e.note.trim().length > 0,
@@ -204,16 +292,47 @@ export function EvaluationOverlay({
   const saveScore = useCallback(
     (score: number | null) => {
       pendingPrevScoreRef.current = myScore
-      onLocalEvaluation(enrollment.id, { score })
+      pendingPrevAdmissionCategoryRef.current = myAdmissionCategory
+      onLocalEvaluation(enrollment.id, {
+        score,
+        ...(!score || score < 3 ? { admissionCategory: null } : {}),
+      })
       void scoreMutation.mutate({
         data: { enrollmentId: enrollment.id, score },
       })
     },
-    [enrollment.id, myScore, onLocalEvaluation, scoreMutation],
+    [
+      enrollment.id,
+      myAdmissionCategory,
+      myScore,
+      onLocalEvaluation,
+      scoreMutation,
+    ],
   )
 
-  const handleScoreButton = (value: number) => {
-    setNegativeArmed(false)
+  const saveAdmissionCategory = useCallback(
+    (admissionCategory: AdmissionCategory) => {
+      if (myScore !== 3 && myScore !== 4) return
+      pendingPrevAdmissionCategoryRef.current = myAdmissionCategory
+      onLocalEvaluation(enrollment.id, { admissionCategory })
+      void categoryMutation.mutate({
+        data: {
+          enrollmentId: enrollment.id,
+          score: myScore,
+          admissionCategory,
+        },
+      })
+    },
+    [
+      categoryMutation,
+      enrollment.id,
+      myAdmissionCategory,
+      myScore,
+      onLocalEvaluation,
+    ],
+  )
+
+  const handleScoreButton = (value: EvaluationScore) => {
     saveScore(value === myScore ? null : value)
   }
 
@@ -241,22 +360,16 @@ export function EvaluationOverlay({
 
       if (event.key === 'ArrowRight') {
         event.preventDefault()
-        setNegativeArmed(false)
         void onNext()
         return
       }
       if (event.key === 'ArrowLeft') {
         event.preventDefault()
-        setNegativeArmed(false)
         void onPrev()
         return
       }
       if (event.key === 'Escape') {
-        if (negativeArmed) {
-          setNegativeArmed(false)
-        } else {
-          onClose()
-        }
+        onClose()
         return
       }
       if (event.key === 'n' || event.key === 'N') {
@@ -270,22 +383,46 @@ export function EvaluationOverlay({
         return
       }
 
-      const result = reduceScoreKey(myScore, event.key, negativeArmed)
+      const categoryOption = ADMISSION_CATEGORY_OPTIONS.find(
+        (option) => option.shortcut.toLowerCase() === event.key.toLowerCase(),
+      )
+      if (categoryOption && admissionCategoryEnabled) {
+        event.preventDefault()
+        saveAdmissionCategory(categoryOption.value)
+        return
+      }
+
+      const result = reduceScoreKey(myScore, event.key)
       if (!result.handled) return
       event.preventDefault()
-      setNegativeArmed(result.negativeArmed)
       if (result.changed) saveScore(result.score)
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [myScore, negativeArmed, onNext, onPrev, onClose, saveScore])
+  }, [
+    admissionCategoryEnabled,
+    myScore,
+    onNext,
+    onPrev,
+    onClose,
+    saveAdmissionCategory,
+    saveScore,
+  ])
 
   const scoreState: SaveState = scoreMutation.isPending
     ? 'saving'
     : scoreMutation.status === 'success'
       ? 'saved'
       : scoreMutation.status === 'error'
+        ? 'error'
+        : 'idle'
+
+  const categoryState: SaveState = categoryMutation.isPending
+    ? 'saving'
+    : categoryMutation.status === 'success'
+      ? 'saved'
+      : categoryMutation.status === 'error'
         ? 'error'
         : 'idle'
 
@@ -325,10 +462,10 @@ export function EvaluationOverlay({
           </div>
 
           {/* Score pad */}
-          <div className="mt-4 flex items-center gap-3">
-            <div className="flex flex-col gap-1.5">
+          <div className="mt-4 flex flex-wrap items-start gap-5">
+            <div className="flex flex-col gap-2">
               <div className="flex gap-1.5">
-                {POSITIVE_SCORES.map((value) => (
+                {EVALUATION_SCORES.map((value) => (
                   <ScoreButton
                     key={value}
                     value={value}
@@ -337,15 +474,31 @@ export function EvaluationOverlay({
                   />
                 ))}
               </div>
-              <div className="flex gap-1.5">
-                {NEGATIVE_SCORES.map((value) => (
-                  <ScoreButton
-                    key={value}
-                    value={value}
-                    active={myScore === value}
-                    onClick={() => handleScoreButton(value)}
-                  />
-                ))}
+              <div>
+                <div className="mb-1.5 flex items-center gap-2">
+                  <span className="text-[0.62rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
+                    Admission category
+                  </span>
+                  <SaveStatus state={categoryState} />
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {ADMISSION_CATEGORY_OPTIONS.map((option) => (
+                    <AdmissionCategoryButton
+                      key={option.value}
+                      category={option.value}
+                      shortcut={option.shortcut}
+                      label={option.label}
+                      active={myAdmissionCategory === option.value}
+                      disabled={!admissionCategoryEnabled}
+                      onClick={saveAdmissionCategory}
+                    />
+                  ))}
+                </div>
+                {admissionCategoryMissing && (
+                  <p className="mt-1.5 text-xs text-[#C5A059]">
+                    Select A, B, or C for admission scores.
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex flex-col items-center gap-1 pl-2">
@@ -357,7 +510,7 @@ export function EvaluationOverlay({
               </span>
               <SaveStatus state={scoreState} />
             </div>
-            <div className="flex-1 pl-8">
+            <div className="min-w-72 flex-1">
               <NoteEditor
                 key={enrollment.id}
                 initialNote={myNote}
@@ -377,6 +530,11 @@ export function EvaluationOverlay({
                     {note.score !== null && (
                       <span className="ml-2 text-[#C5A059]">
                         {formatScore(note.score)}
+                      </span>
+                    )}
+                    {note.admissionCategory && (
+                      <span className="ml-2 text-[#C5A059]">
+                        {formatAdmissionCategory(note.admissionCategory)}
                       </span>
                     )}
                   </span>

@@ -141,6 +141,13 @@
       "when": 1780347555421,
       "tag": "0022_same_bloodaxe",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1780587221685,
+      "tag": "0023_unknown_maximus",
+      "breakpoints": true
     }
   ]
 }

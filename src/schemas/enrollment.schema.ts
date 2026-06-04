@@ -64,9 +64,21 @@ export const sendInvitationForEnrollmentSchema = z.object({
   enrollmentId: z.uuid('Invalid enrollment ID'),
 })
 
+const admissionCategorySchema = z.enum([
+  'new',
+  'emerging',
+  'established',
+])
+
 export const setEvaluationScoreSchema = z.object({
   enrollmentId: z.uuid('Invalid enrollment ID'),
-  score: z.number().int().min(-9).max(9).nullable(),
+  score: z.number().int().min(0).max(4).nullable(),
+})
+
+export const setEvaluationAdmissionCategorySchema = z.object({
+  enrollmentId: z.uuid('Invalid enrollment ID'),
+  score: z.union([z.literal(3), z.literal(4)]),
+  admissionCategory: admissionCategorySchema,
 })
 
 export const setEvaluationNoteSchema = z.object({
@@ -106,4 +118,7 @@ export type SendInvitationForEnrollmentInput = z.infer<
 >
 export type GetEnrollmentsInput = z.infer<typeof getEnrollmentsSchema>
 export type SetEvaluationScoreInput = z.infer<typeof setEvaluationScoreSchema>
+export type SetEvaluationAdmissionCategoryInput = z.infer<
+  typeof setEvaluationAdmissionCategorySchema
+>
 export type SetEvaluationNoteInput = z.infer<typeof setEvaluationNoteSchema>

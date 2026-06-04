@@ -22,7 +22,9 @@ type TeacherWithCourse = {
  * 3. Only b has a course → b comes first
  * 4. Neither has a course → ascending by teacher createdAt
  */
-export function sortTeachers<T extends TeacherWithCourse>(teachers: T[]): T[] {
+export function sortTeachers<T extends TeacherWithCourse>(
+  teachers: Array<T>,
+): Array<T> {
   return [...teachers].sort((a, b) => {
     const aIdx = a.course?.orderIndex ?? null
     const bIdx = b.course?.orderIndex ?? null
