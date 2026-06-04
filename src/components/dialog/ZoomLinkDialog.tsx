@@ -1,6 +1,6 @@
 import { Trash2Icon } from 'lucide-react'
 import { useEffect } from 'react'
-import type { ZoomLinkRow, ZoomLinkSection } from '@/utils/zoomLink/zoomLinks'
+import type { ZoomLinkRow, ZoomLinkSection } from '@/utils/zoomLink'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,7 +26,7 @@ import {
   createZoomLink,
   deleteZoomLink,
   updateZoomLink,
-} from '@/utils/zoomLink/zoomLinks'
+} from '@/utils/zoomLink'
 import { createZoomLinkSchema } from '@/schemas/zoomLink.schema'
 
 type ZoomCourse = { id: string; title: string }
