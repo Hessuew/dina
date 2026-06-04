@@ -358,92 +358,90 @@ export function DataTable<TData>({
       </div>
 
       {/* Footer: count + page size selector + pagination */}
-      {pageCount > 1 && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+            {start}–{end} of {filteredTotal}
+          </span>
+
+          <div className="flex items-center gap-2">
             <span className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-              {start}–{end} of {filteredTotal}
+              Per page
             </span>
-
-            <div className="flex items-center gap-2">
-              <span className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-                Per page
-              </span>
-              <Select
-                value={String(pageSize)}
-                onValueChange={(val) => {
-                  table.setPageSize(Number(val))
-                }}
-              >
-                <SelectTrigger className="h-7 w-16 rounded-sm border-white/10 bg-[#1A1716] text-[0.76rem] text-[#D6CCBE] focus:ring-0">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-sm border border-white/10 bg-[#1A1716] text-[#F8F4EC]">
-                  {sizeOptions.map((size) => (
-                    <SelectItem
-                      key={size}
-                      value={String(size)}
-                      className="text-[0.76rem]"
-                    >
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(val) => {
+                table.setPageSize(Number(val))
+              }}
+            >
+              <SelectTrigger className="h-7 w-16 rounded-sm border-white/10 bg-[#1A1716] text-[0.76rem] text-[#D6CCBE] focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-sm border border-white/10 bg-[#1A1716] text-[#F8F4EC]">
+                {sizeOptions.map((size) => (
+                  <SelectItem
+                    key={size}
+                    value={String(size)}
+                    className="text-[0.76rem]"
+                  >
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-
-          <Pagination className="mx-0 w-auto justify-end">
-            <PaginationContent className="gap-1.5">
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => table.previousPage()}
-                  aria-disabled={!table.getCanPreviousPage()}
-                  className={cn(
-                    'rounded-sm',
-                    !table.getCanPreviousPage() &&
-                      'pointer-events-none opacity-30',
-                  )}
-                />
-              </PaginationItem>
-
-              {pageWindow.map((page, i) =>
-                page === '…' ? (
-                  <PaginationItem key={`ellipsis-${i}`}>
-                    <PaginationEllipsis className="text-[#8E816D]/60" />
-                  </PaginationItem>
-                ) : (
-                  <PaginationItem key={page}>
-                    <button
-                      type="button"
-                      onClick={() => table.setPageIndex(Number(page) - 1)}
-                      className={cn(
-                        'flex h-8 w-8 items-center justify-center rounded-sm border text-[0.76rem] transition-all duration-200 active:scale-95',
-                        page === pageIndex + 1
-                          ? 'border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_0_12px_-4px_rgba(197,160,89,0.15)]'
-                          : 'border-white/8 bg-black/10 text-[#8E816D] hover:border-white/15 hover:bg-black/20 hover:text-black',
-                      )}
-                    >
-                      {page}
-                    </button>
-                  </PaginationItem>
-                ),
-              )}
-
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => table.nextPage()}
-                  aria-disabled={!table.getCanNextPage()}
-                  className={cn(
-                    'rounded-sm',
-                    !table.getCanNextPage() && 'pointer-events-none opacity-30',
-                  )}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
         </div>
-      )}
+
+        <Pagination className="mx-0 w-auto justify-end">
+          <PaginationContent className="gap-1.5">
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => table.previousPage()}
+                aria-disabled={!table.getCanPreviousPage()}
+                className={cn(
+                  'rounded-sm',
+                  !table.getCanPreviousPage() &&
+                    'pointer-events-none opacity-30',
+                )}
+              />
+            </PaginationItem>
+
+            {pageWindow.map((page, i) =>
+              page === '…' ? (
+                <PaginationItem key={`ellipsis-${i}`}>
+                  <PaginationEllipsis className="text-[#8E816D]/60" />
+                </PaginationItem>
+              ) : (
+                <PaginationItem key={page}>
+                  <button
+                    type="button"
+                    onClick={() => table.setPageIndex(Number(page) - 1)}
+                    className={cn(
+                      'flex h-8 w-8 items-center justify-center rounded-sm border text-[0.76rem] transition-all duration-200 active:scale-95',
+                      page === pageIndex + 1
+                        ? 'border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_0_12px_-4px_rgba(197,160,89,0.15)]'
+                        : 'border-white/8 bg-black/10 text-[#8E816D] hover:border-white/15 hover:bg-black/20 hover:text-black',
+                    )}
+                  >
+                    {page}
+                  </button>
+                </PaginationItem>
+              ),
+            )}
+
+            <PaginationItem>
+              <PaginationNext
+                onClick={() => table.nextPage()}
+                aria-disabled={!table.getCanNextPage()}
+                className={cn(
+                  'rounded-sm',
+                  !table.getCanNextPage() && 'pointer-events-none opacity-30',
+                )}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
     </div>
   )
 }

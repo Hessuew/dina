@@ -227,6 +227,11 @@ gh pr edit <PR-number> --body-file /tmp/pr-<PR-number>.md
 
 <Intent-level bullets describing what behavior changed in this PR's slice only>
 <Not file names — what behavior, what the user/system experiences differently>
+
+---
+
+**Related Linear Issue:** <Linear-issue-url>
+<Include this footer only if Phase 4 returned a Linear issue for this PR>
 ```
 
 **Sources per PR:**
@@ -234,6 +239,7 @@ gh pr edit <PR-number> --body-file /tmp/pr-<PR-number>.md
 - `What`: commit title / PR title for this stack slice
 - `Why`: Linear issue description (summarize to ≤2 sentences); omit if null
 - `Changes`: diff and commits scoped to this PR's range only (`git log` + `git diff` between this branch and its parent)
+- `Related Linear Issue`: Linear issue URL from Phase 4 mapping; omit if null
 
 **Do not describe the full stack** — each PR describes its own slice only.
 
