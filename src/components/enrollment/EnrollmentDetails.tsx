@@ -20,7 +20,13 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-function LongField({ label, children }: { label: string; children: ReactNode }) {
+function LongField({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
   return (
     <div className="sm:col-span-2">
       <FieldLabel>{label}</FieldLabel>

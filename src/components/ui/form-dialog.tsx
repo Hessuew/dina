@@ -48,7 +48,10 @@ const loadingLabels: Record<FormDialogMode, string> = {
   view: '',
 }
 
-const maxWidthClasses: Record<NonNullable<FormDialogProps['maxWidth']>, string> = {
+const maxWidthClasses: Record<
+  NonNullable<FormDialogProps['maxWidth']>,
+  string
+> = {
   sm: 'sm:max-w-sm',
   md: 'sm:max-w-md',
   lg: 'sm:max-w-lg',

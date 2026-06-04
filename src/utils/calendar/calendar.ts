@@ -6,7 +6,10 @@ import {
 } from './repository'
 import { buildCalendarEvents } from './domain/calendar.domain'
 
-export type { CalendarEvent, SpecialEventCategory } from './domain/calendar.domain'
+export type {
+  CalendarEvent,
+  SpecialEventCategory,
+} from './domain/calendar.domain'
 
 export const getCalendarEvents = createServerFn({ method: 'POST' }).handler(
   async () => {

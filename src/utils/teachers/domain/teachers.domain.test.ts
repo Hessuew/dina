@@ -14,7 +14,8 @@ const makeTeacher = (overrides: {
   avatarUrl: null,
   createdAt: overrides.createdAt ?? new Date('2024-01-01'),
   course:
-    overrides.hasCourse || (overrides.orderIndex !== undefined && overrides.orderIndex !== null)
+    overrides.hasCourse ||
+    (overrides.orderIndex !== undefined && overrides.orderIndex !== null)
       ? {
           id: 'c-1',
           title: 'Course',
@@ -58,8 +59,16 @@ describe('sortTeachers', () => {
   })
 
   it('sorts teachers without course by createdAt ascending', () => {
-    const older = makeTeacher({ id: 'older', orderIndex: null, createdAt: new Date('2023-01-01') })
-    const newer = makeTeacher({ id: 'newer', orderIndex: null, createdAt: new Date('2024-01-01') })
+    const older = makeTeacher({
+      id: 'older',
+      orderIndex: null,
+      createdAt: new Date('2023-01-01'),
+    })
+    const newer = makeTeacher({
+      id: 'newer',
+      orderIndex: null,
+      createdAt: new Date('2024-01-01'),
+    })
     const result = sortTeachers([newer, older])
     expect(result[0].id).toBe('older')
     expect(result[1].id).toBe('newer')
@@ -73,7 +82,11 @@ describe('sortTeachers', () => {
   })
 
   it('treats a course with null orderIndex the same as no course', () => {
-    const withNullIdx = makeTeacher({ id: 'null-idx', hasCourse: true, orderIndex: null })
+    const withNullIdx = makeTeacher({
+      id: 'null-idx',
+      hasCourse: true,
+      orderIndex: null,
+    })
     const withIdx = makeTeacher({ id: 'with-idx', orderIndex: 1 })
     const result = sortTeachers([withNullIdx, withIdx])
     expect(result[0].id).toBe('with-idx')

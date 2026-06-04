@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { validateSameTeacher, validateTeacherRoles } from './teacher-assignment.domain'
+import {
+  validateSameTeacher,
+  validateTeacherRoles,
+} from './teacher-assignment.domain'
 
 const makeTeacher = (id: string, role = 'teacher', fullName?: string) => ({
   id,
@@ -32,7 +35,10 @@ describe('validateTeacherRoles', () => {
   })
 
   it('throws when teacher1 has student role', () => {
-    const teachers = [makeTeacher('t-1', 'student', 'Alice'), makeTeacher('t-2')]
+    const teachers = [
+      makeTeacher('t-1', 'student', 'Alice'),
+      makeTeacher('t-2'),
+    ]
     expect(() => validateTeacherRoles(teachers, 't-1', 't-2')).toThrow(
       'Alice is not a teacher',
     )
@@ -47,7 +53,9 @@ describe('validateTeacherRoles', () => {
 
   it('allows admin role when allowAdmin is true', () => {
     const teachers = [makeTeacher('t-1', 'admin'), makeTeacher('t-2', 'admin')]
-    expect(() => validateTeacherRoles(teachers, 't-1', 't-2', true)).not.toThrow()
+    expect(() =>
+      validateTeacherRoles(teachers, 't-1', 't-2', true),
+    ).not.toThrow()
   })
 
   it('throws for admin role when allowAdmin is false', () => {
@@ -58,11 +66,10 @@ describe('validateTeacherRoles', () => {
   })
 
   it('uses fullName in error message when available', () => {
-    const teachers = [
-      makeTeacher('t-1', 'student', 'Dave'),
-      makeTeacher('t-2'),
-    ]
-    expect(() => validateTeacherRoles(teachers, 't-1', 't-2')).toThrow('Dave is not a teacher')
+    const teachers = [makeTeacher('t-1', 'student', 'Dave'), makeTeacher('t-2')]
+    expect(() => validateTeacherRoles(teachers, 't-1', 't-2')).toThrow(
+      'Dave is not a teacher',
+    )
   })
 
   it('falls back to "Teacher 1" when teacher1 fullName is null', () => {

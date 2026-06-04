@@ -59,26 +59,133 @@ type Entry = {
 
 // Verdicts copied verbatim from enrolment_andrew.md (20 applicants).
 const ENTRIES: Array<Entry> = [
-  { name: 'Dereck Gregan', birthYear: 1963, category: 'established_leader', comment: 'Needs discipleship teaching materials for congregation; pastor.', alias: 'dereck' },
-  { name: 'Edson Maburutse', birthYear: 1963, category: 'established_leader', comment: 'Missionary minister seeking discipleship resources for work in Zimbabwe.' },
-  { name: 'Noel Merrick', birthYear: 1952, category: 'established_leader', comment: 'Reserve list. Does not actively need discipleship.' },
-  { name: 'Peter Charles Fulton', birthYear: 1953, category: 'established_leader', comment: 'Pastor seeking training to strengthen discipleship in local church.', enrollmentId: '90a6caa6-0169-454d-a34e-87817dffaf94' },
-  { name: 'Ntsako Mganu Kubayi', birthYear: 1990, category: 'emerging_leader', comment: 'Youth pastor; interested in future pastoral leadership.' },
-  { name: 'Frederick Fortune', birthYear: 1968, category: 'emerging_leader', comment: 'Wants stronger biblical knowledge and confidence in evangelism.' },
-  { name: 'Andrew Christopher Wagner', birthYear: 1964, category: 'emerging_leader', comment: 'Focused on disciple-making rather than only conversion.' },
-  { name: 'Ronald L. Garland Jr', birthYear: 1966, category: 'emerging_leader', comment: 'Missionary and lifelong learner pursuing spiritual growth.' },
-  { name: 'Tina Haney', birthYear: 1976, category: 'emerging_leader', comment: 'Seeking deeper biblical understanding to help youth and others.' },
-  { name: 'Suneeta Chintu Kapoor', birthYear: 1976, category: 'emerging_leader', comment: 'Sunday school teacher seeking training for youth ministry.' },
-  { name: 'Charles Motimele', birthYear: 1963, category: 'young_believer', comment: '' },
-  { name: 'Tshilidzi Samuel Magau', birthYear: 1968, category: 'young_believer', comment: '' },
-  { name: 'Macdonald Mohapi', birthYear: 1987, category: 'young_believer', comment: '' },
-  { name: 'Michael Sheppard', birthYear: 1988, category: 'young_believer', comment: 'Wants to grow in evangelism, outreach, and witnessing.' },
-  { name: 'Qanna Cohen', birthYear: 1993, category: 'young_believer', comment: 'Ordained minister seeking additional growth in knowledge and wisdom.' },
-  { name: 'Chimaobi Ude', birthYear: 1977, category: 'young_believer', comment: 'Seeking deeper discipleship and spiritual stability.' },
-  { name: 'Esperanza Igarashi', birthYear: 1949, category: 'young_believer', comment: 'Reserve list. Requires one-on-one interview. Verify age before acceptance.' },
-  { name: 'Sheriffay Sankoh', birthYear: 1993, category: 'young_believer', comment: 'Seeking deeper understanding of Christ and personal calling.' },
-  { name: 'Jermane Hibbs', birthYear: 1987, category: 'young_believer', comment: 'Recovering spiritual health; desires renewed growth in Christ.' },
-  { name: 'Georgina George', birthYear: 1990, category: 'young_believer', comment: 'Interested in learning how to become a disciple and share the Gospel.' },
+  {
+    name: 'Dereck Gregan',
+    birthYear: 1963,
+    category: 'established_leader',
+    comment: 'Needs discipleship teaching materials for congregation; pastor.',
+    alias: 'dereck',
+  },
+  {
+    name: 'Edson Maburutse',
+    birthYear: 1963,
+    category: 'established_leader',
+    comment:
+      'Missionary minister seeking discipleship resources for work in Zimbabwe.',
+  },
+  {
+    name: 'Noel Merrick',
+    birthYear: 1952,
+    category: 'established_leader',
+    comment: 'Reserve list. Does not actively need discipleship.',
+  },
+  {
+    name: 'Peter Charles Fulton',
+    birthYear: 1953,
+    category: 'established_leader',
+    comment:
+      'Pastor seeking training to strengthen discipleship in local church.',
+    enrollmentId: '90a6caa6-0169-454d-a34e-87817dffaf94',
+  },
+  {
+    name: 'Ntsako Mganu Kubayi',
+    birthYear: 1990,
+    category: 'emerging_leader',
+    comment: 'Youth pastor; interested in future pastoral leadership.',
+  },
+  {
+    name: 'Frederick Fortune',
+    birthYear: 1968,
+    category: 'emerging_leader',
+    comment: 'Wants stronger biblical knowledge and confidence in evangelism.',
+  },
+  {
+    name: 'Andrew Christopher Wagner',
+    birthYear: 1964,
+    category: 'emerging_leader',
+    comment: 'Focused on disciple-making rather than only conversion.',
+  },
+  {
+    name: 'Ronald L. Garland Jr',
+    birthYear: 1966,
+    category: 'emerging_leader',
+    comment: 'Missionary and lifelong learner pursuing spiritual growth.',
+  },
+  {
+    name: 'Tina Haney',
+    birthYear: 1976,
+    category: 'emerging_leader',
+    comment: 'Seeking deeper biblical understanding to help youth and others.',
+  },
+  {
+    name: 'Suneeta Chintu Kapoor',
+    birthYear: 1976,
+    category: 'emerging_leader',
+    comment: 'Sunday school teacher seeking training for youth ministry.',
+  },
+  {
+    name: 'Charles Motimele',
+    birthYear: 1963,
+    category: 'young_believer',
+    comment: '',
+  },
+  {
+    name: 'Tshilidzi Samuel Magau',
+    birthYear: 1968,
+    category: 'young_believer',
+    comment: '',
+  },
+  {
+    name: 'Macdonald Mohapi',
+    birthYear: 1987,
+    category: 'young_believer',
+    comment: '',
+  },
+  {
+    name: 'Michael Sheppard',
+    birthYear: 1988,
+    category: 'young_believer',
+    comment: 'Wants to grow in evangelism, outreach, and witnessing.',
+  },
+  {
+    name: 'Qanna Cohen',
+    birthYear: 1993,
+    category: 'young_believer',
+    comment:
+      'Ordained minister seeking additional growth in knowledge and wisdom.',
+  },
+  {
+    name: 'Chimaobi Ude',
+    birthYear: 1977,
+    category: 'young_believer',
+    comment: 'Seeking deeper discipleship and spiritual stability.',
+  },
+  {
+    name: 'Esperanza Igarashi',
+    birthYear: 1949,
+    category: 'young_believer',
+    comment:
+      'Reserve list. Requires one-on-one interview. Verify age before acceptance.',
+  },
+  {
+    name: 'Sheriffay Sankoh',
+    birthYear: 1993,
+    category: 'young_believer',
+    comment: 'Seeking deeper understanding of Christ and personal calling.',
+  },
+  {
+    name: 'Jermane Hibbs',
+    birthYear: 1987,
+    category: 'young_believer',
+    comment: 'Recovering spiritual health; desires renewed growth in Christ.',
+  },
+  {
+    name: 'Georgina George',
+    birthYear: 1990,
+    category: 'young_believer',
+    comment:
+      'Interested in learning how to become a disciple and share the Gospel.',
+  },
 ]
 
 // Name match: lowercase, drop parenthetical aliases "(...)", drop commas, collapse spaces.
@@ -97,8 +204,17 @@ function normalizeName(s: string): string {
 // e.g. "america" -> "American", "south africa" -> "South African", "brit" -> "British").
 const COUNTRY_ABBR = new Set(['us', 'usa', 'uk', 'nz', 'png', 'rsa'])
 const COUNTRY_SUBSTR = [
-  'united states', 'america', 'united kingdom', 'great britain', 'britain',
-  'brit', 'england', 'scotland', 'wales', 'south africa', 'new zealand',
+  'united states',
+  'america',
+  'united kingdom',
+  'great britain',
+  'britain',
+  'brit',
+  'england',
+  'scotland',
+  'wales',
+  'south africa',
+  'new zealand',
   'papua new guinea',
 ]
 
@@ -119,7 +235,10 @@ type Row = {
 }
 
 function fromTargetCountry(r: Row): boolean {
-  return fieldMatchesCountry(r.nationalityCitizenship) || fieldMatchesCountry(r.currentCountry)
+  return (
+    fieldMatchesCountry(r.nationalityCitizenship) ||
+    fieldMatchesCountry(r.currentCountry)
+  )
 }
 
 type EvalRow = {
@@ -153,12 +272,20 @@ async function main() {
   const db = drizzle(client)
 
   console.log(`\nDB host        : ${maskHost(connectionString)}`)
-  console.log(`Mode           : ${APPLY ? 'APPLY (writes)' : 'DRY-RUN (no writes)'}`)
-  console.log(`Cutoff         : reject if created before ${CUTOFF.toISOString()}\n`)
+  console.log(
+    `Mode           : ${APPLY ? 'APPLY (writes)' : 'DRY-RUN (no writes)'}`,
+  )
+  console.log(
+    `Cutoff         : reject if created before ${CUTOFF.toISOString()}\n`,
+  )
 
   // 1. Resolve Andrew.
   const [andrew] = await db
-    .select({ id: profiles.id, fullName: profiles.fullName, role: profiles.role })
+    .select({
+      id: profiles.id,
+      fullName: profiles.fullName,
+      role: profiles.role,
+    })
     .from(profiles)
     .where(eq(profiles.id, ANDREW_ID))
   if (!andrew) {
@@ -167,11 +294,15 @@ async function main() {
     process.exit(1)
   }
   if (andrew.role !== 'teacher' && andrew.role !== 'admin') {
-    console.error(`ERROR: profile ${ANDREW_ID} has role '${andrew.role}', expected teacher/admin.`)
+    console.error(
+      `ERROR: profile ${ANDREW_ID} has role '${andrew.role}', expected teacher/admin.`,
+    )
     await client.end()
     process.exit(1)
   }
-  console.log(`Evaluator      : ${andrew.fullName} (${andrew.role}) ${andrew.id}\n`)
+  console.log(
+    `Evaluator      : ${andrew.fullName} (${andrew.role}) ${andrew.id}\n`,
+  )
 
   // Fetch all enrollments once; match + partition in JS.
   const all: Array<Row> = await db
@@ -207,11 +338,16 @@ async function main() {
       else unmatched.push(`${entry.name} (id ${entry.enrollmentId} not found)`)
       continue
     }
-    const keys = [normalizeName(entry.name), ...(entry.alias ? [entry.alias] : [])]
+    const keys = [
+      normalizeName(entry.name),
+      ...(entry.alias ? [entry.alias] : []),
+    ]
     const candidates = keys.flatMap((k) => byNorm.get(k) ?? [])
     let row = candidates.length === 1 ? candidates[0] : undefined
     if (candidates.length > 1) {
-      const narrowed = candidates.filter((r) => r.yearOfBirth === entry.birthYear)
+      const narrowed = candidates.filter(
+        (r) => r.yearOfBirth === entry.birthYear,
+      )
       row = narrowed.length === 1 ? narrowed[0] : undefined
     }
     if (row) matched.push({ entry, row })
@@ -222,7 +358,9 @@ async function main() {
   const acceptIds = new Set(matched.map((m) => m.row.id))
 
   // 3. Reject set + skip set (country pool minus the accept set).
-  const fromCountry = all.filter((r) => !acceptIds.has(r.id) && fromTargetCountry(r))
+  const fromCountry = all.filter(
+    (r) => !acceptIds.has(r.id) && fromTargetCountry(r),
+  )
   const rejectRows = fromCountry.filter((r) => r.createdAt < CUTOFF)
   const skipRows = fromCountry.filter((r) => r.createdAt >= CUTOFF)
 
@@ -232,24 +370,41 @@ async function main() {
     const reserve = RESERVE.has(entry.name)
     const score = reserve ? 2 : 3
     const cat = reserve ? '—' : CATEGORY_MAP[entry.category]
-    const variant = normalizeName(entry.name) === normalizeName(row.fullLegalName) ? '' : `  [DB: "${row.fullLegalName}"]`
+    const variant =
+      normalizeName(entry.name) === normalizeName(row.fullLegalName)
+        ? ''
+        : `  [DB: "${row.fullLegalName}"]`
     console.log(`  ✓ ${entry.name} -> score ${score}, ${cat}${variant}`)
   }
-  if (unmatched.length) console.log(`  UNMATCHED / absent (${unmatched.length}): ${unmatched.join(', ')}`)
-  if (ambiguous.length) console.log(`  AMBIGUOUS (${ambiguous.length}): ${ambiguous.join(', ')}`)
+  if (unmatched.length)
+    console.log(
+      `  UNMATCHED / absent (${unmatched.length}): ${unmatched.join(', ')}`,
+    )
+  if (ambiguous.length)
+    console.log(`  AMBIGUOUS (${ambiguous.length}): ${ambiguous.join(', ')}`)
 
-  console.log(`\nReject set     : ${rejectRows.length} (score 0, created before June 1, from countries, not accepted)`)
+  console.log(
+    `\nReject set     : ${rejectRows.length} (score 0, created before June 1, from countries, not accepted)`,
+  )
   for (const r of rejectRows) {
-    console.log(`  - ${r.fullLegalName.trim()} | nat=${r.nationalityCitizenship ?? '∅'} | country=${r.currentCountry ?? '∅'} | ${day(r.createdAt)}`)
+    console.log(
+      `  - ${r.fullLegalName.trim()} | nat=${r.nationalityCitizenship ?? '∅'} | country=${r.currentCountry ?? '∅'} | ${day(r.createdAt)}`,
+    )
   }
 
-  console.log(`\nSkip set       : ${skipRows.length} (created on/after June 1 — UNTOUCHED)`)
+  console.log(
+    `\nSkip set       : ${skipRows.length} (created on/after June 1 — UNTOUCHED)`,
+  )
   for (const r of skipRows) {
-    console.log(`  - ${r.fullLegalName.trim()} | nat=${r.nationalityCitizenship ?? '∅'} | country=${r.currentCountry ?? '∅'} | ${day(r.createdAt)}`)
+    console.log(
+      `  - ${r.fullLegalName.trim()} | nat=${r.nationalityCitizenship ?? '∅'} | country=${r.currentCountry ?? '∅'} | ${day(r.createdAt)}`,
+    )
   }
 
   const assignCount = acceptIds.size + rejectRows.length
-  console.log(`\nWould write    : ${matched.length + rejectRows.length} evaluations, ${assignCount} assignments (skip-if-exists)\n`)
+  console.log(
+    `\nWould write    : ${matched.length + rejectRows.length} evaluations, ${assignCount} assignments (skip-if-exists)\n`,
+  )
 
   if (!APPLY) {
     console.log('DRY-RUN complete. Re-run with --apply to write.\n')
@@ -269,19 +424,23 @@ async function main() {
         note: entry.comment.trim() || null,
       }
     }),
-    ...rejectRows.map((r): EvalRow => ({
-      enrollmentId: r.id,
-      evaluatorId: ANDREW_ID,
-      score: 0,
-      admissionCategory: null,
-      note: null,
-    })),
+    ...rejectRows.map(
+      (r): EvalRow => ({
+        enrollmentId: r.id,
+        evaluatorId: ANDREW_ID,
+        score: 0,
+        admissionCategory: null,
+        note: null,
+      }),
+    ),
   ]
 
-  const assignRows = [...acceptIds, ...rejectRows.map((r) => r.id)].map((enrollmentId) => ({
-    enrollmentId,
-    reviewerId: ANDREW_ID,
-  }))
+  const assignRows = [...acceptIds, ...rejectRows.map((r) => r.id)].map(
+    (enrollmentId) => ({
+      enrollmentId,
+      reviewerId: ANDREW_ID,
+    }),
+  )
 
   await db.transaction(async (tx) => {
     if (evalRows.length > 0) {
@@ -289,7 +448,10 @@ async function main() {
         .insert(enrollmentEvaluations)
         .values(evalRows)
         .onConflictDoUpdate({
-          target: [enrollmentEvaluations.enrollmentId, enrollmentEvaluations.evaluatorId],
+          target: [
+            enrollmentEvaluations.enrollmentId,
+            enrollmentEvaluations.evaluatorId,
+          ],
           set: {
             score: sql`excluded.score`,
             admissionCategory: sql`excluded.admission_category`,
@@ -306,7 +468,9 @@ async function main() {
     }
   })
 
-  console.log(`APPLIED: ${evalRows.length} evaluations upserted, ${assignRows.length} assignments inserted (skip-if-exists).\n`)
+  console.log(
+    `APPLIED: ${evalRows.length} evaluations upserted, ${assignRows.length} assignments inserted (skip-if-exists).\n`,
+  )
   await client.end()
   process.exit(0)
 }

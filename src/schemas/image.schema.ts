@@ -6,7 +6,12 @@ export const uploadImageSchema = z.object({
   fileType: z.string().min(1, 'File type is required'),
   fileSize: z.number().positive('File size must be positive'),
   oldUrl: z.string().optional(),
-  bucket: z.enum(['avatars', 'course-thumbnails', 'lesson-thumbnails', 'media-thumbnails']),
+  bucket: z.enum([
+    'avatars',
+    'course-thumbnails',
+    'lesson-thumbnails',
+    'media-thumbnails',
+  ]),
 })
 
 export const uploadAvatarSchema = z.object({

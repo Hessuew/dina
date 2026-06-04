@@ -5,6 +5,7 @@ Connects Graphite PR stacks to Linear issues using semantic matching.
 ## Usage
 
 Invoke the skill when you want to:
+
 - Connect a Graphite PR to an existing Linear issue
 - Create a new Linear issue from a Graphite PR
 - Link multiple PRs to Linear issues
@@ -47,6 +48,7 @@ Specify which PRs to process:
 ## New Issue Creation
 
 When creating a new Linear issue:
+
 - You'll be asked which team to create it in
 - Title is generated from PR content
 - Description uses Linear's "recommended" template

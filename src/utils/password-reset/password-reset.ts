@@ -22,4 +22,6 @@ export const validateResetTokenFn = createServerFn({ method: 'POST' })
 
 export const resetPasswordFn = createServerFn({ method: 'POST' })
   .inputValidator(resetPasswordSchema)
-  .handler(async ({ data }) => resetPasswordService(data.token, data.newPassword))
+  .handler(async ({ data }) =>
+    resetPasswordService(data.token, data.newPassword),
+  )

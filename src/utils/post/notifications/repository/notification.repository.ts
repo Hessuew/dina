@@ -11,8 +11,7 @@ export async function findNotificationGroups(userId: string, limit: number) {
       event: postNotifications.event,
       postId: postNotifications.postId,
       lastActivityAt: sql<Date>`max(${postNotifications.createdAt})`,
-      unreadCount:
-        sql<number>`sum(case when ${postNotifications.isRead} = false then 1 else 0 end)::int`,
+      unreadCount: sql<number>`sum(case when ${postNotifications.isRead} = false then 1 else 0 end)::int`,
     })
     .from(postNotifications)
     .where(eq(postNotifications.userId, userId))
@@ -70,7 +69,10 @@ export async function markNotificationGroupRead(
     .where(
       and(
         eq(postNotifications.userId, userId),
-        eq(postNotifications.event, event as 'post_created' | 'comment_created'),
+        eq(
+          postNotifications.event,
+          event as 'post_created' | 'comment_created',
+        ),
         eq(postNotifications.postId, postId),
       ),
     )

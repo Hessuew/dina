@@ -118,9 +118,7 @@ export function PdfViewer({ url }: { url: string }) {
 
   return (
     <div ref={containerRef} className="flex w-full flex-col items-center gap-4">
-      {loading && (
-        <div className="py-12 text-sm text-[#8E816D]">Loading…</div>
-      )}
+      {loading && <div className="py-12 text-sm text-[#8E816D]">Loading…</div>}
       <canvas ref={canvasRef} className="max-w-full" />
       {numPages > 1 && (
         <div className="flex items-center gap-4 pb-2">

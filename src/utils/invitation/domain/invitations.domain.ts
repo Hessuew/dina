@@ -13,12 +13,18 @@ export function calculateInvitationExpiry(now: Date): Date {
   return expiresAt
 }
 
-export function validateInvitationActive(invitation: InvitationLike, now: Date): void {
+export function validateInvitationActive(
+  invitation: InvitationLike,
+  now: Date,
+): void {
   if (invitation.status !== 'pending') {
-    throw new ConflictError('This invitation has already been used or revoked', {
-      code: 'INVITATION_EXISTS',
-      details: { status: invitation.status },
-    })
+    throw new ConflictError(
+      'This invitation has already been used or revoked',
+      {
+        code: 'INVITATION_EXISTS',
+        details: { status: invitation.status },
+      },
+    )
   }
   if (now > invitation.expiresAt) {
     throw new ValidationError('This invitation has expired', {

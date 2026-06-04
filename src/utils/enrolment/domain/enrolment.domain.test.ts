@@ -5,7 +5,9 @@ import {
   isInvitationResendable,
 } from './enrolment.domain'
 
-const makeInvitation = (status: 'pending' | 'accepted' | 'revoked' = 'pending') =>
+const makeInvitation = (
+  status: 'pending' | 'accepted' | 'revoked' = 'pending',
+) =>
   ({
     id: 'inv-1',
     email: 'test@example.com',

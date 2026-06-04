@@ -71,7 +71,10 @@ describe('buildAssignmentStats', () => {
 
 describe('extractTeacherIds', () => {
   it('returns null for both when array is empty', () => {
-    expect(extractTeacherIds([])).toEqual({ teacher1Id: null, teacher2Id: null })
+    expect(extractTeacherIds([])).toEqual({
+      teacher1Id: null,
+      teacher2Id: null,
+    })
   })
 
   it('returns teacher1Id and null teacher2Id when only one teacher', () => {
@@ -131,8 +134,14 @@ describe('buildCoursesWithProgress', () => {
       { assignmentId: 'a2', status: 'graded' },
     ]
     const result = buildCoursesWithProgress(courses, assignments, submissions)
-    expect(result[0]).toMatchObject({ submittedAssignments: 1, gradedAssignments: 0 })
-    expect(result[1]).toMatchObject({ submittedAssignments: 0, gradedAssignments: 1 })
+    expect(result[0]).toMatchObject({
+      submittedAssignments: 1,
+      gradedAssignments: 0,
+    })
+    expect(result[1]).toMatchObject({
+      submittedAssignments: 0,
+      gradedAssignments: 1,
+    })
   })
 
   it('submissions from one course do not bleed into another', () => {
@@ -155,7 +164,10 @@ describe('buildCoursesWithProgress', () => {
       { assignmentId: 'a1', status: 'graded' },
     ]
     const result = buildCoursesWithProgress(courses, assignments, submissions)
-    expect(result[0]).toMatchObject({ submittedAssignments: 1, gradedAssignments: 1 })
+    expect(result[0]).toMatchObject({
+      submittedAssignments: 1,
+      gradedAssignments: 1,
+    })
   })
 
   it('preserves all original course fields', () => {
@@ -166,7 +178,11 @@ describe('buildCoursesWithProgress', () => {
 })
 
 describe('buildCourseCalendarEvents', () => {
-  const makeLesson = (id: string, scheduledTime: Date | null, courseId = 'c1') => ({
+  const makeLesson = (
+    id: string,
+    scheduledTime: Date | null,
+    courseId = 'c1',
+  ) => ({
     id,
     title: `Lesson ${id}`,
     scheduledTime,
@@ -186,7 +202,10 @@ describe('buildCourseCalendarEvents', () => {
   })
 
   it('filters out lessons with null scheduledTime', () => {
-    const lessons = [makeLesson('l1', null), makeLesson('l2', new Date('2099-01-02'))]
+    const lessons = [
+      makeLesson('l1', null),
+      makeLesson('l2', new Date('2099-01-02')),
+    ]
     const result = buildCourseCalendarEvents(lessons, [])
     expect(result).toHaveLength(1)
     expect(result[0].id).toBe('l2')

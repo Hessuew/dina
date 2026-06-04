@@ -65,8 +65,13 @@ const columnHelper = createColumnHelper<CalendarEventRow>()
 
 function EventsComponent() {
   const { events } = Route.useLoaderData()
-  const { isOpen, dialogMode, dialogItem: dialogEvent, openDialog, closeDialog } =
-    useDialogState<CalendarEventRow>()
+  const {
+    isOpen,
+    dialogMode,
+    dialogItem: dialogEvent,
+    openDialog,
+    closeDialog,
+  } = useDialogState<CalendarEventRow>()
 
   const columns: Array<ColumnDef<CalendarEventRow, any>> = [
     columnHelper.accessor('title', {
@@ -133,10 +138,7 @@ function EventsComponent() {
             Manage chapel services, exams, and school-wide occasions
           </p>
         </div>
-        <Button
-          theme="light"
-          onClick={() => openDialog('create')}
-        >
+        <Button theme="light" onClick={() => openDialog('create')}>
           <PlusIcon className="size-4" />
           Create Event
         </Button>

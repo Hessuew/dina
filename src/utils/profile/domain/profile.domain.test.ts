@@ -10,7 +10,9 @@ const at = (isoString: string) => new Date(isoString)
 
 describe('checkEmailChangeRateLimit', () => {
   it('returns null when lastRequestAt is null', () => {
-    expect(checkEmailChangeRateLimit(null, at('2026-01-01T12:01:00Z'))).toBeNull()
+    expect(
+      checkEmailChangeRateLimit(null, at('2026-01-01T12:01:00Z')),
+    ).toBeNull()
   })
 
   it('returns null when 60 seconds have passed', () => {
@@ -100,7 +102,10 @@ describe('validateEmailChangeToken', () => {
 
   it('returns invalid when emailChangeTokenExpiresAt is null', () => {
     expect(
-      validateEmailChangeToken({ ...base, emailChangeTokenExpiresAt: null }, now).valid,
+      validateEmailChangeToken(
+        { ...base, emailChangeTokenExpiresAt: null },
+        now,
+      ).valid,
     ).toBe(false)
   })
 
@@ -114,12 +119,17 @@ describe('validateEmailChangeToken', () => {
   })
 
   it('returns invalid when attempts reach 5', () => {
-    const result = validateEmailChangeToken({ ...base, emailChangeTokenAttempts: 5 }, now)
+    const result = validateEmailChangeToken(
+      { ...base, emailChangeTokenAttempts: 5 },
+      now,
+    )
     expect(result.valid).toBe(false)
     expect(result.message).toContain('Too many failed attempts')
   })
 
   it('returns invalid when pendingEmail is null', () => {
-    expect(validateEmailChangeToken({ ...base, pendingEmail: null }, now).valid).toBe(false)
+    expect(
+      validateEmailChangeToken({ ...base, pendingEmail: null }, now).valid,
+    ).toBe(false)
   })
 })

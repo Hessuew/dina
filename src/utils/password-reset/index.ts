@@ -1,1 +1,5 @@
-export { requestPasswordResetFn, resetPasswordFn, validateResetTokenFn } from './password-reset'
+export {
+  requestPasswordResetFn,
+  resetPasswordFn,
+  validateResetTokenFn,
+} from './password-reset'

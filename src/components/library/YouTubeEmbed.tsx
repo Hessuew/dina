@@ -114,7 +114,9 @@ export function YouTubeEmbed({ videoId, originalUrl }: Props) {
   }, [])
 
   if (blocked) {
-    return <YouTubeBlockedFallback videoId={videoId} originalUrl={originalUrl} />
+    return (
+      <YouTubeBlockedFallback videoId={videoId} originalUrl={originalUrl} />
+    )
   }
 
   return (
