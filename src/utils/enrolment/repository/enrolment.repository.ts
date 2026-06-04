@@ -1,4 +1,5 @@
 import {
+  and,
   asc,
   count,
   desc,
@@ -6,6 +7,7 @@ import {
   getTableColumns,
   ilike,
   inArray,
+  isNull,
   or,
   sql,
 } from 'drizzle-orm'
@@ -13,6 +15,7 @@ import type { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
 import {
   enrollmentEvaluations,
+  enrollmentReviewerAssignments,
   enrollments,
   invitations,
   profiles,
@@ -46,6 +49,7 @@ export type FindEnrollmentsPageInput = {
   sortBy: EnrollmentSortKey
   sortDir: 'asc' | 'desc'
   includeEmail: boolean
+  reviewerFilter?: string
 }
 
 /* v8 ignore start */
@@ -64,6 +68,7 @@ export async function findEnrollmentsPage({
   sortBy,
   sortDir,
   includeEmail,
+  reviewerFilter,
 }: FindEnrollmentsPageInput) {
   const db = await getDb()
 
@@ -76,7 +81,20 @@ export async function findEnrollmentsPage({
         )
       : undefined
 
-  const whereClause = searchFilter
+  const reviewerCondition =
+    reviewerFilter !== undefined
+      ? inArray(
+          enrollments.id,
+          db
+            .select({ id: enrollmentReviewerAssignments.enrollmentId })
+            .from(enrollmentReviewerAssignments)
+            .where(
+              eq(enrollmentReviewerAssignments.reviewerId, reviewerFilter),
+            ),
+        )
+      : undefined
+
+  const whereClause = and(searchFilter, reviewerCondition)
 
   const evaluationSum = sql<number>`coalesce(sum(${enrollmentEvaluations.score}), 0)::int`
   const evaluationCount = sql<number>`count(${enrollmentEvaluations.id})::int`
@@ -246,5 +264,40 @@ export async function markEnrollmentInvitationSent(
     .update(enrollments)
     .set({ invitationSent: true, invitationId, updatedAt: new Date() })
     .where(eq(enrollments.id, enrollmentId))
+}
+
+export async function findUnassignedEnrollmentIds(): Promise<Array<string>> {
+  const db = await getDb()
+  const rows = await db
+    .select({ id: enrollments.id })
+    .from(enrollments)
+    .leftJoin(
+      enrollmentReviewerAssignments,
+      eq(enrollmentReviewerAssignments.enrollmentId, enrollments.id),
+    )
+    .where(isNull(enrollmentReviewerAssignments.id))
+    .orderBy(asc(enrollments.createdAt))
+  return rows.map((r) => r.id)
+}
+
+export async function findAllTeacherIds(): Promise<Array<string>> {
+  const db = await getDb()
+  const rows = await db
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(eq(profiles.role, 'teacher'))
+    .orderBy(asc(profiles.createdAt))
+  return rows.map((r) => r.id)
+}
+
+export async function bulkAssignEnrollments(
+  assignments: Array<{ enrollmentId: string; reviewerId: string }>,
+): Promise<void> {
+  if (assignments.length === 0) return
+  const db = await getDb()
+  await db
+    .insert(enrollmentReviewerAssignments)
+    .values(assignments)
+    .onConflictDoNothing()
 }
 /* v8 ignore end */

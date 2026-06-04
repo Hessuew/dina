@@ -64,11 +64,7 @@ export const sendInvitationForEnrollmentSchema = z.object({
   enrollmentId: z.uuid('Invalid enrollment ID'),
 })
 
-const admissionCategorySchema = z.enum([
-  'new',
-  'emerging',
-  'established',
-])
+const admissionCategorySchema = z.enum(['new', 'emerging', 'established'])
 
 export const setEvaluationScoreSchema = z.object({
   enrollmentId: z.uuid('Invalid enrollment ID'),
@@ -105,7 +101,10 @@ export const getEnrollmentsSchema = z.object({
   search: z.string().default(''),
   sortBy: z.enum(ENROLLMENT_SORT_KEYS).default('createdAt'),
   sortDir: z.enum(['asc', 'desc']).default('desc'),
+  viewAll: z.boolean().default(false),
 })
+
+export const distributeEnrollmentsSchema = z.object({})
 
 export type CreateEnrollmentInput = z.infer<typeof createEnrollmentSchema>
 export type GetEnrollmentByIdInput = z.infer<typeof getEnrollmentByIdSchema>
@@ -117,6 +116,9 @@ export type SendInvitationForEnrollmentInput = z.infer<
   typeof sendInvitationForEnrollmentSchema
 >
 export type GetEnrollmentsInput = z.infer<typeof getEnrollmentsSchema>
+export type DistributeEnrollmentsInput = z.infer<
+  typeof distributeEnrollmentsSchema
+>
 export type SetEvaluationScoreInput = z.infer<typeof setEvaluationScoreSchema>
 export type SetEvaluationAdmissionCategoryInput = z.infer<
   typeof setEvaluationAdmissionCategorySchema

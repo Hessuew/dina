@@ -29,6 +29,7 @@ import {
 import {
   createEnrollmentSchema,
   deleteEnrollmentSchema,
+  distributeEnrollmentsSchema,
   getEnrollmentByIdSchema,
   getEnrollmentsSchema,
   sendInvitationForEnrollmentSchema,
@@ -38,13 +39,16 @@ import {
   updateEnrollmentStatusSchema,
 } from '@/schemas/enrollment.schema'
 import {
+  bulkAssignEnrollments,
   deleteEnrollmentById,
   deleteInvitationById,
+  findAllTeacherIds,
   findEnrollmentById,
   findEnrollmentsPage,
   findEvaluationsForEnrollments,
   findInvitationByEmail,
   findProfileById,
+  findUnassignedEnrollmentIds,
   insertEnrollment,
   insertInvitation,
   markEnrollmentInvitationSent,
@@ -88,6 +92,8 @@ export const getEnrollments = createServerFn({ method: 'POST' })
         })
       }
 
+      const reviewerFilter = isAdmin && data.viewAll ? undefined : user.id
+
       const { rows, total } = await findEnrollmentsPage({
         limit: data.pageSize,
         offset: (data.page - 1) * data.pageSize,
@@ -95,19 +101,22 @@ export const getEnrollments = createServerFn({ method: 'POST' })
         sortBy: data.sortBy,
         sortDir: data.sortDir,
         includeEmail: isAdmin,
+        reviewerFilter,
       })
 
       const evaluations = await findEvaluationsForEnrollments(
         rows.map((row) => row.id),
       )
 
-      const enrollmentsOut: Array<EnrollmentWithEvaluation> = rows.map((row) => {
-        const { evaluationSum, evaluationCount, ...enrollment } = row
-        const base = isAdmin
-          ? (enrollment as MaybeRedactedEnrollment)
-          : redactEnrollmentForTeacher(enrollment)
-        return { ...base, evaluationSum, evaluationCount }
-      })
+      const enrollmentsOut: Array<EnrollmentWithEvaluation> = rows.map(
+        (row) => {
+          const { evaluationSum, evaluationCount, ...enrollment } = row
+          const base = isAdmin
+            ? (enrollment as MaybeRedactedEnrollment)
+            : redactEnrollmentForTeacher(enrollment)
+          return { ...base, evaluationSum, evaluationCount }
+        },
+      )
 
       return { enrollments: enrollmentsOut, total, evaluations }
     })
@@ -308,7 +317,6 @@ export const setEvaluationScore = createServerFn({ method: 'POST' })
     })
   })
 
-
 export const setEvaluationAdmissionCategory = createServerFn({ method: 'POST' })
   .inputValidator(setEvaluationAdmissionCategorySchema)
   .handler(async ({ data }) => {
@@ -349,5 +357,44 @@ export const setEvaluationNote = createServerFn({ method: 'POST' })
       await upsertEvaluation(data.enrollmentId, user.id, { note: data.note })
 
       return
+    })
+  })
+
+export const distributeEnrollments = createServerFn({ method: 'POST' })
+  .inputValidator(distributeEnrollmentsSchema)
+  .handler(async () => {
+    const user = await getCurrentUser()
+    return withRequestCache(async () => {
+      await authz(user.id).hasRole('admin')
+      const [unassignedIds, teacherIds] = await Promise.all([
+        findUnassignedEnrollmentIds(),
+        findAllTeacherIds(),
+      ])
+      if (teacherIds.length === 0 || unassignedIds.length === 0) {
+        return { assigned: 0 }
+      }
+      const batchSize = Math.ceil(unassignedIds.length / teacherIds.length)
+      const assignments = unassignedIds.map((enrollmentId, i) => ({
+        enrollmentId,
+        reviewerId:
+          teacherIds[
+            Math.min(Math.floor(i / batchSize), teacherIds.length - 1)
+          ],
+      }))
+      try {
+        await bulkAssignEnrollments(assignments)
+      } catch (error) {
+        throw new AppError({
+          code: 'DISTRIBUTION_FAILED',
+          status: 500,
+          userMessage:
+            'Failed to distribute enrollments. Please refresh and try again.',
+          internalMessage:
+            error instanceof Error
+              ? error.message
+              : 'bulkAssignEnrollments failed',
+        })
+      }
+      return { assigned: assignments.length }
     })
   })

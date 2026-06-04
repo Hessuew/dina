@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { FileTextIcon } from 'lucide-react'
+import { EyeIcon, FileTextIcon, UsersIcon } from 'lucide-react'
+import { toast } from 'sonner'
 import type { EnrollmentRow } from '@/components/table/EnrollmentsTable'
 import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.repository'
 import { Button } from '@/components/ui/button'
@@ -9,9 +10,10 @@ import { EvaluationOverlay } from '@/components/enrollment/EvaluationOverlay'
 import { PAGE_SIZE_OPTIONS } from '@/components/table/DataTable'
 import { PageLayout } from '@/components/layout/page-layout'
 import { checkTeacherAccess } from '@/utils/auth/admin'
-import { getEnrollments } from '@/utils/enrolment'
+import { distributeEnrollments, getEnrollments } from '@/utils/enrolment'
 import { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
 import { useEnrollmentReview } from '@/hooks/useEnrollmentReview'
+import { toUserError } from '@/utils/errors'
 
 export const Route = createFileRoute('/_authed/enrollments/')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -24,12 +26,11 @@ export const Route = createFileRoute('/_authed/enrollments/')({
       ? (search.sortBy as EnrollmentSortKey)
       : 'createdAt',
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    sortDir: (
-      search.sortDir === 'asc' || search.sortDir === 'desc'
-        ? search.sortDir
-        : 'desc'
-    ) as 'asc' | 'desc',
+    sortDir: (search.sortDir === 'asc' || search.sortDir === 'desc'
+      ? search.sortDir
+      : 'desc') as 'asc' | 'desc',
     review: typeof search.review === 'string' ? search.review : undefined,
+    viewAll: typeof search.viewAll === 'boolean' ? search.viewAll : false,
   }),
   loaderDeps: ({ search }) => ({
     page: search.page,
@@ -37,6 +38,7 @@ export const Route = createFileRoute('/_authed/enrollments/')({
     search: search.search,
     sortBy: search.sortBy,
     sortDir: search.sortDir,
+    viewAll: search.viewAll,
   }),
   beforeLoad: async () => {
     await checkTeacherAccess()
@@ -49,6 +51,7 @@ export const Route = createFileRoute('/_authed/enrollments/')({
         search: deps.search,
         sortBy: deps.sortBy,
         sortDir: deps.sortDir,
+        viewAll: deps.viewAll,
       },
     })
     return {
@@ -64,9 +67,11 @@ function EnrollmentsPage() {
   const { enrollments, total, evaluations } = Route.useLoaderData()
   const { user } = Route.useRouteContext()
   const router = useRouter()
-  const { page, pageSize, search, sortBy, sortDir, review } = Route.useSearch()
+  const { page, pageSize, search, sortBy, sortDir, review, viewAll } =
+    Route.useSearch()
   const isAdmin = user?.role === 'admin'
   const [isListLoading, setIsListLoading] = useState(false)
+  const [isDistributing, setIsDistributing] = useState(false)
 
   const reviewState = useEnrollmentReview({
     initialEnrollments: enrollments,
@@ -84,6 +89,40 @@ function EnrollmentsPage() {
 
   const handleRefresh = () => {
     router.invalidate()
+  }
+
+  const handleToggleViewAll = () => {
+    void router.navigate({
+      to: '/enrollments',
+      search: {
+        page: 1,
+        pageSize,
+        search,
+        sortBy,
+        sortDir,
+        review: undefined,
+        viewAll: !viewAll,
+      },
+      replace: true,
+      resetScroll: false,
+    })
+  }
+
+  const handleDistribute = async () => {
+    setIsDistributing(true)
+    try {
+      const { assigned } = await distributeEnrollments({ data: {} })
+      toast.success(
+        assigned > 0
+          ? `Distributed ${assigned} enrollment${assigned === 1 ? '' : 's'}`
+          : 'No unassigned enrollments to distribute',
+      )
+      void router.invalidate()
+    } catch (error) {
+      toast.error(toUserError(error).message)
+    } finally {
+      setIsDistributing(false)
+    }
   }
 
   const navigate = useCallback(
@@ -119,12 +158,13 @@ function EnrollmentsPage() {
         search: {
           ...next,
           review: undefined,
+          viewAll,
         },
         replace: true,
         resetScroll: false,
       })
     },
-    [router, page, pageSize, search, sortBy, sortDir],
+    [router, page, pageSize, search, sortBy, sortDir, viewAll],
   )
 
   useEffect(() => {
@@ -149,10 +189,37 @@ function EnrollmentsPage() {
             Review public enrolment submissions
           </p>
         </div>
-        <Button theme="light" variant="outline" onClick={() => handleRefresh()}>
-          <FileTextIcon className="size-3.5" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <>
+              <Button
+                theme="light"
+                variant={viewAll ? 'default' : 'outline'}
+                onClick={handleToggleViewAll}
+              >
+                <EyeIcon className="size-3.5" />
+                View All
+              </Button>
+              <Button
+                theme="light"
+                variant="outline"
+                onClick={() => void handleDistribute()}
+                disabled={isDistributing}
+              >
+                <UsersIcon className="size-3.5" />
+                Distribute unassigned
+              </Button>
+            </>
+          )}
+          <Button
+            theme="light"
+            variant="outline"
+            onClick={() => handleRefresh()}
+          >
+            <FileTextIcon className="size-3.5" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <EnrollmentsTable
@@ -170,8 +237,7 @@ function EnrollmentsPage() {
         onPageChange={(p) => navigate({ page: p })}
         onPageSizeChange={(ps) => navigate({ page: 1, pageSize: ps })}
         onSearchChange={(s) => {
-          if (searchDebounceRef.current)
-            clearTimeout(searchDebounceRef.current)
+          if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
           if (s === search) {
             setIsListLoading(false)
             return
