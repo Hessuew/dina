@@ -12,6 +12,7 @@ description: >
     - dry-run previews
     - duplicate prevention
     - idempotent linking
+    - pipeline mode (called from stack-planner, fully automatic)
 ---
 
 # 0. Core Intent
@@ -25,6 +26,55 @@ Primary goals:
 - ensure idempotent operations
 - provide explainable confidence scoring
 - support safe repeated execution
+
+---
+
+# 0.5. Pipeline Mode
+
+This skill has two invocation modes:
+
+## Standalone mode (default)
+
+User invokes directly: `"connect to linear"`, `"create linear issue"`, etc.
+Full flow: PR selection → matching → confirmation gates → mutation → summary.
+See section 1 (Input Parsing) for standalone commands.
+
+## Pipeline mode
+
+Invoked by the **stack-planner** skill after `gt submit --draft`.
+
+**Invocation contract:**
+
+```
+graphite-linear-connector --pipeline --prs <PR-number-or-url> [<PR-number-or-url> ...]
+```
+
+**Behavioral differences from standalone:**
+
+| Behavior                       | Standalone | Pipeline |
+| ------------------------------ | ---------- | -------- |
+| PR selection UI                | Yes        | Skipped  |
+| Confirmation gate (any reason) | Yes        | Skipped  |
+| Dry-run mode                   | Optional   | Never    |
+| Matching/scoring logic         | Full       | Full     |
+| Duplicate prevention           | Yes        | Yes      |
+| Idempotency checks             | Yes        | Yes      |
+
+**In pipeline mode, everything runs fully automatically. No stops.**
+
+**Output contract:**
+
+After completing all linking, emit a structured PR → issue mapping for the stack-planner Phase 5 (description generation):
+
+```
+PIPELINE_RESULT:
+PR #<number>: <Linear-issue-id> | <Linear-issue-url> | <Linear-issue-description-first-paragraph>
+PR #<number>: NO_MATCH
+...
+```
+
+- `<Linear-issue-description-first-paragraph>` — used by stack-planner as "Why" source; keep it as-is (stack-planner summarizes to ≤2 sentences)
+- `NO_MATCH` — stack-planner omits the "Why" section for that PR
 
 ---
 
@@ -410,15 +460,17 @@ Example:
 | 50–79      | ambiguous candidate selection |
 | <50        | prefer new issue flow         |
 
-### Important safety rule
+### Important safety rule (standalone mode only)
 
-NEVER auto-create issues silently.
+NEVER auto-create issues silently in standalone mode.
 
 Even low-confidence flows require confirmation unless:
 
 - user passed --yes
 - AND
 - operation is not destructive
+
+**In pipeline mode, all thresholds are acted on automatically with no confirmation. See section 0.5.**
 
 ---
 
@@ -434,7 +486,7 @@ Before creating issue:
 If likely duplicate:
 
 - surface warning
-- require explicit confirmation
+- require explicit confirmation (standalone) / skip silently and use existing (pipeline)
 
 ---
 
@@ -478,10 +530,10 @@ Allow:
 3. Resolve candidates
 4. Score matches
 5. Present plan
-6. Confirm actions
+6. Confirm actions (standalone only — skipped in pipeline mode)
 7. Execute mutations (case-specific)
 8. Verify mutations succeeded
-9. Emit summary
+9. Emit summary (+ PIPELINE_RESULT block if in pipeline mode)
 
 ### Case-specific mutation workflows
 
@@ -538,7 +590,7 @@ After issue creation:
 
 # 9. Dry Run Mode
 
-Supported:
+Supported in standalone mode only:
 
 ```bash
 connect to linear --dry-run
@@ -611,119 +663,108 @@ mcp1_save_issue {
 
 Emit structured operation logs:
 
-| Field         | Example         |
-| ------------- | --------------- |
-| operation_id  | glc_8fj29a      |
-| pr_branch     | feat/auth-cache |
-| matched_issue | ENG-142         |
-| confidence    | 91              |
-| action        | linked_existing |
-| dry_run       | false           |
-| duration_ms   | 1420            |
+| Field      | Example         |
+| ---------- | --------------- |
+| pr         | feat/auth-cache |
+| candidate  | ENG-142         |
+| confidence | 91%             |
+| action     | linked          |
+| verified   | true            |
 
 ---
 
-# 12. User Interaction Rules
+# 12. Output Summary Format
 
-Always show:
+## Standalone mode
 
-- candidate issues
-- confidence score
-- confidence explanation
-- exact planned mutation
+```
+Connected: 3 PRs
 
-Allow:
+PR #1 → ENG-142 (linked existing, 91%)
+PR #2 → ENG-201 (created new)
+PR #3 → ENG-142 (linked existing, 88%)
+```
 
-- explicit issue override
-- skipping PRs
-- aborting operation
-- force create new issue
+## Pipeline mode
+
+Emit the standard summary followed by the PIPELINE_RESULT block:
+
+```
+Connected: 3 PRs
+
+PR #241 → CHR-72 (linked existing, 94%)
+PR #242 → CHR-72 (linked existing, 94%)
+PR #243 → NO_MATCH
+
+PIPELINE_RESULT:
+PR #241: CHR-72 | https://linear.app/christ-dina/issue/CHR-72/... | ADR 0006 introduces Enrollment Evaluations...
+PR #242: CHR-72 | https://linear.app/christ-dina/issue/CHR-72/... | ADR 0006 introduces Enrollment Evaluations...
+PR #243: NO_MATCH
+```
 
 ---
 
-# 13. Forbidden Operations
+# 13. Edge Cases
 
-DO NOT:
+### No Linear issues exist
 
-- modify PR titles/descriptions
-- modify existing Linear issues
-- rebase/restack/submit branches
-- silently create issues
-- silently relink issues
-- infer team without confirmation
-- mutate closed/completed issues
+- skip candidate search
+- go directly to new issue creation flow
+
+### All candidates stale
+
+- surface staleness warning
+- treat as <50% confidence
+
+### PR already has resource link
+
+- check if linked issue still active
+- if active: confirm before re-linking
+- if closed: proceed with new matching
+
+### Network timeout
+
+- retry once
+- if second attempt fails: mark as failed, continue to next PR
 
 ---
 
-# 14. Optimized Output Format
+# 14. Example Outputs
 
-### Case 1: Distinct Features (Multiple Issues)
-
-```
-Grouping: Case 1 (Distinct Features)
-
-PR #1: fix(auth): improve mobile responsiveness
-  → Linked to ENG-142 (91% confidence)
-  → Verification: PR URL in Linear links confirmed
-
-PR #2: feat(landing): tighten padding across sections
-  → Created new issue ENG-613
-  → Team: Platform
-  → Verification: Issue creation + PR URL in Linear links confirmed
-
-PR #3: refactor(utils): extract authorization module
-  → Linked to ENG-28 (87% confidence)
-  → Verification: PR URL in Linear links confirmed
-```
-
-### Case 2: Same Feature (Single Issue with Sections)
+### New issue created
 
 ```
-Grouping: Case 2 (Same Feature - Stacked Implementation)
+PR:
+feat/email-verification-schema
 
-Detected: 3 PRs implementing "email change verification" feature
-
-Result:
-No reliable existing match found
-
-Action:
-Created new issue CHR-50: Implement custom email change verification flow
+New issue created:
+ENG-201 — Add email change verification schema
 
 Team:
-Christ-dina
-
-Linked PRs (via Linear links):
-- PR #172: Schema Changes
-- PR #173: Backend Flow with Resend
-- PR #174: Verification Route
+Engineering Platform
 
 Verification:
-- Issue creation confirmed
-- All 3 PR URLs in CHR-50 links field
+Issue ENG-201 confirmed retrievable
+PR URL in ENG-201 links confirmed
 ```
 
-### Case 3: Wide Refactor (Parent + Sub-Issues)
+### Wide refactor (Case 3)
 
 ```
-Grouping: Case 3 (Wide Refactor with Sub-Issues)
+Wide refactor detected: "Migrate forms to TanStack Form"
 
-Detected: 5 PRs migrating forms to TanStack Form
+Parent issue created:
+ENG-600 — Migrate all forms to TanStack Form
 
-Result:
-No reliable existing match found
-
-Action:
-Created parent issue ENG-600: Migrate all forms to TanStack Form
-
-Created sub-issues:
-- ENG-601: Migrate login form to TanStack Form
-- ENG-602: Migrate signup form to TanStack Form
-- ENG-603: Migrate enrolment form to TanStack Form
-- ENG-604: Migrate profile form to TanStack Form
-- ENG-605: Migrate forgot password form to TanStack Form
+Sub-issues:
+ENG-601 — Migrate login form (PR #183)
+ENG-602 — Migrate signup form (PR #184)
+ENG-603 — Migrate enrolment form (PR #185)
+ENG-604 — Migrate profile form (PR #186)
+ENG-605 — Migrate settings form (PR #187)
 
 Team:
-Platform
+Engineering Platform
 
 Verification:
 - Parent issue creation confirmed

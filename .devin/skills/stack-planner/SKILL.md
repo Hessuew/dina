@@ -1,9 +1,10 @@
 ---
 name: stack-planner
 description: >
-  Converts git working directory changes into bounded intent-based Graphite stacks.
-  Produces CI-safe, review-friendly stacked branches on top of the current Graphite branch state.
-  Uses non-interactive Graphite CLI only. Max 5 stacks per run. Never submits PRs or mutates existing stacks unless explicitly requested.
+  Converts git working directory changes into bounded intent-based Graphite stacks,
+  submits them as draft PRs, links them to Linear issues, and generates AI descriptions
+  for each PR. Full pipeline runs uninterrupted after a single approval gate.
+  Uses non-interactive Graphite CLI only. Max 5 stacks per run.
 
   **IMPORTANT:**
   - Stacks are always created on top of the CURRENT active Graphite branch context.
@@ -18,23 +19,20 @@ description: >
     - "stack these changes"
 ---
 
-# Graphite Stack Planner — v5.1 (Stack-on-top safe mode)
+# Graphite Stack Planner — v6.0 (Full pipeline)
 
 ## 0. Core intent
 
-Convert:  
-`git diff` → intent clusters → dependency-safe stacks → Graphite execution
+Convert:
+`git diff` → intent clusters → stacks → submit as drafts → link Linear → generate PR descriptions
 
-**Key constraint:**  
+**Key constraint:**
 Stacks are ALWAYS created on top of the current active branch context in Graphite.
-
-Graphite is execution layer only.
 
 ---
 
 ## 1. Hard safety rules (non-negotiable)
 
-- Never submit PRs unless explicitly requested
 - Never restack, rebase, or rewrite existing stacks unless explicitly requested
 - Never switch branches (no checkout, no main reset, no --onto main patterns)
 - Never use git stash or stash slicing workflows
@@ -42,26 +40,28 @@ Graphite is execution layer only.
 - Max 5 stacks per run
 - Always use non-interactive Graphite commands only
 
-**If state is unclear:**  
-→ stop and ask user
+**One approval gate:** show the plan → user approves → full pipeline runs without further stops.
+
+**Exception:** if graphite-linear-connector (Phase 4) encounters a match confidence <80% on any PR, it pauses for that PR only. See pipeline mode contract in the connector skill.
+
+**If repo state is unclear:**
+→ stop and ask user before doing anything
 
 ---
 
 ## 2. Allowed Graphite execution
 
-**Only allowed command:**
+**Stack creation (one per cluster, bottom → top):**
 
 ```bash
 gt c --ai --no-interactive
 ```
 
-**Rules:**
+**Submit all stacks as drafts:**
 
-- runs once per stack
-- executed in dependency order (bottom → top)
-- stacks are created on top of CURRENT Graphite branch state
-- do NOT reset repo state before execution
-- do NOT attempt to recreate base branches
+```bash
+gt submit --draft
+```
 
 ---
 
@@ -132,10 +132,10 @@ Avoid:
 
 ## 6. Stack limit policy
 
-Default: minimize stack count  
+Default: minimize stack count
 Hard cap: 5 stacks
 
-**If too many candidates:**  
+**If too many candidates:**
 merge in priority order:
 
 - tests → refactors → infra → UI → features
@@ -156,19 +156,86 @@ Order:
 
 ---
 
-## 8. Execution model (strict)
+## 8. Full pipeline execution (strict)
 
-For each stack:
+### Phase 1 — Plan
 
-- stage only the files for this stack slice:  
-  `git add <files-for-this-stack>`
-- run:  
-  `gt c --ai --no-interactive`
-- stacks are created on TOP of current Graphite branch context
-- proceed bottom → top
-- stop immediately on mismatch or failure
+1. Run `git status` and `git diff` to collect changes
+2. Cluster changes into stacks (sections 5–7)
+3. Present plan to user (section 11 output format)
+4. **Wait for approval — this is the only gate**
 
-No recovery automation.
+---
+
+### Phase 2 — Stack
+
+For each cluster (bottom → top):
+
+1. Stage only the files for this cluster:
+   `git add <files-for-this-stack>`
+2. Run:
+   `gt c --ai --no-interactive`
+3. Stop immediately on any failure — do not continue to next cluster
+
+---
+
+### Phase 3 — Submit
+
+After all stacks are created:
+
+```bash
+gt submit --draft
+```
+
+Run `gt log` after submit to collect the PR numbers and URLs for all submitted PRs.
+
+---
+
+### Phase 4 — Link Linear
+
+Invoke the **graphite-linear-connector** skill in pipeline mode:
+
+- Pass the explicit list of PR numbers/URLs collected in Phase 3
+- Pass `--pipeline` flag (fully automatic, no confirmation stops)
+- The connector returns a **PR → Linear issue mapping** (may be null per PR if no match)
+
+See the connector skill's Pipeline Mode section for full contract.
+
+---
+
+### Phase 5 — Generate PR descriptions
+
+For each submitted PR, generate a description using the template contract below and write it via:
+
+```bash
+gh pr edit <PR-number> --body-file /tmp/pr-<PR-number>.md
+```
+
+**Description contract** (matches `.github/PULL_REQUEST_TEMPLATE.md`):
+
+```markdown
+## What
+
+<1-sentence summary derived from the commit title for this PR>
+
+## Why
+
+<≤2-sentence summary of the Linear issue purpose — from the PR→issue mapping returned in Phase 4>
+<Omit this section entirely if Phase 4 returned no issue for this PR>
+
+## Changes
+
+<Intent-level bullets describing what behavior changed in this PR's slice only>
+<Not file names — what behavior, what the user/system experiences differently>
+```
+
+**Sources per PR:**
+
+- `What`: commit title / PR title for this stack slice
+- `Why`: Linear issue description (summarize to ≤2 sentences); omit if null
+- `Changes`: diff and commits scoped to this PR's range only (`git log` + `git diff` between this branch and its parent)
+
+**Do not describe the full stack** — each PR describes its own slice only.
 
 ---
 
@@ -178,7 +245,6 @@ No recovery automation.
 
 - git checkout (any branch switching)
 - git reset / rebase / stash workflows
-- gt submit
 - gt restack / gt sync / gt modify
 - gt c --onto main or any main-based reconstruction
 - any workflow that rebuilds stacks from main
@@ -201,7 +267,7 @@ No recovery automation.
 
 ---
 
-## 11. Output format (minimal)
+## 11. Output format (plan phase only)
 
 For each stack:
 
@@ -216,6 +282,12 @@ Files:
 
 Depends on:
 <none | previous stack>
+```
+
+After plan, show pipeline summary:
+
+```
+Pipeline: stack (N) → submit as drafts → link Linear → generate descriptions
 ```
 
 ---
