@@ -6,13 +6,26 @@ import { Button } from '@/components/ui/button'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
+const PDF_VIEWER_VERTICAL_CHROME = 160
+const MIN_PAGE_HEIGHT = 320
+
+type ViewerSize = {
+  width: number
+  height: number
+}
+
 export function PdfViewer({ url }: { url: string }) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
   const [pageNum, setPageNum] = useState(1)
   const [numPages, setNumPages] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [viewerSize, setViewerSize] = useState<ViewerSize>({
+    width: 800,
+    height: 800,
+  })
 
   useEffect(() => {
     setLoading(true)
@@ -35,14 +48,46 @@ export function PdfViewer({ url }: { url: string }) {
   }, [url])
 
   useEffect(() => {
+    const updateViewerSize = () => {
+      const width = containerRef.current?.clientWidth ?? 800
+      const height = Math.max(
+        MIN_PAGE_HEIGHT,
+        window.innerHeight - PDF_VIEWER_VERTICAL_CHROME,
+      )
+
+      setViewerSize((current) => {
+        if (current.width === width && current.height === height) return current
+        return { width, height }
+      })
+    }
+
+    updateViewerSize()
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(updateViewerSize)
+    if (containerRef.current) resizeObserver?.observe(containerRef.current)
+    window.addEventListener('resize', updateViewerSize)
+
+    return () => {
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', updateViewerSize)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!pdf || !canvasRef.current) return
     const canvas = canvasRef.current
     let renderTask: RenderTask | null = null
+    let cancelled = false
 
     pdf.getPage(pageNum).then((page) => {
-      const containerWidth = canvas.parentElement?.clientWidth ?? 800
+      if (cancelled) return
       const baseViewport = page.getViewport({ scale: 1 })
-      const scale = containerWidth / baseViewport.width
+      const widthScale = viewerSize.width / baseViewport.width
+      const heightScale = viewerSize.height / baseViewport.height
+      const scale = Math.max(0.1, Math.min(widthScale, heightScale))
       const viewport = page.getViewport({ scale })
 
       const ctx = canvas.getContext('2d')
@@ -50,15 +95,18 @@ export function PdfViewer({ url }: { url: string }) {
 
       canvas.height = viewport.height
       canvas.width = viewport.width
+      canvas.style.height = `${viewport.height}px`
+      canvas.style.width = `${viewport.width}px`
 
       renderTask = page.render({ canvas, canvasContext: ctx, viewport })
       renderTask.promise.catch(() => {})
     })
 
     return () => {
+      cancelled = true
       renderTask?.cancel()
     }
-  }, [pdf, pageNum])
+  }, [pdf, pageNum, viewerSize])
 
   if (error) {
     return (
@@ -69,11 +117,11 @@ export function PdfViewer({ url }: { url: string }) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div ref={containerRef} className="flex w-full flex-col items-center gap-4">
       {loading && (
         <div className="py-12 text-sm text-[#8E816D]">Loading…</div>
       )}
-      <canvas ref={canvasRef} className="w-full" />
+      <canvas ref={canvasRef} className="max-w-full" />
       {numPages > 1 && (
         <div className="flex items-center gap-4 pb-2">
           <Button
