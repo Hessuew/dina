@@ -198,7 +198,7 @@ function EnrollmentsPage() {
                 onClick={handleToggleViewAll}
               >
                 <EyeIcon className="size-3.5" />
-                View All
+                {viewAll ? 'Show Own' : 'View All'}
               </Button>
               <Button
                 theme="light"
