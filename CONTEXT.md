@@ -8,7 +8,7 @@ Domain glossary for the DINA educational portal. Use these terms consistently ac
 
 ### Enrolment (public application)
 
-A public-facing submission made by a prospective student via the `/enrolment` form. Contains personal background, story essays, and contact details. Stored in the `enrollments` table. Status progresses through `pending → under_review → approved/rejected/waitlisted/withdrawn/deferred`. Admin-managed; teachers see a **redacted enrollment view** (see below).
+A public-facing submission made by a prospective student via the `/enrolment` form. Contains personal background, story essays, and contact details. Stored in the `enrollments` table. Status progresses through `pending → under_review → awaiting_approval → approved/rejected/waitlisted/withdrawn/deferred`. The assigned Reviewer's score now auto-derives status (see **Enrollment Evaluation** and ADR 0008); admins still own the final lifecycle states. Teachers see a **redacted enrollment view** (see below).
 
 Spelling note: the user-facing route and utils dir use British "enrolment" (`/enrolment`, `src/utils/enrolment/`); the DB table and TypeScript types use American "enrollment" (`enrollments`, `EnrollmentRow`).
 
@@ -46,7 +46,7 @@ A Teacher-user or Admin acting on the enrollment review surface. An Evaluator re
 
 ### Enrollment Evaluation
 
-One Evaluator's assessment of one enrollment: a nullable rubric **score** from 0 to 4, a nullable **admission category** required by the UI when the score is 3 or 4, and an optional **note**, stored as a single row per `(enrollment, evaluator)` in the `enrollment_evaluations` table. Score meanings are 0 = rejected, 1 = borderline, 2 = reserve list, 3 = admission, and 4 = strong admission. Admission categories are A = new (admitted in the new young convert/new discipleship category), B = emerging (admitted into emerging leaders discipleship category), and C = established (admitted into an established leaders discipleship category). Scores aggregate on the enrollment list as a sortable **sum · evaluator-count**. An Enrollment Evaluation is independent of enrollment `status` — scoring never changes status (see ADR 0006). Captured in the keyboard-driven review overlay launched from the enrollments list.
+One Evaluator's assessment of one enrollment: a nullable rubric **score** from 0 to 4, a nullable **admission category** required by the UI when the score is 3 or 4, and an optional **note**, stored as a single row per `(enrollment, evaluator)` in the `enrollment_evaluations` table. Score meanings are 0 = rejected, 1 = borderline, 2 = reserve list, 3 = admission, and 4 = strong admission. Admission categories are A = new (admitted in the new young convert/new discipleship category), B = emerging (admitted into emerging leaders discipleship category), and C = established (admitted into an established leaders discipleship category). Scores aggregate on the enrollment list as a sortable **sum · evaluator-count**. The **assigned Reviewer's** score auto-derives enrollment `status` (0/1 → rejected, 2 → waitlisted, 3/4 → awaiting_approval, cleared → under_review), unless status is a frozen admin decision (`approved`/`withdrawn`/`deferred`); peer and non-assigned-admin scores stay advisory and never move status (see ADR 0008, superseding ADR 0006's side-effect-free rule). Captured in the keyboard-driven review overlay launched from the enrollments list.
 
 ### Reviewer
 
@@ -62,4 +62,8 @@ The act of a teacher adding their **own** Enrollment Evaluation to an enrollment
 
 ### Peer-review state
 
-A **derived**, per-viewer label shown on the enrollments list (never stored, never an `enrollment_status` value): `under_peer_review` when a Peer scored the enrollment 3/4 and the viewer has not scored it yet, `peer_reviewed` once the viewer has scored it, and absent otherwise. It is orthogonal to enrollment `status` (which stays admin-controlled) and recomputes automatically as scores change.
+A **derived**, per-viewer label shown on the enrollments list (never stored, never an `enrollment_status` value): `under_peer_review` when a Peer scored the enrollment 3/4 and the viewer has not scored it yet, `peer_reviewed` once the viewer has scored it, and absent otherwise. It recomputes automatically as scores change. A Peer's score feeds this label but stays **advisory** — only the assigned Reviewer's score drives enrollment `status` (see **Awaiting approval** and ADR 0008).
+
+### Awaiting approval
+
+An `enrollment_status` value meaning the assigned Reviewer scored the applicant 3 or 4 (admit / strong admit) and the enrollment is now waiting on the **Admin's** final decision. Set automatically (see **Enrollment Evaluation**); the Admin resolves it to `approved` or `rejected`. Invitations are still only offered once status is `approved`.

@@ -18,7 +18,7 @@ Introduce an **Enrollment Evaluation**: one row per `(enrollment, evaluator)` in
 - **Score** is set via the review overlay (keyboard `0`-`4`; re-press/Backspace clears) and saved immediately. Meanings: 0 rejected, 1 borderline, 2 reserve list, 3 admission, 4 strong admission.
 - **Admission category** is selected as A/B/C when score is 3 or 4: A new (admitted in the new young convert/new discipleship category), B emerging (admitted into emerging leaders discipleship category), C established (admitted into an established leaders discipleship category). The UI prompts for it without blocking navigation.
 - **Note** autosaves (debounced ~400ms). All evaluators' non-empty notes are visible to all evaluators, attributed by author + score + category (shared committee context).
-- Evaluation is **independent of enrollment status** — scoring never mutates `status`; admins still set status manually as before.
+- Evaluation is **independent of enrollment status** — scoring never mutates `status`; admins still set status manually as before. _(**Superseded by ADR 0008**: the assigned Reviewer's score now auto-derives status.)_
 
 RLS policies on `enrollment_evaluations` enforce the ownership rule (`evaluator_id = auth.uid()` for insert/update; staff-only select), mirroring how `posts`/`post_comments` are policed. App-level server functions (`setEvaluationScore`, `setEvaluationAdmissionCategory`, `setEvaluationNote`) additionally gate on `resolveAdminOrTeacherAccess` before the `upsert`, consistent with the rest of the enrollment server fns.
 
