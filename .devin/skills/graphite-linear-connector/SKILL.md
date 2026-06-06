@@ -5,8 +5,8 @@ description: >
   matching, confidence scoring, and safe mutation workflows.
 
   Links PRs to Linear issues bidirectionally:
-  - GitHub-side: adds Linear issue URL to GitHub PR description (always works)
-  - Linear-side: adds PR URL to Linear issue's links field (if Linear MCP has mutation tools)
+  - GitHub-side: adds Linear issue URL to GitHub PR description (via gh pr edit)
+  - Linear-side: adds PR URL to the Linear issue's links field (via save_issue)
 
   Supports:
     - linking PRs to existing Linear issues
@@ -17,33 +17,43 @@ description: >
     - pipeline mode (called from stack-planner, fully automatic)
 ---
 
-# 0. Core Intent
+# 1. Core Intent
 
 Connect Graphite PRs to the correct Linear issues safely and deterministically using bidirectional linking:
 
-- **GitHub-side (always):** Add Linear issue URL to GitHub PR description via `gh pr edit`
-- **Linear-side (optional):** Add PR URL to Linear issue's `links` field via Linear MCP (if mutation tools available)
+- **GitHub-side:** Add the Linear issue URL to the GitHub PR description via `gh pr edit`.
+- **Linear-side:** Add the PR URL to the Linear issue's `links` field via `mcp__plugin_linear_linear__save_issue`.
 
-Primary goals:
+Goals: minimize false matches, prevent duplicate issue creation, keep operations idempotent, and provide explainable confidence scoring.
 
-- minimize false matches
-- prevent duplicate issue creation
-- ensure idempotent operations
-- provide explainable confidence scoring
-- support safe repeated execution
-- degrade gracefully when Linear MCP lacks mutation tools (GitHub-side linking always succeeds)
+## Linking strategy
+
+Both directions always run; both are reliable in this environment:
+
+- **GitHub-side** (`gh pr edit`) — writes `**Related Linear Issue:** <url>` at the top of the PR description. Lets developers reach the issue from the PR.
+- **Linear-side** (`save_issue` with `links: [{url, title}]`) — the `links` field is **append-only**, so re-linking the same PR is a no-op. Lets Linear users reach the PR from the issue.
+
+There is no capability detection: `save_issue` is always available. Only handle *real* runtime failures (network, rate-limit, permission) — see section 10.
+
+## Linear MCP tools used
+
+| Purpose                | Tool                                        |
+| ---------------------- | ------------------------------------------- |
+| Fetch issue + links    | `mcp__plugin_linear_linear__get_issue`      |
+| Search candidate issues| `mcp__plugin_linear_linear__list_issues`    |
+| Create / update / link | `mcp__plugin_linear_linear__save_issue`     |
+
+`save_issue` creates a new issue when no `id` is passed, and updates an existing one when `id` is present. The same call adds `links` (append-only) and accepts `parentId` for sub-issues.
 
 ---
 
-# 0.5. Pipeline Mode
-
-This skill has two invocation modes:
+# 2. Invocation Modes
 
 ## Standalone mode (default)
 
 User invokes directly: `"connect to linear"`, `"create linear issue"`, etc.
 Full flow: PR selection → matching → confirmation gates → mutation → summary.
-See section 1 (Input Parsing) for standalone commands.
+See section 3 (Input Parsing).
 
 ## Pipeline mode
 
@@ -60,17 +70,15 @@ graphite-linear-connector --pipeline --prs <PR-number-or-url> [<PR-number-or-url
 | Behavior                       | Standalone | Pipeline |
 | ------------------------------ | ---------- | -------- |
 | PR selection UI                | Yes        | Skipped  |
-| Confirmation gate (any reason) | Yes        | Skipped  |
+| Confirmation gates             | Yes        | Skipped  |
 | Dry-run mode                   | Optional   | Never    |
-| Matching/scoring logic         | Full       | Full     |
+| Matching / scoring             | Full       | Full     |
 | Duplicate prevention           | Yes        | Yes      |
 | Idempotency checks             | Yes        | Yes      |
 
-**In pipeline mode, everything runs fully automatically. No stops.**
+**Pipeline mode runs fully automatically and never pauses.** Every threshold (section 7) is acted on automatically; `<50%` confidence auto-creates a new issue, or emits `NO_MATCH` when there is nothing to derive an issue from.
 
-**Output contract:**
-
-After completing all linking, emit a structured PR → issue mapping for the stack-planner Phase 5 (description generation):
+**Output contract** — after linking all PRs, emit the PR → issue mapping for stack-planner Phase 5 (description generation):
 
 ```
 PIPELINE_RESULT:
@@ -79,62 +87,14 @@ PR #<number>: NO_MATCH
 ...
 ```
 
-- `<Linear-issue-id>` — Linear issue identifier (e.g., CHR-123)
-- `<Linear-issue-url>` — Full URL to the Linear issue
-- `<Linear-issue-description-first-paragraph>` — used by stack-planner as "Why" source; keep it as-is (stack-planner summarizes to ≤2 sentences)
-- `NO_MATCH` — stack-planner omits the Linear issue link and "Why" section for that PR
+- `<Linear-issue-id>` — e.g. `CHR-123`.
+- `<Linear-issue-url>` — full URL to the issue.
+- `<Linear-issue-description-first-paragraph>` — stack-planner's "Why" source; pass it as-is (stack-planner summarizes to ≤2 sentences).
+- `NO_MATCH` — stack-planner omits the Linear link and "Why" section for that PR.
 
 ---
 
-# 0.6. Linking Strategy
-
-The skill uses **bidirectional linking** to connect PRs and Linear issues:
-
-## GitHub-side linking (always succeeds)
-
-- **What:** Add Linear issue URL to GitHub PR description
-- **How:** Via `gh pr edit` command (GitHub CLI)
-- **When:** Always, regardless of Linear MCP capabilities
-- **Format:** `**Related Linear Issue:** <Linear-issue-url>` at the top of PR description
-- **Reliability:** High - uses GitHub CLI which is always available
-
-## Linear-side linking (best effort)
-
-- **What:** Add PR URL to Linear issue's `links` field
-- **How:** Via Linear MCP mutation tools (if available)
-- **When:** Only if Linear MCP server has mutation tools (e.g., `update_issue`, `save_issue`)
-- **Format:** Linear issue's links array with PR URL and title
-- **Reliability:** Variable - depends on Linear MCP server configuration
-- **Fallback:** Gracefully degrades if mutation tools unavailable
-
-## Why both?
-
-- **GitHub-side:** Ensures developers can always find the Linear issue from the PR
-- **Linear-side:** Ensures Linear users can navigate to the PR from the issue
-- **Redundancy:** Provides navigation in both directions for better UX
-- **Resilience:** GitHub-side linking is the primary reliable path; Linear-side is enhancement
-
-## Checking Linear MCP capabilities
-
-Before attempting Linear-side linking:
-
-1. Call `mcp_list_tools` for the Linear server
-2. Check for mutation tools: `update_issue`, `save_issue`, or similar
-3. If mutation tools available → attempt Linear-side linking
-4. If mutation tools unavailable → skip Linear-side linking, log warning, proceed with GitHub-side only
-
-Example check:
-
-```bash
-mcp_list_tools --server-name linear
-# Look for tools with destructiveHint: false (safe mutations)
-```
-
----
-
-# 1. Input Parsing
-
-Supported commands:
+# 3. Input Parsing
 
 | Command                    | Meaning                                     |
 | -------------------------- | ------------------------------------------- |
@@ -143,93 +103,37 @@ Supported commands:
 | "connect today's prs"      | PRs created today                           |
 | "create linear issue"      | force new issue flow                        |
 | "link to LIN-123"          | explicit issue override                     |
-| "--dry-run"                | preview only                                |
+| "--dry-run"                | preview only (standalone)                   |
 | "--team <team>"            | explicit team                               |
 | "--yes"                    | skip confirmations for safe operations only |
 
-Defaults:
-
-- PR selection defaults to current PR
-- dry-run defaults to false
-
-If ambiguous:
-
-- ask user which PRs to process
+Defaults: PR selection = current PR; dry-run = false. If the PR selection is ambiguous, ask which PRs to process.
 
 ---
 
-# 2. PR Data Collection
+# 4. PR Data Collection
 
-## Graphite commands
-
-### Stack overview (single command)
+## Graphite / git commands
 
 ```bash
-gt log
+gt log                                    # stack overview: branches, PR numbers/titles/URLs, commits, parent/child
+gt log --stack                            # only ancestors/descendants of current branch
+git diff --name-only origin/main...HEAD   # changed files
 ```
 
-Displays all tracked branches with:
+## Module signal extraction
 
-- Branch names
-- PR numbers and titles
-- PR URLs
-- Commit hashes and messages
-- Branch relationships (parent/child)
-- Timestamps
-
-**Note:** Use `gt log --stack` to show only ancestors and descendants of current branch.
-
-### Changed files
-
-```bash
-git diff --name-only origin/main...HEAD
-```
-
-Extract semantic module signals before detailed analysis.
-
-Processing steps:
-
-1. Group files by:
-   - top-level directories
-   - feature modules
-   - page/component names
-
-2. Count occurrence frequency
-
-3. Generate representative modules:
-
-Example:
+Group changed files into representative modules before detailed analysis:
 
 ```text
-src/auth/session/*
+src/auth/session/*      (not src/auth/session/cache.ts, utils.ts, middleware.ts)
 src/auth/routes/*
 src/profile/*
-src/forms/*
 ```
 
-instead of:
+Analyze representative modules first; drill into individual files (max 30) only if more detail is needed. Use modules as signals for matching, grouping, and scoring.
 
-```text
-src/auth/session/cache.ts
-src/auth/session/utils.ts
-src/auth/session/middleware.ts
-```
-
-4. Analyze representative modules first
-
-Only if additional detail is needed:
-
-- analyze up to 30 representative files
-
-Use representative modules as signals for:
-
-- semantic matching
-- grouping detection
-- confidence scoring
-
-### Extracted PR Signals
-
-For each PR collect:
+## Extracted PR signals
 
 | Signal                            | Weight |
 | --------------------------------- | ------ |
@@ -239,102 +143,33 @@ For each PR collect:
 | Commit summaries                  | 0.15   |
 | Changed paths/modules             | 0.15   |
 
-### Normalize:
-
-- kebab/snake/camel case
-- common engineering abbreviations
-- tense/plural variations
+Normalize: kebab/snake/camel case, common engineering abbreviations, tense/plural variations.
 
 ---
 
-# 2.5. PR Grouping Strategy
+# 5. PR Grouping Strategy
 
-Before searching for Linear issues, determine how to group the PRs based on their semantic relationship.
+Before searching Linear, decide how to group the PRs. **This is the single source of truth for the three cases**; section 9 references it for mutations.
 
-## Three Grouping Cases
+## Case 1 — Distinct features / bug fixes
 
-### Case 1: Distinct Features/Bug Fixes
+PRs are clearly different work. Signals: different domain modules, different feature nouns, different commit types (fix/feat/refactor), minimal file overlap.
+**Action:** one Linear issue per PR.
+Example: `fix(auth)…`, `feat(landing)…`, `refactor(utils)…` → 3 issues.
 
-**When to use:** PRs contain clearly different features, bug fixes, or unrelated changes.
+## Case 2 — Same feature (stacked implementation)
 
-**Detection signals:**
+Multiple PRs implement one cohesive feature. Signals: shared feature noun, sequential stack dependencies, complementary commits (schema → backend → route), high file overlap, same ADR/spec.
+**Action:** one Linear issue; all PRs linked to it.
+Example: schema → flow → route for "email change verification" → 1 issue.
 
-- Different domain modules (e.g., auth, payments, landing)
-- Different feature nouns (e.g., "email verification", "cache optimization", "mobile padding")
-- Different commit patterns (e.g., fix vs feat vs refactor)
-- Minimal file overlap between PRs
+## Case 3 — Wide refactor with sub-issues
 
-**Action:** Create separate Linear issues for each PR.
+One pattern applied across many pages/components, each a distinct unit. Signals: same refactor verb (migrate/refactor/upgrade), >20 changed files, different page/component names per PR.
+**Action:** one parent issue + one sub-issue per page/component (`parentId`).
+Example: parent "Migrate all forms to TanStack Form" + sub-issues per form.
 
-**Example:**
-
-- PR #1: fix(auth): improve mobile responsiveness
-- PR #2: feat(landing): tighten padding across sections
-- PR #3: refactor(utils): extract authorization module
-  → 3 separate Linear issues
-
----
-
-### Case 2: Same Feature (Stacked Implementation)
-
-**When to use:** Multiple PRs implement different parts of a single cohesive feature.
-
-**Detection signals:**
-
-- Shared feature noun across all PRs (e.g., "email change verification")
-- Sequential dependencies (stacked PRs)
-- Complementary commit messages (schema → backend → route)
-- High file overlap or logical progression
-- All PRs reference same ADR or spec document
-
-**Action:** Create one Linear issue with all PRs as sections.
-
-**Example:**
-
-- PR #1: feat(profiles): Add email change verification fields to schema
-- PR #2: feat(profile): Add email change verification flow with rate limiting
-- PR #3: feat(profile): Add email change verification route
-  → 1 Linear issue with 3 sections
-
----
-
-### Case 3: Wide Refactor with Sub-Issues
-
-**When to use:** A wide refactor that spans many pages/components, where each page/component is a distinct unit of work.
-
-**Detection signals:**
-
-- Same pattern applied across many files (e.g., "migrate to TanStack Form")
-- High number of changed files (>20)
-- Different page/component names in PR titles
-- Shared refactor verb (migrate, refactor, upgrade)
-- Each PR touches a different domain/page
-
-**Action:** Create one parent Linear issue + sub-issues for each page/component.
-
-**Example:**
-
-- Parent issue: "Migrate all forms to TanStack Form"
-  - Sub-issue: "Migrate login form to TanStack Form"
-  - Sub-issue: "Migrate signup form to TanStack Form"
-  - Sub-issue: "Migrate enrolment form to TanStack Form"
-  - Sub-issue: "Migrate profile form to TanStack Form"
-
-**Implementation:**
-
-1. Create parent issue with overall refactor context
-2. Create sub-issues for each page/component
-3. Link all sub-issues to parent issue using Linear's `parentId` field
-4. Return PR → sub-issue mappings for stack-planner to add to GitHub PR descriptions
-5. Return parent issue URL for stack-planner to add to all GitHub PR descriptions
-
----
-
-## Grouping Detection Algorithm
-
-Compute a grouping score using weighted evidence.
-
-### Signals
+## Grouping detection algorithm
 
 | Signal                     | Weight |
 | -------------------------- | -----: |
@@ -343,116 +178,44 @@ Compute a grouping score using weighted evidence.
 | File overlap               |   0.20 |
 | Feature noun similarity    |   0.20 |
 
-Definitions:
-
-- Shared domain/module:
-  auth, billing, profile, forms, etc.
-- Graphite stack dependency:
-  parent-child relationships or same stack ancestry
-- File overlap:
-  overlap between changed modules/directories
-- Feature noun similarity:
-  shared feature terms extracted from titles/branches
-
-Calculation:
-
 ```text
-group_score =
-(shared_domain × .30) +
-(stack_dependency × .30) +
-(file_overlap × .20) +
-(noun_similarity × .20)
+group_score = shared_domain×.30 + stack_dependency×.30 + file_overlap×.20 + noun_similarity×.20
 ```
 
-Decision:
+- `>80` → Case 2 (same feature)
+- `50–80` → ambiguous → ask user (standalone) / default to Case 1 (pipeline)
+- `<50` → Case 1 (distinct)
 
-- > 80 → Case 2 (Same Feature)
-- 50–80 → ambiguous → ask user
-- <50 → Case 1 (Distinct)
-
-Override:
-
-If:
-
-- changed files >30
-- PR count >3
-- shared refactor verbs detected:
-  migrate, refactor, upgrade
-
-Then evaluate for Case 3.
+**Case 3 override:** if changed files >30 **and** PR count >3 **and** a shared refactor verb (migrate/refactor/upgrade) is present, evaluate for Case 3.
 
 ---
 
-# 3. Linear Candidate Retrieval
+# 6. Linear Candidate Retrieval
 
-NEVER fetch all active issues.
+NEVER fetch all active issues. Use staged retrieval via `mcp__plugin_linear_linear__list_issues`.
 
-Use staged retrieval.
+## Phase 1 — Exact ID detection
 
-## Phase 1: Exact ID detection
+Detect an explicit ID (`LIN-123`, `ENG-456`, `CHR-72`) in title/branch. If found, fetch it directly with `get_issue` and skip semantic search.
 
-Detect:
+## Phase 2 — Keyword candidate search
 
-- LIN-123
-- ENG-456
-- etc.
+Build a query from normalized nouns, module names, service names, and feature terms, e.g. `auth middleware latency session validation`. Call `list_issues` with:
 
-If found:
+- `query` — title/description keywords
+- `state` — active categories only (see below)
+- `team` — when known
+- `createdAt` / `orderBy: updatedAt` — recent-activity boost
 
-- fetch exact issue
-- skip semantic search
+**Limits:** max 20 candidates, max 3 queries per PR, dedupe repeats.
 
-## Phase 2: Keyword candidate search
-
-Generate:
-
-- normalized nouns
-- module names
-- service names
-- feature terms
-
-Example:
-
-`auth middleware latency session validation`
-
-Query Linear search API using:
-
-- title keywords
-- description keywords
-- active states only
-- recent activity boost
-
-### Candidate limits
-
-Hard limits:
-
-- max 20 candidate issues
-- max 3 search queries per PR
-- dedupe repeated candidates
-
-### Allowed workflow categories
-
-Do NOT hardcode state names.
-
-Allowed categories:
-
-- unstarted
-- started
-- backlog
-
-Exclude:
-
-- completed
-- canceled
-- archived
+**State categories** (do not hardcode state names): include `unstarted`, `started`, `backlog`; exclude `completed`, `canceled`, `archived`.
 
 ---
 
-# 4. Semantic Matching Engine
+# 7. Semantic Matching & Thresholds
 
-## Scoring model
-
-### Signals
+## Scoring signals
 
 | Signal                     | Weight |
 | -------------------------- | ------ |
@@ -464,37 +227,11 @@ Exclude:
 | Commit summary similarity  | 0.10   |
 | Recent activity boost      | 0.05   |
 
-### Normalization Rules
+**Normalize:** `auth→authentication`, `perf→performance`, `db→database`, `ci→continuous integration`, `api/apis→api`. Strip stop words, timestamps, branch prefixes, ticket boilerplate.
 
-Normalize:
+**Penalties:** stale issues (>60d inactive), cross-team mismatch, overly generic titles, multiple equally strong matches.
 
-- auth → authentication
-- perf → performance
-- db → database
-- ci → continuous integration
-- api/apis → api
-
-Strip:
-
-- stop words
-- timestamps
-- branch prefixes
-- ticket boilerplate
-
-### Confidence penalties
-
-Reduce confidence for:
-
-- stale issues (>60d inactive)
-- cross-team mismatches
-- overly generic titles
-- multiple equally strong matches
-
-### Confidence explanation
-
-Always provide rationale.
-
-Example:
+**Always explain confidence**, e.g.:
 
 ```
 92% confidence:
@@ -503,268 +240,153 @@ Example:
 - commit mentions latency optimization
 ```
 
----
-
-# 5. Threshold Logic
+## Threshold actions
 
 | Confidence | Action                        |
 | ---------- | ----------------------------- |
 | 95–100     | strong auto-match suggestion  |
 | 80–94      | ask confirmation              |
 | 50–79      | ambiguous candidate selection |
-| <50        | prefer new issue flow         |
+| <50        | new-issue flow                |
 
-### Important safety rule (standalone mode only)
-
-NEVER auto-create issues silently in standalone mode.
-
-Even low-confidence flows require confirmation unless:
-
-- user passed --yes
-- AND
-- operation is not destructive
-
-**In pipeline mode, all thresholds are acted on automatically with no confirmation. See section 0.5.**
+- **Standalone:** never auto-create silently. Even low-confidence flows require confirmation unless the user passed `--yes` and the operation is non-destructive.
+- **Pipeline:** all tiers act automatically with no confirmation; `<50` auto-creates (see section 2).
 
 ---
 
-# 6. Duplicate Prevention
+# 8. Duplicate Prevention & Idempotency
 
-Before creating issue:
+## Before creating an issue
 
-- Perform final exact-title search
-- Check recent issues created by current user
-- Check existing Graphite resource links
-- Compare against issues created in last 24h
+- Final exact-title search via `list_issues`.
+- Check issues created by the current user in the last 24h.
+- Check existing Graphite resource links on the PR.
 
-If likely duplicate:
+If a duplicate is likely: surface a warning and require confirmation (standalone), or skip creation and reuse the existing issue (pipeline).
 
-- surface warning
-- require explicit confirmation (standalone) / skip silently and use existing (pipeline)
+## Before linking
+
+Call `mcp__plugin_linear_linear__get_issue { id }` and check whether the PR URL is already in the issue's `links`. If present, no-op and report the existing association. (The `links` field is append-only, so this is a belt-and-suspenders check.)
+
+**Idempotent guarantees across repeated runs:** no duplicate issue creation, no duplicate PR-URL entries in an issue, no duplicate PR→issue association. **Allowed:** multiple PR URLs on one issue, multiple stacks contributing to one issue, multiple PRs in a stack linking to one issue.
 
 ---
 
-# 7. Idempotency
+# 9. Safe Mutation Workflow
 
-Before linking:
+## Sequence
 
-Check if PR URL is already in Linear issue's `links` field using Linear MCP:
+1. Collect data (section 4).
+2. Determine grouping case (section 5).
+3. Resolve candidates (section 6) and score (section 7).
+4. Present plan; confirm (standalone only — skipped in pipeline).
+5. Execute mutations (case-specific, below).
+6. Verify (below).
+7. Emit summary (+ `PIPELINE_RESULT` block if pipeline).
 
-```bash
-mcp1_get_issue <issue-id>
+## Issue creation parameters
+
+Apply these to **every** new issue (parent and sub-issues) via `save_issue`:
+
+- **Description:** fill the template in `.devin/linear-issue-template.md` (Goal / Context / Requirements / Impact / Constraints), populated from PR title, commits, changed modules.
+- **Priority** (auto-derived from commit type):
+
+  | Commit type | Priority      | Value |
+  | ----------- | ------------- | ----- |
+  | fix         | Urgent        | 1     |
+  | feat        | High          | 2     |
+  | refactor    | Medium        | 3     |
+  | chore       | Low           | 4     |
+  | (unclear)   | Medium        | 3     |
+
+- **Assignee:** `Juhani Juusola`
+- **Status (`state`):** `In Progress`
+
+**`save_issue` call shape:**
+
+```json
+{
+  "title": "<derived from PR>",
+  "description": "<filled .devin/linear-issue-template.md>",
+  "team": "<user-specified or detected>",
+  "priority": "<1|2|3|4 per table>",
+  "assignee": "Juhani Juusola",
+  "state": "In Progress",
+  "links": [{ "url": "<PR URL>", "title": "<PR title>" }]
+}
 ```
 
-If already linked:
+For sub-issues, also pass `"parentId": "<parent issue id>"`. To update/link an existing issue instead of creating one, pass `"id": "<issue id>"` (omit when creating).
 
-- no-op
-- report existing association
+## Case-specific mutations (grouping per section 5)
 
-### Idempotent guarantees
+- **Case 1:** for each PR independently — search, score, then link the best match or create a new issue (per Issue-creation-parameters). Add the PR URL to that issue's `links`.
+- **Case 2:** search using combined signals; create **one** issue (per Issue-creation-parameters); add **all** PR URLs to its `links`. All PRs map to the same issue.
+- **Case 3:** create the parent issue (per Issue-creation-parameters); for each PR create a sub-issue with `parentId` set; add each PR URL to its sub-issue's `links`. Return per-PR sub-issue mappings plus the parent URL.
 
-Repeated runs must:
+Every case: GitHub-side link always via `gh pr edit`; Linear-side link via `save_issue` `links`.
 
-- avoid duplicate issue creation
-- avoid duplicate PR URL entries within a Linear issue
-- avoid creating the same PR → issue association more than once
+## Verification
 
-Allow:
-
-- multiple PR URLs on the same issue
-- multiple Graphite stacks contributing to one issue
-- multiple PRs within a stack linking to one issue
+- New issue: retrievable with correct team/state (`get_issue`).
+- GitHub-side: PR description contains `**Related Linear Issue:** <url>`.
+- Linear-side: issue's `links` contains the PR URL. On failure, log a warning and continue (non-critical).
 
 ---
 
-# 8. Safe Mutation Workflow
-
-### Mutation sequence
-
-1. Collect data
-2. Determine PR grouping case (section 2.5)
-3. Resolve candidates
-4. Score matches
-5. Present plan
-6. Confirm actions (standalone only — skipped in pipeline mode)
-7. Check Linear MCP capabilities (section 0.6)
-8. Execute mutations (case-specific)
-   - GitHub-side linking: always via `gh pr edit`
-   - Linear-side linking: attempt if mutation tools available
-9. Verify GitHub-side linking succeeded
-10. Verify Linear-side linking (if attempted)
-11. Emit summary (+ PIPELINE_RESULT block if in pipeline mode)
-
-### Case-specific mutation workflows
-
-#### Case 1: Distinct Features/Bug Fixes
-
-For each PR independently:
-
-- Search for existing Linear issues
-- Score matches
-- Create or link to issue
-  - When creating new issues: apply the workspace's recommended template (only 1 named "recommended")
-- Attempt Linear-side linking: add PR URL to issue's `links` field using Linear MCP (if mutation tools available)
-- Return PR → Linear issue mapping for stack-planner to add to GitHub PR description (always succeeds)
-
-#### Case 2: Same Feature (Stacked Implementation)
-
-- Search for existing Linear issues using combined signals
-- Score matches against all PRs
-- Create one issue with all PRs as sections
-  - When creating new issues: apply the workspace's recommended template (only 1 named "recommended")
-- Attempt Linear-side linking: add all PR URLs to issue's `links` field using Linear MCP (if mutation tools available)
-- Return PR → Linear issue mapping (all PRs map to same issue) for stack-planner to add to GitHub PR descriptions (always succeeds)
-
-#### Case 3: Wide Refactor with Sub-Issues
-
-1. Create parent issue with overall refactor context
-   - When creating new issues: apply the workspace's recommended template (only 1 named "recommended")
-2. For each PR:
-   - Create sub-issue with page/component-specific details
-     - When creating new issues: apply the workspace's recommended template (only 1 named "recommended")
-   - Set `parentId` to parent issue
-   - Attempt Linear-side linking: add PR URL to sub-issue's `links` field using Linear MCP (if mutation tools available)
-3. Return PR → sub-issue mappings for stack-planner to add to GitHub PR descriptions (always succeeds)
-4. Return parent issue URL for stack-planner to add to all GitHub PR descriptions
-
-### Verification step
-
-After issue creation:
-
-- verify issue retrievable
-- verify correct team/state
-
-After GitHub-side linking:
-
-- verify PR description contains Linear issue URL
-- verify format matches template: `**Related Linear Issue:** <url>`
-
-After Linear-side linking (if attempted):
-
-- verify Linear issue's `links` array contains PR URL
-- if verification fails, log warning but continue (non-critical)
-
-### Linear-side linking implementation
-
-When Linear MCP has mutation tools:
-
-1. Use `mcp_call_tool` with Linear server
-2. Call appropriate mutation tool (e.g., `update_issue`, `save_issue`)
-3. Add PR URL to issue's `links` array with format:
-   ```json
-   {
-     "url": "https://github.com/Hessuew/dina/pull/123",
-     "title": "PR #123: feat(enrollments): add special case flag"
-   }
-   ```
-4. Handle errors gracefully:
-   - If tool not found → log warning, skip Linear-side linking
-   - If permission denied → log warning, skip Linear-side linking
-   - If rate limited → log warning, skip Linear-side linking
-   - If network error → log warning, skip Linear-side linking
-
----
-
-# 9. Dry Run Mode
-
-Supported in standalone mode only:
+# 10. Dry Run Mode (standalone only)
 
 ```bash
 connect to linear --dry-run
 ```
 
-Dry-run:
-
-- performs all matching/scoring
-- shows proposed actions
-- performs zero mutations
-
-### Dry-run output example
+Performs all matching/scoring, shows proposed actions, makes **zero** mutations.
 
 ```
 PR: feat/auth-session-cache
-
-Best candidate:
-- ENG-142: Improve session validation latency
-
-Confidence: 91%
-
-Reasons:
-- exact phrase overlap
-- shared auth-service module
-- commit references latency optimization
+Best candidate: ENG-142 — Improve session validation latency (91%)
+Reasons: exact phrase overlap; shared auth-service module; commit references latency
 
 Planned actions:
-- create new issue ENG-143: Add session cache to auth service
-- GitHub-side: add ENG-143 URL to PR description (always)
-- Linear-side: add PR URL to ENG-143 links field (if Linear MCP has mutation tools)
-- return PR → ENG-143 mapping for GitHub PR description
-
-Dry-run enabled:
-- no changes executed
+- create ENG-143 "Add session cache to auth service" (feat → High, assignee Juhani, In Progress)
+- GitHub-side: add ENG-143 URL to PR description
+- Linear-side: add PR URL to ENG-143 links
+Dry-run: no changes executed
 ```
 
 ---
 
-# 10. Partial Failure Recovery
+# 11. Partial Failure Recovery
 
-### Failure classes
+| Failure                      | Recovery                          |
+| ---------------------------- | --------------------------------- |
+| Issue creation failed        | abort linking for that PR         |
+| Link addition failed         | log warning, surface recovery cmd |
+| Verification failed          | mark operation incomplete         |
+| Candidate search timeout     | retry once, then skip PR          |
+| Network / rate-limit / perms | log warning, continue to next PR  |
 
-| Failure                      | Recovery                  |
-| ---------------------------- | ------------------------- |
-| Linear issue creation failed | abort linking             |
-| Linear link addition failed  | show recovery command     |
-| Verification failed          | mark operation incomplete |
-| Candidate search timeout     | retry once                |
-
-### Recovery output example
-
-```
-Issue created successfully: ENG-532
-GitHub PR description updated with Linear link
-
-Linear-side linking failed (Linear MCP missing mutation tools).
-
-Recovery command (optional):
-Manually add PR URL to Linear issue's links field:
-https://linear.app/christ-dina/issue/ENG-532 → Add link to PR #123
-```
+These are real runtime errors only — `save_issue` itself is always present, so "missing tool" is not a case.
 
 ---
 
-# 11. Observability
+# 12. Output Summary
 
-Emit structured operation logs:
-
-| Field      | Example         |
-| ---------- | --------------- |
-| pr         | feat/auth-cache |
-| candidate  | ENG-142         |
-| confidence | 91%             |
-| action     | linked          |
-| verified   | true            |
-
----
-
-# 12. Output Summary Format
-
-## Standalone mode
+## Standalone
 
 ```
 Connected: 3 PRs
-
 PR #1 → ENG-142 (linked existing, 91%)
 PR #2 → ENG-201 (created new)
 PR #3 → ENG-142 (linked existing, 88%)
 ```
 
-## Pipeline mode
+## Pipeline
 
-Emit the standard summary followed by the PIPELINE_RESULT block:
+Standard summary, then the `PIPELINE_RESULT` block:
 
 ```
 Connected: 3 PRs
-
 PR #241 → CHR-72 (linked existing, 94%)
 PR #242 → CHR-72 (linked existing, 94%)
 PR #243 → NO_MATCH
@@ -779,95 +401,27 @@ PR #243: NO_MATCH
 
 # 13. Edge Cases
 
-### No Linear issues exist
-
-- skip candidate search
-- go directly to new issue creation flow
-
-### All candidates stale
-
-- surface staleness warning
-- treat as <50% confidence
-
-### PR already has resource link
-
-- check if linked issue still active
-- if active: confirm before re-linking
-- if closed: proceed with new matching
-
-### Network timeout
-
-- retry once
-- if second attempt fails: mark as failed, continue to next PR
+- **No Linear issues exist:** skip candidate search, go straight to new-issue flow.
+- **All candidates stale:** surface staleness warning, treat as <50% confidence.
+- **PR already has a resource link:** if the linked issue is still active, confirm before re-linking (standalone) / reuse it (pipeline); if closed, proceed with new matching.
+- **Network timeout:** retry once; if it fails again, mark the PR failed and continue.
 
 ---
 
-# 14. Example Outputs
-
-### New issue created
-
-```
-PR:
-feat/email-verification-schema
-
-New issue created:
-ENG-201 — Add email change verification schema
-
-Team:
-Engineering Platform
-
-Verification:
-Issue ENG-201 confirmed retrievable
-PR URL in ENG-201 links confirmed
-```
-
-### Wide refactor (Case 3)
+# 14. Example — Wide refactor (Case 3)
 
 ```
 Wide refactor detected: "Migrate forms to TanStack Form"
 
-Parent issue created:
-ENG-600 — Migrate all forms to TanStack Form
-
-Sub-issues:
-ENG-601 — Migrate login form (PR #183)
-ENG-602 — Migrate signup form (PR #184)
-ENG-603 — Migrate enrolment form (PR #185)
-ENG-604 — Migrate profile form (PR #186)
-ENG-605 — Migrate settings form (PR #187)
-
-Team:
-Engineering Platform
+Parent: ENG-600 — Migrate all forms to TanStack Form (refactor → Medium, Juhani, In Progress)
+Sub-issues (parentId=ENG-600, same params):
+  ENG-601 — Migrate login form    (PR #183)
+  ENG-602 — Migrate signup form   (PR #184)
+  ENG-603 — Migrate enrolment form (PR #185)
 
 Verification:
-- Parent issue creation confirmed
-- All 5 sub-issues created with parentId=ENG-600
-- All 5 PR URLs in respective sub-issues links fields
-- All 5 PR URLs in parent issue links field
-```
-
-### Existing issue linked (legacy format)
-
-```
-PR:
-feat/auth-session-cache
-
-Best match:
-ENG-142 — Improve session validation latency
-
-Confidence:
-91%
-
-Reasons:
-- exact title overlap
-- shared auth-service module
-- matching commit terminology
-
-Action:
-Linked existing issue via Linear links
-
-Verification:
-PR URL in Linear links confirmed
+- parent + 3 sub-issues created
+- each PR URL present in its sub-issue links
 ```
 
 ---

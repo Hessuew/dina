@@ -42,7 +42,7 @@ Stacks are ALWAYS created on top of the current active branch context in Graphit
 
 **One approval gate:** show the plan → user approves → full pipeline runs without further stops.
 
-**Exception:** if graphite-linear-connector (Phase 4) encounters a match confidence <80% on any PR, it pauses for that PR only. See pipeline mode contract in the connector skill.
+After the approval gate the full pipeline runs uninterrupted. graphite-linear-connector (Phase 4) resolves every PR automatically in pipeline mode — it never pauses, and auto-creates a Linear issue on low confidence. See the pipeline mode contract in the connector skill.
 
 **If repo state is unclear:**
 → stop and ask user before doing anything

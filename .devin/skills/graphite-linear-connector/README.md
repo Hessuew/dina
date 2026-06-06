@@ -39,10 +39,11 @@ Specify which PRs to process:
 1. Fetches PR data from Graphite (title, branch name, commit messages)
 2. Searches Linear issues in backlog, in progress, and todo states
 3. Performs semantic matching between PR content and Linear issues
-4. Applies threshold logic:
-   - **>70% similarity**: Asks you to confirm the match
-   - **<10% similarity**: Automatically creates new issue
-   - **10-70% similarity**: Asks you to decide
+4. Applies threshold logic (confidence → action):
+   - **95–100%**: strong auto-match suggestion
+   - **80–94%**: asks you to confirm the match
+   - **50–79%**: shows ambiguous candidates for you to choose
+   - **<50%**: new-issue flow (standalone always confirms before creating)
 5. Links matching issue to PR or creates new Linear issue
 
 ## New Issue Creation
@@ -51,9 +52,14 @@ When creating a new Linear issue:
 
 - You'll be asked which team to create it in
 - Title is generated from PR content
-- Description uses Linear's "recommended" template
-- Status set to "in progress"
-- Assigned to you
+- Description uses the exact template structure from `.devin/linear-issue-template.md` (Goal, Context, Requirements, Impact, Constraints)
+- Priority is auto-set based on commit type:
+  - `fix` → Urgent (priority 1)
+  - `feat` → High (priority 2)
+  - `refactor` → Medium (priority 3)
+  - `chore` → Low (priority 4)
+- Status set to "In Progress"
+- Assigned to Juhani Juusola
 - Issue ID added as resource to Graphite PR
 
 ## Requirements
