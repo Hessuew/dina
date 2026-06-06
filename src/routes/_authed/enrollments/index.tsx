@@ -2,7 +2,6 @@ import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { EyeIcon, FileTextIcon, UsersIcon } from 'lucide-react'
 import { toast } from 'sonner'
-import type { EnrollmentRow } from '@/components/table/EnrollmentsTable'
 import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.repository'
 import { Button } from '@/components/ui/button'
 import { EnrollmentsTable } from '@/components/table/EnrollmentsTable'
@@ -82,6 +81,7 @@ function EnrollmentsPage() {
     sortBy,
     sortDir,
     total,
+    viewAll,
     reviewId: review,
   })
 
@@ -223,7 +223,7 @@ function EnrollmentsPage() {
       </div>
 
       <EnrollmentsTable
-        enrollments={enrollments as Array<EnrollmentRow>}
+        enrollments={enrollments}
         onRefresh={handleRefresh}
         onReview={reviewState.open}
         isAdmin={isAdmin}

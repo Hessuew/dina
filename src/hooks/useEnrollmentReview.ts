@@ -21,6 +21,7 @@ type UseEnrollmentReviewArgs = {
   sortBy: EnrollmentSortKey
   sortDir: 'asc' | 'desc'
   total: number
+  viewAll: boolean
   reviewId?: string
 }
 
@@ -60,6 +61,7 @@ export function useEnrollmentReview({
   sortBy,
   sortDir,
   total,
+  viewAll,
   reviewId,
 }: UseEnrollmentReviewArgs) {
   const getEnrollmentsFn = useServerFn(getEnrollments)
@@ -102,7 +104,14 @@ export function useEnrollmentReview({
       loadingRef.current.add(targetPage)
       try {
         const res = await getEnrollmentsFn({
-          data: { page: targetPage, pageSize, search, sortBy, sortDir },
+          data: {
+            page: targetPage,
+            pageSize,
+            search,
+            sortBy,
+            sortDir,
+            viewAll,
+          },
         })
         const fetched = res.enrollments
         setEvalMap((prevMap) => {
@@ -124,7 +133,7 @@ export function useEnrollmentReview({
         loadingRef.current.delete(targetPage)
       }
     },
-    [getEnrollmentsFn, pageSize, search, sortBy, sortDir],
+    [getEnrollmentsFn, pageSize, search, sortBy, sortDir, viewAll],
   )
 
   const open = useCallback(

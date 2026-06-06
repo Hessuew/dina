@@ -101,6 +101,7 @@ type EnrollmentStatusChipProps = {
   status:
     | 'pending'
     | 'under_review'
+    | 'awaiting_approval'
     | 'approved'
     | 'rejected'
     | 'waitlisted'
@@ -119,6 +120,11 @@ const ENROLLMENT_STATUS_CONFIG = {
     icon: AlertCircle,
     label: 'Under review',
     classes: 'border-sky-500/28 bg-sky-950/40 text-sky-300',
+  },
+  awaiting_approval: {
+    icon: ShieldCheck,
+    label: 'Awaiting approval',
+    classes: 'border-[#C5A059]/50 bg-[#1A1716] text-[#E9D9B4]',
   },
   approved: {
     icon: CheckCircle2,
