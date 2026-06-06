@@ -1,6 +1,7 @@
 import {
   boolean,
   check,
+  index,
   integer,
   pgEnum,
   pgPolicy,
@@ -1013,6 +1014,53 @@ export const enrollmentEvaluations = pgTable(
   ],
 )
 
+export const enrollmentReviewerAssignments = pgTable(
+  'enrollment_reviewer_assignments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    enrollmentId: uuid('enrollment_id')
+      .notNull()
+      .unique()
+      .references(() => enrollments.id, { onDelete: 'cascade' }),
+    reviewerId: uuid('reviewer_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    assignedAt: timestamp('assigned_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('enrollment_reviewer_assignments_reviewer_enrollment_idx').on(
+      table.reviewerId,
+      table.enrollmentId,
+    ),
+    pgPolicy('admins_view_all_reviewer_assignments', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    pgPolicy('teachers_view_own_reviewer_assignments', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`reviewer_id = auth.uid() AND (SELECT role FROM profiles WHERE id = auth.uid()) = 'teacher'`,
+    }),
+    pgPolicy('admins_insert_reviewer_assignments', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    pgPolicy('admins_update_reviewer_assignments', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    pgPolicy('admins_delete_reviewer_assignments', {
+      for: 'delete',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+  ],
+)
+
 export const posts = pgTable(
   'posts',
   {
@@ -1250,6 +1298,7 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
   postNotifications: many(postNotifications),
   postReactions: many(postReactions),
   postCommentReactions: many(postCommentReactions),
+  reviewerAssignments: many(enrollmentReviewerAssignments),
 }))
 
 export const coursesRelations = relations(courses, ({ many }) => ({
@@ -1429,6 +1478,20 @@ export const postNotificationsRelations = relations(
     comment: one(postComments, {
       fields: [postNotifications.commentId],
       references: [postComments.id],
+    }),
+  }),
+)
+
+export const enrollmentReviewerAssignmentsRelations = relations(
+  enrollmentReviewerAssignments,
+  ({ one }) => ({
+    enrollment: one(enrollments, {
+      fields: [enrollmentReviewerAssignments.enrollmentId],
+      references: [enrollments.id],
+    }),
+    reviewer: one(profiles, {
+      fields: [enrollmentReviewerAssignments.reviewerId],
+      references: [profiles.id],
     }),
   }),
 )
