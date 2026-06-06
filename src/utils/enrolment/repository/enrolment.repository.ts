@@ -8,12 +8,15 @@ import {
   ilike,
   inArray,
   isNull,
+  ne,
+  notLike,
   or,
   sql,
 } from 'drizzle-orm'
 import type { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
 import {
+  courseTeachers,
   enrollmentEvaluations,
   enrollmentReviewerAssignments,
   enrollments,
@@ -50,6 +53,7 @@ export type FindEnrollmentsPageInput = {
   sortDir: 'asc' | 'desc'
   includeEmail: boolean
   reviewerFilter?: string
+  peerIds?: Array<string>
 }
 
 /* v8 ignore start */
@@ -69,6 +73,7 @@ export async function findEnrollmentsPage({
   sortDir,
   includeEmail,
   reviewerFilter,
+  peerIds = [],
 }: FindEnrollmentsPageInput) {
   const db = await getDb()
 
@@ -81,7 +86,8 @@ export async function findEnrollmentsPage({
         )
       : undefined
 
-  const reviewerCondition =
+  // Enrollments assigned to the viewer as their reviewer.
+  const assignedCondition =
     reviewerFilter !== undefined
       ? inArray(
           enrollments.id,
@@ -93,6 +99,28 @@ export async function findEnrollmentsPage({
             ),
         )
       : undefined
+
+  // Enrollments the viewer's course partner scored 3 or 4 (peer-review queue).
+  const peerCondition =
+    reviewerFilter !== undefined && peerIds.length > 0
+      ? inArray(
+          enrollments.id,
+          db
+            .select({ id: enrollmentEvaluations.enrollmentId })
+            .from(enrollmentEvaluations)
+            .where(
+              and(
+                inArray(enrollmentEvaluations.evaluatorId, peerIds),
+                inArray(enrollmentEvaluations.score, [3, 4]),
+              ),
+            ),
+        )
+      : undefined
+
+  const reviewerCondition =
+    assignedCondition && peerCondition
+      ? or(assignedCondition, peerCondition)
+      : assignedCondition
 
   const whereClause = and(searchFilter, reviewerCondition)
 
@@ -211,6 +239,17 @@ export async function updateEnrollmentStatusById(
     .where(eq(enrollments.id, enrollmentId))
 }
 
+export async function updateEnrollmentSpecialCaseById(
+  enrollmentId: string,
+  specialCase: boolean,
+) {
+  const db = await getDb()
+  await db
+    .update(enrollments)
+    .set({ specialCase, updatedAt: new Date() })
+    .where(eq(enrollments.id, enrollmentId))
+}
+
 export async function deleteEnrollmentById(enrollmentId: string) {
   const db = await getDb()
   await db.delete(enrollments).where(eq(enrollments.id, enrollmentId))
@@ -268,6 +307,7 @@ export async function markEnrollmentInvitationSent(
 
 export async function findUnassignedEnrollmentIds(): Promise<Array<string>> {
   const db = await getDb()
+
   const rows = await db
     .select({ id: enrollments.id })
     .from(enrollments)
@@ -275,8 +315,14 @@ export async function findUnassignedEnrollmentIds(): Promise<Array<string>> {
       enrollmentReviewerAssignments,
       eq(enrollmentReviewerAssignments.enrollmentId, enrollments.id),
     )
-    .where(isNull(enrollmentReviewerAssignments.id))
+    .where(
+      and(
+        isNull(enrollmentReviewerAssignments.id),
+        notLike(enrollments.email, 'duplicate_%'),
+      ),
+    )
     .orderBy(asc(enrollments.createdAt))
+
   return rows.map((r) => r.id)
 }
 
@@ -287,6 +333,28 @@ export async function findAllTeacherIds(): Promise<Array<string>> {
     .from(profiles)
     .where(inArray(profiles.role, ['teacher', 'admin']))
     .orderBy(asc(profiles.createdAt))
+  return rows.map((r) => r.id)
+}
+
+export async function findPeerTeacherIds(
+  userId: string,
+): Promise<Array<string>> {
+  const db = await getDb()
+  const rows = await db
+    .selectDistinct({ id: courseTeachers.teacherId })
+    .from(courseTeachers)
+    .where(
+      and(
+        inArray(
+          courseTeachers.courseId,
+          db
+            .select({ courseId: courseTeachers.courseId })
+            .from(courseTeachers)
+            .where(eq(courseTeachers.teacherId, userId)),
+        ),
+        ne(courseTeachers.teacherId, userId),
+      ),
+    )
   return rows.map((r) => r.id)
 }
 
