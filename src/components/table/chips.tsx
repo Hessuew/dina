@@ -7,6 +7,8 @@ import {
   Clock,
   GraduationCap,
   ShieldCheck,
+  UserCheck,
+  Users,
   XCircle,
 } from 'lucide-react'
 import type { AssignmentStatus, SubmissionStatus } from '@/types/database.types'
@@ -119,37 +121,37 @@ const ENROLLMENT_STATUS_CONFIG = {
   under_review: {
     icon: AlertCircle,
     label: 'Under review',
-    classes: 'border-sky-500/28 bg-sky-950/40 text-sky-300',
+    classes: 'border-sky-500/28 bg-sky-950/40 text-[#7dd3fc]',
   },
   awaiting_approval: {
     icon: ShieldCheck,
     label: 'Awaiting approval',
-    classes: 'border-[#C5A059]/50 bg-[#1A1716] text-[#E9D9B4]',
+    classes: 'border-[#C5A059]/50 bg-[#1A1716] text-[#c084fc]',
   },
   approved: {
     icon: CheckCircle2,
     label: 'Approved',
-    classes: 'border-emerald-500/30 bg-emerald-950/40 text-emerald-400',
+    classes: 'border-emerald-500/30 bg-emerald-950/40 text-[#34d399]',
   },
   rejected: {
     icon: XCircle,
     label: 'Rejected',
-    classes: 'border-red-500/28 bg-red-950/40 text-red-400',
+    classes: 'border-red-500/28 bg-red-950/40 text-[#f87171]',
   },
   waitlisted: {
     icon: CircleDot,
     label: 'Waitlisted',
-    classes: 'border-amber-500/28 bg-amber-950/40 text-amber-300',
+    classes: 'border-amber-500/28 bg-amber-950/40 text-[#fbbf24]',
   },
   withdrawn: {
     icon: Ban,
     label: 'Withdrawn',
-    classes: 'border-white/12 bg-white/4 text-[#8E816D]',
+    classes: 'border-white/12 bg-white/4 text-[#9ca3af]',
   },
   deferred: {
     icon: CircleDot,
     label: 'Deferred',
-    classes: 'border-orange-500/25 bg-orange-950/40 text-orange-300',
+    classes: 'border-orange-500/25 bg-orange-950/40 text-[#fde047]',
   },
 } as const
 
@@ -181,14 +183,14 @@ type PeerReviewChipProps = {
 
 const PEER_REVIEW_CONFIG = {
   under_peer_review: {
-    icon: Clock,
+    icon: Users,
     label: 'Under peer review',
-    classes: 'border-[#C5A059]/50 bg-[#1A1716] text-[#E9D9B4]',
+    color: 'text-[#f472b6]',
   },
   peer_reviewed: {
-    icon: CheckCircle2,
+    icon: UserCheck,
     label: 'Peer reviewed',
-    classes: 'border-emerald-500/30 bg-emerald-950/40 text-emerald-400',
+    color: 'text-[#22d3ee]',
   },
 } as const
 
@@ -199,12 +201,11 @@ export function PeerReviewChip({ state, className }: PeerReviewChipProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 border px-2.5 py-1 text-[0.65rem] font-medium tracking-[0.18em] uppercase',
-        config.classes,
+        'inline-flex items-center gap-1.5 text-[0.82rem] text-[#AFA28F]',
         className,
       )}
     >
-      <Icon className="size-3 shrink-0" />
+      <Icon className={cn('size-4 shrink-0', config.color)} />
       {config.label}
     </span>
   )

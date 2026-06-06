@@ -88,7 +88,7 @@ export function reduceScoreKey(
  */
 export function formatEvaluationSummary(sum: number, count: number): string {
   if (count === 0) return '—'
-  return `${sum} · ${count}`
+  return String(sum)
 }
 
 /** Label for a single score value. */

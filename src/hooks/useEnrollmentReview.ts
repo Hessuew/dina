@@ -162,7 +162,7 @@ export function useEnrollmentReview({
       try {
         const fetched = await loadPage(maxPage + 1, 'append')
         if (fetched.length > 0) {
-          setIndex(index + 1)
+          setIndex((current) => (current === null ? null : index + 1))
           syncReviewParam(fetched[0].id)
         }
       } catch {
@@ -182,7 +182,7 @@ export function useEnrollmentReview({
       try {
         const fetched = await loadPage(minPage - 1, 'prepend')
         if (fetched.length > 0) {
-          setIndex(fetched.length - 1)
+          setIndex((current) => (current === null ? null : fetched.length - 1))
           syncReviewParam(fetched[fetched.length - 1].id)
         }
       } catch {

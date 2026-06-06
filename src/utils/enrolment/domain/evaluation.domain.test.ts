@@ -86,12 +86,12 @@ describe('formatEvaluationSummary', () => {
     expect(formatEvaluationSummary(0, 0)).toBe('—')
   })
 
-  it('renders positive sums without a plus', () => {
-    expect(formatEvaluationSummary(7, 3)).toBe('7 · 3')
+  it('renders the sum only', () => {
+    expect(formatEvaluationSummary(7, 3)).toBe('7')
   })
 
   it('shows zero without a sign', () => {
-    expect(formatEvaluationSummary(0, 4)).toBe('0 · 4')
+    expect(formatEvaluationSummary(0, 4)).toBe('0')
   })
 })
 

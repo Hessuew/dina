@@ -202,28 +202,6 @@ export function EnrollmentsTable({
       ),
       header: 'YOB',
     }),
-    columnHelper.accessor('status', {
-      cell: (info) => <EnrollmentStatusChip status={info.getValue()} />,
-      header: 'Status',
-    }),
-    // ...(isAdmin
-    //   ? [
-    //       columnHelper.accessor('invitationSent', {
-    //         cell: (info) => {
-    //           const sent = info.getValue()
-    //           return sent ? (
-    //             <span className="inline-flex items-center gap-1.5 text-emerald-400">
-    //               <CheckCircle2 className="size-3.5" />
-    //               Sent
-    //             </span>
-    //           ) : (
-    //             <span className="text-[#8E816D]">—</span>
-    //           )
-    //         },
-    //         header: 'Invitation',
-    //       }),
-    //     ]
-    //   : []),
     columnHelper.accessor('evaluationSum', {
       cell: (info) => {
         const count = info.row.original.evaluationCount
@@ -249,6 +227,28 @@ export function EnrollmentsTable({
       },
       header: 'Peer review',
     }),
+    columnHelper.accessor('status', {
+      cell: (info) => <EnrollmentStatusChip status={info.getValue()} />,
+      header: 'Status',
+    }),
+    // ...(isAdmin
+    //   ? [
+    //       columnHelper.accessor('invitationSent', {
+    //         cell: (info) => {
+    //           const sent = info.getValue()
+    //           return sent ? (
+    //             <span className="inline-flex items-center gap-1.5 text-emerald-400">
+    //               <CheckCircle2 className="size-3.5" />
+    //               Sent
+    //             </span>
+    //           ) : (
+    //             <span className="text-[#8E816D]">—</span>
+    //           )
+    //         },
+    //         header: 'Invitation',
+    //       }),
+    //     ]
+    //   : []),
     columnHelper.accessor('createdAt', {
       cell: (info) => format(new Date(info.getValue()), 'MMM d, yyyy'),
       header: 'Submitted',

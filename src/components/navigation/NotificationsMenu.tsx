@@ -131,6 +131,7 @@ export function NotificationsMenu({ variant }: { variant: 'light' | 'dark' }) {
           <DropdownMenuTrigger
             render={
               <SidebarMenuButton
+                tooltip="Notifications"
                 className={cn(
                   'h-10 rounded-none transition-all',
                   isDark

@@ -125,7 +125,7 @@ export async function findEnrollmentsPage({
   const whereClause = and(searchFilter, reviewerCondition)
 
   const evaluationSum = sql<number>`coalesce(sum(${enrollmentEvaluations.score}), 0)::int`
-  const evaluationCount = sql<number>`count(${enrollmentEvaluations.id})::int`
+  const evaluationCount = sql<number>`count(${enrollmentEvaluations.score})::int`
 
   const primaryOrder =
     sortBy === 'evaluationSum'
