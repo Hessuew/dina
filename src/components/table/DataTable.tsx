@@ -86,6 +86,7 @@ type DataTableProps<TData> = {
   isLoading?: boolean
   loadingLabel?: string
   emptyMessage?: string
+  rowClassName?: (row: TData) => string
 }
 
 export function createButtonColumn<TData>(
@@ -154,6 +155,7 @@ export function DataTable<TData>({
   isLoading = false,
   loadingLabel = 'Loading…',
   emptyMessage = 'No results found',
+  rowClassName,
 }: DataTableProps<TData>) {
   const isServerMode = rowCount !== undefined
   const tableTopRef = useRef<HTMLDivElement>(null)
@@ -345,7 +347,10 @@ export function DataTable<TData>({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="border-b border-white/8 transition-colors last:border-b-0 hover:bg-white/4"
+                  className={cn(
+                    'border-b border-white/8 transition-colors last:border-b-0 hover:bg-white/4',
+                    rowClassName?.(row.original),
+                  )}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell

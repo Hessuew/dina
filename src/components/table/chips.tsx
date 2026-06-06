@@ -168,6 +168,42 @@ export function EnrollmentStatusChip({
   )
 }
 
+type PeerReviewChipProps = {
+  state: 'under_peer_review' | 'peer_reviewed'
+  className?: string
+}
+
+const PEER_REVIEW_CONFIG = {
+  under_peer_review: {
+    icon: Clock,
+    label: 'Under peer review',
+    classes: 'border-[#C5A059]/50 bg-[#1A1716] text-[#E9D9B4]',
+  },
+  peer_reviewed: {
+    icon: CheckCircle2,
+    label: 'Peer reviewed',
+    classes: 'border-emerald-500/30 bg-emerald-950/40 text-emerald-400',
+  },
+} as const
+
+export function PeerReviewChip({ state, className }: PeerReviewChipProps) {
+  const config = PEER_REVIEW_CONFIG[state]
+  const Icon = config.icon
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 border px-2.5 py-1 text-[0.65rem] font-medium tracking-[0.18em] uppercase',
+        config.classes,
+        className,
+      )}
+    >
+      <Icon className="size-3 shrink-0" />
+      {config.label}
+    </span>
+  )
+}
+
 type SubmissionStatusChipProps = {
   status: SubmissionStatus
   className?: string

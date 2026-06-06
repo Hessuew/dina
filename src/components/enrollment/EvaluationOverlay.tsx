@@ -21,7 +21,6 @@ import {
   ADMISSION_CATEGORY_OPTIONS,
   EVALUATION_SCORES,
   EVALUATION_SCORE_LABELS,
-  formatEvaluationSummary,
   formatScore,
   reduceScoreKey,
   scoreRequiresAdmissionCategory,
@@ -115,22 +114,31 @@ function AdmissionCategoryButton({
   onClick: (category: AdmissionCategory) => void
 }) {
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => onClick(category)}
-      className={cn(
-        'flex h-9 items-center gap-2 rounded-none border px-3 text-sm transition-colors',
-        active
-          ? 'border-[#C5A059] bg-[#C5A059]/20 text-[#E9D9B4]'
-          : 'border-white/10 bg-[#1A1716] text-[#AFA28F] hover:border-white/25 hover:text-[#F8F4EC]',
-        disabled &&
-          'pointer-events-none border-white/5 bg-[#111111] text-[#5F574D] opacity-55',
-      )}
-    >
-      <span className="font-serif text-base text-[#E9D9B4]">{shortcut}</span>
-      <span>{label}</span>
-    </button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onClick(category)}
+            aria-label={`${shortcut}: ${label}`}
+            className={cn(
+              'flex h-9 w-9 items-center justify-center rounded-none border font-serif text-base transition-colors',
+              active
+                ? 'border-[#C5A059] bg-[#C5A059]/20 text-[#E9D9B4]'
+                : 'border-white/10 bg-[#1A1716] text-[#AFA28F] hover:border-white/25 hover:text-[#F8F4EC]',
+              disabled &&
+                'pointer-events-none border-white/5 bg-[#111111] text-[#5F574D] opacity-55',
+            )}
+          >
+            {shortcut}
+          </button>
+        }
+      />
+      <TooltipContent className="bg-[#F8F4EC] text-[#1C1815]">
+        {label}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -187,12 +195,6 @@ function NoteEditor({
 
   return (
     <div>
-      <div className="mb-1.5 flex items-center gap-2">
-        <span className="text-[0.62rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-          Your note
-        </span>
-        <SaveStatus state={state} />
-      </div>
       <textarea
         ref={textareaRef}
         value={value}
@@ -207,6 +209,9 @@ function NoteEditor({
         placeholder="Optional note… (Enter to finish, Shift+Enter for newline)"
         className="w-full resize-none rounded-none border border-white/10 bg-[#1A1716] px-3 py-2 text-sm text-[#F8F4EC] placeholder:text-[#8E816D] focus-visible:border-[#C5A059]/40 focus-visible:outline-none"
       />
+      <div className="mt-1 flex justify-end">
+        <SaveStatus state={state} />
+      </div>
     </div>
   )
 }
@@ -216,7 +221,6 @@ type EvaluationOverlayProps = {
   evaluations: Array<EvaluationWithAuthor>
   isAdmin: boolean
   userId: string
-  position: number
   hasPrev: boolean
   hasNext: boolean
   onPrev: () => void
@@ -237,7 +241,6 @@ export function EvaluationOverlay({
   evaluations,
   isAdmin,
   userId,
-  position,
   hasPrev,
   hasNext,
   onPrev,
@@ -285,9 +288,6 @@ export function EvaluationOverlay({
   const otherNotes = evaluations.filter(
     (e) => e.evaluatorId !== userId && e.note && e.note.trim().length > 0,
   )
-
-  const liveSum = evaluations.reduce((acc, e) => acc + (e.score ?? 0), 0)
-  const liveCount = evaluations.length
 
   const saveScore = useCallback(
     (score: number | null) => {
@@ -431,17 +431,31 @@ export function EvaluationOverlay({
       {/* Evaluation panel — sits on top of the application content */}
       <div className="border-b border-white/10 bg-[#151515]/95">
         <div className="mx-auto w-full max-w-5xl px-6 py-4">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
                 {enrollment.fullLegalName}
               </h2>
-              <p className="mt-1 text-[0.66rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-                Evaluating #{position} · Total{' '}
-                {formatEvaluationSummary(liveSum, liveCount)}
-              </p>
+              {evaluations.filter((e) => e.evaluatorId !== userId).length >
+                0 && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  {evaluations
+                    .filter((e) => e.evaluatorId !== userId)
+                    .map((e) => (
+                      <span
+                        key={e.evaluatorId}
+                        className="text-sm text-[#AFA28F]"
+                      >
+                        {e.evaluatorName}:{' '}
+                        <span className="font-serif text-lg font-medium text-[#E9D9B4]">
+                          {e.score !== null ? formatScore(e.score) : '—'}
+                        </span>
+                      </span>
+                    ))}
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <Link
                 to="/enrollments/$enrollmentId"
                 params={{ enrollmentId: enrollment.id }}
@@ -461,10 +475,11 @@ export function EvaluationOverlay({
             </div>
           </div>
 
-          {/* Score pad */}
-          <div className="mt-4 flex flex-wrap items-start gap-5">
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-1.5">
+          {/* Compact control strip */}
+          <div className="mt-3 flex items-start gap-4">
+            {/* Column 1: score buttons (row 1) + category buttons (row 2) */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex gap-1">
                 {EVALUATION_SCORES.map((value) => (
                   <ScoreButton
                     key={value}
@@ -474,34 +489,33 @@ export function EvaluationOverlay({
                   />
                 ))}
               </div>
-              <div>
-                <div className="mb-1.5 flex items-center gap-2">
-                  <span className="text-[0.62rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-                    Admission category
-                  </span>
-                  <SaveStatus state={categoryState} />
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {ADMISSION_CATEGORY_OPTIONS.map((option) => (
-                    <AdmissionCategoryButton
-                      key={option.value}
-                      category={option.value}
-                      shortcut={option.shortcut}
-                      label={option.label}
-                      active={myAdmissionCategory === option.value}
-                      disabled={!admissionCategoryEnabled}
-                      onClick={saveAdmissionCategory}
-                    />
-                  ))}
-                </div>
-                {admissionCategoryMissing && (
-                  <p className="mt-1.5 text-xs text-[#C5A059]">
-                    Select A, B, or C for admission scores.
-                  </p>
-                )}
+              <div className="flex items-center gap-1.5">
+                {ADMISSION_CATEGORY_OPTIONS.map((option) => (
+                  <AdmissionCategoryButton
+                    key={option.value}
+                    category={option.value}
+                    shortcut={option.shortcut}
+                    label={option.label}
+                    active={myAdmissionCategory === option.value}
+                    disabled={!admissionCategoryEnabled}
+                    onClick={saveAdmissionCategory}
+                  />
+                ))}
+                <span
+                  className={cn(
+                    'text-[0.62rem] font-medium tracking-[0.18em] uppercase',
+                    admissionCategoryMissing
+                      ? 'text-[#C5A059]'
+                      : 'text-[#8E816D]',
+                  )}
+                >
+                  Category
+                </span>
+                <SaveStatus state={categoryState} />
               </div>
             </div>
-            <div className="flex flex-col items-center gap-1 pl-2">
+            {/* Column 2: your score + save status */}
+            <div className="flex flex-col items-center gap-1">
               <span className="text-[0.62rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
                 Your score
               </span>
@@ -510,7 +524,8 @@ export function EvaluationOverlay({
               </span>
               <SaveStatus state={scoreState} />
             </div>
-            <div className="min-w-72 flex-1">
+            {/* Column 3: note */}
+            <div className="min-w-64 flex-1">
               <NoteEditor
                 key={enrollment.id}
                 initialNote={myNote}
