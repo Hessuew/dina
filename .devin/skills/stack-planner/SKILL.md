@@ -214,6 +214,9 @@ gh pr edit <PR-number> --body-file /tmp/pr-<PR-number>.md
 **Description contract** (matches `.github/PULL_REQUEST_TEMPLATE.md`):
 
 ```markdown
+**Related Linear Issue:** <Linear-issue-url>
+<Include this header only if Phase 4 returned a Linear issue for this PR>
+
 ## What
 
 <1-sentence summary derived from the commit title for this PR>
@@ -227,11 +230,6 @@ gh pr edit <PR-number> --body-file /tmp/pr-<PR-number>.md
 
 <Intent-level bullets describing what behavior changed in this PR's slice only>
 <Not file names — what behavior, what the user/system experiences differently>
-
----
-
-**Related Linear Issue:** <Linear-issue-url>
-<Include this footer only if Phase 4 returned a Linear issue for this PR>
 ```
 
 **Sources per PR:**
