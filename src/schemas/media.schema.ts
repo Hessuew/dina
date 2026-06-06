@@ -47,5 +47,7 @@ export type UpdateMediaInput = z.infer<typeof updateMediaSchema>
 export type DeleteMediaInput = z.infer<typeof deleteMediaSchema>
 export type GetMediaInput = z.infer<typeof getMediaSchema>
 export type UploadMediaPdfInput = z.infer<typeof uploadMediaPdfSchema>
-export type UploadMediaThumbnailInput = z.infer<typeof uploadMediaThumbnailSchema>
+export type UploadMediaThumbnailInput = z.infer<
+  typeof uploadMediaThumbnailSchema
+>
 export type MediaKind = z.infer<typeof mediaKindEnum>

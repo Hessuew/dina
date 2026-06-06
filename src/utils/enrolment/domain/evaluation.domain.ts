@@ -28,7 +28,8 @@ export const ADMISSION_CATEGORY_OPTIONS = [
   },
 ] as const
 
-export type AdmissionCategory = (typeof ADMISSION_CATEGORY_OPTIONS)[number]['value']
+export type AdmissionCategory =
+  (typeof ADMISSION_CATEGORY_OPTIONS)[number]['value']
 
 export type ScoreKeyResult = {
   /** Next score value (0..4) or null when cleared. */
@@ -71,7 +72,11 @@ export function reduceScoreKey(
     return { score: next, handled: true, changed: true }
   }
 
-  return { score: current as EvaluationScore | null, handled: false, changed: false }
+  return {
+    score: current as EvaluationScore | null,
+    handled: false,
+    changed: false,
+  }
 }
 
 /**

@@ -36,9 +36,8 @@ export function EmailChangeVerificationEmail({
       <Section style={infoBox}>
         <Text style={infoLabel}>Security Notice</Text>
         <Text style={infoText}>
-          This link will expire in{' '}
-          <strong style={strongText}>24 hours</strong>. If you did not request
-          this change, you can safely ignore this email.
+          This link will expire in <strong style={strongText}>24 hours</strong>.
+          If you did not request this change, you can safely ignore this email.
         </Text>
       </Section>
     </BaseEmail>

@@ -14,12 +14,14 @@ Teachers needed visibility into applicant submissions to support their teaching 
 Relax the enrollment read guard from admin-only to teacher-or-admin, with server-side field redaction for non-admin viewers.
 
 **What teachers see (read-only):**
+
 - Full legal name, preferred name, year of birth, gender, nationality/citizenship
 - Current city/country, church affiliations
 - Personal essays (aboutYourself, expectationsAlignment)
 - Enrollment status, submission date
 
 **Hidden from teachers (stripped server-side, never sent to client):**
+
 - Email address
 - Phone/WhatsApp
 - Invitation tracking fields (invitationSent, invitationId)

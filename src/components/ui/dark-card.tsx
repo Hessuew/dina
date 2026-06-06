@@ -7,7 +7,12 @@ interface DarkCardProps extends React.ComponentProps<'div'> {
   children: React.ReactElement
 }
 
-export function DarkCard({ label, children, className, ...props }: DarkCardProps) {
+export function DarkCard({
+  label,
+  children,
+  className,
+  ...props
+}: DarkCardProps) {
   return (
     <div className={cn('bg-[#151515]/88 px-6 py-6', className)} {...props}>
       <div className="h-px w-8 bg-[#C5A059]/40" />

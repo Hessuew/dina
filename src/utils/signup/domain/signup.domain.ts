@@ -15,7 +15,10 @@ export function calculateOtpExpiry(now: Date): Date {
   return new Date(now.getTime() + OTP_EXPIRY_MS)
 }
 
-export function checkOtpResendCooldown(otpExpiresAt: Date | null, now: Date): number | null {
+export function checkOtpResendCooldown(
+  otpExpiresAt: Date | null,
+  now: Date,
+): number | null {
   if (!otpExpiresAt) return null
   const lastSentAt = new Date(otpExpiresAt.getTime() - OTP_EXPIRY_MS)
   const timeSinceMs = now.getTime() - lastSentAt.getTime()
@@ -24,17 +27,30 @@ export function checkOtpResendCooldown(otpExpiresAt: Date | null, now: Date): nu
 }
 
 export function validateOtpRecord(
-  record: { otpHash: string | null; otpExpiresAt: Date | null; attempts: number },
+  record: {
+    otpHash: string | null
+    otpExpiresAt: Date | null
+    attempts: number
+  },
   now: Date,
 ): { valid: boolean; message: string } {
   if (!record.otpHash || !record.otpExpiresAt) {
-    return { valid: false, message: 'No verification code found. Please request a new one.' }
+    return {
+      valid: false,
+      message: 'No verification code found. Please request a new one.',
+    }
   }
   if (now > record.otpExpiresAt) {
-    return { valid: false, message: 'Verification code has expired. Please request a new one.' }
+    return {
+      valid: false,
+      message: 'Verification code has expired. Please request a new one.',
+    }
   }
   if (record.attempts >= 5) {
-    return { valid: false, message: 'Too many failed attempts. Please request a new code.' }
+    return {
+      valid: false,
+      message: 'Too many failed attempts. Please request a new code.',
+    }
   }
   return { valid: true, message: '' }
 }
@@ -45,7 +61,10 @@ export function validateSignupInvitation(
   now: Date,
 ): { valid: boolean; message: string } {
   if (invitation.status !== 'pending') {
-    return { valid: false, message: 'This invitation has already been used or revoked' }
+    return {
+      valid: false,
+      message: 'This invitation has already been used or revoked',
+    }
   }
   if (now > invitation.expiresAt) {
     return { valid: false, message: 'This invitation has expired' }

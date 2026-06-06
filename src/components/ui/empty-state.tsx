@@ -31,9 +31,7 @@ export function EmptyState({
 
   const content = (
     <div className="flex flex-col items-center justify-center text-center">
-      {Icon && (
-        <Icon className="mb-4 size-10 text-[#C5A059]/30" />
-      )}
+      {Icon && <Icon className="mb-4 size-10 text-[#C5A059]/30" />}
       {heading && (
         <h3 className="font-serif text-lg text-[#1C1815]">{heading}</h3>
       )}

@@ -34,10 +34,7 @@ export async function createCommentWithNotification(
   data: CreateCommentInput,
   userId: string,
 ): Promise<{ comment: CommentWithAuthor }> {
-  const { comment, postAuthorId } = await createCommentBaseService(
-    data,
-    userId,
-  )
+  const { comment, postAuthorId } = await createCommentBaseService(data, userId)
 
   const event = createCommentCreatedEvent(
     userId,

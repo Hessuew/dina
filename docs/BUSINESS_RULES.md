@@ -175,16 +175,16 @@ export function StudentCard({ student, onSelect }: StudentCardProps) {
 
 ### Permission Matrix
 
-| Feature                | Visitor | Student | Teacher | Admin |
-| ---------------------- | ------- | ------- | ------- | ----- |
-| Landing Page           | ✓       | ✓       | ✓       | ✓     |
-| View Courses           | ✗       | ✓       | ✓       | ✓     |
-| Submit Inquiries       | ✗       | ✓       | ✗       | ✓     |
-| Manage Courses         | ✗       | ✗       | ✓       | ✓     |
-| View All Students      | ✗       | ✗       | ✓       | ✓     |
-| View Enrollments¹      | ✗       | ✗       | ✓       | ✓     |
-| User Management        | ✗       | ✗       | ✗       | ✓     |
-| Manage Enrollments     | ✗       | ✗       | ✗       | ✓     |
+| Feature            | Visitor | Student | Teacher | Admin |
+| ------------------ | ------- | ------- | ------- | ----- |
+| Landing Page       | ✓       | ✓       | ✓       | ✓     |
+| View Courses       | ✗       | ✓       | ✓       | ✓     |
+| Submit Inquiries   | ✗       | ✓       | ✗       | ✓     |
+| Manage Courses     | ✗       | ✗       | ✓       | ✓     |
+| View All Students  | ✗       | ✗       | ✓       | ✓     |
+| View Enrollments¹  | ✗       | ✗       | ✓       | ✓     |
+| User Management    | ✗       | ✗       | ✗       | ✓     |
+| Manage Enrollments | ✗       | ✗       | ✗       | ✓     |
 
 ¹ Teacher view is read-only; email, phone/WhatsApp, and invitation tracking fields are redacted (stripped server-side).
 

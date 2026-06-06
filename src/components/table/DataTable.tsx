@@ -158,8 +158,9 @@ export function DataTable<TData>({
   const isServerMode = rowCount !== undefined
   const tableTopRef = useRef<HTMLDivElement>(null)
 
-  const initialSortingState: SortingState =
-    initialSortBy ? [{ id: initialSortBy, desc: initialSortDir === 'desc' }] : []
+  const initialSortingState: SortingState = initialSortBy
+    ? [{ id: initialSortBy, desc: initialSortDir === 'desc' }]
+    : []
 
   const [sorting, setSorting] = useState<SortingState>(initialSortingState)
   const [globalFilter, setGlobalFilter] = useState(initialSearch)
@@ -224,7 +225,10 @@ export function DataTable<TData>({
         onPageSizeChange?.(next.pageSize)
       } else if (next.pageIndex !== pagination.pageIndex) {
         onPageChange?.(next.pageIndex + 1)
-        tableTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        tableTopRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
       }
     },
     onSortingChange: handleSortingChange,
@@ -245,7 +249,11 @@ export function DataTable<TData>({
     : [...PAGE_SIZE_OPTIONS, pageSize].sort((a, b) => a - b)
 
   return (
-    <div ref={tableTopRef} className="flex flex-col gap-4" aria-busy={isLoading}>
+    <div
+      ref={tableTopRef}
+      className="flex flex-col gap-4"
+      aria-busy={isLoading}
+    >
       {/* Search bar */}
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-[#8E816D]" />

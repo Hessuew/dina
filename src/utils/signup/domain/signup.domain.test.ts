@@ -44,7 +44,9 @@ describe('hashValue', () => {
 describe('calculateOtpExpiry', () => {
   it('returns a date 10 minutes after now', () => {
     const now = at('2026-01-01T12:00:00Z')
-    expect(calculateOtpExpiry(now).getTime()).toBe(now.getTime() + 10 * 60 * 1000)
+    expect(calculateOtpExpiry(now).getTime()).toBe(
+      now.getTime() + 10 * 60 * 1000,
+    )
   })
 })
 
@@ -119,10 +121,18 @@ describe('validateOtpRecord', () => {
 })
 
 describe('validateSignupInvitation', () => {
-  const base = { status: 'pending', expiresAt: at('2099-01-01T00:00:00Z'), email: 'user@test.com' }
+  const base = {
+    status: 'pending',
+    expiresAt: at('2099-01-01T00:00:00Z'),
+    email: 'user@test.com',
+  }
 
   it('returns valid for active pending invitation with matching email', () => {
-    const result = validateSignupInvitation(base, 'user@test.com', at('2026-01-01T00:00:00Z'))
+    const result = validateSignupInvitation(
+      base,
+      'user@test.com',
+      at('2026-01-01T00:00:00Z'),
+    )
     expect(result.valid).toBe(true)
   })
 
@@ -156,7 +166,11 @@ describe('validateSignupInvitation', () => {
   })
 
   it('returns invalid when email does not match', () => {
-    const result = validateSignupInvitation(base, 'other@test.com', at('2026-01-01T00:00:00Z'))
+    const result = validateSignupInvitation(
+      base,
+      'other@test.com',
+      at('2026-01-01T00:00:00Z'),
+    )
     expect(result.valid).toBe(false)
     expect(result.message).toContain('Email does not match')
   })

@@ -77,7 +77,11 @@ describe('toUserError', () => {
   })
 
   it('handles serialized AppError shape (has userMessage field)', () => {
-    const serialized = { code: 'NOT_FOUND', userMessage: 'item missing', status: 404 }
+    const serialized = {
+      code: 'NOT_FOUND',
+      userMessage: 'item missing',
+      status: 404,
+    }
     expect(toUserError(serialized)).toEqual({
       code: 'NOT_FOUND',
       message: 'item missing',
@@ -86,7 +90,11 @@ describe('toUserError', () => {
   })
 
   it('handles serialized Error shape (has message field, no userMessage)', () => {
-    const serialized = { code: 'NOT_FOUND', message: 'item missing', status: 404 }
+    const serialized = {
+      code: 'NOT_FOUND',
+      message: 'item missing',
+      status: 404,
+    }
     expect(toUserError(serialized)).toEqual({
       code: 'NOT_FOUND',
       message: 'item missing',

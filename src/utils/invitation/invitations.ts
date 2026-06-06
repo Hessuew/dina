@@ -38,10 +38,12 @@ export const getInvitationByToken = createServerFn({ method: 'GET' })
     return getInvitationByTokenService(data)
   })
 
-export const getInvitations = createServerFn({ method: 'POST' }).handler(async () => {
-  const user = await getCurrentUser()
-  return getInvitationsService(user.id)
-})
+export const getInvitations = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const user = await getCurrentUser()
+    return getInvitationsService(user.id)
+  },
+)
 
 export const getInvitationByEmail = createServerFn({ method: 'GET' })
   .inputValidator(checkInvitationByEmailSchema)

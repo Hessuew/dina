@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { buildCalendarEvents } from './calendar.domain'
 
-const makeLesson = (overrides: Partial<{
-  id: string
-  title: string
-  scheduledTime: Date | null
-  courseId: string
-  courseName: string
-  content: string | null
-  duration: number | null
-}> = {}) => ({
+const makeLesson = (
+  overrides: Partial<{
+    id: string
+    title: string
+    scheduledTime: Date | null
+    courseId: string
+    courseName: string
+    content: string | null
+    duration: number | null
+  }> = {},
+) => ({
   id: 'l-1',
   title: 'Lesson 1',
   scheduledTime: new Date('2024-06-01T10:00:00Z'),
@@ -20,15 +22,17 @@ const makeLesson = (overrides: Partial<{
   ...overrides,
 })
 
-const makeAssignment = (overrides: Partial<{
-  id: string
-  title: string
-  dueDate: Date
-  courseId: string
-  courseName: string
-  description: string | null
-  maxGrade: number | null
-}> = {}) => ({
+const makeAssignment = (
+  overrides: Partial<{
+    id: string
+    title: string
+    dueDate: Date
+    courseId: string
+    courseName: string
+    description: string | null
+    maxGrade: number | null
+  }> = {},
+) => ({
   id: 'a-1',
   title: 'Assignment 1',
   dueDate: new Date('2024-06-02T10:00:00Z'),
@@ -39,14 +43,16 @@ const makeAssignment = (overrides: Partial<{
   ...overrides,
 })
 
-const makeSpecialEvent = (overrides: Partial<{
-  id: string
-  title: string
-  startTime: Date
-  courseId: string | null
-  description: string | null
-  category: 'exam' | 'chapel' | 'personal' | null
-}> = {}) => ({
+const makeSpecialEvent = (
+  overrides: Partial<{
+    id: string
+    title: string
+    startTime: Date
+    courseId: string | null
+    description: string | null
+    category: 'exam' | 'chapel' | 'personal' | null
+  }> = {},
+) => ({
   id: 'e-1',
   title: 'Special Event',
   startTime: new Date('2024-06-03T10:00:00Z'),
@@ -75,18 +81,28 @@ describe('buildCalendarEvents', () => {
   })
 
   it('excludes lessons with null scheduledTime', () => {
-    expect(buildCalendarEvents([makeLesson({ scheduledTime: null })], [], [])).toEqual([])
+    expect(
+      buildCalendarEvents([makeLesson({ scheduledTime: null })], [], []),
+    ).toEqual([])
   })
 
   it('maps an assignment to CalendarEvent with type "assignment" and maxGrade', () => {
-    const [result] = buildCalendarEvents([], [makeAssignment({ maxGrade: 50 })], [])
+    const [result] = buildCalendarEvents(
+      [],
+      [makeAssignment({ maxGrade: 50 })],
+      [],
+    )
     expect(result.type).toBe('assignment')
     expect(result.id).toBe('a-1')
     expect(result.maxGrade).toBe(50)
   })
 
   it('maps a special event with null courseId to empty string courseId', () => {
-    const [result] = buildCalendarEvents([], [], [makeSpecialEvent({ category: 'exam' })])
+    const [result] = buildCalendarEvents(
+      [],
+      [],
+      [makeSpecialEvent({ category: 'exam' })],
+    )
     expect(result.type).toBe('special')
     expect(result.courseId).toBe('')
     expect(result.courseName).toBe('')

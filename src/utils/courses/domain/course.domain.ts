@@ -46,11 +46,19 @@ export function extractTeacherIds(courseTeachers: Array<CourseTeacherLike>) {
   }
 }
 
-export function buildCoursesWithProgress<T extends { lessons: Array<{ id: string }> }>(
+export function buildCoursesWithProgress<
+  T extends { lessons: Array<{ id: string }> },
+>(
   courses: Array<T>,
   assignments: Array<AssignmentRef>,
   submissions: Array<SubmissionRef>,
-): Array<T & { totalAssignments: number; submittedAssignments: number; gradedAssignments: number }> {
+): Array<
+  T & {
+    totalAssignments: number
+    submittedAssignments: number
+    gradedAssignments: number
+  }
+> {
   const assignmentsByLessonId = new Map<string, Array<AssignmentRef>>()
   for (const assignment of assignments) {
     const existing = assignmentsByLessonId.get(assignment.lessonId)
@@ -78,10 +86,8 @@ export function buildCoursesWithProgress<T extends { lessons: Array<{ id: string
     const courseSubmissions = courseAssignments.flatMap(
       (assignment) => submissionsByAssignmentId.get(assignment.id) ?? [],
     )
-    const { totalAssignments, submittedCount, gradedCount } = buildAssignmentStats(
-      courseAssignments,
-      courseSubmissions,
-    )
+    const { totalAssignments, submittedCount, gradedCount } =
+      buildAssignmentStats(courseAssignments, courseSubmissions)
     return {
       ...course,
       submittedAssignments: submittedCount,
@@ -97,7 +103,10 @@ export function buildCourseCalendarEvents(
 ): Array<CourseCalendarEvent> {
   return [
     ...lessonEvents
-      .filter((l): l is LessonEventRow & { scheduledTime: Date } => l.scheduledTime !== null)
+      .filter(
+        (l): l is LessonEventRow & { scheduledTime: Date } =>
+          l.scheduledTime !== null,
+      )
       .map((l) => ({
         id: l.id,
         title: l.title,

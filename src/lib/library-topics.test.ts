@@ -22,7 +22,7 @@ describe('buildShelves', () => {
     { id: '3', category: 'Wisdom', fileType: 'audio' },
     { id: '4', category: 'Healing', fileType: 'document' },
     { id: '5', category: 'General', fileType: 'document' }, // not a valid topic
-    { id: '6', category: 'Wisdom', fileType: 'image' },     // not ebook or AV
+    { id: '6', category: 'Wisdom', fileType: 'image' }, // not ebook or AV
   ] as const
 
   it('puts documents in ebooks', () => {

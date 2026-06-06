@@ -48,25 +48,32 @@ exclude: ['src/domain/index.ts'],
 
 ```ts
 // students.ts — service layer
-import { findAllStudents, findAllCourses, findAllAssignments, findStudentSubmissions } from './repository/student.repository'
+import {
+  findAllStudents,
+  findAllCourses,
+  findAllAssignments,
+  findStudentSubmissions,
+} from './repository/student.repository'
 import { buildStudentWithStats } from './domain/student.domain'
 
-export const getStudents = createServerFn({ method: 'POST' }).handler(async () => {
-  const [students, courses, assignments] = await Promise.all([
-    findAllStudents(),
-    findAllCourses(),
-    findAllAssignments(),
-  ])
+export const getStudents = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const [students, courses, assignments] = await Promise.all([
+      findAllStudents(),
+      findAllCourses(),
+      findAllAssignments(),
+    ])
 
-  const studentsWithStats = await Promise.all(
-    students.map(async (student) => {
-      const submissions = await findStudentSubmissions(student.id)
-      return buildStudentWithStats(student, submissions, courses, assignments)
-    }),
-  )
+    const studentsWithStats = await Promise.all(
+      students.map(async (student) => {
+        const submissions = await findStudentSubmissions(student.id)
+        return buildStudentWithStats(student, submissions, courses, assignments)
+      }),
+    )
 
-  return { students: studentsWithStats }
-})
+    return { students: studentsWithStats }
+  },
+)
 ```
 
 The service reads like a spec. The DB details live in the repository. The business rules live in the domain.
@@ -78,6 +85,7 @@ The service reads like a spec. The DB details live in the repository. The busine
 Refactor `src/utils/student/students.ts` into the three-layer structure.
 
 **Repository functions to extract:**
+
 - `findAllStudents()` — profiles where role = 'student'
 - `findAllCourses()` — all courses
 - `findAllAssignments()` — assignments joined with lessons and courses
@@ -86,18 +94,21 @@ Refactor `src/utils/student/students.ts` into the three-layer structure.
 - `findStudentAssignmentsWithSubmissions(studentId, assignmentIds)` — for detail view
 
 **Domain functions to extract:**
+
 - `buildStudentWithStats(student, submissions, courses, assignments)` — builds `StudentWithStats` shape
 - `buildAssignmentsWithSubmissions(assignments, submissions)` — Map-join for student detail view
 
 **Test cases for domain functions:**
 
 `buildAssignmentsWithSubmissions`:
+
 - Empty assignments → `[]`
 - Assignment with no matching submission → excluded
 - Matched assignment → all fields map correctly, submission nested
 - Multiple assignments, partial match → only matched returned
 
 `buildStudentWithStats`:
+
 - Student with no submissions → zero counts, empty grade breakdown
 - Student with graded submission → correct averageGrade per course
 - Student with draft submission → not counted as submitted
@@ -106,11 +117,11 @@ Refactor `src/utils/student/students.ts` into the three-layer structure.
 
 These files are already pure — add co-located `.test.ts` only.
 
-| File | Function(s) | Key test cases |
-|------|-------------|----------------|
-| `src/utils/authz/permissions.ts` | `calculateEntityPermissions` | admin always isCourseTeacher; teacher matching teacher1Id or teacher2Id; non-matching teacher canManage=false; student all false |
-| `src/utils/password.ts` | `calculatePasswordStrength` | score boundaries 0–5; label names; max 2 suggestions |
-| `src/utils/errors.ts` | Error classes, `isAppError`, `toUserError` | status codes per class; isAppError true for subclasses; toUserError all paths |
+| File                             | Function(s)                                | Key test cases                                                                                                                   |
+| -------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `src/utils/authz/permissions.ts` | `calculateEntityPermissions`               | admin always isCourseTeacher; teacher matching teacher1Id or teacher2Id; non-matching teacher canManage=false; student all false |
+| `src/utils/password.ts`          | `calculatePasswordStrength`                | score boundaries 0–5; label names; max 2 suggestions                                                                             |
+| `src/utils/errors.ts`            | Error classes, `isAppError`, `toUserError` | status codes per class; isAppError true for subclasses; toUserError all paths                                                    |
 
 These do not live in a `domain/` subfolder so they are NOT under the coverage gate. Tests run via `bun run test` and fail if broken.
 
@@ -123,16 +134,16 @@ Each follows: extract repository → extract domain → write domain tests → v
 
 ## Files to Create / Modify (Phase 1)
 
-| Action | File |
-|--------|------|
-| CREATE | `src/utils/student/repository/student.repository.ts` |
-| CREATE | `src/utils/student/domain/student.domain.ts` |
-| CREATE | `src/utils/student/domain/student.domain.test.ts` |
+| Action | File                                                                                      |
+| ------ | ----------------------------------------------------------------------------------------- |
+| CREATE | `src/utils/student/repository/student.repository.ts`                                      |
+| CREATE | `src/utils/student/domain/student.domain.ts`                                              |
+| CREATE | `src/utils/student/domain/student.domain.test.ts`                                         |
 | MODIFY | `src/utils/student/students.ts` — import from repository + domain, remove direct DB calls |
-| MODIFY | `vitest.config.ts` — expand coverage include |
-| CREATE | `src/utils/authz/permissions.test.ts` |
-| CREATE | `src/utils/password.test.ts` |
-| CREATE | `src/utils/errors.test.ts` |
+| MODIFY | `vitest.config.ts` — expand coverage include                                              |
+| CREATE | `src/utils/authz/permissions.test.ts`                                                     |
+| CREATE | `src/utils/password.test.ts`                                                              |
+| CREATE | `src/utils/errors.test.ts`                                                                |
 
 ## Consequences
 

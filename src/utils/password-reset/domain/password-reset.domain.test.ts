@@ -49,7 +49,9 @@ describe('calculatePasswordResetExpiry', () => {
 
 describe('checkPasswordResetCooldown', () => {
   it('returns null when lastRequestAt is null', () => {
-    expect(checkPasswordResetCooldown(null, at('2026-01-01T12:00:00Z'))).toBeNull()
+    expect(
+      checkPasswordResetCooldown(null, at('2026-01-01T12:00:00Z')),
+    ).toBeNull()
   })
 
   it('returns null when exactly 60 seconds have passed', () => {
@@ -86,19 +88,28 @@ describe('checkPasswordResetTokenValid', () => {
   it('returns valid when not expired and attempts < 5', () => {
     const future = at('2099-01-01T12:00:00Z')
     const now = at('2026-01-01T12:00:00Z')
-    const result = checkPasswordResetTokenValid({ expiresAt: future, attempts: 0 }, now)
+    const result = checkPasswordResetTokenValid(
+      { expiresAt: future, attempts: 0 },
+      now,
+    )
     expect(result).toEqual({ valid: true, message: 'Token is valid' })
   })
 
   it('returns invalid when expiresAt is null', () => {
-    const result = checkPasswordResetTokenValid({ expiresAt: null, attempts: 0 }, new Date())
+    const result = checkPasswordResetTokenValid(
+      { expiresAt: null, attempts: 0 },
+      new Date(),
+    )
     expect(result.valid).toBe(false)
   })
 
   it('returns invalid when token is expired', () => {
     const past = at('2000-01-01T12:00:00Z')
     const now = at('2026-01-01T12:00:00Z')
-    const result = checkPasswordResetTokenValid({ expiresAt: past, attempts: 0 }, now)
+    const result = checkPasswordResetTokenValid(
+      { expiresAt: past, attempts: 0 },
+      now,
+    )
     expect(result.valid).toBe(false)
     expect(result.message).toContain('expired')
   })
@@ -106,7 +117,10 @@ describe('checkPasswordResetTokenValid', () => {
   it('returns invalid when attempts reach 5', () => {
     const future = at('2099-01-01T12:00:00Z')
     const now = at('2026-01-01T12:00:00Z')
-    const result = checkPasswordResetTokenValid({ expiresAt: future, attempts: 5 }, now)
+    const result = checkPasswordResetTokenValid(
+      { expiresAt: future, attempts: 5 },
+      now,
+    )
     expect(result.valid).toBe(false)
     expect(result.message).toContain('Too many failed attempts')
   })
@@ -114,6 +128,9 @@ describe('checkPasswordResetTokenValid', () => {
   it('returns valid when attempts are exactly 4', () => {
     const future = at('2099-01-01T12:00:00Z')
     const now = at('2026-01-01T12:00:00Z')
-    expect(checkPasswordResetTokenValid({ expiresAt: future, attempts: 4 }, now).valid).toBe(true)
+    expect(
+      checkPasswordResetTokenValid({ expiresAt: future, attempts: 4 }, now)
+        .valid,
+    ).toBe(true)
   })
 })

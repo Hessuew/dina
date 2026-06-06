@@ -48,7 +48,9 @@ export function PageHeader({
           )}
         </div>
 
-        {actions && <div className="flex items-center gap-3 pt-4">{actions}</div>}
+        {actions && (
+          <div className="flex items-center gap-3 pt-4">{actions}</div>
+        )}
       </div>
     </div>
   )

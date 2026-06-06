@@ -454,7 +454,8 @@ Landscape `aspect-3/2 w-80` card in horizontal-scroll shelves. Full-bleed thumbn
   {/* Bottom: gold hairline + serif title + gold category badge */}
   <div className="h-px w-7 bg-[#C5A05988]" />
   <span className="inline-flex items-center gap-1.5 border border-[#C5A059]/40 bg-black/50 px-2 py-0.5 text-[0.65rem] font-medium tracking-widest text-[#D4B373] uppercase">
-    <Icon className="size-3" />{category}
+    <Icon className="size-3" />
+    {category}
   </span>
 </Link>
 ```

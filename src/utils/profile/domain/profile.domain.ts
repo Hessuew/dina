@@ -51,7 +51,8 @@ export function validateEmailChangeToken(
   if (now > record.emailChangeTokenExpiresAt) {
     return {
       valid: false,
-      message: 'This verification link has expired. Please request a new email change.',
+      message:
+        'This verification link has expired. Please request a new email change.',
     }
   }
   if (record.emailChangeTokenAttempts >= 5) {

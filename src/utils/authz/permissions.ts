@@ -22,7 +22,7 @@ export function calculateEntityPermissions(
 ): EntityPermissions {
   const isAdmin = role === 'admin'
   const isCourseTeacher =
-    (entity.teacher1Id === userId || entity.teacher2Id === userId) || isAdmin
+    entity.teacher1Id === userId || entity.teacher2Id === userId || isAdmin
   const canEdit = role === 'teacher' || role === 'admin'
   const canManage = canEdit && isCourseTeacher
 

@@ -216,7 +216,7 @@ export function EnrollmentsTable({
         return count === 0 ? (
           <span className="text-[#8E816D]">—</span>
         ) : (
-          <span className="tabular-nums text-[#D6CCBE]">
+          <span className="text-[#D6CCBE] tabular-nums">
             {formatEvaluationSummary(info.getValue(), count)}
           </span>
         )
