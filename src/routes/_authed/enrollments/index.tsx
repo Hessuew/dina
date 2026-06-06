@@ -5,11 +5,13 @@ import type { EnrollmentRow } from '@/components/table/EnrollmentsTable'
 import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.repository'
 import { Button } from '@/components/ui/button'
 import { EnrollmentsTable } from '@/components/table/EnrollmentsTable'
+import { EvaluationOverlay } from '@/components/enrollment/EvaluationOverlay'
 import { PAGE_SIZE_OPTIONS } from '@/components/table/DataTable'
 import { PageLayout } from '@/components/layout/page-layout'
 import { checkTeacherAccess } from '@/utils/auth/admin'
 import { getEnrollments } from '@/utils/enrolment'
 import { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
+import { useEnrollmentReview } from '@/hooks/useEnrollmentReview'
 
 export const Route = createFileRoute('/_authed/enrollments/')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -27,6 +29,7 @@ export const Route = createFileRoute('/_authed/enrollments/')({
         ? search.sortDir
         : 'desc'
     ) as 'asc' | 'desc',
+    review: typeof search.review === 'string' ? search.review : undefined,
   }),
   loaderDeps: ({ search }) => ({
     page: search.page,
@@ -48,17 +51,33 @@ export const Route = createFileRoute('/_authed/enrollments/')({
         sortDir: deps.sortDir,
       },
     })
-    return { enrollments: result.enrollments, total: result.total }
+    return {
+      enrollments: result.enrollments,
+      total: result.total,
+      evaluations: result.evaluations,
+    }
   },
   component: EnrollmentsPage,
 })
 
 function EnrollmentsPage() {
-  const { enrollments, total } = Route.useLoaderData()
+  const { enrollments, total, evaluations } = Route.useLoaderData()
   const { user } = Route.useRouteContext()
   const router = useRouter()
-  const { page, pageSize, search, sortBy, sortDir } = Route.useSearch()
+  const { page, pageSize, search, sortBy, sortDir, review } = Route.useSearch()
   const isAdmin = user?.role === 'admin'
+
+  const reviewState = useEnrollmentReview({
+    initialEnrollments: enrollments,
+    initialEvaluations: evaluations,
+    page,
+    pageSize: pageSize as 10 | 20 | 50 | 100,
+    search,
+    sortBy,
+    sortDir,
+    total,
+    reviewId: review,
+  })
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -82,6 +101,7 @@ function EnrollmentsPage() {
           search: params.search ?? search,
           sortBy: params.sortBy ?? sortBy,
           sortDir: params.sortDir ?? sortDir,
+          review: undefined,
         },
         replace: true,
         resetScroll: false,
@@ -117,6 +137,7 @@ function EnrollmentsPage() {
       <EnrollmentsTable
         enrollments={enrollments as Array<EnrollmentRow>}
         onRefresh={handleRefresh}
+        onReview={reviewState.open}
         isAdmin={isAdmin}
         initialPage={page}
         pageSize={pageSize}
@@ -141,6 +162,32 @@ function EnrollmentsPage() {
           })
         }
       />
+
+      {reviewState.isOpen && reviewState.current && user && (
+        <EvaluationOverlay
+          enrollment={reviewState.current}
+          evaluations={reviewState.currentEvaluations}
+          isAdmin={isAdmin}
+          userId={user.id}
+          position={reviewState.position}
+          hasPrev={reviewState.hasPrev}
+          hasNext={reviewState.hasNext}
+          onPrev={reviewState.prev}
+          onNext={reviewState.next}
+          onClose={() => {
+            reviewState.close()
+            void router.invalidate()
+          }}
+          onLocalEvaluation={(enrollmentId, patch) =>
+            reviewState.applyLocalEvaluation(
+              enrollmentId,
+              user.id,
+              user.fullName ?? user.email,
+              patch,
+            )
+          }
+        />
+      )}
     </PageLayout>
   )
 }

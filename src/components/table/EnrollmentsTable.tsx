@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import { CheckCircle2, Eye, Mail, MoreHorizontal, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -35,6 +34,7 @@ import {
   sendInvitationForEnrollment,
   updateEnrollmentStatus,
 } from '@/utils/enrolment/enrollments'
+import { formatEvaluationSummary } from '@/utils/enrolment/domain/evaluation.domain'
 import { cn } from '@/lib/utils'
 
 export type EnrollmentRow = {
@@ -61,6 +61,8 @@ export type EnrollmentRow = {
     | 'deferred'
   invitationSent?: boolean
   invitationId?: string | null
+  evaluationSum: number
+  evaluationCount: number
   createdAt: Date
   updatedAt: Date
 }
@@ -68,6 +70,7 @@ export type EnrollmentRow = {
 type EnrollmentsTableProps = {
   enrollments: Array<EnrollmentRow>
   onRefresh: () => void
+  onReview: (enrollmentId: string) => void
   isAdmin: boolean
   initialPage?: number
   pageSize?: number
@@ -97,6 +100,7 @@ const STATUS_LABELS: Array<{ value: EnrollmentRow['status']; label: string }> =
 export function EnrollmentsTable({
   enrollments,
   onRefresh,
+  onReview,
   isAdmin,
   initialPage,
   pageSize,
@@ -109,8 +113,6 @@ export function EnrollmentsTable({
   onSearchChange,
   onSortingChange,
 }: EnrollmentsTableProps) {
-  const router = useRouter()
-
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<
@@ -206,6 +208,19 @@ export function EnrollmentsTable({
           }),
         ]
       : []),
+    columnHelper.accessor('evaluationSum', {
+      cell: (info) => {
+        const count = info.row.original.evaluationCount
+        return count === 0 ? (
+          <span className="text-[#8E816D]">—</span>
+        ) : (
+          <span className="tabular-nums text-[#D6CCBE]">
+            {formatEvaluationSummary(info.getValue(), count)}
+          </span>
+        )
+      },
+      header: 'Score',
+    }),
     columnHelper.accessor('createdAt', {
       cell: (info) => format(new Date(info.getValue()), 'MMM d, yyyy'),
       header: 'Submitted',
@@ -221,13 +236,8 @@ export function EnrollmentsTable({
             <div className="flex items-center justify-end gap-1">
               <IconButton
                 icon={() => <Eye className="size-3.5" />}
-                label="View"
-                onClick={() =>
-                  router.navigate({
-                    to: '/enrollments/$enrollmentId',
-                    params: { enrollmentId: row.id },
-                  })
-                }
+                label="Review"
+                onClick={() => onReview(row.id)}
               />
 
               {isAdmin && (
@@ -312,6 +322,7 @@ export function EnrollmentsTable({
         data={enrollments}
         pageSize={pageSize ?? 10}
         initialPage={initialPage}
+        maxRows={10}
         rowCount={rowCount}
         initialSearch={initialSearch}
         initialSortBy={initialSortBy}

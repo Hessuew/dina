@@ -64,6 +64,16 @@ export const sendInvitationForEnrollmentSchema = z.object({
   enrollmentId: z.uuid('Invalid enrollment ID'),
 })
 
+export const setEvaluationScoreSchema = z.object({
+  enrollmentId: z.uuid('Invalid enrollment ID'),
+  score: z.number().int().min(-9).max(9).nullable(),
+})
+
+export const setEvaluationNoteSchema = z.object({
+  enrollmentId: z.uuid('Invalid enrollment ID'),
+  note: z.string().max(2000, 'Note must be 2000 characters or fewer'),
+})
+
 export const ENROLLMENT_SORT_KEYS = [
   'fullLegalName',
   'nationalityCitizenship',
@@ -72,6 +82,7 @@ export const ENROLLMENT_SORT_KEYS = [
   'status',
   'invitationSent',
   'createdAt',
+  'evaluationSum',
 ] as const
 
 export const getEnrollmentsSchema = z.object({
@@ -94,3 +105,5 @@ export type SendInvitationForEnrollmentInput = z.infer<
   typeof sendInvitationForEnrollmentSchema
 >
 export type GetEnrollmentsInput = z.infer<typeof getEnrollmentsSchema>
+export type SetEvaluationScoreInput = z.infer<typeof setEvaluationScoreSchema>
+export type SetEvaluationNoteInput = z.infer<typeof setEvaluationNoteSchema>
