@@ -262,7 +262,6 @@ function EnrollmentsPage() {
           evaluations={reviewState.currentEvaluations}
           isAdmin={isAdmin}
           userId={user.id}
-          position={reviewState.position}
           hasPrev={reviewState.hasPrev}
           hasNext={reviewState.hasNext}
           onPrev={reviewState.prev}

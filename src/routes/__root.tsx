@@ -137,16 +137,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           defaultOpen={Boolean(user)}
           enableKeyboardShortcut={Boolean(user)}
         >
-          {user && <AppSidebar user={user} role={role} />}
-          <SidebarInset>
-            <TooltipProvider>
+          <TooltipProvider>
+            {user && <AppSidebar user={user} role={role} />}
+            <SidebarInset>
               <Header user={user} />
               {children}
               <Toaster />
               <TanStackRouterDevtools position="bottom-right" />
               <Scripts />
-            </TooltipProvider>
-          </SidebarInset>
+            </SidebarInset>
+          </TooltipProvider>
         </SidebarProvider>
       </body>
     </html>

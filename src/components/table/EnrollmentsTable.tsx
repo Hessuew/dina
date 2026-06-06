@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { CheckCircle2, Eye, Mail, MoreHorizontal, Trash2 } from 'lucide-react'
+import {
+  CheckCircle2,
+  Eye,
+  Mail,
+  MoreHorizontal,
+  Star,
+  Trash2,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
 import { createColumnHelper } from '@tanstack/react-table'
@@ -27,11 +34,12 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { DataTable } from '@/components/table/DataTable'
 import { IconButton } from '@/components/table/IconButton'
-import { EnrollmentStatusChip } from '@/components/table/chips'
+import { EnrollmentStatusChip, PeerReviewChip } from '@/components/table/chips'
 import { useMutation } from '@/hooks/useMutation'
 import {
   deleteEnrollment,
   sendInvitationForEnrollment,
+  setEnrollmentSpecialCase,
   updateEnrollmentStatus,
 } from '@/utils/enrolment/enrollments'
 import { formatEvaluationSummary } from '@/utils/enrolment/domain/evaluation.domain'
@@ -61,8 +69,10 @@ export type EnrollmentRow = {
     | 'deferred'
   invitationSent?: boolean
   invitationId?: string | null
+  specialCase: boolean
   evaluationSum: number
   evaluationCount: number
+  peerReviewState: 'under_peer_review' | 'peer_reviewed' | null
   createdAt: Date
   updatedAt: Date
 }
@@ -124,12 +134,23 @@ export function EnrollmentsTable({
   const updateStatusFn = useServerFn(updateEnrollmentStatus)
   const deleteFn = useServerFn(deleteEnrollment)
   const sendInviteFn = useServerFn(sendInvitationForEnrollment)
+  const specialCaseFn = useServerFn(setEnrollmentSpecialCase)
 
   const updateStatusMutation = useMutation({
     fn: updateStatusFn,
     onSuccess: () => {
       toast.success('Status updated')
       onRefresh()
+    },
+  })
+
+  const specialCaseMutation = useMutation({
+    fn: specialCaseFn,
+    onSuccess: () => {
+      onRefresh()
+    },
+    onError: (error) => {
+      toast.error(toUserError(error).message)
     },
   })
 
@@ -157,6 +178,38 @@ export function EnrollmentsTable({
   })
 
   const columns: Array<ColumnDef<EnrollmentRow, any>> = [
+    columnHelper.accessor('specialCase', {
+      enableSorting: false,
+      header: '',
+      cell: (info) => {
+        const row = info.row.original
+        const on = info.getValue()
+        const star = (
+          <Star
+            className={cn(
+              'size-3.5',
+              on ? 'fill-amber-400 text-amber-400' : 'text-[#8E816D]',
+            )}
+          />
+        )
+        if (!isAdmin) return star
+        return (
+          <button
+            type="button"
+            onClick={() =>
+              specialCaseMutation.mutate({
+                data: { enrollmentId: row.id, specialCase: !on },
+              })
+            }
+            disabled={specialCaseMutation.isPending}
+            aria-label={on ? 'Unmark special case' : 'Mark special case'}
+            className="text-[#8E816D] transition-colors hover:text-amber-400"
+          >
+            {star}
+          </button>
+        )
+      },
+    }),
     columnHelper.accessor('fullLegalName', {
       cell: (info) => (
         <span className="font-medium text-[#F8F4EC]">{info.getValue()}</span>
@@ -223,6 +276,18 @@ export function EnrollmentsTable({
       },
       header: 'Score',
     }),
+    columnHelper.accessor('peerReviewState', {
+      enableSorting: false,
+      cell: (info) => {
+        const state = info.getValue()
+        return state ? (
+          <PeerReviewChip state={state} />
+        ) : (
+          <span className="text-[#8E816D]">—</span>
+        )
+      },
+      header: 'Peer review',
+    }),
     columnHelper.accessor('createdAt', {
       cell: (info) => format(new Date(info.getValue()), 'MMM d, yyyy'),
       header: 'Submitted',
@@ -244,15 +309,17 @@ export function EnrollmentsTable({
 
               {isAdmin && (
                 <>
-                  <IconButton
-                    icon={Mail}
-                    label="Send invitation"
-                    onClick={() => {
-                      setSelectedEnrollmentId(row.id)
-                      setInviteDialogOpen(true)
-                    }}
-                    disabled={inviteMutation.isPending}
-                  />
+                  {row.status === 'approved' && (
+                    <IconButton
+                      icon={Mail}
+                      label="Send invitation"
+                      onClick={() => {
+                        setSelectedEnrollmentId(row.id)
+                        setInviteDialogOpen(true)
+                      }}
+                      disabled={inviteMutation.isPending}
+                    />
+                  )}
 
                   <DropdownMenu>
                     <DropdownMenuTrigger>
@@ -321,6 +388,9 @@ export function EnrollmentsTable({
         onSearchChange={onSearchChange}
         onSortingChange={onSortingChange}
         isLoading={isLoading}
+        rowClassName={(row) =>
+          row.specialCase ? 'bg-amber-400/10 hover:bg-amber-400/15' : ''
+        }
         loadingLabel="Loading enrollments…"
         emptyMessage={
           initialSearch?.trim()
