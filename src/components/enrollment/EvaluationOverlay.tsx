@@ -184,13 +184,13 @@ function NoteEditor({
     setState('saving')
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(async () => {
-      dirtyRef.current = false
       try {
         await onSaveRef.current(next)
+        dirtyRef.current = false
         setState('saved')
       } catch {
-        dirtyRef.current = true
         setState('error')
+        // dirtyRef stays true → unmount flush will retry
       }
     }, 400)
   }
