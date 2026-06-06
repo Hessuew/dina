@@ -1,4 +1,5 @@
 import type { TeacherWithCourse } from '@/types/teacher'
+import { GEM_IMAGE_MAP } from '@/utils/gems'
 
 function getInitials(fullName: string): string {
   const names = fullName.trim().split(' ')
@@ -13,9 +14,23 @@ type TeacherCardProps = {
   onClick: () => void
 }
 
+const COURSE_ORDER_THEMES: Record<number, string> = {
+  1: 'Ground',
+  2: 'Foundation',
+  3: 'Walls',
+  4: 'Framing',
+  5: 'Interior',
+  6: 'Roof',
+}
+
 export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
   const initials = getInitials(teacher.fullName)
-  const topLabel = teacher.course?.title ?? teacher.lecturerTitle ?? undefined
+  const topLabel =
+    (teacher.course?.orderIndex != null
+      ? COURSE_ORDER_THEMES[teacher.course.orderIndex]
+      : undefined) ??
+    teacher.lecturerTitle ??
+    undefined
 
   return (
     <div
@@ -57,9 +72,18 @@ export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
       {/* Bottom: teacher name */}
       <div className="absolute inset-x-0 bottom-5 z-20 flex flex-col items-center gap-2 px-4">
         <div className="h-px w-7 bg-[#C5A05988]" />
-        <h3 className="text-center font-serif text-base leading-tight text-[#F8F4EC] italic sm:text-lg">
-          {teacher.fullName}
-        </h3>
+        <div className="flex items-center gap-2">
+          {teacher.gemstone && GEM_IMAGE_MAP[teacher.gemstone] && (
+            <img
+              src={GEM_IMAGE_MAP[teacher.gemstone]}
+              alt={teacher.gemstone}
+              className="size-8 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+            />
+          )}
+          <h3 className="text-center font-serif text-base leading-tight text-[#F8F4EC] italic sm:text-lg">
+            {teacher.fullName}
+          </h3>
+        </div>
       </div>
     </div>
   )
