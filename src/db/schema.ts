@@ -72,6 +72,11 @@ export const enrollmentStatusEnum = pgEnum('enrollment_status', [
   'deferred',
 ])
 
+export const enrollmentAdmissionCategoryEnum = pgEnum(
+  'enrollment_admission_category',
+  ['new', 'emerging', 'established'],
+)
+
 export const enrollmentGenderEnum = pgEnum('enrollment_gender', [
   'male',
   'female',
@@ -969,6 +974,7 @@ export const enrollmentEvaluations = pgTable(
       .notNull()
       .references(() => profiles.id, { onDelete: 'cascade' }),
     score: smallint('score'),
+    admissionCategory: enrollmentAdmissionCategoryEnum('admission_category'),
     note: text('note'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -980,7 +986,11 @@ export const enrollmentEvaluations = pgTable(
     ),
     check(
       'enrollment_evaluations_score_range',
-      sql`${table.score} BETWEEN -9 AND 9`,
+      sql`${table.score} BETWEEN 0 AND 4`,
+    ),
+    check(
+      'enrollment_evaluations_admission_category_score',
+      sql`${table.admissionCategory} IS NULL OR ${table.score} IN (3, 4)`,
     ),
     // Teacher-users and admins (Evaluators) may read all evaluations.
     pgPolicy('staff_view_evaluations', {

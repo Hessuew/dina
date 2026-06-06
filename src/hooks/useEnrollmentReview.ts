@@ -195,7 +195,11 @@ export function useEnrollmentReview({
       enrollmentId: string,
       evaluatorId: string,
       evaluatorName: string,
-      patch: { score?: number | null; note?: string },
+      patch: {
+        score?: number | null
+        admissionCategory?: EvaluationWithAuthor['admissionCategory']
+        note?: string
+      },
     ) => {
       setEvalMap((prevMap) => {
         const next = new Map(prevMap)
@@ -204,7 +208,17 @@ export function useEnrollmentReview({
         if (i >= 0) {
           list[i] = {
             ...list[i],
-            ...(patch.score !== undefined ? { score: patch.score } : {}),
+            ...(patch.score !== undefined
+              ? {
+                  score: patch.score,
+                  ...(!patch.score || patch.score < 3
+                    ? { admissionCategory: null }
+                    : {}),
+                }
+              : {}),
+            ...(patch.admissionCategory !== undefined
+              ? { admissionCategory: patch.admissionCategory }
+              : {}),
             ...(patch.note !== undefined ? { note: patch.note } : {}),
           }
         } else {
@@ -213,6 +227,7 @@ export function useEnrollmentReview({
             evaluatorId,
             evaluatorName,
             score: patch.score ?? null,
+            admissionCategory: patch.admissionCategory ?? null,
             note: patch.note ?? null,
           })
         }

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { ConflictError, ValidationError } from '@/utils/errors'
 import {
   calculateInvitationExpiry,
   generateSecureToken,
   validateInvitationActive,
 } from './invitations.domain'
+import { ConflictError, ValidationError } from '@/utils/errors'
 
 describe('generateSecureToken', () => {
   it('returns a 64-character hex string', () => {
@@ -37,28 +37,30 @@ describe('calculateInvitationExpiry', () => {
 describe('validateInvitationActive', () => {
   it('does not throw when status is pending and not expired', () => {
     const invitation = { status: 'pending', expiresAt: new Date('2099-01-01') }
-    expect(() => validateInvitationActive(invitation, new Date('2025-01-01'))).not.toThrow()
+    expect(() =>
+      validateInvitationActive(invitation, new Date('2025-01-01')),
+    ).not.toThrow()
   })
 
   it('throws ConflictError when status is accepted', () => {
     const invitation = { status: 'accepted', expiresAt: new Date('2099-01-01') }
-    expect(() => validateInvitationActive(invitation, new Date('2025-01-01'))).toThrow(
-      ConflictError,
-    )
+    expect(() =>
+      validateInvitationActive(invitation, new Date('2025-01-01')),
+    ).toThrow(ConflictError)
   })
 
   it('throws ConflictError when status is revoked', () => {
     const invitation = { status: 'revoked', expiresAt: new Date('2099-01-01') }
-    expect(() => validateInvitationActive(invitation, new Date('2025-01-01'))).toThrow(
-      ConflictError,
-    )
+    expect(() =>
+      validateInvitationActive(invitation, new Date('2025-01-01')),
+    ).toThrow(ConflictError)
   })
 
   it('throws ValidationError when expired (now > expiresAt)', () => {
     const invitation = { status: 'pending', expiresAt: new Date('2020-01-01') }
-    expect(() => validateInvitationActive(invitation, new Date('2025-01-01'))).toThrow(
-      ValidationError,
-    )
+    expect(() =>
+      validateInvitationActive(invitation, new Date('2025-01-01')),
+    ).toThrow(ValidationError)
   })
 
   it('does not throw when now equals expiresAt (boundary: not yet expired)', () => {

@@ -1,25 +1,52 @@
-/**
- * Pure logic for the enrollment evaluation review surface.
- * Kept free of React/DB so it can be unit-tested in isolation (see ADR 0004).
- */
+export const EVALUATION_SCORES = [0, 1, 2, 3, 4] as const
+
+export type EvaluationScore = (typeof EVALUATION_SCORES)[number]
+
+export const EVALUATION_SCORE_LABELS: Record<EvaluationScore, string> = {
+  0: 'Rejected',
+  1: 'Borderline',
+  2: 'Reserve list',
+  3: 'Admission',
+  4: 'Strong admission',
+}
+
+export const ADMISSION_CATEGORY_OPTIONS = [
+  {
+    value: 'new',
+    shortcut: 'A',
+    label: 'Admitted in the new young convert, new discipleship category',
+  },
+  {
+    value: 'emerging',
+    shortcut: 'B',
+    label: 'Admitted into emerging leaders discipleship category',
+  },
+  {
+    value: 'established',
+    shortcut: 'C',
+    label: 'Admitted into an established leaders discipleship category',
+  },
+] as const
+
+export type AdmissionCategory = (typeof ADMISSION_CATEGORY_OPTIONS)[number]['value']
 
 export type ScoreKeyResult = {
-  /** Next score value (-9..9) or null when cleared. */
-  score: number | null
-  /** Whether the next keypress should be interpreted as a negative digit. */
-  negativeArmed: boolean
+  /** Next score value (0..4) or null when cleared. */
+  score: EvaluationScore | null
   /** Whether this key was a score-related key (so the caller can preventDefault). */
   handled: boolean
   /** Whether the score value changed and should be persisted. */
   changed: boolean
 }
 
+export function scoreRequiresAdmissionCategory(score: number | null): boolean {
+  return score === 3 || score === 4
+}
+
 /**
  * Keyboard state machine for setting a score.
  *
- * - `1`-`9` → set positive instantly.
- * - `0` → set 0.
- * - `-` → arm negative; the next `1`-`9` becomes negative.
+ * - `0`-`4` → set score instantly.
  * - pressing the currently-selected value again → clear to empty.
  * - `Backspace`/`Delete` → clear to empty.
  *
@@ -29,31 +56,22 @@ export type ScoreKeyResult = {
 export function reduceScoreKey(
   current: number | null,
   key: string,
-  negativeArmed: boolean,
 ): ScoreKeyResult {
-  if (key === '-') {
-    return { score: current, negativeArmed: true, handled: true, changed: false }
-  }
-
   if (key === 'Backspace' || key === 'Delete') {
     return {
       score: null,
-      negativeArmed: false,
       handled: true,
       changed: current !== null,
     }
   }
 
-  if (/^[0-9]$/.test(key)) {
-    const digit = Number(key)
-    // -0 is just 0; only 1-9 can be negative.
-    const candidate = negativeArmed && digit > 0 ? -digit : digit
-    // Re-pressing the active value clears it.
+  if (/^[0-4]$/.test(key)) {
+    const candidate = Number(key) as EvaluationScore
     const next = candidate === current ? null : candidate
-    return { score: next, negativeArmed: false, handled: true, changed: true }
+    return { score: next, handled: true, changed: true }
   }
 
-  return { score: current, negativeArmed, handled: false, changed: false }
+  return { score: current as EvaluationScore | null, handled: false, changed: false }
 }
 
 /**
@@ -62,11 +80,10 @@ export function reduceScoreKey(
  */
 export function formatEvaluationSummary(sum: number, count: number): string {
   if (count === 0) return '—'
-  const sign = sum > 0 ? '+' : ''
-  return `${sign}${sum} · ${count}`
+  return `${sum} · ${count}`
 }
 
-/** Signed label for a single score value (e.g. +5, 0, -3). */
+/** Label for a single score value. */
 export function formatScore(score: number): string {
-  return score > 0 ? `+${score}` : String(score)
+  return String(score)
 }

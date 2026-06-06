@@ -8,7 +8,7 @@ import { AppError } from '@/utils/errors'
  * Builds the email change verification link.
  */
 export function buildVerifyLink(token: string): string {
-  const appUrl = env.APP_URL ?? 'http://localhost:3000'
+  const appUrl = env.APP_URL
   return `${appUrl}/verify-email-change?token=${token}`
 }
 

@@ -32,6 +32,7 @@ import {
   getEnrollmentByIdSchema,
   getEnrollmentsSchema,
   sendInvitationForEnrollmentSchema,
+  setEvaluationAdmissionCategorySchema,
   setEvaluationNoteSchema,
   setEvaluationScoreSchema,
   updateEnrollmentStatusSchema,
@@ -302,6 +303,30 @@ export const setEvaluationScore = createServerFn({ method: 'POST' })
       }
 
       await upsertEvaluation(data.enrollmentId, user.id, { score: data.score })
+
+      return
+    })
+  })
+
+
+export const setEvaluationAdmissionCategory = createServerFn({ method: 'POST' })
+  .inputValidator(setEvaluationAdmissionCategorySchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+
+    return withRequestCache(async () => {
+      const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(user.id)
+      if (!isAdmin && !isTeacher) {
+        throw new AuthorizationError('admin or teacher access required', {
+          code: 'ROLE_REQUIRED',
+          details: {},
+        })
+      }
+
+      await upsertEvaluation(data.enrollmentId, user.id, {
+        score: data.score,
+        admissionCategory: data.admissionCategory,
+      })
 
       return
     })
