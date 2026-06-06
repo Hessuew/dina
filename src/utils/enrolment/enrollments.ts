@@ -6,6 +6,7 @@ import type {
   MaybeRedactedEnrollment,
 } from '@/utils/enrolment/domain/enrolment.domain'
 import {
+  deriveEnrollmentStatusFromReviewerScore,
   derivePeerReviewState,
   generateInvitationExpiry,
   generateSecureToken,
@@ -51,6 +52,7 @@ import {
   findInvitationByEmail,
   findPeerTeacherIds,
   findProfileById,
+  findReviewerIdForEnrollment,
   findUnassignedEnrollmentIds,
   insertEnrollment,
   insertInvitation,
@@ -339,6 +341,23 @@ export const setEvaluationScore = createServerFn({ method: 'POST' })
       }
 
       await upsertEvaluation(data.enrollmentId, user.id, { score: data.score })
+
+      // Auto-derive enrollment status from the assigned Reviewer's score
+      // (ADR 0008). Only the Reviewer drives status; peers/non-assigned
+      // admins are advisory.
+      const reviewerId = await findReviewerIdForEnrollment(data.enrollmentId)
+      if (reviewerId === user.id) {
+        const enrollment = await findEnrollmentById(data.enrollmentId)
+        if (enrollment) {
+          const nextStatus = deriveEnrollmentStatusFromReviewerScore(
+            data.score,
+            enrollment.status,
+          )
+          if (nextStatus !== null) {
+            await updateEnrollmentStatusById(data.enrollmentId, nextStatus)
+          }
+        }
+      }
 
       return
     })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  deriveEnrollmentStatusFromReviewerScore,
   derivePeerReviewState,
   generateInvitationExpiry,
   generateSecureToken,
@@ -129,6 +130,51 @@ describe('derivePeerReviewState', () => {
   it('returns null when there are no peers', () => {
     expect(
       derivePeerReviewState([{ evaluatorId: peer, score: 4 }], me, []),
+    ).toBe(null)
+  })
+})
+
+describe('deriveEnrollmentStatusFromReviewerScore', () => {
+  it('maps scores 0 and 1 to rejected', () => {
+    expect(deriveEnrollmentStatusFromReviewerScore(0, 'pending')).toBe(
+      'rejected',
+    )
+    expect(deriveEnrollmentStatusFromReviewerScore(1, 'pending')).toBe(
+      'rejected',
+    )
+  })
+
+  it('maps score 2 to waitlisted', () => {
+    expect(deriveEnrollmentStatusFromReviewerScore(2, 'pending')).toBe(
+      'waitlisted',
+    )
+  })
+
+  it('maps scores 3 and 4 to awaiting_approval', () => {
+    expect(deriveEnrollmentStatusFromReviewerScore(3, 'pending')).toBe(
+      'awaiting_approval',
+    )
+    expect(deriveEnrollmentStatusFromReviewerScore(4, 'pending')).toBe(
+      'awaiting_approval',
+    )
+  })
+
+  it('maps a cleared score to under_review', () => {
+    expect(deriveEnrollmentStatusFromReviewerScore(null, 'awaiting_approval')).toBe(
+      'under_review',
+    )
+  })
+
+  it('does not overwrite frozen admin states', () => {
+    expect(deriveEnrollmentStatusFromReviewerScore(0, 'approved')).toBe(null)
+    expect(deriveEnrollmentStatusFromReviewerScore(4, 'withdrawn')).toBe(null)
+    expect(deriveEnrollmentStatusFromReviewerScore(2, 'deferred')).toBe(null)
+  })
+
+  it('returns null when the computed status equals the current one', () => {
+    expect(deriveEnrollmentStatusFromReviewerScore(0, 'rejected')).toBe(null)
+    expect(
+      deriveEnrollmentStatusFromReviewerScore(3, 'awaiting_approval'),
     ).toBe(null)
   })
 })
