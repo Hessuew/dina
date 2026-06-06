@@ -162,6 +162,13 @@
       "when": 1780725084050,
       "tag": "0025_real_sally_floyd",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1780727585516,
+      "tag": "0026_classy_silverclaw",
+      "breakpoints": true
     }
   ]
 }

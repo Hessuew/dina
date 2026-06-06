@@ -47,6 +47,7 @@ export const zoomLinkSectionEnum = pgEnum('zoom_link_section', [
 export const enrollmentStatusEnum = pgEnum('enrollment_status', [
   'pending',
   'under_review',
+  'awaiting_approval',
   'approved',
   'rejected',
   'waitlisted',
