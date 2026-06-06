@@ -39,6 +39,7 @@ export const enrollments = pgTable(
     expectationsAlignment: text('expectations_alignment').notNull(),
     status: enrollmentStatusEnum('status').notNull().default('pending'),
     invitationSent: boolean('invitation_sent').notNull().default(false),
+    specialCase: boolean('special_case').notNull().default(false),
     invitationId: uuid('invitation_id').references(() => invitations.id, {
       onDelete: 'set null',
     }),
