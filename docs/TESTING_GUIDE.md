@@ -91,40 +91,68 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    (`getCurrentUser()` → service). Re-export domain types for consumers.
 6. **Unit tests** — `domain/<feature>.domain.test.ts` covering every branch.
 
-## Integration tests (planned — not yet built)
+## Integration tests (PGlite — built)
 
-There is currently **no integration-test harness and no integration tests**. The
-service and repository layers are exercised only in production. When we add
-integration coverage, the chosen approach is **PGlite**
-(`@electric-sql/pglite`) — an in-memory Postgres that needs no Docker and runs
-the same SQL dialect as production.
+Service + repository layers are exercised against a real Postgres schema using
+**PGlite** (`@electric-sql/pglite`) — an in-memory Postgres, no Docker, same SQL
+dialect as production. See ADR 0009 for the rationale.
 
-### What needs to be built
+### Commands
 
-- **Dependency:** add dev dep `@electric-sql/pglite` plus the Drizzle PGlite
-  driver.
-- **Separate Vitest project/config** for `*.integration.test.ts`:
-  - its own `include` glob (e.g. `src/**/*.integration.test.ts`),
-  - **excluded from the unit coverage gate** above,
-  - `setupFiles` that: boot a PGlite instance, run the Drizzle migrations from
-    `drizzle/` against it, and reset/truncate tables between tests.
-- **A `getDb()` seam.** `src/db/index.ts` currently resolves the connection from
-  Cloudflare Hyperdrive / env. Integration tests need `getDb()` to return the
-  PGlite-backed Drizzle instance under test — via an env flag or an injectable
-  connection. This is the one production-touching change integration tests
-  require; design it so production behavior is untouched.
+```bash
+bun run test:integration   # integration suite only (PGlite)
+bun run test:all           # unit suite + integration suite (the full signal)
+```
 
-### What `zoomLink` integration tests should assert
+`bun run test` / `test:coverage` stay unit-only: the unit config excludes
+`src/**/*.integration.test.ts`, so the 100% domain coverage gate is unaffected.
 
-Running against the real (PGlite) schema, through the **service** layer:
+### How the harness works (`test/integration/`)
 
-- `createZoomLinkService` persists a row with normalized values.
-- `getZoomLinksService` returns links joined to their `courseTitle`, ordered by
-  `section`, `orderIndex`, then `title`, and includes the viewer's `role`.
-- `updateZoomLinkService` mutates the row and bumps `updatedAt`.
-- `deleteZoomLinkService` removes the row.
-- Admin-role enforcement: non-admin callers are rejected by `authz`.
+- **`vitest.integration.config.ts`** — `include: ['src/**/*.integration.test.ts']`,
+  no coverage block, `setupFiles: ['./test/integration/setup.ts']`, and a
+  `resolve.alias` that maps the **exact** specifier `@/db` → `test/integration/db.ts`
+  and `@/env` → `test/integration/env.ts`. Aliasing is the whole seam: production
+  `src/db/index.ts` and `src/env.ts` are untouched, and their `cloudflare:workers`
+  import never enters the test graph. (`@/db/schema` and every other `@/` path
+  still resolve normally via `vite-tsconfig-paths`.)
+- **`db.ts`** — boots one `PGlite`, wraps it with `drizzle(client, { schema })`
+  from `drizzle-orm/pglite`, and exports `getDb()` (the shared instance every
+  repository's `import { getDb } from '@/db'` now hits), plus a `truncateAll()`
+  helper. Vitest isolates each test file, so each file gets its own fresh DB.
+- **`prelude.sql`** — creates Supabase stubs (`auth` schema, `auth.uid()`,
+  `authenticated`/`anon`/`service_role` roles) so the migrations' RLS policy DDL
+  parses. RLS is inert in tests (PGlite runs as superuser/owner → RLS bypassed,
+  as production does via Hyperdrive).
+- **`setup.ts`** — runs the prelude, then replays the real `drizzle/` migrations
+  in journal order, **statement by statement**, tolerating only policy-statement
+  idempotency errors (see note). Resets authz to `DefaultAuthorizationService`
+  (so role checks hit seeded `profiles` rows) and `truncateAll()` in `beforeEach`.
+- **`seed.ts`** — `seedProfile` / `seedCourse` / `seedEnrollment` /
+  `seedReviewerAssignment` factories, mirroring the unit-test `makeX` style.
 
-> Until the harness exists, these behaviors are guaranteed only by the pure
-> domain unit tests plus manual/production verification. Building the PGlite
-> harness is tracked as a follow-up.
+> **Why a custom migration runner instead of drizzle's pglite migrator?** PGlite
+> tracks RLS-policy → table dependencies differently from the Supabase Postgres
+> the migrations were authored against. In `0015`, `DROP TABLE "inquiries" CASCADE`
+> auto-drops a policy defined on `inquiry_responses` whose `USING` clause
+> references `inquiries`; the migration's own later `DROP POLICY` then hits
+> "policy does not exist". Since RLS is inert here, the runner ignores **only**
+> policy-statement idempotency errors (SQLSTATE 42704 / 42710) and lets every
+> other failure (tables, columns, enums, constraints) throw.
+
+### Writing a test
+
+Target the **service** layer (real DB, real authz), seed the rows it reads, then
+assert. Worked examples:
+
+- `src/utils/zoomLink/zoomLink.integration.test.ts` — create/get/update/delete +
+  admin-role enforcement.
+- `src/utils/enrolment/enrolment.integration.test.ts` — the assigned Reviewer's
+  score auto-derives enrollment `status` (ADR 0008), frozen states stay put, and
+  non-assigned evaluators stay advisory.
+
+> Enrolment had its score→status orchestration inside the `setEvaluationScore`
+> server fn. To get a testable service seam (matching every other feature), that
+> body was extracted to `setEvaluationScoreService(data, userId)` in
+> `src/utils/enrolment/service/enrolment.service.ts`; the server fn now just calls
+> `getCurrentUser()` then the service.
