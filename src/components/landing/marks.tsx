@@ -24,14 +24,46 @@ type MarkItem = LandingItemBase & {
 
 const marks: Array<MarkItem> = [
   {
-    id: 'miracles',
-    title: 'Miracles',
+    id: 'miracle-1-stammering',
+    title: 'Miracle 1',
+    quote: '',
+    description: '',
+    example: '',
+    videoUrl: 'https://www.youtube.com/embed/Z1J0yjSdiVY',
+  },
+  {
+    id: 'miracle-2-lung',
+    title: 'Miracle 2',
+    quote: '',
+    description: '',
+    example:
+      '30-year-long tobacco smoke-induced lung disease supernaturally re-created with a new lung in April 2026 after being slain under the Holy Spirit power for two consecutive days.',
+  },
+  {
+    id: 'healing-covid',
+    title: 'Healing',
     quote:
       '"If I do not the works of my Father, believe me not. But if I do, though ye believe not me, believe the works." John 10:37–38.',
     description:
       'The gospel is confirmed by the works of Christ. In the church, miracles and gifts of the Spirit manifest; it is a buffet in the heavenly places.',
     example:
       "I had COVID-19 and was worn out. Juhani asked me to place my hand on the sickness, and I put it on my throat, which was on fire. Then he commanded the virus to die and my body to recover. Soon I sat up, which I could not do before, went to eat, started to clean, and finally said, “I'm surely healed.”",
+  },
+  {
+    id: 'deliverance-demons',
+    title: 'Deliverance from Demons and Evil Spirits',
+    quote: '',
+    description: '',
+    example: '',
+    videoUrl: 'https://www.youtube.com/embed/w320cJTEXcE',
+  },
+  {
+    id: 'repentance-restoration',
+    title: 'Repentance, Restoration, and Revival',
+    quote: '',
+    description: '',
+    example: '',
+    videoUrl: 'https://www.youtube.com/embed/7qs0gvMAJOE',
   },
   {
     id: 'signs',

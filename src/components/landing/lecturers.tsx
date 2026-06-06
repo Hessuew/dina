@@ -434,6 +434,11 @@ export function LandingLecturerGemsSection() {
                     'After these things the Lord appointed other seventy also, and sent them two and two before his face.',
                   reference: 'Luke 10:1',
                 },
+                {
+                  quote:
+                    'As they ministered to the Lord, and fasted, the Holy Ghost said, Separate me Barnabas and Saul for the work whereunto I have called them. And when they had fasted and prayed, and laid their hands on them, they sent them away. So they, being sent forth by the Holy Ghost, departed unto Seleucia; and from thence they sailed to Cyprus.',
+                  reference: 'Acts 13:2-4',
+                },
               ]}
             />
 
