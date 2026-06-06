@@ -29,7 +29,47 @@ export type MaybeRedactedEnrollment = Omit<
   invitationId?: string | null
 }
 
+export type EnrollmentStatus = EnrollmentSelect['status']
+
 export type PeerReviewState = 'under_peer_review' | 'peer_reviewed' | null
+
+/**
+ * Admin lifecycle decisions that the auto-status engine must not overwrite.
+ * Once an enrollment reaches one of these, re-scoring leaves status untouched.
+ */
+const FROZEN_STATUSES: ReadonlyArray<EnrollmentStatus> = [
+  'approved',
+  'withdrawn',
+  'deferred',
+]
+
+/**
+ * Derives the enrollment status implied by the assigned Reviewer's score.
+ *
+ * Only the assigned Reviewer drives status (peers / non-assigned admins are
+ * advisory); the caller is responsible for that gate. Mapping:
+ * - `null` (cleared) → `under_review`
+ * - `0` / `1` → `rejected`
+ * - `2` → `waitlisted`
+ * - `3` / `4` → `awaiting_approval` (admin then makes the final call)
+ *
+ * Returns `null` when nothing should change: the current status is a frozen
+ * admin decision, or the computed status already equals the current one.
+ */
+export function deriveEnrollmentStatusFromReviewerScore(
+  score: number | null,
+  currentStatus: EnrollmentStatus,
+): EnrollmentStatus | null {
+  if (FROZEN_STATUSES.includes(currentStatus)) return null
+
+  let next: EnrollmentStatus
+  if (score === null) next = 'under_review'
+  else if (score <= 1) next = 'rejected'
+  else if (score === 2) next = 'waitlisted'
+  else next = 'awaiting_approval'
+
+  return next === currentStatus ? null : next
+}
 
 export type EnrollmentWithEvaluation = MaybeRedactedEnrollment & {
   evaluationSum: number

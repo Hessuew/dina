@@ -48,6 +48,7 @@ export const updateEnrollmentStatusSchema = z.object({
   status: z.enum([
     'pending',
     'under_review',
+    'awaiting_approval',
     'approved',
     'rejected',
     'waitlisted',

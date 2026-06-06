@@ -255,6 +255,17 @@ export async function deleteEnrollmentById(enrollmentId: string) {
   await db.delete(enrollments).where(eq(enrollments.id, enrollmentId))
 }
 
+export async function findReviewerIdForEnrollment(
+  enrollmentId: string,
+): Promise<string | null> {
+  const db = await getDb()
+  const row = await db.query.enrollmentReviewerAssignments.findFirst({
+    where: eq(enrollmentReviewerAssignments.enrollmentId, enrollmentId),
+    columns: { reviewerId: true },
+  })
+  return row?.reviewerId ?? null
+}
+
 export async function findProfileById(userId: string) {
   const db = await getDb()
   return db.query.profiles.findFirst({
