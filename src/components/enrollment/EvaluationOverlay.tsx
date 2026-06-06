@@ -566,7 +566,7 @@ export function EvaluationOverlay({
       </div>
 
       {/* Application content */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-6">
         <div className="mx-auto w-full max-w-5xl">
           <EnrollmentDetails
             enrollment={enrollment}
