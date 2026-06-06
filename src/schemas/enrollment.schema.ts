@@ -56,6 +56,11 @@ export const updateEnrollmentStatusSchema = z.object({
   ]),
 })
 
+export const setEnrollmentSpecialCaseSchema = z.object({
+  enrollmentId: z.uuid('Invalid enrollment ID'),
+  specialCase: z.boolean(),
+})
+
 export const deleteEnrollmentSchema = z.object({
   enrollmentId: z.uuid('Invalid enrollment ID'),
 })
@@ -110,6 +115,9 @@ export type CreateEnrollmentInput = z.infer<typeof createEnrollmentSchema>
 export type GetEnrollmentByIdInput = z.infer<typeof getEnrollmentByIdSchema>
 export type UpdateEnrollmentStatusInput = z.infer<
   typeof updateEnrollmentStatusSchema
+>
+export type SetEnrollmentSpecialCaseInput = z.infer<
+  typeof setEnrollmentSpecialCaseSchema
 >
 export type DeleteEnrollmentInput = z.infer<typeof deleteEnrollmentSchema>
 export type SendInvitationForEnrollmentInput = z.infer<

@@ -26,7 +26,11 @@ What a Teacher-user sees when viewing enrollments. Full applicant story (name, d
 
 ### Admin
 
-A user with `profiles.role = 'admin'`. Full enrollment access: read all fields, change status, send invitation, delete. Only role that can manage users and invitations.
+A user with `profiles.role = 'admin'`. Full enrollment access: read all fields, change status, send invitation, delete. The send-invitation action is only offered once the enrollment `status` is `approved`. Only role that can manage users and invitations.
+
+### Special Case
+
+A boolean admin flag (`enrollments.special_case`) marking an enrollment for special handling. Toggled by an Admin from the enrollments list via a star control, and surfaced there as a filled gold star plus an amber row tint. Teacher-users see the flag read-only; only Admins can toggle it. Orthogonal to enrollment `status` and to Enrollment Evaluations.
 
 ### Student
 
@@ -43,3 +47,19 @@ A Teacher-user or Admin acting on the enrollment review surface. An Evaluator re
 ### Enrollment Evaluation
 
 One Evaluator's assessment of one enrollment: a nullable rubric **score** from 0 to 4, a nullable **admission category** required by the UI when the score is 3 or 4, and an optional **note**, stored as a single row per `(enrollment, evaluator)` in the `enrollment_evaluations` table. Score meanings are 0 = rejected, 1 = borderline, 2 = reserve list, 3 = admission, and 4 = strong admission. Admission categories are A = new (admitted in the new young convert/new discipleship category), B = emerging (admitted into emerging leaders discipleship category), and C = established (admitted into an established leaders discipleship category). Scores aggregate on the enrollment list as a sortable **sum · evaluator-count**. An Enrollment Evaluation is independent of enrollment `status` — scoring never changes status (see ADR 0006). Captured in the keyboard-driven review overlay launched from the enrollments list.
+
+### Reviewer
+
+The single Evaluator **assigned** an enrollment via the `enrollment_reviewer_assignments` table (one reviewer per enrollment). The enrollments list defaults to showing each Evaluator only the enrollments assigned to them as Reviewer (admins can toggle **View All**). Assignment is seeded by the admin **Distribute unassigned** action. A Reviewer is distinct from an Evaluator: every Reviewer is an Evaluator, but an Evaluator may also evaluate enrollments they are not the Reviewer for (see Peer Review).
+
+### Peer / Course partner
+
+The other Teacher-user on the same course as a given Teacher-user, derived from the `course_teachers` table. The expected shape is **two teachers per course, one course per teacher**, so each teacher has exactly one Peer — but this is a convention, not a database constraint, so the system treats _all_ co-teachers as Peers and degrades gracefully when a course has one or more than two.
+
+### Peer Review
+
+The act of a teacher adding their **own** Enrollment Evaluation to an enrollment their **Peer** scored 3 or 4 — a cross-check on the partner's high-stakes admits. Peer Review reuses the Enrollment Evaluation entity (the peer reviewer becomes a second Evaluator on that enrollment); it introduces no new score type or table. These enrollments are surfaced in the teacher's enrollments list (merged with their own assigned ones, marked with a **Peer-review state** badge) even though they are assigned to the Peer as Reviewer. See ADR 0007.
+
+### Peer-review state
+
+A **derived**, per-viewer label shown on the enrollments list (never stored, never an `enrollment_status` value): `under_peer_review` when a Peer scored the enrollment 3/4 and the viewer has not scored it yet, `peer_reviewed` once the viewer has scored it, and absent otherwise. It is orthogonal to enrollment `status` (which stays admin-controlled) and recomputes automatically as scores change.
