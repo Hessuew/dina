@@ -428,32 +428,6 @@ export function LandingLecturerGemsSection() {
                   <span className="text-[#C5A059] italic">Twelve Stones</span>
                 </>
               }
-              introText={
-                <>
-                  <span className="mb-2 block text-[0.6rem] font-medium tracking-[0.28em] text-[#9B7A41] uppercase">
-                    The DINA Anthem · A Song of Commanders
-                  </span>
-                  <span className="text-[#C5A059]">♫</span> <br />
-                  <em>
-                    Command me Lord,
-                    <br />
-                    Command me Lord,
-                    <br />
-                    That I may be, a commander,
-                    <br />
-                    <br />
-                    Command me Lord,
-                    <br />
-                    To lead battalions,
-                    <br />
-                    That will turn men's hearts,
-                    <br />
-                    back to God
-                  </em>{' '}
-                  <br />
-                  <span className="text-[#C5A059]">♫</span>
-                </>
-              }
               scriptures={[
                 {
                   quote:
@@ -645,6 +619,31 @@ export function LandingLecturerGemsSection() {
                 )
               })}
             </div>
+          </div>
+
+          <div className="w-full pt-10 text-center xl:pt-20">
+            <span className="mb-2 block text-lg font-medium tracking-[0.28em] text-[#9B7A41] uppercase">
+              The DINA Anthem · A Song of Commanders
+            </span>
+            <span className="text-lg text-[#C5A059]">♫</span> <br />
+            <em className="text-lg">
+              Command me Lord,
+              <br />
+              Command me Lord,
+              <br />
+              That I may be, a commander,
+              <br />
+              <br />
+              Command me Lord,
+              <br />
+              To lead battalions,
+              <br />
+              That will turn men's hearts,
+              <br />
+              back to God
+            </em>{' '}
+            <br />
+            <span className="text-lg text-[#C5A059]">♫</span>
           </div>
         </div>
       </LandingSectionContainer>
