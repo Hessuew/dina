@@ -70,7 +70,7 @@ export async function findEnrollmentsPage({
     search.trim().length > 0
       ? or(
           ilike(enrollments.fullLegalName, `%${search}%`),
-          ilike(enrollments.status, `%${search}%`),
+          ilike(sql`${enrollments.status}::text`, `%${search}%`),
           ...(includeEmail ? [ilike(enrollments.email, `%${search}%`)] : []),
         )
       : undefined
@@ -167,7 +167,7 @@ export async function upsertEvaluation(
 
 export async function updateEnrollmentStatusById(
   enrollmentId: string,
-  status: typeof enrollments.$inferSelect['status'],
+  status: (typeof enrollments.$inferSelect)['status'],
 ) {
   const db = await getDb()
   await db

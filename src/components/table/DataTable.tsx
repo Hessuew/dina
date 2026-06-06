@@ -1,5 +1,11 @@
-import { useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, ChevronsUpDown, Search } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  Loader2,
+  Search,
+} from 'lucide-react'
 import {
   createColumnHelper,
   flexRender,
@@ -77,6 +83,9 @@ type DataTableProps<TData> = {
   initialSortDir?: 'asc' | 'desc'
   onSearchChange?: (search: string) => void
   onSortingChange?: (sortBy: string | null, sortDir: 'asc' | 'desc') => void
+  isLoading?: boolean
+  loadingLabel?: string
+  emptyMessage?: string
 }
 
 export function createButtonColumn<TData>(
@@ -142,6 +151,9 @@ export function DataTable<TData>({
   initialSortDir = 'desc',
   onSearchChange,
   onSortingChange,
+  isLoading = false,
+  loadingLabel = 'Loading…',
+  emptyMessage = 'No results found',
 }: DataTableProps<TData>) {
   const isServerMode = rowCount !== undefined
   const tableTopRef = useRef<HTMLDivElement>(null)
@@ -155,6 +167,25 @@ export function DataTable<TData>({
     pageIndex: initialPage ? initialPage - 1 : 0,
     pageSize: initialPageSize,
   })
+
+  useEffect(() => {
+    setGlobalFilter(initialSearch)
+  }, [initialSearch])
+
+  useEffect(() => {
+    setPagination({
+      pageIndex: initialPage ? initialPage - 1 : 0,
+      pageSize: initialPageSize,
+    })
+  }, [initialPage, initialPageSize])
+
+  useEffect(() => {
+    setSorting(
+      initialSortBy
+        ? [{ id: initialSortBy, desc: initialSortDir === 'desc' }]
+        : [],
+    )
+  }, [initialSortBy, initialSortDir])
 
   const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
     const next = typeof updater === 'function' ? updater(sorting) : updater
@@ -205,7 +236,8 @@ export function DataTable<TData>({
   const filteredTotal = isServerMode
     ? rowCount
     : table.getFilteredRowModel().rows.length
-  const start = pageIndex * pageSize + 1
+  const start =
+    filteredTotal === 0 ? 0 : Math.min(pageIndex * pageSize + 1, filteredTotal)
   const end = Math.min((pageIndex + 1) * pageSize, filteredTotal)
   const pageWindow = buildPageWindow(pageIndex + 1, pageCount)
   const sizeOptions = PAGE_SIZE_OPTIONS.includes(pageSize)
@@ -213,7 +245,7 @@ export function DataTable<TData>({
     : [...PAGE_SIZE_OPTIONS, pageSize].sort((a, b) => a - b)
 
   return (
-    <div ref={tableTopRef} className="flex flex-col gap-4">
+    <div ref={tableTopRef} className="flex flex-col gap-4" aria-busy={isLoading}>
       {/* Search bar */}
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-[#8E816D]" />
@@ -224,12 +256,21 @@ export function DataTable<TData>({
             if (!isServerMode) table.setPageIndex(0)
           }}
           placeholder={searchPlaceholder}
-          className="h-9 border-white/10 bg-[#1A1716] pl-8 text-[0.82rem] text-[#F8F4EC] placeholder:text-[#8E816D] focus-visible:border-[#C5A059]/40 focus-visible:ring-0"
+          className="h-9 border-white/10 bg-[#1A1716] pr-8 pl-8 text-[0.82rem] text-[#F8F4EC] placeholder:text-[#8E816D] focus-visible:border-[#C5A059]/40 focus-visible:ring-0"
         />
+        {isLoading && (
+          <Loader2 className="pointer-events-none absolute top-1/2 right-3 size-3.5 -translate-y-1/2 animate-spin text-[#C5A059]" />
+        )}
       </div>
 
       {/* Table */}
-      <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
+      <div className="relative border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
+        {isLoading && (
+          <div className="absolute inset-x-0 top-0 z-20 flex items-center gap-2 border-b border-[#C5A059]/20 bg-[#1A1716]/95 px-4 py-2 text-[0.68rem] font-medium tracking-[0.18em] text-[#D4B373] uppercase">
+            <Loader2 className="size-3.5 animate-spin" />
+            {loadingLabel}
+          </div>
+        )}
         <Table
           containerClassName={maxRows ? 'overflow-y-auto' : undefined}
           containerStyle={
@@ -289,7 +330,7 @@ export function DataTable<TData>({
                   colSpan={columns.length}
                   className="py-12 text-center text-sm text-[#8E816D]"
                 >
-                  No results found
+                  {emptyMessage}
                 </TableCell>
               </TableRow>
             ) : (
