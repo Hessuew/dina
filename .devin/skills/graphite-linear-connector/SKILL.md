@@ -4,7 +4,9 @@ description: >
   Connects Graphite PR stacks to Linear issues using deterministic semantic
   matching, confidence scoring, and safe mutation workflows.
 
-  Links PRs to Linear issues using Linear's `links` field (Linear-side linking).
+  Links PRs to Linear issues bidirectionally:
+  - GitHub-side: adds Linear issue URL to GitHub PR description (always works)
+  - Linear-side: adds PR URL to Linear issue's links field (if Linear MCP has mutation tools)
 
   Supports:
     - linking PRs to existing Linear issues
@@ -17,7 +19,10 @@ description: >
 
 # 0. Core Intent
 
-Connect Graphite PRs to the correct Linear issues safely and deterministically.
+Connect Graphite PRs to the correct Linear issues safely and deterministically using bidirectional linking:
+
+- **GitHub-side (always):** Add Linear issue URL to GitHub PR description via `gh pr edit`
+- **Linear-side (optional):** Add PR URL to Linear issue's `links` field via Linear MCP (if mutation tools available)
 
 Primary goals:
 
@@ -26,6 +31,7 @@ Primary goals:
 - ensure idempotent operations
 - provide explainable confidence scoring
 - support safe repeated execution
+- degrade gracefully when Linear MCP lacks mutation tools (GitHub-side linking always succeeds)
 
 ---
 
@@ -73,8 +79,56 @@ PR #<number>: NO_MATCH
 ...
 ```
 
+- `<Linear-issue-id>` — Linear issue identifier (e.g., CHR-123)
+- `<Linear-issue-url>` — Full URL to the Linear issue
 - `<Linear-issue-description-first-paragraph>` — used by stack-planner as "Why" source; keep it as-is (stack-planner summarizes to ≤2 sentences)
-- `NO_MATCH` — stack-planner omits the "Why" section for that PR
+- `NO_MATCH` — stack-planner omits the Linear issue link and "Why" section for that PR
+
+---
+
+# 0.6. Linking Strategy
+
+The skill uses **bidirectional linking** to connect PRs and Linear issues:
+
+## GitHub-side linking (always succeeds)
+
+- **What:** Add Linear issue URL to GitHub PR description
+- **How:** Via `gh pr edit` command (GitHub CLI)
+- **When:** Always, regardless of Linear MCP capabilities
+- **Format:** `**Related Linear Issue:** <Linear-issue-url>` at the top of PR description
+- **Reliability:** High - uses GitHub CLI which is always available
+
+## Linear-side linking (best effort)
+
+- **What:** Add PR URL to Linear issue's `links` field
+- **How:** Via Linear MCP mutation tools (if available)
+- **When:** Only if Linear MCP server has mutation tools (e.g., `update_issue`, `save_issue`)
+- **Format:** Linear issue's links array with PR URL and title
+- **Reliability:** Variable - depends on Linear MCP server configuration
+- **Fallback:** Gracefully degrades if mutation tools unavailable
+
+## Why both?
+
+- **GitHub-side:** Ensures developers can always find the Linear issue from the PR
+- **Linear-side:** Ensures Linear users can navigate to the PR from the issue
+- **Redundancy:** Provides navigation in both directions for better UX
+- **Resilience:** GitHub-side linking is the primary reliable path; Linear-side is enhancement
+
+## Checking Linear MCP capabilities
+
+Before attempting Linear-side linking:
+
+1. Call `mcp_list_tools` for the Linear server
+2. Check for mutation tools: `update_issue`, `save_issue`, or similar
+3. If mutation tools available → attempt Linear-side linking
+4. If mutation tools unavailable → skip Linear-side linking, log warning, proceed with GitHub-side only
+
+Example check:
+
+```bash
+mcp_list_tools --server-name linear
+# Look for tools with destructiveHint: false (safe mutations)
+```
 
 ---
 
@@ -271,8 +325,8 @@ Before searching for Linear issues, determine how to group the PRs based on thei
 1. Create parent issue with overall refactor context
 2. Create sub-issues for each page/component
 3. Link all sub-issues to parent issue using Linear's `parentId` field
-4. Add PR URLs to each sub-issue using Linear's `links` field
-5. Add all PR URLs to parent issue using Linear's `links` field
+4. Return PR → sub-issue mappings for stack-planner to add to GitHub PR descriptions
+5. Return parent issue URL for stack-planner to add to all GitHub PR descriptions
 
 ---
 
@@ -531,9 +585,13 @@ Allow:
 4. Score matches
 5. Present plan
 6. Confirm actions (standalone only — skipped in pipeline mode)
-7. Execute mutations (case-specific)
-8. Verify mutations succeeded
-9. Emit summary (+ PIPELINE_RESULT block if in pipeline mode)
+7. Check Linear MCP capabilities (section 0.6)
+8. Execute mutations (case-specific)
+   - GitHub-side linking: always via `gh pr edit`
+   - Linear-side linking: attempt if mutation tools available
+9. Verify GitHub-side linking succeeded
+10. Verify Linear-side linking (if attempted)
+11. Emit summary (+ PIPELINE_RESULT block if in pipeline mode)
 
 ### Case-specific mutation workflows
 
@@ -545,8 +603,8 @@ For each PR independently:
 - Score matches
 - Create or link to issue
   - When creating new issues: apply the workspace's recommended template (only 1 named "recommended")
-- Add PR URL to issue's `links` field using Linear MCP
-- Verify linking
+- Attempt Linear-side linking: add PR URL to issue's `links` field using Linear MCP (if mutation tools available)
+- Return PR → Linear issue mapping for stack-planner to add to GitHub PR description (always succeeds)
 
 #### Case 2: Same Feature (Stacked Implementation)
 
@@ -554,8 +612,8 @@ For each PR independently:
 - Score matches against all PRs
 - Create one issue with all PRs as sections
   - When creating new issues: apply the workspace's recommended template (only 1 named "recommended")
-- Add all PR URLs to issue's `links` field using Linear MCP
-- Verify linking
+- Attempt Linear-side linking: add all PR URLs to issue's `links` field using Linear MCP (if mutation tools available)
+- Return PR → Linear issue mapping (all PRs map to same issue) for stack-planner to add to GitHub PR descriptions (always succeeds)
 
 #### Case 3: Wide Refactor with Sub-Issues
 
@@ -565,26 +623,45 @@ For each PR independently:
    - Create sub-issue with page/component-specific details
      - When creating new issues: apply the workspace's recommended template (only 1 named "recommended")
    - Set `parentId` to parent issue
-   - Add PR URL to sub-issue's `links` field using Linear MCP
-3. Add PR URL only to corresponding sub-issue
-   - Parent issue relationship is maintained through parentId.
-   - Do not duplicate PR URLs on parent issues.
-4. Verify all linkings
+   - Attempt Linear-side linking: add PR URL to sub-issue's `links` field using Linear MCP (if mutation tools available)
+3. Return PR → sub-issue mappings for stack-planner to add to GitHub PR descriptions (always succeeds)
+4. Return parent issue URL for stack-planner to add to all GitHub PR descriptions
 
 ### Verification step
-
-Use Linear MCP to verify PR URLs are in issue's `links` field:
-
-```bash
-mcp1_get_issue <issue-id>
-```
-
-Verify links array contains the PR URLs.
 
 After issue creation:
 
 - verify issue retrievable
 - verify correct team/state
+
+After GitHub-side linking:
+
+- verify PR description contains Linear issue URL
+- verify format matches template: `**Related Linear Issue:** <url>`
+
+After Linear-side linking (if attempted):
+
+- verify Linear issue's `links` array contains PR URL
+- if verification fails, log warning but continue (non-critical)
+
+### Linear-side linking implementation
+
+When Linear MCP has mutation tools:
+
+1. Use `mcp_call_tool` with Linear server
+2. Call appropriate mutation tool (e.g., `update_issue`, `save_issue`)
+3. Add PR URL to issue's `links` array with format:
+   ```json
+   {
+     "url": "https://github.com/Hessuew/dina/pull/123",
+     "title": "PR #123: feat(enrollments): add special case flag"
+   }
+   ```
+4. Handle errors gracefully:
+   - If tool not found → log warning, skip Linear-side linking
+   - If permission denied → log warning, skip Linear-side linking
+   - If rate limited → log warning, skip Linear-side linking
+   - If network error → log warning, skip Linear-side linking
 
 ---
 
@@ -617,8 +694,11 @@ Reasons:
 - shared auth-service module
 - commit references latency optimization
 
-Planned action:
-- link PR to ENG-142
+Planned actions:
+- create new issue ENG-143: Add session cache to auth service
+- GitHub-side: add ENG-143 URL to PR description (always)
+- Linear-side: add PR URL to ENG-143 links field (if Linear MCP has mutation tools)
+- return PR → ENG-143 mapping for GitHub PR description
 
 Dry-run enabled:
 - no changes executed
@@ -641,20 +721,13 @@ Dry-run enabled:
 
 ```
 Issue created successfully: ENG-532
+GitHub PR description updated with Linear link
 
-Linear link addition failed.
+Linear-side linking failed (Linear MCP missing mutation tools).
 
-Recovery command:
-Use Linear MCP to add PR URL to ENG-532 links field:
-mcp1_save_issue {
-  "id": "ENG-532",
-  "links": [
-    {
-      "title": "PR #123: Description",
-      "url": "https://github.com/Hessuew/dina/pull/123"
-    }
-  ]
-}
+Recovery command (optional):
+Manually add PR URL to Linear issue's links field:
+https://linear.app/christ-dina/issue/ENG-532 → Add link to PR #123
 ```
 
 ---
