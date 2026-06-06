@@ -1,1 +1,1 @@
-export * from './zoomLinks'
+export * from './zoomLink'
