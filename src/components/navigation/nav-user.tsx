@@ -70,6 +70,7 @@ export function NavUser({
               render={
                 <SidebarMenuButton
                   size="lg"
+                  tooltip="Account settings"
                   className={cn(
                     'rounded-none border transition-all',
                     isDark
