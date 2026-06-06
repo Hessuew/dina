@@ -6,6 +6,7 @@ import type {
   MaybeRedactedEnrollment,
 } from '@/utils/enrolment/domain/enrolment.domain'
 import {
+  derivePeerReviewState,
   generateInvitationExpiry,
   generateSecureToken,
   isInvitationResendable,
@@ -33,6 +34,7 @@ import {
   getEnrollmentByIdSchema,
   getEnrollmentsSchema,
   sendInvitationForEnrollmentSchema,
+  setEnrollmentSpecialCaseSchema,
   setEvaluationAdmissionCategorySchema,
   setEvaluationNoteSchema,
   setEvaluationScoreSchema,
@@ -47,11 +49,13 @@ import {
   findEnrollmentsPage,
   findEvaluationsForEnrollments,
   findInvitationByEmail,
+  findPeerTeacherIds,
   findProfileById,
   findUnassignedEnrollmentIds,
   insertEnrollment,
   insertInvitation,
   markEnrollmentInvitationSent,
+  updateEnrollmentSpecialCaseById,
   updateEnrollmentStatusById,
   updateInvitationToken,
   upsertEvaluation,
@@ -94,6 +98,9 @@ export const getEnrollments = createServerFn({ method: 'POST' })
 
       const reviewerFilter = isAdmin && data.viewAll ? undefined : user.id
 
+      const peerIds =
+        reviewerFilter !== undefined ? await findPeerTeacherIds(user.id) : []
+
       const { rows, total } = await findEnrollmentsPage({
         limit: data.pageSize,
         offset: (data.page - 1) * data.pageSize,
@@ -102,6 +109,7 @@ export const getEnrollments = createServerFn({ method: 'POST' })
         sortDir: data.sortDir,
         includeEmail: isAdmin,
         reviewerFilter,
+        peerIds,
       })
 
       const evaluations = await findEvaluationsForEnrollments(
@@ -114,7 +122,12 @@ export const getEnrollments = createServerFn({ method: 'POST' })
           const base = isAdmin
             ? (enrollment as MaybeRedactedEnrollment)
             : redactEnrollmentForTeacher(enrollment)
-          return { ...base, evaluationSum, evaluationCount }
+          const peerReviewState = derivePeerReviewState(
+            evaluations.filter((e) => e.enrollmentId === row.id),
+            user.id,
+            peerIds,
+          )
+          return { ...base, evaluationSum, evaluationCount, peerReviewState }
         },
       )
 
@@ -166,6 +179,20 @@ export const updateEnrollmentStatus = createServerFn({ method: 'POST' })
       await authz(user.id).hasRole('admin')
 
       await updateEnrollmentStatusById(data.enrollmentId, data.status)
+
+      return
+    })
+  })
+
+export const setEnrollmentSpecialCase = createServerFn({ method: 'POST' })
+  .inputValidator(setEnrollmentSpecialCaseSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+
+    return withRequestCache(async () => {
+      await authz(user.id).hasRole('admin')
+
+      await updateEnrollmentSpecialCaseById(data.enrollmentId, data.specialCase)
 
       return
     })
