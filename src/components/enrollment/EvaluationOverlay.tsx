@@ -165,12 +165,14 @@ function NoteEditor({
   onSaveRef.current = onSave
 
   // Flush a pending save when navigating away / closing.
+  // Best-effort: if the network request fails on unmount there is no lifecycle
+  // to surface the error, so we log it rather than swallow it silently.
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
       if (dirtyRef.current) {
         dirtyRef.current = false
-        void onSaveRef.current(latestRef.current)
+        onSaveRef.current(latestRef.current).catch(console.error)
       }
     }
   }, [])

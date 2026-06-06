@@ -1,17 +1,14 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import {
-  CheckCircle2,
-  Eye,
-  Mail,
-  MoreHorizontal,
-  Star,
-  Trash2,
-} from 'lucide-react'
+import { Eye, Mail, MoreHorizontal, Star, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
+import type {
+  EnrollmentStatus,
+  EnrollmentWithEvaluation,
+} from '@/utils/enrolment/domain/enrolment.domain'
 import { toUserError } from '@/utils/errors'
 import { Button } from '@/components/ui/button'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
@@ -45,37 +42,7 @@ import {
 import { formatEvaluationSummary } from '@/utils/enrolment/domain/evaluation.domain'
 import { cn } from '@/lib/utils'
 
-export type EnrollmentRow = {
-  id: string
-  fullLegalName: string
-  preferredName: string | null
-  email?: string
-  yearOfBirth: number
-  gender: 'male' | 'female'
-  nationalityCitizenship: string | null
-  phoneWhatsApp?: string
-  currentCity: string | null
-  currentCountry: string | null
-  churchAffiliations: string | null
-  aboutYourself: string
-  expectationsAlignment: string
-  status:
-    | 'pending'
-    | 'under_review'
-    | 'approved'
-    | 'rejected'
-    | 'waitlisted'
-    | 'withdrawn'
-    | 'deferred'
-  invitationSent?: boolean
-  invitationId?: string | null
-  specialCase: boolean
-  evaluationSum: number
-  evaluationCount: number
-  peerReviewState: 'under_peer_review' | 'peer_reviewed' | null
-  createdAt: Date
-  updatedAt: Date
-}
+export type EnrollmentRow = EnrollmentWithEvaluation
 
 type EnrollmentsTableProps = {
   enrollments: Array<EnrollmentRow>
@@ -97,16 +64,16 @@ type EnrollmentsTableProps = {
 
 const columnHelper = createColumnHelper<EnrollmentRow>()
 
-const STATUS_LABELS: Array<{ value: EnrollmentRow['status']; label: string }> =
-  [
-    { value: 'pending', label: 'Pending' },
-    { value: 'under_review', label: 'Under review' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'rejected', label: 'Rejected' },
-    { value: 'waitlisted', label: 'Waitlisted' },
-    { value: 'withdrawn', label: 'Withdrawn' },
-    { value: 'deferred', label: 'Deferred' },
-  ]
+const STATUS_LABELS: Array<{ value: EnrollmentStatus; label: string }> = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'under_review', label: 'Under review' },
+  { value: 'awaiting_approval', label: 'Awaiting approval' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'waitlisted', label: 'Waitlisted' },
+  { value: 'withdrawn', label: 'Withdrawn' },
+  { value: 'deferred', label: 'Deferred' },
+]
 
 export function EnrollmentsTable({
   enrollments,
@@ -194,8 +161,10 @@ export function EnrollmentsTable({
         )
         if (!isAdmin) return star
         return (
-          <button
+          <Button
             type="button"
+            size="icon"
+            theme="dark"
             onClick={() =>
               specialCaseMutation.mutate({
                 data: { enrollmentId: row.id, specialCase: !on },
@@ -203,10 +172,10 @@ export function EnrollmentsTable({
             }
             disabled={specialCaseMutation.isPending}
             aria-label={on ? 'Unmark special case' : 'Mark special case'}
-            className="text-[#8E816D] transition-colors hover:text-amber-400"
+            className="size-8 rounded-none border-none bg-transparent hover:bg-amber-400/15"
           >
             {star}
-          </button>
+          </Button>
         )
       },
     }),
@@ -233,36 +202,28 @@ export function EnrollmentsTable({
       ),
       header: 'YOB',
     }),
-    columnHelper.accessor('gender', {
-      cell: (info) => (
-        <span className="text-[0.82rem] text-[#AFA28F]">
-          {info.getValue() === 'male' ? 'Male' : 'Female'}
-        </span>
-      ),
-      header: 'Gender',
-    }),
     columnHelper.accessor('status', {
       cell: (info) => <EnrollmentStatusChip status={info.getValue()} />,
       header: 'Status',
     }),
-    ...(isAdmin
-      ? [
-          columnHelper.accessor('invitationSent', {
-            cell: (info) => {
-              const sent = info.getValue()
-              return sent ? (
-                <span className="inline-flex items-center gap-1.5 text-emerald-400">
-                  <CheckCircle2 className="size-3.5" />
-                  Sent
-                </span>
-              ) : (
-                <span className="text-[#8E816D]">—</span>
-              )
-            },
-            header: 'Invitation',
-          }),
-        ]
-      : []),
+    // ...(isAdmin
+    //   ? [
+    //       columnHelper.accessor('invitationSent', {
+    //         cell: (info) => {
+    //           const sent = info.getValue()
+    //           return sent ? (
+    //             <span className="inline-flex items-center gap-1.5 text-emerald-400">
+    //               <CheckCircle2 className="size-3.5" />
+    //               Sent
+    //             </span>
+    //           ) : (
+    //             <span className="text-[#8E816D]">—</span>
+    //           )
+    //         },
+    //         header: 'Invitation',
+    //       }),
+    //     ]
+    //   : []),
     columnHelper.accessor('evaluationSum', {
       cell: (info) => {
         const count = info.row.original.evaluationCount

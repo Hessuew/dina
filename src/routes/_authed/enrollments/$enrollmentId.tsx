@@ -38,6 +38,7 @@ import { useMutation } from '@/hooks/useMutation'
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending' },
   { value: 'under_review', label: 'Under review' },
+  { value: 'awaiting_approval', label: 'Awaiting approval' },
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'waitlisted', label: 'Waitlisted' },
