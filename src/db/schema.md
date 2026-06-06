@@ -9,7 +9,12 @@ Defines the database schema used by Drizzle:
 - Relations
 - Policy helpers (where applicable)
 
-This file is the schema source of truth for type-safe queries via Drizzle.
+`schema.ts` is a barrel that re-exports the per-domain modules in `src/db/schema/`
+(`enums.schema.ts`, `profile.schema.ts`, `course.schema.ts`, `assignment.schema.ts`,
+`enrollment.schema.ts`, `post.schema.ts`, `announcement.schema.ts`, `media.schema.ts`,
+`calendar.schema.ts`, `zoom.schema.ts`, `notification.schema.ts`, `invitation.schema.ts`).
+Those modules are the schema source of truth for type-safe queries via Drizzle; importers
+continue to use `@/db/schema`.
 
 ## Responsibilities
 
@@ -28,17 +33,17 @@ This file is the schema source of truth for type-safe queries via Drizzle.
 
 ## Conventions to Keep Consistent
 
-- Enums are defined once and reused.
-- Relation helpers should be declared near the relevant tables.
+- Enums are defined once in `src/db/schema/enums.schema.ts` and reused.
+- Relation helpers are co-located with their tables in each domain module.
 - Prefer clear, explicit foreign keys and relation naming.
 
 ## Common Change Recipes
 
 - Add a new table
-  - Add `pgTable(...)` with standard fields.
-  - Add `relations(...)` for foreign keys.
+  - Add `pgTable(...)` with standard fields to the relevant `src/db/schema/<domain>.schema.ts` (or a new module file plus an `export *` line in `schema.ts`).
+  - Add `relations(...)` for foreign keys in the same module.
   - Update `src/db/README.md`.
 
 - Add a new enum
-  - Add a `pgEnum(...)` export.
+  - Add a `pgEnum(...)` export to `src/db/schema/enums.schema.ts`.
   - Reference it in table definitions.
