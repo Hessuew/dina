@@ -1,24 +1,13 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq } from 'drizzle-orm'
 import z from 'zod'
-import { getDb } from '@/db'
-import { courseTeachers } from '@/db/schema'
+import { isCourseTeacherService } from './service/teachers.service'
 import { getCurrentUser } from '@/utils/auth/auth'
 
 export const isCurrentUserCourseTeacher = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ courseId: z.uuid() }))
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const db = await getDb()
-
-    const assignment = await db.query.courseTeachers.findFirst({
-      where: and(
-        eq(courseTeachers.courseId, data.courseId),
-        eq(courseTeachers.teacherId, user.id),
-      ),
-    })
-
-    return { isCourseTeacher: Boolean(assignment) }
+    return isCourseTeacherService(data.courseId, user.id)
   })
 
 /**

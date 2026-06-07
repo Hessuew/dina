@@ -1,8 +1,18 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { courseTeachers } from '@/db/schema'
 
 /* v8 ignore start */
+export async function findCourseTeacher(courseId: string, teacherId: string) {
+  const db = await getDb()
+  return db.query.courseTeachers.findFirst({
+    where: and(
+      eq(courseTeachers.courseId, courseId),
+      eq(courseTeachers.teacherId, teacherId),
+    ),
+  })
+}
+
 export async function findTeacherCourseAssignment(teacherId: string) {
   const db = await getDb()
   return db.query.courseTeachers.findFirst({
