@@ -54,7 +54,13 @@ async function runMigrations() {
         const code = (err as { code?: string }).code
         const isPolicyStmt = /policy|row level security/i.test(stmt)
         // 42704 undefined_object, 42710 duplicate_object
-        if (isPolicyStmt && (code === '42704' || code === '42710')) continue
+        if (isPolicyStmt && (code === '42704' || code === '42710')) {
+          // Log idempotent policy-statement errors for observability
+          console.warn(
+            `[integration setup] Skipping idempotent policy statement (code: ${code}): ${stmt.slice(0, 100)}...`,
+          )
+          continue
+        }
         throw err
       }
     }

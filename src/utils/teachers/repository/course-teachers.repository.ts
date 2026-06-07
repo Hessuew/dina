@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { courseTeachers } from '@/db/schema'
 
@@ -13,10 +13,13 @@ export async function findCourseTeacher(courseId: string, teacherId: string) {
   })
 }
 
-export async function findTeacherCourseAssignment(teacherId: string) {
+export async function findCourseAssignmentsForTeachers(
+  teacherIds: Array<string>,
+) {
+  if (teacherIds.length === 0) return []
   const db = await getDb()
-  return db.query.courseTeachers.findFirst({
-    where: eq(courseTeachers.teacherId, teacherId),
+  return db.query.courseTeachers.findMany({
+    where: inArray(courseTeachers.teacherId, teacherIds),
     with: {
       course: {
         columns: {
