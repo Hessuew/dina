@@ -46,7 +46,19 @@ export const enrollments = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
+    // Default list sort is by created_at.
+    index('enrollments_created_at_idx').on(table.createdAt),
+    // Trigram GIN indexes make the `ilike '%search%'` table search index-usable
+    // (requires the pg_trgm extension, created in the migration).
+    index('enrollments_full_legal_name_trgm_idx').using(
+      'gin',
+      sql`${table.fullLegalName} gin_trgm_ops`,
+    ),
+    index('enrollments_email_trgm_idx').using(
+      'gin',
+      sql`${table.email} gin_trgm_ops`,
+    ),
     pgPolicy('public_insert_enrollments', {
       for: 'insert',
       to: 'public',
