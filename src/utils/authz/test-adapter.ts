@@ -35,6 +35,10 @@ export class TestAuthorizationService implements AuthorizationService {
     return Promise.resolve(this.config.roles!.get(userId) === role)
   }
 
+  async getRole(userId: string): Promise<Role | null> {
+    return Promise.resolve(this.config.roles!.get(userId) ?? null)
+  }
+
   async isAdmin(userId: string): Promise<boolean> {
     return Promise.resolve(this.config.roles!.get(userId) === 'admin')
   }

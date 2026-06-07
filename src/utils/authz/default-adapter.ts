@@ -43,6 +43,15 @@ export class DefaultAuthorizationService implements AuthorizationService {
     return result
   }
 
+  async getRole(userId: string): Promise<Role | null> {
+    const db = await getDb()
+    const user = await db.query.profiles.findFirst({
+      where: eq(profiles.id, userId),
+      columns: { role: true },
+    })
+    return user?.role ?? null
+  }
+
   async isAdmin(userId: string): Promise<boolean> {
     return this.isRole(userId, 'admin')
   }
