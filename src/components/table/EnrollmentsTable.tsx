@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Eye, Mail, MoreHorizontal, Star, Trash2 } from 'lucide-react'
+import { Check, Eye, Mail, MoreHorizontal, Star, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
 import { createColumnHelper } from '@tanstack/react-table'
@@ -31,7 +31,7 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { DataTable } from '@/components/table/DataTable'
 import { IconButton } from '@/components/table/IconButton'
-import { EnrollmentStatusChip, PeerReviewChip } from '@/components/table/chips'
+import { EnrollmentStatusChip } from '@/components/table/chips'
 import { useMutation } from '@/hooks/useMutation'
 import {
   deleteEnrollment,
@@ -204,28 +204,55 @@ export function EnrollmentsTable({
     }),
     columnHelper.accessor('evaluationSum', {
       cell: (info) => {
+        const sum = info.getValue()
         const count = info.row.original.evaluationCount
-        return count === 0 ? (
-          <span className="text-[#8E816D]">—</span>
-        ) : (
-          <span className="text-[#D6CCBE] tabular-nums">
-            {formatEvaluationSummary(info.getValue(), count)}
+        if (count === 0) return <span className="text-[#8E816D]">—</span>
+        return (
+          <span className="inline-flex items-center gap-1 tabular-nums">
+            <span className="text-[#D6CCBE]">
+              {formatEvaluationSummary(sum, count)}
+            </span>
+            {sum === 8 && (
+              <Star className="size-3 fill-yellow-400 text-yellow-400" />
+            )}
           </span>
         )
       },
       header: 'Score',
     }),
-    columnHelper.accessor('peerReviewState', {
+    columnHelper.accessor('reviewHeading', {
       enableSorting: false,
       cell: (info) => {
-        const state = info.getValue()
-        return state ? (
-          <PeerReviewChip state={state} />
-        ) : (
-          <span className="text-[#8E816D]">—</span>
+        const {
+          reviewerFirstName,
+          reviewerHasEvaluated,
+          peerFirstName,
+          peerHasEvaluated,
+        } = info.getValue()
+        if (!reviewerFirstName) return <span className="text-[#8E816D]">—</span>
+        return (
+          <span className="inline-flex items-center gap-1 text-[0.82rem] text-[#AFA28F]">
+            {reviewerHasEvaluated ? (
+              <Check className="size-3 shrink-0 text-emerald-400" />
+            ) : (
+              <X className="size-3 shrink-0 text-[#8E816D]" />
+            )}
+            <span>{reviewerFirstName}</span>
+            {peerFirstName && (
+              <>
+                <span className="text-[#8E816D]">·</span>
+                {peerHasEvaluated ? (
+                  <Check className="size-3 shrink-0 text-emerald-400" />
+                ) : (
+                  <X className="size-3 shrink-0 text-[#8E816D]" />
+                )}
+                <span>{peerFirstName}</span>
+              </>
+            )}
+          </span>
         )
       },
-      header: 'Peer review',
+      header: 'Review',
     }),
     columnHelper.accessor('status', {
       cell: (info) => <EnrollmentStatusChip status={info.getValue()} />,

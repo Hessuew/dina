@@ -4,12 +4,14 @@
 // instance instead of Cloudflare Hyperdrive. Production `src/db/index.ts` is
 // untouched (and its `cloudflare:workers` import never enters the test graph).
 import { PGlite } from '@electric-sql/pglite'
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm'
 import { drizzle } from 'drizzle-orm/pglite'
 import * as schema from '@/db/schema'
 
 // One PGlite per worker. Vitest isolates each test file in its own module graph,
-// so each integration test file gets its own fresh database.
-const client = new PGlite()
+// so each integration test file gets its own fresh database. pg_trgm is loaded
+// so the trigram GIN index migrations parse (Supabase has it enabled in prod).
+const client = new PGlite({ extensions: { pg_trgm } })
 const db = drizzle(client, { schema })
 
 export function getDb() {

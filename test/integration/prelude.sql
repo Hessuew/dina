@@ -7,6 +7,9 @@
 -- which bypasses RLS — same effective behaviour as production, which connects as the
 -- table owner via Hyperdrive rather than through PostgREST.
 
+-- Trigram index migrations use gin_trgm_ops; enable the extension (loaded in db.ts).
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE SCHEMA IF NOT EXISTS auth;
 
 CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid
