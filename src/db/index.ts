@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/node-postgres'
-import { Client } from 'pg'
+import { Pool } from 'pg'
 import { env as _cfEnv } from 'cloudflare:workers'
 import * as schema from './schema'
 
@@ -15,13 +15,20 @@ export function getConnectionString() {
   return cfEnv.DATABASE_URL ?? process.env.DATABASE_URL
 }
 
+// Reuse a single connection pool instead of opening (and leaking) a new
+// connection on every getDb() call. The pool keeps connections warm so each
+// query is an instant checkout rather than a fresh TCP+TLS+auth handshake.
+// In Workers the module-scoped pool lives for the isolate's lifetime and its
+// sockets die with the isolate, so there is no cross-request leak.
+let pool: Pool | undefined
+let db: ReturnType<typeof drizzle<typeof schema>> | undefined
+
+// Kept async to preserve the existing `await getDb()` call-site signature.
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function getDb() {
-  const connectionString = getConnectionString()
-
-  const client = new Client({ connectionString })
-
-  await client.connect()
-
-  const db = drizzle(client, { schema })
+  if (!db) {
+    pool = new Pool({ connectionString: getConnectionString() })
+    db = drizzle(pool, { schema })
+  }
   return db
 }
