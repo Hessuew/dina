@@ -18,8 +18,8 @@ import type {
 } from '@/utils/enrolment/domain/enrolment.domain'
 import {
   buildEnrollmentAssignments,
-  deriveEnrollmentStatusFromReviewerScore,
-  derivePeerReviewState,
+  deriveEnrollmentStatus,
+  deriveReviewHeading,
   generateInvitationExpiry,
   generateSecureToken,
   isInvitationResendable,
@@ -35,7 +35,9 @@ import {
   findEvaluationsForEnrollments,
   findInvitationByEmail,
   findPeerTeacherIds,
+  findPeersForReviewers,
   findProfileById,
+  findReviewerAssignmentsForEnrollments,
   findReviewerIdForEnrollment,
   findUnassignedEnrollmentIds,
   insertEnrollment,
@@ -83,10 +85,15 @@ export async function assertEvaluationAuthorized(
 }
 
 /**
- * Records the caller's Enrollment Evaluation score, then — only when the caller is
- * the assigned Reviewer — auto-derives and persists the enrollment status from that
- * score (ADR 0008). Peer / non-assigned evaluators stay advisory and never move
- * status. Frozen admin decisions are left untouched (the derive returns null).
+ * Records the caller's Enrollment Evaluation score, then auto-derives and
+ * persists the enrollment status (ADR 0008 rev 1).
+ *
+ * - Reviewer scores → status reflects score + whether peer has already scored.
+ * - Peer scores → if reviewer has a 3/4 score, status moves between
+ *   `under_review` (peer absent) and `awaiting_approval` (peer present).
+ * - All other evaluators → advisory only; status is unchanged.
+ * - Frozen admin decisions (`approved`, `withdrawn`, `deferred`) are never
+ *   overwritten.
  */
 export async function setEvaluationScoreService(
   data: SetEvaluationScoreInput,
@@ -101,11 +108,11 @@ export async function setEvaluationScoreService(
       })
     }
 
-    // Fetch reviewerId once — reused for both the authz check and status derivation.
+    // Fetch reviewerId once — reused for authz check and status derivation.
     const reviewerId = await findReviewerIdForEnrollment(data.enrollmentId)
+    const peerIds = reviewerId ? await findPeerTeacherIds(reviewerId) : []
 
     if (!isAdmin) {
-      const peerIds = reviewerId ? await findPeerTeacherIds(reviewerId) : []
       if (reviewerId !== userId && !peerIds.includes(userId)) {
         throw new AuthorizationError(
           'not authorized to evaluate this enrollment',
@@ -119,11 +126,27 @@ export async function setEvaluationScoreService(
 
     await upsertEvaluation(data.enrollmentId, userId, { score: data.score })
 
-    if (reviewerId === userId) {
-      const enrollment = await findEnrollmentById(data.enrollmentId)
+    // Only update status when the evaluator is the assigned Reviewer or the Peer.
+    if (
+      reviewerId !== null &&
+      (reviewerId === userId || peerIds.includes(userId))
+    ) {
+      const [enrollment, evaluations] = await Promise.all([
+        findEnrollmentById(data.enrollmentId),
+        findEvaluationsForEnrollments([data.enrollmentId]),
+      ])
+
       if (enrollment) {
-        const nextStatus = deriveEnrollmentStatusFromReviewerScore(
-          data.score,
+        const reviewerEval = evaluations.find(
+          (e) => e.evaluatorId === reviewerId,
+        )
+        const reviewerScore = reviewerEval?.score ?? null
+        const peerHasScored = evaluations.some(
+          (e) => peerIds.includes(e.evaluatorId) && e.score !== null,
+        )
+        const nextStatus = deriveEnrollmentStatus(
+          reviewerScore,
+          peerHasScored,
           enrollment.status,
         )
         if (nextStatus !== null) {
@@ -168,6 +191,7 @@ export async function getEnrollmentsService(
 
     const reviewerFilter = isAdmin && data.viewAll ? undefined : userId
 
+    // peerIds for the page filter (whose-assigned-or-peer-queued logic).
     const peerIds =
       reviewerFilter !== undefined ? await findPeerTeacherIds(userId) : []
 
@@ -182,21 +206,32 @@ export async function getEnrollmentsService(
       peerIds,
     })
 
-    const evaluations = await findEvaluationsForEnrollments(
-      rows.map((row) => row.id),
-    )
+    const enrollmentIds = rows.map((row) => row.id)
+
+    // Fetch evaluations and reviewer assignments in parallel.
+    const [evaluations, reviewerAssignments] = await Promise.all([
+      findEvaluationsForEnrollments(enrollmentIds),
+      findReviewerAssignmentsForEnrollments(enrollmentIds),
+    ])
+
+    // Batch-fetch peers for all distinct reviewers on this page.
+    const uniqueReviewerIds = [
+      ...new Set(reviewerAssignments.map((a) => a.reviewerId)),
+    ]
+    const peersForReviewers = await findPeersForReviewers(uniqueReviewerIds)
 
     const enrollmentsOut: Array<EnrollmentWithEvaluation> = rows.map((row) => {
       const { evaluationSum, evaluationCount, ...enrollment } = row
       const base = isAdmin
         ? (enrollment as MaybeRedactedEnrollment)
         : redactEnrollmentForTeacher(enrollment)
-      const peerReviewState = derivePeerReviewState(
-        evaluations.filter((e) => e.enrollmentId === row.id),
-        userId,
-        peerIds,
+      const reviewHeading = deriveReviewHeading(
+        row.id,
+        reviewerAssignments,
+        evaluations,
+        peersForReviewers,
       )
-      return { ...base, evaluationSum, evaluationCount, peerReviewState }
+      return { ...base, evaluationSum, evaluationCount, reviewHeading }
     })
 
     return { enrollments: enrollmentsOut, total, evaluations }
