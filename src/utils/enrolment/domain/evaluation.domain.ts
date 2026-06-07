@@ -1,4 +1,7 @@
 export const EVALUATION_SCORES = [0, 1, 2, 3, 4] as const
+export const EVALUATION_SCORE_MAX = Math.max(...EVALUATION_SCORES)
+/** Sum when both reviewer and peer each score the maximum. */
+export const EVALUATION_SUM_PERFECT = EVALUATION_SCORE_MAX * 2
 
 export type EvaluationScore = (typeof EVALUATION_SCORES)[number]
 
