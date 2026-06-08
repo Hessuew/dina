@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   pgPolicy,
   pgTable,
@@ -91,7 +92,9 @@ export const courseTeachers = pgTable(
       .references(() => profiles.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
+    // Peer-teacher lookup queries filter course_teachers by teacher_id.
+    index('course_teachers_teacher_id_idx').on(table.teacherId),
     // Teachers can view their own course assignments
     pgPolicy('teachers_view_own_assignments', {
       for: 'select',
