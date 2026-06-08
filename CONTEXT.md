@@ -30,7 +30,7 @@ A user with `profiles.role = 'admin'`. Full enrollment access: read all fields, 
 
 ### Special Case
 
-A boolean admin flag (`enrollments.special_case`) marking an enrollment for special handling. Toggled by an Admin from the enrollments list via a star control, and surfaced there as a filled gold star plus an amber row tint. Teacher-users see the flag read-only; only Admins can toggle it. Orthogonal to enrollment `status` and to Enrollment Evaluations.
+A boolean admin flag (`enrollments.special_case`) marking an enrollment for special handling. Toggled by an Admin from the enrollments list via a star control, and surfaced there as a filled gold star plus an amber row tint. Teacher-users do not see the flag at all; only Admins can toggle it. Orthogonal to enrollment `status` and to Enrollment Evaluations.
 
 ### Student
 
