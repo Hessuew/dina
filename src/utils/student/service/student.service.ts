@@ -5,7 +5,7 @@ import {
   findAllStudents,
   findAssignmentsWithDetails,
   findStudentById,
-  findStudentSubmissions,
+  findSubmissionsForStudents,
   findSubmittedSubmissionsForStudent,
 } from '../repository'
 import {
@@ -26,16 +26,24 @@ export async function getStudentsService() {
     findAllAssignments(),
   ])
 
-  const studentsWithStats: Array<StudentWithStats> = await Promise.all(
-    allStudents.map(async (student) => {
-      const submissions = await findStudentSubmissions(student.id)
-      return buildStudentWithStats(
+  const studentIds = allStudents.map((s) => s.id)
+  const allSubmissions = await findSubmissionsForStudents(studentIds)
+
+  const submissionsByStudent = new Map<string, typeof allSubmissions>()
+  for (const s of allSubmissions) {
+    const arr = submissionsByStudent.get(s.studentId) ?? []
+    arr.push(s)
+    submissionsByStudent.set(s.studentId, arr)
+  }
+
+  const studentsWithStats: Array<StudentWithStats> = allStudents.map(
+    (student) =>
+      buildStudentWithStats(
         student,
         courses,
-        submissions,
+        submissionsByStudent.get(student.id) ?? [],
         allAssignments.length,
-      )
-    }),
+      ),
   )
 
   return { students: studentsWithStats }
