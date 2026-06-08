@@ -39,7 +39,10 @@ import {
   setEnrollmentSpecialCase,
   updateEnrollmentStatus,
 } from '@/utils/enrolment/enrollments'
-import { formatEvaluationSummary } from '@/utils/enrolment/domain/evaluation.domain'
+import {
+  EVALUATION_SUM_PERFECT,
+  formatEvaluationSummary,
+} from '@/utils/enrolment/domain/evaluation.domain'
 import { cn } from '@/lib/utils'
 
 export type EnrollmentRow = EnrollmentWithEvaluation
@@ -145,40 +148,43 @@ export function EnrollmentsTable({
   })
 
   const columns: Array<ColumnDef<EnrollmentRow, any>> = [
-    columnHelper.accessor('specialCase', {
-      enableSorting: false,
-      header: '',
-      cell: (info) => {
-        const row = info.row.original
-        const on = info.getValue()
-        const star = (
-          <Star
-            className={cn(
-              'size-3.5',
-              on ? 'fill-amber-400 text-amber-400' : 'text-[#8E816D]',
-            )}
-          />
-        )
-        if (!isAdmin) return star
-        return (
-          <Button
-            type="button"
-            size="icon"
-            theme="dark"
-            onClick={() =>
-              specialCaseMutation.mutate({
-                data: { enrollmentId: row.id, specialCase: !on },
-              })
-            }
-            disabled={specialCaseMutation.isPending}
-            aria-label={on ? 'Unmark special case' : 'Mark special case'}
-            className="size-8 rounded-none border-none bg-transparent hover:bg-amber-400/15"
-          >
-            {star}
-          </Button>
-        )
-      },
-    }),
+    ...(isAdmin
+      ? [
+          columnHelper.accessor('specialCase', {
+            enableSorting: false,
+            header: '',
+            cell: (info) => {
+              const row = info.row.original
+              const on = info.getValue()
+              const star = (
+                <Star
+                  className={cn(
+                    'size-3.5',
+                    on ? 'fill-amber-400 text-amber-400' : 'text-[#8E816D]',
+                  )}
+                />
+              )
+              return (
+                <Button
+                  type="button"
+                  size="icon"
+                  theme="dark"
+                  onClick={() =>
+                    specialCaseMutation.mutate({
+                      data: { enrollmentId: row.id, specialCase: !on },
+                    })
+                  }
+                  disabled={specialCaseMutation.isPending}
+                  aria-label={on ? 'Unmark special case' : 'Mark special case'}
+                  className="size-8 rounded-none border-none bg-transparent hover:bg-amber-400/15"
+                >
+                  {star}
+                </Button>
+              )
+            },
+          }),
+        ]
+      : []),
     columnHelper.accessor('fullLegalName', {
       cell: (info) => (
         <span className="font-medium text-[#F8F4EC]">{info.getValue()}</span>
@@ -212,7 +218,7 @@ export function EnrollmentsTable({
             <span className="text-[#D6CCBE]">
               {formatEvaluationSummary(sum, count)}
             </span>
-            {sum === 8 && (
+            {sum === EVALUATION_SUM_PERFECT && (
               <Star className="size-3 fill-yellow-400 text-yellow-400" />
             )}
           </span>
@@ -377,7 +383,9 @@ export function EnrollmentsTable({
         onSortingChange={onSortingChange}
         isLoading={isLoading}
         rowClassName={(row) =>
-          row.specialCase ? 'bg-amber-400/10 hover:bg-amber-400/15' : ''
+          isAdmin && row.specialCase
+            ? 'bg-amber-400/10 hover:bg-amber-400/15'
+            : ''
         }
         loadingLabel="Loading enrollments…"
         emptyMessage={
