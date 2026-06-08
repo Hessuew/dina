@@ -3,12 +3,16 @@
 import { randomUUID } from 'node:crypto'
 import { getDb } from 'test/integration/db'
 import type { Role } from '@/utils/authz'
+import type { SubmissionStatus } from '@/types/database.types'
 import {
+  assignments,
   courseTeachers,
   courses,
   enrollmentReviewerAssignments,
   enrollments,
+  lessons,
   profiles,
+  submissions,
 } from '@/db/schema'
 
 type EnrollmentStatus =
@@ -87,4 +91,63 @@ export async function seedCourseTeacher(
 ): Promise<void> {
   const db = await getDb()
   await db.insert(courseTeachers).values({ courseId, teacherId })
+}
+
+export async function seedLesson(overrides: {
+  id?: string
+  courseId: string
+  title?: string
+}): Promise<string> {
+  const id = overrides.id ?? randomUUID()
+  const db = await getDb()
+  await db.insert(lessons).values({
+    id,
+    courseId: overrides.courseId,
+    title: overrides.title ?? 'Test Lesson',
+  })
+  return id
+}
+
+export async function seedAssignment(overrides: {
+  id?: string
+  lessonId: string
+  title?: string
+  dueDate?: Date
+  maxGrade?: number
+}): Promise<string> {
+  const id = overrides.id ?? randomUUID()
+  const db = await getDb()
+  await db.insert(assignments).values({
+    id,
+    lessonId: overrides.lessonId,
+    title: overrides.title ?? 'Test Assignment',
+    dueDate: overrides.dueDate ?? new Date(),
+    ...(overrides.maxGrade !== undefined ? { maxGrade: overrides.maxGrade } : {}),
+  })
+  return id
+}
+
+export async function seedSubmission(overrides: {
+  id?: string
+  assignmentId: string
+  studentId: string
+  status?: SubmissionStatus
+  grade?: number
+  submittedAt?: Date
+  feedback?: string
+}): Promise<string> {
+  const id = overrides.id ?? randomUUID()
+  const db = await getDb()
+  await db.insert(submissions).values({
+    id,
+    assignmentId: overrides.assignmentId,
+    studentId: overrides.studentId,
+    ...(overrides.status ? { status: overrides.status } : {}),
+    ...(overrides.grade !== undefined ? { grade: overrides.grade } : {}),
+    ...(overrides.submittedAt ? { submittedAt: overrides.submittedAt } : {}),
+    ...(overrides.feedback !== undefined
+      ? { feedback: overrides.feedback }
+      : {}),
+  })
+  return id
 }

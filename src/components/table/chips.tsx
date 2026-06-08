@@ -7,8 +7,6 @@ import {
   Clock,
   GraduationCap,
   ShieldCheck,
-  UserCheck,
-  Users,
   XCircle,
 } from 'lucide-react'
 import type { AssignmentStatus, SubmissionStatus } from '@/types/database.types'
@@ -171,41 +169,6 @@ export function EnrollmentStatusChip({
       )}
     >
       <Icon className="size-3 shrink-0" />
-      {config.label}
-    </span>
-  )
-}
-
-type PeerReviewChipProps = {
-  state: 'under_peer_review' | 'peer_reviewed'
-  className?: string
-}
-
-const PEER_REVIEW_CONFIG = {
-  under_peer_review: {
-    icon: Users,
-    label: 'Under peer review',
-    color: 'text-[#f472b6]',
-  },
-  peer_reviewed: {
-    icon: UserCheck,
-    label: 'Peer reviewed',
-    color: 'text-[#22d3ee]',
-  },
-} as const
-
-export function PeerReviewChip({ state, className }: PeerReviewChipProps) {
-  const config = PEER_REVIEW_CONFIG[state]
-  const Icon = config.icon
-
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 text-[0.82rem] text-[#AFA28F]',
-        className,
-      )}
-    >
-      <Icon className={cn('size-4 shrink-0', config.color)} />
       {config.label}
     </span>
   )
