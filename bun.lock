@@ -47,6 +47,7 @@
         "zod": "^4.3.6",
       },
       "devDependencies": {
+        "@electric-sql/pglite": "^0.5.1",
         "@tanstack/devtools-vite": "^0.3.12",
         "@tanstack/eslint-config": "^0.3.4",
         "@testing-library/dom": "^10.4.1",
@@ -189,6 +190,8 @@
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.10.2", "", {}, "sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w=="],
 
     "@ecies/ciphers": ["@ecies/ciphers@0.2.5", "", { "peerDependencies": { "@noble/ciphers": "^1.0.0" } }, "sha512-GalEZH4JgOMHYYcYmVqnFirFsjZHeoGMDt9IxEnM9F7GRUUyUksJ7Ou53L83WHJq3RWKD3AcBpo0iQh0oMpf8A=="],
+
+    "@electric-sql/pglite": ["@electric-sql/pglite@0.5.1", "", {}, "sha512-h2Vc+qkQqsEL5kvyN5nBAxn3Vbyvka7QfDW7Io+CdcwU1+X8JbCAN2og+5dI11S3eJuDfroUCxzJaap6k+ezEw=="],
 
     "@emnapi/core": ["@emnapi/core@1.9.0", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.0", "tslib": "^2.4.0" } }, "sha512-0DQ98G9ZQZOxfUcQn1waV2yS8aWdZ6kJMbYCJB3oUBecjWYO1fqJ+a1DRfPF3O5JEkwqwP1A9QEN/9mYm2Yd0w=="],
 

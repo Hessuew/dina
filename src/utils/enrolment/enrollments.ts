@@ -6,13 +6,16 @@ import type {
   MaybeRedactedEnrollment,
 } from '@/utils/enrolment/domain/enrolment.domain'
 import {
-  deriveEnrollmentStatusFromReviewerScore,
   derivePeerReviewState,
   generateInvitationExpiry,
   generateSecureToken,
   isInvitationResendable,
   redactEnrollmentForTeacher,
 } from '@/utils/enrolment/domain/enrolment.domain'
+import {
+  assertEvaluationAuthorized,
+  setEvaluationScoreService,
+} from '@/utils/enrolment/service/enrolment.service'
 import { env } from '@/env'
 import { InvitationEmail } from '@/emails/InvitationEmail'
 import { getCurrentUser } from '@/utils/auth/auth'
@@ -52,7 +55,6 @@ import {
   findInvitationByEmail,
   findPeerTeacherIds,
   findProfileById,
-  findReviewerIdForEnrollment,
   findUnassignedEnrollmentIds,
   insertEnrollment,
   insertInvitation,
@@ -330,37 +332,7 @@ export const setEvaluationScore = createServerFn({ method: 'POST' })
   .inputValidator(setEvaluationScoreSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-
-    return withRequestCache(async () => {
-      const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(user.id)
-      if (!isAdmin && !isTeacher) {
-        throw new AuthorizationError('admin or teacher access required', {
-          code: 'ROLE_REQUIRED',
-          details: {},
-        })
-      }
-
-      await upsertEvaluation(data.enrollmentId, user.id, { score: data.score })
-
-      // Auto-derive enrollment status from the assigned Reviewer's score
-      // (ADR 0008). Only the Reviewer drives status; peers/non-assigned
-      // admins are advisory.
-      const reviewerId = await findReviewerIdForEnrollment(data.enrollmentId)
-      if (reviewerId === user.id) {
-        const enrollment = await findEnrollmentById(data.enrollmentId)
-        if (enrollment) {
-          const nextStatus = deriveEnrollmentStatusFromReviewerScore(
-            data.score,
-            enrollment.status,
-          )
-          if (nextStatus !== null) {
-            await updateEnrollmentStatusById(data.enrollmentId, nextStatus)
-          }
-        }
-      }
-
-      return
-    })
+    await setEvaluationScoreService(data, user.id)
   })
 
 export const setEvaluationAdmissionCategory = createServerFn({ method: 'POST' })
@@ -377,8 +349,9 @@ export const setEvaluationAdmissionCategory = createServerFn({ method: 'POST' })
         })
       }
 
+      await assertEvaluationAuthorized(data.enrollmentId, user.id, isAdmin)
+
       await upsertEvaluation(data.enrollmentId, user.id, {
-        score: data.score,
         admissionCategory: data.admissionCategory,
       })
 
@@ -399,6 +372,8 @@ export const setEvaluationNote = createServerFn({ method: 'POST' })
           details: {},
         })
       }
+
+      await assertEvaluationAuthorized(data.enrollmentId, user.id, isAdmin)
 
       await upsertEvaluation(data.enrollmentId, user.id, { note: data.note })
 

@@ -8,6 +8,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:all": "bun run test && bun run test:integration",
     "deploy": "bun run build && wrangler deploy",
     "cf-typegen": "wrangler types",
     "db:generate": "drizzle-kit generate",
@@ -62,6 +64,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.1",
     "@tanstack/devtools-vite": "^0.3.12",
     "@tanstack/eslint-config": "^0.3.4",
     "@testing-library/dom": "^10.4.1",
