@@ -1,9 +1,20 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { drizzle } from 'drizzle-orm/node-postgres'
-import { Pool } from 'pg'
+import { Client } from 'pg'
 import { env as _cfEnv } from 'cloudflare:workers'
 import * as schema from './schema'
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 
 const cfEnv = _cfEnv as any
+
+// Holds the connection opened for the current request, so every getDb() call
+// within one request reuses a single connection instead of opening its own.
+interface ConnectionStore {
+  client?: Client
+  db?: NodePgDatabase<typeof schema>
+}
+
+const connectionStorage = new AsyncLocalStorage<ConnectionStore>()
 
 export function getConnectionString() {
   // Cloudflare (Hyperdrive)
@@ -15,20 +26,38 @@ export function getConnectionString() {
   return cfEnv.DATABASE_URL ?? process.env.DATABASE_URL
 }
 
-// Reuse a single connection pool instead of opening (and leaking) a new
-// connection on every getDb() call. The pool keeps connections warm so each
-// query is an instant checkout rather than a fresh TCP+TLS+auth handshake.
-// In Workers the module-scoped pool lives for the isolate's lifetime and its
-// sockets die with the isolate, so there is no cross-request leak.
-let pool: Pool | undefined
-let db: ReturnType<typeof drizzle<typeof schema>> | undefined
-
-// Kept async to preserve the existing `await getDb()` call-site signature.
-// eslint-disable-next-line @typescript-eslint/require-await
 export async function getDb() {
-  if (!db) {
-    pool = new Pool({ connectionString: getConnectionString() })
-    db = drizzle(pool, { schema })
+  const store = connectionStorage.getStore()
+  if (store?.db) return store.db
+
+  const connectionString = getConnectionString()
+
+  const client = new Client({ connectionString })
+
+  await client.connect()
+
+  const db = drizzle(client, { schema })
+
+  // Inside a request scope: cache for reuse and request-end cleanup.
+  // Outside one (loaders, scripts): one-off connection, same as before.
+  if (store) {
+    store.client = client
+    store.db = db
   }
+
   return db
+}
+
+// Runs `fn` within a request scope that shares a single DB connection across
+// all getDb() calls, then closes that connection when the request finishes.
+// If `fn` never calls getDb(), no connection is opened or closed.
+export async function withDbConnection<T>(fn: () => Promise<T>): Promise<T> {
+  const store: ConnectionStore = {}
+  try {
+    return await connectionStorage.run(store, fn)
+  } finally {
+    if (store.client) {
+      await store.client.end()
+    }
+  }
 }

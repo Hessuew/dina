@@ -15,7 +15,15 @@ Database access layer and schema definitions.
     - Supports Hyperdrive via `HYPERDRIVE.connectionString`.
     - Falls back to `DATABASE_URL`.
   - `getDb()`
-    - Creates a new `pg` `Client`, connects, and returns a Drizzle instance.
+    - Returns a Drizzle instance. Inside a request scope (see `withDbConnection`)
+      the first call opens one `pg` `Client` and connects; every later call in the
+      same request reuses that connection. Outside a request scope (loaders,
+      scripts) it opens a one-off connection.
+  - `withDbConnection(fn)`
+    - Runs `fn` within a request scope that shares a single connection across all
+      `getDb()` calls, then closes that connection when `fn` finishes. Opens
+      nothing if `fn` never calls `getDb()`. `withRequestCache()` composes this,
+      so any server function wrapped in it already gets request-scoped reuse.
 
 - **`schema.ts`**
   - Barrel that re-exports the per-domain modules in `src/db/schema/`.
@@ -35,8 +43,11 @@ Database access layer and schema definitions.
 
 ## Key Invariants / Assumptions
 
-- **Single connection pattern**
+- **Request-scoped connection**
   - Application code should use `getDb()` rather than creating its own connections.
+  - One connection is opened per request, reused across all `getDb()` calls within
+    that request, and closed when the request finishes. The request scope comes
+    from `withDbConnection`, which `withRequestCache()` composes.
 
 - **Schema changes require doc updates**
   - If you modify the schema modules in `src/db/schema/`, update this README and any related deep dives.

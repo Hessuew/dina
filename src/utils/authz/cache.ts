@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
+import { withDbConnection } from '@/db'
 
 interface CacheEntry<T> {
   value: T
@@ -19,7 +20,7 @@ export function withRequestCache<T>(fn: () => Promise<T>): Promise<T> {
     roleChecks: new Map(),
     resourceChecks: new Map(),
   }
-  return requestStorage.run(cache, fn)
+  return requestStorage.run(cache, () => withDbConnection(fn))
 }
 
 function getCache(): RequestCache | undefined {
