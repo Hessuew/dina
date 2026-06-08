@@ -33,15 +33,15 @@ Both directions always run; both are reliable in this environment:
 - **GitHub-side** (`gh pr edit`) — writes `**Related Linear Issue:** <url>` at the top of the PR description. Lets developers reach the issue from the PR.
 - **Linear-side** (`save_issue` with `links: [{url, title}]`) — the `links` field is **append-only**, so re-linking the same PR is a no-op. Lets Linear users reach the PR from the issue.
 
-There is no capability detection: `save_issue` is always available. Only handle *real* runtime failures (network, rate-limit, permission) — see section 10.
+There is no capability detection: `save_issue` is always available. Only handle _real_ runtime failures (network, rate-limit, permission) — see section 10.
 
 ## Linear MCP tools used
 
-| Purpose                | Tool                                        |
-| ---------------------- | ------------------------------------------- |
-| Fetch issue + links    | `mcp__plugin_linear_linear__get_issue`      |
-| Search candidate issues| `mcp__plugin_linear_linear__list_issues`    |
-| Create / update / link | `mcp__plugin_linear_linear__save_issue`     |
+| Purpose                 | Tool                                     |
+| ----------------------- | ---------------------------------------- |
+| Fetch issue + links     | `mcp__plugin_linear_linear__get_issue`   |
+| Search candidate issues | `mcp__plugin_linear_linear__list_issues` |
+| Create / update / link  | `mcp__plugin_linear_linear__save_issue`  |
 
 `save_issue` creates a new issue when no `id` is passed, and updates an existing one when `id` is present. The same call adds `links` (append-only) and accepts `parentId` for sub-issues.
 
@@ -67,14 +67,14 @@ graphite-linear-connector --pipeline --prs <PR-number-or-url> [<PR-number-or-url
 
 **Behavioral differences from standalone:**
 
-| Behavior                       | Standalone | Pipeline |
-| ------------------------------ | ---------- | -------- |
-| PR selection UI                | Yes        | Skipped  |
-| Confirmation gates             | Yes        | Skipped  |
-| Dry-run mode                   | Optional   | Never    |
-| Matching / scoring             | Full       | Full     |
-| Duplicate prevention           | Yes        | Yes      |
-| Idempotency checks             | Yes        | Yes      |
+| Behavior             | Standalone | Pipeline |
+| -------------------- | ---------- | -------- |
+| PR selection UI      | Yes        | Skipped  |
+| Confirmation gates   | Yes        | Skipped  |
+| Dry-run mode         | Optional   | Never    |
+| Matching / scoring   | Full       | Full     |
+| Duplicate prevention | Yes        | Yes      |
+| Idempotency checks   | Yes        | Yes      |
 
 **Pipeline mode runs fully automatically and never pauses.** Every threshold (section 7) is acted on automatically; `<50%` confidence auto-creates a new issue, or emits `NO_MATCH` when there is nothing to derive an issue from.
 
@@ -291,13 +291,13 @@ Apply these to **every** new issue (parent and sub-issues) via `save_issue`:
 - **Description:** fill the template in `.devin/linear-issue-template.md` (Goal / Context / Requirements / Impact / Constraints), populated from PR title, commits, changed modules.
 - **Priority** (auto-derived from commit type):
 
-  | Commit type | Priority      | Value |
-  | ----------- | ------------- | ----- |
-  | fix         | Urgent        | 1     |
-  | feat        | High          | 2     |
-  | refactor    | Medium        | 3     |
-  | chore       | Low           | 4     |
-  | (unclear)   | Medium        | 3     |
+  | Commit type | Priority | Value |
+  | ----------- | -------- | ----- |
+  | fix         | Urgent   | 1     |
+  | feat        | High     | 2     |
+  | refactor    | Medium   | 3     |
+  | chore       | Low      | 4     |
+  | (unclear)   | Medium   | 3     |
 
 - **Assignee:** `Juhani Juusola`
 - **Status (`state`):** `In Progress`
