@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildEnrollmentAssignments,
   deriveEnrollmentStatusFromReviewerScore,
   derivePeerReviewState,
   generateInvitationExpiry,
@@ -176,5 +177,38 @@ describe('deriveEnrollmentStatusFromReviewerScore', () => {
     expect(
       deriveEnrollmentStatusFromReviewerScore(3, 'awaiting_approval'),
     ).toBe(null)
+  })
+})
+
+describe('buildEnrollmentAssignments', () => {
+  it('splits evenly across teachers', () => {
+    expect(
+      buildEnrollmentAssignments(['e1', 'e2', 'e3', 'e4'], ['t0', 't1']),
+    ).toEqual([
+      { enrollmentId: 'e1', reviewerId: 't0' },
+      { enrollmentId: 'e2', reviewerId: 't0' },
+      { enrollmentId: 'e3', reviewerId: 't1' },
+      { enrollmentId: 'e4', reviewerId: 't1' },
+    ])
+  })
+
+  it('clamps the remainder onto the last teacher', () => {
+    expect(
+      buildEnrollmentAssignments(['e1', 'e2', 'e3', 'e4', 'e5'], ['t0', 't1']),
+    ).toEqual([
+      { enrollmentId: 'e1', reviewerId: 't0' },
+      { enrollmentId: 'e2', reviewerId: 't0' },
+      { enrollmentId: 'e3', reviewerId: 't0' },
+      { enrollmentId: 'e4', reviewerId: 't1' },
+      { enrollmentId: 'e5', reviewerId: 't1' },
+    ])
+  })
+
+  it('assigns every enrollment to the only teacher', () => {
+    expect(buildEnrollmentAssignments(['e1', 'e2', 'e3'], ['t0'])).toEqual([
+      { enrollmentId: 'e1', reviewerId: 't0' },
+      { enrollmentId: 'e2', reviewerId: 't0' },
+      { enrollmentId: 'e3', reviewerId: 't0' },
+    ])
   })
 })

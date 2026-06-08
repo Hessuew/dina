@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { getDb } from 'test/integration/db'
 import type { Role } from '@/utils/authz'
 import {
+  courseTeachers,
   courses,
   enrollmentReviewerAssignments,
   enrollments,
@@ -78,4 +79,12 @@ export async function seedReviewerAssignment(
   await db
     .insert(enrollmentReviewerAssignments)
     .values({ enrollmentId, reviewerId })
+}
+
+export async function seedCourseTeacher(
+  courseId: string,
+  teacherId: string,
+): Promise<void> {
+  const db = await getDb()
+  await db.insert(courseTeachers).values({ courseId, teacherId })
 }

@@ -3,6 +3,8 @@ import { setEvaluationScoreService } from '@/utils/enrolment/service/enrolment.s
 import { findEnrollmentById } from '@/utils/enrolment/repository/enrolment.repository'
 import { AuthorizationError } from '@/utils/errors'
 import {
+  seedCourse,
+  seedCourseTeacher,
   seedEnrollment,
   seedProfile,
   seedReviewerAssignment,
@@ -45,6 +47,10 @@ describe('setEvaluationScoreService (integration)', () => {
   it('keeps a non-assigned evaluator advisory — status unchanged', async () => {
     const reviewerId = await seedProfile({ role: 'teacher' })
     const peerId = await seedProfile({ role: 'teacher' })
+    const courseId = await seedCourse()
+    // Both teachers share the same course, making peerId a valid peer evaluator.
+    await seedCourseTeacher(courseId, reviewerId)
+    await seedCourseTeacher(courseId, peerId)
     const enrollmentId = await seedEnrollment({ status: 'pending' })
     await seedReviewerAssignment(enrollmentId, reviewerId)
 

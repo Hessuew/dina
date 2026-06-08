@@ -104,6 +104,25 @@ export function derivePeerReviewState(
   return viewerScored ? 'peer_reviewed' : 'under_peer_review'
 }
 
+/**
+ * Round-robin assignment of unassigned enrollments to reviewers.
+ *
+ * Splits the enrollments into equal contiguous batches (one per teacher) and
+ * assigns each batch to a teacher, clamping the final index so any rounding
+ * remainder lands on the last teacher. Callers must pass non-empty arrays.
+ */
+export function buildEnrollmentAssignments(
+  unassignedIds: Array<string>,
+  teacherIds: Array<string>,
+): Array<{ enrollmentId: string; reviewerId: string }> {
+  const batchSize = Math.ceil(unassignedIds.length / teacherIds.length)
+  return unassignedIds.map((enrollmentId, i) => ({
+    enrollmentId,
+    reviewerId:
+      teacherIds[Math.min(Math.floor(i / batchSize), teacherIds.length - 1)],
+  }))
+}
+
 export function redactEnrollmentForTeacher(
   enrollment: EnrollmentSelect,
 ): Omit<
