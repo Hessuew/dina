@@ -31,8 +31,6 @@ export type MaybeRedactedEnrollment = Omit<
 
 export type EnrollmentStatus = EnrollmentSelect['status']
 
-export type PeerReviewState = 'under_peer_review' | 'peer_reviewed' | null
-
 /**
  * Admin lifecycle decisions that the auto-status engine must not overwrite.
  * Once an enrollment reaches one of these, re-scoring leaves status untouched.
@@ -44,64 +42,113 @@ const FROZEN_STATUSES: ReadonlyArray<EnrollmentStatus> = [
 ]
 
 /**
- * Derives the enrollment status implied by the assigned Reviewer's score.
+ * Derives the enrollment status implied by the assigned Reviewer's score and
+ * whether the Reviewer's peer has also evaluated the enrollment.
  *
- * Only the assigned Reviewer drives status (peers / non-assigned admins are
- * advisory); the caller is responsible for that gate. Mapping:
- * - `null` (cleared) → `under_review`
+ * Only the assigned Reviewer drives status (non-assigned evaluators are
+ * advisory); the caller is responsible for that gate. Updated mapping (ADR 0008
+ * rev 1):
+ * - `null` (cleared) → `pending`
  * - `0` / `1` → `rejected`
  * - `2` → `waitlisted`
- * - `3` / `4` → `awaiting_approval` (admin then makes the final call)
+ * - `3` / `4` AND peer has NOT scored → `under_review` (peer cross-check pending)
+ * - `3` / `4` AND peer HAS scored → `awaiting_approval` (admin makes the final call)
  *
  * Returns `null` when nothing should change: the current status is a frozen
  * admin decision, or the computed status already equals the current one.
  */
-export function deriveEnrollmentStatusFromReviewerScore(
+export function deriveEnrollmentStatus(
   score: number | null,
+  peerHasScored: boolean,
   currentStatus: EnrollmentStatus,
 ): EnrollmentStatus | null {
   if (FROZEN_STATUSES.includes(currentStatus)) return null
 
   let next: EnrollmentStatus
-  if (score === null) next = 'under_review'
+  if (score === null) next = 'pending'
   else if (score <= 1) next = 'rejected'
   else if (score === 2) next = 'waitlisted'
-  else next = 'awaiting_approval'
+  else next = peerHasScored ? 'awaiting_approval' : 'under_review'
 
   return next === currentStatus ? null : next
+}
+
+/**
+ * Per-enrollment "review heading" data shown in the enrollments table.
+ * Shows the assigned Reviewer and their Peer, each with an evaluated flag.
+ */
+export type ReviewHeading = {
+  reviewerFirstName: string | null
+  reviewerHasEvaluated: boolean
+  peerFirstName: string | null
+  peerHasEvaluated: boolean
 }
 
 export type EnrollmentWithEvaluation = MaybeRedactedEnrollment & {
   evaluationSum: number
   evaluationCount: number
-  peerReviewState: PeerReviewState
+  reviewHeading: ReviewHeading
 }
 
 /**
- * Derives the viewer's peer-review state for one enrollment.
+ * Derives the ReviewHeading for one enrollment from pre-fetched data.
  *
- * A teacher peer-reviews their course partner's high-stakes admits: when a
- * peer (the other teacher on the viewer's course) scored 3 or 4, the viewer is
- * expected to add their own evaluation as a second evaluator.
- *
- * - `under_peer_review` — a peer scored 3/4 and the viewer has not scored yet.
- * - `peer_reviewed` — a peer scored 3/4 and the viewer has scored.
- * - `null` — no peer scored 3/4 (not in the viewer's peer queue).
+ * @param enrollmentId - the enrollment to compute heading for
+ * @param reviewerAssignments - all reviewer assignments for the page
+ * @param evaluations - all evaluations for the page (with evaluator names)
+ * @param peersForReviewers - map from reviewer ID to their course-partner list
  */
-export function derivePeerReviewState(
-  evaluations: Array<{ evaluatorId: string; score: number | null }>,
-  viewerId: string,
-  peerIds: Array<string>,
-): PeerReviewState {
-  const peerSet = new Set(peerIds)
-  const peerGaveHighScore = evaluations.some(
-    (e) => peerSet.has(e.evaluatorId) && (e.score === 3 || e.score === 4),
+export function deriveReviewHeading(
+  enrollmentId: string,
+  reviewerAssignments: Array<{
+    enrollmentId: string
+    reviewerId: string
+    reviewerName: string
+  }>,
+  evaluations: Array<{
+    enrollmentId: string
+    evaluatorId: string
+    evaluatorName: string
+    score: number | null
+  }>,
+  peersForReviewers: Map<string, Array<{ id: string; name: string }>>,
+): ReviewHeading {
+  const assignment = reviewerAssignments.find(
+    (a) => a.enrollmentId === enrollmentId,
   )
-  if (!peerGaveHighScore) return null
-  const viewerScored = evaluations.some(
-    (e) => e.evaluatorId === viewerId && e.score !== null,
+  if (!assignment) {
+    return {
+      reviewerFirstName: null,
+      reviewerHasEvaluated: false,
+      peerFirstName: null,
+      peerHasEvaluated: false,
+    }
+  }
+
+  const enrollmentEvals = evaluations.filter(
+    (e) => e.enrollmentId === enrollmentId,
   )
-  return viewerScored ? 'peer_reviewed' : 'under_peer_review'
+  const reviewerEval = enrollmentEvals.find(
+    (e) => e.evaluatorId === assignment.reviewerId,
+  )
+  const reviewerHasEvaluated =
+    reviewerEval !== undefined && reviewerEval.score !== null
+
+  const peers = peersForReviewers.get(assignment.reviewerId) ?? []
+  const peer = peers[0] ?? null
+  const peerEval = peer
+    ? enrollmentEvals.find((e) => e.evaluatorId === peer.id)
+    : undefined
+  const peerHasEvaluated = peerEval !== undefined && peerEval.score !== null
+
+  return {
+    reviewerFirstName: assignment.reviewerName
+      ? assignment.reviewerName.split(' ')[0]
+      : null,
+    reviewerHasEvaluated,
+    peerFirstName: peer ? peer.name.split(' ')[0] : null,
+    peerHasEvaluated,
+  }
 }
 
 /**

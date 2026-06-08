@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildEnrollmentAssignments,
-  deriveEnrollmentStatusFromReviewerScore,
-  derivePeerReviewState,
+  deriveEnrollmentStatus,
+  deriveReviewHeading,
   generateInvitationExpiry,
   generateSecureToken,
   isInvitationResendable,
@@ -69,114 +69,153 @@ describe('isInvitationResendable', () => {
   })
 })
 
-describe('derivePeerReviewState', () => {
-  const me = 'viewer-1'
-  const peer = 'peer-1'
-  const peerIds = [peer]
-
-  it('returns under_peer_review when a peer scored 3/4 and viewer has not scored', () => {
-    expect(
-      derivePeerReviewState([{ evaluatorId: peer, score: 4 }], me, peerIds),
-    ).toBe('under_peer_review')
-  })
-
-  it('returns peer_reviewed when a peer scored 3/4 and viewer has scored', () => {
-    expect(
-      derivePeerReviewState(
-        [
-          { evaluatorId: peer, score: 3 },
-          { evaluatorId: me, score: 2 },
-        ],
-        me,
-        peerIds,
-      ),
-    ).toBe('peer_reviewed')
-  })
-
-  it('treats a viewer score of 0 as scored', () => {
-    expect(
-      derivePeerReviewState(
-        [
-          { evaluatorId: peer, score: 4 },
-          { evaluatorId: me, score: 0 },
-        ],
-        me,
-        peerIds,
-      ),
-    ).toBe('peer_reviewed')
-  })
-
-  it('returns null when the peer score is below 3', () => {
-    expect(
-      derivePeerReviewState([{ evaluatorId: peer, score: 2 }], me, peerIds),
-    ).toBe(null)
-  })
-
-  it('returns null when no peer has evaluated', () => {
-    expect(
-      derivePeerReviewState([{ evaluatorId: me, score: 4 }], me, peerIds),
-    ).toBe(null)
-  })
-
-  it('ignores high scores from non-peer evaluators', () => {
-    expect(
-      derivePeerReviewState(
-        [{ evaluatorId: 'stranger', score: 4 }],
-        me,
-        peerIds,
-      ),
-    ).toBe(null)
-  })
-
-  it('returns null when there are no peers', () => {
-    expect(
-      derivePeerReviewState([{ evaluatorId: peer, score: 4 }], me, []),
-    ).toBe(null)
-  })
-})
-
-describe('deriveEnrollmentStatusFromReviewerScore', () => {
+describe('deriveEnrollmentStatus', () => {
   it('maps scores 0 and 1 to rejected', () => {
-    expect(deriveEnrollmentStatusFromReviewerScore(0, 'pending')).toBe(
-      'rejected',
-    )
-    expect(deriveEnrollmentStatusFromReviewerScore(1, 'pending')).toBe(
-      'rejected',
-    )
+    expect(deriveEnrollmentStatus(0, false, 'pending')).toBe('rejected')
+    expect(deriveEnrollmentStatus(1, false, 'pending')).toBe('rejected')
   })
 
   it('maps score 2 to waitlisted', () => {
-    expect(deriveEnrollmentStatusFromReviewerScore(2, 'pending')).toBe(
-      'waitlisted',
+    expect(deriveEnrollmentStatus(2, false, 'pending')).toBe('waitlisted')
+  })
+
+  it('maps score 3/4 to under_review when peer has not scored', () => {
+    expect(deriveEnrollmentStatus(3, false, 'pending')).toBe('under_review')
+    expect(deriveEnrollmentStatus(4, false, 'pending')).toBe('under_review')
+  })
+
+  it('maps score 3/4 to awaiting_approval when peer has scored', () => {
+    expect(deriveEnrollmentStatus(3, true, 'pending')).toBe('awaiting_approval')
+    expect(deriveEnrollmentStatus(4, true, 'under_review')).toBe(
+      'awaiting_approval',
     )
   })
 
-  it('maps scores 3 and 4 to awaiting_approval', () => {
-    expect(deriveEnrollmentStatusFromReviewerScore(3, 'pending')).toBe(
-      'awaiting_approval',
-    )
-    expect(deriveEnrollmentStatusFromReviewerScore(4, 'pending')).toBe(
-      'awaiting_approval',
-    )
-  })
-
-  it('maps a cleared score to under_review', () => {
-    expect(deriveEnrollmentStatusFromReviewerScore(null, 'awaiting_approval')).toBe(
-      'under_review',
+  it('maps a cleared score to pending', () => {
+    expect(deriveEnrollmentStatus(null, false, 'under_review')).toBe('pending')
+    expect(deriveEnrollmentStatus(null, false, 'awaiting_approval')).toBe(
+      'pending',
     )
   })
 
   it('does not overwrite frozen admin states', () => {
-    expect(deriveEnrollmentStatusFromReviewerScore(0, 'approved')).toBe(null)
-    expect(deriveEnrollmentStatusFromReviewerScore(4, 'withdrawn')).toBe(null)
-    expect(deriveEnrollmentStatusFromReviewerScore(2, 'deferred')).toBe(null)
+    expect(deriveEnrollmentStatus(0, false, 'approved')).toBe(null)
+    expect(deriveEnrollmentStatus(4, true, 'withdrawn')).toBe(null)
+    expect(deriveEnrollmentStatus(2, false, 'deferred')).toBe(null)
   })
 
   it('returns null when the computed status equals the current one', () => {
-    expect(deriveEnrollmentStatusFromReviewerScore(0, 'rejected')).toBe(null)
-    expect(
-      deriveEnrollmentStatusFromReviewerScore(3, 'awaiting_approval'),
-    ).toBe(null)
+    expect(deriveEnrollmentStatus(0, false, 'rejected')).toBe(null)
+    expect(deriveEnrollmentStatus(3, true, 'awaiting_approval')).toBe(null)
+    expect(deriveEnrollmentStatus(3, false, 'under_review')).toBe(null)
+  })
+})
+
+describe('deriveReviewHeading', () => {
+  const reviewerAssignments = [
+    { enrollmentId: 'e1', reviewerId: 'r1', reviewerName: 'Alice Smith' },
+  ]
+  const evaluations = [
+    {
+      enrollmentId: 'e1',
+      evaluatorId: 'r1',
+      evaluatorName: 'Alice Smith',
+      score: 4,
+    },
+    {
+      enrollmentId: 'e1',
+      evaluatorId: 'p1',
+      evaluatorName: 'Bob Jones',
+      score: 3,
+    },
+  ]
+  const peersForReviewers = new Map([['r1', [{ id: 'p1', name: 'Bob Jones' }]]])
+
+  it('returns reviewer first name and evaluated flag', () => {
+    const heading = deriveReviewHeading(
+      'e1',
+      reviewerAssignments,
+      evaluations,
+      peersForReviewers,
+    )
+    expect(heading.reviewerFirstName).toBe('Alice')
+    expect(heading.reviewerHasEvaluated).toBe(true)
+  })
+
+  it('returns peer first name and evaluated flag', () => {
+    const heading = deriveReviewHeading(
+      'e1',
+      reviewerAssignments,
+      evaluations,
+      peersForReviewers,
+    )
+    expect(heading.peerFirstName).toBe('Bob')
+    expect(heading.peerHasEvaluated).toBe(true)
+  })
+
+  it('returns reviewerHasEvaluated false when reviewer score is null', () => {
+    const evalsNullScore = [
+      {
+        enrollmentId: 'e1',
+        evaluatorId: 'r1',
+        evaluatorName: 'Alice Smith',
+        score: null,
+      },
+    ]
+    const heading = deriveReviewHeading(
+      'e1',
+      reviewerAssignments,
+      evalsNullScore,
+      peersForReviewers,
+    )
+    expect(heading.reviewerHasEvaluated).toBe(false)
+  })
+
+  it('returns peerHasEvaluated false when peer has not evaluated', () => {
+    const evalsNoPeer = [
+      {
+        enrollmentId: 'e1',
+        evaluatorId: 'r1',
+        evaluatorName: 'Alice Smith',
+        score: 4,
+      },
+    ]
+    const heading = deriveReviewHeading(
+      'e1',
+      reviewerAssignments,
+      evalsNoPeer,
+      peersForReviewers,
+    )
+    expect(heading.peerHasEvaluated).toBe(false)
+  })
+
+  it('returns null fields when enrollment has no reviewer assignment', () => {
+    const heading = deriveReviewHeading(
+      'e99',
+      reviewerAssignments,
+      evaluations,
+      peersForReviewers,
+    )
+    expect(heading).toEqual({
+      reviewerFirstName: null,
+      reviewerHasEvaluated: false,
+      peerFirstName: null,
+      peerHasEvaluated: false,
+    })
+  })
+
+  it('returns null peerFirstName when reviewer has no peer', () => {
+    const noPeers = new Map<string, Array<{ id: string; name: string }>>([
+      ['r1', []],
+    ])
+    const heading = deriveReviewHeading(
+      'e1',
+      reviewerAssignments,
+      evaluations,
+      noPeers,
+    )
+    expect(heading.peerFirstName).toBe(null)
+    expect(heading.peerHasEvaluated).toBe(false)
   })
 })
 

@@ -13,6 +13,7 @@ import {
   or,
   sql,
 } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import type { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
 import {
@@ -264,6 +265,71 @@ export async function findReviewerIdForEnrollment(
     columns: { reviewerId: true },
   })
   return row?.reviewerId ?? null
+}
+
+/**
+ * Fetches reviewer assignments with reviewer names for a batch of enrollments
+ * in a single query (used to build the Review heading column).
+ */
+export async function findReviewerAssignmentsForEnrollments(
+  enrollmentIds: Array<string>,
+): Promise<
+  Array<{ enrollmentId: string; reviewerId: string; reviewerName: string }>
+> {
+  if (enrollmentIds.length === 0) return []
+  const db = await getDb()
+  return db
+    .select({
+      enrollmentId: enrollmentReviewerAssignments.enrollmentId,
+      reviewerId: enrollmentReviewerAssignments.reviewerId,
+      reviewerName: profiles.fullName,
+    })
+    .from(enrollmentReviewerAssignments)
+    .innerJoin(
+      profiles,
+      eq(profiles.id, enrollmentReviewerAssignments.reviewerId),
+    )
+    .where(inArray(enrollmentReviewerAssignments.enrollmentId, enrollmentIds))
+}
+
+/**
+ * Fetches course-partner (peer) information for a batch of reviewer IDs in one
+ * query and returns a map from reviewer ID to their peers (id + name).
+ */
+export async function findPeersForReviewers(
+  reviewerIds: Array<string>,
+): Promise<Map<string, Array<{ id: string; name: string }>>> {
+  const result = new Map<string, Array<{ id: string; name: string }>>()
+  if (reviewerIds.length === 0) return result
+
+  const db = await getDb()
+
+  // Self-join course_teachers to find co-teachers (peers) of each reviewer.
+  const ct2 = alias(courseTeachers, 'ct2')
+
+  const rows = await db
+    .selectDistinct({
+      reviewerId: courseTeachers.teacherId,
+      peerId: ct2.teacherId,
+      peerName: profiles.fullName,
+    })
+    .from(courseTeachers)
+    .innerJoin(ct2, eq(ct2.courseId, courseTeachers.courseId))
+    .innerJoin(profiles, eq(profiles.id, ct2.teacherId))
+    .where(
+      and(
+        inArray(courseTeachers.teacherId, reviewerIds),
+        ne(ct2.teacherId, courseTeachers.teacherId),
+      ),
+    )
+
+  for (const row of rows) {
+    const peers = result.get(row.reviewerId) ?? []
+    peers.push({ id: row.peerId, name: row.peerName })
+    result.set(row.reviewerId, peers)
+  }
+
+  return result
 }
 
 export async function findProfileById(userId: string) {
