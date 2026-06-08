@@ -41,6 +41,8 @@ Defines eng + repo nav guidance for AI changes.
   - Typed env in `src/env.ts`. No hardcoded secrets; use bindings/env.
 - **Database connections**
   - Use `getDb()` from `src/db/index.ts`. No ad-hoc DB instantiation.
+  - One connection per request, reused across all `getDb()` calls and closed when
+    the request finishes (`withDbConnection`, composed by `withRequestCache()`).
 - **Domain services**
   - Business logic in `src/domain/` as pure fns, no HTTP infra.
   - Server fns in `src/utils/` are thin adapters: validate → call domain → return.
