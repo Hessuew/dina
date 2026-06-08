@@ -29,11 +29,8 @@ export function isAllowed(userId: string) {
 export async function resolveAdminOrTeacherAccess(
   userId: string,
 ): Promise<{ isAdmin: boolean; isTeacher: boolean }> {
-  const [isAdmin, isTeacher] = await Promise.all([
-    authz(userId).isAdmin(),
-    authz(userId).isRole('teacher'),
-  ])
-  return { isAdmin, isTeacher }
+  const role = await getAuthorizationService().getRole(userId)
+  return { isAdmin: role === 'admin', isTeacher: role === 'teacher' }
 }
 
 export { withRequestCache }

@@ -29,6 +29,7 @@ export type ResourceType =
 export interface AuthorizationService {
   hasRole: (userId: string, role: Role) => Promise<void>
   isRole: (userId: string, role: Role) => Promise<boolean>
+  getRole: (userId: string) => Promise<Role | null>
   isAdmin: (userId: string) => Promise<boolean>
   canPerformAction: (
     userId: string,
