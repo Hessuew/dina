@@ -1,2 +1,5 @@
 export { findAllTeachers, findAllTeachersSimple } from './profiles.repository'
-export { findTeacherCourseAssignment } from './course-teachers.repository'
+export {
+  findCourseTeacher,
+  findTeacherCourseAssignment,
+} from './course-teachers.repository'
