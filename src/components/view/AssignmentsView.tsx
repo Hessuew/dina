@@ -1,8 +1,7 @@
-import { useRouter } from '@tanstack/react-router'
 import { ArrowRight, CalendarIcon } from 'lucide-react'
 import { useState } from 'react'
 import type { AssignmentStatus, SubmissionStatus } from '@/types/database.types'
-import { Button } from '@/components/ui/button'
+import { ButtonLink } from '@/components/ui/button-link'
 import { StatusChip } from '@/components/ui/status-chip'
 import {
   Select,
@@ -48,7 +47,6 @@ type AssignmentsViewProps = {
 }
 
 export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
-  const router = useRouter()
   const [selectedCourse, setSelectedCourse] = useState<string | null>('all')
 
   const courses = Array.from(
@@ -232,25 +230,21 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                           View assignment
                         </span>
 
-                        <Button
+                        <ButtonLink
+                          to="/assignments/$assignmentId"
+                          params={{ assignmentId: assignment.id }}
+                          search={{
+                            calendarMonth: undefined,
+                            fromDashboard: false,
+                            fromCalendar: false,
+                          }}
                           className={cn(
                             'flex size-8 cursor-pointer items-center justify-center border transition-all',
                             'border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4]',
                           )}
-                          onClick={() =>
-                            router.navigate({
-                              to: '/assignments/$assignmentId',
-                              params: { assignmentId: assignment.id },
-                              search: {
-                                calendarMonth: undefined,
-                                fromDashboard: false,
-                                fromCalendar: false,
-                              },
-                            })
-                          }
                         >
                           <ArrowRight className="size-3.5" />
-                        </Button>
+                        </ButtonLink>
                       </div>
                     </div>
                   </div>

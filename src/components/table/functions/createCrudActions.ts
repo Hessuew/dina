@@ -1,15 +1,18 @@
 import { EyeIcon, PencilIcon, Trash2Icon } from 'lucide-react'
 import type { ComponentType } from 'react'
+import type { LinkProps } from '@tanstack/react-router'
 
 type ButtonConfig<TData> = {
   icon: ComponentType<{ className?: string }>
   label: string
-  onClick: (row: TData) => void
+  onClick?: (row: TData) => void
+  to?: (row: TData) => LinkProps
   show?: (row: TData) => boolean
 }
 
 type CrudActionsConfig<TData> = {
   onView?: (row: TData) => void
+  viewTo?: (row: TData) => LinkProps
   onEdit?: (row: TData) => void
   onDelete?: (row: TData) => void
   canManage?: (row: TData) => boolean
@@ -52,6 +55,7 @@ export function createCrudActions<TData>(
 
   const {
     onView,
+    viewTo,
     onEdit,
     onDelete,
     canManage,
@@ -63,7 +67,13 @@ export function createCrudActions<TData>(
     deleteLabel = 'Delete',
   } = config
 
-  if (onView) {
+  if (viewTo) {
+    actions.push({
+      icon: viewIcon,
+      label: viewLabel,
+      to: viewTo,
+    })
+  } else if (onView) {
     actions.push({
       icon: viewIcon,
       label: viewLabel,

@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { FileTextIcon, PlusIcon } from 'lucide-react'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -68,7 +68,6 @@ function getYoutubeThumbnail(url: string): string | null {
 
 function LibraryComponent() {
   const loaderData = Route.useLoaderData()
-  const router = useRouter()
   const { media, viewer } = loaderData
   const {
     isOpen,
@@ -104,15 +103,10 @@ function LibraryComponent() {
           const thumb = getYoutubeThumbnail(row.fileUrl)
 
           return (
-            <button
-              type="button"
-              className="group relative aspect-video w-28 border border-white/10 bg-black/20"
-              onClick={() =>
-                router.navigate({
-                  to: '/library/$mediaId',
-                  params: { mediaId: row.id },
-                })
-              }
+            <Link
+              to="/library/$mediaId"
+              params={{ mediaId: row.id }}
+              className="group relative block aspect-video w-28 border border-white/10 bg-black/20"
             >
               {thumb ? (
                 <img
@@ -126,20 +120,15 @@ function LibraryComponent() {
                 </div>
               )}
               <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-black/10 via-transparent to-black/50" />
-            </button>
+            </Link>
           )
         }
 
         return (
-          <button
-            type="button"
+          <Link
+            to="/library/$mediaId"
+            params={{ mediaId: row.id }}
             className="group relative flex aspect-video w-28 items-center justify-center border border-white/10 bg-black/20 text-[#8E816D]"
-            onClick={() =>
-              router.navigate({
-                to: '/library/$mediaId',
-                params: { mediaId: row.id },
-              })
-            }
           >
             {row.thumbnailUrl ? (
               <img
@@ -150,7 +139,7 @@ function LibraryComponent() {
             ) : (
               <FileTextIcon className="size-4" />
             )}
-          </button>
+          </Link>
         )
       },
     }),
@@ -184,11 +173,10 @@ function LibraryComponent() {
     }),
     createButtonColumn([
       ...createCrudActions<MediaLibraryRow>({
-        onView: (row) =>
-          router.navigate({
-            to: '/library/$mediaId',
-            params: { mediaId: row.id },
-          }),
+        viewTo: (row) => ({
+          to: '/library/$mediaId',
+          params: { mediaId: row.id },
+        }),
         onEdit: (row) => openDialog('edit', row),
         onDelete: (row) => openDialog('delete', row),
         canManage: (row) => canManageRow(row),
