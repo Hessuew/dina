@@ -218,6 +218,98 @@ describe('deriveReviewHeading', () => {
     expect(heading.peerFirstName).toBe(null)
     expect(heading.peerHasEvaluated).toBe(false)
   })
+
+  it('hides peer fields when hidePeerForLowReviewerScore=true and reviewer score < 3', () => {
+    const lowScoreEvals = [
+      {
+        enrollmentId: 'e1',
+        evaluatorId: 'r1',
+        evaluatorName: 'Alice Smith',
+        score: 2,
+      },
+      {
+        enrollmentId: 'e1',
+        evaluatorId: 'p1',
+        evaluatorName: 'Bob Jones',
+        score: 3,
+      },
+    ]
+    const heading = deriveReviewHeading(
+      'e1',
+      reviewerAssignments,
+      lowScoreEvals,
+      peersForReviewers,
+      true,
+    )
+    expect(heading.reviewerFirstName).toBe('Alice')
+    expect(heading.reviewerHasEvaluated).toBe(true)
+    expect(heading.peerFirstName).toBe(null)
+    expect(heading.peerHasEvaluated).toBe(false)
+  })
+
+  it('hides peer fields when hidePeerForLowReviewerScore=true and reviewer score is null', () => {
+    const nullScoreEvals = [
+      {
+        enrollmentId: 'e1',
+        evaluatorId: 'r1',
+        evaluatorName: 'Alice Smith',
+        score: null,
+      },
+      {
+        enrollmentId: 'e1',
+        evaluatorId: 'p1',
+        evaluatorName: 'Bob Jones',
+        score: 3,
+      },
+    ]
+    const heading = deriveReviewHeading(
+      'e1',
+      reviewerAssignments,
+      nullScoreEvals,
+      peersForReviewers,
+      true,
+    )
+    expect(heading.peerFirstName).toBe(null)
+    expect(heading.peerHasEvaluated).toBe(false)
+  })
+
+  it('shows peer fields when hidePeerForLowReviewerScore=true and reviewer score is 3', () => {
+    const admissionEvals = [
+      {
+        enrollmentId: 'e1',
+        evaluatorId: 'r1',
+        evaluatorName: 'Alice Smith',
+        score: 3,
+      },
+      {
+        enrollmentId: 'e1',
+        evaluatorId: 'p1',
+        evaluatorName: 'Bob Jones',
+        score: 3,
+      },
+    ]
+    const heading = deriveReviewHeading(
+      'e1',
+      reviewerAssignments,
+      admissionEvals,
+      peersForReviewers,
+      true,
+    )
+    expect(heading.peerFirstName).toBe('Bob')
+    expect(heading.peerHasEvaluated).toBe(true)
+  })
+
+  it('shows peer fields when hidePeerForLowReviewerScore=true and reviewer score is 4', () => {
+    const heading = deriveReviewHeading(
+      'e1',
+      reviewerAssignments,
+      evaluations,
+      peersForReviewers,
+      true,
+    )
+    expect(heading.peerFirstName).toBe('Bob')
+    expect(heading.peerHasEvaluated).toBe(true)
+  })
 })
 
 describe('buildEnrollmentAssignments', () => {

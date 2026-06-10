@@ -189,7 +189,8 @@ export async function getEnrollmentsService(
       })
     }
 
-    const reviewerFilter = isAdmin && data.viewAll ? undefined : userId
+    const reviewerFilter = data.viewAll ? undefined : userId
+    const requireReviewerAdmitted = !isAdmin && data.viewAll
 
     // peerIds for the page filter (whose-assigned-or-peer-queued logic).
     const peerIds =
@@ -204,6 +205,7 @@ export async function getEnrollmentsService(
       includeEmail: isAdmin,
       reviewerFilter,
       peerIds,
+      requireReviewerAdmitted,
     })
 
     const enrollmentIds = rows.map((row) => row.id)
@@ -230,6 +232,7 @@ export async function getEnrollmentsService(
         reviewerAssignments,
         evaluations,
         peersForReviewers,
+        !isAdmin,
       )
       return { ...base, evaluationSum, evaluationCount, reviewHeading }
     })
