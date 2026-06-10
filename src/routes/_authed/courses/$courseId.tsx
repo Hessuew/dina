@@ -251,7 +251,11 @@ function CourseDetailComponent() {
                         key={material.id}
                         className="group relative shrink-0"
                       >
-                        <MediaCard item={material} viewerRole={role} />
+                        <MediaCard
+                          item={material}
+                          viewerRole={role}
+                          size="panel"
+                        />
                         {permissions.canEdit && permissions.isCourseTeacher && (
                           <div
                             className="absolute top-1 left-1 hidden group-hover:flex"

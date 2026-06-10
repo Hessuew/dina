@@ -516,15 +516,16 @@ export function EvaluationOverlay({
                 <SaveStatus state={categoryState} />
               </div>
             </div>
-            {/* Column 2: your score + save status */}
+            {/* Column 2: total score */}
             <div className="flex flex-col items-center gap-1">
               <span className="text-[0.62rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-                Your score
+                Total score
               </span>
               <span className="font-serif text-2xl text-[#E9D9B4] tabular-nums">
-                {myScore === null ? '—' : formatScore(myScore)}
+                {enrollment.evaluationCount === 0
+                  ? '—'
+                  : formatScore(enrollment.evaluationSum)}
               </span>
-              <SaveStatus state={scoreState} />
             </div>
             {/* Column 3: note */}
             <div className="min-w-64 flex-1">
