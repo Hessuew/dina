@@ -9,7 +9,7 @@ import {
   seedCourse,
   seedCourseTeacher,
   seedProfile,
-} from '../../../test/integration/seed'
+} from '@/../test/integration/seed'
 
 describe('teachers service (integration)', () => {
   describe('getTeachersService', () => {
@@ -34,7 +34,10 @@ describe('teachers service (integration)', () => {
       const { teachers } = await getTeachersService()
 
       const teacher = teachers.find((t) => t.id === teacherId)
-      expect(teacher?.course).toMatchObject({ id: courseId, title: 'Foundations' })
+      expect(teacher?.course).toMatchObject({
+        id: courseId,
+        title: 'Foundations',
+      })
     })
 
     it('leaves course undefined for an unassigned teacher', async () => {

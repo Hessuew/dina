@@ -5,7 +5,7 @@ import {
   seedLesson,
   seedProfile,
   seedSubmission,
-} from '../../../test/integration/seed'
+} from '@/../test/integration/seed'
 import {
   getStudentDetailService,
   getStudentsService,
