@@ -21,7 +21,7 @@ export const updateProfileFn = createServerFn({ method: 'POST' })
       return await updateProfileBasicService(data, user)
     }
 
-    await updateProfileWithEmailChangeService(data, user)
+    return await updateProfileWithEmailChangeService(data, user)
   })
 
 export const updatePasswordFn = createServerFn({ method: 'POST' })
