@@ -288,7 +288,7 @@ Call `mcp__plugin_linear_linear__get_issue { id }` and check whether the PR URL 
 
 Apply these to **every** new issue (parent and sub-issues) via `save_issue`:
 
-- **Description:** fill the template in `.devin/linear-issue-template.md` (Goal / Context / Requirements / Impact / Constraints), populated from PR title, commits, changed modules.
+- **Description:** fill the template in `.devin/linear-issue-template.md` (Issue Title / Goal / Context / Requirements / Impact), populated from PR title, commits, changed modules.
 - **Priority** (auto-derived from commit type):
 
   | Commit type | Priority | Value |
@@ -304,6 +304,8 @@ Apply these to **every** new issue (parent and sub-issues) via `save_issue`:
 
 **`save_issue` call shape:**
 
+When creating a new issue (no `id` passed):
+
 ```json
 {
   "title": "<derived from PR>",
@@ -316,7 +318,20 @@ Apply these to **every** new issue (parent and sub-issues) via `save_issue`:
 }
 ```
 
+When updating an existing issue (with `id` passed):
+
+```json
+{
+  "id": "<existing issue id>",
+  "links": [{ "url": "<PR URL>", "title": "<PR title>" }]
+}
+```
+
+**Important:** Do not pass `description` when updating existing issues to preserve manually added content like "Completed Work".
+
 For sub-issues, also pass `"parentId": "<parent issue id>"`. To update/link an existing issue instead of creating one, pass `"id": "<issue id>"` (omit when creating). **Important:** `team` is required when creating new issues (no `id` passed), but not when updating existing issues.
+
+**When updating existing issues:** do not modify the `description` field. The description may contain manually added sections like "Completed Work" that should be preserved. Only update the `links` field to add the PR URL.
 
 ## Case-specific mutations (grouping per section 5)
 
