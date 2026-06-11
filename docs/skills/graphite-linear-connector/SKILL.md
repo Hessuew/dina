@@ -288,19 +288,22 @@ Call `mcp__plugin_linear_linear__get_issue { id }` and check whether the PR URL 
 
 Apply these to **every** new issue (parent and sub-issues) via `save_issue`:
 
+**Required fields (non-negotiable):**
+
+- **Assignee:** `Juhani Juusola` (always set)
+- **Status (`state`):** `In Progress` (always set, never Backlog)
+- **Priority:** always set per commit type table below
 - **Description:** fill the template in `.devin/linear-issue-template.md` (Issue Title / Goal / Context / Requirements / Impact), populated from PR title, commits, changed modules.
-- **Priority** (auto-derived from commit type):
 
-  | Commit type | Priority | Value |
-  | ----------- | -------- | ----- |
-  | fix         | Urgent   | 1     |
-  | feat        | High     | 2     |
-  | refactor    | Medium   | 3     |
-  | chore       | Low      | 4     |
-  | (unclear)   | Medium   | 3     |
+**Priority** (auto-derived from commit type):
 
-- **Assignee:** `Juhani Juusola`
-- **Status (`state`):** `In Progress`
+| Commit type | Priority | Value |
+| ----------- | -------- | ----- |
+| fix         | Urgent   | 1     |
+| feat        | High     | 2     |
+| refactor    | Medium   | 3     |
+| chore       | Low      | 4     |
+| (unclear)   | Medium   | 3     |
 
 **`save_issue` call shape:**
 
