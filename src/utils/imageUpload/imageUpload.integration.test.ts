@@ -43,12 +43,19 @@ vi.mock('@/utils/supabase', () => ({
 const PUBLIC_URL = 'https://host/bucket/uploaded.webp'
 const FILE_DATA = Buffer.from('image-bytes').toString('base64')
 
-const makeInput = (overrides: Record<string, unknown> = {}) => ({
+const makeInput = <const T extends object = object>(
+  overrides?: T,
+): {
+  fileData: string
+  fileName: string
+  fileType: string
+  fileSize: number
+} & T => ({
   fileData: FILE_DATA,
   fileName: 'photo.png',
   fileType: 'image/png',
   fileSize: 1024,
-  ...overrides,
+  ...(overrides ?? ({} as T)),
 })
 
 beforeEach(() => {
