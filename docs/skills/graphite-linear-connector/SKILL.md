@@ -43,7 +43,7 @@ There is no capability detection: `save_issue` is always available. Only handle 
 | Search candidate issues | `mcp__plugin_linear_linear__list_issues` |
 | Create / update / link  | `mcp__plugin_linear_linear__save_issue`  |
 
-`save_issue` creates a new issue when no `id` is passed, and updates an existing one when `id` is present. The same call adds `links` (append-only) and accepts `parentId` for sub-issues.
+`save_issue` creates a new issue when no `id` is passed, and updates an existing one when `id` is present. The same call adds `links` (append-only) and accepts `parentId` for sub-issues. When creating a new issue, `team` (team name as string) is required.
 
 ---
 
@@ -203,13 +203,13 @@ Detect an explicit ID (`LIN-123`, `ENG-456`, `CHR-72`) in title/branch. If found
 Build a query from normalized nouns, module names, service names, and feature terms, e.g. `auth middleware latency session validation`. Call `list_issues` with:
 
 - `query` — title/description keywords
-- `state` — active categories only (see below)
-- `team` — when known
+- `state` — active category only (string, not array): `unstarted`, `started`, or `backlog`
+- `team` — when known (team name as string)
 - `createdAt` / `orderBy: updatedAt` — recent-activity boost
 
 **Limits:** max 20 candidates, max 3 queries per PR, dedupe repeats.
 
-**State categories** (do not hardcode state names): include `unstarted`, `started`, `backlog`; exclude `completed`, `canceled`, `archived`.
+**State categories** (do not hardcode state names): use single state values like `unstarted`, `started`, `backlog`; exclude `completed`, `canceled`, `archived`.
 
 ---
 
@@ -308,7 +308,7 @@ Apply these to **every** new issue (parent and sub-issues) via `save_issue`:
 {
   "title": "<derived from PR>",
   "description": "<filled .devin/linear-issue-template.md>",
-  "team": "<user-specified or detected>",
+  "team": "<team name as string, required when creating new issue>",
   "priority": "<1|2|3|4 per table>",
   "assignee": "Juhani Juusola",
   "state": "In Progress",
@@ -316,7 +316,7 @@ Apply these to **every** new issue (parent and sub-issues) via `save_issue`:
 }
 ```
 
-For sub-issues, also pass `"parentId": "<parent issue id>"`. To update/link an existing issue instead of creating one, pass `"id": "<issue id>"` (omit when creating).
+For sub-issues, also pass `"parentId": "<parent issue id>"`. To update/link an existing issue instead of creating one, pass `"id": "<issue id>"` (omit when creating). **Important:** `team` is required when creating new issues (no `id` passed), but not when updating existing issues.
 
 ## Case-specific mutations (grouping per section 5)
 
