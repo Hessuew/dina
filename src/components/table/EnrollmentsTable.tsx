@@ -45,7 +45,7 @@ import {
 } from '@/utils/enrolment/domain/evaluation.domain'
 import { cn } from '@/lib/utils'
 
-export type EnrollmentRow = EnrollmentWithEvaluation
+type EnrollmentRow = EnrollmentWithEvaluation
 
 type EnrollmentsTableProps = {
   enrollments: Array<EnrollmentRow>

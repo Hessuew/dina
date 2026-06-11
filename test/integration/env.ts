@@ -3,6 +3,7 @@
 // imports `cloudflare:workers` and runs t3-env validation that requires real
 // secrets. Integration tests exercise the DB path, not Supabase/Resend config,
 // so dummy values are sufficient.
+// NOTE: Must remain exported - services import env from '@/env' (e.g., enrolment.service.ts)
 export const env = {
   SUPABASE_URL: 'http://localhost',
   SUPABASE_SERVICE_ROLE_KEY: 'test',

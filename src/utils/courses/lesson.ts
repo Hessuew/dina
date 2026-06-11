@@ -2,7 +2,6 @@ import { createServerFn } from '@tanstack/react-start'
 import {
   createLessonService,
   deleteLessonService,
-  getCalendarEventsService,
   getUpcomingLessonsService,
   updateLessonService,
 } from './service/lesson.service'
@@ -38,12 +37,5 @@ export const getUpcomingLessons = createServerFn({ method: 'POST' }).handler(
   async () => {
     const user = await getCurrentUser()
     return getUpcomingLessonsService(user.id)
-  },
-)
-
-export const getCalendarEvents = createServerFn({ method: 'POST' }).handler(
-  async () => {
-    const user = await getCurrentUser()
-    return getCalendarEventsService(user.id)
   },
 )

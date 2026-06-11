@@ -74,7 +74,7 @@ export function EditActionButton({
   )
 }
 
-export function DeleteActionButton({
+function DeleteActionButton({
   onClick,
   theme = 'light',
   size = 'md',

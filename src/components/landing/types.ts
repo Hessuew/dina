@@ -7,7 +7,3 @@ export type LandingShowcaseItem = LandingItemBase & {
   title: string
   description?: string
 }
-
-export type LandingNumberedItem = LandingItemBase & {
-  number: string
-}

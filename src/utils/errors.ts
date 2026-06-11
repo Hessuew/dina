@@ -179,22 +179,6 @@ export function toUserError(error: unknown): UserError {
   }
 }
 
-export function logServerError(error: unknown, context: AppErrorDetails = {}) {
-  const userError = toUserError(error)
-
-  if (isAppError(error)) {
-    console.error(error.internalMessage, {
-      code: error.code,
-      status: error.status,
-      details: error.details,
-      context,
-    })
-    return
-  }
-
-  console.error(userError.message, { error, context })
-}
-
 type SerializedAppError = {
   code: AppErrorCode
   userMessage: string

@@ -16,7 +16,7 @@ interface ConnectionStore {
 
 const connectionStorage = new AsyncLocalStorage<ConnectionStore>()
 
-export function getConnectionString() {
+function getConnectionString() {
   // Cloudflare (Hyperdrive)
   if (cfEnv.HYPERDRIVE?.connectionString) {
     return cfEnv.HYPERDRIVE.connectionString

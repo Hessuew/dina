@@ -58,7 +58,7 @@ async function addCourseTeacherRecipients(
   }
 }
 
-export async function getRecipientsForPostCreated(
+async function getRecipientsForPostCreated(
   event: PostCreatedEvent,
 ): Promise<RecipientResult> {
   const db = await getDb()
@@ -80,7 +80,7 @@ export async function getRecipientsForPostCreated(
   return { recipientIds: Array.from(recipients) }
 }
 
-export function getRecipientsForCommentCreated(
+function getRecipientsForCommentCreated(
   event: CommentCreatedEvent,
 ): RecipientResult {
   const { actorId, postAuthorId } = event

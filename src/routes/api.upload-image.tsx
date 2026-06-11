@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { uploadImageFn } from '@/utils/imageUpload'
 
 export const Route = createFileRoute('/api/upload-image')({
   component: UploadImageAPI,
@@ -11,6 +10,3 @@ function UploadImageAPI() {
   // Client components can call uploadImageFn directly
   return null
 }
-
-// Export the server function for direct use
-export { uploadImageFn }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export type DialogMode = 'create' | 'edit' | 'delete' | 'view'
+type DialogMode = 'create' | 'edit' | 'delete' | 'view'
 
 interface UseDialogStateReturn<T> {
   isOpen: boolean

@@ -19,7 +19,7 @@ type HeaderProps = {
   user: User | null
 }
 
-export const toggleUserRole = createServerFn({ method: 'POST' }).handler(
+const toggleUserRole = createServerFn({ method: 'POST' }).handler(
   async () => {
     const user = await getCurrentUser()
 

@@ -13,8 +13,6 @@ export const REACTION_EMOJIS = [
   '❤️‍🔥',
 ] as const
 
-export type ReactionEmoji = (typeof REACTION_EMOJIS)[number]
-
 export const createPostSchema = z.object({
   courseId: z.string().uuid().nullable().optional(),
   content: z.string().min(1, 'Post cannot be empty').max(5000),

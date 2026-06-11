@@ -68,7 +68,7 @@ import { InvitationEmail } from '@/emails/InvitationEmail'
  * Eligible callers: the assigned Reviewer, or a peer teacher (course partner).
  * Admins bypass the check entirely.
  */
-export async function assertEvaluationAuthorized(
+async function assertEvaluationAuthorized(
   enrollmentId: string,
   userId: string,
   isAdmin: boolean,

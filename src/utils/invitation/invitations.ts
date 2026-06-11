@@ -3,7 +3,6 @@ import {
   checkInvitationByEmailService,
   createInvitationService,
   deleteInvitationService,
-  getInvitationByEmailService,
   getInvitationByTokenService,
   getInvitationsService,
   resendInvitationService,
@@ -44,12 +43,6 @@ export const getInvitations = createServerFn({ method: 'POST' }).handler(
     return getInvitationsService(user.id)
   },
 )
-
-export const getInvitationByEmail = createServerFn({ method: 'GET' })
-  .inputValidator(checkInvitationByEmailSchema)
-  .handler(async ({ data }) => {
-    return getInvitationByEmailService(data)
-  })
 
 export const revokeInvitation = createServerFn({ method: 'POST' })
   .inputValidator(revokeInvitationSchema)

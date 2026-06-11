@@ -87,7 +87,7 @@ type LandingItemGridProps = {
   className?: string
 }
 
-export function LandingSection({ className, ...props }: LandingSectionProps) {
+function LandingSection({ className, ...props }: LandingSectionProps) {
   return (
     <section
       {...props}

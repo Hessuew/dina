@@ -125,9 +125,6 @@ export type SendInvitationForEnrollmentInput = z.infer<
   typeof sendInvitationForEnrollmentSchema
 >
 export type GetEnrollmentsInput = z.infer<typeof getEnrollmentsSchema>
-export type DistributeEnrollmentsInput = z.infer<
-  typeof distributeEnrollmentsSchema
->
 export type SetEvaluationScoreInput = z.infer<typeof setEvaluationScoreSchema>
 export type SetEvaluationAdmissionCategoryInput = z.infer<
   typeof setEvaluationAdmissionCategorySchema
