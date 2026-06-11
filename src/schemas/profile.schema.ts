@@ -11,4 +11,3 @@ export const updatePasswordSchema = z.object({
 })
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>
-export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>

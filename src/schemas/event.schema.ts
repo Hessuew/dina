@@ -28,7 +28,3 @@ export const updateEventSchema = z.object({
 export const deleteEventSchema = z.object({
   eventId: z.uuid('Invalid event ID'),
 })
-
-export type CreateEventInput = z.infer<typeof createEventSchema>
-export type UpdateEventInput = z.infer<typeof updateEventSchema>
-export type DeleteEventInput = z.infer<typeof deleteEventSchema>

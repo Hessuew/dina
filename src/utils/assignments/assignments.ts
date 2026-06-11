@@ -8,9 +8,7 @@ import {
   getAssignmentService,
   getAssignmentSubmissionCountService,
   getAssignmentSubmissionsService,
-  getAssignmentsByLessonService,
   getLessonService,
-  getSubmissionService,
   gradeSubmissionService,
   updateAssignmentService,
 } from '@/utils/assignments/service/assignments.service'
@@ -22,8 +20,6 @@ import {
   getAssignmentSchema,
   getAssignmentSubmissionCountSchema,
   getAssignmentSubmissionsSchema,
-  getAssignmentsByLessonSchema,
-  getSubmissionSchema,
   gradeSubmissionSchema,
   updateAssignmentSchema,
 } from '@/schemas/assignment.schema'
@@ -35,13 +31,6 @@ export const getLesson = createServerFn({ method: 'POST' })
     const user = await getCurrentUser()
     const result = await getLessonService(data, user.id)
     return { ...result, user }
-  })
-
-export const getAssignmentsByLesson = createServerFn({ method: 'POST' })
-  .inputValidator(getAssignmentsByLessonSchema)
-  .handler(async ({ data }) => {
-    const user = await getCurrentUser()
-    return getAssignmentsByLessonService(data, user.id)
   })
 
 export const getAssignment = createServerFn({ method: 'POST' })
@@ -78,13 +67,6 @@ export const deleteAssignment = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return deleteAssignmentService(data, user.id)
-  })
-
-export const getSubmission = createServerFn({ method: 'POST' })
-  .inputValidator(getSubmissionSchema)
-  .handler(async ({ data }) => {
-    const user = await getCurrentUser()
-    return getSubmissionService(data, user.id)
   })
 
 export const createOrUpdateSubmission = createServerFn({ method: 'POST' })

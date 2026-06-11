@@ -23,19 +23,6 @@ export async function getCurrentUser() {
 }
 
 /**
- * Validate that a user ID is provided
- * Throws an error if the user ID is not provided
- * @param userId - The Supabase user ID (UUID)
- */
-export function requireAuth(
-  userId: string | undefined,
-): asserts userId is string {
-  if (!userId) {
-    throw new AuthenticationError('Authentication required')
-  }
-}
-
-/**
  * Get user profile with role information
  * @param userId - The Supabase user ID (UUID)
  */

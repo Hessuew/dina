@@ -13,10 +13,8 @@ export {
   updateLesson,
   deleteLesson,
   getUpcomingLessons,
-  getCalendarEvents,
 } from './lesson'
 
 // Teacher-course relationship management
-export { getCourseTeachers, updateCourseTeachers } from './teacher-assignment'
 // Re-export getAllTeachers from teachers.ts for backward compatibility
 export { getAllTeachers } from '@/utils/teachers/teachers'

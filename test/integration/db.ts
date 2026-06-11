@@ -20,11 +20,13 @@ export function getDb() {
 
 // Surface parity with `@/db`. The PGlite singleton is shared across the whole
 // test file and must NOT be closed between calls, so this just runs `fn`.
+// NOTE: Must remain exported - src/utils/authz/cache.ts imports this from '@/db'
 export async function withDbConnection<T>(fn: () => Promise<T>): Promise<T> {
   return fn()
 }
 
 // Surface parity with `@/db` — some callers import this alongside getDb.
+// NOTE: Must remain exported - matches production src/db/index.ts export surface
 export function getConnectionString() {
   return 'pglite://memory'
 }

@@ -21,11 +21,6 @@ export function authz(userId: string) {
   return createAuthorizationBuilder(userId, service, true)
 }
 
-export function isAllowed(userId: string) {
-  const service = getAuthorizationService()
-  return createAuthorizationBuilder(userId, service, false)
-}
-
 export async function resolveAdminOrTeacherAccess(
   userId: string,
 ): Promise<{ isAdmin: boolean; isTeacher: boolean }> {
@@ -35,7 +30,5 @@ export async function resolveAdminOrTeacherAccess(
 
 export { withRequestCache }
 export type { AuthorizationService, Role, Action, ResourceType } from './types'
-export { AuthorizationError } from '@/utils/errors'
 export { DefaultAuthorizationService } from './default-adapter'
 export { protectRoute } from './route'
-export { TestAuthorizationService } from './test-adapter'

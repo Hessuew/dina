@@ -6,7 +6,7 @@ import type {
   PostCreatedEvent,
 } from './types'
 
-let deliveryAdapter: DeliveryAdapter = new DatabaseDeliveryAdapter()
+const deliveryAdapter: DeliveryAdapter = new DatabaseDeliveryAdapter()
 
 export async function emit(
   event: PostCreatedEvent | CommentCreatedEvent,
@@ -20,12 +20,3 @@ export async function emit(
   await deliveryAdapter.deliver(event, recipientIds)
 }
 
-export function registerDeliveryAdapter(adapter: DeliveryAdapter): void {
-  deliveryAdapter = adapter
-}
-
-export function resetDeliveryAdapter(): void {
-  deliveryAdapter = new DatabaseDeliveryAdapter()
-}
-
-export { getRecipients }
