@@ -1,0 +1,130 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": ["src/index.{ts,tsx,js,jsx}", "src/main.{ts,tsx,js,jsx}"],
+  "duplicates": {
+    // Hide pair-only clones; focus on widespread copy-paste
+    // worth refactoring. Lower to 2 to report every duplicate pair.
+    "minOccurrences": 3
+    // Common additions (uncomment to enable):
+    // "ignore": [
+    //   "**/lib/**",          // for repos that publish transpiled output to lib/
+    //   "**/legacy/**",       // for repos with legacy-build artifacts
+    //   "**/__generated__/**", // Relay, GraphQL Code Generator
+    //   "**/generated/**"     // OpenAPI, Protobuf codegen
+    // ]
+  },
+  "rules": {
+    "unused-dependencies": "warn",
+    "unused-class-members": "off"
+  },
+  "ignoreDependencies": ["@electric-sql/pglite", "test"],
+  "ignorePatterns": ["test/integration/**"],
+  "ignoreExports": [
+    {
+      "file": "test/integration/env.ts",
+      "exports": ["env"]
+    },
+    {
+      "file": "test/integration/db.ts",
+      "exports": [
+        "getDb",
+        "withDbConnection",
+        "getConnectionString",
+        "getPgliteClient",
+        "truncateAll"
+      ]
+    },
+    {
+      "file": "src/cloudflare-shim.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/view/AssignmentsView.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/utils/authz/index.ts",
+      "exports": ["setAuthorizationService", "DefaultAuthorizationService"]
+    },
+    {
+      "file": "src/types/database.types.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/schemas/zoomLink.schema.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/utils/zoomLink/domain/zoomLink.domain.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/badge-check.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/bell-ring.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/bell.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/book.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/calendar-check.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/calendar-days.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/circle-check-big.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/circle-check.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/clapperboard.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/clipboard-list.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/cooking-pot.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/layers.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/layout-dashboard.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/list.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/log-out.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/message-square.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/animate-ui/icons/users.tsx",
+      "exports": ["*"]
+    }
+  ]
+}
