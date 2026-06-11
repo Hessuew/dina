@@ -6,6 +6,7 @@ import {
   generateInvitationExpiry,
   generateSecureToken,
   isInvitationResendable,
+  redactEnrollmentForTeacher,
 } from './enrolment.domain'
 
 const makeInvitation = (
@@ -249,5 +250,80 @@ describe('buildEnrollmentAssignments', () => {
       { enrollmentId: 'e2', reviewerId: 't0' },
       { enrollmentId: 'e3', reviewerId: 't0' },
     ])
+  })
+})
+
+describe('redactEnrollmentForTeacher', () => {
+  it('removes email, phoneWhatsApp, invitationSent, and invitationId', () => {
+    const enrollment = {
+      id: 'e1',
+      fullLegalName: 'John Doe',
+      preferredName: 'John',
+      email: 'john@example.com',
+      yearOfBirth: 1990,
+      gender: 'male' as const,
+      nationalityCitizenship: 'US',
+      phoneWhatsApp: '+1234567890',
+      currentCity: 'New York',
+      currentCountry: 'US',
+      churchAffiliations: 'Church A',
+      aboutYourself: 'About me',
+      expectationsAlignment: 'Expectations',
+      status: 'pending' as const,
+      invitationSent: true,
+      specialCase: false,
+      invitationId: 'inv-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    const redacted = redactEnrollmentForTeacher(enrollment)
+
+    expect(redacted).not.toHaveProperty('email')
+    expect(redacted).not.toHaveProperty('phoneWhatsApp')
+    expect(redacted).not.toHaveProperty('invitationSent')
+    expect(redacted).not.toHaveProperty('invitationId')
+  })
+
+  it('preserves all other fields', () => {
+    const enrollment = {
+      id: 'e1',
+      fullLegalName: 'John Doe',
+      preferredName: 'John',
+      email: 'john@example.com',
+      yearOfBirth: 1990,
+      gender: 'male' as const,
+      nationalityCitizenship: 'US',
+      phoneWhatsApp: '+1234567890',
+      currentCity: 'New York',
+      currentCountry: 'US',
+      churchAffiliations: 'Church A',
+      aboutYourself: 'About me',
+      expectationsAlignment: 'Expectations',
+      status: 'pending' as const,
+      invitationSent: true,
+      specialCase: false,
+      invitationId: 'inv-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    const redacted = redactEnrollmentForTeacher(enrollment)
+
+    expect(redacted.id).toBe('e1')
+    expect(redacted.fullLegalName).toBe('John Doe')
+    expect(redacted.preferredName).toBe('John')
+    expect(redacted.yearOfBirth).toBe(1990)
+    expect(redacted.gender).toBe('male')
+    expect(redacted.nationalityCitizenship).toBe('US')
+    expect(redacted.currentCity).toBe('New York')
+    expect(redacted.currentCountry).toBe('US')
+    expect(redacted.churchAffiliations).toBe('Church A')
+    expect(redacted.aboutYourself).toBe('About me')
+    expect(redacted.expectationsAlignment).toBe('Expectations')
+    expect(redacted.status).toBe('pending')
+    expect(redacted.specialCase).toBe(false)
+    expect(redacted.createdAt).toEqual(enrollment.createdAt)
+    expect(redacted.updatedAt).toEqual(enrollment.updatedAt)
   })
 })

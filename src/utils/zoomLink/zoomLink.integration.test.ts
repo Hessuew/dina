@@ -7,7 +7,7 @@ import {
   updateZoomLinkService,
 } from '@/utils/zoomLink/service/zoomLink.service'
 import { AuthorizationError } from '@/utils/errors'
-import { seedCourse, seedProfile } from '../../../test/integration/seed'
+import { seedCourse, seedProfile } from '@/../test/integration/seed'
 
 const makeCreateInput = (
   overrides: Partial<CreateZoomLinkInput> = {},
