@@ -190,26 +190,24 @@ function EnrollmentsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            theme="light"
+            variant={viewAll ? 'default' : 'outline'}
+            onClick={handleToggleViewAll}
+          >
+            <EyeIcon className="size-3.5" />
+            {viewAll ? 'Show Own' : 'View All'}
+          </Button>
           {isAdmin && (
-            <>
-              <Button
-                theme="light"
-                variant={viewAll ? 'default' : 'outline'}
-                onClick={handleToggleViewAll}
-              >
-                <EyeIcon className="size-3.5" />
-                {viewAll ? 'Show Own' : 'View All'}
-              </Button>
-              <Button
-                theme="light"
-                variant="outline"
-                onClick={() => void handleDistribute()}
-                disabled={isDistributing}
-              >
-                <UsersIcon className="size-3.5" />
-                Distribute unassigned
-              </Button>
-            </>
+            <Button
+              theme="light"
+              variant="outline"
+              onClick={() => void handleDistribute()}
+              disabled={isDistributing}
+            >
+              <UsersIcon className="size-3.5" />
+              Distribute unassigned
+            </Button>
           )}
           <Button
             theme="light"

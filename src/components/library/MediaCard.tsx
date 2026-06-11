@@ -6,6 +6,7 @@ import type { MediaLibraryRow } from '@/utils/library/library'
 type MediaCardProps = {
   item: MediaLibraryRow
   viewerRole: 'student' | 'teacher' | 'admin'
+  size?: 'default' | 'panel' | 'mobile'
 }
 
 type MediaTypeConfig = {
@@ -89,7 +90,11 @@ function resolveMediaTypeConfig(item: MediaLibraryRow): MediaTypeConfig {
   return MEDIA_TYPE_CONFIG.fallback
 }
 
-export function MediaCard({ item, viewerRole }: MediaCardProps) {
+export function MediaCard({
+  item,
+  viewerRole,
+  size = 'default',
+}: MediaCardProps) {
   const videoId =
     item.fileType === 'video' || item.fileType === 'audio'
       ? getYoutubeVideoId(item.fileUrl)
@@ -101,8 +106,14 @@ export function MediaCard({ item, viewerRole }: MediaCardProps) {
   const mediaType = resolveMediaTypeConfig(item)
   const BadgeIcon = mediaType.icon
 
+  const widthClasses = {
+    default: 'w-96',
+    panel: 'w-80',
+    mobile: 'w-full',
+  }[size]
+
   return (
-    <div className="group relative w-96 shrink-0">
+    <div className={`group relative shrink-0 max-sm:w-full ${widthClasses}`}>
       {/* Blurred thumbnail aura behind card */}
       {thumbnailUrl ? (
         <div
