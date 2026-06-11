@@ -286,6 +286,13 @@ export function EvaluationOverlay({
   const admissionCategoryEnabled = scoreRequiresAdmissionCategory(myScore)
   const admissionCategoryMissing =
     admissionCategoryEnabled && myAdmissionCategory === null
+  const evaluationTotal = evaluations.reduce(
+    (sum, evaluation) => sum + (evaluation.score ?? 0),
+    0,
+  )
+  const evaluationCount = evaluations.filter(
+    (evaluation) => evaluation.score !== null,
+  ).length
 
   const otherNotes = evaluations.filter(
     (e) => e.evaluatorId !== userId && e.note && e.note.trim().length > 0,
@@ -411,7 +418,6 @@ export function EvaluationOverlay({
     saveAdmissionCategory,
     saveScore,
   ])
-
   const scoreState: SaveState = scoreMutation.isPending
     ? 'saving'
     : scoreMutation.status === 'success'
@@ -522,10 +528,9 @@ export function EvaluationOverlay({
                 Total score
               </span>
               <span className="font-serif text-2xl text-[#E9D9B4] tabular-nums">
-                {enrollment.evaluationCount === 0
-                  ? '—'
-                  : formatScore(enrollment.evaluationSum)}
+                {evaluationCount === 0 ? '—' : formatScore(evaluationTotal)}
               </span>
+              <SaveStatus state={scoreState} />
             </div>
             {/* Column 3: note */}
             <div className="min-w-64 flex-1">
