@@ -82,8 +82,8 @@ export function useEnrollmentReview({
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const loadingRef = useRef<Set<number>>(new Set())
 
-  // Reset the carousel when the underlying list changes (sort/search/page).
-  const depsKey = `${page}|${pageSize}|${search}|${sortBy}|${sortDir}`
+  // Reset the carousel when the underlying list changes (sort/search/page/view).
+  const depsKey = `${page}|${pageSize}|${search}|${sortBy}|${sortDir}|${viewAll}`
   const prevDepsKey = useRef(depsKey)
   useEffect(() => {
     if (prevDepsKey.current === depsKey) return
