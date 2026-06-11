@@ -641,8 +641,6 @@ function getVariants<
 }
 
 export {
-  pathClassName,
-  staticAnimations,
   AnimateIcon,
   IconWrapper,
   useAnimateIconContext,
@@ -650,5 +648,4 @@ export {
   type IconProps,
   type IconWrapperProps,
   type AnimateIconProps,
-  type AnimateIconContextValue,
 }

@@ -6,8 +6,6 @@ import type {
   GetAssignmentInput,
   GetAssignmentSubmissionCountInput,
   GetAssignmentSubmissionsInput,
-  GetAssignmentsByLessonInput,
-  GetSubmissionInput,
   GradeSubmissionInput,
   UpdateAssignmentInput,
 } from '@/schemas/assignment.schema'
@@ -24,7 +22,6 @@ import {
   findAssignmentWithFullDetail,
   findAssignmentWithLesson,
   findAssignmentWithLessonAndSubmissions,
-  findAssignmentsByLessonId,
   findAssignmentsForTeacherLessons,
   findCourseIdsByTeacher,
   findPublishedAssignmentsForStudent,
@@ -81,28 +78,6 @@ export async function getLessonService(data: GetLessonInput, userId: string) {
     role: profile.role,
     permissions,
   }
-}
-
-export async function getAssignmentsByLessonService(
-  data: GetAssignmentsByLessonInput,
-  userId: string,
-) {
-  const profile = await getUserProfile(userId)
-
-  const lesson = await findLessonById(data.lessonId)
-  if (!lesson) {
-    throw new NotFoundError('Lesson not found', {
-      code: 'LESSON_NOT_FOUND',
-      details: { lessonId: data.lessonId },
-    })
-  }
-
-  let assignmentsList = await findAssignmentsByLessonId(data.lessonId)
-  if (profile.role === 'student') {
-    assignmentsList = filterAssignmentsForStudent(assignmentsList)
-  }
-
-  return { assignments: assignmentsList, role: profile.role }
 }
 
 export async function getAssignmentService(
@@ -273,17 +248,6 @@ export async function deleteAssignmentService(
 
     await deleteAssignmentById(data.assignmentId)
   })
-}
-
-export async function getSubmissionService(
-  data: GetSubmissionInput,
-  userId: string,
-) {
-  const submission = await findSubmissionByAssignmentAndStudent(
-    data.assignmentId,
-    userId,
-  )
-  return { submission }
 }
 
 export async function createOrUpdateSubmissionService(

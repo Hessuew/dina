@@ -29,6 +29,6 @@ export async function resolveAdminOrTeacherAccess(
 }
 
 export { withRequestCache }
-export type { AuthorizationService, Role, Action, ResourceType } from './types'
+export type { AuthorizationService, Role } from './types'
 export { DefaultAuthorizationService } from './default-adapter'
 export { protectRoute } from './route'

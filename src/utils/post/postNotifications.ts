@@ -10,10 +10,7 @@ import {
   markPostNotificationGroupReadService,
 } from '@/utils/post/notifications/service/notification.service'
 
-export type {
-  PostNotificationEvent,
-  PostNotificationGroup,
-} from '@/utils/post/notifications/domain/notification.domain'
+export type { PostNotificationGroup } from '@/utils/post/notifications/domain/notification.domain'
 
 export const getPostNotificationsSummary = createServerFn({ method: 'POST' })
   .inputValidator(getPostNotificationsSummarySchema)

@@ -25,10 +25,6 @@ export const getAssignmentSchema = z.object({
   assignmentId: z.uuid('Invalid assignment ID'),
 })
 
-export const getAssignmentsByLessonSchema = z.object({
-  lessonId: z.uuid('Invalid lesson ID'),
-})
-
 export const getAssignmentSubmissionCountSchema = z.object({
   assignmentId: z.uuid('Invalid assignment ID'),
 })
@@ -38,10 +34,6 @@ export const createOrUpdateSubmissionSchema = z.object({
   content: z.string().optional(),
   fileUrl: z.url('Invalid file URL').optional(),
   submit: z.boolean().optional(),
-})
-
-export const getSubmissionSchema = z.object({
-  assignmentId: z.uuid('Invalid assignment ID'),
 })
 
 export const gradeSubmissionSchema = z.object({
@@ -59,16 +51,12 @@ export type CreateAssignmentInput = z.infer<typeof createAssignmentSchema>
 export type UpdateAssignmentInput = z.infer<typeof updateAssignmentSchema>
 export type DeleteAssignmentInput = z.infer<typeof deleteAssignmentSchema>
 export type GetAssignmentInput = z.infer<typeof getAssignmentSchema>
-export type GetAssignmentsByLessonInput = z.infer<
-  typeof getAssignmentsByLessonSchema
->
 export type GetAssignmentSubmissionCountInput = z.infer<
   typeof getAssignmentSubmissionCountSchema
 >
 export type CreateOrUpdateSubmissionInput = z.infer<
   typeof createOrUpdateSubmissionSchema
 >
-export type GetSubmissionInput = z.infer<typeof getSubmissionSchema>
 export type GradeSubmissionInput = z.infer<typeof gradeSubmissionSchema>
 export type GetAssignmentSubmissionsInput = z.infer<
   typeof getAssignmentSubmissionsSchema

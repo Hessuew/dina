@@ -2,7 +2,7 @@ import { PlusIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
-export type EmptyStateVariant = 'dark' | 'light'
+type EmptyStateVariant = 'dark' | 'light'
 
 interface EmptyStateProps {
   icon?: React.ElementType
