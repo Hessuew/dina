@@ -12,11 +12,7 @@ import {
 } from '@/schemas/zoomLink.schema'
 import { getCurrentUser } from '@/utils/auth/auth'
 
-export type {
-  ZoomLinkRow,
-  ZoomLinkSection,
-  ZoomLinksPayload,
-} from './domain/zoomLink.domain'
+export type { ZoomLinkRow, ZoomLinkSection } from './domain/zoomLink.domain'
 
 export const getZoomLinks = createServerFn({ method: 'POST' }).handler(
   async () => {

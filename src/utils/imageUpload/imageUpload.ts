@@ -2,21 +2,12 @@ import { createServerFn } from '@tanstack/react-start'
 import {
   uploadAvatarSchema,
   uploadCourseThumbnailSchema,
-  uploadImageSchema,
 } from '@/schemas/image.schema'
 import { getCurrentUser } from '@/utils/auth/auth'
 import {
   uploadAvatarService,
   uploadCourseThumbnailService,
-  uploadImageService,
 } from '@/utils/imageUpload/service/imageUpload.service'
-
-export const uploadImageFn = createServerFn({ method: 'POST' })
-  .inputValidator(uploadImageSchema)
-  .handler(async ({ data }) => {
-    const user = await getCurrentUser()
-    return uploadImageService(data, user.id)
-  })
 
 export const uploadAvatarFn = createServerFn({ method: 'POST' })
   .inputValidator(uploadAvatarSchema)

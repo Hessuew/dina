@@ -8,7 +8,7 @@ export type StatusChipVariant =
   | 'graded'
   | 'not-submitted'
 
-export type StatusChipSize = 'sm' | 'md'
+type StatusChipSize = 'sm' | 'md'
 
 interface StatusChipProps {
   variant: StatusChipVariant
