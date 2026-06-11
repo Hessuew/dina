@@ -20,14 +20,11 @@ import {
   updateCourseTeachersService,
   validateTeacherPair,
 } from '@/utils/courses/service/teacher-assignment.service'
+import { findCourseById, findCourseTeachers } from '@/utils/courses/repository'
 import {
-  findCourseById,
-  findCourseTeachers,
-} from '@/utils/courses/repository'
-import {
+  seedAssignment,
   seedCourse,
   seedCourseTeacher,
-  seedAssignment,
   seedLesson,
   seedLessonProgress,
   seedProfile,
@@ -293,6 +290,7 @@ describe('deleteCourseService (integration)', () => {
   })
 
   it('surfaces a storage failure and does not delete the course', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const courseId = await seedCourse({
       thumbnailUrl: 'https://cdn.test/bucket/thumb.png',
@@ -303,6 +301,9 @@ describe('deleteCourseService (integration)', () => {
       deleteCourseService({ courseId }, adminId),
     ).rejects.toMatchObject({ code: 'STORAGE_OPERATION_FAILED', status: 500 })
     expect(await findCourseById(courseId)).toBeDefined()
+    expect(errorSpy).toHaveBeenCalled()
+
+    errorSpy.mockRestore()
   })
 
   it('throws when the course does not exist', async () => {

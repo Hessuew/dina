@@ -142,6 +142,7 @@ describe('signupService (integration)', () => {
   })
 
   it('Supabase createUser error → generic error, no profile inserted', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { token, email } = await seedInvitation()
     mocks.createUser.mockResolvedValue({
       data: null,
@@ -156,9 +157,13 @@ describe('signupService (integration)', () => {
 
     expect(result.error).toBe(true)
     expect(await findProfileByEmail(email)).toBeUndefined()
+    expect(errorSpy).toHaveBeenCalled()
+
+    errorSpy.mockRestore()
   })
 
   it('email send fails → returns error, rolls back auth user', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const userId = randomUUID()
     const { token, email } = await seedInvitation()
     mocks.createUser.mockResolvedValue({
@@ -178,6 +183,9 @@ describe('signupService (integration)', () => {
     // Current behavior: the inserted profiles row is NOT rolled back — only the
     // Supabase auth user is deleted, leaving an orphan profile. Documented, not fixed.
     expect((await findProfileByEmail(email))?.id).toBe(userId)
+    expect(errorSpy).toHaveBeenCalled()
+
+    errorSpy.mockRestore()
   })
 })
 
