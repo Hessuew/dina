@@ -15,6 +15,13 @@ If a question can be answered by exploring the codebase, explore the codebase in
 
 <supporting-info>
 
+## When the domain machinery doesn't apply
+
+Not every task touches the project's domain model. Recognise these cases and don't manufacture ceremony to satisfy the ritual:
+
+- **Testing-only or mechanical-refactor tasks** — no new domain vocabulary is introduced, so the glossary/ADR steps are expected no-ops. Grilling collapses to scoping questions; don't invent an ADR just to have one.
+- **Tool/config tasks (external-docs grilling)** — the spec-of-record is vendor docs (e.g. Claude Code docs), not `CONTEXT.md`/ADRs. Grill the plan against those external docs, and let AskUserQuestion previews stand in for glossary refinement.
+
 ## Domain awareness
 
 During codebase exploration, also look for existing documentation:
@@ -68,6 +75,8 @@ When domain relationships are being discussed, stress-test them with specific sc
 ### Cross-reference with code
 
 When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
+
+Before asserting a decision is net-new, search for existing sibling implementations (e.g. other `*.integration.test.ts`, parallel modules) that already set the precedent — otherwise you risk framing an established pattern as first-of-its-kind: "This isn't the first service to mock external IO — `signup.integration.test.ts` already established the `vi.mock` pattern."
 
 ### Update CONTEXT.md inline
 

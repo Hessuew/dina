@@ -106,3 +106,9 @@ Do not finish without basic correctness check.
 
 - Skills live once in `docs/skills/<name>/SKILL.md`; `.claude/skills/<name>` is a symlink to it. Edit skills only in `docs/skills/`, never through a symlink.
 - After using any skill, follow `docs/skills/SELF_IMPROVEMENT.md`: log friction (errors/non-functioning tool calls, things that could be done better, missing features or a needed new skill) to `docs/skills/IMPROVEMENTS.md` as a proposal. Do not edit the skill file in-session.
+
+---
+
+## Default Modes
+
+Repo defaults (disable anytime): **caveman** always on, intensity **full**, from first response; **grill-with-docs** on planning/design chats. Full policy + carve-outs: [docs/DEFAULT_MODES.md](docs/DEFAULT_MODES.md).
