@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import type { enrollments, invitations } from '@/db/schema'
+import { scoreRequiresAdmissionCategory } from '@/utils/enrolment/domain/evaluation.domain'
 
 type Invitation = typeof invitations.$inferSelect
 
@@ -112,6 +113,7 @@ export function deriveReviewHeading(
     score: number | null
   }>,
   peersForReviewers: Map<string, Array<{ id: string; name: string }>>,
+  hidePeerForLowReviewerScore = false,
 ): ReviewHeading {
   const assignment = reviewerAssignments.find(
     (a) => a.enrollmentId === enrollmentId,
@@ -135,19 +137,24 @@ export function deriveReviewHeading(
     reviewerEval !== undefined && reviewerEval.score !== null
 
   const peers = peersForReviewers.get(assignment.reviewerId) ?? []
-  const peer = peers[0] ?? null
+  const peer = peers.at(0) ?? null
   const peerEval = peer
     ? enrollmentEvals.find((e) => e.evaluatorId === peer.id)
     : undefined
   const peerHasEvaluated = peerEval !== undefined && peerEval.score !== null
+
+  const reviewerScore = reviewerEval?.score ?? null
+  const hidePeer =
+    hidePeerForLowReviewerScore &&
+    !scoreRequiresAdmissionCategory(reviewerScore)
 
   return {
     reviewerFirstName: assignment.reviewerName
       ? assignment.reviewerName.split(' ')[0]
       : null,
     reviewerHasEvaluated,
-    peerFirstName: peer ? peer.name.split(' ')[0] : null,
-    peerHasEvaluated,
+    peerFirstName: hidePeer ? null : peer ? peer.name.split(' ')[0] : null,
+    peerHasEvaluated: hidePeer ? false : peerHasEvaluated,
   }
 }
 

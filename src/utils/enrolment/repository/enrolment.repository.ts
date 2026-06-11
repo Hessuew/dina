@@ -55,6 +55,7 @@ export type FindEnrollmentsPageInput = {
   includeEmail: boolean
   reviewerFilter?: string
   peerIds?: Array<string>
+  requireReviewerAdmitted?: boolean
 }
 
 /* v8 ignore start */
@@ -75,6 +76,7 @@ export async function findEnrollmentsPage({
   includeEmail,
   reviewerFilter,
   peerIds = [],
+  requireReviewerAdmitted,
 }: FindEnrollmentsPageInput) {
   const db = await getDb()
 
@@ -123,7 +125,34 @@ export async function findEnrollmentsPage({
       ? or(assignedCondition, peerCondition)
       : assignedCondition
 
-  const whereClause = and(searchFilter, reviewerCondition)
+  const reviewerAdmittedCondition = requireReviewerAdmitted
+    ? inArray(
+        enrollments.id,
+        db
+          .select({ id: enrollmentReviewerAssignments.enrollmentId })
+          .from(enrollmentReviewerAssignments)
+          .innerJoin(
+            enrollmentEvaluations,
+            and(
+              eq(
+                enrollmentEvaluations.enrollmentId,
+                enrollmentReviewerAssignments.enrollmentId,
+              ),
+              eq(
+                enrollmentEvaluations.evaluatorId,
+                enrollmentReviewerAssignments.reviewerId,
+              ),
+            ),
+          )
+          .where(inArray(enrollmentEvaluations.score, [3, 4])),
+      )
+    : undefined
+
+  const whereClause = and(
+    searchFilter,
+    reviewerCondition,
+    reviewerAdmittedCondition,
+  )
 
   const evaluationSum = sql<number>`coalesce(sum(${enrollmentEvaluations.score}), 0)::int`
   const evaluationCount = sql<number>`count(${enrollmentEvaluations.score})::int`
