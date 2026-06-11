@@ -22,6 +22,7 @@ import type {
   SortingState,
 } from '@tanstack/react-table'
 import type { ComponentType } from 'react'
+import type { LinkProps } from '@tanstack/react-router'
 import { Input } from '@/components/ui/input'
 import {
   Pagination,
@@ -53,7 +54,8 @@ import { IconButton } from '@/components/table/IconButton'
 type ButtonConfig<TData> = {
   icon: ComponentType<{ className?: string }>
   label: string
-  onClick: (row: TData) => void
+  onClick?: (row: TData) => void
+  to?: (row: TData) => LinkProps
   show?: (row: TData) => boolean
 }
 
@@ -106,7 +108,8 @@ export function createButtonColumn<TData>(
                   key={index}
                   icon={btn.icon}
                   label={btn.label}
-                  onClick={() => btn.onClick(row)}
+                  to={btn.to ? btn.to(row) : undefined}
+                  onClick={btn.onClick ? () => btn.onClick!(row) : undefined}
                 />
               ))}
           </div>

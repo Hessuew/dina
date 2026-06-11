@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react'
+import type { LinkProps } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
+import { ButtonLink } from '@/components/ui/button-link'
 import {
   Tooltip,
   TooltipContent,
@@ -9,7 +11,8 @@ import {
 type IconButtonProps = {
   icon: ComponentType<{ className?: string }>
   label: string
-  onClick: () => void
+  onClick?: () => void
+  to?: LinkProps
   disabled?: boolean
   className?: string
 }
@@ -35,21 +38,34 @@ export function IconButton({
   icon: Icon,
   label,
   onClick,
+  to,
   disabled = false,
   className,
 }: IconButtonProps) {
+  const buttonClassName = `size-8 rounded-none border-none bg-transparent hover:bg-white/5 ${className || ''}`
   return (
     <Tooltip>
       <TooltipTrigger>
-        <Button
-          size="icon"
-          theme="dark"
-          className={`size-8 rounded-none border-none bg-transparent hover:bg-white/5 ${className || ''}`}
-          onClick={onClick}
-          disabled={disabled}
-        >
-          <Icon className="size-3.5" />
-        </Button>
+        {to ? (
+          <ButtonLink
+            {...to}
+            size="icon"
+            theme="dark"
+            className={buttonClassName}
+          >
+            <Icon className="size-3.5" />
+          </ButtonLink>
+        ) : (
+          <Button
+            size="icon"
+            theme="dark"
+            className={buttonClassName}
+            onClick={onClick}
+            disabled={disabled}
+          >
+            <Icon className="size-3.5" />
+          </Button>
+        )}
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>

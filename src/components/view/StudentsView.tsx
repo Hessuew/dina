@@ -1,5 +1,4 @@
 import { format } from 'date-fns'
-import { useRouter } from '@tanstack/react-router'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { StudentWithStats } from '@/types/student'
@@ -30,8 +29,6 @@ function getAverageGrade(student: StudentWithStats): number | null {
 const columnHelper = createColumnHelper<StudentWithStats>()
 
 export function StudentsView({ students }: StudentsViewProps) {
-  const router = useRouter()
-
   const columns: Array<ColumnDef<StudentWithStats, any>> = [
     columnHelper.accessor('fullName', {
       cell: (info) => {
@@ -103,12 +100,11 @@ export function StudentsView({ students }: StudentsViewProps) {
     }),
     createButtonColumn(
       createCrudActions<StudentWithStats>({
-        onView: (student) =>
-          router.navigate({
-            to: '/students/$studentId',
-            params: { studentId: student.id },
-            search: { fromDashboard: false },
-          }),
+        viewTo: (student) => ({
+          to: '/students/$studentId',
+          params: { studentId: student.id },
+          search: { fromDashboard: false },
+        }),
       }),
     ),
   ]

@@ -1,8 +1,7 @@
-import { useNavigate } from '@tanstack/react-router'
 import { ArrowRight, BookOpenIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
-import { Button } from '@/components/ui/button'
+import { ButtonLink } from '@/components/ui/button-link'
 
 type CourseCardProps = {
   course: {
@@ -36,7 +35,6 @@ export function CourseCard({
   role,
   variant = 'dark',
 }: CourseCardProps) {
-  const navigate = useNavigate()
   const isTeacher = role === 'teacher' || role === 'admin'
   const lessonCount = course.lessons.length
   const submittedCount = course.submittedAssignments ?? 0
@@ -226,22 +224,18 @@ export function CourseCard({
           >
             {isTeacher ? 'Edit course' : 'View course'}
           </span>
-          <Button
+          <ButtonLink
+            to="/courses/$courseId"
+            params={{ courseId: course.id }}
             className={cn(
               'flex size-8 cursor-pointer items-center justify-center border',
               isDark
                 ? 'border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] group-hover:border-[#D6B16E]'
                 : 'border-[#9B7A41]/35 bg-[#EDE8DE] text-[#9B7A41] group-hover:border-[#C5A059]',
             )}
-            onClick={() =>
-              navigate({
-                to: '/courses/$courseId',
-                params: { courseId: course.id },
-              })
-            }
           >
             <ArrowRight className="size-3.5" />
-          </Button>
+          </ButtonLink>
         </div>
       </div>
     </div>
