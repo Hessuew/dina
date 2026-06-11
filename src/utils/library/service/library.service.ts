@@ -34,7 +34,7 @@ import {
   getSupabaseAdminClient,
   getSupabaseServerClient,
 } from '@/utils/supabase'
-import { uploadImageFn } from '@/utils/imageUpload'
+import { uploadImageService } from '@/utils/imageUpload/service/imageUpload.service'
 
 export async function getLibraryMediaService(
   userId: string,
@@ -276,6 +276,7 @@ export async function uploadMediaPdfService(
 
 export async function uploadMediaThumbnailService(
   data: UploadMediaThumbnailInput,
+  userId: string,
   role: Role,
 ): Promise<{ thumbnailUrl: string }> {
   if (role === 'student') {
@@ -294,8 +295,8 @@ export async function uploadMediaThumbnailService(
     })
   }
 
-  const uploadResult = await uploadImageFn({
-    data: {
+  const uploadResult = await uploadImageService(
+    {
       fileData: data.fileData,
       fileName: data.fileName,
       fileType: data.fileType,
@@ -303,7 +304,8 @@ export async function uploadMediaThumbnailService(
       bucket: 'media-thumbnails',
       oldUrl: existing.thumbnailUrl || undefined,
     },
-  })
+    userId,
+  )
 
   await updateMediaThumbnail(data.mediaId, uploadResult.imageUrl)
 

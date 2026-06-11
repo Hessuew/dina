@@ -89,5 +89,5 @@ export const uploadMediaThumbnailFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     const profile = await getUserProfile(user.id)
-    return uploadMediaThumbnailService(data, profile.role)
+    return uploadMediaThumbnailService(data, user.id, profile.role)
   })
