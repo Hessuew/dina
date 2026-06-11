@@ -40,7 +40,7 @@ Three choices worth recording:
 3. **Custom statement runner tolerating policy idempotency errors.** PGlite
    tracks RLS-policy → table dependencies differently from the Supabase Postgres
    the migrations were authored against: in `0015`, `DROP TABLE "inquiries"
-   CASCADE` auto-drops a policy on `inquiry_responses` whose `USING` references
+CASCADE` auto-drops a policy on `inquiry_responses` whose `USING` references
    `inquiries`, after which the migration's explicit `DROP POLICY` fails with
    "policy does not exist". We therefore replay statement-by-statement and ignore
    **only** policy-statement errors with SQLSTATE `42704` (undefined_object) or

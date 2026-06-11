@@ -99,3 +99,10 @@ Do not finish without basic correctness check.
 - No unrelated cleanup or formatting changes
 - No architectural changes unless requested
 - Keep changes traceable and reversible
+
+---
+
+## Skills
+
+- Skills live once in `docs/skills/<name>/SKILL.md`; `.claude/skills/<name>` is a symlink to it. Edit skills only in `docs/skills/`, never through a symlink.
+- After using any skill, follow `docs/skills/SELF_IMPROVEMENT.md`: log friction (errors/non-functioning tool calls, things that could be done better, missing features or a needed new skill) to `docs/skills/IMPROVEMENTS.md` as a proposal. Do not edit the skill file in-session.

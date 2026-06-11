@@ -1,4 +1,5 @@
 {
+  "_note": "Provenance only. These skills are vendored in docs/skills/ and edited there via the self-improvement loop (docs/skills/SELF_IMPROVEMENT.md); local copies may diverge from the upstream sources/hashes below.",
   "version": 1,
   "skills": {
     "caveman": {

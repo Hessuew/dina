@@ -150,6 +150,17 @@ assert. Worked examples:
 - `src/utils/enrolment/enrolment.integration.test.ts` — the assigned Reviewer's
   score auto-derives enrollment `status` (ADR 0008), frozen states stay put, and
   non-assigned evaluators stay advisory.
+- `src/utils/signup/signup.integration.test.ts` — signup / OTP verify / resend
+  against the real `invitations` + `profiles` tables.
+- `src/utils/profile/profile.integration.test.ts` — the email-change request
+  persists a token and the verify flow completes / rolls back against the real DB.
+
+> **External IO at the service boundary.** Most integration tests run pure
+> DB+authz with no mocks. When a service also calls a true external (Supabase
+> Auth, Resend email) that PGlite can't run, `vi.mock` **only** those module
+> boundaries (`@/utils/supabase`, `resend`) in the test file and keep the DB
+> real — the repository SQL and the service orchestration are still exercised.
+> `signup.integration.test.ts` is the reference.
 
 > Enrolment had its score→status orchestration inside the `setEvaluationScore`
 > server fn. To get a testable service seam (matching every other feature), that

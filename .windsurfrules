@@ -65,6 +65,10 @@ See [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
 - Missing error handling on async: add try/catch
 - After impl: review above
 
+## Skills
+
+Skills live once in `docs/skills/<name>/SKILL.md`; this dir is symlinked into `.windsurf/workflows/` (invoke as `/<name>`). Edit skills only in `docs/skills/`, never through a symlink. After using any skill, follow [docs/skills/SELF_IMPROVEMENT.md](docs/skills/SELF_IMPROVEMENT.md): log friction (errors, better approaches, missing features/new skills) to `docs/skills/IMPROVEMENTS.md` as a proposal — do not edit the skill in-session.
+
 ## Self-Improvement Mechanism
 
 After any task, if patterns found:

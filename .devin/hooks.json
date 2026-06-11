@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "post_run_command": [
+      { "command": "bash ./scripts/skill-improve-log.sh", "show_output": false }
+    ],
+    "post_mcp_tool_use": [
+      { "command": "bash ./scripts/skill-improve-log.sh", "show_output": false }
+    ],
+    "post_cascade_response": [
+      { "command": "bash ./scripts/skill-improve-log.sh", "show_output": true }
+    ]
+  }
+}
