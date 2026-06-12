@@ -47,6 +47,10 @@
       "exports": ["setAuthorizationService", "DefaultAuthorizationService"]
     },
     {
+      "file": "src/utils/authz/service.ts",
+      "exports": ["setAuthorizationService"]
+    },
+    {
       "file": "src/types/database.types.ts",
       "exports": ["*"]
     },
