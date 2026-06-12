@@ -33,51 +33,54 @@ import {
   AuthPageShell,
 } from '@/components/auth/auth-layout'
 
+const USER_FRIENDLY_ERROR_PATTERNS: Array<{
+  needles: Array<string>
+  message: string
+}> = [
+  {
+    needles: ['email already exists', 'duplicate'],
+    message:
+      'An account with this email already exists. Please try logging in instead.',
+  },
+  {
+    needles: ['invalid email', 'email format'],
+    message: 'Please enter a valid email address.',
+  },
+  {
+    needles: ['password too short', 'password too weak'],
+    message: 'Your password is too weak. Please use a stronger password.',
+  },
+  {
+    needles: ['invitation', 'invited'],
+    message:
+      'You need a valid invitation to sign up. Please check your invitation link.',
+  },
+  {
+    needles: ['otp', 'verification code', 'code'],
+    message:
+      'The verification code you entered is incorrect. Please try again.',
+  },
+  {
+    needles: ['expired', 'timeout'],
+    message: 'The verification code has expired. Please request a new one.',
+  },
+  {
+    needles: ['rate limit', 'too many'],
+    message: 'Too many attempts. Please wait a moment and try again.',
+  },
+  {
+    needles: ['network', 'connection'],
+    message: 'Network error. Please check your connection and try again.',
+  },
+]
+
 function getUserFriendlyError(message: string): string {
   const lowerMessage = message.toLowerCase()
+  const match = USER_FRIENDLY_ERROR_PATTERNS.find(({ needles }) =>
+    needles.some((needle) => lowerMessage.includes(needle)),
+  )
 
-  if (
-    lowerMessage.includes('email already exists') ||
-    lowerMessage.includes('duplicate')
-  ) {
-    return 'An account with this email already exists. Please try logging in instead.'
-  }
-  if (
-    lowerMessage.includes('invalid email') ||
-    lowerMessage.includes('email format')
-  ) {
-    return 'Please enter a valid email address.'
-  }
-  if (
-    lowerMessage.includes('password too short') ||
-    lowerMessage.includes('password too weak')
-  ) {
-    return 'Your password is too weak. Please use a stronger password.'
-  }
-  if (lowerMessage.includes('invitation') || lowerMessage.includes('invited')) {
-    return 'You need a valid invitation to sign up. Please check your invitation link.'
-  }
-  if (
-    lowerMessage.includes('otp') ||
-    lowerMessage.includes('verification code') ||
-    lowerMessage.includes('code')
-  ) {
-    return 'The verification code you entered is incorrect. Please try again.'
-  }
-  if (lowerMessage.includes('expired') || lowerMessage.includes('timeout')) {
-    return 'The verification code has expired. Please request a new one.'
-  }
-  if (
-    lowerMessage.includes('rate limit') ||
-    lowerMessage.includes('too many')
-  ) {
-    return 'Too many attempts. Please wait a moment and try again.'
-  }
-  if (lowerMessage.includes('network') || lowerMessage.includes('connection')) {
-    return 'Network error. Please check your connection and try again.'
-  }
-
-  return 'Something went wrong. Please try again later.'
+  return match?.message ?? 'Something went wrong. Please try again later.'
 }
 
 interface SignupFormProps {

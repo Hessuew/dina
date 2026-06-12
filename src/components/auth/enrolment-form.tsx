@@ -276,214 +276,201 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
     )
   }
 
-  const renderField = (fieldName: EnrolmentFieldName) => {
-    switch (fieldName) {
-      case 'fullLegalName':
-        return (
-          <form.AppField
-            name="fullLegalName"
-            validators={{
-              onChange: required,
-              onBlur: required,
-              onSubmit: required,
-            }}
-          >
-            {(field) => (
-              <field.TextField
-                id="enrol-full-legal-name"
-                label="Full legal name"
-                required
-                placeholder="John Doe"
-              />
-            )}
-          </form.AppField>
-        )
-      case 'preferredName':
-        return (
-          <form.AppField name="preferredName">
-            {(field) => (
-              <field.TextField
-                id="enrol-preferred-name"
-                label="Preferred name"
-                placeholder="John"
-              />
-            )}
-          </form.AppField>
-        )
-      case 'email':
-        return (
-          <form.AppField
-            name="email"
-            validators={{
-              onChange: validEmail,
-              onBlur: validEmail,
-              onSubmit: validEmail,
-            }}
-          >
-            {(field) => (
-              <field.TextField
-                id="enrol-email"
-                label="Email"
-                required
-                type="email"
-                placeholder="your@email.com"
-              />
-            )}
-          </form.AppField>
-        )
-      case 'phoneWhatsApp':
-        return (
-          <form.AppField
-            name="phoneWhatsApp"
-            validators={{
-              onChange: required,
-              onBlur: required,
-              onSubmit: required,
-            }}
-          >
-            {(field) => (
-              <field.TextField
-                id="enrol-phone"
-                label="Phone number (WhatsApp)"
-                required
-                type="tel"
-                placeholder="+358 40 123 4567"
-              />
-            )}
-          </form.AppField>
-        )
-      case 'yearOfBirth':
-        return (
-          <form.AppField
-            name="yearOfBirth"
-            validators={{
-              onChange: validYear,
-              onBlur: validYear,
-              onSubmit: validYear,
-            }}
-          >
-            {(field) => (
-              <field.NumberField
-                id="enrol-yob"
-                label="Year of birth"
-                required
-                placeholder="1996"
-              />
-            )}
-          </form.AppField>
-        )
-      case 'gender':
-        return (
-          <form.AppField
-            name="gender"
-            validators={{
-              onChange: required,
-              onBlur: required,
-              onSubmit: required,
-            }}
-          >
-            {(field) => (
-              <field.SelectField id="enrol-gender" label="Gender" required>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-              </field.SelectField>
-            )}
-          </form.AppField>
-        )
-      case 'nationalityCitizenship':
-        return (
-          <form.AppField name="nationalityCitizenship">
-            {(field) => (
-              <field.TextField
-                id="enrol-nationality"
-                label="Nationality / citizenship"
-                placeholder="Finnish"
-              />
-            )}
-          </form.AppField>
-        )
-      case 'currentCity':
-        return (
-          <form.AppField name="currentCity">
-            {(field) => (
-              <field.TextField
-                id="enrol-city"
-                label="Current city"
-                placeholder="Helsinki"
-              />
-            )}
-          </form.AppField>
-        )
-      case 'currentCountry':
-        return (
-          <form.AppField name="currentCountry">
-            {(field) => (
-              <field.TextField
-                id="enrol-country"
-                label="Current country"
-                placeholder="Finland"
-              />
-            )}
-          </form.AppField>
-        )
-      case 'churchAffiliations':
-        return (
-          <form.AppField name="churchAffiliations">
-            {(field) => (
-              <field.TextField
-                id="enrol-church"
-                label="Church affiliations"
-                placeholder="Church name, network, etc."
-              />
-            )}
-          </form.AppField>
-        )
-      case 'aboutYourself':
-        return (
-          <form.AppField
-            name="aboutYourself"
-            validators={{
-              onChange: requiredTextWithMaxWords(200),
-              onSubmit: requiredTextWithMaxWords(200),
-            }}
-          >
-            {(field) => (
-              <field.TextAreaFieldWithWordCount
-                id="enrol-about"
-                label="Tell us about yourself and why you are interested in this program"
-                required
-                placeholder="Write up to 200 words..."
-                rows={6}
-                maxWords={200}
-              />
-            )}
-          </form.AppField>
-        )
-      case 'expectationsAlignment':
-        return (
-          <form.AppField
-            name="expectationsAlignment"
-            validators={{
-              onChange: requiredTextWithMaxWords(200),
-              onSubmit: requiredTextWithMaxWords(200),
-            }}
-          >
-            {(field) => (
-              <field.TextAreaFieldWithWordCount
-                id="enrol-expectations"
-                label="Tell us what you expect to achieve at the end of this program, and how it would align with your personal pursuit of Jesus Christ"
-                required
-                placeholder="Write up to 200 words..."
-                rows={6}
-                maxWords={200}
-              />
-            )}
-          </form.AppField>
-        )
-      default:
-        return null
-    }
+  const renderedFields: Record<EnrolmentFieldName, React.ReactNode> = {
+    fullLegalName: (
+      <form.AppField
+        name="fullLegalName"
+        validators={{
+          onChange: required,
+          onBlur: required,
+          onSubmit: required,
+        }}
+      >
+        {(field) => (
+          <field.TextField
+            id="enrol-full-legal-name"
+            label="Full legal name"
+            required
+            placeholder="John Doe"
+          />
+        )}
+      </form.AppField>
+    ),
+    preferredName: (
+      <form.AppField name="preferredName">
+        {(field) => (
+          <field.TextField
+            id="enrol-preferred-name"
+            label="Preferred name"
+            placeholder="John"
+          />
+        )}
+      </form.AppField>
+    ),
+    email: (
+      <form.AppField
+        name="email"
+        validators={{
+          onChange: validEmail,
+          onBlur: validEmail,
+          onSubmit: validEmail,
+        }}
+      >
+        {(field) => (
+          <field.TextField
+            id="enrol-email"
+            label="Email"
+            required
+            type="email"
+            placeholder="your@email.com"
+          />
+        )}
+      </form.AppField>
+    ),
+    phoneWhatsApp: (
+      <form.AppField
+        name="phoneWhatsApp"
+        validators={{
+          onChange: required,
+          onBlur: required,
+          onSubmit: required,
+        }}
+      >
+        {(field) => (
+          <field.TextField
+            id="enrol-phone"
+            label="Phone number (WhatsApp)"
+            required
+            type="tel"
+            placeholder="+358 40 123 4567"
+          />
+        )}
+      </form.AppField>
+    ),
+    yearOfBirth: (
+      <form.AppField
+        name="yearOfBirth"
+        validators={{
+          onChange: validYear,
+          onBlur: validYear,
+          onSubmit: validYear,
+        }}
+      >
+        {(field) => (
+          <field.NumberField
+            id="enrol-yob"
+            label="Year of birth"
+            required
+            placeholder="1996"
+          />
+        )}
+      </form.AppField>
+    ),
+    gender: (
+      <form.AppField
+        name="gender"
+        validators={{
+          onChange: required,
+          onBlur: required,
+          onSubmit: required,
+        }}
+      >
+        {(field) => (
+          <field.SelectField id="enrol-gender" label="Gender" required>
+            <SelectItem value="male">Male</SelectItem>
+            <SelectItem value="female">Female</SelectItem>
+          </field.SelectField>
+        )}
+      </form.AppField>
+    ),
+    nationalityCitizenship: (
+      <form.AppField name="nationalityCitizenship">
+        {(field) => (
+          <field.TextField
+            id="enrol-nationality"
+            label="Nationality / citizenship"
+            placeholder="Finnish"
+          />
+        )}
+      </form.AppField>
+    ),
+    currentCity: (
+      <form.AppField name="currentCity">
+        {(field) => (
+          <field.TextField
+            id="enrol-city"
+            label="Current city"
+            placeholder="Helsinki"
+          />
+        )}
+      </form.AppField>
+    ),
+    currentCountry: (
+      <form.AppField name="currentCountry">
+        {(field) => (
+          <field.TextField
+            id="enrol-country"
+            label="Current country"
+            placeholder="Finland"
+          />
+        )}
+      </form.AppField>
+    ),
+    churchAffiliations: (
+      <form.AppField name="churchAffiliations">
+        {(field) => (
+          <field.TextField
+            id="enrol-church"
+            label="Church affiliations"
+            placeholder="Church name, network, etc."
+          />
+        )}
+      </form.AppField>
+    ),
+    aboutYourself: (
+      <form.AppField
+        name="aboutYourself"
+        validators={{
+          onChange: requiredTextWithMaxWords(200),
+          onSubmit: requiredTextWithMaxWords(200),
+        }}
+      >
+        {(field) => (
+          <field.TextAreaFieldWithWordCount
+            id="enrol-about"
+            label="Tell us about yourself and why you are interested in this program"
+            required
+            placeholder="Write up to 200 words..."
+            rows={6}
+            maxWords={200}
+          />
+        )}
+      </form.AppField>
+    ),
+    expectationsAlignment: (
+      <form.AppField
+        name="expectationsAlignment"
+        validators={{
+          onChange: requiredTextWithMaxWords(200),
+          onSubmit: requiredTextWithMaxWords(200),
+        }}
+      >
+        {(field) => (
+          <field.TextAreaFieldWithWordCount
+            id="enrol-expectations"
+            label="Tell us what you expect to achieve at the end of this program, and how it would align with your personal pursuit of Jesus Christ"
+            required
+            placeholder="Write up to 200 words..."
+            rows={6}
+            maxWords={200}
+          />
+        )}
+      </form.AppField>
+    ),
   }
+
+  const renderField = (fieldName: EnrolmentFieldName) =>
+    renderedFields[fieldName]
 
   return pageShell(
     <form

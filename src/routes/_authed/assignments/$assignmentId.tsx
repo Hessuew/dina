@@ -1,22 +1,12 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import {
-  CalendarIcon,
-  ClockIcon,
-  PencilIcon,
-  SaveIcon,
-  SendIcon,
-} from 'lucide-react'
+import { CalendarIcon, ClockIcon, PencilIcon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Button } from '@/components/ui/button'
 import { StatusChip } from '@/components/ui/status-chip'
-import { Field, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { DataTable, createButtonColumn } from '@/components/table/DataTable'
+import { createButtonColumn } from '@/components/table/DataTable'
 import { useDialogState } from '@/hooks/useDialogState'
 import { useMutation } from '@/hooks/useMutation'
 import {
@@ -28,7 +18,7 @@ import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
-import { DarkCard } from '@/components/ui/dark-card'
+import { AssignmentDetailSections } from '@/components/assignment/AssignmentDetailSections'
 
 const getAssignmentData = createServerFn({ method: 'POST' })
   .inputValidator((d: { assignmentId: string }) => d)
@@ -245,206 +235,19 @@ function AssignmentDetailComponent() {
         }
       />
 
-      {/* Main grid */}
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-        {/* Left — assignment details */}
-        <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
-          <DarkCard label="About this assignment">
-            {assignment.description ? (
-              <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
-                {assignment.description}
-              </p>
-            ) : (
-              <p className="mt-4 text-sm text-[#8E816D] italic">
-                No description provided.
-              </p>
-            )}
-          </DarkCard>
-
-          <div className="border-t border-white/8 bg-[#151515]/88 px-6 py-5">
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
-                  Maximum Grade
-                </span>
-                <span className="font-serif text-base text-[#F8F4EC]">
-                  {assignment.maxGrade ?? 100} pts
-                </span>
-              </div>
-              {isPastDue && (
-                <div className="border border-red-400/30 bg-red-900/20 px-4 py-3 text-xs text-red-400">
-                  This assignment is past due
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right — submission / submissions list */}
-        <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
-          <div className="border-b border-white/8 px-6 py-5">
-            <div className="h-px w-8 bg-[#C5A059]/40" />
-            <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-              {isStudent ? 'Your Submission' : 'Submissions'}
-            </div>
-            <div className="mt-1 font-serif text-xl text-[#F8F4EC]">
-              {isStudent
-                ? canSubmit
-                  ? 'Submit before the due date'
-                  : isPastDue
-                    ? 'Submission period ended'
-                    : 'Not yet open'
-                : `${(allSubmissions as Array<SubmissionWithStudent>).length} submitted`}
-            </div>
-          </div>
-
-          {isStudent ? (
-            <div className="px-6 py-6">
-              {assignment.status !== 'published' ? (
-                <p className="py-8 text-center text-sm text-[#8E816D] italic">
-                  This assignment is not yet available.
-                </p>
-              ) : (
-                <div className="space-y-5">
-                  <Field>
-                    <FieldLabel
-                      htmlFor="content"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      Your Answer
-                    </FieldLabel>
-                    <Textarea
-                      id="content"
-                      rows={8}
-                      placeholder="Enter your answer here..."
-                      value={submissionFormData.content}
-                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                      onChange={(e) =>
-                        setSubmissionFormData({
-                          ...submissionFormData,
-                          content: e.target.value,
-                        })
-                      }
-                      disabled={!canSubmit}
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel
-                      htmlFor="fileUrl"
-                      className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                    >
-                      File URL (Optional)
-                    </FieldLabel>
-                    <Input
-                      id="fileUrl"
-                      type="url"
-                      placeholder="https://..."
-                      value={submissionFormData.fileUrl}
-                      className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-                      onChange={(e) =>
-                        setSubmissionFormData({
-                          ...submissionFormData,
-                          fileUrl: e.target.value,
-                        })
-                      }
-                      disabled={!canSubmit}
-                    />
-                  </Field>
-
-                  {submission && (
-                    <div className="border border-white/10 bg-white/4 px-4 py-4 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
-                          Status
-                        </span>
-                        <StatusChip
-                          variant={
-                            submission.status === 'submitted'
-                              ? 'submitted'
-                              : 'draft'
-                          }
-                          size="sm"
-                        />
-                      </div>
-                      {submission.submittedAt && (
-                        <div className="mt-3 flex items-center justify-between">
-                          <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
-                            Submitted
-                          </span>
-                          <span className="text-xs text-[#AFA28F]">
-                            {new Date(submission.submittedAt).toLocaleString()}
-                          </span>
-                        </div>
-                      )}
-                      {submission.grade !== null && (
-                        <>
-                          <div className="mt-3 flex items-center justify-between">
-                            <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
-                              Grade
-                            </span>
-                            <span className="font-serif text-base text-[#F8F4EC]">
-                              {submission.grade} / {assignment.maxGrade ?? 100}
-                            </span>
-                          </div>
-                          {submission.feedback && (
-                            <div className="mt-3">
-                              <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
-                                Feedback
-                              </span>
-                              <p className="mt-2 text-sm whitespace-pre-wrap text-[#CFC6B7]">
-                                {submission.feedback}
-                              </p>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {canSubmit && (
-                    <div className="flex gap-3">
-                      <Button
-                        variant="outline"
-                        theme="dark"
-                        onClick={() => handleSaveSubmission(false)}
-                        disabled={submissionMutation.isPending}
-                      >
-                        <SaveIcon className="size-3.5" />
-                        Save Draft
-                      </Button>
-                      <Button
-                        theme="dark"
-                        onClick={() => handleSaveSubmission(true)}
-                        disabled={submissionMutation.isPending}
-                      >
-                        <SendIcon className="size-3.5" />
-                        Submit
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              {(allSubmissions as Array<SubmissionWithStudent>).length === 0 ? (
-                <div className="py-16 text-center">
-                  <p className="text-sm text-[#AFA28F] italic">
-                    No submissions yet
-                  </p>
-                </div>
-              ) : (
-                <DataTable
-                  columns={submissionsColumns}
-                  data={allSubmissions as Array<SubmissionWithStudent>}
-                  pageSize={10}
-                  searchPlaceholder="Search by student name…"
-                />
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      <AssignmentDetailSections
+        assignment={assignment}
+        submission={submission}
+        allSubmissions={allSubmissions as Array<SubmissionWithStudent>}
+        submissionsColumns={submissionsColumns}
+        isStudent={isStudent}
+        isPastDue={isPastDue}
+        canSubmit={canSubmit}
+        submissionFormData={submissionFormData}
+        isSavingSubmission={submissionMutation.isPending}
+        onChangeSubmissionFormData={setSubmissionFormData}
+        onSaveSubmission={handleSaveSubmission}
+      />
 
       {/* Assignment Dialog (edit / delete) */}
       {(assignmentDialog.dialogMode === 'edit' ||

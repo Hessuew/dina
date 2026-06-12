@@ -244,39 +244,78 @@ function AnimateIcon({
     const gen = ++runGenRef.current
     cancelledRef.current = false
 
-    async function run() {
-      if (cancelledRef.current || gen !== runGenRef.current) {
-        await startAnim('initial')
+    const isStaleRun = () => gen !== runGenRef.current
+
+    const resetInitialIfStale = async () => {
+      if (!isStaleRun()) return false
+      await startAnim('initial')
+      return true
+    }
+
+    const clearAnimationEndState = () => {
+      isAnimateInProgressRef.current = false
+      resolveAnimateEndRef.current?.()
+      resolveAnimateEndRef.current = null
+      animateEndPromiseRef.current = null
+    }
+
+    const resetActiveAnimationIfStale = async () => {
+      if (!isStaleRun()) return false
+      clearAnimationEndState()
+      await startAnim('initial')
+      return true
+    }
+
+    const completeStoppedAnimation = async () => {
+      if (
+        !completeOnStop ||
+        !isAnimateInProgressRef.current ||
+        !animateEndPromiseRef.current
+      ) {
         return
       }
 
+      try {
+        await animateEndPromiseRef.current
+      } catch {
+        // noop
+      }
+    }
+
+    const waitForLoopDelay = () =>
+      new Promise<void>((resolve) => {
+        loopDelayRef.current = setTimeout(() => {
+          loopDelayRef.current = null
+          resolve()
+        }, loopDelay)
+      })
+
+    const stopInactiveLoop = async () => {
+      if (activeRef.current) return false
+      if (status !== 'initial' && !persistOnAnimateEnd) {
+        await startAnim('initial')
+      }
+      return true
+    }
+
+    async function run() {
+      if (cancelledRef.current) {
+        await startAnim('initial')
+        return
+      }
+      if (await resetInitialIfStale()) return
+
       if (!localAnimate) {
-        if (
-          completeOnStop &&
-          isAnimateInProgressRef.current &&
-          animateEndPromiseRef.current
-        ) {
-          try {
-            await animateEndPromiseRef.current
-          } catch {
-            // noop
-          }
-        }
+        await completeStoppedAnimation()
         if (!persistOnAnimateEnd) {
-          if (gen !== runGenRef.current) {
-            await startAnim('initial')
-            return
-          }
+          if (await resetInitialIfStale()) return
           await startAnim('initial')
         }
         return
       }
 
       if (loop) {
-        if (gen !== runGenRef.current) {
-          await startAnim('initial')
-          return
-        }
+        if (await resetInitialIfStale()) return
         await startAnim('initial', 'set')
       }
 
@@ -285,68 +324,26 @@ function AnimateIcon({
         resolveAnimateEndRef.current = resolve
       })
 
-      if (gen !== runGenRef.current) {
-        isAnimateInProgressRef.current = false
-        resolveAnimateEndRef.current?.()
-        resolveAnimateEndRef.current = null
-        animateEndPromiseRef.current = null
-        await startAnim('initial')
-        return
-      }
+      if (await resetActiveAnimationIfStale()) return
 
       await startAnim('animate')
 
-      if (gen !== runGenRef.current) {
-        isAnimateInProgressRef.current = false
-        resolveAnimateEndRef.current?.()
-        resolveAnimateEndRef.current = null
-        animateEndPromiseRef.current = null
-        await startAnim('initial')
-        return
-      }
+      if (await resetActiveAnimationIfStale()) return
 
-      isAnimateInProgressRef.current = false
-      resolveAnimateEndRef.current?.()
-      resolveAnimateEndRef.current = null
-      animateEndPromiseRef.current = null
+      clearAnimationEndState()
 
       if (initialOnAnimateEnd) {
-        if (gen !== runGenRef.current) {
-          await startAnim('initial')
-          return
-        }
+        if (await resetInitialIfStale()) return
         await startAnim('initial', 'set')
       }
 
       if (loop) {
         if (loopDelay > 0) {
-          await new Promise<void>((resolve) => {
-            loopDelayRef.current = setTimeout(() => {
-              loopDelayRef.current = null
-              resolve()
-            }, loopDelay)
-          })
-
-          if (gen !== runGenRef.current) {
-            await startAnim('initial')
-            return
-          }
-          if (!activeRef.current) {
-            if (status !== 'initial' && !persistOnAnimateEnd)
-              await startAnim('initial')
-            return
-          }
-        } else {
-          if (!activeRef.current) {
-            if (status !== 'initial' && !persistOnAnimateEnd)
-              await startAnim('initial')
-            return
-          }
+          await waitForLoopDelay()
+          if (await resetInitialIfStale()) return
         }
-        if (gen !== runGenRef.current) {
-          await startAnim('initial')
-          return
-        }
+        if (await stopInactiveLoop()) return
+        if (await resetInitialIfStale()) return
         await run()
       }
     }
@@ -443,6 +440,210 @@ function AnimateIcon({
 const pathClassName =
   "[&_[stroke-dasharray='1px_1px']]:![stroke-dasharray:1px_0px]"
 
+type IconAnimationOptions<T = string> = Pick<
+  DefaultIconProps<T>,
+  | 'animate'
+  | 'animateOnHover'
+  | 'animateOnTap'
+  | 'animateOnView'
+  | 'animateOnViewMargin'
+  | 'animateOnViewOnce'
+  | 'animation'
+  | 'loop'
+  | 'loopDelay'
+  | 'persistOnAnimateEnd'
+  | 'initialOnAnimateEnd'
+  | 'delay'
+  | 'completeOnStop'
+>
+
+type IconSvgProps = Omit<SVGMotionProps<SVGSVGElement>, 'animate'>
+
+function hasIconAnimationOverrides<T>({
+  animate,
+  animateOnHover,
+  animateOnTap,
+  animateOnView,
+  loop,
+  loopDelay,
+  initialOnAnimateEnd,
+  persistOnAnimateEnd,
+  delay,
+  completeOnStop,
+}: IconAnimationOptions<T>): boolean {
+  return [
+    animate,
+    animateOnHover,
+    animateOnTap,
+    animateOnView,
+    loop,
+    loopDelay,
+    initialOnAnimateEnd,
+    persistOnAnimateEnd,
+    delay,
+    completeOnStop,
+  ].some((value) => value !== undefined)
+}
+
+function hasStandaloneAnimation<T>({
+  animate,
+  animateOnHover,
+  animateOnTap,
+  animateOnView,
+  animation,
+}: IconAnimationOptions<T>): boolean {
+  return [animate, animateOnHover, animateOnTap, animateOnView, animation].some(
+    (value) => value !== undefined,
+  )
+}
+
+function isPathAnimation(animation: string | undefined): boolean {
+  return animation === 'path' || animation === 'path-loop'
+}
+
+function getIconClassName<T extends string>(
+  className: IconProps<T>['className'],
+  animation: string | undefined,
+) {
+  return cn(className, isPathAnimation(animation) && pathClassName)
+}
+
+function renderIconComponent<T extends string>(
+  IconComponent: React.ComponentType<any>,
+  size: number,
+  className: IconProps<T>['className'],
+  animation: string | undefined,
+  props: IconSvgProps,
+) {
+  return (
+    <IconComponent
+      size={size}
+      className={getIconClassName(className, animation)}
+      {...props}
+    />
+  )
+}
+
+function resolveInheritedAnimate<T extends string>(
+  options: IconAnimationOptions<T>,
+  context: AnimateIconContextValue,
+): Trigger {
+  if (!context.active) return false
+  return options.animation ?? context.animation
+}
+
+function renderIconWithOverrides<T extends string>(
+  IconComponent: React.ComponentType<IconProps<T>>,
+  size: number,
+  className: IconProps<T>['className'],
+  options: IconAnimationOptions<T>,
+  props: IconSvgProps,
+  context: AnimateIconContextValue,
+) {
+  const animationToUse = options.animation ?? context.animation
+  const finalAnimate =
+    options.animate ??
+    context.animate ??
+    resolveInheritedAnimate(options, context)
+
+  return (
+    <AnimateIcon
+      animate={finalAnimate}
+      animateOnHover={options.animateOnHover}
+      animateOnTap={options.animateOnTap}
+      animateOnView={options.animateOnView}
+      animateOnViewMargin={options.animateOnViewMargin}
+      animateOnViewOnce={options.animateOnViewOnce}
+      animation={animationToUse}
+      loop={options.loop ?? context.loop}
+      loopDelay={options.loopDelay ?? context.loopDelay}
+      persistOnAnimateEnd={
+        options.persistOnAnimateEnd ?? context.persistOnAnimateEnd
+      }
+      initialOnAnimateEnd={
+        options.initialOnAnimateEnd ?? context.initialOnAnimateEnd
+      }
+      delay={options.delay ?? context.delay}
+      completeOnStop={options.completeOnStop ?? context.completeOnStop}
+    >
+      {renderIconComponent(
+        IconComponent,
+        size,
+        className,
+        animationToUse,
+        props,
+      )}
+    </AnimateIcon>
+  )
+}
+
+function renderInheritedIcon<T extends string>(
+  IconComponent: React.ComponentType<IconProps<T>>,
+  size: number,
+  className: IconProps<T>['className'],
+  animationProp: T | StaticAnimations | undefined,
+  props: IconSvgProps,
+  context: AnimateIconContextValue,
+) {
+  const animationToUse = animationProp ?? context.animation
+
+  return (
+    <AnimateIconContext.Provider
+      value={{
+        controls: context.controls,
+        animation: animationToUse,
+        loop: context.loop,
+        loopDelay: context.loopDelay,
+        active: context.active,
+        animate: context.animate,
+        initialOnAnimateEnd: context.initialOnAnimateEnd,
+        delay: context.delay,
+        completeOnStop: context.completeOnStop,
+      }}
+    >
+      {renderIconComponent(
+        IconComponent,
+        size,
+        className,
+        animationToUse,
+        props,
+      )}
+    </AnimateIconContext.Provider>
+  )
+}
+
+function renderStandaloneAnimatedIcon<T extends string>(
+  IconComponent: React.ComponentType<IconProps<T>>,
+  size: number,
+  className: IconProps<T>['className'],
+  options: IconAnimationOptions<T>,
+  props: IconSvgProps,
+) {
+  return (
+    <AnimateIcon
+      animate={options.animate}
+      animateOnHover={options.animateOnHover}
+      animateOnTap={options.animateOnTap}
+      animateOnView={options.animateOnView}
+      animateOnViewMargin={options.animateOnViewMargin}
+      animateOnViewOnce={options.animateOnViewOnce}
+      animation={options.animation}
+      loop={options.loop}
+      loopDelay={options.loopDelay}
+      delay={options.delay}
+      completeOnStop={options.completeOnStop}
+    >
+      {renderIconComponent(
+        IconComponent,
+        size,
+        className,
+        options.animation,
+        props,
+      )}
+    </AnimateIcon>
+  )
+}
+
 function IconWrapper<T extends string>({
   size = 28,
   animation: animationProp,
@@ -463,154 +664,60 @@ function IconWrapper<T extends string>({
   ...props
 }: IconWrapperProps<T>) {
   const context = React.useContext(AnimateIconContext)
+  const options: IconAnimationOptions<T> = {
+    animate,
+    animateOnHover,
+    animateOnTap,
+    animateOnView,
+    animateOnViewMargin,
+    animateOnViewOnce,
+    animation: animationProp,
+    loop,
+    loopDelay,
+    persistOnAnimateEnd,
+    initialOnAnimateEnd,
+    delay,
+    completeOnStop,
+  }
 
   if (context) {
-    const {
-      controls,
-      animation: parentAnimation,
-      loop: parentLoop,
-      loopDelay: parentLoopDelay,
-      active: parentActive,
-      animate: parentAnimate,
-      persistOnAnimateEnd: parentPersistOnAnimateEnd,
-      initialOnAnimateEnd: parentInitialOnAnimateEnd,
-      delay: parentDelay,
-      completeOnStop: parentCompleteOnStop,
-    } = context
-
-    const hasOverrides =
-      animate !== undefined ||
-      animateOnHover !== undefined ||
-      animateOnTap !== undefined ||
-      animateOnView !== undefined ||
-      loop !== undefined ||
-      loopDelay !== undefined ||
-      initialOnAnimateEnd !== undefined ||
-      persistOnAnimateEnd !== undefined ||
-      delay !== undefined ||
-      completeOnStop !== undefined
-
-    if (hasOverrides) {
-      const inheritedAnimate: Trigger = parentActive
-        ? animationProp !== undefined
-          ? animationProp
-          : parentAnimation
-            ? parentAnimation
-            : 'default'
-        : false
-
-      const finalAnimate: Trigger = (animate ??
-        parentAnimate ??
-        inheritedAnimate) as Trigger
-
-      return (
-        <AnimateIcon
-          animate={finalAnimate}
-          animateOnHover={animateOnHover}
-          animateOnTap={animateOnTap}
-          animateOnView={animateOnView}
-          animateOnViewMargin={animateOnViewMargin}
-          animateOnViewOnce={animateOnViewOnce}
-          animation={animationProp ?? parentAnimation}
-          loop={loop ?? parentLoop}
-          loopDelay={loopDelay ?? parentLoopDelay}
-          persistOnAnimateEnd={persistOnAnimateEnd ?? parentPersistOnAnimateEnd}
-          initialOnAnimateEnd={initialOnAnimateEnd ?? parentInitialOnAnimateEnd}
-          delay={delay ?? parentDelay}
-          completeOnStop={completeOnStop ?? parentCompleteOnStop}
-        >
-          <IconComponent
-            size={size}
-            className={cn(
-              className,
-              ((animationProp ?? parentAnimation) === 'path' ||
-                (animationProp ?? parentAnimation) === 'path-loop') &&
-                pathClassName,
-            )}
-            {...props}
-          />
-        </AnimateIcon>
+    if (hasIconAnimationOverrides(options)) {
+      return renderIconWithOverrides(
+        IconComponent,
+        size,
+        className,
+        options,
+        props,
+        context,
       )
     }
 
-    const animationToUse = animationProp ?? parentAnimation
-    const loopToUse = parentLoop
-    const loopDelayToUse = parentLoopDelay
-
-    return (
-      <AnimateIconContext.Provider
-        value={{
-          controls,
-          animation: animationToUse,
-          loop: loopToUse,
-          loopDelay: loopDelayToUse,
-          active: parentActive,
-          animate: parentAnimate,
-          initialOnAnimateEnd: parentInitialOnAnimateEnd,
-          delay: parentDelay,
-          completeOnStop: parentCompleteOnStop,
-        }}
-      >
-        <IconComponent
-          size={size}
-          className={cn(
-            className,
-            (animationToUse === 'path' || animationToUse === 'path-loop') &&
-              pathClassName,
-          )}
-          {...props}
-        />
-      </AnimateIconContext.Provider>
+    return renderInheritedIcon(
+      IconComponent,
+      size,
+      className,
+      animationProp,
+      props,
+      context,
     )
   }
 
-  if (
-    animate !== undefined ||
-    animateOnHover !== undefined ||
-    animateOnTap !== undefined ||
-    animateOnView !== undefined ||
-    animationProp !== undefined
-  ) {
-    return (
-      <AnimateIcon
-        animate={animate}
-        animateOnHover={animateOnHover}
-        animateOnTap={animateOnTap}
-        animateOnView={animateOnView}
-        animateOnViewMargin={animateOnViewMargin}
-        animateOnViewOnce={animateOnViewOnce}
-        animation={animationProp}
-        loop={loop}
-        loopDelay={loopDelay}
-        delay={delay}
-        completeOnStop={completeOnStop}
-      >
-        <IconComponent
-          size={size}
-          className={cn(
-            className,
-            (animationProp === 'path' || animationProp === 'path-loop') &&
-              pathClassName,
-          )}
-          {...props}
-        />
-      </AnimateIcon>
+  if (hasStandaloneAnimation(options)) {
+    return renderStandaloneAnimatedIcon(
+      IconComponent,
+      size,
+      className,
+      options,
+      props,
     )
   }
 
-  return (
-    <IconComponent
-      size={size}
-      className={cn(
-        className,
-        (animationProp as 'path' | T | 'path-loop' | undefined) === 'path' ||
-          (animationProp as 'path' | T | 'path-loop' | undefined) ===
-            'path-loop'
-          ? pathClassName
-          : undefined,
-      )}
-      {...props}
-    />
+  return renderIconComponent(
+    IconComponent,
+    size,
+    className,
+    animationProp,
+    props,
   )
 }
 
