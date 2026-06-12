@@ -85,4 +85,10 @@ describe('extractStorageObjectName', () => {
       'user-123.webp',
     )
   })
+
+  it('strips a query string so the path matches the stored object', () => {
+    expect(
+      extractStorageObjectName('https://host/bucket/user-123.webp?token=abc'),
+    ).toBe('user-123.webp')
+  })
 })

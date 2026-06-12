@@ -34,7 +34,11 @@ import {
   getSupabaseAdminClient,
   getSupabaseServerClient,
 } from '@/utils/supabase'
-import { uploadImageService } from '@/utils/imageUpload/service/imageUpload.service'
+import {
+  deleteStorageObject,
+  uploadImageService,
+} from '@/utils/imageUpload/service/imageUpload.service'
+import { extractStorageObjectName } from '@/utils/imageUpload/domain/imageUpload.domain'
 
 export async function getLibraryMediaService(
   userId: string,
@@ -225,19 +229,13 @@ export async function uploadMediaPdfService(
 
   validatePdfUpload(data.fileSize, data.fileType)
 
-  const supabase = getSupabaseServerClient()
+  // Derive the previous PDF URL server-side from the media row. Never trust a
+  // client-supplied URL here: deletion runs with the RLS-bypassing admin client,
+  // so a client value would allow deleting arbitrary media-library objects.
+  const existing = data.mediaId ? await findMediaById(data.mediaId) : undefined
+  const oldFileUrl = existing?.fileUrl
 
-  if (data.oldUrl) {
-    const oldPath = data.oldUrl.split('/').pop()
-    if (oldPath) {
-      const { error: deleteError } = await supabase.storage
-        .from('media-library')
-        .remove([oldPath])
-      if (deleteError) {
-        console.log('⚠️ Failed to delete old PDF', { error: deleteError })
-      }
-    }
-  }
+  const supabase = getSupabaseServerClient()
 
   const fileExt = data.fileName.split('.').pop() || 'pdf'
   const fileName = `${userId}-${Date.now()}.${fileExt}`
@@ -271,6 +269,17 @@ export async function uploadMediaPdfService(
     .from('media-library')
     .getPublicUrl(fileName)
 
+  if (oldFileUrl) {
+    const oldPath = extractPdfFilePath(oldFileUrl)
+    if (oldPath) {
+      await deleteStorageObject('media-library', oldPath)
+    } else {
+      console.warn('Could not extract PDF file path from URL', {
+        url: oldFileUrl,
+      })
+    }
+  }
+
   return { success: true, fileUrl: urlData.publicUrl }
 }
 
@@ -302,12 +311,22 @@ export async function uploadMediaThumbnailService(
       fileType: data.fileType,
       fileSize: data.fileSize,
       bucket: 'media-thumbnails',
-      oldUrl: existing.thumbnailUrl || undefined,
     },
     userId,
   )
 
   await updateMediaThumbnail(data.mediaId, uploadResult.imageUrl)
+
+  if (existing.thumbnailUrl) {
+    const oldPath = extractStorageObjectName(existing.thumbnailUrl)
+    if (oldPath) {
+      await deleteStorageObject('media-thumbnails', oldPath)
+    } else {
+      console.warn('Could not extract storage object name from URL', {
+        url: existing.thumbnailUrl,
+      })
+    }
+  }
 
   return { thumbnailUrl: uploadResult.imageUrl }
 }

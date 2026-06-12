@@ -50,5 +50,5 @@ export function decodeBase64DataUrl(fileData: string): Buffer {
 }
 
 export function extractStorageObjectName(url: string): string | undefined {
-  return url.split('/').pop()
+  return url.split('/').pop()?.split('?')[0]
 }

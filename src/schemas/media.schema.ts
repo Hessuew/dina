@@ -31,7 +31,7 @@ export const uploadMediaPdfSchema = z.object({
   fileName: z.string().min(1),
   fileType: z.string().min(1),
   fileSize: z.number().int().nonnegative(),
-  oldUrl: z.string().optional(),
+  mediaId: z.uuid().optional(),
 })
 
 export const uploadMediaThumbnailSchema = z.object({

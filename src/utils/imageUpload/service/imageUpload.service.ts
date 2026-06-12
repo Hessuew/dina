@@ -5,7 +5,10 @@ import type {
   UploadImageInput,
 } from '@/schemas/image.schema'
 import { AppError, NotFoundError } from '@/utils/errors'
-import { getSupabaseServerClient } from '@/utils/supabase'
+import {
+  getSupabaseAdminClient,
+  getSupabaseServerClient,
+} from '@/utils/supabase'
 import {
   decodeBase64DataUrl,
   extractStorageObjectName,
@@ -43,6 +46,27 @@ async function convertToWebP(
   }
 }
 
+// Best-effort delete of a previous storage object. Uses the service-role admin
+// client to bypass Storage RLS (the RLS-bound user client silently fails to
+// delete, orphaning old files). Never throws — a failed cleanup must not break
+// the upload that already succeeded.
+export async function deleteStorageObject(
+  bucket: string,
+  objectPath: string,
+): Promise<void> {
+  const admin = getSupabaseAdminClient()
+  const { data: removed, error } = await admin.storage
+    .from(bucket)
+    .remove([objectPath])
+  if (error || !removed.length) {
+    console.error('Failed to delete old storage object', {
+      bucket,
+      objectPath,
+      error,
+    })
+  }
+}
+
 export async function uploadImageService(
   data: UploadImageInput,
   userId: string,
@@ -50,21 +74,6 @@ export async function uploadImageService(
   validateImageUpload(data.fileSize, data.fileType)
 
   const supabase = getSupabaseServerClient()
-
-  // Delete old image if exists
-  if (data.oldUrl) {
-    const oldPath = extractStorageObjectName(data.oldUrl)
-    if (oldPath) {
-      const { error: deleteError } = await supabase.storage
-        .from(data.bucket)
-        .remove([oldPath])
-      if (deleteError) {
-        console.log('⚠️ Failed to delete old image', {
-          error: deleteError,
-        })
-      }
-    }
-  }
 
   const buffer = decodeBase64DataUrl(data.fileData)
 
@@ -113,12 +122,22 @@ export async function uploadAvatarService(
       fileType: data.fileType,
       fileSize: data.fileSize,
       bucket: 'avatars',
-      oldUrl: oldAvatarUrl ?? undefined,
     },
     userId,
   )
 
   await updateProfileAvatar(userId, uploadResult.imageUrl)
+
+  if (oldAvatarUrl) {
+    const oldPath = extractStorageObjectName(oldAvatarUrl)
+    if (oldPath) {
+      await deleteStorageObject('avatars', oldPath)
+    } else {
+      console.warn('Could not extract storage object name from URL', {
+        url: oldAvatarUrl,
+      })
+    }
+  }
 
   return {
     avatarUrl: uploadResult.imageUrl,
@@ -145,12 +164,22 @@ export async function uploadCourseThumbnailService(
       fileType: data.fileType,
       fileSize: data.fileSize,
       bucket: 'course-thumbnails',
-      oldUrl: course.thumbnailUrl ?? undefined,
     },
     userId,
   )
 
   await updateCourseThumbnail(data.courseId, uploadResult.imageUrl)
+
+  if (course.thumbnailUrl) {
+    const oldPath = extractStorageObjectName(course.thumbnailUrl)
+    if (oldPath) {
+      await deleteStorageObject('course-thumbnails', oldPath)
+    } else {
+      console.warn('Could not extract storage object name from URL', {
+        url: course.thumbnailUrl,
+      })
+    }
+  }
 
   return {
     thumbnailUrl: uploadResult.imageUrl,
