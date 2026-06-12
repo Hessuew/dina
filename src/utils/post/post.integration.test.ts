@@ -34,7 +34,11 @@ describe('getPostChannelsService (integration)', () => {
 
     const { channels } = await getPostChannelsService()
 
-    expect(channels[0]).toEqual({ id: 'general', name: 'General', courseId: null })
+    expect(channels[0]).toEqual({
+      id: 'general',
+      name: 'General',
+      courseId: null,
+    })
     expect(channels.some((c) => c.courseId === courseId)).toBe(true)
   })
 })

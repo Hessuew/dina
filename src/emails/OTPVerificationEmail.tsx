@@ -1,5 +1,6 @@
 import { Section, Text } from '@react-email/components'
 import { BaseEmail } from './BaseEmail'
+import { infoBox, infoLabel, infoText, strongText } from './styles'
 
 interface OTPVerificationEmailProps {
   otp: string
@@ -71,36 +72,4 @@ const otpCode = {
   color: '#1C1815',
   margin: '0',
   fontFamily: 'Georgia, "Times New Roman", Times, serif',
-}
-
-const infoBox = {
-  backgroundColor: 'rgba(197,160,89,0.08)',
-  border: '1px solid rgba(197,160,89,0.25)',
-  padding: '20px',
-  margin: '0 0 24px 0',
-}
-
-const infoLabel = {
-  color: '#9B7A41',
-  fontSize: '11px',
-  fontWeight: '500',
-  letterSpacing: '0.15em',
-  textTransform: 'uppercase' as const,
-  margin: '0 0 8px 0',
-  fontFamily:
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-}
-
-const infoText = {
-  color: '#4E463D',
-  fontSize: '14px',
-  lineHeight: '22px',
-  margin: '0',
-  fontFamily:
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-}
-
-const strongText = {
-  color: '#1C1815',
-  fontWeight: '500',
 }

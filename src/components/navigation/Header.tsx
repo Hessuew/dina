@@ -19,37 +19,35 @@ type HeaderProps = {
   user: User | null
 }
 
-const toggleUserRole = createServerFn({ method: 'POST' }).handler(
-  async () => {
-    const user = await getCurrentUser()
+const toggleUserRole = createServerFn({ method: 'POST' }).handler(async () => {
+  const user = await getCurrentUser()
 
-    const { eq } = await import('drizzle-orm')
-    const db = await getDb()
+  const { eq } = await import('drizzle-orm')
+  const db = await getDb()
 
-    // Get current user role
-    const profile = await db.query.profiles.findFirst({
-      where: eq(profiles.id, user.id),
-      columns: {
-        role: true,
-      },
-    })
+  // Get current user role
+  const profile = await db.query.profiles.findFirst({
+    where: eq(profiles.id, user.id),
+    columns: {
+      role: true,
+    },
+  })
 
-    if (!profile) {
-      throw new Error('User profile not found')
-    }
+  if (!profile) {
+    throw new Error('User profile not found')
+  }
 
-    // Toggle role: teacher <-> student
-    const newRole = profile.role === 'teacher' ? 'student' : 'teacher'
+  // Toggle role: teacher <-> student
+  const newRole = profile.role === 'teacher' ? 'student' : 'teacher'
 
-    // Update role in database
-    await db
-      .update(profiles)
-      .set({ role: newRole })
-      .where(eq(profiles.id, user.id))
+  // Update role in database
+  await db
+    .update(profiles)
+    .set({ role: newRole })
+    .where(eq(profiles.id, user.id))
 
-    return { success: true, newRole }
-  },
-)
+  return { success: true, newRole }
+})
 
 export function Header({ user }: HeaderProps) {
   const toggleRoleMutation = useMutation({

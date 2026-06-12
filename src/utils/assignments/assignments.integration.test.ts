@@ -36,6 +36,16 @@ async function seedCourseWithTeacher() {
   return { teacherId, courseId, lessonId }
 }
 
+// Seeds a published assignment with one submitted student submission, returning
+// the ids the read-side assignment tests need.
+async function seedPublishedAssignmentWithSubmission() {
+  const { teacherId, lessonId } = await seedCourseWithTeacher()
+  const assignmentId = await seedAssignment({ lessonId, status: 'published' })
+  const studentId = await seedProfile({ role: 'student' })
+  await seedSubmission({ assignmentId, studentId, status: 'submitted' })
+  return { teacherId, lessonId, assignmentId, studentId }
+}
+
 const future = () => new Date(Date.now() + 24 * 60 * 60 * 1000)
 const past = () => new Date(Date.now() - 24 * 60 * 60 * 1000)
 
@@ -137,10 +147,8 @@ describe('deleteAssignmentService (integration)', () => {
 
 describe('getAssignmentService (integration)', () => {
   it('returns a published assignment and the student’s submission', async () => {
-    const { lessonId } = await seedCourseWithTeacher()
-    const assignmentId = await seedAssignment({ lessonId, status: 'published' })
-    const studentId = await seedProfile({ role: 'student' })
-    await seedSubmission({ assignmentId, studentId, status: 'submitted' })
+    const { assignmentId, studentId } =
+      await seedPublishedAssignmentWithSubmission()
 
     const result = await getAssignmentService({ assignmentId }, studentId)
 
@@ -215,7 +223,10 @@ describe('createOrUpdateSubmissionService (integration)', () => {
     const studentId = await seedProfile({ role: 'student' })
 
     await expect(
-      createOrUpdateSubmissionService({ assignmentId, submit: true }, studentId),
+      createOrUpdateSubmissionService(
+        { assignmentId, submit: true },
+        studentId,
+      ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED', status: 400 })
   })
 
@@ -229,7 +240,10 @@ describe('createOrUpdateSubmissionService (integration)', () => {
     const studentId = await seedProfile({ role: 'student' })
 
     await expect(
-      createOrUpdateSubmissionService({ assignmentId, submit: true }, studentId),
+      createOrUpdateSubmissionService(
+        { assignmentId, submit: true },
+        studentId,
+      ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED', status: 400 })
   })
 
@@ -268,10 +282,7 @@ describe('getAllAssignmentsForStudentService (integration)', () => {
 
 describe('getAllAssignmentsForTeacherService (integration)', () => {
   it('returns the teacher’s assignments with submission stats', async () => {
-    const { teacherId, lessonId } = await seedCourseWithTeacher()
-    const assignmentId = await seedAssignment({ lessonId, status: 'published' })
-    const studentId = await seedProfile({ role: 'student' })
-    await seedSubmission({ assignmentId, studentId, status: 'submitted' })
+    const { teacherId } = await seedPublishedAssignmentWithSubmission()
 
     const { assignments } = await getAllAssignmentsForTeacherService(teacherId)
 
@@ -302,10 +313,8 @@ describe('getAllAssignmentsForTeacherService (integration)', () => {
 
 describe('getAssignmentSubmissionsService (integration)', () => {
   it('returns submissions with student detail for a course teacher', async () => {
-    const { teacherId, lessonId } = await seedCourseWithTeacher()
-    const assignmentId = await seedAssignment({ lessonId, status: 'published' })
-    const studentId = await seedProfile({ role: 'student' })
-    await seedSubmission({ assignmentId, studentId, status: 'submitted' })
+    const { teacherId, assignmentId } =
+      await seedPublishedAssignmentWithSubmission()
 
     const { submissions } = await getAssignmentSubmissionsService(
       { assignmentId },

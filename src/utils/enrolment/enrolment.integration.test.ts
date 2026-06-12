@@ -10,6 +10,19 @@ import {
   seedReviewerAssignment,
 } from '@/../test/integration/seed'
 
+// Seeds a pending enrollment with an assigned reviewer plus a peer evaluator.
+// Both teachers share the same course, making peerId a valid peer evaluator.
+async function seedPeerReviewScenario() {
+  const reviewerId = await seedProfile({ role: 'teacher' })
+  const peerId = await seedProfile({ role: 'teacher' })
+  const courseId = await seedCourse()
+  await seedCourseTeacher(courseId, reviewerId)
+  await seedCourseTeacher(courseId, peerId)
+  const enrollmentId = await seedEnrollment({ status: 'pending' })
+  await seedReviewerAssignment(enrollmentId, reviewerId)
+  return { reviewerId, peerId, courseId, enrollmentId }
+}
+
 describe('setEvaluationScoreService (integration)', () => {
   describe("assigned Reviewer's score auto-derives status (ADR 0008 rev 1)", () => {
     const cases: Array<{
@@ -71,14 +84,8 @@ describe('setEvaluationScoreService (integration)', () => {
     it.each(cases)(
       '$description',
       async ({ score, peerHasScored, expected }) => {
-        const reviewerId = await seedProfile({ role: 'teacher' })
-        const peerId = await seedProfile({ role: 'teacher' })
-        const courseId = await seedCourse()
-        // Both teachers share the same course, making peerId a valid peer evaluator.
-        await seedCourseTeacher(courseId, reviewerId)
-        await seedCourseTeacher(courseId, peerId)
-        const enrollmentId = await seedEnrollment({ status: 'pending' })
-        await seedReviewerAssignment(enrollmentId, reviewerId)
+        const { reviewerId, peerId, enrollmentId } =
+          await seedPeerReviewScenario()
 
         // If peerHasScored is true, seed a peer evaluation first.
         if (peerHasScored) {
@@ -105,14 +112,7 @@ describe('setEvaluationScoreService (integration)', () => {
   })
 
   it('keeps a non-assigned evaluator advisory — status unchanged', async () => {
-    const reviewerId = await seedProfile({ role: 'teacher' })
-    const peerId = await seedProfile({ role: 'teacher' })
-    const courseId = await seedCourse()
-    // Both teachers share the same course, making peerId a valid peer evaluator.
-    await seedCourseTeacher(courseId, reviewerId)
-    await seedCourseTeacher(courseId, peerId)
-    const enrollmentId = await seedEnrollment({ status: 'pending' })
-    await seedReviewerAssignment(enrollmentId, reviewerId)
+    const { reviewerId, peerId, enrollmentId } = await seedPeerReviewScenario()
 
     // The peer (not the assigned Reviewer) scores a strong admit.
     await setEvaluationScoreService({ enrollmentId, score: 4 }, peerId)
@@ -122,13 +122,7 @@ describe('setEvaluationScoreService (integration)', () => {
   })
 
   it('peer scoring after reviewer 3/4 advances status to awaiting_approval', async () => {
-    const reviewerId = await seedProfile({ role: 'teacher' })
-    const peerId = await seedProfile({ role: 'teacher' })
-    const courseId = await seedCourse()
-    await seedCourseTeacher(courseId, reviewerId)
-    await seedCourseTeacher(courseId, peerId)
-    const enrollmentId = await seedEnrollment({ status: 'pending' })
-    await seedReviewerAssignment(enrollmentId, reviewerId)
+    const { reviewerId, peerId, enrollmentId } = await seedPeerReviewScenario()
 
     // Reviewer scores first → under_review
     await setEvaluationScoreService({ enrollmentId, score: 4 }, reviewerId)

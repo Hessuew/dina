@@ -65,7 +65,10 @@ describe('createInvitationService (integration)', () => {
     const studentId = await seedProfile({ role: 'student' })
 
     await expect(
-      createInvitationService({ email: 'new@test.dev', role: 'student' }, studentId),
+      createInvitationService(
+        { email: 'new@test.dev', role: 'student' },
+        studentId,
+      ),
     ).rejects.toMatchObject({ code: 'ROLE_REQUIRED', status: 403 })
     expect(mocks.sendEmail).not.toHaveBeenCalled()
   })
@@ -75,7 +78,10 @@ describe('createInvitationService (integration)', () => {
     await seedInvitation({ email: 'dupe@test.dev', status: 'pending' })
 
     await expect(
-      createInvitationService({ email: 'dupe@test.dev', role: 'student' }, adminId),
+      createInvitationService(
+        { email: 'dupe@test.dev', role: 'student' },
+        adminId,
+      ),
     ).rejects.toMatchObject({ code: 'INVITATION_EXISTS', status: 409 })
     expect(mocks.sendEmail).not.toHaveBeenCalled()
   })
@@ -85,7 +91,10 @@ describe('createInvitationService (integration)', () => {
     await seedProfile({ email: 'taken@test.dev' })
 
     await expect(
-      createInvitationService({ email: 'taken@test.dev', role: 'student' }, adminId),
+      createInvitationService(
+        { email: 'taken@test.dev', role: 'student' },
+        adminId,
+      ),
     ).rejects.toMatchObject({ code: 'INVITATION_EXISTS', status: 409 })
   })
 
@@ -94,7 +103,10 @@ describe('createInvitationService (integration)', () => {
     mocks.sendEmail.mockResolvedValue({ error: { message: 'smtp down' } })
 
     await expect(
-      createInvitationService({ email: 'rollback@test.dev', role: 'student' }, adminId),
+      createInvitationService(
+        { email: 'rollback@test.dev', role: 'student' },
+        adminId,
+      ),
     ).rejects.toMatchObject({ code: 'EMAIL_SEND_FAILED', status: 500 })
 
     expect(await findInvitationByEmail('rollback@test.dev')).toBeUndefined()
@@ -103,7 +115,10 @@ describe('createInvitationService (integration)', () => {
 
 describe('checkInvitationByEmailService (integration)', () => {
   it('returns email + role for an active invitation', async () => {
-    const { email } = await seedInvitation({ role: 'teacher', status: 'pending' })
+    const { email } = await seedInvitation({
+      role: 'teacher',
+      status: 'pending',
+    })
 
     const result = await checkInvitationByEmailService({ email })
 

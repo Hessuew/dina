@@ -2,7 +2,12 @@ import { relations } from 'drizzle-orm'
 import { announcements } from './announcement.schema'
 import { assignments, submissions } from './assignment.schema'
 import { calendarEvents } from './calendar.schema'
-import { courses, courseTeachers, lessonProgress, lessons } from './course.schema'
+import {
+  courseTeachers,
+  courses,
+  lessonProgress,
+  lessons,
+} from './course.schema'
 import { enrollmentReviewerAssignments, enrollments } from './enrollment.schema'
 import { invitations } from './invitation.schema'
 import { mediaLibrary } from './media.schema'

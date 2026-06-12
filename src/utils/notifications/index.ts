@@ -19,4 +19,3 @@ export async function emit(
 
   await deliveryAdapter.deliver(event, recipientIds)
 }
-

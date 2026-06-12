@@ -1,4 +1,9 @@
 import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm'
+import type {
+  PostAuthor,
+  PostReaction,
+  RawComment,
+} from '@/utils/post/domain/post.domain'
 import { getDb } from '@/db'
 import {
   postCommentReactions,
@@ -13,26 +18,12 @@ type RawPostRow = {
   content: string
   createdAt: Date
   updatedAt: Date
-  author: { id: string; fullName: string; avatarUrl: string | null }
-  reactions: Array<{ id: string; emoji: string; userId: string }>
-  comments: Array<{
-    id: string
-    content: string
-    createdAt: Date
-    updatedAt: Date
-    author: { id: string; fullName: string; avatarUrl: string | null }
-    reactions: Array<{ id: string; emoji: string; userId: string }>
-  }>
+  author: PostAuthor
+  reactions: Array<PostReaction>
+  comments: Array<RawComment>
 }
 
-type RawCommentRow = {
-  id: string
-  content: string
-  createdAt: Date
-  updatedAt: Date
-  author: { id: string; fullName: string; avatarUrl: string | null }
-  reactions: Array<{ id: string; emoji: string; userId: string }>
-}
+type RawCommentRow = RawComment
 
 function buildPostWhereConditions(filters: {
   courseId?: string | null
