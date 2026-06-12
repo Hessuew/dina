@@ -17,7 +17,13 @@ export const uploadCourseThumbnailSchema = z.object({
   bucket: z.string().optional(),
 })
 
+const uploadImageSchema = uploadAvatarSchema.extend({
+  bucket: z.string().min(1, 'Bucket is required'),
+  oldUrl: z.string().optional(),
+})
+
 export type UploadAvatarInput = z.infer<typeof uploadAvatarSchema>
+export type UploadImageInput = z.infer<typeof uploadImageSchema>
 export type UploadCourseThumbnailInput = z.infer<
   typeof uploadCourseThumbnailSchema
 >

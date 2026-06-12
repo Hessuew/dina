@@ -7,7 +7,7 @@ import {
   unique,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { relations, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { authenticatedRole } from 'drizzle-orm/supabase'
 import { postNotificationEventEnum } from './enums.schema'
 import { profiles } from './profile.schema'
@@ -232,75 +232,4 @@ export const postCommentReactions = pgTable(
       using: sql`user_id = auth.uid()`,
     }),
   ],
-)
-
-export const postsRelations = relations(posts, ({ one, many }) => ({
-  author: one(profiles, {
-    fields: [posts.authorId],
-    references: [profiles.id],
-  }),
-  course: one(courses, {
-    fields: [posts.courseId],
-    references: [courses.id],
-  }),
-  comments: many(postComments),
-  reactions: many(postReactions),
-}))
-
-export const postCommentsRelations = relations(
-  postComments,
-  ({ one, many }) => ({
-    post: one(posts, {
-      fields: [postComments.postId],
-      references: [posts.id],
-    }),
-    author: one(profiles, {
-      fields: [postComments.authorId],
-      references: [profiles.id],
-    }),
-    reactions: many(postCommentReactions),
-  }),
-)
-
-export const postReactionsRelations = relations(postReactions, ({ one }) => ({
-  post: one(posts, {
-    fields: [postReactions.postId],
-    references: [posts.id],
-  }),
-  user: one(profiles, {
-    fields: [postReactions.userId],
-    references: [profiles.id],
-  }),
-}))
-
-export const postCommentReactionsRelations = relations(
-  postCommentReactions,
-  ({ one }) => ({
-    comment: one(postComments, {
-      fields: [postCommentReactions.commentId],
-      references: [postComments.id],
-    }),
-    user: one(profiles, {
-      fields: [postCommentReactions.userId],
-      references: [profiles.id],
-    }),
-  }),
-)
-
-export const postNotificationsRelations = relations(
-  postNotifications,
-  ({ one }) => ({
-    user: one(profiles, {
-      fields: [postNotifications.userId],
-      references: [profiles.id],
-    }),
-    post: one(posts, {
-      fields: [postNotifications.postId],
-      references: [posts.id],
-    }),
-    comment: one(postComments, {
-      fields: [postNotifications.commentId],
-      references: [postComments.id],
-    }),
-  }),
 )

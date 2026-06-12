@@ -8,15 +8,9 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { relations, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { authenticatedRole } from 'drizzle-orm/supabase'
 import { profiles } from './profile.schema'
-import { assignments } from './assignment.schema'
-import { announcements } from './announcement.schema'
-import { mediaLibrary } from './media.schema'
-import { calendarEvents } from './calendar.schema'
-import { zoomLinks } from './zoom.schema'
-import { posts } from './post.schema'
 
 export const courses = pgTable(
   'courses',
@@ -254,44 +248,3 @@ export const lessonProgress = pgTable(
     }),
   ],
 )
-
-export const coursesRelations = relations(courses, ({ many }) => ({
-  courseTeachers: many(courseTeachers),
-  lessons: many(lessons),
-  announcements: many(announcements),
-  mediaFiles: many(mediaLibrary),
-  calendarEvents: many(calendarEvents),
-  zoomLinks: many(zoomLinks),
-  posts: many(posts),
-}))
-
-export const courseTeachersRelations = relations(courseTeachers, ({ one }) => ({
-  course: one(courses, {
-    fields: [courseTeachers.courseId],
-    references: [courses.id],
-  }),
-  teacher: one(profiles, {
-    fields: [courseTeachers.teacherId],
-    references: [profiles.id],
-  }),
-}))
-
-export const lessonsRelations = relations(lessons, ({ one, many }) => ({
-  course: one(courses, {
-    fields: [lessons.courseId],
-    references: [courses.id],
-  }),
-  progress: many(lessonProgress),
-  assignments: many(assignments),
-}))
-
-export const lessonProgressRelations = relations(lessonProgress, ({ one }) => ({
-  student: one(profiles, {
-    fields: [lessonProgress.studentId],
-    references: [profiles.id],
-  }),
-  lesson: one(lessons, {
-    fields: [lessonProgress.lessonId],
-    references: [lessons.id],
-  }),
-}))

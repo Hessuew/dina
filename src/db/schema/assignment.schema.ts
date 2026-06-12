@@ -6,7 +6,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { relations, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { authenticatedRole } from 'drizzle-orm/supabase'
 import { assignmentStatusEnum, submissionStatusEnum } from './enums.schema'
 import { lessons } from './course.schema'
@@ -162,22 +162,3 @@ export const submissions = pgTable(
     }),
   ],
 )
-
-export const assignmentsRelations = relations(assignments, ({ one, many }) => ({
-  lesson: one(lessons, {
-    fields: [assignments.lessonId],
-    references: [lessons.id],
-  }),
-  submissions: many(submissions),
-}))
-
-export const submissionsRelations = relations(submissions, ({ one }) => ({
-  assignment: one(assignments, {
-    fields: [submissions.assignmentId],
-    references: [assignments.id],
-  }),
-  student: one(profiles, {
-    fields: [submissions.studentId],
-    references: [profiles.id],
-  }),
-}))

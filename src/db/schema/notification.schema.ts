@@ -6,7 +6,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { relations, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { authenticatedRole } from 'drizzle-orm/supabase'
 import { notificationTypeEnum } from './enums.schema'
 import { profiles } from './profile.schema'
@@ -47,10 +47,3 @@ export const notifications = pgTable(
     }),
   ],
 )
-
-export const notificationsRelations = relations(notifications, ({ one }) => ({
-  user: one(profiles, {
-    fields: [notifications.userId],
-    references: [profiles.id],
-  }),
-}))
