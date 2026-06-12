@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyEvaluationPatch,
   formatEvaluationSummary,
   formatScore,
   reduceScoreKey,
   scoreRequiresAdmissionCategory,
 } from './evaluation.domain'
+import type { EvaluationEntry } from './evaluation.domain'
 
 describe('reduceScoreKey', () => {
   it('sets a score on a digit press', () => {
@@ -99,5 +101,79 @@ describe('formatScore', () => {
   it('renders scores without a leading plus', () => {
     expect(formatScore(0)).toBe('0')
     expect(formatScore(4)).toBe('4')
+  })
+})
+
+describe('applyEvaluationPatch', () => {
+  const author = {
+    enrollmentId: 'enr-1',
+    evaluatorId: 'usr-1',
+    evaluatorName: 'Ana',
+  }
+
+  function entry(overrides: Partial<EvaluationEntry> = {}): EvaluationEntry {
+    return {
+      enrollmentId: 'enr-1',
+      evaluatorId: 'usr-1',
+      evaluatorName: 'Ana',
+      score: null,
+      admissionCategory: null,
+      note: null,
+      ...overrides,
+    }
+  }
+
+  it('appends a new entry when the evaluator has none', () => {
+    const result = applyEvaluationPatch([], author, { score: 4 })
+    expect(result).toEqual([entry({ score: 4 })])
+  })
+
+  it('does not mutate the input list', () => {
+    const list = [entry({ score: 2 })]
+    applyEvaluationPatch(list, author, { score: 3 })
+    expect(list[0].score).toBe(2)
+  })
+
+  it('updates the matching evaluator entry in place', () => {
+    const list = [
+      entry({ evaluatorId: 'other', evaluatorName: 'Bo', score: 1 }),
+      entry({ score: 2 }),
+    ]
+    const result = applyEvaluationPatch(list, author, { score: 4 })
+    expect(result[0].score).toBe(1)
+    expect(result[1].score).toBe(4)
+  })
+
+  it('clears the admission category when score drops below admission', () => {
+    const list = [entry({ score: 3, admissionCategory: 'new' })]
+    const result = applyEvaluationPatch(list, author, { score: 2 })
+    expect(result[0].admissionCategory).toBeNull()
+  })
+
+  it('keeps the admission category for admission scores', () => {
+    const list = [entry({ score: 4, admissionCategory: 'emerging' })]
+    const result = applyEvaluationPatch(list, author, { score: 3 })
+    expect(result[0].admissionCategory).toBe('emerging')
+  })
+
+  it('applies a category-only patch without touching the score', () => {
+    const list = [entry({ score: 4 })]
+    const result = applyEvaluationPatch(list, author, {
+      admissionCategory: 'established',
+    })
+    expect(result[0]).toMatchObject({
+      score: 4,
+      admissionCategory: 'established',
+    })
+  })
+
+  it('applies a note-only patch', () => {
+    const list = [entry({ score: 4, admissionCategory: 'new' })]
+    const result = applyEvaluationPatch(list, author, { note: 'great' })
+    expect(result[0]).toMatchObject({
+      score: 4,
+      admissionCategory: 'new',
+      note: 'great',
+    })
   })
 })

@@ -85,6 +85,72 @@ export function reduceScoreKey(
   }
 }
 
+/** Optimistic patch applied to a single evaluator's evaluation. */
+export type EvaluationPatch = {
+  score?: number | null
+  admissionCategory?: AdmissionCategory | null
+  note?: string
+}
+
+/** One evaluator's evaluation of an enrollment (author-resolved). */
+export type EvaluationEntry = {
+  enrollmentId: string
+  evaluatorId: string
+  evaluatorName: string
+  score: number | null
+  admissionCategory: AdmissionCategory | null
+  note: string | null
+}
+
+function mergeEvaluationEntry(
+  entry: EvaluationEntry,
+  patch: EvaluationPatch,
+): EvaluationEntry {
+  return {
+    ...entry,
+    ...(patch.score !== undefined
+      ? {
+          score: patch.score,
+          ...(scoreRequiresAdmissionCategory(patch.score)
+            ? {}
+            : { admissionCategory: null }),
+        }
+      : {}),
+    ...(patch.admissionCategory !== undefined
+      ? { admissionCategory: patch.admissionCategory }
+      : {}),
+    ...(patch.note !== undefined ? { note: patch.note } : {}),
+  }
+}
+
+/**
+ * Apply an optimistic `patch` to the evaluator's entry in `list`, returning a
+ * new list. Updates the existing entry when present, otherwise appends one.
+ * Clearing or dropping a score below the admission threshold also clears the
+ * admission category.
+ */
+export function applyEvaluationPatch(
+  list: ReadonlyArray<EvaluationEntry>,
+  author: { enrollmentId: string; evaluatorId: string; evaluatorName: string },
+  patch: EvaluationPatch,
+): Array<EvaluationEntry> {
+  const next = [...list]
+  const i = next.findIndex((e) => e.evaluatorId === author.evaluatorId)
+  if (i >= 0) {
+    next[i] = mergeEvaluationEntry(next[i], patch)
+    return next
+  }
+  next.push({
+    enrollmentId: author.enrollmentId,
+    evaluatorId: author.evaluatorId,
+    evaluatorName: author.evaluatorName,
+    score: patch.score ?? null,
+    admissionCategory: patch.admissionCategory ?? null,
+    note: patch.note ?? null,
+  })
+  return next
+}
+
 /**
  * Compact list-cell summary of an enrollment's aggregate score.
  * Returns "—" when no one has scored yet.
