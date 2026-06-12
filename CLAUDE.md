@@ -102,6 +102,14 @@ Do not finish without basic correctness check.
 
 ---
 
+## Rules
+
+- Binding, always-on project rules live once in `docs/rules/<name>.md` (`.claude/rules` is a symlink to it). Edit only in `docs/rules/`, never through a symlink.
+- Before writing or editing a component or endpoint, read the applicable `docs/rules/*.md`. They are binding like the Core Priority rules above.
+- First rule: [`docs/rules/complexity.md`](docs/rules/complexity.md) — keep new/changed components and endpoints under the complexity limits (`bun run quality:gate` blocks newly introduced complexity).
+
+---
+
 ## Skills
 
 - Skills live once in `docs/skills/<name>/SKILL.md`; `.claude/skills/<name>` is a symlink to it. Edit skills only in `docs/skills/`, never through a symlink.
