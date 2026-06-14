@@ -13,6 +13,12 @@
     //   "**/generated/**"     // OpenAPI, Protobuf codegen
     // ]
   },
+  "health": {
+    // Trivial carousel index hook: flagged as a "split_high_impact" refactor
+    // target only because of fan-in (4 importers) + density on a 6-line body.
+    // Nothing to extract; exclude it from health analysis rather than refactor.
+    "ignore": ["src/components/landing/hooks.ts"]
+  },
   "rules": {
     "unused-dependencies": "warn",
     "unused-class-members": "off"
