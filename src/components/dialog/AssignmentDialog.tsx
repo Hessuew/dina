@@ -108,6 +108,97 @@ function getGradingInitialValues(
   }
 }
 
+const dialogStyle = {
+  backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+}
+
+function DeleteWithSubmissionsWarning({
+  open,
+  onOpenChange,
+  submissionCount,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  submissionCount: number
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
+        style={dialogStyle}
+        showCloseButton={false}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
+        <div className="relative">
+          <DialogHeader>
+            <div className="mb-1">
+              <div className="h-px w-8 bg-[#C5A059]/40" />
+              <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                Confirm action
+              </div>
+            </div>
+            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
+              Delete Assignment
+            </DialogTitle>
+            <DialogDescription className="text-[#AFA28F]">
+              This assignment has {submissionCount} submission
+              {submissionCount !== 1 ? 's' : ''}. Assignments with submissions
+              cannot be deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
+            <Button
+              variant="outline"
+              theme="dark"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function SubmissionPreview({
+  submission,
+}: {
+  submission: AssignmentDialogProps['submission']
+}) {
+  return (
+    <>
+      <div>
+        <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+          Student's Answer
+        </div>
+        <div className="mt-2 border border-white/10 bg-white/4 px-4 py-3">
+          <p className="text-sm whitespace-pre-wrap text-[#AFA28F]">
+            {submission?.content || 'No content provided'}
+          </p>
+        </div>
+      </div>
+      {submission?.fileUrl && (
+        <div>
+          <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+            File URL
+          </div>
+          <a
+            href={submission.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 block text-sm text-[#9B7A41] hover:underline"
+          >
+            {submission.fileUrl}
+          </a>
+        </div>
+      )}
+    </>
+  )
+}
+
 export function AssignmentDialog({
   open,
   onOpenChange,
@@ -192,51 +283,14 @@ export function AssignmentDialog({
     gradeForm.reset(getGradingInitialValues(submission))
   }, [open, mode, assignment, submission, assignmentForm, gradeForm])
 
-  const dialogStyle = {
-    backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-  }
-
   if (mode === 'delete') {
     if (submissionCount > 0) {
       return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent
-            className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
-            style={dialogStyle}
-            showCloseButton={false}
-          >
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-            <div className="relative">
-              <DialogHeader>
-                <div className="mb-1">
-                  <div className="h-px w-8 bg-[#C5A059]/40" />
-                  <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                    Confirm action
-                  </div>
-                </div>
-                <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-                  Delete Assignment
-                </DialogTitle>
-                <DialogDescription className="text-[#AFA28F]">
-                  This assignment has {submissionCount} submission
-                  {submissionCount !== 1 ? 's' : ''}. Assignments with
-                  submissions cannot be deleted.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-                <Button
-                  variant="outline"
-                  theme="dark"
-                  onClick={() => onOpenChange(false)}
-                >
-                  Cancel
-                </Button>
-              </DialogFooter>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <DeleteWithSubmissionsWarning
+          open={open}
+          onOpenChange={onOpenChange}
+          submissionCount={submissionCount}
+        />
       )
     }
 
@@ -280,31 +334,7 @@ export function AssignmentDialog({
 
             <DialogBody>
               <div className="mt-4 space-y-4">
-                <div>
-                  <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                    Student's Answer
-                  </div>
-                  <div className="mt-2 border border-white/10 bg-white/4 px-4 py-3">
-                    <p className="text-sm whitespace-pre-wrap text-[#AFA28F]">
-                      {submission?.content || 'No content provided'}
-                    </p>
-                  </div>
-                </div>
-                {submission?.fileUrl && (
-                  <div>
-                    <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                      File URL
-                    </div>
-                    <a
-                      href={submission.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-1 block text-sm text-[#9B7A41] hover:underline"
-                    >
-                      {submission.fileUrl}
-                    </a>
-                  </div>
-                )}
+                <SubmissionPreview submission={submission} />
                 <FieldGroup>
                   <gradeForm.AppField
                     name="grade"
