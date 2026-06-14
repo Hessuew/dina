@@ -65,6 +65,90 @@ function getInitialValues(
   }
 }
 
+function TeacherSelectItems({
+  teachers,
+}: {
+  teachers: Array<{ id: string; fullName: string }>
+}) {
+  if (teachers.length === 0) {
+    return (
+      <SelectItem value="none" disabled>
+        No teachers available
+      </SelectItem>
+    )
+  }
+  return (
+    <>
+      {teachers.map((teacher) => (
+        <SelectItem key={teacher.id} value={teacher.id}>
+          {teacher.fullName}
+        </SelectItem>
+      ))}
+    </>
+  )
+}
+
+function ThumbnailUploadField({
+  fileInputRef,
+  fileData,
+  thumbnailUrl,
+  onFileChange,
+  onClear,
+}: {
+  fileInputRef: React.RefObject<HTMLInputElement | null>
+  fileData: string | null
+  thumbnailUrl: string | null
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onClear: () => void
+}) {
+  return (
+    <Field>
+      <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+        Course Thumbnail
+      </FieldLabel>
+      <div className="space-y-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={onFileChange}
+          className="hidden"
+        />
+        {fileData || thumbnailUrl ? (
+          <div className="relative aspect-video w-full max-w-sm overflow-hidden border border-white/10">
+            <img
+              src={fileData || thumbnailUrl!}
+              alt="Course thumbnail"
+              className="size-full object-cover"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="absolute top-2 right-2 rounded-none border-white/20 bg-black/40 text-white hover:bg-black/60"
+              onClick={onClear}
+            >
+              <XIcon className="size-4" />
+            </Button>
+          </div>
+        ) : (
+          <Button
+            theme="dark"
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full max-w-sm rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
+          >
+            <UploadIcon className="mr-2 size-4" />
+            Upload Thumbnail
+          </Button>
+        )}
+        <p className="text-xs text-[#8E816D]">JPG, PNG, WebP or GIF. Max 2MB.</p>
+      </div>
+    </Field>
+  )
+}
+
 export function CourseDialog({
   open,
   onOpenChange,
@@ -216,17 +300,7 @@ export function CourseDialog({
                       label="Teacher 1"
                       placeholder="Select first teacher"
                     >
-                      {teachers.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          No teachers available
-                        </SelectItem>
-                      ) : (
-                        teachers.map((teacher) => (
-                          <SelectItem key={teacher.id} value={teacher.id}>
-                            {teacher.fullName}
-                          </SelectItem>
-                        ))
-                      )}
+                      <TeacherSelectItems teachers={teachers} />
                     </field.SelectField>
                   )}
                 </form.AppField>
@@ -252,21 +326,11 @@ export function CourseDialog({
                       label="Teacher 2"
                       placeholder="Select second teacher"
                     >
-                      {teachers.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          No teachers available
-                        </SelectItem>
-                      ) : (
-                        teachers
-                          .filter(
-                            (t) => t.id !== form.getFieldValue('teacher1Id'),
-                          )
-                          .map((teacher) => (
-                            <SelectItem key={teacher.id} value={teacher.id}>
-                              {teacher.fullName}
-                            </SelectItem>
-                          ))
-                      )}
+                      <TeacherSelectItems
+                        teachers={teachers.filter(
+                          (t) => t.id !== form.getFieldValue('teacher1Id'),
+                        )}
+                      />
                     </field.SelectField>
                   )}
                 </form.AppField>
@@ -288,55 +352,16 @@ export function CourseDialog({
                 />
               )}
             </form.AppField>
-            <Field>
-              <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-                Course Thumbnail
-              </FieldLabel>
-              <div className="space-y-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                {fileData || thumbnailUrl ? (
-                  <div className="relative aspect-video w-full max-w-sm overflow-hidden border border-white/10">
-                    <img
-                      src={fileData || thumbnailUrl!}
-                      alt="Course thumbnail"
-                      className="size-full object-cover"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="absolute top-2 right-2 rounded-none border-white/20 bg-black/40 text-white hover:bg-black/60"
-                      onClick={() => {
-                        setThumbnailUrl(null)
-                        clearFile()
-                      }}
-                    >
-                      <XIcon className="size-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    theme="dark"
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full max-w-sm rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
-                  >
-                    <UploadIcon className="mr-2 size-4" />
-                    Upload Thumbnail
-                  </Button>
-                )}
-                <p className="text-xs text-[#8E816D]">
-                  JPG, PNG, WebP or GIF. Max 2MB.
-                </p>
-              </div>
-            </Field>
+            <ThumbnailUploadField
+              fileInputRef={fileInputRef}
+              fileData={fileData}
+              thumbnailUrl={thumbnailUrl}
+              onFileChange={handleFileChange}
+              onClear={() => {
+                setThumbnailUrl(null)
+                clearFile()
+              }}
+            />
           </div>
 
           {mode === 'edit' && (
