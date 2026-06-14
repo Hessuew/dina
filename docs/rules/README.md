@@ -54,7 +54,7 @@ enforced-by: <how violations are caught — gate / eslint / review>
 
 | Rule                          | Scope                              | Enforced by                                        |
 | ----------------------------- | ---------------------------------- | -------------------------------------------------- |
-| [complexity](./complexity.md) | new/changed components & endpoints | `quality:gate` (fallow `introduced`) + ESLint warn |
+| [complexity](./complexity.md) | new/changed components & endpoints | `quality:gate` (fallow `introduced` cyc/cog/CRAP) + ESLint warn |
 
 ## Backlog (candidate rules)
 
