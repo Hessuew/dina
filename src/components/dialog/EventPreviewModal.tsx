@@ -76,24 +76,14 @@ function getChip(event: CalendarEvent) {
   return TYPE_CHIP[event.type]
 }
 
-export function EventPreviewModal({
-  event,
-  open,
-  onOpenChange,
-  currentMonth,
-}: EventPreviewModalProps) {
+function useEventNavigation(
+  event: CalendarEvent | null,
+  currentMonth: Date | undefined,
+  onClose: () => void,
+) {
   const router = useRouter()
-
-  if (!event) return null
-
-  const chip = getChip(event)
-  const isOverdue =
-    event.type === 'assignment' && new Date(event.date) < new Date()
-
-  const canNavigate = event.type === 'lesson' || event.type === 'assignment'
-
-  const handleViewDetails = () => {
-    if (!canNavigate) return
+  return () => {
+    if (event?.type !== 'lesson' && event?.type !== 'assignment') return
     router.navigate({
       to:
         event.type === 'lesson'
@@ -108,13 +98,106 @@ export function EventPreviewModal({
         calendarMonth: currentMonth?.toISOString(),
       } as any,
     })
-    onOpenChange(false)
+    onClose()
   }
+}
 
+function EventTypeChip({ event }: { event: CalendarEvent }) {
+  const chip = getChip(event)
   const SpecialIcon =
     event.type === 'special' && event.specialCategory
       ? SPECIAL_ICONS[event.specialCategory]
       : null
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 border px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.15em] uppercase',
+        chip.classes,
+      )}
+    >
+      {SpecialIcon && <SpecialIcon className="size-2.5" />}
+      {chip.label}
+    </span>
+  )
+}
+
+function EventDetailsSection({
+  event,
+  isOverdue,
+}: {
+  event: CalendarEvent
+  isOverdue: boolean
+}) {
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="flex items-center gap-2.5 text-sm">
+        <CalendarIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+        <span
+          className={
+            isOverdue ? 'font-medium text-red-400' : 'text-[#D6CCBE]'
+          }
+        >
+          {format(new Date(event.date), 'PPPP')}
+          {isOverdue && (
+            <span className="ml-2 text-[0.65rem] tracking-wider text-red-400/80 uppercase">
+              Overdue
+            </span>
+          )}
+        </span>
+      </div>
+
+      {event.type === 'lesson' && event.duration && (
+        <div className="flex items-center gap-2.5 text-sm">
+          <ClockIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+          <span className="text-[#D6CCBE]">
+            {format(new Date(event.date), 'p')} · {event.duration} min
+          </span>
+        </div>
+      )}
+
+      {event.type === 'lesson' && (
+        <div className="flex items-center gap-2.5 text-sm">
+          <BookOpenIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+          <span className="text-[#D6CCBE]">Lesson</span>
+        </div>
+      )}
+
+      {event.type === 'assignment' && event.maxGrade != null && (
+        <div className="flex items-center gap-2.5 text-sm">
+          <GraduationCapIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+          <span className="text-[#D6CCBE]">
+            Max grade: {event.maxGrade} pts
+          </span>
+        </div>
+      )}
+
+      {event.description && (
+        <div className="mt-4 border border-white/8 bg-white/4 p-3">
+          <p className="line-clamp-4 text-[0.82rem] leading-relaxed text-[#AFA28F]">
+            {event.description}
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function EventPreviewModal({
+  event,
+  open,
+  onOpenChange,
+  currentMonth,
+}: EventPreviewModalProps) {
+  const handleViewDetails = useEventNavigation(event, currentMonth, () =>
+    onOpenChange(false),
+  )
+
+  if (!event) return null
+
+  const isOverdue =
+    event.type === 'assignment' && new Date(event.date) < new Date()
+
+  const canNavigate = event.type === 'lesson' || event.type === 'assignment'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -137,15 +220,7 @@ export function EventPreviewModal({
                   Event details
                 </div>
               </div>
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 border px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.15em] uppercase',
-                  chip.classes,
-                )}
-              >
-                {SpecialIcon && <SpecialIcon className="size-2.5" />}
-                {chip.label}
-              </span>
+              <EventTypeChip event={event} />
             </div>
             <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
               {event.title}
@@ -158,56 +233,7 @@ export function EventPreviewModal({
           </DialogHeader>
 
           <DialogBody>
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center gap-2.5 text-sm">
-                <CalendarIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                <span
-                  className={
-                    isOverdue ? 'font-medium text-red-400' : 'text-[#D6CCBE]'
-                  }
-                >
-                  {format(new Date(event.date), 'PPPP')}
-                  {isOverdue && (
-                    <span className="ml-2 text-[0.65rem] tracking-wider text-red-400/80 uppercase">
-                      Overdue
-                    </span>
-                  )}
-                </span>
-              </div>
-
-              {event.type === 'lesson' && event.duration && (
-                <div className="flex items-center gap-2.5 text-sm">
-                  <ClockIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                  <span className="text-[#D6CCBE]">
-                    {format(new Date(event.date), 'p')} · {event.duration} min
-                  </span>
-                </div>
-              )}
-
-              {event.type === 'lesson' && (
-                <div className="flex items-center gap-2.5 text-sm">
-                  <BookOpenIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                  <span className="text-[#D6CCBE]">Lesson</span>
-                </div>
-              )}
-
-              {event.type === 'assignment' && event.maxGrade != null && (
-                <div className="flex items-center gap-2.5 text-sm">
-                  <GraduationCapIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                  <span className="text-[#D6CCBE]">
-                    Max grade: {event.maxGrade} pts
-                  </span>
-                </div>
-              )}
-
-              {event.description && (
-                <div className="mt-4 border border-white/8 bg-white/4 p-3">
-                  <p className="line-clamp-4 text-[0.82rem] leading-relaxed text-[#AFA28F]">
-                    {event.description}
-                  </p>
-                </div>
-              )}
-            </div>
+            <EventDetailsSection event={event} isOverdue={isOverdue} />
           </DialogBody>
 
           <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
