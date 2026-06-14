@@ -142,7 +142,10 @@ function buildPageWindow(current: number, total: number): Array<number | '…'> 
 }
 
 // Table-option fragments that differ between server-side and client-side modes.
-function serverModeOptions(isServerMode: boolean, rowCount: number | undefined) {
+function serverModeOptions(
+  isServerMode: boolean,
+  rowCount: number | undefined,
+) {
   return isServerMode
     ? {
         manualPagination: true,

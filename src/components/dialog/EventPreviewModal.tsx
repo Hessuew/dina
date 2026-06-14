@@ -133,9 +133,7 @@ function EventDetailsSection({
       <div className="flex items-center gap-2.5 text-sm">
         <CalendarIcon className="size-3.5 shrink-0 text-[#8E816D]" />
         <span
-          className={
-            isOverdue ? 'font-medium text-red-400' : 'text-[#D6CCBE]'
-          }
+          className={isOverdue ? 'font-medium text-red-400' : 'text-[#D6CCBE]'}
         >
           {format(new Date(event.date), 'PPPP')}
           {isOverdue && (
