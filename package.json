@@ -10,6 +10,7 @@
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:all": "bun run test && bun run test:integration",
+    "typecheck": "tsc --noEmit --noUnusedLocals false --noUnusedParameters false",
     "deploy": "bun run build && wrangler deploy",
     "cf-typegen": "wrangler types",
     "db:generate": "drizzle-kit generate",
@@ -18,7 +19,12 @@
     "db:pull": "drizzle-kit pull",
     "db:studio": "drizzle-kit studio",
     "lint": "eslint",
+    "lint:fix": "eslint --fix",
     "format": "prettier",
+    "format:check": "prettier --check .",
+    "format:write": "prettier --write .",
+    "quality:fix": "node scripts/quality-fix.mjs",
+    "quality:gate": "node scripts/quality-gate.mjs",
     "check": "prettier --write . && eslint --fix"
   },
   "dependencies": {
