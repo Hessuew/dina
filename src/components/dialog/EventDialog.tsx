@@ -66,7 +66,20 @@ const dialogStyle = {
 
 const requiredDateTimeString = z.string().min(1, 'This field is required')
 
-function getDefaultValues(mode: EventDialogMode, event?: CalendarEventRow) {
+type EventFormValues = {
+  title: string
+  description: string
+  startTime: string
+  endTime: string
+  location: string
+  zoomLink: string
+  category: string
+}
+
+function getDefaultValues(
+  mode: EventDialogMode,
+  event?: CalendarEventRow,
+): EventFormValues {
   if ((mode === 'edit' || mode === 'view') && event) {
     return {
       title: event.title,
@@ -89,6 +102,134 @@ function getDefaultValues(mode: EventDialogMode, event?: CalendarEventRow) {
   }
 }
 
+function buildEventInput(value: EventFormValues) {
+  return {
+    title: value.title,
+    description: value.description || undefined,
+    startTime: new Date(value.startTime),
+    endTime: new Date(value.endTime),
+    location: value.location || undefined,
+    zoomLink: value.zoomLink || undefined,
+    category: (value.category || undefined) as
+      | 'exam'
+      | 'chapel'
+      | 'personal'
+      | undefined,
+  }
+}
+
+function EventViewMode({
+  event,
+  open,
+  onOpenChange,
+}: {
+  event: CalendarEventRow
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const CategoryIcon = event.category
+    ? CATEGORY_ICON[event.category]
+    : CalendarIcon
+  const chipClass = event.category ? CATEGORY_CHIP[event.category] : ''
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-md"
+        style={dialogStyle}
+        showCloseButton={false}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <DialogHeader>
+            <div className="mb-1 flex items-center justify-between">
+              <div>
+                <div className="h-px w-8 bg-[#C5A059]/40" />
+                <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                  Event details
+                </div>
+              </div>
+              {event.category && (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 border px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.15em] uppercase',
+                    chipClass,
+                  )}
+                >
+                  <CategoryIcon className="size-2.5" />
+                  {CATEGORY_LABELS[event.category]}
+                </span>
+              )}
+            </div>
+            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
+              {event.title}
+            </DialogTitle>
+            {event.courseName && (
+              <p className="text-[0.78rem] text-[#AFA28F]">
+                {event.courseName}
+              </p>
+            )}
+          </DialogHeader>
+
+          <DialogBody>
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center gap-2.5 text-sm">
+                <CalendarIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+                <span className="text-[#D6CCBE]">
+                  {format(new Date(event.startTime), 'PPP')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2.5 text-sm">
+                <ClockIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+                <span className="text-[#D6CCBE]">
+                  {format(new Date(event.startTime), 'p')} –{' '}
+                  {format(new Date(event.endTime), 'p')}
+                </span>
+              </div>
+              {event.location && (
+                <div className="flex items-center gap-2.5 text-sm">
+                  <MapPinIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+                  <span className="text-[#D6CCBE]">{event.location}</span>
+                </div>
+              )}
+              {event.zoomLink && (
+                <div className="flex items-center gap-2.5 text-sm">
+                  <VideoIcon className="size-3.5 shrink-0 text-[#8E816D]" />
+                  <a
+                    href={event.zoomLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="truncate text-[#9B7A41] hover:underline"
+                  >
+                    {event.zoomLink}
+                  </a>
+                </div>
+              )}
+              {event.description && (
+                <div className="mt-4 border border-white/8 bg-white/4 p-3">
+                  <p className="line-clamp-6 text-[0.82rem] leading-relaxed text-[#AFA28F]">
+                    {event.description}
+                  </p>
+                </div>
+              )}
+            </div>
+          </DialogBody>
+
+          <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
+            <Button
+              variant="outline"
+              theme="dark"
+              onClick={() => onOpenChange(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function EventDialog({
   open,
   onOpenChange,
@@ -108,19 +249,7 @@ export function EventDialog({
   const form = useAppForm({
     defaultValues: getDefaultValues(mode, event),
     onSubmit: ({ value }) => {
-      const shared = {
-        title: value.title,
-        description: value.description || undefined,
-        startTime: new Date(value.startTime),
-        endTime: new Date(value.endTime),
-        location: value.location || undefined,
-        zoomLink: value.zoomLink || undefined,
-        category: (value.category || undefined) as
-          | 'exam'
-          | 'chapel'
-          | 'personal'
-          | undefined,
-      }
+      const shared = buildEventInput(value)
 
       if (mode === 'create') {
         createMutation.mutate({ data: shared })
@@ -152,106 +281,8 @@ export function EventDialog({
   }
 
   if (mode === 'view' && event) {
-    const CategoryIcon = event.category
-      ? CATEGORY_ICON[event.category]
-      : CalendarIcon
-    const chipClass = event.category ? CATEGORY_CHIP[event.category] : ''
-
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-md"
-          style={dialogStyle}
-          showCloseButton={false}
-        >
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-          <div className="relative flex min-h-0 flex-1 flex-col">
-            <DialogHeader>
-              <div className="mb-1 flex items-center justify-between">
-                <div>
-                  <div className="h-px w-8 bg-[#C5A059]/40" />
-                  <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                    Event details
-                  </div>
-                </div>
-                {event.category && (
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1.5 border px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.15em] uppercase',
-                      chipClass,
-                    )}
-                  >
-                    <CategoryIcon className="size-2.5" />
-                    {CATEGORY_LABELS[event.category]}
-                  </span>
-                )}
-              </div>
-              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-                {event.title}
-              </DialogTitle>
-              {event.courseName && (
-                <p className="text-[0.78rem] text-[#AFA28F]">
-                  {event.courseName}
-                </p>
-              )}
-            </DialogHeader>
-
-            <DialogBody>
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center gap-2.5 text-sm">
-                  <CalendarIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                  <span className="text-[#D6CCBE]">
-                    {format(new Date(event.startTime), 'PPP')}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm">
-                  <ClockIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                  <span className="text-[#D6CCBE]">
-                    {format(new Date(event.startTime), 'p')} –{' '}
-                    {format(new Date(event.endTime), 'p')}
-                  </span>
-                </div>
-                {event.location && (
-                  <div className="flex items-center gap-2.5 text-sm">
-                    <MapPinIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                    <span className="text-[#D6CCBE]">{event.location}</span>
-                  </div>
-                )}
-                {event.zoomLink && (
-                  <div className="flex items-center gap-2.5 text-sm">
-                    <VideoIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                    <a
-                      href={event.zoomLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="truncate text-[#9B7A41] hover:underline"
-                    >
-                      {event.zoomLink}
-                    </a>
-                  </div>
-                )}
-                {event.description && (
-                  <div className="mt-4 border border-white/8 bg-white/4 p-3">
-                    <p className="line-clamp-6 text-[0.82rem] leading-relaxed text-[#AFA28F]">
-                      {event.description}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </DialogBody>
-
-            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-              <Button
-                variant="outline"
-                theme="dark"
-                onClick={() => onOpenChange(false)}
-              >
-                Close
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <EventViewMode event={event} open={open} onOpenChange={onOpenChange} />
     )
   }
 
