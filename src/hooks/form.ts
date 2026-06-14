@@ -9,7 +9,7 @@ import {
   TextField,
 } from '@/components/ui/app-form-fields'
 
-export const { useAppForm } = createFormHook({
+export const { useAppForm, withForm } = createFormHook({
   fieldComponents: {
     TextField,
     SelectField,

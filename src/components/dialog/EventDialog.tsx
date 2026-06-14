@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dialog'
 import { FieldGroup } from '@/components/ui/field'
 import { SelectItem } from '@/components/ui/select'
-import { useAppForm } from '@/hooks/form'
+import { useAppForm, withForm } from '@/hooks/form'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { createEvent, deleteEvent, updateEvent } from '@/utils/event/events'
 import { cn } from '@/lib/utils'
@@ -38,6 +38,10 @@ type EventDialogProps = {
   onOpenChange: (open: boolean) => void
   mode: EventDialogMode
   event?: CalendarEventRow
+}
+
+type EventFormFieldsProps = Omit<EventDialogProps, 'mode'> & {
+  mode: 'create' | 'edit'
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -230,21 +234,122 @@ function EventViewMode({
   )
 }
 
-export function EventDialog({
-  open,
-  onOpenChange,
+const EventFormFieldsContent = withForm({
+  defaultValues: getDefaultValues('create'),
+  render: ({ form }) => (
+    <FieldGroup className="mt-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form.AppField
+          name="title"
+          validators={{ onSubmit: createEventSchema.shape.title }}
+        >
+          {(field) => (
+            <field.TextField
+              id="event-title"
+              label="Title"
+              required
+              className="sm:col-span-2"
+              placeholder="Event title"
+            />
+          )}
+        </form.AppField>
+        <form.AppField
+          name="startTime"
+          validators={{ onSubmit: requiredDateTimeString }}
+        >
+          {(field) => (
+            <field.TextField
+              id="event-start"
+              label="Start Time"
+              required
+              type="datetime-local"
+            />
+          )}
+        </form.AppField>
+        <form.AppField
+          name="endTime"
+          validators={{
+            onSubmit: ({ value, fieldApi }) => {
+              if (!value) return 'End time is required'
+              const startTime = fieldApi.form.state.values.startTime
+              if (startTime && new Date(value) <= new Date(startTime)) {
+                return 'End time must be after start time'
+              }
+              return undefined
+            },
+          }}
+        >
+          {(field) => (
+            <field.TextField
+              id="event-end"
+              label="End Time"
+              required
+              type="datetime-local"
+            />
+          )}
+        </form.AppField>
+        <form.AppField name="category">
+          {(field) => (
+            <field.SelectField
+              id="event-category"
+              label="Category"
+              placeholder="Select category"
+            >
+              <SelectItem value="chapel">Chapel</SelectItem>
+              <SelectItem value="exam">Exam</SelectItem>
+              <SelectItem value="personal">Personal</SelectItem>
+            </field.SelectField>
+          )}
+        </form.AppField>
+        <form.AppField name="location">
+          {(field) => (
+            <field.TextField
+              id="event-location"
+              label="Location"
+              placeholder="Room or address"
+            />
+          )}
+        </form.AppField>
+        <form.AppField name="zoomLink">
+          {(field) => (
+            <field.TextField
+              id="event-zoom"
+              label="Zoom Link"
+              className="sm:col-span-2"
+              placeholder="https://zoom.us/j/..."
+            />
+          )}
+        </form.AppField>
+        <form.AppField name="description">
+          {(field) => (
+            <field.TextAreaField
+              id="event-description"
+              label="Description"
+              className="sm:col-span-2"
+              placeholder="Event description"
+              rows={5}
+            />
+          )}
+        </form.AppField>
+      </div>
+    </FieldGroup>
+  ),
+})
+
+function EventFormFields({
   mode,
   event,
-}: EventDialogProps) {
-  const { createMutation, updateMutation, deleteMutation, isAnyPending } =
-    useEntityMutation({
-      createFn: createEvent,
-      updateFn: updateEvent,
-      deleteFn: deleteEvent,
-      onSuccess: () => {
-        onOpenChange(false)
-      },
-    })
+  open,
+  onOpenChange,
+}: EventFormFieldsProps) {
+  const { createMutation, updateMutation, isAnyPending } = useEntityMutation({
+    createFn: createEvent,
+    updateFn: updateEvent,
+    deleteFn: deleteEvent,
+    onSuccess: () => {
+      onOpenChange(false)
+    },
+  })
 
   const form = useAppForm({
     defaultValues: getDefaultValues(mode, event),
@@ -266,6 +371,44 @@ export function EventDialog({
     form.reset(getDefaultValues(mode, event))
   }, [open, mode, event, form])
 
+  return (
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      mode={mode}
+      title={mode === 'create' ? 'Create Event' : 'Edit Event'}
+      subtitle={
+        mode === 'create'
+          ? 'Add a new school event to the calendar'
+          : 'Update the event information'
+      }
+      maxWidth="2xl"
+      onSubmit={() => void form.handleSubmit()}
+      isSubmitting={isAnyPending}
+      submitLabel={mode === 'create' ? 'Create Event' : 'Save Changes'}
+    >
+      <DialogBody>
+        <EventFormFieldsContent form={form} />
+      </DialogBody>
+    </FormDialog>
+  )
+}
+
+export function EventDialog({
+  event,
+  mode,
+  open,
+  onOpenChange,
+}: EventDialogProps) {
+  const { deleteMutation } = useEntityMutation({
+    createFn: createEvent,
+    updateFn: updateEvent,
+    deleteFn: deleteEvent,
+    onSuccess: () => {
+      onOpenChange(false)
+    },
+  })
+
   if (mode === 'delete') {
     return (
       <DeleteConfirmDialog
@@ -286,120 +429,16 @@ export function EventDialog({
     )
   }
 
-  return (
-    <FormDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      mode={mode}
-      title={mode === 'create' ? 'Create Event' : 'Edit Event'}
-      subtitle={
-        mode === 'create'
-          ? 'Add a new school event to the calendar'
-          : 'Update the event information'
-      }
-      maxWidth="2xl"
-      onSubmit={() => void form.handleSubmit()}
-      isSubmitting={isAnyPending}
-      submitLabel={mode === 'create' ? 'Create Event' : 'Save Changes'}
-    >
-      <DialogBody>
-        <FieldGroup className="mt-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <form.AppField
-              name="title"
-              validators={{ onSubmit: createEventSchema.shape.title }}
-            >
-              {(field) => (
-                <field.TextField
-                  id="event-title"
-                  label="Title"
-                  required
-                  className="sm:col-span-2"
-                  placeholder="Event title"
-                />
-              )}
-            </form.AppField>
-            <form.AppField
-              name="startTime"
-              validators={{ onSubmit: requiredDateTimeString }}
-            >
-              {(field) => (
-                <field.TextField
-                  id="event-start"
-                  label="Start Time"
-                  required
-                  type="datetime-local"
-                />
-              )}
-            </form.AppField>
-            <form.AppField
-              name="endTime"
-              validators={{
-                onSubmit: ({ value, fieldApi }) => {
-                  if (!value) return 'End time is required'
-                  const startTime = fieldApi.form.state.values.startTime
-                  if (startTime && new Date(value) <= new Date(startTime)) {
-                    return 'End time must be after start time'
-                  }
-                  return undefined
-                },
-              }}
-            >
-              {(field) => (
-                <field.TextField
-                  id="event-end"
-                  label="End Time"
-                  required
-                  type="datetime-local"
-                />
-              )}
-            </form.AppField>
-            <form.AppField name="category">
-              {(field) => (
-                <field.SelectField
-                  id="event-category"
-                  label="Category"
-                  placeholder="Select category"
-                >
-                  <SelectItem value="chapel">Chapel</SelectItem>
-                  <SelectItem value="exam">Exam</SelectItem>
-                  <SelectItem value="personal">Personal</SelectItem>
-                </field.SelectField>
-              )}
-            </form.AppField>
-            <form.AppField name="location">
-              {(field) => (
-                <field.TextField
-                  id="event-location"
-                  label="Location"
-                  placeholder="Room or address"
-                />
-              )}
-            </form.AppField>
-            <form.AppField name="zoomLink">
-              {(field) => (
-                <field.TextField
-                  id="event-zoom"
-                  label="Zoom Link"
-                  className="sm:col-span-2"
-                  placeholder="https://zoom.us/j/..."
-                />
-              )}
-            </form.AppField>
-            <form.AppField name="description">
-              {(field) => (
-                <field.TextAreaField
-                  id="event-description"
-                  label="Description"
-                  className="sm:col-span-2"
-                  placeholder="Event description"
-                  rows={5}
-                />
-              )}
-            </form.AppField>
-          </div>
-        </FieldGroup>
-      </DialogBody>
-    </FormDialog>
-  )
+  if (mode === 'create' || mode === 'edit') {
+    return (
+      <EventFormFields
+        mode={mode}
+        event={event}
+        open={open}
+        onOpenChange={onOpenChange}
+      />
+    )
+  }
+
+  return null
 }
