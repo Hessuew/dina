@@ -22,10 +22,10 @@ import {
   EVALUATION_SCORES,
   EVALUATION_SCORE_LABELS,
   formatScore,
-  reduceScoreKey,
   scoreRequiresAdmissionCategory,
 } from '@/utils/enrolment/domain/evaluation.domain'
 import { EnrollmentDetails } from '@/components/enrollment/EnrollmentDetails'
+import { useEvaluationKeyboard } from '@/hooks/useEvaluationKeyboard'
 import { useMutation } from '@/hooks/useMutation'
 import {
   setEvaluationAdmissionCategory,
@@ -41,10 +41,14 @@ import { cn } from '@/lib/utils'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
-function isTypingTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement
-  )
+function toSaveState(mutation: {
+  isPending: boolean
+  status: 'idle' | 'pending' | 'success' | 'error'
+}): SaveState {
+  if (mutation.isPending) return 'saving'
+  if (mutation.status === 'success') return 'saved'
+  if (mutation.status === 'error') return 'error'
+  return 'idle'
 }
 
 function formatAdmissionCategory(category: AdmissionCategory): string {
@@ -363,76 +367,19 @@ export function EvaluationOverlay({
   }, [])
 
   // Keyboard: scoring, navigation, close. Ignored while typing in the note.
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isTypingTarget(event.target)) return
-
-      if (event.key === 'ArrowRight') {
-        event.preventDefault()
-        void onNext()
-        return
-      }
-      if (event.key === 'ArrowLeft') {
-        event.preventDefault()
-        void onPrev()
-        return
-      }
-      if (event.key === 'Escape') {
-        onClose()
-        return
-      }
-      if (event.key === 'n' || event.key === 'N') {
-        event.preventDefault()
-        const el = noteRef.current
-        if (el) {
-          el.focus()
-          const end = el.value.length
-          el.setSelectionRange(end, end)
-        }
-        return
-      }
-
-      const categoryOption = ADMISSION_CATEGORY_OPTIONS.find(
-        (option) => option.shortcut.toLowerCase() === event.key.toLowerCase(),
-      )
-      if (categoryOption && admissionCategoryEnabled) {
-        event.preventDefault()
-        saveAdmissionCategory(categoryOption.value)
-        return
-      }
-
-      const result = reduceScoreKey(myScore, event.key)
-      if (!result.handled) return
-      event.preventDefault()
-      if (result.changed) saveScore(result.score)
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [
-    admissionCategoryEnabled,
+  useEvaluationKeyboard({
     myScore,
+    admissionCategoryEnabled,
+    noteRef,
     onNext,
     onPrev,
     onClose,
-    saveAdmissionCategory,
     saveScore,
-  ])
-  const scoreState: SaveState = scoreMutation.isPending
-    ? 'saving'
-    : scoreMutation.status === 'success'
-      ? 'saved'
-      : scoreMutation.status === 'error'
-        ? 'error'
-        : 'idle'
+    saveAdmissionCategory,
+  })
 
-  const categoryState: SaveState = categoryMutation.isPending
-    ? 'saving'
-    : categoryMutation.status === 'success'
-      ? 'saved'
-      : categoryMutation.status === 'error'
-        ? 'error'
-        : 'idle'
+  const scoreState = toSaveState(scoreMutation)
+  const categoryState = toSaveState(categoryMutation)
 
   return (
     <div className="fixed inset-0 z-70 flex flex-col bg-[#0B0B0C]/96 pt-10 backdrop-blur-sm">
