@@ -1,5 +1,6 @@
 export * from './schema/enums.schema'
 export * from './schema/profile.schema'
+export * from './schema/account-security.schema'
 export * from './schema/course.schema'
 export * from './schema/assignment.schema'
 export * from './schema/enrollment.schema'

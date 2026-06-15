@@ -32,9 +32,10 @@ export async function requestPasswordResetService(
     }
   }
 
-  if (user.lastResetRequestAt) {
+  const lastResetRequestAt = user.accountSecurity.lastResetRequestAt ?? null
+  if (lastResetRequestAt) {
     const waitSeconds = checkPasswordResetCooldown(
-      user.lastResetRequestAt,
+      lastResetRequestAt,
       new Date(),
     )
     if (waitSeconds !== null) {

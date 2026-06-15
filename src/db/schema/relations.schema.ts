@@ -1,4 +1,5 @@
 import { relations } from 'drizzle-orm'
+import { accountSecurity } from './account-security.schema'
 import { announcements } from './announcement.schema'
 import { assignments, submissions } from './assignment.schema'
 import { calendarEvents } from './calendar.schema'
@@ -22,7 +23,11 @@ import {
 import { profiles } from './profile.schema'
 import { zoomLinks } from './zoom.schema'
 
-export const profilesRelations = relations(profiles, ({ many }) => ({
+export const profilesRelations = relations(profiles, ({ one, many }) => ({
+  accountSecurity: one(accountSecurity, {
+    fields: [profiles.id],
+    references: [accountSecurity.profileId],
+  }),
   courseTeachers: many(courseTeachers),
   submissions: many(submissions),
   announcements: many(announcements),
@@ -36,6 +41,16 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
   postCommentReactions: many(postCommentReactions),
   reviewerAssignments: many(enrollmentReviewerAssignments),
 }))
+
+export const accountSecurityRelations = relations(
+  accountSecurity,
+  ({ one }) => ({
+    profile: one(profiles, {
+      fields: [accountSecurity.profileId],
+      references: [profiles.id],
+    }),
+  }),
+)
 
 export const coursesRelations = relations(courses, ({ many }) => ({
   courseTeachers: many(courseTeachers),

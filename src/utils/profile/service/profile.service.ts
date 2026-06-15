@@ -15,8 +15,8 @@ import {
 import {
   clearEmailChangeTokens,
   completeEmailChange,
+  findLastEmailChangeRequestAt,
   findProfileByEmailChangeToken,
-  findProfileById,
   incrementEmailChangeAttempts,
   updateProfileBasic,
   updateProfileWithEmailChange,
@@ -40,10 +40,10 @@ export async function updateProfileWithEmailChangeService(
   data: z.infer<typeof updateProfileSchema>,
   user: User,
 ) {
-  const profile = await findProfileById(user.id)
+  const lastEmailChangeRequestAt = await findLastEmailChangeRequestAt(user.id)
 
   const waitSeconds = checkEmailChangeRateLimit(
-    profile?.lastEmailChangeRequestAt ?? null,
+    lastEmailChangeRequestAt,
     new Date(),
   )
   if (waitSeconds !== null) {

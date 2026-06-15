@@ -11,7 +11,7 @@ import {
   verifyEmailChangeService,
 } from '@/utils/profile/service/profile.service'
 import { AppError } from '@/utils/errors'
-import { profiles } from '@/db/schema'
+import { accountSecurity, profiles } from '@/db/schema'
 
 const sendEmailChangeVerification = vi.hoisted(() => vi.fn())
 const updateUserById = vi.hoisted(() => vi.fn())
@@ -42,6 +42,13 @@ const makeInput = (
 const findProfile = async (id: string) => {
   const db = await getDb()
   return db.query.profiles.findFirst({ where: eq(profiles.id, id) })
+}
+
+const findSecurity = async (id: string) => {
+  const db = await getDb()
+  return db.query.accountSecurity.findFirst({
+    where: eq(accountSecurity.profileId, id),
+  })
 }
 
 beforeEach(() => {
@@ -99,15 +106,16 @@ describe('updateProfileWithEmailChangeService (integration)', () => {
 
     const row = await findProfile(id)
     expect(row?.fullName).toBe('Renamed')
-    expect(row?.pendingEmail).toBe('pending@test.dev')
-    expect(row?.emailChangeTokenHash).toBeTruthy()
-    expect(row?.emailChangeTokenExpiresAt?.getTime()).toBeGreaterThan(
-      Date.now(),
-    )
-    expect(row?.emailChangeTokenAttempts).toBe(0)
-    expect(row?.lastEmailChangeRequestAt).toBeInstanceOf(Date)
     // email itself is unchanged until verification completes it
     expect(row?.email).toBe('old@test.dev')
+    const security = await findSecurity(id)
+    expect(security?.pendingEmail).toBe('pending@test.dev')
+    expect(security?.emailChangeTokenHash).toBeTruthy()
+    expect(security?.emailChangeTokenExpiresAt?.getTime()).toBeGreaterThan(
+      Date.now(),
+    )
+    expect(security?.emailChangeTokenAttempts).toBe(0)
+    expect(security?.lastEmailChangeRequestAt).toBeInstanceOf(Date)
   })
 
   it('rejects when rate limited and does not send an email', async () => {
@@ -124,8 +132,8 @@ describe('updateProfileWithEmailChangeService (integration)', () => {
     ).rejects.toMatchObject({ code: 'EMAIL_CHANGE_RATE_LIMITED', status: 429 })
 
     expect(sendEmailChangeVerification).not.toHaveBeenCalled()
-    const row = await findProfile(id)
-    expect(row?.pendingEmail).toBeNull()
+    const security = await findSecurity(id)
+    expect(security?.pendingEmail).toBeNull()
   })
 
   it('clears tokens when sending the verification email fails', async () => {
@@ -146,10 +154,10 @@ describe('updateProfileWithEmailChangeService (integration)', () => {
       ),
     ).rejects.toMatchObject({ code: 'EMAIL_SEND_FAILED' })
 
-    const row = await findProfile(id)
-    expect(row?.pendingEmail).toBeNull()
-    expect(row?.emailChangeTokenHash).toBeNull()
-    expect(row?.emailChangeTokenExpiresAt).toBeNull()
+    const security = await findSecurity(id)
+    expect(security?.pendingEmail).toBeNull()
+    expect(security?.emailChangeTokenHash).toBeNull()
+    expect(security?.emailChangeTokenExpiresAt).toBeNull()
   })
 })
 
@@ -177,8 +185,9 @@ describe('verifyEmailChangeService (integration)', () => {
     })
     const row = await findProfile(id)
     expect(row?.email).toBe('pending@test.dev')
-    expect(row?.pendingEmail).toBeNull()
-    expect(row?.emailChangeTokenHash).toBeNull()
+    const security = await findSecurity(id)
+    expect(security?.pendingEmail).toBeNull()
+    expect(security?.emailChangeTokenHash).toBeNull()
   })
 
   it('returns failure for an unknown token without calling Supabase', async () => {
@@ -217,7 +226,8 @@ describe('verifyEmailChangeService (integration)', () => {
 
     expect(result.success).toBe(false)
     const row = await findProfile(id)
-    expect(row?.emailChangeTokenAttempts).toBe(1)
     expect(row?.email).not.toBe('pending@test.dev')
+    const security = await findSecurity(id)
+    expect(security?.emailChangeTokenAttempts).toBe(1)
   })
 })
