@@ -143,7 +143,9 @@ function ThumbnailUploadField({
             Upload Thumbnail
           </Button>
         )}
-        <p className="text-xs text-[#8E816D]">JPG, PNG, WebP or GIF. Max 2MB.</p>
+        <p className="text-xs text-[#8E816D]">
+          JPG, PNG, WebP or GIF. Max 2MB.
+        </p>
       </div>
     </Field>
   )
