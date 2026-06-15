@@ -60,7 +60,7 @@ config change.
 - Within each phase, work **critical → high → moderate**.
 - **Prefer duplicated targets first within a tier.** Run `bunx fallow dupes --format json`; a
   helper that exists in N files is an N-for-one win — a single extraction clears every copy's
-  CRAP finding *and* removes the fallow duplicate. (The first target cleared two copies; a
+  CRAP finding _and_ removes the fallow duplicate. (The first target cleared two copies; a
   later sweep found a third.)
 
 Rationale: pure extractions are cheap, low-risk, and drop CRAP fastest, so they front-load the
@@ -89,17 +89,17 @@ Note any deliberate broadening in the commit message so it is not mistaken for a
 ### Verification — the fast loop (don't run the full gate every cycle)
 
 The full `bun run quality:gate` re-runs the entire unit + integration suites **and**
-`fallow audit --base main`, which lists every *pre-existing* branch-vs-`main` finding. That
+`fallow audit --base main`, which lists every _pre-existing_ branch-vs-`main` finding. That
 noise is irrelevant to a paydown target and the suites are slow, so don't use it as the inner
 loop. Instead:
 
 1. **Progress metric (cheap, no test run):** `bunx fallow health --format json --quiet` — the
-   target finding is gone and the total dropped. This *is* the burndown number.
+   target finding is gone and the total dropped. This _is_ the burndown number.
 2. **Coverage of the new domain file:** `bun run test:coverage` (or a scoped `vitest run` on the
    `*.domain.test.ts` during red→green).
-3. **Isolate *introduced* complexity, not the whole branch:** the gate only blocks on fallow's
+3. **Isolate _introduced_ complexity, not the whole branch:** the gate only blocks on fallow's
    `introduced` flag, but `--base main` computes that against the whole branch diff. Scope it to
-   *your* change by pointing the base at the commit immediately before the target —
+   _your_ change by pointing the base at the commit immediately before the target —
    `QUALITY_BASE=<pre-change-ref> bun run quality:gate` (e.g. `QUALITY_BASE=HEAD` to check
    working-tree changes before committing). The verdict then reflects only what this target
    introduced, not unrelated pre-existing findings.
@@ -119,7 +119,8 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 ### Tracking & the progress ledger
 
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
-moderate)** as of 2026-06-15. The gate prevents regressions, so the count only moves down.
+moderate)** as of 2026-06-15, now **134 (18 critical / 45 high / 71 moderate)**. The gate
+prevents regressions, so the count only moves down.
 
 The **ledger** below is the durable record of what has been fixed and what is being worked on
 right now. It is the single source of truth for the burndown — keep it current as part of every
@@ -143,10 +144,10 @@ So multiple agents (local or cloud) can pay down findings at once without collid
 
 #### Ledger
 
-| Status         | Target (function)  | Kind   | Files / sites                                                                                                | Domain file                              | Cleared                          | Agent / date           |
-| -------------- | ------------------ | ------ | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------- | -------------------------------- | ---------------------- |
-| ✅ done        | `getYoutubeVideoId` | Phase A pure | `MediaCard.tsx`, `routes/_authed/library/index.tsx`, `MediaDetailViewer.tsx`                                  | `src/utils/library/domain/youtube.domain.ts` | 3 CRAP findings + 1 fallow dupe | hessuew / 2026-06-15   |
-| 🔨 in progress | `getUserFriendlyError` | Phase A pure | `components/auth/login-form.tsx`                                                                              | `src/utils/auth/domain/login-error.domain.ts` | 1 CRAP finding (target 156)     | hessuew / 2026-06-15   |
+| Status  | Target (function)      | Kind         | Files / sites                                                                | Domain file                                   | Cleared                         | Agent / date         |
+| ------- | ---------------------- | ------------ | ---------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------- | -------------------- |
+| ✅ done | `getYoutubeVideoId`    | Phase A pure | `MediaCard.tsx`, `routes/_authed/library/index.tsx`, `MediaDetailViewer.tsx` | `src/utils/library/domain/youtube.domain.ts`  | 3 CRAP findings + 1 fallow dupe | hessuew / 2026-06-15 |
+| ✅ done | `getUserFriendlyError` | Phase A pure | `components/auth/login-form.tsx`                                             | `src/utils/auth/domain/login-error.domain.ts` | 1 CRAP finding (CRAP 156)       | hessuew / 2026-06-15 |
 
 Add a new row per target. Leave the table as the live worklist; do not delete `✅ done` rows —
 they are the fix history.
