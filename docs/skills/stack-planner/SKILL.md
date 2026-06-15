@@ -2,8 +2,8 @@
 name: stack-planner
 description: >
   Converts git working directory changes into bounded intent-based Graphite stacks,
-  submits them as ready PRs, links them to Linear issues, and generates AI descriptions
-  for each PR. Full pipeline runs uninterrupted after a single approval gate.
+  runs a hard quality gate, submits them as ready PRs, links them to Linear
+  issues, and generates AI descriptions for each PR. Full pipeline runs uninterrupted after a single approval gate.
   Uses non-interactive Graphite CLI only. Max 5 stacks per run.
 
   **IMPORTANT:**
@@ -19,12 +19,12 @@ description: >
     - "stack these changes"
 ---
 
-# Graphite Stack Planner — v6.0 (Full pipeline)
+# Graphite Stack Planner — v7.0 (Quality-gated full pipeline)
 
 ## 0. Core intent
 
 Convert:
-`git diff` → intent clusters → stacks → submit as ready PRs → link Linear → generate PR descriptions
+`git diff` → intent clusters → stacks → hard quality gate → submit as ready PRs → link Linear → generate PR descriptions
 
 **Key constraint:**
 Stacks are ALWAYS created on top of the current active branch context in Graphite.
@@ -39,10 +39,12 @@ Stacks are ALWAYS created on top of the current active branch context in Graphit
 - Never reconstruct stacks from main
 - Max 5 stacks per run
 - Always use non-interactive Graphite commands only
+- Never submit if the quality gate fails
+- Never mutate files after Graphite stack commits are created
 
-**One approval gate:** show the plan → user approves → full pipeline runs without further stops.
+**One approval gate:** show the plan → user approves → full pipeline runs without further stops unless the quality gate blocks submission.
 
-After the approval gate the full pipeline runs uninterrupted. graphite-linear-connector (Phase 4) resolves every PR automatically in pipeline mode — it never pauses, and auto-creates a Linear issue on low confidence. See the pipeline mode contract in the connector skill.
+After the approval gate the full pipeline runs uninterrupted. graphite-linear-connector (Phase 5) resolves every PR automatically in pipeline mode — it never pauses, and auto-creates a Linear issue on low confidence. See the pipeline mode contract in the connector skill.
 
 **If repo state is unclear:**
 → stop and ask user before doing anything
@@ -55,6 +57,18 @@ After the approval gate the full pipeline runs uninterrupted. graphite-linear-co
 
 ```bash
 gt c --ai --no-interactive
+```
+
+**Deterministic quality gate:**
+
+```bash
+QUALITY_BASE=<base-ref> bun run quality:gate
+```
+
+**Pre-stack safe fixer:**
+
+```bash
+bun run quality:fix
 ```
 
 **Submit all stacks as ready PRs:**
@@ -163,11 +177,31 @@ Order:
 1. Run `git status` and `git diff` to collect changes
 2. Cluster changes into stacks (sections 5–7)
 3. Present plan to user (section 11 output format)
-4. **Wait for approval — this is the only gate**
+4. **Wait for approval — this is the only user gate**
+
+The plan must state that `bun run quality:fix` may update already-changed working-tree files before commits are created. If that would change stack boundaries, stop and ask.
 
 ---
 
-### Phase 2 — Stack
+### Phase 2 — Prepare and Stack
+
+1. Record the current base before creating new stack commits:
+
+   ```bash
+   git rev-parse HEAD
+   ```
+
+   Store the output as `QUALITY_BASE_COMMIT` for Phase 3.
+
+2. Run the safe fixer before staging anything:
+
+   ```bash
+   bun run quality:fix
+   ```
+
+3. Re-run `git status` and `git diff`
+4. If the fixer touched only files already covered by the approved stack plan, continue
+5. If the fixer created unrelated changes or changed stack intent, stop immediately
 
 For each cluster (bottom → top):
 
@@ -179,9 +213,40 @@ For each cluster (bottom → top):
 
 ---
 
-### Phase 3 — Submit
+### Phase 3 — Hard Quality Gate
 
-After all stacks are created:
+After all stacks are created and before `gt submit`, run read-only checks only. Do not run formatters, fixers, codemods, or any other file-mutating command in this phase.
+
+1. Run the deterministic gate:
+
+   ```bash
+   QUALITY_BASE=<QUALITY_BASE_COMMIT> bun run quality:gate
+   ```
+
+   Blocks submit on:
+   - changed-file format check failure
+   - changed-file lint failure
+   - TypeScript failure
+   - unit test failure
+   - integration test failure
+   - Fallow `verdict: "fail"`
+
+   `QUALITY_BASE=<QUALITY_BASE_COMMIT> bun run quality:gate` checks Prettier and ESLint only for files changed since the recorded base, then runs TypeScript, tests, and Fallow for full-stack signal. Fallow `verdict: "warn"` does not block, but summarize the warnings in the final output.
+
+2. Invoke the **reviewing-code** skill against the exact newly-created stack diff
+
+   Blocks submit on:
+   - any review finding with severity `>=75`
+
+   Review findings with severity `50–74` are advisory: include them in the final output, but continue submitting.
+
+3. If any blocking check fails, stop before `gt submit` and report the failing gate
+
+---
+
+### Phase 4 — Submit
+
+Only after Phase 3 passes:
 
 ```bash
 gt submit
@@ -191,11 +256,11 @@ Run `gt log` after submit to collect the PR numbers and URLs for all submitted P
 
 ---
 
-### Phase 4 — Link Linear
+### Phase 5 — Link Linear
 
 Invoke the **graphite-linear-connector** skill in pipeline mode:
 
-- Pass the explicit list of PR numbers/URLs collected in Phase 3
+- Pass the explicit list of PR numbers/URLs collected in Phase 4
 - Pass `--pipeline` flag (fully automatic, no confirmation stops)
 - The connector returns a **PR → Linear issue mapping** (may be null per PR if no match)
 
@@ -203,7 +268,7 @@ See the connector skill's Pipeline Mode section for full contract.
 
 ---
 
-### Phase 5 — Generate PR descriptions
+### Phase 6 — Generate PR descriptions
 
 For each submitted PR, generate a description using the template contract below and write it via:
 
@@ -215,7 +280,7 @@ gh pr edit <PR-number> --body-file /tmp/pr-<PR-number>.md
 
 ```markdown
 **Related Linear Issue:** <Linear-issue-url>
-<Include this header only if Phase 4 returned a Linear issue for this PR>
+<Include this header only if Phase 5 returned a Linear issue for this PR>
 
 ## What
 
@@ -223,8 +288,8 @@ gh pr edit <PR-number> --body-file /tmp/pr-<PR-number>.md
 
 ## Why
 
-<≤2-sentence summary of the Linear issue purpose — from the PR→issue mapping returned in Phase 4>
-<Omit this section entirely if Phase 4 returned no issue for this PR>
+<≤2-sentence summary of the Linear issue purpose — from the PR→issue mapping returned in Phase 5>
+<Omit this section entirely if Phase 5 returned no issue for this PR>
 
 ## Changes
 
@@ -237,7 +302,7 @@ gh pr edit <PR-number> --body-file /tmp/pr-<PR-number>.md
 - `What`: commit title / PR title for this stack slice
 - `Why`: Linear issue description (summarize to ≤2 sentences); omit if null
 - `Changes`: diff and commits scoped to this PR's range only (`git log` + `git diff` between this branch and its parent)
-- `Related Linear Issue`: Linear issue URL from Phase 4 mapping; omit if null
+- `Related Linear Issue`: Linear issue URL from Phase 5 mapping; omit if null
 
 **Do not describe the full stack** — each PR describes its own slice only.
 
@@ -251,6 +316,7 @@ gh pr edit <PR-number> --body-file /tmp/pr-<PR-number>.md
 - git reset / rebase / stash workflows
 - gt restack / gt sync / gt modify
 - gt c --onto main or any main-based reconstruction
+- bun run quality:fix after Graphite stack commits exist
 - any workflow that rebuilds stacks from main
 
 ---
@@ -291,7 +357,7 @@ Depends on:
 After plan, show pipeline summary:
 
 ```
-Pipeline: stack (N) → submit as ready PRs → link Linear → generate descriptions
+Pipeline: quality fix → stack (N) → hard quality gate → submit as ready PRs → link Linear → generate descriptions
 ```
 
 ---

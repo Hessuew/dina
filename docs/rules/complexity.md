@@ -1,7 +1,7 @@
 ---
 name: complexity
 scope: src/components/**, src/routes/**, src/utils/** (server functions)
-enforced-by: bun run quality:gate (fallow `introduced` complexity) + ESLint (warn)
+enforced-by: bun run quality:gate (fallow `introduced` cyclomatic/cognitive/CRAP) + ESLint (warn)
 ---
 
 # Keep new components and endpoints under the complexity limits
@@ -13,15 +13,18 @@ server function — must stay under all of:
 
 - **Cyclomatic complexity ≤ 20** _(enforced)_
 - **Cognitive complexity ≤ 15** _(enforced)_
+- **CRAP under threshold** — must not introduce a fallow CRAP finding _(enforced)_
 - **Body ≤ 60 lines** (target; treat >60 as a refactor signal)
 
-The two enforced limits match the `fallow health` thresholds (`maxCyclomatic 20` /
+The enforced complexity limits match the `fallow health` thresholds (`maxCyclomatic 20` /
 `maxCognitive 15`). The rule governs the code your change introduces — it does not require
 refactoring untouched legacy functions.
 
-> Fallow also reports **CRAP** (complexity × missing coverage). The gate does **not** block on
-> CRAP alone — a simple but untested function is a coverage concern, not a complexity one. High
-> CRAP with low cyclomatic/cognitive means "add tests," and is advisory here.
+> **CRAP** (complexity × missing coverage, `CC² · (1 − cov)³ + CC`) is now enforced too: a
+> new/changed function must not introduce a fallow CRAP finding. A function can be under both
+> complexity limits yet still trip CRAP because it has no coverage — the fix is to **add tests
+> or simplify** (see How to comply). High CRAP is the gate's "this churned/branchy code is
+> untested" signal, and it blocks submit like cyclomatic/cognitive.
 
 ## Why
 
@@ -40,11 +43,21 @@ hotspots are paid down separately.
   return. Route/component bodies orchestrate; they don't hold the rules.
 - Prefer many small, named units over one clever one.
 
+### Lowering component CRAP
+
+Don't chase component CRAP with render tests (no jsdom / `*.test.tsx` — coverage stays scoped
+to logic). Instead, extract a component's pure view-model logic — initial-value builders, input
+builders, validation, mode/branch derivation — into the feature's existing
+`src/utils/<feature>/domain/` folder (already covered at 100% via the `src/utils/**/domain/**`
+glob) and unit-test it there. The component shell then only orchestrates, so its
+cyclomatic/cognitive — and therefore CRAP — drop below threshold. Use a colocated `*.logic.ts`
+next to the component only for glue that genuinely doesn't belong in the shared domain layer.
+
 ## Enforcement
 
 `bun run quality:gate` runs `fallow audit` against the base branch and **fails** if your
-change introduces any complexity finding (fallow's `introduced: true` flag). Pre-existing
-complexity in files you don't touch does not block.
+change introduces any complexity finding — cyclomatic, cognitive, or CRAP — via fallow's
+`introduced: true` flag. Pre-existing complexity in files you don't touch does not block.
 
 ESLint (`complexity`, `max-lines-per-function`) emits **warnings** on changed files for fast
 local feedback; the hard block is the gate above.

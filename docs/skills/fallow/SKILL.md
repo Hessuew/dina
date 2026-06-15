@@ -40,6 +40,11 @@ Optional flags:
 - `--format json` - Output structured JSON for AI parsing
 - `--quiet` - Suppress human-readable output
 
+`audit` is **scoped to changed files**. For whole-repo cleanup, use the full-repo scans:
+
+- `fallow dupes --format json` - widespread duplication across the entire repo.
+- `fallow dead-code --format json --quiet` - full dead-code plus `circular_dependencies`.
+
 ---
 
 ## Analysis Categories
@@ -118,6 +123,42 @@ Fallow's `--format json` output includes:
 }
 ```
 
+### `fallow dupes --format json`
+
+Full-repo duplication scan. Use this (not `audit`) to find widespread copy-paste:
+
+```json
+{
+  "kind": "dupes",
+  "clone_groups": [
+    {
+      "instances": [
+        {
+          "file": string,
+          "start_line": number,
+          "end_line": number,
+          "start_col": number,
+          "end_col": number,
+          "fragment": string
+        }
+      ]
+    }
+  ],
+  "clone_families": [ /* clone_groups grouped by shared origin */ ],
+  "stats": {
+    "files_with_clones": number,
+    "clone_groups": number,
+    "clone_groups_below_min_occurrences": number
+  }
+}
+```
+
+`clone_groups` only lists groups at/above `duplicates.minOccurrences` in
+`.fallowrc.json` (currently **3** — pair-only clones are hidden). The count of hidden
+groups is in `stats.clone_groups_below_min_occurrences`. Pass `--min-occurrences 2` (or
+lower the config) to surface every duplicate pair. Each `clone_groups[].instances[]`
+entry gives the `file` and `start_line`/`end_line` span to deduplicate.
+
 ---
 
 ## Execution Steps
@@ -127,6 +168,29 @@ Fallow's `--format json` output includes:
    ```bash
    bunx fallow audit --format json --base main
    ```
+
+   `audit` only covers changed files. When the ask is "find all duplication" or "clean
+   up circular dependencies" (not just changed-file risk), also run the full-repo scans:
+   - **Find widespread duplication (full repo)**
+
+     ```bash
+     bunx fallow dupes --format json
+     ```
+
+     Inspect `clone_groups[].instances` for the `file` and `start_line`/`end_line` spans
+     to deduplicate; check `stats.clone_groups_below_min_occurrences` to know how many
+     pair-only clones are hidden by `minOccurrences` (add `--min-occurrences 2` to show
+     them).
+
+   - **Find circular dependencies (full repo)**
+
+     ```bash
+     bunx fallow dead-code --format json --quiet
+     ```
+
+     Inspect the top-level `circular_dependencies` array. `audit --base main` can report
+     zero architecture findings while these still exist, because `audit` is scoped to
+     changed files.
 
 2. **Parse JSON output**
    - Extract verdict (pass/warn/fail)
