@@ -6,31 +6,15 @@ import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.r
 import { Button } from '@/components/ui/button'
 import { EnrollmentsTable } from '@/components/table/EnrollmentsTable'
 import { EvaluationOverlay } from '@/components/enrollment/EvaluationOverlay'
-import { PAGE_SIZE_OPTIONS } from '@/components/table/DataTable'
 import { PageLayout } from '@/components/layout/page-layout'
 import { checkTeacherAccess } from '@/utils/auth/admin'
 import { distributeEnrollments, getEnrollments } from '@/utils/enrolment'
-import { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
+import { parseEnrollmentsSearch } from '@/utils/enrolment/domain/enrollments-search.domain'
 import { useEnrollmentReview } from '@/hooks/useEnrollmentReview'
 import { toUserError } from '@/utils/errors'
 
 export const Route = createFileRoute('/_authed/enrollments/')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    page: typeof search.page === 'number' && search.page > 0 ? search.page : 1,
-    pageSize: PAGE_SIZE_OPTIONS.includes(Number(search.pageSize))
-      ? Number(search.pageSize)
-      : 10,
-    search: typeof search.search === 'string' ? search.search : '',
-    sortBy: ENROLLMENT_SORT_KEYS.includes(search.sortBy as EnrollmentSortKey)
-      ? (search.sortBy as EnrollmentSortKey)
-      : 'createdAt',
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    sortDir: (search.sortDir === 'asc' || search.sortDir === 'desc'
-      ? search.sortDir
-      : 'desc') as 'asc' | 'desc',
-    review: typeof search.review === 'string' ? search.review : undefined,
-    viewAll: typeof search.viewAll === 'boolean' ? search.viewAll : false,
-  }),
+  validateSearch: parseEnrollmentsSearch,
   loaderDeps: ({ search }) => ({
     page: search.page,
     pageSize: search.pageSize,
