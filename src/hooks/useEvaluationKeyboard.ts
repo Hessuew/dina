@@ -4,15 +4,19 @@ import type {
   AdmissionCategory,
   EvaluationScore,
 } from '@/utils/enrolment/domain/evaluation.domain'
-import {
-  ADMISSION_CATEGORY_OPTIONS,
-  reduceScoreKey,
-} from '@/utils/enrolment/domain/evaluation.domain'
+import { handleEvaluationKey } from '@/utils/enrolment/domain/evaluation-keyboard.domain'
 
 function isTypingTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement
   )
+}
+
+function focusNoteEnd(el: HTMLTextAreaElement | null): void {
+  if (!el) return
+  el.focus()
+  const end = el.value.length
+  el.setSelectionRange(end, end)
 }
 
 type UseEvaluationKeyboardArgs = {
@@ -43,46 +47,22 @@ export function useEvaluationKeyboard({
 }: UseEvaluationKeyboardArgs) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (isTypingTarget(event.target)) return
-
-      if (event.key === 'ArrowRight') {
-        event.preventDefault()
-        void onNext()
-        return
-      }
-      if (event.key === 'ArrowLeft') {
-        event.preventDefault()
-        void onPrev()
-        return
-      }
-      if (event.key === 'Escape') {
-        onClose()
-        return
-      }
-      if (event.key === 'n' || event.key === 'N') {
-        event.preventDefault()
-        const el = noteRef.current
-        if (el) {
-          el.focus()
-          const end = el.value.length
-          el.setSelectionRange(end, end)
-        }
-        return
-      }
-
-      const categoryOption = ADMISSION_CATEGORY_OPTIONS.find(
-        (option) => option.shortcut.toLowerCase() === event.key.toLowerCase(),
+      handleEvaluationKey(
+        event,
+        {
+          myScore,
+          admissionCategoryEnabled,
+          isTyping: isTypingTarget(event.target),
+        },
+        {
+          onNext,
+          onPrev,
+          onClose,
+          focusNote: () => focusNoteEnd(noteRef.current),
+          saveScore,
+          saveAdmissionCategory,
+        },
       )
-      if (categoryOption && admissionCategoryEnabled) {
-        event.preventDefault()
-        saveAdmissionCategory(categoryOption.value)
-        return
-      }
-
-      const result = reduceScoreKey(myScore, event.key)
-      if (!result.handled) return
-      event.preventDefault()
-      if (result.changed) saveScore(result.score)
     }
 
     window.addEventListener('keydown', handleKeyDown)
