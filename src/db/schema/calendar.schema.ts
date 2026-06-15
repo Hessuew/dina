@@ -1,5 +1,5 @@
 import { pgPolicy, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
-import { relations, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { authenticatedRole } from 'drizzle-orm/supabase'
 import { calendarEventCategoryEnum } from './enums.schema'
 import { courses } from './course.schema'
@@ -70,10 +70,3 @@ export const calendarEvents = pgTable(
     }),
   ],
 )
-
-export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
-  course: one(courses, {
-    fields: [calendarEvents.courseId],
-    references: [courses.id],
-  }),
-}))

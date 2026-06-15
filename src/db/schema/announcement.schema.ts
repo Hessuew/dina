@@ -6,7 +6,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { relations, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { authenticatedRole } from 'drizzle-orm/supabase'
 import { profiles } from './profile.schema'
 import { courses } from './course.schema'
@@ -60,14 +60,3 @@ export const announcements = pgTable(
     }),
   ],
 )
-
-export const announcementsRelations = relations(announcements, ({ one }) => ({
-  author: one(profiles, {
-    fields: [announcements.authorId],
-    references: [profiles.id],
-  }),
-  course: one(courses, {
-    fields: [announcements.courseId],
-    references: [courses.id],
-  }),
-}))

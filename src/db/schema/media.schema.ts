@@ -7,7 +7,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { relations, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { authenticatedRole } from 'drizzle-orm/supabase'
 import { mediaTypeEnum } from './enums.schema'
 import { profiles } from './profile.schema'
@@ -107,14 +107,3 @@ export const mediaLibrary = pgTable(
     }),
   ],
 )
-
-export const mediaLibraryRelations = relations(mediaLibrary, ({ one }) => ({
-  uploader: one(profiles, {
-    fields: [mediaLibrary.uploaderId],
-    references: [profiles.id],
-  }),
-  course: one(courses, {
-    fields: [mediaLibrary.courseId],
-    references: [courses.id],
-  }),
-}))

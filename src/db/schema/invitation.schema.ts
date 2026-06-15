@@ -6,7 +6,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { relations, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { authenticatedRole } from 'drizzle-orm/supabase'
 import { invitationStatusEnum, userRoleEnum } from './enums.schema'
 import { profiles } from './profile.schema'
@@ -71,10 +71,3 @@ export const invitations = pgTable(
     }),
   ],
 )
-
-export const invitationsRelations = relations(invitations, ({ one }) => ({
-  inviter: one(profiles, {
-    fields: [invitations.invitedBy],
-    references: [profiles.id],
-  }),
-}))

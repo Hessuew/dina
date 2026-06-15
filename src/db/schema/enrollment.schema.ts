@@ -11,7 +11,7 @@ import {
   unique,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { relations, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { authenticatedRole } from 'drizzle-orm/supabase'
 import {
   enrollmentAdmissionCategoryEnum,
@@ -178,18 +178,4 @@ export const enrollmentReviewerAssignments = pgTable(
       using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
     }),
   ],
-)
-
-export const enrollmentReviewerAssignmentsRelations = relations(
-  enrollmentReviewerAssignments,
-  ({ one }) => ({
-    enrollment: one(enrollments, {
-      fields: [enrollmentReviewerAssignments.enrollmentId],
-      references: [enrollments.id],
-    }),
-    reviewer: one(profiles, {
-      fields: [enrollmentReviewerAssignments.reviewerId],
-      references: [profiles.id],
-    }),
-  }),
 )

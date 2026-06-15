@@ -6,7 +6,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { relations, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { authenticatedRole } from 'drizzle-orm/supabase'
 import { zoomLinkSectionEnum } from './enums.schema'
 import { courses } from './course.schema'
@@ -52,10 +52,3 @@ export const zoomLinks = pgTable(
     }),
   ],
 )
-
-export const zoomLinksRelations = relations(zoomLinks, ({ one }) => ({
-  course: one(courses, {
-    fields: [zoomLinks.courseId],
-    references: [courses.id],
-  }),
-}))

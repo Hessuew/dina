@@ -7,23 +7,9 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { relations, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { authenticatedRole } from 'drizzle-orm/supabase'
 import { gemstoneEnum, userRoleEnum } from './enums.schema'
-import { courseTeachers } from './course.schema'
-import { submissions } from './assignment.schema'
-import { announcements } from './announcement.schema'
-import { mediaLibrary } from './media.schema'
-import { notifications } from './notification.schema'
-import { invitations } from './invitation.schema'
-import {
-  postCommentReactions,
-  postComments,
-  postNotifications,
-  postReactions,
-  posts,
-} from './post.schema'
-import { enrollmentReviewerAssignments } from './enrollment.schema'
 
 export const profiles = pgTable(
   'profiles',
@@ -99,18 +85,3 @@ export const profiles = pgTable(
     }),
   ],
 )
-
-export const profilesRelations = relations(profiles, ({ many }) => ({
-  courseTeachers: many(courseTeachers),
-  submissions: many(submissions),
-  announcements: many(announcements),
-  mediaUploads: many(mediaLibrary),
-  notifications: many(notifications),
-  invitations: many(invitations),
-  posts: many(posts),
-  postComments: many(postComments),
-  postNotifications: many(postNotifications),
-  postReactions: many(postReactions),
-  postCommentReactions: many(postCommentReactions),
-  reviewerAssignments: many(enrollmentReviewerAssignments),
-}))
