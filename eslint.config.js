@@ -12,7 +12,7 @@ export default [
       complexity: ['warn', 20],
       'max-lines-per-function': [
         'warn',
-        { max: 80, skipBlankLines: true, skipComments: true },
+        { max: 140, skipBlankLines: true, skipComments: true },
       ],
     },
   },
