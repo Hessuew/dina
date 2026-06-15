@@ -18,6 +18,9 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   upload: vi.fn(),
   getPublicUrl: vi.fn(),
+  // Old-object deletion now runs through the service-role admin client, so it
+  // has its own remove mock distinct from the RLS-bound user client above.
+  adminRemove: vi.fn(),
 }))
 
 vi.mock('sharp', () => ({
@@ -35,6 +38,13 @@ vi.mock('@/utils/supabase', () => ({
         remove: mocks.remove,
         upload: mocks.upload,
         getPublicUrl: mocks.getPublicUrl,
+      }),
+    },
+  }),
+  getSupabaseAdminClient: () => ({
+    storage: {
+      from: () => ({
+        remove: mocks.adminRemove,
       }),
     },
   }),
@@ -64,6 +74,9 @@ beforeEach(() => {
   mocks.getPublicUrl
     .mockReset()
     .mockReturnValue({ data: { publicUrl: PUBLIC_URL } })
+  mocks.adminRemove
+    .mockReset()
+    .mockResolvedValue({ data: [{ name: 'removed' }], error: null })
 })
 
 describe('uploadImageService (integration)', () => {
@@ -109,6 +122,14 @@ describe('uploadImageService (integration)', () => {
 })
 
 describe('uploadAvatarService (integration)', () => {
+  async function setupOldAvatar(id: string) {
+    const db = await getDb()
+    await db
+      .update(profiles)
+      .set({ avatarUrl: 'https://host/avatars/old.webp' })
+      .where(eq(profiles.id, id))
+  }
+
   it('persists the avatar URL on the profile', async () => {
     const id = await seedProfile()
 
@@ -122,17 +143,52 @@ describe('uploadAvatarService (integration)', () => {
     expect(row?.avatarUrl).toBe(PUBLIC_URL)
   })
 
-  it('removes the previous avatar object before uploading', async () => {
+  it('removes the previous avatar object via the admin client after uploading', async () => {
     const id = await seedProfile()
-    const db = await getDb()
-    await db
-      .update(profiles)
-      .set({ avatarUrl: 'https://host/avatars/old.webp' })
-      .where(eq(profiles.id, id))
+    await setupOldAvatar(id)
 
     await uploadAvatarService(makeInput(), id)
 
-    expect(mocks.remove).toHaveBeenCalledWith(['old.webp'])
+    expect(mocks.adminRemove).toHaveBeenCalledWith(['old.webp'])
+    // Cleanup must run only after the new object is uploaded.
+    expect(mocks.upload.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.adminRemove.mock.invocationCallOrder[0],
+    )
+  })
+
+  it('keeps the upload successful when old-image cleanup fails', async () => {
+    const id = await seedProfile()
+    await setupOldAvatar(id)
+    mocks.adminRemove.mockResolvedValue({
+      data: null,
+      error: { message: 'forbidden' },
+    })
+
+    const result = await uploadAvatarService(makeInput(), id)
+
+    expect(result).toEqual({ avatarUrl: PUBLIC_URL })
+    const db = await getDb()
+    const row = await db.query.profiles.findFirst({
+      where: eq(profiles.id, id),
+    })
+    expect(row?.avatarUrl).toBe(PUBLIC_URL)
+  })
+
+  it('does not delete the old avatar when the upload fails', async () => {
+    const id = await seedProfile()
+    await setupOldAvatar(id)
+    mocks.upload.mockResolvedValue({ error: { message: 'boom' } })
+
+    await expect(uploadAvatarService(makeInput(), id)).rejects.toMatchObject({
+      code: 'STORAGE_UPLOAD_FAILED',
+    })
+
+    expect(mocks.adminRemove).not.toHaveBeenCalled()
+    const db = await getDb()
+    const row = await db.query.profiles.findFirst({
+      where: eq(profiles.id, id),
+    })
+    expect(row?.avatarUrl).toBe('https://host/avatars/old.webp')
   })
 })
 

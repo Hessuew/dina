@@ -147,7 +147,7 @@ export function MediaDialog({
                 fileName: docUpload.fileObject.name,
                 fileType: docUpload.fileObject.type,
                 fileSize: docUpload.fileObject.size,
-                ...(mode === 'edit' && media ? { oldUrl: media.fileUrl } : {}),
+                ...(mode === 'edit' && media ? { mediaId: media.id } : {}),
               },
             })
             if (uploaded.fileUrl) {

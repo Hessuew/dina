@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   getPublicUrl: vi.fn(),
   remove: vi.fn(),
   uploadImageService: vi.fn(),
+  deleteStorageObject: vi.fn(),
 }))
 
 vi.mock('@/utils/supabase', () => ({
@@ -43,6 +44,7 @@ vi.mock('@/utils/supabase', () => ({
 
 vi.mock('@/utils/imageUpload/service/imageUpload.service', () => ({
   uploadImageService: mocks.uploadImageService,
+  deleteStorageObject: mocks.deleteStorageObject,
 }))
 
 const makeCreateInput = (
@@ -75,6 +77,7 @@ beforeEach(() => {
   mocks.uploadImageService
     .mockReset()
     .mockResolvedValue({ imageUrl: 'https://host/thumb.webp' })
+  mocks.deleteStorageObject.mockReset().mockResolvedValue(undefined)
 })
 
 describe('getLibraryMediaService (integration)', () => {
@@ -300,6 +303,26 @@ describe('uploadMediaPdfService (integration)', () => {
       fileUrl: 'https://host/media-library/x.pdf',
     })
   })
+
+  it('deletes the previous PDF (resolved server-side from mediaId) after upload', async () => {
+    const uploaderId = await seedProfile({ role: 'teacher' })
+    const mediaId = await seedMedia({
+      uploaderId,
+      fileType: 'document',
+      fileUrl:
+        'https://x.supabase.co/storage/v1/object/public/media-library/old.pdf',
+    })
+
+    await uploadMediaPdfService({ ...pdfInput, mediaId }, uploaderId, 'teacher')
+
+    expect(mocks.deleteStorageObject).toHaveBeenCalledWith(
+      'media-library',
+      'old.pdf',
+    )
+    expect(mocks.upload.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.deleteStorageObject.mock.invocationCallOrder[0],
+    )
+  })
 })
 
 describe('uploadMediaThumbnailService (integration)', () => {
@@ -355,5 +378,32 @@ describe('uploadMediaThumbnailService (integration)', () => {
     expect(result).toEqual({ thumbnailUrl: 'https://host/thumb.webp' })
     const row = await findMedia(mediaId)
     expect(row?.thumbnailUrl).toBe('https://host/thumb.webp')
+  })
+
+  it('deletes the previous thumbnail after persisting the new one', async () => {
+    const uploaderId = await seedProfile({ role: 'teacher' })
+    const mediaId = await seedMedia({ uploaderId })
+    const db = await getDb()
+    await db
+      .update(mediaLibrary)
+      .set({ thumbnailUrl: 'https://host/media-thumbnails/old-thumb.webp' })
+      .where(eq(mediaLibrary.id, mediaId))
+
+    await uploadMediaThumbnailService(
+      {
+        mediaId,
+        fileData: 'x',
+        fileName: 't.png',
+        fileType: 'image/png',
+        fileSize: 1024,
+      },
+      uploaderId,
+      'teacher',
+    )
+
+    expect(mocks.deleteStorageObject).toHaveBeenCalledWith(
+      'media-thumbnails',
+      'old-thumb.webp',
+    )
   })
 })
