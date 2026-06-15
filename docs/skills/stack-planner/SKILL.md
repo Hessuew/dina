@@ -2,7 +2,7 @@
 name: stack-planner
 description: >
   Converts git working directory changes into bounded intent-based Graphite stacks,
-  submits them as draft PRs, links them to Linear issues, and generates AI descriptions
+  submits them as ready PRs, links them to Linear issues, and generates AI descriptions
   for each PR. Full pipeline runs uninterrupted after a single approval gate.
   Uses non-interactive Graphite CLI only. Max 5 stacks per run.
 
@@ -24,7 +24,7 @@ description: >
 ## 0. Core intent
 
 Convert:
-`git diff` → intent clusters → stacks → submit as drafts → link Linear → generate PR descriptions
+`git diff` → intent clusters → stacks → submit as ready PRs → link Linear → generate PR descriptions
 
 **Key constraint:**
 Stacks are ALWAYS created on top of the current active branch context in Graphite.
@@ -57,10 +57,10 @@ After the approval gate the full pipeline runs uninterrupted. graphite-linear-co
 gt c --ai --no-interactive
 ```
 
-**Submit all stacks as drafts:**
+**Submit all stacks as ready PRs:**
 
 ```bash
-gt submit --draft
+gt submit
 ```
 
 ---
@@ -184,7 +184,7 @@ For each cluster (bottom → top):
 After all stacks are created:
 
 ```bash
-gt submit --draft
+gt submit
 ```
 
 Run `gt log` after submit to collect the PR numbers and URLs for all submitted PRs.
@@ -291,7 +291,7 @@ Depends on:
 After plan, show pipeline summary:
 
 ```
-Pipeline: stack (N) → submit as drafts → link Linear → generate descriptions
+Pipeline: stack (N) → submit as ready PRs → link Linear → generate descriptions
 ```
 
 ---
