@@ -89,6 +89,54 @@ function getFilenameFromUrl(url: string): string {
   return url.split('?')[0].split('/').pop() ?? url
 }
 
+type DocumentResolution =
+  | { ok: true; url: string; fileSize?: number }
+  | { ok: false; message: string }
+
+/**
+ * Resolve the document URL for a media submission: upload a freshly picked
+ * file, fall back to the existing document URL, or fail with a user message.
+ */
+async function resolveDocumentUrl(params: {
+  docUpload: ReturnType<typeof useFileUpload>
+  existingDocUrl: string | null
+  mode: MediaDialogMode
+  media: MediaLibraryRow | undefined
+  currentUrl: string
+}): Promise<DocumentResolution> {
+  const { docUpload, existingDocUrl, mode, media, currentUrl } = params
+
+  if (!docUpload.fileObject) {
+    if (existingDocUrl) return { ok: true, url: existingDocUrl }
+    return { ok: false, message: 'Please upload a document file' }
+  }
+
+  docUpload.setUploading(true)
+  try {
+    const uploaded = await uploadMediaPdfFn({
+      data: {
+        fileData: docUpload.fileData!,
+        fileName: docUpload.fileObject.name,
+        fileType: docUpload.fileObject.type,
+        fileSize: docUpload.fileObject.size,
+        ...(mode === 'edit' && media ? { mediaId: media.id } : {}),
+      },
+    })
+    if (uploaded.fileUrl) {
+      return {
+        ok: true,
+        url: uploaded.fileUrl,
+        fileSize: docUpload.fileObject.size,
+      }
+    }
+    return { ok: true, url: currentUrl }
+  } catch (error) {
+    return { ok: false, message: toUserError(error).message }
+  } finally {
+    docUpload.setUploading(false)
+  }
+}
+
 export function MediaDialog({
   open,
   onOpenChange,
@@ -138,34 +186,19 @@ export function MediaDialog({
       let fileSize: number | undefined
 
       if (value.kind === 'document') {
-        if (docUpload.fileObject) {
-          docUpload.setUploading(true)
-          try {
-            const uploaded = await uploadMediaPdfFn({
-              data: {
-                fileData: docUpload.fileData!,
-                fileName: docUpload.fileObject.name,
-                fileType: docUpload.fileObject.type,
-                fileSize: docUpload.fileObject.size,
-                ...(mode === 'edit' && media ? { mediaId: media.id } : {}),
-              },
-            })
-            if (uploaded.fileUrl) {
-              url = uploaded.fileUrl
-              fileSize = docUpload.fileObject.size
-            }
-          } catch (error) {
-            toast.error(toUserError(error).message)
-            docUpload.setUploading(false)
-            return
-          }
-          docUpload.setUploading(false)
-        } else if (existingDocUrl) {
-          url = existingDocUrl
-        } else {
-          toast.error('Please upload a document file')
+        const resolved = await resolveDocumentUrl({
+          docUpload,
+          existingDocUrl,
+          mode,
+          media,
+          currentUrl: value.url,
+        })
+        if (!resolved.ok) {
+          toast.error(resolved.message)
           return
         }
+        url = resolved.url
+        fileSize = resolved.fileSize
       }
 
       const payload = {
