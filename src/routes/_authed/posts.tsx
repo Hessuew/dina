@@ -1,10 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import {
-  Loader2,
-  MessageCircle,
-  SendIcon,
-} from 'lucide-react'
+import { Loader2, MessageCircle, SendIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { PostWithDetails } from '@/utils/post/domain/post.domain'
@@ -376,5 +372,3 @@ function PostComposer({
 }
 
 // ── Post Card ─────────────────────────────────────────────────────────────
-
-

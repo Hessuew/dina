@@ -362,7 +362,10 @@ function LessonRow({
             {lesson.title}
           </span>
           {permissions.canEdit && permissions.isCourseTeacher && (
-            <StatusChip variant={isPublished ? 'published' : 'draft'} size="sm" />
+            <StatusChip
+              variant={isPublished ? 'published' : 'draft'}
+              size="sm"
+            />
           )}
         </div>
 
@@ -383,7 +386,9 @@ function LessonRow({
             {lesson.scheduledTime && (
               <div className="flex items-center gap-1">
                 <CalendarIcon className="size-3" />
-                <span>{new Date(lesson.scheduledTime).toLocaleDateString()}</span>
+                <span>
+                  {new Date(lesson.scheduledTime).toLocaleDateString()}
+                </span>
               </div>
             )}
           </div>

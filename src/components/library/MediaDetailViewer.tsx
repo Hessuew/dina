@@ -150,7 +150,10 @@ function MediaContent({
   )
 }
 
-export function MediaDetailViewer({ media, viewerUrl }: MediaDetailViewerProps) {
+export function MediaDetailViewer({
+  media,
+  viewerUrl,
+}: MediaDetailViewerProps) {
   const isVideo = media.fileType === 'video'
 
   return (

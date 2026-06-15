@@ -2,60 +2,36 @@ export type PostChannel =
   | { id: 'general'; name: 'General'; courseId: null }
   | { id: string; name: string; courseId: string }
 
-export type PostWithDetails = {
+export type PostAuthor = {
   id: string
-  course: {
-    id: string
-    title: string
-  } | null
-  content: string
-  createdAt: Date
-  updatedAt: Date
-  author: {
-    id: string
-    fullName: string
-    avatarUrl: string | null
-  }
-  reactions: Array<{
-    id: string
-    emoji: string
-    userId: string
-  }>
-  commentCount: number
-  previewComments: Array<{
-    id: string
-    content: string
-    createdAt: Date
-    updatedAt: Date
-    author: {
-      id: string
-      fullName: string
-      avatarUrl: string | null
-    }
-    reactions: Array<{
-      id: string
-      emoji: string
-      userId: string
-    }>
-  }>
+  fullName: string
+  avatarUrl: string | null
 }
 
-export type CommentWithAuthor = {
+export type PostReaction = { id: string; emoji: string; userId: string }
+
+export type RawComment = {
   id: string
   content: string
   createdAt: Date
   updatedAt: Date
-  author: {
-    id: string
-    fullName: string
-    avatarUrl: string | null
-  }
-  reactions: Array<{
-    id: string
-    emoji: string
-    userId: string
-  }>
+  author: PostAuthor
+  reactions: Array<PostReaction>
 }
+
+export type PostWithDetails = {
+  id: string
+  course: { id: string; title: string } | null
+  content: string
+  createdAt: Date
+  updatedAt: Date
+  author: PostAuthor
+  reactions: Array<PostReaction>
+  commentCount: number
+  previewComments: Array<RawComment>
+}
+
+export type CommentWithAuthor = RawComment
 
 export type ReactionAction = 'added' | 'updated' | 'removed'
 
@@ -66,16 +42,9 @@ export function transformPostWithDetails(
     content: string
     createdAt: Date
     updatedAt: Date
-    author: { id: string; fullName: string; avatarUrl: string | null }
-    reactions: Array<{ id: string; emoji: string; userId: string }>
-    comments: Array<{
-      id: string
-      content: string
-      createdAt: Date
-      updatedAt: Date
-      author: { id: string; fullName: string; avatarUrl: string | null }
-      reactions: Array<{ id: string; emoji: string; userId: string }>
-    }>
+    author: PostAuthor
+    reactions: Array<PostReaction>
+    comments: Array<RawComment>
   },
   commentCount: number,
 ): PostWithDetails {
@@ -102,14 +71,9 @@ export function transformPostWithDetails(
   }
 }
 
-export function transformCommentWithAuthor(comment: {
-  id: string
-  content: string
-  createdAt: Date
-  updatedAt: Date
-  author: { id: string; fullName: string; avatarUrl: string | null }
-  reactions: Array<{ id: string; emoji: string; userId: string }>
-}): CommentWithAuthor {
+export function transformCommentWithAuthor(
+  comment: RawComment,
+): CommentWithAuthor {
   return {
     id: comment.id,
     content: comment.content,
