@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { FileTextIcon, Music2Icon, PlayIcon } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { MediaLibraryRow } from '@/utils/library/library'
+import { getYoutubeVideoId } from '@/utils/library/domain/youtube.domain'
 
 type MediaCardProps = {
   item: MediaLibraryRow
@@ -57,25 +58,6 @@ const MEDIA_TYPE_CONFIG = {
     badgeBorder: 'rgba(197,160,89,0.40)',
   } satisfies MediaTypeConfig,
 } as const
-
-function getYoutubeVideoId(url: string): string | null {
-  try {
-    const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`
-    const u = new URL(normalized)
-    if (u.hostname === 'youtu.be') return u.pathname.replace('/', '') || null
-    if (u.hostname === 'www.youtube.com' || u.hostname === 'youtube.com') {
-      const v = u.searchParams.get('v')
-      if (v) return v
-      if (u.pathname.startsWith('/embed/'))
-        return u.pathname.split('/embed/')[1]?.split('/')[0] ?? null
-      if (u.pathname.startsWith('/shorts/'))
-        return u.pathname.split('/shorts/')[1]?.split('/')[0] ?? null
-    }
-    return null
-  } catch {
-    return null
-  }
-}
 
 function resolveMediaTypeConfig(item: MediaLibraryRow): MediaTypeConfig {
   if (item.fileType === 'video' || item.fileType === 'audio') {
