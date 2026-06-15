@@ -6,6 +6,8 @@ import type {
   EnrollmentSortKey,
   EvaluationWithAuthor,
 } from '@/utils/enrolment/repository/enrolment.repository'
+import type { EvaluationPatch } from '@/utils/enrolment/domain/evaluation.domain'
+import { applyEvaluationPatch } from '@/utils/enrolment/domain/evaluation.domain'
 import { getEnrollments } from '@/utils/enrolment'
 
 type PageSize = 10 | 20 | 50 | 100
@@ -204,43 +206,18 @@ export function useEnrollmentReview({
       enrollmentId: string,
       evaluatorId: string,
       evaluatorName: string,
-      patch: {
-        score?: number | null
-        admissionCategory?: EvaluationWithAuthor['admissionCategory']
-        note?: string
-      },
+      patch: EvaluationPatch,
     ) => {
       setEvalMap((prevMap) => {
         const next = new Map(prevMap)
-        const list = [...(next.get(enrollmentId) ?? [])]
-        const i = list.findIndex((e) => e.evaluatorId === evaluatorId)
-        if (i >= 0) {
-          list[i] = {
-            ...list[i],
-            ...(patch.score !== undefined
-              ? {
-                  score: patch.score,
-                  ...(!patch.score || patch.score < 3
-                    ? { admissionCategory: null }
-                    : {}),
-                }
-              : {}),
-            ...(patch.admissionCategory !== undefined
-              ? { admissionCategory: patch.admissionCategory }
-              : {}),
-            ...(patch.note !== undefined ? { note: patch.note } : {}),
-          }
-        } else {
-          list.push({
-            enrollmentId,
-            evaluatorId,
-            evaluatorName,
-            score: patch.score ?? null,
-            admissionCategory: patch.admissionCategory ?? null,
-            note: patch.note ?? null,
-          })
-        }
-        next.set(enrollmentId, list)
+        next.set(
+          enrollmentId,
+          applyEvaluationPatch(
+            next.get(enrollmentId) ?? [],
+            { enrollmentId, evaluatorId, evaluatorName },
+            patch,
+          ),
+        )
         return next
       })
     },
