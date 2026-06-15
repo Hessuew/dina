@@ -298,54 +298,64 @@ function AnimateIcon({
       return true
     }
 
+    const runInactiveBranch = async () => {
+      await completeStoppedAnimation()
+      if (persistOnAnimateEnd) return
+      if (await resetInitialIfStale()) return
+      await startAnim('initial')
+    }
+
+    const resetForLoopStart = async () => {
+      if (!loop) return false
+      if (await resetInitialIfStale()) return true
+      await startAnim('initial', 'set')
+      return false
+    }
+
+    const runAnimatePhase = async () => {
+      isAnimateInProgressRef.current = true
+      animateEndPromiseRef.current = new Promise<void>((resolve) => {
+        resolveAnimateEndRef.current = resolve
+      })
+      if (await resetActiveAnimationIfStale()) return true
+      await startAnim('animate')
+      if (await resetActiveAnimationIfStale()) return true
+      clearAnimationEndState()
+      return false
+    }
+
+    const resetAfterAnimateEnd = async () => {
+      if (!initialOnAnimateEnd) return false
+      if (await resetInitialIfStale()) return true
+      await startAnim('initial', 'set')
+      return false
+    }
+
+    const continueLoop = async () => {
+      if (!loop) return
+      if (loopDelay > 0) {
+        await waitForLoopDelay()
+        if (await resetInitialIfStale()) return
+      }
+      if (await stopInactiveLoop()) return
+      if (await resetInitialIfStale()) return
+      await run()
+    }
+
     async function run() {
       if (cancelledRef.current) {
         await startAnim('initial')
         return
       }
       if (await resetInitialIfStale()) return
-
       if (!localAnimate) {
-        await completeStoppedAnimation()
-        if (!persistOnAnimateEnd) {
-          if (await resetInitialIfStale()) return
-          await startAnim('initial')
-        }
+        await runInactiveBranch()
         return
       }
-
-      if (loop) {
-        if (await resetInitialIfStale()) return
-        await startAnim('initial', 'set')
-      }
-
-      isAnimateInProgressRef.current = true
-      animateEndPromiseRef.current = new Promise<void>((resolve) => {
-        resolveAnimateEndRef.current = resolve
-      })
-
-      if (await resetActiveAnimationIfStale()) return
-
-      await startAnim('animate')
-
-      if (await resetActiveAnimationIfStale()) return
-
-      clearAnimationEndState()
-
-      if (initialOnAnimateEnd) {
-        if (await resetInitialIfStale()) return
-        await startAnim('initial', 'set')
-      }
-
-      if (loop) {
-        if (loopDelay > 0) {
-          await waitForLoopDelay()
-          if (await resetInitialIfStale()) return
-        }
-        if (await stopInactiveLoop()) return
-        if (await resetInitialIfStale()) return
-        await run()
-      }
+      if (await resetForLoopStart()) return
+      if (await runAnimatePhase()) return
+      if (await resetAfterAnimateEnd()) return
+      await continueLoop()
     }
 
     void run()

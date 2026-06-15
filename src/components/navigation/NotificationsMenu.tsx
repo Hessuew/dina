@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { formatDistanceToNow } from 'date-fns'
 
+import type * as React from 'react'
 import type { PostNotificationGroup } from '@/utils/post/postNotifications'
 import {
   DropdownMenu,
@@ -57,12 +58,14 @@ function NotificationTriggerButton({
   isCollapsed,
   shouldAnimate,
   displayUnreadCount,
+  className,
+  ...props
 }: {
   isDark: boolean
   isCollapsed: boolean
   shouldAnimate: boolean
   displayUnreadCount: string
-}) {
+} & React.ComponentProps<typeof SidebarMenuButton>) {
   const BellIcon = shouldAnimate ? BellRing : Bell
 
   return (
@@ -73,7 +76,9 @@ function NotificationTriggerButton({
         isDark
           ? 'border-l-2 border-transparent text-[#AFA28F] hover:border-[#C5A059]/30 hover:bg-[#1A1716]/60 hover:text-[#F8F4EC] data-[state=open]:border-[#C5A059]/60 data-[state=open]:bg-[#1A1716] data-[state=open]:text-[#F8F4EC]'
           : 'border-l-2 border-transparent text-[#4E463D] hover:border-[#9B7A41]/30 hover:bg-[#EDE8DE]/60 hover:text-[#1C1815] data-[state=open]:border-[#9B7A41]/60 data-[state=open]:bg-[#EDE8DE] data-[state=open]:text-[#1C1815]',
+        className,
       )}
+      {...props}
     >
       <AnimateIcon
         animateOnHover

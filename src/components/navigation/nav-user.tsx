@@ -128,11 +128,13 @@ function NavUserTrigger({
   user,
   initials,
   isDark,
+  className,
+  ...props
 }: {
   user: NavUserData
   initials: string
   isDark: boolean
-}) {
+} & React.ComponentProps<typeof SidebarMenuButton>) {
   return (
     <SidebarMenuButton
       size="lg"
@@ -142,7 +144,9 @@ function NavUserTrigger({
         isDark
           ? 'border-white/8 bg-[#1A1716]/60 text-[#D6CCBE] hover:border-[#C5A059]/30 hover:bg-[#1A1716] hover:text-[#F8F4EC] data-[state=open]:border-[#C5A059]/40 data-[state=open]:bg-[#1A1716]'
           : 'border-[#1A1A1A]/10 bg-[#EDE8DE]/60 text-[#4E463D] hover:border-[#9B7A41]/30 hover:bg-[#EDE8DE] hover:text-[#1C1815] data-[state=open]:border-[#9B7A41]/40 data-[state=open]:bg-[#EDE8DE]',
+        className,
       )}
+      {...props}
     >
       <UserAvatar user={user} initials={initials} isDark={isDark} />
       <UserText user={user} isDark={isDark} compact />
