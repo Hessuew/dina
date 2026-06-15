@@ -183,6 +183,13 @@
       "when": 1780848413438,
       "tag": "0028_course_teachers_teacher_id_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1781463476571,
+      "tag": "0029_clever_impossible_man",
+      "breakpoints": true
     }
   ]
 }
