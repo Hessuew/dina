@@ -2,7 +2,7 @@ export {
   clearEmailChangeTokens,
   completeEmailChange,
   findProfileByEmailChangeToken,
-  findProfileById,
+  findLastEmailChangeRequestAt,
   incrementEmailChangeAttempts,
   updateProfileBasic,
   updateProfileWithEmailChange,

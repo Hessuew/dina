@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { getDb } from 'test/integration/db'
 import type { Role } from '@/utils/authz'
-import { profiles } from '@/db/schema'
+import { accountSecurity, profiles } from '@/db/schema'
 
 export async function seedProfile(
   overrides: {
@@ -10,6 +10,10 @@ export async function seedProfile(
     fullName?: string
     role?: Role
     bio?: string
+    resetTokenHash?: string
+    resetTokenExpiresAt?: Date
+    resetTokenAttempts?: number
+    lastResetRequestAt?: Date
     pendingEmail?: string
     emailChangeTokenHash?: string
     emailChangeTokenExpiresAt?: Date
@@ -25,6 +29,21 @@ export async function seedProfile(
     fullName: overrides.fullName ?? 'Test User',
     role: overrides.role ?? 'student',
     ...(overrides.bio !== undefined ? { bio: overrides.bio } : {}),
+  })
+
+  const security = {
+    ...(overrides.resetTokenHash !== undefined
+      ? { resetTokenHash: overrides.resetTokenHash }
+      : {}),
+    ...(overrides.resetTokenExpiresAt !== undefined
+      ? { resetTokenExpiresAt: overrides.resetTokenExpiresAt }
+      : {}),
+    ...(overrides.resetTokenAttempts !== undefined
+      ? { resetTokenAttempts: overrides.resetTokenAttempts }
+      : {}),
+    ...(overrides.lastResetRequestAt !== undefined
+      ? { lastResetRequestAt: overrides.lastResetRequestAt }
+      : {}),
     ...(overrides.pendingEmail !== undefined
       ? { pendingEmail: overrides.pendingEmail }
       : {}),
@@ -40,6 +59,11 @@ export async function seedProfile(
     ...(overrides.lastEmailChangeRequestAt !== undefined
       ? { lastEmailChangeRequestAt: overrides.lastEmailChangeRequestAt }
       : {}),
-  })
+  }
+
+  if (Object.keys(security).length > 0) {
+    await db.insert(accountSecurity).values({ profileId: id, ...security })
+  }
+
   return id
 }

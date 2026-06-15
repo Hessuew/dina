@@ -1,6 +1,5 @@
 import {
   boolean,
-  integer,
   pgPolicy,
   pgTable,
   text,
@@ -25,17 +24,6 @@ export const profiles = pgTable(
     emailNotifications: boolean('email_notifications').default(true),
     notifyNewAssignments: boolean('notify_new_assignments').default(true),
     notifyGrades: boolean('notify_grades').default(true),
-    resetTokenHash: text('reset_token_hash'),
-    resetTokenExpiresAt: timestamp('reset_token_expires_at'),
-    resetTokenAttempts: integer('reset_token_attempts').default(0).notNull(),
-    lastResetRequestAt: timestamp('last_reset_request_at'),
-    pendingEmail: text('pending_email'),
-    emailChangeTokenHash: text('email_change_token_hash'),
-    emailChangeTokenExpiresAt: timestamp('email_change_token_expires_at'),
-    emailChangeTokenAttempts: integer('email_change_token_attempts')
-      .default(0)
-      .notNull(),
-    lastEmailChangeRequestAt: timestamp('last_email_change_request_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
