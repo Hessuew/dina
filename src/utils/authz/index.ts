@@ -1,20 +1,6 @@
-import { DefaultAuthorizationService } from './default-adapter'
 import { createAuthorizationBuilder } from './builder'
 import { withRequestCache } from './cache'
-import type { AuthorizationService } from './types'
-
-let serviceInstance: AuthorizationService | null = null
-
-export function getAuthorizationService(): AuthorizationService {
-  if (!serviceInstance) {
-    serviceInstance = new DefaultAuthorizationService()
-  }
-  return serviceInstance
-}
-
-export function setAuthorizationService(service: AuthorizationService): void {
-  serviceInstance = service
-}
+import { getAuthorizationService } from './service'
 
 export function authz(userId: string) {
   const service = getAuthorizationService()
@@ -29,6 +15,7 @@ export async function resolveAdminOrTeacherAccess(
 }
 
 export { withRequestCache }
-export type { AuthorizationService, Role } from './types'
+export { setAuthorizationService } from './service'
+export type { Role } from './types'
 export { DefaultAuthorizationService } from './default-adapter'
 export { protectRoute } from './route'

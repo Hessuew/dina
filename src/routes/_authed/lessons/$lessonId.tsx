@@ -1,12 +1,9 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { CalendarIcon, ClockIcon, PlusIcon } from 'lucide-react'
+import { CalendarIcon, ClockIcon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import z from 'zod'
-import type { StatusChipVariant } from '@/components/ui/status-chip'
-import { Button } from '@/components/ui/button'
-import { StatusChip } from '@/components/ui/status-chip'
 import { getAssignmentSubmissionCount, getLesson } from '@/utils/assignments'
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { LessonDialog } from '@/components/dialog/LessonDialog'
@@ -14,8 +11,7 @@ import { useDialogState } from '@/hooks/useDialogState'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
-import { DarkCard } from '@/components/ui/dark-card'
-import { EmptyState } from '@/components/ui/empty-state'
+import { LessonDetailSections } from '@/components/lesson/LessonDetailSections'
 
 const getLessonData = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ lessonId: z.uuid() }))
@@ -134,139 +130,28 @@ function LessonDetailComponent() {
         }
       />
 
-      {/* Main grid */}
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-        {/* Left — lesson content */}
-        <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
-          <DarkCard label="Lesson Content">
-            {!showContent ? (
-              <div className="mt-8 text-center">
-                <p className="text-sm text-[#8E816D] italic">
-                  This lesson is not yet available.
-                </p>
-              </div>
-            ) : lesson.content ? (
-              <p className="mt-4 text-sm leading-7 whitespace-pre-wrap text-[#CFC6B7]">
-                {lesson.content}
-              </p>
-            ) : (
-              <p className="mt-4 text-sm text-[#8E816D] italic">
-                No content provided.
-              </p>
-            )}
-          </DarkCard>
-        </div>
-
-        {/* Right — assignments */}
-        <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
-          <div className="flex items-center justify-between border-b border-white/8 px-6 py-5">
-            <div>
-              <div className="h-px w-8 bg-[#C5A059]/40" />
-              <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                Assignments
-              </div>
-              <div className="mt-1 font-serif text-xl text-[#F8F4EC]">
-                {lesson.assignments.length}{' '}
-                {lesson.assignments.length === 1 ? 'Assignment' : 'Assignments'}
-              </div>
-            </div>
-            {permissions.canEdit && permissions.isCourseTeacher && (
-              <Button
-                theme="dark"
-                onClick={() => assignmentDialog.openDialog('create')}
-              >
-                <PlusIcon className="size-3.5" />
-                Add Assignment
-              </Button>
-            )}
-          </div>
-
-          {lesson.assignments.length === 0 ? (
-            <EmptyState
-              message="No assignments yet"
-              actionLabel="Create First Assignment"
-              onAction={() => assignmentDialog.openDialog('create')}
-              showAction={permissions.canEdit && permissions.isCourseTeacher}
-              variant="dark"
-            />
-          ) : (
-            <div className="divide-y divide-white/8">
-              {lesson.assignments
-                .filter((a: Assignment) =>
-                  role === 'student' ? a.status === 'published' : true,
-                )
-                .map((assignment: Assignment) => {
-                  return (
-                    <div
-                      key={assignment.id}
-                      className="group flex items-start gap-4 px-6 py-5 transition-all hover:bg-white/5"
-                    >
-                      <div
-                        className="min-w-0 flex-1 cursor-pointer"
-                        onClick={() =>
-                          router.navigate({
-                            to: '/assignments/$assignmentId',
-                            params: { assignmentId: assignment.id },
-                            search: {
-                              calendarMonth: undefined,
-                              fromCalendar: false,
-                              fromDashboard: false,
-                            },
-                          })
-                        }
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-[0.62rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
-                            {assignment.title}
-                          </span>
-                          <StatusChip
-                            variant={assignment.status as StatusChipVariant}
-                            size="sm"
-                          />
-                        </div>
-                        {assignment.description && (
-                          <p className="mt-1 line-clamp-2 text-sm text-[#CFC6B7]">
-                            {assignment.description}
-                          </p>
-                        )}
-                        <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
-                          <div className="flex items-center gap-1">
-                            <CalendarIcon className="size-3" />
-                            <span>
-                              Due{' '}
-                              {new Date(
-                                assignment.dueDate,
-                              ).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <span>Max: {assignment.maxGrade ?? 100} pts</span>
-                        </div>
-                      </div>
-                      {permissions.canEdit && permissions.isCourseTeacher && (
-                        <div className="flex shrink-0 items-center">
-                          <EntityHeaderActions
-                            status="published"
-                            canEdit={permissions.canEdit}
-                            isCourseTeacher={permissions.isCourseTeacher}
-                            showStatus={false}
-                            theme="dark"
-                            size="lg"
-                            onEdit={() =>
-                              assignmentDialog.openDialog('edit', assignment)
-                            }
-                            onDelete={() =>
-                              handleDeleteAssignmentClick(assignment)
-                            }
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-            </div>
-          )}
-        </div>
-      </div>
+      <LessonDetailSections
+        lesson={lesson}
+        role={role}
+        permissions={permissions}
+        showContent={showContent}
+        onCreateAssignment={() => assignmentDialog.openDialog('create')}
+        onEditAssignment={(assignment) =>
+          assignmentDialog.openDialog('edit', assignment)
+        }
+        onDeleteAssignment={handleDeleteAssignmentClick}
+        onOpenAssignment={(assignmentId) =>
+          router.navigate({
+            to: '/assignments/$assignmentId',
+            params: { assignmentId },
+            search: {
+              calendarMonth: undefined,
+              fromCalendar: false,
+              fromDashboard: false,
+            },
+          })
+        }
+      />
 
       {/* Assignment Dialog (create / edit / delete) */}
       {assignmentDialog.isOpen && (

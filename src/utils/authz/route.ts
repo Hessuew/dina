@@ -1,5 +1,5 @@
 import { redirect } from '@tanstack/react-router'
-import { getAuthorizationService } from './index'
+import { getAuthorizationService } from './service'
 import type { Role } from './types'
 import { getCurrentUser } from '@/utils/auth/auth'
 import { AuthorizationError } from '@/utils/errors'

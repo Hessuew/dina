@@ -84,6 +84,92 @@ async function assertEvaluationAuthorized(
   }
 }
 
+function assertScoreEvaluationAuthorized(
+  enrollmentId: string,
+  userId: string,
+  isAdmin: boolean,
+  reviewerId: string | null,
+  peerIds: Array<string>,
+): void {
+  if (isAdmin) return
+  if (reviewerId === userId || peerIds.includes(userId)) return
+
+  throw new AuthorizationError('not authorized to evaluate this enrollment', {
+    code: 'ACTION_NOT_ALLOWED',
+    details: { enrollmentId },
+  })
+}
+
+function shouldDeriveScoreStatus(
+  reviewerId: string | null,
+  userId: string,
+  peerIds: Array<string>,
+): reviewerId is string {
+  return (
+    reviewerId !== null && (reviewerId === userId || peerIds.includes(userId))
+  )
+}
+
+async function persistDerivedEvaluationStatus(
+  enrollmentId: string,
+  reviewerId: string,
+  peerIds: Array<string>,
+): Promise<void> {
+  const [enrollment, evaluations] = await Promise.all([
+    findEnrollmentById(enrollmentId),
+    findEvaluationsForEnrollments([enrollmentId]),
+  ])
+
+  if (!enrollment) return
+
+  const reviewerEval = evaluations.find((e) => e.evaluatorId === reviewerId)
+  const reviewerScore = reviewerEval?.score ?? null
+  const peerHasScored = evaluations.some(
+    (e) => peerIds.includes(e.evaluatorId) && e.score !== null,
+  )
+  const nextStatus = deriveEnrollmentStatus(
+    reviewerScore,
+    peerHasScored,
+    enrollment.status,
+  )
+
+  if (nextStatus !== null) {
+    await updateEnrollmentStatusById(enrollmentId, nextStatus)
+  }
+}
+
+async function setEvaluationScoreWithAccess(
+  data: SetEvaluationScoreInput,
+  userId: string,
+): Promise<void> {
+  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+  if (!isAdmin && !isTeacher) {
+    throw new AuthorizationError('admin or teacher access required', {
+      code: 'ROLE_REQUIRED',
+      details: {},
+    })
+  }
+
+  // Fetch reviewerId once — reused for authz check and status derivation.
+  const reviewerId = await findReviewerIdForEnrollment(data.enrollmentId)
+  const peerIds = reviewerId ? await findPeerTeacherIds(reviewerId) : []
+
+  assertScoreEvaluationAuthorized(
+    data.enrollmentId,
+    userId,
+    isAdmin,
+    reviewerId,
+    peerIds,
+  )
+
+  await upsertEvaluation(data.enrollmentId, userId, { score: data.score })
+
+  // Only update status when the evaluator is the assigned Reviewer or the Peer.
+  if (shouldDeriveScoreStatus(reviewerId, userId, peerIds)) {
+    await persistDerivedEvaluationStatus(data.enrollmentId, reviewerId, peerIds)
+  }
+}
+
 /**
  * Records the caller's Enrollment Evaluation score, then auto-derives and
  * persists the enrollment status (ADR 0008 rev 1).
@@ -99,62 +185,7 @@ export async function setEvaluationScoreService(
   data: SetEvaluationScoreInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-    if (!isAdmin && !isTeacher) {
-      throw new AuthorizationError('admin or teacher access required', {
-        code: 'ROLE_REQUIRED',
-        details: {},
-      })
-    }
-
-    // Fetch reviewerId once — reused for authz check and status derivation.
-    const reviewerId = await findReviewerIdForEnrollment(data.enrollmentId)
-    const peerIds = reviewerId ? await findPeerTeacherIds(reviewerId) : []
-
-    if (!isAdmin) {
-      if (reviewerId !== userId && !peerIds.includes(userId)) {
-        throw new AuthorizationError(
-          'not authorized to evaluate this enrollment',
-          {
-            code: 'ACTION_NOT_ALLOWED',
-            details: { enrollmentId: data.enrollmentId },
-          },
-        )
-      }
-    }
-
-    await upsertEvaluation(data.enrollmentId, userId, { score: data.score })
-
-    // Only update status when the evaluator is the assigned Reviewer or the Peer.
-    if (
-      reviewerId !== null &&
-      (reviewerId === userId || peerIds.includes(userId))
-    ) {
-      const [enrollment, evaluations] = await Promise.all([
-        findEnrollmentById(data.enrollmentId),
-        findEvaluationsForEnrollments([data.enrollmentId]),
-      ])
-
-      if (enrollment) {
-        const reviewerEval = evaluations.find(
-          (e) => e.evaluatorId === reviewerId,
-        )
-        const reviewerScore = reviewerEval?.score ?? null
-        const peerHasScored = evaluations.some(
-          (e) => peerIds.includes(e.evaluatorId) && e.score !== null,
-        )
-        const nextStatus = deriveEnrollmentStatus(
-          reviewerScore,
-          peerHasScored,
-          enrollment.status,
-        )
-        if (nextStatus !== null) {
-          await updateEnrollmentStatusById(data.enrollmentId, nextStatus)
-        }
-      }
-    }
-  })
+  return withRequestCache(() => setEvaluationScoreWithAccess(data, userId))
 }
 
 export async function createEnrollmentService(data: CreateEnrollmentInput) {
