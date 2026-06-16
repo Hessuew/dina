@@ -8,8 +8,14 @@ import viteTsConfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from '@tailwindcss/vite'
 import { cloudflare } from '@cloudflare/vite-plugin'
 
+import {
+  buildResolveAlias,
+  isCloudflareMode,
+  resolveCloudflareClientShim,
+} from './scripts/vite-config.domain.ts'
+
 const config = defineConfig(({ mode }) => {
-  const isCloudflare = mode === 'cf' || mode === 'production'
+  const isCloudflare = isCloudflareMode(mode)
 
   const shimPath = fileURLToPath(
     new URL('./src/cloudflare-shim.ts', import.meta.url),
@@ -17,12 +23,11 @@ const config = defineConfig(({ mode }) => {
 
   return {
     resolve: {
-      alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url)),
-        ...(!isCloudflare && {
-          'cloudflare:workers': shimPath,
-        }),
-      },
+      alias: buildResolveAlias(
+        fileURLToPath(new URL('./src', import.meta.url)),
+        shimPath,
+        isCloudflare,
+      ),
     },
     plugins: [
       devtools(),
@@ -35,9 +40,7 @@ const config = defineConfig(({ mode }) => {
           _importer: string | undefined,
           opts: { ssr?: boolean },
         ) {
-          if (id === 'cloudflare:workers' && !opts.ssr) {
-            return shimPath
-          }
+          return resolveCloudflareClientShim(id, opts.ssr, shimPath)
         },
       },
       // this is the plugin that enables path aliases
