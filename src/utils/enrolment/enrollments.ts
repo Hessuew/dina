@@ -4,6 +4,7 @@ import {
   createEnrollmentSchema,
   deleteEnrollmentSchema,
   distributeEnrollmentsSchema,
+  endSubstitutionSchema,
   getEnrollmentByIdSchema,
   getEnrollmentsSchema,
   sendInvitationForEnrollmentSchema,
@@ -11,12 +12,14 @@ import {
   setEvaluationAdmissionCategorySchema,
   setEvaluationNoteSchema,
   setEvaluationScoreSchema,
+  substituteTeacherSchema,
   updateEnrollmentStatusSchema,
 } from '@/schemas/enrollment.schema'
 import {
   createEnrollmentService,
   deleteEnrollmentService,
   distributeEnrollmentsService,
+  endSubstitutionService,
   getEnrollmentByIdService,
   getEnrollmentsService,
   sendInvitationForEnrollmentService,
@@ -24,8 +27,10 @@ import {
   setEvaluationAdmissionCategoryService,
   setEvaluationNoteService,
   setEvaluationScoreService,
+  substituteTeacherService,
   updateEnrollmentStatusService,
 } from '@/utils/enrolment/service/enrolment.service'
+import { findAbsentTeacherIdsWithActiveSubstitution } from '@/utils/enrolment/repository/enrolment.repository'
 
 export const createEnrollment = createServerFn({ method: 'POST' })
   .inputValidator(createEnrollmentSchema)
@@ -102,3 +107,24 @@ export const distributeEnrollments = createServerFn({ method: 'POST' })
     const user = await getCurrentUser()
     return distributeEnrollmentsService(user.id)
   })
+
+export const substituteTeacher = createServerFn({ method: 'POST' })
+  .inputValidator(substituteTeacherSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    return substituteTeacherService(data, user.id)
+  })
+
+export const endSubstitution = createServerFn({ method: 'POST' })
+  .inputValidator(endSubstitutionSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    return endSubstitutionService(data, user.id)
+  })
+
+export const getActiveSubstitutedTeacherIds = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  const teacherIds = await findAbsentTeacherIdsWithActiveSubstitution()
+  return { teacherIds }
+})

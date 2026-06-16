@@ -20,6 +20,7 @@ import {
 } from './enums.schema'
 import { invitations } from './invitation.schema'
 import { profiles } from './profile.schema'
+import { courses } from './course.schema'
 
 export const enrollments = pgTable(
   'enrollments',
@@ -144,6 +145,9 @@ export const enrollmentReviewerAssignments = pgTable(
     reviewerId: uuid('reviewer_id')
       .notNull()
       .references(() => profiles.id, { onDelete: 'cascade' }),
+    courseId: uuid('course_id').references(() => courses.id, {
+      onDelete: 'set null',
+    }),
     assignedAt: timestamp('assigned_at').defaultNow().notNull(),
   },
   (table) => [

@@ -4,6 +4,7 @@ import { announcements } from './announcement.schema'
 import { assignments, submissions } from './assignment.schema'
 import { calendarEvents } from './calendar.schema'
 import {
+  courseSubstitutes,
   courseTeachers,
   courses,
   lessonProgress,
@@ -29,6 +30,12 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
     references: [accountSecurity.profileId],
   }),
   courseTeachers: many(courseTeachers),
+  courseSubstitutesAsSubstitute: many(courseSubstitutes, {
+    relationName: 'substitute',
+  }),
+  courseSubstitutesAsAbsent: many(courseSubstitutes, {
+    relationName: 'absent',
+  }),
   submissions: many(submissions),
   announcements: many(announcements),
   mediaUploads: many(mediaLibrary),
@@ -54,6 +61,7 @@ export const accountSecurityRelations = relations(
 
 export const coursesRelations = relations(courses, ({ many }) => ({
   courseTeachers: many(courseTeachers),
+  courseSubstitutes: many(courseSubstitutes),
   lessons: many(lessons),
   announcements: many(announcements),
   mediaFiles: many(mediaLibrary),
@@ -72,6 +80,26 @@ export const courseTeachersRelations = relations(courseTeachers, ({ one }) => ({
     references: [profiles.id],
   }),
 }))
+
+export const courseSubstitutesRelations = relations(
+  courseSubstitutes,
+  ({ one }) => ({
+    course: one(courses, {
+      fields: [courseSubstitutes.courseId],
+      references: [courses.id],
+    }),
+    substitute: one(profiles, {
+      fields: [courseSubstitutes.substituteTeacherId],
+      references: [profiles.id],
+      relationName: 'substitute',
+    }),
+    absent: one(profiles, {
+      fields: [courseSubstitutes.absentTeacherId],
+      references: [profiles.id],
+      relationName: 'absent',
+    }),
+  }),
+)
 
 export const lessonsRelations = relations(lessons, ({ one, many }) => ({
   course: one(courses, {

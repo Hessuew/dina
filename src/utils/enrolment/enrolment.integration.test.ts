@@ -19,7 +19,7 @@ async function seedPeerReviewScenario() {
   await seedCourseTeacher(courseId, reviewerId)
   await seedCourseTeacher(courseId, peerId)
   const enrollmentId = await seedEnrollment({ status: 'pending' })
-  await seedReviewerAssignment(enrollmentId, reviewerId)
+  await seedReviewerAssignment(enrollmentId, reviewerId, courseId)
   return { reviewerId, peerId, courseId, enrollmentId }
 }
 

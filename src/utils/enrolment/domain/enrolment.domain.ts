@@ -95,9 +95,9 @@ export type EnrollmentWithEvaluation = MaybeRedactedEnrollment & {
  * Derives the ReviewHeading for one enrollment from pre-fetched data.
  *
  * @param enrollmentId - the enrollment to compute heading for
- * @param reviewerAssignments - all reviewer assignments for the page
+ * @param reviewerAssignments - all reviewer assignments for the page (includes courseId)
  * @param evaluations - all evaluations for the page (with evaluator names)
- * @param peersForReviewers - map from reviewer ID to their course-partner list
+ * @param peersForReviewers - map from course ID to all course team members
  */
 export function deriveReviewHeading(
   enrollmentId: string,
@@ -105,6 +105,7 @@ export function deriveReviewHeading(
     enrollmentId: string
     reviewerId: string
     reviewerName: string
+    courseId: string | null
   }>,
   evaluations: Array<{
     enrollmentId: string
@@ -136,7 +137,11 @@ export function deriveReviewHeading(
   const reviewerHasEvaluated =
     reviewerEval !== undefined && reviewerEval.score !== null
 
-  const peers = peersForReviewers.get(assignment.reviewerId) ?? []
+  // Peers = all course team members except the reviewer, keyed by courseId.
+  const courseMembers = assignment.courseId
+    ? (peersForReviewers.get(assignment.courseId) ?? [])
+    : []
+  const peers = courseMembers.filter((m) => m.id !== assignment.reviewerId)
   const peer = peers.at(0) ?? null
   const peerEval = peer
     ? enrollmentEvals.find((e) => e.evaluatorId === peer.id)

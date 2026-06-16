@@ -1,12 +1,16 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { EyeIcon, FileTextIcon, UsersIcon } from 'lucide-react'
+import { EyeIcon, FileTextIcon, UserRoundXIcon, UsersIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.repository'
 import { Button } from '@/components/ui/button'
 import { EnrollmentsTable } from '@/components/table/EnrollmentsTable'
 import { EvaluationOverlay } from '@/components/enrollment/EvaluationOverlay'
 import { PageLayout } from '@/components/layout/page-layout'
+import {
+  EndSubstitutionDialog,
+  StartSubstitutionDialog,
+} from '@/components/dialog/SubstituteTeacherDialog'
 import { checkTeacherAccess } from '@/utils/auth/admin'
 import { distributeEnrollments, getEnrollments } from '@/utils/enrolment'
 import { parseEnrollmentsSearch } from '@/utils/enrolment/domain/enrollments-search.domain'
@@ -55,6 +59,8 @@ function EnrollmentsPage() {
   const isAdmin = user?.role === 'admin'
   const [isListLoading, setIsListLoading] = useState(false)
   const [isDistributing, setIsDistributing] = useState(false)
+  const [isStartSubDialogOpen, setIsStartSubDialogOpen] = useState(false)
+  const [isEndSubDialogOpen, setIsEndSubDialogOpen] = useState(false)
 
   const reviewState = useEnrollmentReview({
     initialEnrollments: enrollments,
@@ -183,15 +189,33 @@ function EnrollmentsPage() {
             {viewAll ? 'Show Own' : 'View All'}
           </Button>
           {isAdmin && (
-            <Button
-              theme="light"
-              variant="outline"
-              onClick={() => void handleDistribute()}
-              disabled={isDistributing}
-            >
-              <UsersIcon className="size-3.5" />
-              Distribute unassigned
-            </Button>
+            <>
+              <Button
+                theme="light"
+                variant="outline"
+                onClick={() => void handleDistribute()}
+                disabled={isDistributing}
+              >
+                <UsersIcon className="size-3.5" />
+                Distribute unassigned
+              </Button>
+              <Button
+                theme="light"
+                variant="outline"
+                onClick={() => setIsStartSubDialogOpen(true)}
+              >
+                <UsersIcon className="size-3.5" />
+                Substitute teacher
+              </Button>
+              <Button
+                theme="light"
+                variant="outline"
+                onClick={() => setIsEndSubDialogOpen(true)}
+              >
+                <UserRoundXIcon className="size-3.5" />
+                End substitution
+              </Button>
+            </>
           )}
           <Button
             theme="light"
@@ -237,6 +261,21 @@ function EnrollmentsPage() {
           })
         }
       />
+
+      {isAdmin && (
+        <>
+          <StartSubstitutionDialog
+            open={isStartSubDialogOpen}
+            onOpenChange={setIsStartSubDialogOpen}
+            onSuccess={() => void router.invalidate()}
+          />
+          <EndSubstitutionDialog
+            open={isEndSubDialogOpen}
+            onOpenChange={setIsEndSubDialogOpen}
+            onSuccess={() => void router.invalidate()}
+          />
+        </>
+      )}
 
       {reviewState.isOpen && reviewState.current && user && (
         <EvaluationOverlay

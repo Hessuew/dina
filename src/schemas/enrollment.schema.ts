@@ -112,6 +112,20 @@ export const getEnrollmentsSchema = z.object({
 
 export const distributeEnrollmentsSchema = z.object({})
 
+export const substituteTeacherSchema = z
+  .object({
+    absentTeacherId: z.uuid('Invalid teacher ID'),
+    substituteTeacherId: z.uuid('Invalid teacher ID'),
+  })
+  .refine((d) => d.absentTeacherId !== d.substituteTeacherId, {
+    message: 'Substitute must differ from absent teacher',
+    path: ['substituteTeacherId'],
+  })
+
+export const endSubstitutionSchema = z.object({
+  absentTeacherId: z.uuid('Invalid teacher ID'),
+})
+
 export type CreateEnrollmentInput = z.infer<typeof createEnrollmentSchema>
 export type GetEnrollmentByIdInput = z.infer<typeof getEnrollmentByIdSchema>
 export type UpdateEnrollmentStatusInput = z.infer<
@@ -130,3 +144,5 @@ export type SetEvaluationAdmissionCategoryInput = z.infer<
   typeof setEvaluationAdmissionCategorySchema
 >
 export type SetEvaluationNoteInput = z.infer<typeof setEvaluationNoteSchema>
+export type SubstituteTeacherInput = z.infer<typeof substituteTeacherSchema>
+export type EndSubstitutionInput = z.infer<typeof endSubstitutionSchema>

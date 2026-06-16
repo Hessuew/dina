@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 import type {
   CreateEnrollmentInput,
   DeleteEnrollmentInput,
+  EndSubstitutionInput,
   GetEnrollmentByIdInput,
   GetEnrollmentsInput,
   SendInvitationForEnrollmentInput,
@@ -10,6 +11,7 @@ import type {
   SetEvaluationAdmissionCategoryInput,
   SetEvaluationNoteInput,
   SetEvaluationScoreInput,
+  SubstituteTeacherInput,
   UpdateEnrollmentStatusInput,
 } from '@/schemas/enrollment.schema'
 import type {
@@ -27,21 +29,26 @@ import {
 } from '@/utils/enrolment/domain/enrolment.domain'
 import {
   bulkAssignEnrollments,
+  deleteCourseSubstituteByAbsent,
   deleteEnrollmentById,
   deleteInvitationById,
   findAllTeacherIds,
+  findCourseIdByTeacherId,
+  findCourseIdsByTeacherIds,
+  findCourseIdsForViewer,
+  findCourseTeamIds,
   findEnrollmentById,
   findEnrollmentsPage,
   findEvaluationsForEnrollments,
   findInvitationByEmail,
-  findPeerTeacherIds,
   findPeersForReviewers,
   findProfileById,
+  findReviewerAssignmentForEnrollment,
   findReviewerAssignmentsForEnrollments,
-  findReviewerIdForEnrollment,
   findUnassignedEnrollmentIds,
   insertEnrollment,
   insertInvitation,
+  insertSubstituteWithReassignment,
   markEnrollmentInvitationSent,
   updateEnrollmentSpecialCaseById,
   updateEnrollmentStatusById,
@@ -65,7 +72,7 @@ import { InvitationEmail } from '@/emails/InvitationEmail'
 
 /**
  * Throws if a non-admin user is not authorized to evaluate the given enrollment.
- * Eligible callers: the assigned Reviewer, or a peer teacher (course partner).
+ * Eligible callers: the assigned Reviewer, or a course team member (peer / substitute).
  * Admins bypass the check entirely.
  */
 async function assertEvaluationAuthorized(
@@ -74,9 +81,14 @@ async function assertEvaluationAuthorized(
   isAdmin: boolean,
 ): Promise<void> {
   if (isAdmin) return
-  const reviewerId = await findReviewerIdForEnrollment(enrollmentId)
-  const peerIds = reviewerId ? await findPeerTeacherIds(reviewerId) : []
-  if (reviewerId !== userId && !peerIds.includes(userId)) {
+  const assignment = await findReviewerAssignmentForEnrollment(enrollmentId)
+  const reviewerId = assignment?.reviewerId ?? null
+  const teamIds = assignment?.courseId
+    ? await findCourseTeamIds(assignment.courseId)
+    : reviewerId
+      ? [reviewerId]
+      : []
+  if (reviewerId !== userId && !teamIds.includes(userId)) {
     throw new AuthorizationError('not authorized to evaluate this enrollment', {
       code: 'ACTION_NOT_ALLOWED',
       details: { enrollmentId },
@@ -150,9 +162,18 @@ async function setEvaluationScoreWithAccess(
     })
   }
 
-  // Fetch reviewerId once — reused for authz check and status derivation.
-  const reviewerId = await findReviewerIdForEnrollment(data.enrollmentId)
-  const peerIds = reviewerId ? await findPeerTeacherIds(reviewerId) : []
+  // Fetch assignment once — reused for authz check and status derivation.
+  const assignment = await findReviewerAssignmentForEnrollment(
+    data.enrollmentId,
+  )
+  const reviewerId = assignment?.reviewerId ?? null
+  const courseId = assignment?.courseId ?? null
+  const teamIds = courseId
+    ? await findCourseTeamIds(courseId)
+    : reviewerId
+      ? [reviewerId]
+      : []
+  const peerIds = teamIds.filter((id) => id !== reviewerId)
 
   assertScoreEvaluationAuthorized(
     data.enrollmentId,
@@ -223,9 +244,9 @@ export async function getEnrollmentsService(
     const reviewerFilter = data.viewAll ? undefined : userId
     const requireReviewerAdmitted = !isAdmin && data.viewAll
 
-    // peerIds for the page filter (whose-assigned-or-peer-queued logic).
-    const peerIds =
-      reviewerFilter !== undefined ? await findPeerTeacherIds(userId) : []
+    // Course IDs the viewer is on (as teacher or active substitute).
+    const viewerCourseIds =
+      reviewerFilter !== undefined ? await findCourseIdsForViewer(userId) : []
 
     const { rows, total } = await findEnrollmentsPage({
       limit: data.pageSize,
@@ -235,7 +256,7 @@ export async function getEnrollmentsService(
       sortDir: data.sortDir,
       includeEmail: isAdmin,
       reviewerFilter,
-      peerIds,
+      viewerCourseIds,
       requireReviewerAdmitted,
     })
 
@@ -247,11 +268,15 @@ export async function getEnrollmentsService(
       findReviewerAssignmentsForEnrollments(enrollmentIds),
     ])
 
-    // Batch-fetch peers for all distinct reviewers on this page.
-    const uniqueReviewerIds = [
-      ...new Set(reviewerAssignments.map((a) => a.reviewerId)),
+    // Batch-fetch team members for all distinct course IDs on this page.
+    const uniqueCourseIds = [
+      ...new Set(
+        reviewerAssignments
+          .map((a) => a.courseId)
+          .filter((id): id is string => id !== null),
+      ),
     ]
-    const peersForReviewers = await findPeersForReviewers(uniqueReviewerIds)
+    const peersForReviewers = await findPeersForReviewers(uniqueCourseIds)
 
     const enrollmentsOut: Array<EnrollmentWithEvaluation> = rows.map((row) => {
       const { evaluationSum, evaluationCount, ...enrollment } = row
@@ -509,8 +534,18 @@ export async function distributeEnrollmentsService(userId: string) {
       return { assigned: 0 }
     }
     const assignments = buildEnrollmentAssignments(unassignedIds, teacherIds)
+
+    // Enrich each assignment with the reviewer's course_id so the course namespace
+    // is recorded on the assignment row (used for peer-review scoping, ADR 0007 rev 2).
+    const uniqueReviewerIds = [...new Set(assignments.map((a) => a.reviewerId))]
+    const courseByReviewer = await findCourseIdsByTeacherIds(uniqueReviewerIds)
+    const enriched = assignments.map((a) => ({
+      ...a,
+      courseId: courseByReviewer.get(a.reviewerId) ?? null,
+    }))
+
     try {
-      await bulkAssignEnrollments(assignments)
+      await bulkAssignEnrollments(enriched)
     } catch (error) {
       throw new AppError({
         code: 'DISTRIBUTION_FAILED',
@@ -524,5 +559,53 @@ export async function distributeEnrollmentsService(userId: string) {
       })
     }
     return { assigned: assignments.length }
+  })
+}
+
+/**
+ * Activates a teacher substitution: inserts a course_substitutes record and
+ * bulk-reassigns all unscored assignments from the absent teacher to the
+ * substitute in a single transaction.
+ */
+export async function substituteTeacherService(
+  data: SubstituteTeacherInput,
+  adminUserId: string,
+): Promise<{ reassigned: number }> {
+  return withRequestCache(async () => {
+    await authz(adminUserId).hasRole('admin')
+
+    const courseId = await findCourseIdByTeacherId(data.absentTeacherId)
+    if (!courseId) {
+      throw new NotFoundError('Absent teacher has no course assignment', {
+        code: 'NOT_FOUND',
+        details: { absentTeacherId: data.absentTeacherId },
+      })
+    }
+
+    return insertSubstituteWithReassignment(
+      courseId,
+      data.substituteTeacherId,
+      data.absentTeacherId,
+    )
+  })
+}
+
+/**
+ * Ends an active substitution by removing the course_substitutes record.
+ * Remaining unscored assignments must be re-distributed by the admin separately.
+ */
+export async function endSubstitutionService(
+  data: EndSubstitutionInput,
+  adminUserId: string,
+): Promise<void> {
+  return withRequestCache(async () => {
+    await authz(adminUserId).hasRole('admin')
+    const deleted = await deleteCourseSubstituteByAbsent(data.absentTeacherId)
+    if (deleted === 0) {
+      throw new NotFoundError('No active substitution found for this teacher', {
+        code: 'NOT_FOUND',
+        details: { absentTeacherId: data.absentTeacherId },
+      })
+    }
   })
 }

@@ -6,6 +6,8 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
@@ -87,8 +89,8 @@ export const courseTeachers = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [
-    // Peer-teacher lookup queries filter course_teachers by teacher_id.
-    index('course_teachers_teacher_id_idx').on(table.teacherId),
+    // One course per teacher — uniquely constrained (ADR 0007 rev 2).
+    uniqueIndex('course_teachers_teacher_id_unique').on(table.teacherId),
     // Teachers can view their own course assignments
     pgPolicy('teachers_view_own_assignments', {
       for: 'select',
@@ -245,6 +247,51 @@ export const lessonProgress = pgTable(
       for: 'insert',
       to: authenticatedRole,
       withCheck: sql`student_id = auth.uid()`,
+    }),
+  ],
+)
+
+/**
+ * Temporary substitution records: Teacher A covers Teacher B's Reviewer
+ * duties on a specific course without being added to course_teachers.
+ * Created and removed by an Admin. Unique constraints ensure:
+ *   - one substitution per (substitute, course)
+ *   - one substitute per (absent teacher, course)
+ */
+export const courseSubstitutes = pgTable(
+  'course_substitutes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    courseId: uuid('course_id')
+      .notNull()
+      .references(() => courses.id, { onDelete: 'cascade' }),
+    substituteTeacherId: uuid('substitute_teacher_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    absentTeacherId: uuid('absent_teacher_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    unique('course_substitutes_substitute_course_unique').on(
+      table.substituteTeacherId,
+      table.courseId,
+    ),
+    unique('course_substitutes_absent_course_unique').on(
+      table.absentTeacherId,
+      table.courseId,
+    ),
+    pgPolicy('admins_manage_course_substitutes', {
+      for: 'all',
+      to: authenticatedRole,
+      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+      withCheck: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
+    }),
+    pgPolicy('teachers_view_own_substitutions', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`substitute_teacher_id = auth.uid() OR absent_teacher_id = auth.uid()`,
     }),
   ],
 )
