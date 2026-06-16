@@ -4,6 +4,11 @@ import { Loader2, MessageCircle, SendIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { PostWithDetails } from '@/utils/post/domain/post.domain'
+import {
+  decideFocusFetch,
+  decideFocusScroll,
+  prependPostIfAbsent,
+} from '@/utils/post/domain/focus-post.domain'
 import { Button } from '@/components/ui/button'
 import { PageLayout } from '@/components/layout/page-layout'
 import { Textarea } from '@/components/ui/textarea'
@@ -135,36 +140,37 @@ function PostsComponent() {
   }, [selectedChannel])
 
   useEffect(() => {
-    if (!focusPostId) return
-    if (loadedChannelRef.current !== selectedChannel) return
+    const decision = decideFocusFetch({
+      focusPostId,
+      loadedChannel: loadedChannelRef.current,
+      selectedChannel,
+      loadedPostIds: allPosts.map((p) => p.id),
+      lastFetchKey: focusFetchKeyRef.current,
+    })
+    if (!decision.fetch) return
 
-    const focusKey = `${focusPostId}:${selectedChannel}`
-    if (allPosts.some((p) => p.id === focusPostId)) return
-    if (focusFetchKeyRef.current === focusKey) return
-
-    focusFetchKeyRef.current = focusKey
-    getPostById({ data: { postId: focusPostId } })
+    focusFetchKeyRef.current = decision.focusKey
+    getPostById({ data: { postId: decision.postId } })
       .then((res) => {
-        setAllPosts((prev) => {
-          if (prev.some((p) => p.id === res.post.id)) return prev
-          return [res.post, ...prev]
-        })
+        setAllPosts((prev) => prependPostIfAbsent(prev, res.post))
       })
       .catch(() => {})
   }, [allPosts, focusPostId, selectedChannel])
 
   useEffect(() => {
-    if (!focusPostId) return
-    if (loadedChannelRef.current !== selectedChannel) return
+    const decision = decideFocusScroll({
+      focusPostId,
+      loadedChannel: loadedChannelRef.current,
+      selectedChannel,
+      lastScrollKey: focusScrollKeyRef.current,
+    })
+    if (!decision.scroll) return
 
-    const focusKey = `${focusPostId}:${selectedChannel}`
-    if (focusScrollKeyRef.current === focusKey) return
-
-    const el = document.getElementById(`post-${focusPostId}`)
+    const el = document.getElementById(decision.elementId)
     if (!el) return
 
     el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    focusScrollKeyRef.current = focusKey
+    focusScrollKeyRef.current = decision.focusKey
   }, [allPosts, focusPostId, selectedChannel])
 
   const handlePostCreated = (post: PostWithDetails) => {
