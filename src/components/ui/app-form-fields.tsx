@@ -42,6 +42,7 @@ interface SelectFieldProps extends BaseAppFieldProps {
   id: string
   placeholder?: string
   children: ReactNode
+  renderValue?: (value: string) => ReactNode
 }
 
 interface TextAreaFieldWithWordCountProps extends BaseAppFieldProps {

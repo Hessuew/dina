@@ -8,12 +8,13 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { SelectItem } from '@/components/ui/select'
 import { createCourseSchema } from '@/schemas/course.schema'
-import { useAppForm } from '@/hooks/form'
+import { useAppForm, withForm } from '@/hooks/form'
 import { useAllTeachers } from '@/hooks/useAllTeachers'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import { createCourse, updateCourse } from '@/utils/courses'
 import { uploadCourseThumbnailFn } from '@/utils/imageUpload'
+import { getTeacherName } from '@/utils/teachers/domain/teachers.domain'
 
 type CourseFormData = {
   title: string
@@ -151,6 +152,142 @@ function ThumbnailUploadField({
   )
 }
 
+type CourseFormFieldsExtraProps = {
+  teachers: Array<{ id: string; fullName: string }>
+  isAdmin: boolean
+  fileInputRef: React.RefObject<HTMLInputElement | null>
+  fileData: string | null
+  thumbnailUrl: string | null
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onClearThumbnail: () => void
+  mode: 'create' | 'edit'
+}
+
+const CourseFormFieldsContent = withForm({
+  defaultValues: getInitialValues(undefined),
+  props: {} as CourseFormFieldsExtraProps,
+  render: ({
+    form,
+    teachers,
+    isAdmin,
+    fileInputRef,
+    fileData,
+    thumbnailUrl,
+    onFileChange,
+    onClearThumbnail,
+    mode,
+  }) => (
+    <FieldGroup className="mt-6 gap-8">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <form.AppField
+          name="title"
+          validators={{ onSubmit: createCourseSchema.shape.title }}
+        >
+          {(field) => (
+            <field.TextField
+              id="course-title"
+              label="Title"
+              required
+              className="sm:col-span-2"
+              placeholder="Introduction to Programming"
+            />
+          )}
+        </form.AppField>
+        <div className="sm:col-span-1" />
+        <form.AppField name="orderIndex">
+          {(field) => (
+            <field.NumberField
+              id="course-orderIndex"
+              label="Order Index"
+              min={0}
+              placeholder="0"
+              description="Lower numbers appear first in course list"
+            />
+          )}
+        </form.AppField>
+        {isAdmin && (
+          <>
+            <form.AppField name="teacher1Id">
+              {(field) => (
+                <field.SelectField
+                  id="course-teacher1"
+                  label="Teacher 1"
+                  placeholder="Select first teacher"
+                  renderValue={(value) => getTeacherName(value, teachers)}
+                >
+                  <TeacherSelectItems teachers={teachers} />
+                </field.SelectField>
+              )}
+            </form.AppField>
+            <form.AppField
+              name="teacher2Id"
+              validators={{
+                onSubmit: ({ value, fieldApi }) => {
+                  const teacher1Id = fieldApi.form.state.values.teacher1Id
+                  if (
+                    value !== '' &&
+                    teacher1Id !== '' &&
+                    value === teacher1Id
+                  ) {
+                    return 'Please select 2 different teachers'
+                  }
+                  return undefined
+                },
+              }}
+            >
+              {(field) => (
+                <field.SelectField
+                  id="course-teacher2"
+                  label="Teacher 2"
+                  placeholder="Select second teacher"
+                  renderValue={(value) => getTeacherName(value, teachers)}
+                >
+                  <TeacherSelectItems
+                    teachers={teachers.filter(
+                      (t) => t.id !== form.getFieldValue('teacher1Id'),
+                    )}
+                  />
+                </field.SelectField>
+              )}
+            </form.AppField>
+          </>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form.AppField
+          name="description"
+          validators={{ onSubmit: createCourseSchema.shape.description }}
+        >
+          {(field) => (
+            <field.TextAreaField
+              id="course-description"
+              label="Description"
+              placeholder="Describe what students will learn in this course"
+              rows={10}
+            />
+          )}
+        </form.AppField>
+        <ThumbnailUploadField
+          fileInputRef={fileInputRef}
+          fileData={fileData}
+          thumbnailUrl={thumbnailUrl}
+          onFileChange={onFileChange}
+          onClear={onClearThumbnail}
+        />
+      </div>
+
+      {mode === 'edit' && (
+        <form.AppField name="isPublished">
+          {(field) => (
+            <field.SwitchField id="course-published" label="Publish course" />
+          )}
+        </form.AppField>
+      )}
+    </FieldGroup>
+  ),
+})
+
 export function CourseDialog({
   open,
   onOpenChange,
@@ -265,118 +402,20 @@ export function CourseDialog({
       loadingLabel={isUploading ? 'Uploading...' : undefined}
     >
       <DialogBody>
-        <FieldGroup className="mt-6 gap-8">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <form.AppField
-              name="title"
-              validators={{ onSubmit: createCourseSchema.shape.title }}
-            >
-              {(field) => (
-                <field.TextField
-                  id="course-title"
-                  label="Title"
-                  required
-                  className="sm:col-span-2"
-                  placeholder="Introduction to Programming"
-                />
-              )}
-            </form.AppField>
-            <div className="sm:col-span-1" />
-            <form.AppField name="orderIndex">
-              {(field) => (
-                <field.NumberField
-                  id="course-orderIndex"
-                  label="Order Index"
-                  min={0}
-                  placeholder="0"
-                  description="Lower numbers appear first in course list"
-                />
-              )}
-            </form.AppField>
-            {isAdmin && (
-              <>
-                <form.AppField name="teacher1Id">
-                  {(field) => (
-                    <field.SelectField
-                      id="course-teacher1"
-                      label="Teacher 1"
-                      placeholder="Select first teacher"
-                    >
-                      <TeacherSelectItems teachers={teachers} />
-                    </field.SelectField>
-                  )}
-                </form.AppField>
-                <form.AppField
-                  name="teacher2Id"
-                  validators={{
-                    onSubmit: ({ value, fieldApi }) => {
-                      const teacher1Id = fieldApi.form.state.values.teacher1Id
-                      if (
-                        value !== '' &&
-                        teacher1Id !== '' &&
-                        value === teacher1Id
-                      ) {
-                        return 'Please select 2 different teachers'
-                      }
-                      return undefined
-                    },
-                  }}
-                >
-                  {(field) => (
-                    <field.SelectField
-                      id="course-teacher2"
-                      label="Teacher 2"
-                      placeholder="Select second teacher"
-                    >
-                      <TeacherSelectItems
-                        teachers={teachers.filter(
-                          (t) => t.id !== form.getFieldValue('teacher1Id'),
-                        )}
-                      />
-                    </field.SelectField>
-                  )}
-                </form.AppField>
-              </>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <form.AppField
-              name="description"
-              validators={{ onSubmit: createCourseSchema.shape.description }}
-            >
-              {(field) => (
-                <field.TextAreaField
-                  id="course-description"
-                  label="Description"
-                  placeholder="Describe what students will learn in this course"
-                  rows={10}
-                />
-              )}
-            </form.AppField>
-            <ThumbnailUploadField
-              fileInputRef={fileInputRef}
-              fileData={fileData}
-              thumbnailUrl={thumbnailUrl}
-              onFileChange={handleFileChange}
-              onClear={() => {
-                setThumbnailUrl(null)
-                clearFile()
-              }}
-            />
-          </div>
-
-          {mode === 'edit' && (
-            <form.AppField name="isPublished">
-              {(field) => (
-                <field.SwitchField
-                  id="course-published"
-                  label="Publish course"
-                />
-              )}
-            </form.AppField>
-          )}
-        </FieldGroup>
+        <CourseFormFieldsContent
+          form={form}
+          teachers={teachers}
+          isAdmin={isAdmin}
+          fileInputRef={fileInputRef}
+          fileData={fileData}
+          thumbnailUrl={thumbnailUrl}
+          onFileChange={handleFileChange}
+          onClearThumbnail={() => {
+            setThumbnailUrl(null)
+            clearFile()
+          }}
+          mode={mode}
+        />
       </DialogBody>
     </FormDialog>
   )

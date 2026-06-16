@@ -1,3 +1,16 @@
+type TeacherOption = { id: string; fullName: string }
+
+/**
+ * Returns the full name of the teacher with the given ID, or an empty string
+ * if not found (e.g. list not yet loaded).
+ */
+export function getTeacherName(
+  teacherId: string,
+  teachers: Array<TeacherOption>,
+): string {
+  return teachers.find((t) => t.id === teacherId)?.fullName ?? ''
+}
+
 type TeacherWithCourse = {
   id: string
   fullName: string
