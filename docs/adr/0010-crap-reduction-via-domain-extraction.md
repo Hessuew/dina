@@ -143,12 +143,13 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **126** open (14 critical / 45 high / 67 moderate) after the
-`createEvent`/`updateEvent` input-builder extraction (`event-input.domain.ts`). Prior: **128**
+only moves down. Latest: **124** open (14 critical / 45 high / 65 moderate) after extracting
+`goNext`/`goPrev` orchestration into `navigateForward`/`navigateBackward` (DI side effects) in
+`enrollment-review.domain.ts`, collapsing both hook callbacks to CC-1 wrappers. Prior: **126**
+open (14 critical / 45 high / 67 moderate) after the
+`createEvent`/`updateEvent` input-builder extraction (`event-input.domain.ts`); **128**
 open after `requestPasswordResetService` and `resetPasswordService` (extracted into
-`password-reset-flow.domain.ts`); **130** after `useEntityMutation` and `useEnrollmentReview`. (Same pass reduced `goNext`/`goPrev` from CRAP 42→30 via the shared
-`planForward`/`planBackward` planners in `enrollment-review.domain.ts`, but they remain at-threshold
-findings — still `⬜ todo`.)
+`password-reset-flow.domain.ts`); **130** after `useEntityMutation` and `useEnrollmentReview`.
 
 The **ledger** below is the durable record of what has been fixed and what is being worked on
 right now. It is the single source of truth for the burndown — keep it current as part of every
@@ -306,8 +307,8 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ⬜ todo | 🟡 mod  | 42   | `FormFieldInput`                | B component | `src/components/ui/form-field.tsx:37`                                        | —                                                          | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 42   | `FormFieldTextarea`             | B component | `src/components/ui/form-field.tsx:149`                                       | —                                                          | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 42   | `FormFieldSelect`               | B component | `src/components/ui/form-field.tsx:201`                                       | —                                                          | —                               | —                    |
-| 🔨 in progress | 🟡 mod  | 42   | `goNext`                        | A hook      | `src/hooks/useEnrollmentReview.ts:156`                                       | —                                                          | —                               | hessuew / 2026-06-16 |
-| 🔨 in progress | 🟡 mod  | 42   | `goPrev`                        | A hook      | `src/hooks/useEnrollmentReview.ts:176`                                       | —                                                          | —                               | hessuew / 2026-06-16 |
+| ✅ done | 🟡 mod  | 42   | `goNext`                        | A hook      | `src/hooks/useEnrollmentReview.ts:156`                                       | `src/utils/enrolment/domain/enrollment-review.domain.ts`   | 1 CRAP finding (CRAP 42)         | hessuew / 2026-06-16 |
+| ✅ done | 🟡 mod  | 42   | `goPrev`                        | A hook      | `src/hooks/useEnrollmentReview.ts:176`                                       | `src/utils/enrolment/domain/enrollment-review.domain.ts`   | 1 CRAP finding (CRAP 42)         | hessuew / 2026-06-16 |
 | ⬜ todo | 🟡 mod  | 42   | `CalendarComponent`             | B component | `src/routes/_authed/calendar.tsx:75`                                         | —                                                          | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 42   | `EnrollmentDetailPage`          | B component | `src/routes/_authed/enrollments/$enrollmentId.tsx:62`                        | —                                                          | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 42   | `MediaDetailComponent`          | B component | `src/routes/_authed/library/$mediaId.tsx:18`                                 | —                                                          | —                               | —                    |

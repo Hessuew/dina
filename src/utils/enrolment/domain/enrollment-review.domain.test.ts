@@ -1,5 +1,4 @@
-import { describe, expect, it } from 'vitest'
-import type { EvaluationWithAuthor } from '../repository/enrolment.repository'
+import { describe, expect, it, vi } from 'vitest'
 import {
   computeInitialIndex,
   computePosition,
@@ -7,11 +6,17 @@ import {
   deriveHasNext,
   deriveHasPrev,
   groupEvaluations,
+  navigateBackward,
+  navigateForward,
   planBackward,
   planForward,
 } from './enrollment-review.domain'
+import type { EvaluationWithAuthor } from '../repository/enrolment.repository'
 
-function mkEval(enrollmentId: string, evaluatorId: string): EvaluationWithAuthor {
+function mkEval(
+  enrollmentId: string,
+  evaluatorId: string,
+): EvaluationWithAuthor {
   return {
     enrollmentId,
     evaluatorId,
@@ -149,5 +154,153 @@ describe('planBackward', () => {
 
   it('is noop at the absolute start', () => {
     expect(planBackward(0, 1)).toEqual({ kind: 'noop' })
+  })
+})
+
+const refs = (...ids: Array<string>) => ids.map((id) => ({ id }))
+
+function forwardDeps(
+  over: Partial<Parameters<typeof navigateForward>[0]> = {},
+) {
+  return {
+    index: 0,
+    items: refs('a', 'b', 'c'),
+    maxPage: 1,
+    totalPages: 1,
+    loadPage: vi.fn(async () => refs()),
+    setIndex: vi.fn(),
+    syncReviewParam: vi.fn(),
+    onError: vi.fn(),
+    ...over,
+  }
+}
+
+function backwardDeps(
+  over: Partial<Parameters<typeof navigateBackward>[0]> = {},
+) {
+  return {
+    index: 1,
+    items: refs('a', 'b', 'c'),
+    minPage: 1,
+    loadPage: vi.fn(async () => refs()),
+    setIndex: vi.fn(),
+    syncReviewParam: vi.fn(),
+    onError: vi.fn(),
+    ...over,
+  }
+}
+
+describe('navigateForward', () => {
+  it('does nothing when closed', async () => {
+    const deps = forwardDeps({ index: null })
+    await navigateForward(deps)
+    expect(deps.setIndex).not.toHaveBeenCalled()
+    expect(deps.loadPage).not.toHaveBeenCalled()
+    expect(deps.syncReviewParam).not.toHaveBeenCalled()
+  })
+
+  it('advances within the loaded list without loading', async () => {
+    const deps = forwardDeps({ index: 0 })
+    await navigateForward(deps)
+    expect(deps.setIndex).toHaveBeenCalledWith(1)
+    expect(deps.syncReviewParam).toHaveBeenCalledWith('b')
+    expect(deps.loadPage).not.toHaveBeenCalled()
+  })
+
+  it('does nothing at the absolute end', async () => {
+    const deps = forwardDeps({ index: 2, maxPage: 1, totalPages: 1 })
+    await navigateForward(deps)
+    expect(deps.setIndex).not.toHaveBeenCalled()
+    expect(deps.loadPage).not.toHaveBeenCalled()
+  })
+
+  it('appends the next page at the edge and steps onto it', async () => {
+    const loadPage = vi.fn(async () => refs('d', 'e'))
+    const setIndex = vi.fn()
+    const deps = forwardDeps({
+      index: 2,
+      maxPage: 1,
+      totalPages: 2,
+      loadPage,
+      setIndex,
+    })
+    await navigateForward(deps)
+    expect(loadPage).toHaveBeenCalledWith(2, 'append')
+    const updater = setIndex.mock.calls[0][0] as (
+      c: number | null,
+    ) => number | null
+    expect(updater(2)).toBe(3)
+    expect(updater(null)).toBeNull()
+    expect(deps.syncReviewParam).toHaveBeenCalledWith('d')
+  })
+
+  it('stops if the appended page is empty', async () => {
+    const deps = forwardDeps({ index: 2, maxPage: 1, totalPages: 2 })
+    await navigateForward(deps)
+    expect(deps.setIndex).not.toHaveBeenCalled()
+    expect(deps.syncReviewParam).not.toHaveBeenCalled()
+  })
+
+  it('reports an error when the page load fails', async () => {
+    const loadPage = vi.fn(async () => {
+      throw new Error('boom')
+    })
+    const deps = forwardDeps({ index: 2, maxPage: 1, totalPages: 2, loadPage })
+    await navigateForward(deps)
+    expect(deps.onError).toHaveBeenCalledWith('Failed to load next page')
+  })
+})
+
+describe('navigateBackward', () => {
+  it('does nothing when closed', async () => {
+    const deps = backwardDeps({ index: null })
+    await navigateBackward(deps)
+    expect(deps.setIndex).not.toHaveBeenCalled()
+    expect(deps.loadPage).not.toHaveBeenCalled()
+  })
+
+  it('retreats within the loaded list without loading', async () => {
+    const deps = backwardDeps({ index: 1 })
+    await navigateBackward(deps)
+    expect(deps.setIndex).toHaveBeenCalledWith(0)
+    expect(deps.syncReviewParam).toHaveBeenCalledWith('a')
+    expect(deps.loadPage).not.toHaveBeenCalled()
+  })
+
+  it('does nothing at the absolute start', async () => {
+    const deps = backwardDeps({ index: 0, minPage: 1 })
+    await navigateBackward(deps)
+    expect(deps.setIndex).not.toHaveBeenCalled()
+    expect(deps.loadPage).not.toHaveBeenCalled()
+  })
+
+  it('prepends the previous page at the start and steps onto its last item', async () => {
+    const loadPage = vi.fn(async () => refs('x', 'y'))
+    const setIndex = vi.fn()
+    const deps = backwardDeps({ index: 0, minPage: 2, loadPage, setIndex })
+    await navigateBackward(deps)
+    expect(loadPage).toHaveBeenCalledWith(1, 'prepend')
+    const updater = setIndex.mock.calls[0][0] as (
+      c: number | null,
+    ) => number | null
+    expect(updater(0)).toBe(1)
+    expect(updater(null)).toBeNull()
+    expect(deps.syncReviewParam).toHaveBeenCalledWith('y')
+  })
+
+  it('stops if the prepended page is empty', async () => {
+    const deps = backwardDeps({ index: 0, minPage: 2 })
+    await navigateBackward(deps)
+    expect(deps.setIndex).not.toHaveBeenCalled()
+    expect(deps.syncReviewParam).not.toHaveBeenCalled()
+  })
+
+  it('reports an error when the page load fails', async () => {
+    const loadPage = vi.fn(async () => {
+      throw new Error('boom')
+    })
+    const deps = backwardDeps({ index: 0, minPage: 2, loadPage })
+    await navigateBackward(deps)
+    expect(deps.onError).toHaveBeenCalledWith('Failed to load previous page')
   })
 })

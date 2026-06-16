@@ -16,8 +16,8 @@ import {
   deriveHasNext,
   deriveHasPrev,
   groupEvaluations,
-  planBackward,
-  planForward,
+  navigateBackward,
+  navigateForward,
 } from '@/utils/enrolment/domain/enrollment-review.domain'
 import { getEnrollments } from '@/utils/enrolment'
 
@@ -150,43 +150,34 @@ export function useEnrollmentReview({
     syncReviewParam(null)
   }, [])
 
-  const goNext = useCallback(async () => {
-    const plan = planForward(index, items.length, maxPage, totalPages)
-    if (plan.kind === 'advance') {
-      setIndex(plan.nextIndex)
-      syncReviewParam(items[plan.nextIndex].id)
-      return
-    }
-    if (plan.kind !== 'load-append') return
-    // load-append implies the carousel is open at the list edge.
-    const edgeIndex = index as number
-    try {
-      const fetched = await loadPage(plan.targetPage, 'append')
-      if (fetched.length === 0) return
-      setIndex((current) => (current === null ? null : edgeIndex + 1))
-      syncReviewParam(fetched[0].id)
-    } catch {
-      toast.error('Failed to load next page')
-    }
-  }, [index, items, maxPage, totalPages, loadPage])
+  const goNext = useCallback(
+    () =>
+      navigateForward({
+        index,
+        items,
+        maxPage,
+        totalPages,
+        loadPage,
+        setIndex,
+        syncReviewParam,
+        onError: (message) => toast.error(message),
+      }),
+    [index, items, maxPage, totalPages, loadPage],
+  )
 
-  const goPrev = useCallback(async () => {
-    const plan = planBackward(index, minPage)
-    if (plan.kind === 'retreat') {
-      setIndex(plan.prevIndex)
-      syncReviewParam(items[plan.prevIndex].id)
-      return
-    }
-    if (plan.kind !== 'load-prepend') return
-    try {
-      const fetched = await loadPage(plan.targetPage, 'prepend')
-      if (fetched.length === 0) return
-      setIndex((current) => (current === null ? null : fetched.length - 1))
-      syncReviewParam(fetched[fetched.length - 1].id)
-    } catch {
-      toast.error('Failed to load previous page')
-    }
-  }, [index, items, minPage, loadPage])
+  const goPrev = useCallback(
+    () =>
+      navigateBackward({
+        index,
+        items,
+        minPage,
+        loadPage,
+        setIndex,
+        syncReviewParam,
+        onError: (message) => toast.error(message),
+      }),
+    [index, items, minPage, loadPage],
+  )
 
   // Background prefetch of the next page when nearing the end of loaded items.
   useEffect(() => {
