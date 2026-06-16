@@ -5,38 +5,31 @@ import {
   getLintableFiles,
   getRepoRoot,
 } from './quality-files.mjs'
+import { describeCheck, interpretCheckResult } from './quality-fix.domain.mjs'
 
 const repoRoot = getRepoRoot()
 const changedFiles = getChangedFiles({ includeCommitted: false })
 const lintableFiles = getLintableFiles(changedFiles)
 
-function formatCommand(command, args) {
-  return [command, ...args].join(' ')
-}
+function runCheck(check) {
+  const { skip, log } = describeCheck(check)
+  console.log(log)
 
-function runCheck({ name, command, args, skip = false }) {
   if (skip) {
-    console.log(`\n==> ${name}: skipped`)
     return true
   }
 
-  console.log(`\n==> ${name}: ${formatCommand(command, args)}`)
+  const result = spawnSync(check.command, check.args, {
+    cwd: repoRoot,
+    stdio: 'inherit',
+  })
 
-  const result = spawnSync(command, args, { cwd: repoRoot, stdio: 'inherit' })
-
-  if (result.error) {
-    console.error(`\n${name} failed to start: ${result.error.message}`)
-    return false
+  const { ok, error } = interpretCheckResult(check.name, result)
+  if (error) {
+    console.error(error)
   }
 
-  if (result.status !== 0) {
-    console.error(
-      `\n${name} failed with exit code ${result.status ?? 'unknown'}.`,
-    )
-    return false
-  }
-
-  return true
+  return ok
 }
 
 console.log(`Changed files to fix: ${changedFiles.length}`)

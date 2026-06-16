@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [viteTsConfigPaths()],
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
     exclude: [...configDefaults.exclude, 'src/**/*.integration.test.ts'],
     coverage: {
       provider: 'v8',
