@@ -6,10 +6,16 @@ import { env } from '@/env'
 import { getSupabaseAdminClient } from '@/utils/supabase'
 import {
   calculatePasswordResetExpiry,
-  checkPasswordResetCooldown,
   checkPasswordResetTokenValid,
   generatePasswordResetToken,
 } from '@/utils/password-reset/domain/password-reset.domain'
+import {
+  RESET_ANONYMOUS_MESSAGE,
+  buildPasswordResetLink,
+  checkResetPasswordInput,
+  resolveCooldownMessage,
+  resolveValidResetUser,
+} from '@/utils/password-reset/domain/password-reset-flow.domain'
 import {
   clearProfileResetToken,
   findProfileByEmail,
@@ -25,25 +31,15 @@ export async function requestPasswordResetService(
   const user = await findProfileByEmail(email)
 
   if (!user) {
-    return {
-      success: true,
-      message:
-        'If an account exists with this email, you will receive a password reset link.',
-    }
+    return { success: true, message: RESET_ANONYMOUS_MESSAGE }
   }
 
-  const lastResetRequestAt = user.accountSecurity.lastResetRequestAt ?? null
-  if (lastResetRequestAt) {
-    const waitSeconds = checkPasswordResetCooldown(
-      lastResetRequestAt,
-      new Date(),
-    )
-    if (waitSeconds !== null) {
-      return {
-        success: false,
-        message: `Please wait ${waitSeconds} seconds before requesting another reset link.`,
-      }
-    }
+  const cooldownMessage = resolveCooldownMessage(
+    user.accountSecurity.lastResetRequestAt,
+    new Date(),
+  )
+  if (cooldownMessage) {
+    return { success: false, message: cooldownMessage }
   }
 
   const { token, tokenHash } = generatePasswordResetToken()
@@ -57,8 +53,7 @@ export async function requestPasswordResetService(
     updatedAt: new Date(),
   })
 
-  const appUrl = env.APP_URL || 'http://localhost:3000'
-  const resetLink = `${appUrl}/reset-password?token=${token}`
+  const resetLink = buildPasswordResetLink(env.APP_URL, token)
 
   const emailHtml = await render(
     PasswordResetEmail({ resetLink, expiryMinutes: 10 }),
@@ -81,11 +76,7 @@ export async function requestPasswordResetService(
     }
   }
 
-  return {
-    success: true,
-    message:
-      'If an account exists with this email, you will receive a password reset link.',
-  }
+  return { success: true, message: RESET_ANONYMOUS_MESSAGE }
 }
 
 export async function validateResetTokenService(
@@ -112,47 +103,37 @@ export async function resetPasswordService(
   token: string | undefined,
   newPassword: string | undefined,
 ): Promise<{ success: boolean; message: string }> {
-  if (!token || !newPassword) {
-    return { success: false, message: 'Missing required fields' }
+  const input = checkResetPasswordInput(token, newPassword)
+  if (!input.ok) {
+    return { success: false, message: input.message }
   }
 
-  if (newPassword.length < 8) {
-    return { success: false, message: 'Password must be at least 8 characters' }
-  }
-
-  const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+  const tokenHash = crypto.createHash('sha256').update(input.token).digest('hex')
   const user = await findProfileByResetTokenHash(tokenHash)
 
-  if (!user) {
-    return { success: false, message: 'Invalid reset token' }
-  }
-
-  const validity = checkPasswordResetTokenValid(
-    { expiresAt: user.resetTokenExpiresAt, attempts: user.resetTokenAttempts },
-    new Date(),
-  )
-  if (!validity.valid) {
-    return { success: false, message: validity.message }
+  const resolved = resolveValidResetUser(user, new Date())
+  if (!resolved.ok) {
+    return { success: false, message: resolved.message }
   }
 
   const supabaseAdmin = getSupabaseAdminClient()
   const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-    user.id,
+    resolved.user.id,
     {
-      password: newPassword,
+      password: input.newPassword,
     },
   )
 
   if (updateError) {
     console.error('Failed to update password:', updateError)
-    await incrementResetTokenAttempts(user.id)
+    await incrementResetTokenAttempts(resolved.user.id)
     return {
       success: false,
       message: 'Failed to reset password. Please try again.',
     }
   }
 
-  await clearProfileResetToken(user.id)
+  await clearProfileResetToken(resolved.user.id)
 
   return { success: true, message: 'Password reset successfully' }
 }

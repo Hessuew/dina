@@ -143,8 +143,10 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **130** open (14 critical / 47 high / 69 moderate) after `useEntityMutation`
-and `useEnrollmentReview`. (Same pass reduced `goNext`/`goPrev` from CRAP 42→30 via the shared
+only moves down. Latest: **128** open (14 critical / 45 high / 69 moderate) after
+`requestPasswordResetService` and `resetPasswordService` (extracted into
+`password-reset-flow.domain.ts`). Prior: **130** open after `useEntityMutation` and
+`useEnrollmentReview`. (Same pass reduced `goNext`/`goPrev` from CRAP 42→30 via the shared
 `planForward`/`planBackward` planners in `enrollment-review.domain.ts`, but they remain at-threshold
 findings — still `⬜ todo`.)
 
@@ -267,8 +269,8 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ⬜ todo | 🟠 high | 56   | `getFirstError`                 | B component | `src/components/ui/app-form-fields.tsx:66`                                   | —                                                          | —                               | —                    |
 | ⬜ todo | 🟠 high | 56   | `FormFieldNumberInput`          | B component | `src/components/ui/form-field.tsx:92`                                        | —                                                          | —                               | —                    |
 | ⬜ todo | 🟠 high | 56   | `<arrow>`                       | B component | `src/components/view/CalendarView.tsx:152`                                   | —                                                          | —                               | —                    |
-| 🔨 in progress | 🟠 high | 56   | `requestPasswordResetService`   | A pure      | `src/utils/password-reset/service/password-reset.service.ts:22`              | —                                                          | —                               | hessuew / 2026-06-16 |
-| 🔨 in progress | 🟠 high | 56   | `resetPasswordService`          | A pure      | `src/utils/password-reset/service/password-reset.service.ts:111`             | —                                                          | —                               | hessuew / 2026-06-16 |
+| ✅ done | 🟠 high | 56   | `requestPasswordResetService`   | A pure      | `src/utils/password-reset/service/password-reset.service.ts:22`              | `src/utils/password-reset/domain/password-reset-flow.domain.ts` | 1 CRAP finding (CRAP 56)        | hessuew / 2026-06-16 |
+| ✅ done | 🟠 high | 56   | `resetPasswordService`          | A pure      | `src/utils/password-reset/service/password-reset.service.ts:111`             | `src/utils/password-reset/domain/password-reset-flow.domain.ts` | 1 CRAP finding (CRAP 56)        | hessuew / 2026-06-16 |
 | ⬜ todo | 🟡 mod  | 42   | `continueLoop`                  | B component | `src/components/animate-ui/icons/icon.tsx:334`                               | —                                                          | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 42   | `getVariants`                   | B component | `src/components/animate-ui/icons/icon.tsx:734`                               | —                                                          | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 42   | `validYear`                     | B component | `src/components/auth/enrolment-form.tsx:55`                                  | —                                                          | —                               | —                    |
