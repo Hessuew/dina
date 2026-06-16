@@ -8,11 +8,20 @@ import type {
 } from '@/utils/enrolment/repository/enrolment.repository'
 import type { EvaluationPatch } from '@/utils/enrolment/domain/evaluation.domain'
 import { applyEvaluationPatch } from '@/utils/enrolment/domain/evaluation.domain'
+import type { EvalMap } from '@/utils/enrolment/domain/enrollment-review.domain'
+import {
+  computeInitialIndex,
+  computePosition,
+  computeTotalPages,
+  deriveHasNext,
+  deriveHasPrev,
+  groupEvaluations,
+  planBackward,
+  planForward,
+} from '@/utils/enrolment/domain/enrollment-review.domain'
 import { getEnrollments } from '@/utils/enrolment'
 
 type PageSize = 10 | 20 | 50 | 100
-
-type EvalMap = Map<string, Array<EvaluationWithAuthor>>
 
 type UseEnrollmentReviewArgs = {
   initialEnrollments: Array<EnrollmentWithEvaluation>
@@ -25,16 +34,6 @@ type UseEnrollmentReviewArgs = {
   total: number
   viewAll: boolean
   reviewId?: string
-}
-
-function groupEvaluations(evals: Array<EvaluationWithAuthor>): EvalMap {
-  const map: EvalMap = new Map()
-  for (const evaluation of evals) {
-    const list = map.get(evaluation.enrollmentId)
-    if (list) list.push(evaluation)
-    else map.set(evaluation.enrollmentId, [evaluation])
-  }
-  return map
 }
 
 function syncReviewParam(id: string | null) {
@@ -75,13 +74,11 @@ export function useEnrollmentReview({
   )
   const [minPage, setMinPage] = useState(page)
   const [maxPage, setMaxPage] = useState(page)
-  const [index, setIndex] = useState<number | null>(() => {
-    if (!reviewId) return null
-    const i = initialEnrollments.findIndex((e) => e.id === reviewId)
-    return i >= 0 ? i : null
-  })
+  const [index, setIndex] = useState<number | null>(() =>
+    computeInitialIndex(reviewId, initialEnrollments),
+  )
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const totalPages = computeTotalPages(total, pageSize)
   const loadingRef = useRef<Set<number>>(new Set())
 
   // Reset the carousel when the underlying list changes (sort/search/page/view).
@@ -154,42 +151,40 @@ export function useEnrollmentReview({
   }, [])
 
   const goNext = useCallback(async () => {
-    if (index === null) return
-    if (index < items.length - 1) {
-      setIndex(index + 1)
-      syncReviewParam(items[index + 1].id)
+    const plan = planForward(index, items.length, maxPage, totalPages)
+    if (plan.kind === 'advance') {
+      setIndex(plan.nextIndex)
+      syncReviewParam(items[plan.nextIndex].id)
       return
     }
-    if (maxPage < totalPages) {
-      try {
-        const fetched = await loadPage(maxPage + 1, 'append')
-        if (fetched.length > 0) {
-          setIndex((current) => (current === null ? null : index + 1))
-          syncReviewParam(fetched[0].id)
-        }
-      } catch {
-        toast.error('Failed to load next page')
-      }
+    if (plan.kind !== 'load-append') return
+    // load-append implies the carousel is open at the list edge.
+    const edgeIndex = index as number
+    try {
+      const fetched = await loadPage(plan.targetPage, 'append')
+      if (fetched.length === 0) return
+      setIndex((current) => (current === null ? null : edgeIndex + 1))
+      syncReviewParam(fetched[0].id)
+    } catch {
+      toast.error('Failed to load next page')
     }
   }, [index, items, maxPage, totalPages, loadPage])
 
   const goPrev = useCallback(async () => {
-    if (index === null) return
-    if (index > 0) {
-      setIndex(index - 1)
-      syncReviewParam(items[index - 1].id)
+    const plan = planBackward(index, minPage)
+    if (plan.kind === 'retreat') {
+      setIndex(plan.prevIndex)
+      syncReviewParam(items[plan.prevIndex].id)
       return
     }
-    if (minPage > 1) {
-      try {
-        const fetched = await loadPage(minPage - 1, 'prepend')
-        if (fetched.length > 0) {
-          setIndex((current) => (current === null ? null : fetched.length - 1))
-          syncReviewParam(fetched[fetched.length - 1].id)
-        }
-      } catch {
-        toast.error('Failed to load previous page')
-      }
+    if (plan.kind !== 'load-prepend') return
+    try {
+      const fetched = await loadPage(plan.targetPage, 'prepend')
+      if (fetched.length === 0) return
+      setIndex((current) => (current === null ? null : fetched.length - 1))
+      syncReviewParam(fetched[fetched.length - 1].id)
+    } catch {
+      toast.error('Failed to load previous page')
     }
   }, [index, items, minPage, loadPage])
 
@@ -234,10 +229,9 @@ export function useEnrollmentReview({
     isOpen: index !== null,
     current,
     currentEvaluations,
-    position: index !== null ? index + 1 : 0,
-    hasPrev: index !== null && (index > 0 || minPage > 1),
-    hasNext:
-      index !== null && (index < items.length - 1 || maxPage < totalPages),
+    position: computePosition(index),
+    hasPrev: deriveHasPrev(index, minPage),
+    hasNext: deriveHasNext(index, items.length, maxPage, totalPages),
     open,
     close,
     next: goNext,
