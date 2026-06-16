@@ -142,10 +142,7 @@ function buildPageWindow(current: number, total: number): Array<number | '…'> 
 }
 
 // Table-option fragments that differ between server-side and client-side modes.
-function serverModeOptions(
-  isServerMode: boolean,
-  rowCount: number | undefined,
-) {
+function serverModeOptions(isServerMode: boolean, rowCount: number | undefined) {
   return isServerMode
     ? {
         manualPagination: true,
@@ -204,6 +201,9 @@ function DataTableHead<TData>({
   table: TanstackTable<TData>
   maxRows: number | undefined
 }) {
+  // React Compiler must not memoize this: it reads live `table` state
+  // (headerGroups/sort) off a stable `table` ref that never changes identity.
+  'use no memo'
   return (
     <TableHeader>
       {table.getHeaderGroups().map((headerGroup) => (
@@ -263,6 +263,9 @@ function DataTableRows<TData>({
   emptyMessage: string
   rowClassName?: (row: TData) => string
 }) {
+  // React Compiler must not memoize this: it reads live `table` state
+  // (getRowModel) off a stable `table` ref that never changes identity.
+  'use no memo'
   if (table.getRowModel().rows.length === 0) {
     return (
       <TableBody>
@@ -318,6 +321,9 @@ function DataTableContent<TData>({
   emptyMessage: string
   rowClassName?: (row: TData) => string
 }) {
+  // React Compiler must not memoize this: it forwards a stable `table` ref to
+  // children that read live table state.
+  'use no memo'
   return (
     <div className="relative border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
       {isLoading && (
@@ -365,6 +371,9 @@ function PaginationFooter<TData>({
   end: number
   filteredTotal: number
 }) {
+  // React Compiler must not memoize this: it reads live `table` state
+  // (getCanPreviousPage/getCanNextPage) off a stable `table` ref.
+  'use no memo'
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-4">
