@@ -24,7 +24,7 @@ render tests, and we do not suppress findings to avoid the work.
 
 ### Method — TDD, red→green→refactor, vertical slices
 
-Per the `tdd` skill, drive each extraction one test at a time:
+Drive each extraction one test at a time (red→green→refactor — no skill invocation needed once the workflow is internalized):
 
 1. **Tracer bullet** — write one failing test for one observable behavior (`bun run test` →
    RED), then the minimal domain code to pass (GREEN).
@@ -62,6 +62,11 @@ config change.
   helper that exists in N files is an N-for-one win — a single extraction clears every copy's
   CRAP finding _and_ removes the fallow duplicate. (The first target cleared two copies; a
   later sweep found a third.)
+
+**Batching within a session** — Phase A pure functions are fast; 3–5 per session is fine.
+Phase B component extractions are heavier (understanding the component is the real cost), so
+limit to **2–3 same-feature targets per session/commit**. Never batch across features in one
+commit — lost context produces shallow extractions that pass coverage but miss branches.
 
 Rationale: pure extractions are cheap, low-risk, and drop CRAP fastest, so they front-load the
 burndown; component view-model extraction is higher-effort and follows once the pure wins are
@@ -152,12 +157,12 @@ So multiple agents (local or cloud) can pay down findings at once without collid
    as it stands on `origin/main` (e.g.
    `git show origin/main:docs/adr/0010-crap-reduction-via-domain-extraction.md`). Never pick a
    target from a stale local copy — your local `main` may predate another agent's claim.
-2. **Claim on `origin/main`, not just on your feature branch.** Add (or flip) the target's
-   ledger row to `🔨 in progress` with your agent/author id and the date in a doc-only commit
-   (`gt c -m "chore(crap): claim <target>"`) and **land that claim on `origin/main` before you
-   start the work** (push it / merge the claim-only PR first). Create the implementation branch
-   only after the claim is on `origin/main`. A claim that never gets past your local branch does
-   not count and will collide.
+2. **Claim on `origin/main`, not just on your feature branch.** Flip the target rows to
+   `🔨 in progress` with your agent/author id and the date in a single doc-only commit — you may
+   claim **2–3 same-feature targets** in one commit (`gt c -m "chore(crap): claim <t1>, <t2>"`).
+   **Land that claim on `origin/main` before you start the work** (push it / merge the claim-only
+   PR first). Create the implementation branch only after the claim is on `origin/main`. A claim
+   that never gets past your local branch does not count and will collide.
 3. **If the push is rejected, someone claimed first.** Pull/rebase `origin/main`, re-read the
    ledger, and if your target is now `🔨 in progress`, yield and take another row. A merge
    conflict on this table is the same signal: yield, don't force it.
