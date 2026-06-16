@@ -167,7 +167,11 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **122** open (14 critical / 45 high / 63 moderate) after extracting
+only moves down. Latest: **121** open (14 critical / 45 high / 62 moderate) after extracting
+`useCachedData`'s refetch-staleness decision into `shouldRefetch`
+(`src/hooks/useCachedData/domain/cache-refetch.domain.ts`), colocating the hook into a folder;
+the `useEffect` shell now just calls the pure decision. Prior: **122** open (14 critical / 45
+high / 63 moderate) after extracting
 `runCheck`'s decision logic (`describeCheck`/`interpretCheckResult`/`formatCommand`) into
 `scripts/quality-fix.domain.mjs`, colocated with its owning tooling script; the residual
 `runCheck` shell only orchestrates spawn + logging. Prior: **123** open (14 critical / 45 high / 64
@@ -388,7 +392,7 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ⬜ todo | 🟡 mod  | 30   | `EnrollmentsTable`              | B component | `src/components/table/EnrollmentsTable.tsx:81`                               | —                                                               | —                               | —                    |
 | ✅ done | 🟡 mod  | 30   | `createCrudActions`             | A pure      | `src/components/table/functions/createCrudActions.ts:51`                     | `src/components/table/functions/domain/crud-actions.domain.ts`  | 1 CRAP finding (CRAP 30)        | hessuew / 2026-06-16 |
 | ⬜ todo | 🟡 mod  | 30   | `SidebarMenuButton`             | B component | `src/components/ui/sidebar.tsx:508`                                          | —                                                               | —                               | —                    |
-| 🔨 in progress | 🟡 mod  | 30   | `<arrow>` (useCachedData refetch) | A hook    | `src/hooks/useCachedData.ts:37`                                              | `src/hooks/useCachedData/domain/cache-refetch.domain.ts`        | —                               | hessuew / 2026-06-16 |
+| ✅ done | 🟡 mod  | 30   | `<arrow>` (useCachedData refetch) | A hook    | `src/hooks/useCachedData/index.ts:37`                                       | `src/hooks/useCachedData/domain/cache-refetch.domain.ts`        | 1 CRAP finding (CRAP 30)        | hessuew / 2026-06-16 |
 | ⬜ todo | 🟡 mod  | 30   | `mutate`                        | A hook      | `src/hooks/useMutation.ts:19`                                                | —                                                               | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 30   | `<arrow>`                       | B component | `src/routes/_authed/posts.tsx:137`                                           | —                                                               | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 30   | `<arrow>`                       | B component | `src/routes/_authed/posts.tsx:156`                                           | —                                                               | —                               | —                    |
