@@ -3,6 +3,10 @@
 **Status:** Planned  
 **Date:** 2026-05-18
 
+**Scope:** This ADR governs `src/utils/` (server-function / backend layer) only. Domain logic
+that belongs exclusively to a React hook lives in `src/hooks/<hookName>/domain/` — see ADR 0010
+for the placement rule.
+
 ## Context
 
 ADR 0003 established 100% unit test coverage on `src/domain/`. The next layer to test is `src/utils/`, which holds all backend server functions. Currently, each feature file mixes three concerns: DB queries (Drizzle), pure business logic, and TanStack Start server function orchestration. This makes the code hard to test and hard to reason about.

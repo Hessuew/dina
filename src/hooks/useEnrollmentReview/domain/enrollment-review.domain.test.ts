@@ -11,7 +11,7 @@ import {
   planBackward,
   planForward,
 } from './enrollment-review.domain'
-import type { EvaluationWithAuthor } from '../repository/enrolment.repository'
+import type { EvaluationWithAuthor } from '@/utils/enrolment/repository/enrolment.repository'
 
 function mkEval(
   enrollmentId: string,

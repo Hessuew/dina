@@ -1,14 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { toast } from 'sonner'
-import type { EnrollmentWithEvaluation } from '@/utils/enrolment/domain/enrolment.domain'
-import type {
-  EnrollmentSortKey,
-  EvaluationWithAuthor,
-} from '@/utils/enrolment/repository/enrolment.repository'
-import type { EvaluationPatch } from '@/utils/enrolment/domain/evaluation.domain'
-import { applyEvaluationPatch } from '@/utils/enrolment/domain/evaluation.domain'
-import type { EvalMap } from '@/utils/enrolment/domain/enrollment-review.domain'
 import {
   computeInitialIndex,
   computePosition,
@@ -18,7 +10,15 @@ import {
   groupEvaluations,
   navigateBackward,
   navigateForward,
-} from '@/utils/enrolment/domain/enrollment-review.domain'
+} from './domain/enrollment-review.domain'
+import type { EnrollmentWithEvaluation } from '@/utils/enrolment/domain/enrolment.domain'
+import type {
+  EnrollmentSortKey,
+  EvaluationWithAuthor,
+} from '@/utils/enrolment/repository/enrolment.repository'
+import type { EvalMap } from './domain/enrollment-review.domain'
+import type { EvaluationPatch } from '@/utils/enrolment/domain/evaluation.domain'
+import { applyEvaluationPatch } from '@/utils/enrolment/domain/evaluation.domain'
 import { getEnrollments } from '@/utils/enrolment'
 
 type PageSize = 10 | 20 | 50 | 100
