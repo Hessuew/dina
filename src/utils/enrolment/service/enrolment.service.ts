@@ -263,10 +263,29 @@ export async function getEnrollmentsService(
     const enrollmentIds = rows.map((row) => row.id)
 
     // Fetch evaluations and reviewer assignments in parallel.
-    const [evaluations, reviewerAssignments] = await Promise.all([
+    const [evaluations, rawAssignments] = await Promise.all([
       findEvaluationsForEnrollments(enrollmentIds),
       findReviewerAssignmentsForEnrollments(enrollmentIds),
     ])
+
+    // Legacy rows may have courseId = null (created before ADR 0007 rev 2).
+    // Enrich them by falling back to the reviewer's course in course_teachers.
+    const nullReviewerIds = [
+      ...new Set(
+        rawAssignments
+          .filter((a) => a.courseId === null)
+          .map((a) => a.reviewerId),
+      ),
+    ]
+    const fallbackCourseByReviewer =
+      nullReviewerIds.length > 0
+        ? await findCourseIdsByTeacherIds(nullReviewerIds)
+        : new Map<string, string | null>()
+    const reviewerAssignments = rawAssignments.map((a) => ({
+      ...a,
+      courseId:
+        a.courseId ?? fallbackCourseByReviewer.get(a.reviewerId) ?? null,
+    }))
 
     // Batch-fetch team members for all distinct course IDs on this page.
     const uniqueCourseIds = [

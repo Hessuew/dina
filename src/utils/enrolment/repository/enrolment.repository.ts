@@ -7,6 +7,7 @@ import {
   getTableColumns,
   ilike,
   inArray,
+  isNotNull,
   isNull,
   ne,
   notLike,
@@ -106,6 +107,7 @@ export async function findEnrollmentsPage({
   // Peer-review queue: enrollments on the viewer's course team where a
   // different reviewer (team member) has scored 3 or 4.
   // Scoped through enrollment_reviewer_assignments.course_id (ADR 0007 rev 2).
+  // Legacy rows with course_id = NULL fall back to a LEFT JOIN on courseTeachers.
   const peerCondition =
     reviewerFilter !== undefined && viewerCourseIds.length > 0
       ? inArray(
@@ -126,11 +128,31 @@ export async function findEnrollmentsPage({
                 ),
               ),
             )
+            .leftJoin(
+              courseTeachers,
+              and(
+                isNull(enrollmentReviewerAssignments.courseId),
+                eq(
+                  courseTeachers.teacherId,
+                  enrollmentReviewerAssignments.reviewerId,
+                ),
+              ),
+            )
             .where(
               and(
-                inArray(
-                  enrollmentReviewerAssignments.courseId,
-                  viewerCourseIds,
+                or(
+                  and(
+                    isNotNull(enrollmentReviewerAssignments.courseId),
+                    inArray(
+                      enrollmentReviewerAssignments.courseId,
+                      viewerCourseIds,
+                    ),
+                  ),
+                  and(
+                    isNull(enrollmentReviewerAssignments.courseId),
+                    isNotNull(courseTeachers.courseId),
+                    inArray(courseTeachers.courseId, viewerCourseIds),
+                  ),
                 ),
                 ne(enrollmentReviewerAssignments.reviewerId, reviewerFilter),
                 inArray(enrollmentEvaluations.score, [3, 4]),
