@@ -5,6 +5,20 @@ import {
   getLintableFiles,
   getRepoRoot,
 } from './quality-files.mjs'
+import {
+  describeCheck,
+  formatCommand,
+  interpretCheckResult,
+} from './quality-fix.domain.mjs'
+import {
+  blockingFallowVerdictMessage,
+  collectIntroducedComplexity,
+  extractJson,
+  fallowExitStatusError,
+  fallowExitStatusPasses,
+  fallowVerdictAllowsSubmit,
+  resolveVerdict,
+} from './quality-gate.domain.mjs'
 
 const repoRoot = getRepoRoot()
 const qualityBase = process.env.QUALITY_BASE
@@ -55,54 +69,19 @@ const checks = [
   },
 ]
 
-function formatCommand(command, args) {
-  return [command, ...args].join(' ')
-}
+function runInheritedCheck(check) {
+  const plan = describeCheck(check)
+  console.log(plan.log)
+  if (plan.skip) return true
 
-function runInheritedCheck({ name, command, args, skip = false }) {
-  if (skip) {
-    console.log(`\n==> ${name}: skipped`)
-    return true
-  }
+  const result = spawnSync(check.command, check.args, {
+    cwd: repoRoot,
+    stdio: 'inherit',
+  })
+  const outcome = interpretCheckResult(check.name, result)
+  if (!outcome.ok) console.error(outcome.error)
 
-  console.log(`\n==> ${name}: ${formatCommand(command, args)}`)
-
-  const result = spawnSync(command, args, { cwd: repoRoot, stdio: 'inherit' })
-
-  if (result.error) {
-    console.error(`\n${name} failed to start: ${result.error.message}`)
-    return false
-  }
-
-  if (result.status !== 0) {
-    console.error(
-      `\n${name} failed with exit code ${result.status ?? 'unknown'}.`,
-    )
-    return false
-  }
-
-  return true
-}
-
-function assertJsonMatch(match) {
-  if (match === null) throw new Error('No JSON object found in Fallow output')
-  return match[0]
-}
-
-function extractJson(text) {
-  try {
-    const jsonStr = assertJsonMatch(text.trim().match(/\{[\s\S]*\}/u))
-    const parsed = JSON.parse(jsonStr)
-    if (!parsed || typeof parsed !== 'object') {
-      throw new Error('Parsed JSON is not an object')
-    }
-    return parsed
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      throw new Error(`Failed to parse JSON: ${error.message}`)
-    }
-    throw error
-  }
+  return outcome.ok
 }
 
 function formatSummary(summary = {}) {
@@ -133,15 +112,6 @@ function collectComplexityFindings(output) {
     file: finding.path,
     message: `${finding.name} ${finding.severity ?? 'unknown'} (cyclomatic ${finding.cyclomatic}, cognitive ${finding.cognitive})`,
   }))
-}
-
-function collectIntroducedComplexity(output) {
-  // Block on every introduced finding: cyclomatic, cognitive, and CRAP alike.
-  // Fallow only emits a finding when a threshold is exceeded, so the presence of
-  // an introduced finding is itself the signal. See docs/rules/complexity.md.
-  return (output.complexity?.findings ?? []).filter(
-    (finding) => finding.introduced === true,
-  )
 }
 
 function reportIntroducedComplexity(output) {
@@ -213,31 +183,19 @@ function parseFallowOutput(result) {
   }
 }
 
-function fallowVerdictAllowsSubmit(verdict) {
-  return verdict === 'pass' || verdict === 'warn'
-}
-
 function reportBlockingFallowVerdict(verdict) {
-  const message =
-    verdict === 'fail'
-      ? 'Fallow reported fail; blocking submit.'
-      : `Fallow returned unknown verdict "${verdict}"; blocking submit.`
-  console.error(message)
+  console.error(blockingFallowVerdictMessage(verdict))
   return false
 }
 
 function reportFallowExitStatus(result, verdict) {
-  const passed = result.status === 0 || verdict === 'warn'
-  if (!passed) {
-    console.error(
-      `Fallow exited with code ${result.status ?? 'unknown'}; blocking submit.`,
-    )
-  }
+  const passed = fallowExitStatusPasses(result.status, verdict)
+  if (!passed) console.error(fallowExitStatusError(result.status))
   return passed
 }
 
 function reportFallowOutcome(output, result) {
-  const verdict = output.verdict ?? 'unknown'
+  const verdict = resolveVerdict(output)
   console.log(`Fallow verdict: ${verdict}`)
   printFallowSummary(output)
 
