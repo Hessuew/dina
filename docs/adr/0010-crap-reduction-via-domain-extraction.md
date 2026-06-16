@@ -143,7 +143,7 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down.
+only moves down. Latest: **131** open (14 critical / 48 high / 69 moderate) after `useEntityMutation`.
 
 The **ledger** below is the durable record of what has been fixed and what is being worked on
 right now. It is the single source of truth for the burndown — keep it current as part of every
@@ -204,7 +204,7 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ⬜ todo | 🔴 crit | 110  | `CourseDialog`                  | B component | `src/components/dialog/CourseDialog.tsx:154`                                 | —                                                          | —                               | —                    |
 | ⬜ todo | 🔴 crit | 110  | `CommentsSection`               | B component | `src/components/post/PostCard.tsx:315`                                       | —                                                          | —                               | —                    |
 | ⬜ todo | 🔴 crit | 110  | `EmptyState`                    | B component | `src/components/ui/empty-state.tsx:19`                                       | —                                                          | —                               | —                    |
-| ⬜ todo | 🔴 crit | 110  | `useEntityMutation`             | A hook      | `src/hooks/useEntityMutation.ts:58`                                          | —                                                          | —                               | —                    |
+| ✅ done | 🔴 crit | 110  | `useEntityMutation`             | A hook      | `src/hooks/useEntityMutation.ts:58`                                          | `src/utils/mutation/domain/entity-mutation.domain.ts`      | 1 CRAP finding (CRAP 110)       | hessuew / 2026-06-16 |
 | ⬜ todo | 🔴 crit | 110  | `CourseDetailComponent`         | B component | `src/routes/_authed/courses/$courseId.tsx:46`                                | —                                                          | —                               | —                    |
 | ✅ done | 🔴 crit | 110  | `validateSearch`                | A pure      | `src/routes/_authed/enrollments/index.tsx:18`                                | `src/utils/enrolment/domain/enrollments-search.domain.ts`  | 1 CRAP finding (CRAP 110)       | hessuew / 2026-06-15 |
 | ⬜ todo | 🔴 crit | 110  | `LessonDetailComponent`         | B component | `src/routes/_authed/lessons/$lessonId.tsx:52`                                | —                                                          | —                               | —                    |

@@ -2,8 +2,13 @@ import * as React from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useMutation } from './useMutation'
-
-type MutationMode = 'create' | 'update' | 'delete'
+import {
+  type MutationMode,
+  type MutationReturn,
+  buildMutationReturn,
+  deriveIsAnyPending,
+  resolveSuccessMessage,
+} from '../utils/mutation/domain/entity-mutation.domain'
 
 interface UseEntityMutationOptions<
   TCreateData = unknown,
@@ -24,11 +29,6 @@ interface UseEntityMutationOptions<
   invalidateRouter?: boolean
 }
 
-interface MutationReturn<TVars> {
-  mutate: (vars: TVars) => void
-  isPending: boolean
-}
-
 interface UseEntityMutationReturn<
   TCreateVars = unknown,
   TUpdateVars = unknown,
@@ -38,21 +38,6 @@ interface UseEntityMutationReturn<
   updateMutation: MutationReturn<TUpdateVars>
   deleteMutation: MutationReturn<TDeleteVars>
   isAnyPending: boolean
-}
-
-const DEFAULT_MESSAGES: Record<MutationMode, string> = {
-  create: 'Created successfully',
-  update: 'Updated successfully',
-  delete: 'Deleted successfully',
-}
-
-function createNoOpMutation<TVars = unknown>(): MutationReturn<TVars> {
-  return {
-    mutate: () => {
-      throw new Error('This mutation function was not provided')
-    },
-    isPending: false,
-  }
 }
 
 export function useEntityMutation<
@@ -75,70 +60,60 @@ export function useEntityMutation<
   const router = useRouter()
   const invalidateRouter = opts.invalidateRouter ?? true
 
-  const getMessage = React.useCallback(
-    (mode: MutationMode): string => {
-      return opts.onSuccessMessage?.(mode) ?? DEFAULT_MESSAGES[mode]
+  const handleSuccess = React.useCallback(
+    async (
+      mode: MutationMode,
+      data: TCreateData | TUpdateData | TDeleteData,
+    ): Promise<void> => {
+      toast.success(resolveSuccessMessage(mode, opts.onSuccessMessage))
+      await opts.onSuccess?.({ mode, data })
+      if (invalidateRouter) {
+        await router.invalidate()
+      }
     },
-    [opts.onSuccessMessage],
+    [opts, invalidateRouter, router],
   )
 
   const createMutation = useMutation({
     fn: opts.createFn!,
-    onSuccess: async (ctx) => {
-      toast.success(getMessage('create'))
-      await opts.onSuccess?.({ mode: 'create', data: ctx.data })
-      if (invalidateRouter) {
-        await router.invalidate()
-      }
-    },
+    onSuccess: (ctx) => handleSuccess('create', ctx.data),
   })
 
   const updateMutation = useMutation({
     fn: opts.updateFn!,
-    onSuccess: async (ctx) => {
-      toast.success(getMessage('update'))
-      await opts.onSuccess?.({ mode: 'update', data: ctx.data })
-      if (invalidateRouter) {
-        await router.invalidate()
-      }
-    },
+    onSuccess: (ctx) => handleSuccess('update', ctx.data),
   })
 
   const deleteMutation = useMutation({
     fn: opts.deleteFn!,
-    onSuccess: async (ctx) => {
-      toast.success(getMessage('delete'))
-      await opts.onSuccess?.({ mode: 'delete', data: ctx.data })
-      if (invalidateRouter) {
-        await router.invalidate()
-      }
-    },
+    onSuccess: (ctx) => handleSuccess('delete', ctx.data),
   })
 
-  const isAnyPending =
-    (opts.createFn ? createMutation.status === 'pending' : false) ||
-    (opts.updateFn ? updateMutation.status === 'pending' : false) ||
-    (opts.deleteFn ? deleteMutation.status === 'pending' : false)
+  const isAnyPending = deriveIsAnyPending({
+    hasCreate: !!opts.createFn,
+    hasUpdate: !!opts.updateFn,
+    hasDelete: !!opts.deleteFn,
+    createStatus: createMutation.status,
+    updateStatus: updateMutation.status,
+    deleteStatus: deleteMutation.status,
+  })
 
   return {
-    createMutation: opts.createFn
-      ? {
-          mutate: createMutation.mutate,
-          isPending: createMutation.status === 'pending',
-        }
-      : createNoOpMutation<TCreateVars>(),
-    updateMutation: opts.updateFn
-      ? {
-          mutate: updateMutation.mutate,
-          isPending: updateMutation.status === 'pending',
-        }
-      : createNoOpMutation<TUpdateVars>(),
-    deleteMutation: opts.deleteFn
-      ? {
-          mutate: deleteMutation.mutate,
-          isPending: deleteMutation.status === 'pending',
-        }
-      : createNoOpMutation<TDeleteVars>(),
+    createMutation: buildMutationReturn<TCreateVars>(
+      !!opts.createFn,
+      createMutation.mutate,
+      createMutation.status,
+    ),
+    updateMutation: buildMutationReturn<TUpdateVars>(
+      !!opts.updateFn,
+      updateMutation.mutate,
+      updateMutation.status,
+    ),
+    deleteMutation: buildMutationReturn<TDeleteVars>(
+      !!opts.deleteFn,
+      deleteMutation.mutate,
+      deleteMutation.status,
+    ),
     isAnyPending,
   }
 }
