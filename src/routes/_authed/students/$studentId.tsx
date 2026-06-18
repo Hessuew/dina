@@ -82,18 +82,15 @@ function StudentDetailComponent() {
             <h2 className="mt-1 font-serif text-2xl text-[#F8F4EC]">
               {student.fullName}
             </h2>
-            <p className="mt-0.5 text-sm text-[#AFA28F]">{student.email}</p>
+            <p className="mt-0.5 truncate text-sm text-[#AFA28F]">
+              {student.email}
+            </p>
             {student.bio && (
               <p className="mt-3 text-sm leading-6 whitespace-pre-wrap text-[#CFC6B7]">
                 {student.bio}
               </p>
             )}
-            <div className="mt-4 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
-              <span>
-                {student.enrollments.length} enrolled{' '}
-                {student.enrollments.length === 1 ? 'course' : 'courses'}
-              </span>
-              <span className="h-3 w-px bg-white/12" />
+            <div className="mt-4 text-[0.68rem] text-[#8E816D]">
               <span>
                 {student.assignments.length} submitted{' '}
                 {student.assignments.length === 1

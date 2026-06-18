@@ -204,6 +204,12 @@ function LibraryComponent() {
                     ebooks={shelf.ebooks}
                     audioVisual={shelf.audioVisual}
                     viewerRole={viewer.role}
+                    permissions={{
+                      canEdit: canCreate,
+                      isCourseTeacher: canCreate,
+                    }}
+                    onEditMedia={(media) => openDialog('edit', media)}
+                    onDeleteMedia={(media) => openDialog('delete', media)}
                   />
                 )
               })}

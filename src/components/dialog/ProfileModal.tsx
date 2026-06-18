@@ -275,7 +275,7 @@ export function ProfileModal({
               </div>
 
               {/* Right: Form */}
-              <div className="flex min-h-0 flex-col overflow-hidden bg-[#151515]/88 px-7 py-10 sm:px-10 lg:px-12">
+              <div className="flex min-h-0 flex-col overflow-hidden bg-[#151515]/88 px-7 py-4 sm:px-10 md:py-10 lg:px-12">
                 {showPasswordForm ? (
                   /* Password mode */
                   <>
@@ -300,7 +300,7 @@ export function ProfileModal({
                         security
                       </h3>
                     </div>
-                    <div className="mt-8 min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/8 pt-7 pr-2">
+                    <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/8 pt-7 pr-2 lg:mt-8">
                       <FieldGroup>
                         <passwordForm.AppField
                           name="newPassword"
@@ -362,7 +362,7 @@ export function ProfileModal({
                         about me
                       </h3>
                     </div>
-                    <div className="mt-8 flex min-h-0 flex-1 flex-col border-t border-white/8 pt-7 pr-2">
+                    <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/8 pt-7 pr-2 lg:mt-8">
                       <FieldGroup className="min-h-0 flex-1">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <profileForm.AppField

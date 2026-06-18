@@ -99,7 +99,7 @@ export function TeacherModal({
               </div>
 
               {/* Right: Details */}
-              <div className="flex min-h-0 flex-col overflow-hidden bg-[#151515]/88 px-7 py-10 sm:px-10 lg:px-12">
+              <div className="flex min-h-0 flex-col overflow-hidden bg-[#151515]/88 px-7 py-4 sm:px-10 md:py-10 lg:px-12">
                 {/* Name and role */}
                 <div>
                   <div className="h-px w-12 bg-[#C5A059]/50" />
@@ -108,7 +108,7 @@ export function TeacherModal({
                       <img
                         src={GEM_IMAGE_MAP[teacher.gemstone]}
                         alt={teacher.gemstone}
-                        className="size-16 object-contain drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]"
+                        className="size-10 object-contain drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)] lg:size-16"
                       />
                     )}
                     <h3 className="font-serif text-[clamp(3rem,7vw,5.4rem)] leading-[0.88] tracking-[-0.06em] text-[#F8F4EC]">
@@ -119,7 +119,7 @@ export function TeacherModal({
 
                 {/* Bio */}
                 {teacher.bio && (
-                  <div className="mt-8 min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/8 pt-7 pr-2">
+                  <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/8 pt-7 pr-2 lg:mt-8">
                     <p className="text-sm leading-7 whitespace-pre-wrap text-[#D8D0C7] sm:text-base sm:leading-8">
                       {teacher.bio}
                     </p>

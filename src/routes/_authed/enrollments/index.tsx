@@ -1,11 +1,12 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { EyeIcon, FileTextIcon, UserRoundXIcon, UsersIcon } from 'lucide-react'
+import { EyeIcon, FileTextIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.repository'
 import { Button } from '@/components/ui/button'
 import { EnrollmentsTable } from '@/components/table/EnrollmentsTable'
 import { EvaluationOverlay } from '@/components/enrollment/EvaluationOverlay'
+import { AdminActionsDropdown } from '@/components/enrollment/AdminActionsDropdown'
 import { PageLayout } from '@/components/layout/page-layout'
 import {
   EndSubstitutionDialog,
@@ -189,42 +190,13 @@ function EnrollmentsPage() {
             {viewAll ? 'Show Own' : 'View All'}
           </Button>
           {isAdmin && (
-            <>
-              <Button
-                theme="light"
-                variant="outline"
-                onClick={() => void handleDistribute()}
-                disabled={isDistributing}
-              >
-                <UsersIcon className="size-3.5" />
-                Distribute unassigned
-              </Button>
-              <Button
-                theme="light"
-                variant="outline"
-                onClick={() => setIsStartSubDialogOpen(true)}
-              >
-                <UsersIcon className="size-3.5" />
-                Substitute teacher
-              </Button>
-              <Button
-                theme="light"
-                variant="outline"
-                onClick={() => setIsEndSubDialogOpen(true)}
-              >
-                <UserRoundXIcon className="size-3.5" />
-                End substitution
-              </Button>
-            </>
+            <AdminActionsDropdown
+              onDistribute={() => void handleDistribute()}
+              onStartSubstitution={() => setIsStartSubDialogOpen(true)}
+              onEndSubstitution={() => setIsEndSubDialogOpen(true)}
+              isDistributing={isDistributing}
+            />
           )}
-          <Button
-            theme="light"
-            variant="outline"
-            onClick={() => handleRefresh()}
-          >
-            <FileTextIcon className="size-3.5" />
-            Refresh
-          </Button>
         </div>
       </div>
 

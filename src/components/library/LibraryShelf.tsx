@@ -1,11 +1,64 @@
 import type { MediaLibraryRow } from '@/utils/library/library'
 import { MediaCard } from '@/components/library/MediaCard'
+import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
+
+type LibraryShelfPermissions = {
+  canEdit: boolean
+  isCourseTeacher: boolean
+}
 
 type LibraryShelfProps = {
   topic: string
   ebooks: Array<MediaLibraryRow>
   audioVisual: Array<MediaLibraryRow>
   viewerRole: 'student' | 'teacher' | 'admin'
+  permissions?: LibraryShelfPermissions
+  onEditMedia?: (item: MediaLibraryRow) => void
+  onDeleteMedia?: (item: MediaLibraryRow) => void
+}
+
+function MediaCardWithActions({
+  item,
+  viewerRole,
+  permissions,
+  onEditMedia,
+  onDeleteMedia,
+}: {
+  item: MediaLibraryRow
+  viewerRole: 'student' | 'teacher' | 'admin'
+  permissions?: LibraryShelfPermissions
+  onEditMedia?: (item: MediaLibraryRow) => void
+  onDeleteMedia?: (item: MediaLibraryRow) => void
+}) {
+  const canManage =
+    permissions != null &&
+    onEditMedia != null &&
+    onDeleteMedia != null &&
+    permissions.canEdit &&
+    permissions.isCourseTeacher
+
+  return (
+    <div className="group relative shrink-0">
+      <MediaCard item={item} viewerRole={viewerRole} />
+      {canManage && (
+        <div
+          className="absolute top-1 left-1 hidden group-hover:flex"
+          onClick={(e) => e.preventDefault()}
+        >
+          <EntityHeaderActions
+            status="published"
+            canEdit={permissions.canEdit}
+            isCourseTeacher={permissions.isCourseTeacher}
+            showStatus={false}
+            theme="dark"
+            size="sm"
+            onEdit={() => onEditMedia(item)}
+            onDelete={() => onDeleteMedia(item)}
+          />
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function LibraryShelf({
@@ -13,6 +66,9 @@ export function LibraryShelf({
   ebooks,
   audioVisual,
   viewerRole,
+  permissions,
+  onEditMedia,
+  onDeleteMedia,
 }: LibraryShelfProps) {
   return (
     <section className="flex flex-col gap-5">
@@ -30,7 +86,14 @@ export function LibraryShelf({
           </p>
           <div className="flex gap-4 pb-2">
             {ebooks.map((item) => (
-              <MediaCard key={item.id} item={item} viewerRole={viewerRole} />
+              <MediaCardWithActions
+                key={item.id}
+                item={item}
+                viewerRole={viewerRole}
+                permissions={permissions}
+                onEditMedia={onEditMedia}
+                onDeleteMedia={onDeleteMedia}
+              />
             ))}
           </div>
         </div>
@@ -43,7 +106,14 @@ export function LibraryShelf({
           </p>
           <div className="flex gap-4 pb-2">
             {audioVisual.map((item) => (
-              <MediaCard key={item.id} item={item} viewerRole={viewerRole} />
+              <MediaCardWithActions
+                key={item.id}
+                item={item}
+                viewerRole={viewerRole}
+                permissions={permissions}
+                onEditMedia={onEditMedia}
+                onDeleteMedia={onDeleteMedia}
+              />
             ))}
           </div>
         </div>

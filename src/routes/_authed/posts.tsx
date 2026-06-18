@@ -22,6 +22,12 @@ import {
   getPostChannels,
   getPosts,
 } from '@/utils/post/posts'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const fetchCurrentUser = createServerFn({ method: 'POST' }).handler(
   async () => {
@@ -82,6 +88,7 @@ function PostsComponent() {
   )
   const [nextCursor, setNextCursor] = useState(loaderData.nextCursor)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [channelDropdownOpen, setChannelDropdownOpen] = useState(false)
   const latestChannelRequestId = useRef<number>(0)
   const loadedChannelRef = useRef<string>('general')
   const focusFetchKeyRef = useRef<string | null>(null)
@@ -105,6 +112,7 @@ function PostsComponent() {
   }
 
   const handleSelectChannel = async (channelId: string) => {
+    setChannelDropdownOpen(false)
     await navigate({
       search: {
         ...search,
@@ -236,6 +244,52 @@ function PostsComponent() {
                 ? 'General channel'
                 : `Channel: ${channels.find((c) => c.id === selectedChannel)?.name ?? ''}`}
             </p>
+
+            {/* Mobile channel dropdown */}
+            <div className="mt-4 block lg:hidden">
+              <DropdownMenu
+                open={channelDropdownOpen}
+                onOpenChange={setChannelDropdownOpen}
+              >
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      theme="lightGhost"
+                      className="flex h-9 w-full items-center justify-between border border-[#1A1A1A]/10 bg-white/40 px-3 py-2 text-left shadow-none transition-all hover:translate-y-0 hover:border-[#C5A059]/30"
+                    >
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="size-4 text-[#9B7A41]" />
+                        <span className="text-sm text-[#1C1815]">Channels</span>
+                      </div>
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent
+                  align="start"
+                  className="w-full min-w-[200px]"
+                >
+                  {channels.map((ch) => (
+                    <DropdownMenuItem
+                      key={ch.id}
+                      onClick={() => handleSelectChannel(ch.id)}
+                      className={cn(
+                        'flex cursor-pointer items-center justify-between px-3 py-2',
+                        ch.id === selectedChannel
+                          ? 'bg-[#C5A059]/10 text-[#1C1815]'
+                          : 'text-[#5E5549]',
+                      )}
+                    >
+                      <span className="text-sm">{ch.name}</span>
+                      {ch.id === selectedChannel && (
+                        <div className="ml-auto size-1.5 rounded-full bg-[#C5A059]" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           <PostComposer
