@@ -11,41 +11,7 @@ import { useAppForm } from '@/hooks/form'
 import { useMutation } from '@/hooks/useMutation'
 import { loginFn } from '@/routes/_authed'
 import { loginSchema } from '@/schemas/auth.schema'
-
-function getUserFriendlyError(message: string): string {
-  const lowerMessage = message.toLowerCase()
-
-  if (
-    lowerMessage.includes('invalid credentials') ||
-    lowerMessage.includes('wrong password') ||
-    lowerMessage.includes('incorrect')
-  ) {
-    return 'Invalid email or password. Please check your credentials and try again.'
-  }
-  if (
-    lowerMessage.includes('email not found') ||
-    lowerMessage.includes('user not found')
-  ) {
-    return 'No account found with this email. Please sign up first.'
-  }
-  if (
-    lowerMessage.includes('email not verified') ||
-    lowerMessage.includes('not verified')
-  ) {
-    return 'Please verify your email before logging in. Check your inbox for the verification link.'
-  }
-  if (
-    lowerMessage.includes('account locked') ||
-    lowerMessage.includes('locked')
-  ) {
-    return 'Your account has been locked. Please contact support for assistance.'
-  }
-  if (lowerMessage.includes('network') || lowerMessage.includes('connection')) {
-    return 'Network error. Please check your connection and try again.'
-  }
-
-  return 'Unable to sign in. Please try again later.'
-}
+import { getLoginErrorMessage } from '@/utils/auth/domain/login-error.domain'
 
 interface LoginFormProps {
   verified?: boolean
@@ -63,7 +29,7 @@ export function LoginForm({ verified = false }: LoginFormProps) {
         return
       }
       if (ctx.data.message) {
-        toast.error(getUserFriendlyError(ctx.data.message))
+        toast.error(getLoginErrorMessage(ctx.data.message))
       }
     },
   })
