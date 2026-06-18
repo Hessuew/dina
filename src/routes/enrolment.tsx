@@ -1,8 +1,11 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { EnrolmentForm } from '@/components/auth/enrolment-form'
 import { env } from '@/env'
 
 export const Route = createFileRoute('/enrolment')({
+  beforeLoad: () => {
+    throw redirect({ to: '/' })
+  },
   component: EnrolmentComp,
   validateSearch: (search: Record<string, unknown>) => ({
     success:

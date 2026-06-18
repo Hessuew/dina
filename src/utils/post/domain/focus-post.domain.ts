@@ -17,6 +17,10 @@ export type FocusFetchDecision =
  * Decide whether the focused post must be fetched. Returns `fetch: false` when
  * there is no focus target, the channel hasn't settled, the post is already
  * loaded, or this exact fetch was already issued.
+ *
+ * Caller contract: if the fetch fails, reset `lastFetchKey` to `null` before
+ * the next render so the effect can retry. Leaving a failed key committed
+ * permanently suppresses retries for the lifetime of the component.
  */
 export function decideFocusFetch(params: {
   focusPostId: string | undefined
