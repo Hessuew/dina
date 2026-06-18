@@ -3,9 +3,9 @@ import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import gemsImage from '@/assets/images/bg/gems.webp'
 import andrewImage from '@/assets/images/lecturers/andrew.webp'
 import akosyaImage from '@/assets/images/lecturers/akosya.webp'
-import blessingImage from '@/assets/images/lecturers/blessing.webp'
 import ellaImage from '@/assets/images/lecturers/ella.webp'
 import emmanuelImage from '@/assets/images/lecturers/emmanuel.webp'
+import nonsoImage from '@/assets/images/lecturers/nonso.webp'
 import ezinneImage from '@/assets/images/lecturers/ezinne.webp'
 import juhaniImage from '@/assets/images/lecturers/juhani.webp'
 import keneImage from '@/assets/images/lecturers/kene.webp'
@@ -39,10 +39,13 @@ const LECTURER_BIO_MAP: Record<string, string> = {
     'Emmanuel is a Gospel minister, author, web developer, and brand specialist from Nigeria, dedicated to proclaiming the Gospel of Jesus through outreaches, Christian books, and global digital ministry platforms.',
   'Ezinne O.':
     'Ezinne is a disciple of the Lord, devoted daily to learning at His feet and loving Him wholeheartedly. She is also a Product Leader focused on AI enablement, managing the development and launch of AI voice and multimodal products across Europe.',
+  // 'Blessing A.':
+  //   'Blessing is a Psychiatrist and solution-focused practitioner with a special interest in lifestyle medicine, addiction support, and youth counselling, with a passion for helping people achieve lasting wellbeing.',
+  Nonso:
+    // 'Nonso is a corporate financial attorney who bridges high-stakes legal practice with a fiery, faith-filled, Spirit-led marketplace ministry. He navigates complex regulatory and legal frameworks with elite precision while actively being a conduit for the supernatural, experiencing miracles, signs, wonders and answered prayers by the power, presence and person of the Holy Spirit.',
+    'Nonso is a corporate financial attorney who combines legal expertise with a faith-driven, Spirit-led ministry. He navigates complex legal and regulatory matters while being a conduit for the power and work of the Holy Spirit.',
   'Sade P.':
     'Sade is a Psychiatrist passionate about teaching and mentoring the next generation of doctors. She works across inpatient and community settings, delivering compassionate, evidence-based, and holistic patient-centred care.',
-  'Blessing A.':
-    'Blessing is a Psychiatrist and solution-focused practitioner with a special interest in lifestyle medicine, addiction support, and youth counselling, with a passion for helping people achieve lasting wellbeing.',
   'Kene O.':
     'Kene is a Capital Markets and Derivatives solicitor dual qualified in England, Wales, and Nigeria. She contributes to international financial industry working groups, promoting collaboration, market standards, and innovation.',
   'Mahidere A.':
@@ -166,6 +169,17 @@ const gemLecturers: Array<TeacherWithCourse> = [
     course: null,
   },
   {
+    id: 'gl-nonso',
+    fullName: 'Nonso',
+    email: '',
+    bio: LECTURER_BIO_MAP['Nonso'] ?? null,
+    lecturerTitle: 'Framing',
+    gemstone: 'beryl',
+    avatarUrl: nonsoImage,
+    createdAt: new Date(0),
+    course: null,
+  },
+  {
     id: 'gl-sade',
     fullName: 'Sade P.',
     email: '',
@@ -176,17 +190,17 @@ const gemLecturers: Array<TeacherWithCourse> = [
     createdAt: new Date(0),
     course: null,
   },
-  {
-    id: 'gl-blessing',
-    fullName: 'Blessing A.',
-    email: '',
-    bio: LECTURER_BIO_MAP['Blessing A.'] ?? null,
-    lecturerTitle: 'Framing',
-    gemstone: 'beryl',
-    avatarUrl: blessingImage,
-    createdAt: new Date(0),
-    course: null,
-  },
+  // {
+  //   id: 'gl-blessing',
+  //   fullName: 'Blessing A.',
+  //   email: '',
+  //   bio: LECTURER_BIO_MAP['Blessing A.'] ?? null,
+  //   lecturerTitle: 'Framing',
+  //   gemstone: 'beryl',
+  //   avatarUrl: blessingImage,
+  //   createdAt: new Date(0),
+  //   course: null,
+  // },
   {
     id: 'gl-kene',
     fullName: 'Kene O.',
