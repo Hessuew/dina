@@ -8,6 +8,7 @@ import { MediaDialog } from '@/components/dialog/MediaDialog'
 import { Button } from '@/components/ui/button'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { getLibraryMedia } from '@/utils/library'
+import { getYoutubeVideoId } from '@/utils/library/domain/youtube.domain'
 import { PageLayout } from '@/components/layout/page-layout'
 import { EmptyState } from '@/components/ui/empty-state'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
@@ -22,43 +23,6 @@ export const Route = createFileRoute('/_authed/library/')({
 })
 
 const columnHelper = createColumnHelper<MediaLibraryRow>()
-
-function normalizeUrl(url: string): string {
-  return /^https?:\/\//i.test(url) ? url : `https://${url}`
-}
-
-function getYoutubeVideoId(url: string): string | null {
-  try {
-    const u = new URL(normalizeUrl(url))
-
-    if (u.hostname === 'youtu.be') {
-      const id = u.pathname.replace('/', '')
-      return id || null
-    }
-
-    const isYoutube =
-      u.hostname === 'www.youtube.com' || u.hostname === 'youtube.com'
-
-    if (isYoutube) {
-      const v = u.searchParams.get('v')
-      if (v) return v
-
-      if (u.pathname.startsWith('/embed/')) {
-        const id = u.pathname.split('/embed/')[1]?.split('/')[0]
-        return id || null
-      }
-
-      if (u.pathname.startsWith('/shorts/')) {
-        const id = u.pathname.split('/shorts/')[1]?.split('/')[0]
-        return id || null
-      }
-    }
-
-    return null
-  } catch {
-    return null
-  }
-}
 
 function getYoutubeThumbnail(url: string): string | null {
   const id = getYoutubeVideoId(url)
