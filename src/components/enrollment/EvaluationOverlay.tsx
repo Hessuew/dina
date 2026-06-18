@@ -10,7 +10,7 @@ import {
   SquareArrowOutUpRight,
   X,
 } from 'lucide-react'
-import type { RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import type { EnrollmentWithEvaluation } from '@/utils/enrolment/domain/enrolment.domain'
 import type { EvaluationWithAuthor } from '@/utils/enrolment/repository/enrolment.repository'
 import type {
@@ -22,8 +22,12 @@ import {
   EVALUATION_SCORES,
   EVALUATION_SCORE_LABELS,
   formatScore,
-  scoreRequiresAdmissionCategory,
 } from '@/utils/enrolment/domain/evaluation.domain'
+import {
+  buildScorePatch,
+  deriveEvaluationView,
+  toggleScoreValue,
+} from '@/components/enrollment/domain/evaluation-overlay.domain'
 import { EnrollmentDetails } from '@/components/enrollment/EnrollmentDetails'
 import { useEvaluationKeyboard } from '@/hooks/useEvaluationKeyboard'
 import { useMutation } from '@/hooks/useMutation'
@@ -222,6 +226,84 @@ function NoteEditor({
   )
 }
 
+function OtherEvaluatorScores({
+  evaluators,
+}: {
+  evaluators: Array<EvaluationWithAuthor>
+}) {
+  if (evaluators.length === 0) return null
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+      {evaluators.map((e) => (
+        <span key={e.evaluatorId} className="text-sm text-[#AFA28F]">
+          {e.evaluatorName}:{' '}
+          <span className="font-serif text-lg font-medium text-[#E9D9B4]">
+            {e.score !== null ? formatScore(e.score) : '—'}
+          </span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function OtherNotesList({ notes }: { notes: Array<EvaluationWithAuthor> }) {
+  if (notes.length === 0) return null
+  return (
+    <div className="mt-4 space-y-2 border-t border-white/8 pt-3">
+      {notes.map((note) => (
+        <div key={note.evaluatorId} className="text-sm">
+          <span className="text-[0.7rem] font-medium tracking-widest text-[#8E816D] uppercase">
+            {note.evaluatorName}
+            {note.score !== null && (
+              <span className="ml-2 text-[#C5A059]">
+                {formatScore(note.score)}
+              </span>
+            )}
+            {note.admissionCategory && (
+              <span className="ml-2 text-[#C5A059]">
+                {formatAdmissionCategory(note.admissionCategory)}
+              </span>
+            )}
+          </span>
+          <p className="mt-0.5 whitespace-pre-wrap text-[#D6CCBE]">
+            {note.note}
+          </p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function NavArrow({
+  side,
+  label,
+  icon,
+  disabled,
+  onClick,
+}: {
+  side: string
+  label: string
+  icon: ReactNode
+  disabled: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={cn(
+        'absolute top-1/4 flex size-11 -translate-y-1/2 items-center justify-center rounded-none border border-white/10 bg-[#1A1716] text-[#AFA28F] transition-colors hover:border-[#C5A059]/40 hover:text-[#F8F4EC]',
+        side,
+        disabled && 'pointer-events-none opacity-25',
+      )}
+    >
+      {icon}
+    </button>
+  )
+}
+
 type EvaluationOverlayProps = {
   enrollment: EnrollmentWithEvaluation
   evaluations: Array<EvaluationWithAuthor>
@@ -283,33 +365,23 @@ export function EvaluationOverlay({
   const pendingPrevScoreRef = useRef<number | null>(null)
   const pendingPrevAdmissionCategoryRef = useRef<AdmissionCategory | null>(null)
 
-  const myEvaluation = evaluations.find((e) => e.evaluatorId === userId)
-  const myScore = myEvaluation?.score ?? null
-  const myNote = myEvaluation?.note ?? ''
-  const myAdmissionCategory = myEvaluation?.admissionCategory ?? null
-  const admissionCategoryEnabled = scoreRequiresAdmissionCategory(myScore)
-  const admissionCategoryMissing =
-    admissionCategoryEnabled && myAdmissionCategory === null
-  const evaluationTotal = evaluations.reduce(
-    (sum, evaluation) => sum + (evaluation.score ?? 0),
-    0,
-  )
-  const evaluationCount = evaluations.filter(
-    (evaluation) => evaluation.score !== null,
-  ).length
-
-  const otherNotes = evaluations.filter(
-    (e) => e.evaluatorId !== userId && e.note && e.note.trim().length > 0,
-  )
+  const {
+    myScore,
+    myNote,
+    myAdmissionCategory,
+    admissionCategoryEnabled,
+    admissionCategoryMissing,
+    evaluationTotal,
+    evaluationCount,
+    otherEvaluators,
+    otherNotes,
+  } = deriveEvaluationView({ evaluations, userId })
 
   const saveScore = useCallback(
     (score: number | null) => {
       pendingPrevScoreRef.current = myScore
       pendingPrevAdmissionCategoryRef.current = myAdmissionCategory
-      onLocalEvaluation(enrollment.id, {
-        score,
-        ...(!score || score < 3 ? { admissionCategory: null } : {}),
-      })
+      onLocalEvaluation(enrollment.id, buildScorePatch(score))
       void scoreMutation.mutate({
         data: { enrollmentId: enrollment.id, score },
       })
@@ -346,7 +418,7 @@ export function EvaluationOverlay({
   )
 
   const handleScoreButton = (value: EvaluationScore) => {
-    saveScore(value === myScore ? null : value)
+    saveScore(toggleScoreValue(value, myScore))
   }
 
   const saveNote = useCallback(
@@ -391,24 +463,7 @@ export function EvaluationOverlay({
               <h2 className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
                 {enrollment.fullLegalName}
               </h2>
-              {evaluations.filter((e) => e.evaluatorId !== userId).length >
-                0 && (
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
-                  {evaluations
-                    .filter((e) => e.evaluatorId !== userId)
-                    .map((e) => (
-                      <span
-                        key={e.evaluatorId}
-                        className="text-sm text-[#AFA28F]"
-                      >
-                        {e.evaluatorName}:{' '}
-                        <span className="font-serif text-lg font-medium text-[#E9D9B4]">
-                          {e.score !== null ? formatScore(e.score) : '—'}
-                        </span>
-                      </span>
-                    ))}
-                </div>
-              )}
+              <OtherEvaluatorScores evaluators={otherEvaluators} />
             </div>
             <div className="flex items-center gap-4">
               <Link
@@ -491,30 +546,7 @@ export function EvaluationOverlay({
           </div>
 
           {/* Other evaluators' notes */}
-          {otherNotes.length > 0 && (
-            <div className="mt-4 space-y-2 border-t border-white/8 pt-3">
-              {otherNotes.map((note) => (
-                <div key={note.evaluatorId} className="text-sm">
-                  <span className="text-[0.7rem] font-medium tracking-widest text-[#8E816D] uppercase">
-                    {note.evaluatorName}
-                    {note.score !== null && (
-                      <span className="ml-2 text-[#C5A059]">
-                        {formatScore(note.score)}
-                      </span>
-                    )}
-                    {note.admissionCategory && (
-                      <span className="ml-2 text-[#C5A059]">
-                        {formatAdmissionCategory(note.admissionCategory)}
-                      </span>
-                    )}
-                  </span>
-                  <p className="mt-0.5 whitespace-pre-wrap text-[#D6CCBE]">
-                    {note.note}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+          <OtherNotesList notes={otherNotes} />
         </div>
       </div>
 
@@ -530,30 +562,20 @@ export function EvaluationOverlay({
       </div>
 
       {/* Prev / next arrows */}
-      <button
-        type="button"
-        onClick={() => onPrev()}
+      <NavArrow
+        side="left-1/10"
+        label="Previous"
+        icon={<ChevronLeft className="size-5" />}
         disabled={!hasPrev}
-        aria-label="Previous"
-        className={cn(
-          'absolute top-1/4 left-1/10 flex size-11 -translate-y-1/2 items-center justify-center rounded-none border border-white/10 bg-[#1A1716] text-[#AFA28F] transition-colors hover:border-[#C5A059]/40 hover:text-[#F8F4EC]',
-          !hasPrev && 'pointer-events-none opacity-25',
-        )}
-      >
-        <ChevronLeft className="size-5" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onNext()}
+        onClick={onPrev}
+      />
+      <NavArrow
+        side="right-1/10"
+        label="Next"
+        icon={<ChevronRight className="size-5" />}
         disabled={!hasNext}
-        aria-label="Next"
-        className={cn(
-          'absolute top-1/4 right-1/10 flex size-11 -translate-y-1/2 items-center justify-center rounded-none border border-white/10 bg-[#1A1716] text-[#AFA28F] transition-colors hover:border-[#C5A059]/40 hover:text-[#F8F4EC]',
-          !hasNext && 'pointer-events-none opacity-25',
-        )}
-      >
-        <ChevronRight className="size-5" />
-      </button>
+        onClick={onNext}
+      />
     </div>
   )
 }
