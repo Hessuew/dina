@@ -119,7 +119,7 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 ### Tracking & the progress ledger
 
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
-moderate)** as of 2026-06-15, now **134 (18 critical / 45 high / 71 moderate)**. The gate
+moderate)** as of 2026-06-15, now **133 (17 critical / 45 high / 71 moderate)**. The gate
 prevents regressions, so the count only moves down.
 
 The **ledger** below is the durable record of what has been fixed and what is being worked on
@@ -128,26 +128,57 @@ target's change, not as an afterthought.
 
 #### Protocol — claim before you work (safe for parallel agents)
 
+> **A claim is only real once it is visible on the shared base ref (`origin/main`).** A claim
+> committed only to your feature branch is **invisible** to an agent working on another branch:
+> each branched from `main` before the other's claim merged, so neither sees the other's row,
+> and the merge conflict that would catch it only fires at integration time — long after both
+> have done the work. This has already caused a double-claim. The steps below close that gap;
+> follow them exactly.
+
+> **`🔨 in progress` means hands off — never start, continue, verify, or finish it.** A row
+> marked `🔨 in progress` by anyone other than you in the _current_ session belongs to another
+> agent. Do **not** touch it under any circumstances, **even if the working tree already contains
+> a complete-looking implementation** for it (domain file, tests, swapped call sites). A
+> pre-existing in-progress implementation is another agent's uncommitted work, not an invitation
+> to "just finish it" — adopting it duplicates effort, races their commit, and corrupts the
+> ledger's ownership. If you find yourself about to work on a row you did not flip to
+> `🔨 in progress` yourself this session, **stop and pick a `⬜ todo` row instead**. The only
+> agent allowed to complete a target is the one whose claim is on that row.
+
 So multiple agents (local or cloud) can pay down findings at once without colliding:
 
-1. **Claim first.** Before touching a target's files, add (or flip) its ledger row to
-   `🔨 in progress` with your agent/author id and the date, and **commit that claim on its own**
-   (`gt c -m "chore(crap): claim <target>"`) so other workers see it immediately.
-2. **Pick only `⬜ todo` rows.** Never start a target already marked `🔨 in progress` — take the
-   next unclaimed one instead. A merge conflict on this table means someone claimed it first:
-   yield and pick another row.
-3. **Record on completion.** When the target is done, flip its row to `✅ done` with the date,
+1. **Refresh the ledger from the shared ref first.** `git fetch origin`, then read this ledger
+   as it stands on `origin/main` (e.g.
+   `git show origin/main:docs/adr/0010-crap-reduction-via-domain-extraction.md`). Never pick a
+   target from a stale local copy — your local `main` may predate another agent's claim.
+2. **Claim on `origin/main`, not just on your feature branch.** Add (or flip) the target's
+   ledger row to `🔨 in progress` with your agent/author id and the date in a doc-only commit
+   (`gt c -m "chore(crap): claim <target>"`) and **land that claim on `origin/main` before you
+   start the work** (push it / merge the claim-only PR first). Create the implementation branch
+   only after the claim is on `origin/main`. A claim that never gets past your local branch does
+   not count and will collide.
+3. **If the push is rejected, someone claimed first.** Pull/rebase `origin/main`, re-read the
+   ledger, and if your target is now `🔨 in progress`, yield and take another row. A merge
+   conflict on this table is the same signal: yield, don't force it.
+4. **Pick only `⬜ todo` rows** as seen on the freshly fetched `origin/main`. Never start,
+   continue, verify, or finish a target already marked `🔨 in progress` — it is owned by the
+   agent on that row. This holds **even if your working tree already has a complete-looking
+   implementation for it**: that is another agent's in-flight work; leave it, do not commit it,
+   and take the next `⬜ todo` row instead. The only valid reason to act on a `🔨 in progress`
+   row is to complete a claim **you yourself** flipped this session, or to release one per step 6.
+5. **Record on completion.** When the target is done, flip its row to `✅ done` with the date,
    the domain file created, and the finding(s)/duplicate(s) cleared — this is the "what is
    fixed" record. Drop the new `fallow health` total in the count above.
-4. **Release if you abandon it.** If you stop without finishing, flip the row back to `⬜ todo`
+6. **Release if you abandon it.** If you stop without finishing, flip the row back to `⬜ todo`
    so it is not stranded as permanently "in progress".
 
 #### Ledger
 
-| Status  | Target (function)      | Kind         | Files / sites                                                                | Domain file                                   | Cleared                         | Agent / date         |
-| ------- | ---------------------- | ------------ | ---------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------- | -------------------- |
-| ✅ done | `getYoutubeVideoId`    | Phase A pure | `MediaCard.tsx`, `routes/_authed/library/index.tsx`, `MediaDetailViewer.tsx` | `src/utils/library/domain/youtube.domain.ts`  | 3 CRAP findings + 1 fallow dupe | hessuew / 2026-06-15 |
-| ✅ done | `getUserFriendlyError` | Phase A pure | `components/auth/login-form.tsx`                                             | `src/utils/auth/domain/login-error.domain.ts` | 1 CRAP finding (CRAP 156)       | hessuew / 2026-06-15 |
+| Status  | Target (function)      | Kind         | Files / sites                                                                | Domain file                                                | Cleared                         | Agent / date         |
+| ------- | ---------------------- | ------------ | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------- | -------------------- |
+| ✅ done | `getYoutubeVideoId`    | Phase A pure | `MediaCard.tsx`, `routes/_authed/library/index.tsx`, `MediaDetailViewer.tsx` | `src/utils/library/domain/youtube.domain.ts`               | 3 CRAP findings + 1 fallow dupe | hessuew / 2026-06-15 |
+| ✅ done | `getUserFriendlyError` | Phase A pure | `components/auth/login-form.tsx`                                             | `src/utils/auth/domain/login-error.domain.ts`              | 1 CRAP finding (CRAP 156)       | hessuew / 2026-06-15 |
+| ✅ done | `handleKeyDown`        | Phase A hook | `src/hooks/useEvaluationKeyboard.ts`                                         | `src/utils/enrolment/domain/evaluation-keyboard.domain.ts` | 1 CRAP finding (CRAP 156)       | hessuew / 2026-06-15 |
 
 Add a new row per target. Leave the table as the live worklist; do not delete `✅ done` rows —
 they are the fix history.
