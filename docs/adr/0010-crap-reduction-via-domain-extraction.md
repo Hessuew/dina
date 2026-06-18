@@ -167,7 +167,12 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **112** open (13 critical / 45 high / 54 moderate) after extracting
+only moves down. Latest: **111** open (11 critical / 46 high / 54 moderate) after extracting
+`LessonRow`'s view-model — `isPublished`/`showContent` derivation, the index label, status-chip
+visibility/variant, and the content/meta visibility gates — into
+`src/components/course/domain/lesson-row.domain.ts` (`resolveLessonRowView`), and splitting the
+render into `LessonRowBody` + `LessonRowMeta` so each shell stays under the CRAP threshold.
+Prior: **112** open (13 critical / 45 high / 54 moderate) after extracting
 the `AssignmentsView` card-map's per-card view-model — overdue check, submission-status label,
 status-chip variant (role→submission-variant-or-assignment-status), and the student
 grade-display gate — into `src/components/view/domain/assignments-view.domain.ts`
@@ -322,7 +327,7 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ✅ done        | —       | —    | `handleKeyDown`                   | A hook      | `src/hooks/useEvaluationKeyboard.ts`                                         | `src/utils/enrolment/domain/evaluation-keyboard.domain.ts`                                       | 1 CRAP finding (CRAP 156)                       | 2026-06-15        |
 | 🔨 in progress | 🔴 crit | 210  | `EvaluationOverlay`               | B component | `src/components/enrollment/EvaluationOverlay.tsx:245`                        | —                                                                                                | —                                               | 2026-06-18T15:31Z |
 | ✅ done        | 🔴 crit | 210  | `<arrow>`                         | B component | `src/components/view/AssignmentsView.tsx:137`                                | `src/components/view/domain/assignments-view.domain.ts`                                          | 1 CRAP finding (CRAP 210)                       | 2026-06-18        |
-| 🔨 in progress | 🔴 crit | 156  | `LessonRow`                       | B component | `src/components/course/CourseDetailSections.tsx:323`                         | —                                                                                                | —                                               | 2026-06-18T15:36Z |
+| ✅ done        | 🔴 crit | 156  | `LessonRow`                       | B component | `src/components/course/CourseDetailSections.tsx:323`                         | `src/components/course/domain/lesson-row.domain.ts`                                              | 1 CRAP finding (CRAP 156)                       | 2026-06-18        |
 | ⬜ todo        | 🔴 crit | 156  | `MediaCard`                       | B component | `src/components/library/MediaCard.tsx:75`                                    | —                                                                                                | —                                               | —                 |
 | ⬜ todo        | 🔴 crit | 156  | `AssignmentDetailComponent`       | B component | `src/routes/_authed/assignments/$assignmentId.tsx:86`                        | —                                                                                                | —                                               | —                 |
 | ⬜ todo        | 🔴 crit | 132  | `SignupForm`                      | B component | `src/components/auth/signup-form.tsx:90`                                     | —                                                                                                | —                                               | —                 |

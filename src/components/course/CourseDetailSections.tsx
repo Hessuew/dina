@@ -16,6 +16,10 @@ import { DarkCard } from '@/components/ui/dark-card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { MediaCard } from '@/components/library/MediaCard'
 import { cn } from '@/lib/utils'
+import {
+  resolveLessonRowView,
+  type LessonRowView,
+} from '@/components/course/domain/lesson-row.domain'
 
 type Lesson = {
   id: string
@@ -339,72 +343,82 @@ function LessonRow({
   onEditLesson: (lesson: Lesson) => void
   onDeleteLesson: (lesson: Lesson) => void
 }) {
-  const isPublished = lesson.isPublished ?? false
-  const showContent = isPublished || permissions.canEdit
+  const view = resolveLessonRowView({ lesson, index, permissions })
 
   return (
     <div
       className={cn(
         'group flex items-start gap-4 px-6 py-5 transition-all',
-        showContent ? 'cursor-pointer hover:bg-white/5' : 'opacity-40',
+        view.showContent ? 'cursor-pointer hover:bg-white/5' : 'opacity-40',
       )}
       onClick={() => {
-        if (showContent) onOpenLesson(lesson.id)
+        if (view.showContent) onOpenLesson(lesson.id)
       }}
     >
       <div className="flex size-8 shrink-0 items-center justify-center border border-[#C5A059]/40 bg-[#1A1716] font-serif text-xs text-[#E9D9B4]">
-        {String(index + 1).padStart(2, '0')}
+        {view.indexLabel}
       </div>
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[0.62rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
-            {lesson.title}
-          </span>
-          {permissions.canEdit && permissions.isCourseTeacher && (
-            <StatusChip
-              variant={isPublished ? 'published' : 'draft'}
-              size="sm"
-            />
-          )}
-        </div>
-
-        {showContent && lesson.content && (
-          <p className="mt-1 line-clamp-2 text-sm whitespace-pre-wrap text-[#CFC6B7]">
-            {lesson.content}
-          </p>
-        )}
-
-        {showContent && (
-          <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
-            {lesson.duration && (
-              <div className="flex items-center gap-1">
-                <ClockIcon className="size-3" />
-                <span>{lesson.duration} min</span>
-              </div>
-            )}
-            {lesson.scheduledTime && (
-              <div className="flex items-center gap-1">
-                <CalendarIcon className="size-3" />
-                <span>
-                  {new Date(lesson.scheduledTime).toLocaleDateString()}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <LessonRowBody lesson={lesson} view={view} />
 
       <LessonActions
         lesson={lesson}
         role={role}
-        isPublished={isPublished}
+        isPublished={view.isPublished}
         isCompleted={isCompleted}
         permissions={permissions}
         onOpenLesson={onOpenLesson}
         onEditLesson={onEditLesson}
         onDeleteLesson={onDeleteLesson}
       />
+    </div>
+  )
+}
+
+function LessonRowBody({
+  lesson,
+  view,
+}: {
+  lesson: Lesson
+  view: LessonRowView
+}) {
+  return (
+    <div className="min-w-0 flex-1">
+      <div className="flex items-center gap-2">
+        <span className="text-[0.62rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
+          {lesson.title}
+        </span>
+        {view.showStatusChip && (
+          <StatusChip variant={view.statusChipVariant} size="sm" />
+        )}
+      </div>
+
+      {view.showContentText && (
+        <p className="mt-1 line-clamp-2 text-sm whitespace-pre-wrap text-[#CFC6B7]">
+          {lesson.content}
+        </p>
+      )}
+
+      {view.showMeta && <LessonRowMeta lesson={lesson} />}
+    </div>
+  )
+}
+
+function LessonRowMeta({ lesson }: { lesson: Lesson }) {
+  return (
+    <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
+      {lesson.duration && (
+        <div className="flex items-center gap-1">
+          <ClockIcon className="size-3" />
+          <span>{lesson.duration} min</span>
+        </div>
+      )}
+      {lesson.scheduledTime && (
+        <div className="flex items-center gap-1">
+          <CalendarIcon className="size-3" />
+          <span>{new Date(lesson.scheduledTime).toLocaleDateString()}</span>
+        </div>
+      )}
     </div>
   )
 }
