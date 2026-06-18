@@ -167,7 +167,13 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **109** open (10 critical / 46 high / 53 moderate) after extracting
+only moves down. Latest: **108** open (9 critical / 46 high / 53 moderate) after extracting
+`AssignmentDetailComponent`'s view-model — submission status-chip variant, the grade and
+submitted-date formatters, the initial submission-form values, the student/past-due/can-submit
+permission flags, the edit-dialog mode gate, and the back / post-delete navigation decisions
+(DI side effects) — into `src/utils/assignments/domain/assignment-detail.domain.ts`; the route
+shell now derives the view model and only orchestrates the render. Prior: **109** open
+(10 critical / 46 high / 53 moderate) after extracting
 `MediaCard`'s view-model — thumbnail-URL resolution, the media-type config
 (`resolveMediaTypeConfig` + `MEDIA_TYPE_CONFIG`, moved out of the component file), width class,
 course-number/draft-badge visibility gates, and the badge border/icon-fill styles — into
@@ -336,7 +342,7 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ✅ done        | 🔴 crit | 210  | `<arrow>`                         | B component | `src/components/view/AssignmentsView.tsx:137`                                | `src/components/view/domain/assignments-view.domain.ts`                                          | 1 CRAP finding (CRAP 210)                       | 2026-06-18        |
 | ✅ done        | 🔴 crit | 156  | `LessonRow`                       | B component | `src/components/course/CourseDetailSections.tsx:323`                         | `src/components/course/domain/lesson-row.domain.ts`                                              | 1 CRAP finding (CRAP 156)                       | 2026-06-18        |
 | ✅ done        | 🔴 crit | 156  | `MediaCard`                       | B component | `src/components/library/MediaCard.tsx:75`                                    | `src/components/library/domain/media-card.domain.ts`                                             | 1 CRAP finding (CRAP 156)                       | 2026-06-18        |
-| 🔨 in progress | 🔴 crit | 156  | `AssignmentDetailComponent`       | B component | `src/routes/_authed/assignments/$assignmentId.tsx:86`                        | —                                                                                                | —                                               | 2026-06-18T15:53Z |
+| ✅ done        | 🔴 crit | 156  | `AssignmentDetailComponent`       | B component | `src/routes/_authed/assignments/$assignmentId.tsx:86`                        | `src/utils/assignments/domain/assignment-detail.domain.ts`                                       | 1 CRAP finding (CRAP 156)                       | 2026-06-18        |
 | 🔨 in progress | 🔴 crit | 132  | `SignupForm`                      | B component | `src/components/auth/signup-form.tsx:90`                                     | —                                                                                                | —                                               | 2026-06-18T15:59Z |
 | 🔨 in progress | 🔴 crit | 132  | `NotificationRow`                 | B component | `src/components/navigation/NotificationsMenu.tsx:181`                        | —                                                                                                | —                                               | 2026-06-18T16:03Z |
 | ⬜ todo        | 🔴 crit | 132  | `navigate`                        | B component | `src/routes/_authed/enrollments/index.tsx:129`                               | —                                                                                                | —                                               | —                 |

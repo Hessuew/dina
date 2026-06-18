@@ -14,6 +14,16 @@ import {
   getAssignment,
   getAssignmentSubmissions,
 } from '@/utils/assignments'
+import {
+  buildInitialSubmissionFormData,
+  deriveSubmissionPermissions,
+  formatSubmissionGrade,
+  formatSubmittedDate,
+  navigateAfterDelete,
+  navigateBack,
+  resolveEditDialogMode,
+  resolveSubmissionStatusVariant,
+} from '@/utils/assignments/domain/assignment-detail.domain'
 import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
@@ -104,41 +114,25 @@ function AssignmentDetailComponent() {
     }),
     columnHelper.accessor('status', {
       cell: (info) => {
-        const sub = info.row.original
-        const variant =
-          sub.grade !== null
-            ? 'graded'
-            : sub.status === 'submitted'
-              ? 'submitted'
-              : 'draft'
+        const variant = resolveSubmissionStatusVariant(info.row.original)
         return <StatusChip variant={variant} size="sm" />
       },
       header: 'Status',
     }),
     columnHelper.accessor('grade', {
-      cell: (info) => {
-        const sub = info.row.original
-        return (
-          <span className="text-sm text-[#AFA28F]">
-            {sub.grade !== null
-              ? `${sub.grade} / ${assignment.maxGrade ?? 100}`
-              : '—'}
-          </span>
-        )
-      },
+      cell: (info) => (
+        <span className="text-sm text-[#AFA28F]">
+          {formatSubmissionGrade(info.row.original.grade, assignment.maxGrade)}
+        </span>
+      ),
       header: 'Grade',
     }),
     columnHelper.accessor('submittedAt', {
-      cell: (info) => {
-        const sub = info.row.original
-        return (
-          <span className="text-sm text-[#8E816D]">
-            {sub.submittedAt
-              ? new Date(sub.submittedAt).toLocaleDateString()
-              : '—'}
-          </span>
-        )
-      },
+      cell: (info) => (
+        <span className="text-sm text-[#8E816D]">
+          {formatSubmittedDate(info.row.original.submittedAt)}
+        </span>
+      ),
       header: 'Submitted',
     }),
     createButtonColumn<SubmissionWithStudent>([
@@ -152,14 +146,15 @@ function AssignmentDetailComponent() {
     ]),
   ]
 
-  const [submissionFormData, setSubmissionFormData] = useState({
-    content: submission?.content || '',
-    fileUrl: submission?.fileUrl || '',
-  })
+  const [submissionFormData, setSubmissionFormData] = useState(
+    buildInitialSubmissionFormData(submission),
+  )
 
-  const isStudent = role === 'student'
-  const isPastDue = new Date(assignment.dueDate) < new Date()
-  const canSubmit = isStudent && assignment.status === 'published' && !isPastDue
+  const { isStudent, isPastDue, canSubmit } = deriveSubmissionPermissions({
+    role,
+    status: assignment.status,
+    dueDate: assignment.dueDate,
+  })
 
   const submissionMutation = useMutation({
     fn: createOrUpdateSubmission,
@@ -181,14 +176,21 @@ function AssignmentDetailComponent() {
   }
 
   const goBack = () => {
-    if (fromCalendar && calendarMonth) {
-      router.navigate({ to: '/calendar', search: { month: calendarMonth } })
-    } else if (fromDashboard) {
-      router.navigate({ to: '/dashboard' })
-    } else {
-      router.history.back()
-    }
+    navigateBack(
+      { fromCalendar, calendarMonth, fromDashboard },
+      {
+        toCalendar: (month) =>
+          router.navigate({ to: '/calendar', search: { month } }),
+        toDashboard: () => router.navigate({ to: '/dashboard' }),
+        back: () => router.history.back(),
+      },
+    )
   }
+
+  const editDialogMode = resolveEditDialogMode({
+    mode: assignmentDialog.dialogMode,
+    isOpen: assignmentDialog.isOpen,
+  })
 
   return (
     <PageLayout>
@@ -250,25 +252,26 @@ function AssignmentDetailComponent() {
       />
 
       {/* Assignment Dialog (edit / delete) */}
-      {(assignmentDialog.dialogMode === 'edit' ||
-        assignmentDialog.dialogMode === 'delete') &&
-        assignmentDialog.isOpen && (
+      {editDialogMode && (
           <AssignmentDialog
             open={true}
             onOpenChange={(open) => {
               if (!open) assignmentDialog.closeDialog()
             }}
-            mode={assignmentDialog.dialogMode}
+            mode={editDialogMode}
             assignment={assignment}
             onDeleteSuccess={() => {
-              if (fromDashboard) {
-                router.navigate({ to: '/assignments' })
-              } else {
-                router.navigate({
-                  to: '/lessons/$lessonId',
-                  params: { lessonId: assignment.lesson.id },
-                })
-              }
+              navigateAfterDelete(
+                { fromDashboard },
+                {
+                  toAssignments: () => router.navigate({ to: '/assignments' }),
+                  toLesson: () =>
+                    router.navigate({
+                      to: '/lessons/$lessonId',
+                      params: { lessonId: assignment.lesson.id },
+                    }),
+                },
+              )
             }}
           />
         )}
