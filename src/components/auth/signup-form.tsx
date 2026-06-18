@@ -3,6 +3,7 @@ import { Link, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { Loader2, RefreshCwIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import type { EmailFieldState } from '@/components/auth/domain/signup-form.domain'
 import { toUserError } from '@/utils/errors'
 import {
   Field,
@@ -32,56 +33,16 @@ import {
   AuthFormSurface,
   AuthPageShell,
 } from '@/components/auth/auth-layout'
-
-const USER_FRIENDLY_ERROR_PATTERNS: Array<{
-  needles: Array<string>
-  message: string
-}> = [
-  {
-    needles: ['email already exists', 'duplicate'],
-    message:
-      'An account with this email already exists. Please try logging in instead.',
-  },
-  {
-    needles: ['invalid email', 'email format'],
-    message: 'Please enter a valid email address.',
-  },
-  {
-    needles: ['password too short', 'password too weak'],
-    message: 'Your password is too weak. Please use a stronger password.',
-  },
-  {
-    needles: ['invitation', 'invited'],
-    message:
-      'You need a valid invitation to sign up. Please check your invitation link.',
-  },
-  {
-    needles: ['otp', 'verification code', 'code'],
-    message:
-      'The verification code you entered is incorrect. Please try again.',
-  },
-  {
-    needles: ['expired', 'timeout'],
-    message: 'The verification code has expired. Please request a new one.',
-  },
-  {
-    needles: ['rate limit', 'too many'],
-    message: 'Too many attempts. Please wait a moment and try again.',
-  },
-  {
-    needles: ['network', 'connection'],
-    message: 'Network error. Please check your connection and try again.',
-  },
-]
-
-function getUserFriendlyError(message: string): string {
-  const lowerMessage = message.toLowerCase()
-  const match = USER_FRIENDLY_ERROR_PATTERNS.find(({ needles }) =>
-    needles.some((needle) => lowerMessage.includes(needle)),
-  )
-
-  return match?.message ?? 'Something went wrong. Please try again later.'
-}
+import {
+  buildEmailFieldView,
+  isOtpComplete,
+  isResendDisabled,
+  isSignupSubmitDisabled,
+  resolveResendLabel,
+  resolveResendOutcome,
+  resolveSignupOutcome,
+  resolveVerifyOutcome,
+} from '@/components/auth/domain/signup-form.domain'
 
 interface SignupFormProps {
   token?: string
@@ -134,13 +95,14 @@ export function SignupForm({ token = '' }: SignupFormProps) {
   >({
     fn: useServerFn(signupFn),
     onSuccess: (ctx) => {
-      if (ctx.data.error) {
-        toast.error(getUserFriendlyError(ctx.data.message))
-      } else if (ctx.data.requiresOtp) {
+      const outcome = resolveSignupOutcome(ctx.data)
+      if (outcome.kind === 'error') {
+        toast.error(outcome.message)
+      } else if (outcome.kind === 'otp-required') {
         setShowOtpInput(true)
         setResendCooldown(60)
         toast.success('Account created!', {
-          description: ctx.data.message,
+          description: outcome.description,
           duration: 6000,
         })
       }
@@ -168,24 +130,23 @@ export function SignupForm({ token = '' }: SignupFormProps) {
   >({
     fn: useServerFn(verifyOtpFn),
     onSuccess: async (ctx) => {
-      if (ctx.data.success) {
-        if (ctx.data.loginFailed) {
-          toast.success('Email verified!', {
-            description: 'Please log in to continue.',
-          })
-          router.navigate({ to: '/login', search: { verified: true } })
-          return
-        }
-
-        toast.success('Email verified!', {
-          description: 'Redirecting to dashboard...',
-        })
-
-        await router.invalidate()
-        router.navigate({ to: '/dashboard', search: { verified: true } })
-      } else {
-        toast.error(getUserFriendlyError(ctx.data.message))
+      const outcome = resolveVerifyOutcome(ctx.data)
+      if (outcome.kind === 'error') {
+        toast.error(outcome.message)
+        return
       }
+      if (outcome.kind === 'verified-login') {
+        toast.success('Email verified!', {
+          description: 'Please log in to continue.',
+        })
+        router.navigate({ to: '/login', search: { verified: true } })
+        return
+      }
+      toast.success('Email verified!', {
+        description: 'Redirecting to dashboard...',
+      })
+      await router.invalidate()
+      router.navigate({ to: '/dashboard', search: { verified: true } })
     },
   })
 
@@ -195,11 +156,12 @@ export function SignupForm({ token = '' }: SignupFormProps) {
   >({
     fn: useServerFn(resendOtpFn),
     onSuccess: (ctx) => {
-      if (ctx.data.success) {
-        toast.success(ctx.data.message)
+      const outcome = resolveResendOutcome(ctx.data)
+      if (outcome.kind === 'sent') {
+        toast.success(outcome.message)
         setResendCooldown(60)
       } else {
-        toast.error(getUserFriendlyError(ctx.data.message))
+        toast.error(outcome.message)
       }
     },
   })
@@ -261,7 +223,7 @@ export function SignupForm({ token = '' }: SignupFormProps) {
 
   const handleOtpComplete = (value: string) => {
     setOtpValue(value)
-    if (value.length === 6) {
+    if (isOtpComplete(value)) {
       verifyOtpMutation.mutate({
         data: {
           email: form.state.values.email,
@@ -312,65 +274,24 @@ export function SignupForm({ token = '' }: SignupFormProps) {
 
   if (showOtpInput) {
     return pageShell(
-      <Field>
-        <div className="mb-5 space-y-1">
-          <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-            Verification code
-          </div>
-          <p className="text-sm leading-6 text-[#D6CCBE]">
-            Enter the code sent to{' '}
-            <span className="text-[#E9D9B4]">{form.state.values.email}</span>
-          </p>
-        </div>
-
-        <InputOTP
-          maxLength={6}
-          id="otp-verification"
-          value={otpValue}
-          onChange={handleOtpComplete}
-          disabled={verifyOtpMutation.isPending}
-        >
-          <InputOTPGroup className="*:data-[slot=input-otp-slot]:h-12 *:data-[slot=input-otp-slot]:w-11 *:data-[slot=input-otp-slot]:text-xl">
-            <InputOTPSlot index={0} />
-            <InputOTPSlot index={1} />
-            <InputOTPSlot index={2} />
-          </InputOTPGroup>
-          <InputOTPSeparator className="mx-2" />
-          <InputOTPGroup className="*:data-[slot=input-otp-slot]:h-12 *:data-[slot=input-otp-slot]:w-11 *:data-[slot=input-otp-slot]:text-xl">
-            <InputOTPSlot index={3} />
-            <InputOTPSlot index={4} />
-            <InputOTPSlot index={5} />
-          </InputOTPGroup>
-        </InputOTP>
-
-        {verifyOtpMutation.isPending && (
-          <FieldDescription
-            theme="dark"
-            className="mt-3 flex items-center gap-2"
-          >
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Verifying code...
-          </FieldDescription>
-        )}
-        <FieldDescription theme="dark" className="mt-2">
-          Code expires in 10 minutes.
-        </FieldDescription>
-
-        <button
-          type="button"
-          onClick={handleResendOtp}
-          disabled={resendCooldown > 0 || resendOtpMutation.isPending}
-          className="mt-4 inline-flex cursor-pointer items-center gap-2 text-[0.68rem] font-medium tracking-[0.14em] text-[#9B8A73] uppercase transition-colors hover:text-[#C5A059] disabled:opacity-40"
-        >
-          <RefreshCwIcon className="h-3 w-3" />
-          {resendCooldown > 0
-            ? `Resend (${resendCooldown}s)`
-            : resendOtpMutation.isPending
-              ? 'Sending...'
-              : 'Resend Code'}
-        </button>
-      </Field>,
+      <SignupOtpPanel
+        email={form.state.values.email}
+        otpValue={otpValue}
+        onOtpChange={handleOtpComplete}
+        isVerifying={verifyOtpMutation.isPending}
+        resendCooldown={resendCooldown}
+        onResend={handleResendOtp}
+        isResending={resendOtpMutation.isPending}
+      />,
     )
+  }
+
+  const emailState: EmailFieldState = {
+    isCheckingEmail,
+    isLoadingToken,
+    invitationError,
+    invitationValid,
+    invitationRole,
   }
 
   return pageShell(
@@ -384,50 +305,12 @@ export function SignupForm({ token = '' }: SignupFormProps) {
       <FieldGroup>
         <form.Field name="email">
           {(field) => (
-            <Field>
-              <FieldLabel htmlFor="email" theme="dark">
-                Email
-              </FieldLabel>
-              <div className="relative">
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={handleEmailBlur}
-                  required
-                  theme="dark"
-                  disabled={invitationValid || isLoadingToken}
-                />
-                {(isCheckingEmail || isLoadingToken) && (
-                  <div className="absolute top-1/2 right-3 -translate-y-1/2">
-                    <Loader2 className="h-4 w-4 animate-spin text-[#9B8A73]" />
-                  </div>
-                )}
-              </div>
-              {isCheckingEmail && (
-                <FieldDescription theme="dark">
-                  Checking email...
-                </FieldDescription>
-              )}
-              {isLoadingToken && (
-                <FieldDescription theme="dark">
-                  Loading invitation...
-                </FieldDescription>
-              )}
-              {invitationError && (
-                <FieldDescription className="text-destructive">
-                  {invitationError}
-                </FieldDescription>
-              )}
-              {invitationValid && invitationRole && (
-                <FieldDescription className="text-[#6FCF97]">
-                  ✓ Invited as {invitationRole}
-                </FieldDescription>
-              )}
-            </Field>
+            <SignupEmailField
+              value={field.state.value}
+              onChange={(value) => field.handleChange(value)}
+              onBlur={handleEmailBlur}
+              state={emailState}
+            />
           )}
         </form.Field>
 
@@ -534,11 +417,11 @@ export function SignupForm({ token = '' }: SignupFormProps) {
         <Field className="pt-2">
           <button
             type="submit"
-            disabled={
-              signupMutation.isPending ||
-              !invitationValid ||
-              (signupMutation.data !== undefined && !signupMutation.data.error)
-            }
+            disabled={isSignupSubmitDisabled(
+              signupMutation.isPending,
+              invitationValid,
+              signupMutation.data,
+            )}
             className="group inline-flex h-11 items-center justify-center gap-3 border border-[#C5A059]/55 bg-linear-to-b from-[#2A2A2A] to-[#111111] px-8 font-serif text-base tracking-[0.12em] text-[#E9D9B4] shadow-[0_28px_60px_-28px_rgba(0,0,0,0.7)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[#C5A059]/55 disabled:hover:text-[#E9D9B4]"
           >
             {signupMutation.isPending
@@ -558,5 +441,131 @@ export function SignupForm({ token = '' }: SignupFormProps) {
         </Field>
       </FieldGroup>
     </form>,
+  )
+}
+
+const EMAIL_DESCRIPTION_PROPS = {
+  muted: { theme: 'dark' as const },
+  error: { className: 'text-destructive' },
+  success: { className: 'text-[#6FCF97]' },
+}
+
+function SignupEmailField({
+  value,
+  onChange,
+  onBlur,
+  state,
+}: {
+  value: string
+  onChange: (value: string) => void
+  onBlur: () => void
+  state: EmailFieldState
+}) {
+  const view = buildEmailFieldView(state)
+  return (
+    <Field>
+      <FieldLabel htmlFor="email" theme="dark">
+        Email
+      </FieldLabel>
+      <div className="relative">
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          placeholder="your@email.com"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
+          required
+          theme="dark"
+          disabled={view.inputDisabled}
+        />
+        {view.spinnerVisible && (
+          <div className="absolute top-1/2 right-3 -translate-y-1/2">
+            <Loader2 className="h-4 w-4 animate-spin text-[#9B8A73]" />
+          </div>
+        )}
+      </div>
+      {view.descriptions.map((item) => (
+        <FieldDescription
+          key={item.key}
+          {...EMAIL_DESCRIPTION_PROPS[item.variant]}
+        >
+          {item.text}
+        </FieldDescription>
+      ))}
+    </Field>
+  )
+}
+
+function SignupOtpPanel({
+  email,
+  otpValue,
+  onOtpChange,
+  isVerifying,
+  resendCooldown,
+  onResend,
+  isResending,
+}: {
+  email: string
+  otpValue: string
+  onOtpChange: (value: string) => void
+  isVerifying: boolean
+  resendCooldown: number
+  onResend: () => void
+  isResending: boolean
+}) {
+  return (
+    <Field>
+      <div className="mb-5 space-y-1">
+        <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+          Verification code
+        </div>
+        <p className="text-sm leading-6 text-[#D6CCBE]">
+          Enter the code sent to{' '}
+          <span className="text-[#E9D9B4]">{email}</span>
+        </p>
+      </div>
+
+      <InputOTP
+        maxLength={6}
+        id="otp-verification"
+        value={otpValue}
+        onChange={onOtpChange}
+        disabled={isVerifying}
+      >
+        <InputOTPGroup className="*:data-[slot=input-otp-slot]:h-12 *:data-[slot=input-otp-slot]:w-11 *:data-[slot=input-otp-slot]:text-xl">
+          <InputOTPSlot index={0} />
+          <InputOTPSlot index={1} />
+          <InputOTPSlot index={2} />
+        </InputOTPGroup>
+        <InputOTPSeparator className="mx-2" />
+        <InputOTPGroup className="*:data-[slot=input-otp-slot]:h-12 *:data-[slot=input-otp-slot]:w-11 *:data-[slot=input-otp-slot]:text-xl">
+          <InputOTPSlot index={3} />
+          <InputOTPSlot index={4} />
+          <InputOTPSlot index={5} />
+        </InputOTPGroup>
+      </InputOTP>
+
+      {isVerifying && (
+        <FieldDescription theme="dark" className="mt-3 flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Verifying code...
+        </FieldDescription>
+      )}
+      <FieldDescription theme="dark" className="mt-2">
+        Code expires in 10 minutes.
+      </FieldDescription>
+
+      <button
+        type="button"
+        onClick={onResend}
+        disabled={isResendDisabled(resendCooldown, isResending)}
+        className="mt-4 inline-flex cursor-pointer items-center gap-2 text-[0.68rem] font-medium tracking-[0.14em] text-[#9B8A73] uppercase transition-colors hover:text-[#C5A059] disabled:opacity-40"
+      >
+        <RefreshCwIcon className="h-3 w-3" />
+        {resolveResendLabel(resendCooldown, isResending)}
+      </button>
+    </Field>
   )
 }
