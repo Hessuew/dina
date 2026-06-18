@@ -13,10 +13,10 @@ import {
   or,
   sql,
 } from 'drizzle-orm'
-import { alias } from 'drizzle-orm/pg-core'
 import type { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
 import {
+  courseSubstitutes,
   courseTeachers,
   enrollmentEvaluations,
   enrollmentReviewerAssignments,
@@ -54,7 +54,7 @@ export type FindEnrollmentsPageInput = {
   sortDir: 'asc' | 'desc'
   includeEmail: boolean
   reviewerFilter?: string
-  peerIds?: Array<string>
+  viewerCourseIds?: Array<string>
   requireReviewerAdmitted?: boolean
 }
 
@@ -75,7 +75,7 @@ export async function findEnrollmentsPage({
   sortDir,
   includeEmail,
   reviewerFilter,
-  peerIds = [],
+  viewerCourseIds = [],
   requireReviewerAdmitted,
 }: FindEnrollmentsPageInput) {
   const db = await getDb()
@@ -103,17 +103,36 @@ export async function findEnrollmentsPage({
         )
       : undefined
 
-  // Enrollments the viewer's course partner scored 3 or 4 (peer-review queue).
+  // Peer-review queue: enrollments on the viewer's course team where a
+  // different reviewer (team member) has scored 3 or 4.
+  // Scoped through enrollment_reviewer_assignments.course_id (ADR 0007 rev 2).
   const peerCondition =
-    reviewerFilter !== undefined && peerIds.length > 0
+    reviewerFilter !== undefined && viewerCourseIds.length > 0
       ? inArray(
           enrollments.id,
           db
-            .select({ id: enrollmentEvaluations.enrollmentId })
-            .from(enrollmentEvaluations)
+            .select({ id: enrollmentReviewerAssignments.enrollmentId })
+            .from(enrollmentReviewerAssignments)
+            .innerJoin(
+              enrollmentEvaluations,
+              and(
+                eq(
+                  enrollmentEvaluations.enrollmentId,
+                  enrollmentReviewerAssignments.enrollmentId,
+                ),
+                eq(
+                  enrollmentEvaluations.evaluatorId,
+                  enrollmentReviewerAssignments.reviewerId,
+                ),
+              ),
+            )
             .where(
               and(
-                inArray(enrollmentEvaluations.evaluatorId, peerIds),
+                inArray(
+                  enrollmentReviewerAssignments.courseId,
+                  viewerCourseIds,
+                ),
+                ne(enrollmentReviewerAssignments.reviewerId, reviewerFilter),
                 inArray(enrollmentEvaluations.score, [3, 4]),
               ),
             ),
@@ -285,33 +304,45 @@ export async function deleteEnrollmentById(enrollmentId: string) {
   await db.delete(enrollments).where(eq(enrollments.id, enrollmentId))
 }
 
-export async function findReviewerIdForEnrollment(
+/**
+ * Returns the reviewer ID and course namespace for a single enrollment's
+ * assignment. Used by authz helpers that need course-scoped peer resolution.
+ */
+export async function findReviewerAssignmentForEnrollment(
   enrollmentId: string,
-): Promise<string | null> {
+): Promise<{ reviewerId: string; courseId: string | null } | null> {
   const db = await getDb()
   const row = await db.query.enrollmentReviewerAssignments.findFirst({
     where: eq(enrollmentReviewerAssignments.enrollmentId, enrollmentId),
-    columns: { reviewerId: true },
+    columns: { reviewerId: true, courseId: true },
   })
-  return row?.reviewerId ?? null
+  return row
+    ? { reviewerId: row.reviewerId, courseId: row.courseId ?? null }
+    : null
 }
 
 /**
- * Fetches reviewer assignments with reviewer names for a batch of enrollments
- * in a single query (used to build the Review heading column).
+ * Fetches reviewer assignments with reviewer names and course namespace for a
+ * batch of enrollments in a single query (used to build the Review heading column).
  */
 export async function findReviewerAssignmentsForEnrollments(
   enrollmentIds: Array<string>,
 ): Promise<
-  Array<{ enrollmentId: string; reviewerId: string; reviewerName: string }>
+  Array<{
+    enrollmentId: string
+    reviewerId: string
+    reviewerName: string
+    courseId: string | null
+  }>
 > {
   if (enrollmentIds.length === 0) return []
   const db = await getDb()
-  return db
+  const rows = await db
     .select({
       enrollmentId: enrollmentReviewerAssignments.enrollmentId,
       reviewerId: enrollmentReviewerAssignments.reviewerId,
       reviewerName: profiles.fullName,
+      courseId: enrollmentReviewerAssignments.courseId,
     })
     .from(enrollmentReviewerAssignments)
     .innerJoin(
@@ -319,43 +350,104 @@ export async function findReviewerAssignmentsForEnrollments(
       eq(profiles.id, enrollmentReviewerAssignments.reviewerId),
     )
     .where(inArray(enrollmentReviewerAssignments.enrollmentId, enrollmentIds))
+  return rows.map((r) => ({ ...r, courseId: r.courseId ?? null }))
 }
 
 /**
- * Fetches course-partner (peer) information for a batch of reviewer IDs in one
- * query and returns a map from reviewer ID to their peers (id + name).
+ * Returns all course member IDs (regular teachers + active substitutes) for a
+ * given course. Used for peer-review authz and status derivation.
+ */
+export async function findCourseTeamIds(
+  courseId: string,
+): Promise<Array<string>> {
+  const db = await getDb()
+  const [teacherRows, substituteRows] = await Promise.all([
+    db
+      .select({ id: courseTeachers.teacherId })
+      .from(courseTeachers)
+      .where(eq(courseTeachers.courseId, courseId)),
+    db
+      .select({ id: courseSubstitutes.substituteTeacherId })
+      .from(courseSubstitutes)
+      .where(eq(courseSubstitutes.courseId, courseId)),
+  ])
+  return [
+    ...new Set([
+      ...teacherRows.map((r) => r.id),
+      ...substituteRows.map((r) => r.id),
+    ]),
+  ]
+}
+
+/**
+ * Returns all course IDs the viewer is active on — either as a regular teacher
+ * or as an active substitute. Used to build viewerCourseIds for page filtering.
+ */
+export async function findCourseIdsForViewer(
+  userId: string,
+): Promise<Array<string>> {
+  const db = await getDb()
+  const [teacherRows, substituteRows] = await Promise.all([
+    db
+      .select({ courseId: courseTeachers.courseId })
+      .from(courseTeachers)
+      .where(eq(courseTeachers.teacherId, userId)),
+    db
+      .select({ courseId: courseSubstitutes.courseId })
+      .from(courseSubstitutes)
+      .where(eq(courseSubstitutes.substituteTeacherId, userId)),
+  ])
+  return [
+    ...new Set([
+      ...teacherRows.map((r) => r.courseId),
+      ...substituteRows.map((r) => r.courseId),
+    ]),
+  ]
+}
+
+/**
+ * Fetches all course team members (teachers + substitutes) for a batch of
+ * course IDs in two queries and returns a map from course ID to member list.
+ * Used to build the Review heading column.
  */
 export async function findPeersForReviewers(
-  reviewerIds: Array<string>,
+  courseIds: Array<string>,
 ): Promise<Map<string, Array<{ id: string; name: string }>>> {
   const result = new Map<string, Array<{ id: string; name: string }>>()
-  if (reviewerIds.length === 0) return result
+  if (courseIds.length === 0) return result
 
   const db = await getDb()
 
-  // Self-join course_teachers to find co-teachers (peers) of each reviewer.
-  const ct2 = alias(courseTeachers, 'ct2')
+  const [teacherRows, substituteRows] = await Promise.all([
+    db
+      .select({
+        courseId: courseTeachers.courseId,
+        id: courseTeachers.teacherId,
+        name: profiles.fullName,
+      })
+      .from(courseTeachers)
+      .innerJoin(profiles, eq(profiles.id, courseTeachers.teacherId))
+      .where(inArray(courseTeachers.courseId, courseIds)),
+    db
+      .select({
+        courseId: courseSubstitutes.courseId,
+        id: courseSubstitutes.substituteTeacherId,
+        name: profiles.fullName,
+      })
+      .from(courseSubstitutes)
+      .innerJoin(
+        profiles,
+        eq(profiles.id, courseSubstitutes.substituteTeacherId),
+      )
+      .where(inArray(courseSubstitutes.courseId, courseIds)),
+  ])
 
-  const rows = await db
-    .selectDistinct({
-      reviewerId: courseTeachers.teacherId,
-      peerId: ct2.teacherId,
-      peerName: profiles.fullName,
-    })
-    .from(courseTeachers)
-    .innerJoin(ct2, eq(ct2.courseId, courseTeachers.courseId))
-    .innerJoin(profiles, eq(profiles.id, ct2.teacherId))
-    .where(
-      and(
-        inArray(courseTeachers.teacherId, reviewerIds),
-        ne(ct2.teacherId, courseTeachers.teacherId),
-      ),
-    )
-
-  for (const row of rows) {
-    const peers = result.get(row.reviewerId) ?? []
-    peers.push({ id: row.peerId, name: row.peerName })
-    result.set(row.reviewerId, peers)
+  for (const row of [...teacherRows, ...substituteRows]) {
+    const members = result.get(row.courseId) ?? []
+    if (!members.some((m) => m.id === row.id)) {
+      members.push({ id: row.id, name: row.name })
+    }
+    result.set(row.courseId, members)
   }
 
   return result
@@ -442,30 +534,50 @@ export async function findAllTeacherIds(): Promise<Array<string>> {
   return rows.map((r) => r.id)
 }
 
-export async function findPeerTeacherIds(
-  userId: string,
-): Promise<Array<string>> {
+/**
+ * Returns the course_id for a teacher from course_teachers. Used when
+ * enriching bulk assignments and initiating substitutions.
+ */
+export async function findCourseIdByTeacherId(
+  teacherId: string,
+): Promise<string | null> {
+  const db = await getDb()
+  const row = await db.query.courseTeachers.findFirst({
+    where: eq(courseTeachers.teacherId, teacherId),
+    columns: { courseId: true },
+  })
+  return row?.courseId ?? null
+}
+
+/**
+ * Fetches course IDs for a batch of teacher IDs in one query.
+ * Returns a Map from teacherId → courseId (null if not found).
+ */
+export async function findCourseIdsByTeacherIds(
+  teacherIds: Array<string>,
+): Promise<Map<string, string | null>> {
+  const result = new Map<string, string | null>(
+    teacherIds.map((id) => [id, null]),
+  )
+  if (teacherIds.length === 0) return result
   const db = await getDb()
   const rows = await db
-    .selectDistinct({ id: courseTeachers.teacherId })
+    .select({
+      teacherId: courseTeachers.teacherId,
+      courseId: courseTeachers.courseId,
+    })
     .from(courseTeachers)
-    .where(
-      and(
-        inArray(
-          courseTeachers.courseId,
-          db
-            .select({ courseId: courseTeachers.courseId })
-            .from(courseTeachers)
-            .where(eq(courseTeachers.teacherId, userId)),
-        ),
-        ne(courseTeachers.teacherId, userId),
-      ),
-    )
-  return rows.map((r) => r.id)
+    .where(inArray(courseTeachers.teacherId, teacherIds))
+  for (const row of rows) result.set(row.teacherId, row.courseId)
+  return result
 }
 
 export async function bulkAssignEnrollments(
-  assignments: Array<{ enrollmentId: string; reviewerId: string }>,
+  assignments: Array<{
+    enrollmentId: string
+    reviewerId: string
+    courseId?: string | null
+  }>,
 ): Promise<void> {
   if (assignments.length === 0) return
   const db = await getDb()
@@ -473,5 +585,91 @@ export async function bulkAssignEnrollments(
     .insert(enrollmentReviewerAssignments)
     .values(assignments)
     .onConflictDoNothing()
+}
+
+/**
+ * Transactionally inserts a course_substitutes record and bulk-reassigns all
+ * unscored assignments from the absent teacher to the substitute.
+ * Returns the count of reassigned assignments.
+ */
+export async function insertSubstituteWithReassignment(
+  courseId: string,
+  substituteTeacherId: string,
+  absentTeacherId: string,
+): Promise<{ reassigned: number }> {
+  const db = await getDb()
+  let reassigned = 0
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(courseSubstitutes)
+      .values({ courseId, substituteTeacherId, absentTeacherId })
+
+    const rows = await tx
+      .select({ enrollmentId: enrollmentReviewerAssignments.enrollmentId })
+      .from(enrollmentReviewerAssignments)
+      .leftJoin(
+        enrollmentEvaluations,
+        and(
+          eq(
+            enrollmentEvaluations.enrollmentId,
+            enrollmentReviewerAssignments.enrollmentId,
+          ),
+          eq(
+            enrollmentEvaluations.evaluatorId,
+            enrollmentReviewerAssignments.reviewerId,
+          ),
+        ),
+      )
+      .where(
+        and(
+          eq(enrollmentReviewerAssignments.reviewerId, absentTeacherId),
+          isNull(enrollmentEvaluations.score),
+        ),
+      )
+
+    if (rows.length > 0) {
+      await tx
+        .update(enrollmentReviewerAssignments)
+        .set({ reviewerId: substituteTeacherId, courseId })
+        .where(
+          inArray(
+            enrollmentReviewerAssignments.enrollmentId,
+            rows.map((r) => r.enrollmentId),
+          ),
+        )
+      reassigned = rows.length
+    }
+  })
+  return { reassigned }
+}
+
+/**
+ * Returns the distinct absent teacher IDs that currently have an active
+ * substitution in course_substitutes. Used to filter the End-Substitution
+ * dialog to only teachers who can actually have a substitution ended.
+ */
+export async function findAbsentTeacherIdsWithActiveSubstitution(): Promise<
+  Array<string>
+> {
+  const db = await getDb()
+  const rows = await db
+    .select({ absentTeacherId: courseSubstitutes.absentTeacherId })
+    .from(courseSubstitutes)
+  return [...new Set(rows.map((r) => r.absentTeacherId))]
+}
+
+/**
+ * Removes the active course_substitutes record for the given absent teacher.
+ * Returns the number of deleted rows so the caller can detect a missing record.
+ */
+export async function deleteCourseSubstituteByAbsent(
+  absentTeacherId: string,
+): Promise<number> {
+  const db = await getDb()
+  const deleted = await db
+    .delete(courseSubstitutes)
+    .where(eq(courseSubstitutes.absentTeacherId, absentTeacherId))
+    .returning({ id: courseSubstitutes.id })
+  return deleted.length
 }
 /* v8 ignore end */

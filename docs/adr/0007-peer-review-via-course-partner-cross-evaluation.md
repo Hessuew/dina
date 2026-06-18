@@ -5,6 +5,11 @@
 
 **Rev 1 (2026-06-10):** Teacher **View All** intentionally broadens visibility: any teacher may view enrollments whose assigned Reviewer scored 3+ (3/4), not only their course-partner peer queue. The default list remains assigned-to-me plus course-partner peer-review items.
 
+**Rev 2:** Two schema changes enforce and extend the peer-review invariant:
+
+1. **`course_teachers.teacher_id` unique constraint** (`course_teachers_teacher_id_unique` index) — enforces the "one course per teacher" rule at the DB level. Teachers are always uniquely associated with a single course.
+2. **`course_substitutes` table** — records temporary substitutions where Teacher A covers Teacher B's Reviewer duties on Teacher B's course without being added to `course_teachers`. The substitute appears as a full team member for peer-review queue surfacing, evaluation authorization, and status derivation. The team is now resolved as the UNION of `course_teachers` + active `course_substitutes` for a course (`findCourseTeamIds`). All operations scope through `enrollment_reviewer_assignments.course_id` (the course namespace stamped on each assignment) instead of joining through the reviewer's live `course_teachers` row, making the team lookup stable even as substitutes change. See CONTEXT.md **Course Substitute**.
+
 ## Context
 
 Teachers teach in pairs — two teachers share a course (`course_teachers`), each teacher on one course. We want a teacher to **peer-review** their partner's high-stakes admits: every enrollment the partner (the other teacher on their course) scored **3 or 4** should be cross-checked by the teacher, who records their own judgement.

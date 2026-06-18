@@ -114,7 +114,12 @@ describe('deriveEnrollmentStatus', () => {
 
 describe('deriveReviewHeading', () => {
   const reviewerAssignments = [
-    { enrollmentId: 'e1', reviewerId: 'r1', reviewerName: 'Alice Smith' },
+    {
+      enrollmentId: 'e1',
+      reviewerId: 'r1',
+      reviewerName: 'Alice Smith',
+      courseId: 'c1',
+    },
   ]
   const evaluations = [
     {
@@ -130,7 +135,16 @@ describe('deriveReviewHeading', () => {
       score: 3,
     },
   ]
-  const peersForReviewers = new Map([['r1', [{ id: 'p1', name: 'Bob Jones' }]]])
+  // Map keyed by courseId; value includes ALL course members (reviewer + peers).
+  const peersForReviewers = new Map([
+    [
+      'c1',
+      [
+        { id: 'r1', name: 'Alice Smith' },
+        { id: 'p1', name: 'Bob Jones' },
+      ],
+    ],
+  ])
 
   it('returns reviewer first name and evaluated flag', () => {
     const heading = deriveReviewHeading(
@@ -207,7 +221,7 @@ describe('deriveReviewHeading', () => {
 
   it('returns null peerFirstName when reviewer has no peer', () => {
     const noPeers = new Map<string, Array<{ id: string; name: string }>>([
-      ['r1', []],
+      ['c1', [{ id: 'r1', name: 'Alice Smith' }]],
     ])
     const heading = deriveReviewHeading(
       'e1',
