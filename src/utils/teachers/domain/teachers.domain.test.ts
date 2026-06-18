@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sortTeachers } from './teachers.domain'
+import { getTeacherName, sortTeachers } from './teachers.domain'
 
 const makeTeacher = (overrides: {
   id?: string
@@ -101,5 +101,28 @@ describe('sortTeachers', () => {
     const original = [...teachers]
     sortTeachers(teachers)
     expect(teachers[0].id).toBe(original[0].id)
+  })
+})
+
+const teachers = [
+  { id: 'a', fullName: 'Alice' },
+  { id: 'b', fullName: 'Bob' },
+]
+
+describe('getTeacherName', () => {
+  it('returns the full name for a known teacher', () => {
+    expect(getTeacherName('a', teachers)).toBe('Alice')
+  })
+
+  it('returns empty string when id not found', () => {
+    expect(getTeacherName('unknown', teachers)).toBe('')
+  })
+
+  it('returns empty string for empty id', () => {
+    expect(getTeacherName('', teachers)).toBe('')
+  })
+
+  it('returns empty string when teachers list is empty', () => {
+    expect(getTeacherName('a', [])).toBe('')
   })
 })

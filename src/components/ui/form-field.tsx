@@ -196,6 +196,7 @@ interface FormFieldSelectProps extends BaseFormFieldProps {
   onChange: (value: string) => void
   placeholder?: string
   children: React.ReactNode
+  renderValue?: (value: string) => React.ReactNode
 }
 
 export function FormFieldSelect({
@@ -209,6 +210,7 @@ export function FormFieldSelect({
   onChange,
   placeholder,
   children,
+  renderValue,
 }: FormFieldSelectProps) {
   const selectTriggerClassName = cn(
     'w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]',
@@ -228,7 +230,9 @@ export function FormFieldSelect({
         onValueChange={(selectedValue) => onChange(selectedValue as string)}
       >
         <SelectTrigger className={selectTriggerClassName} id={id}>
-          <SelectValue placeholder={placeholder} />
+          <SelectValue placeholder={placeholder}>
+            {renderValue && value ? renderValue(value) : undefined}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent className="rounded-none border-white/12 bg-white">
           {children}
