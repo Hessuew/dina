@@ -31,7 +31,10 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { DataTable } from '@/components/table/DataTable'
 import { IconButton } from '@/components/table/IconButton'
-import { EnrollmentStatusChip } from '@/components/table/chips'
+import {
+  EnrollmentCategoryChip,
+  EnrollmentStatusChip,
+} from '@/components/table/chips'
 import { useMutation } from '@/hooks/useMutation'
 import {
   deleteEnrollment,
@@ -263,6 +266,18 @@ export function EnrollmentsTable({
     columnHelper.accessor('status', {
       cell: (info) => <EnrollmentStatusChip status={info.getValue()} />,
       header: 'Status',
+    }),
+    columnHelper.accessor('reviewerAdmissionCategory', {
+      enableSorting: false,
+      header: 'Category',
+      cell: (info) => {
+        const cat = info.getValue()
+        return cat ? (
+          <EnrollmentCategoryChip category={cat} />
+        ) : (
+          <span className="text-[#8E816D]">—</span>
+        )
+      },
     }),
     // ...(isAdmin
     //   ? [

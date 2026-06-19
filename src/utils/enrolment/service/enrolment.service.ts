@@ -309,7 +309,24 @@ export async function getEnrollmentsService(
         peersForReviewers,
         !isAdmin,
       )
-      return { ...base, evaluationSum, evaluationCount, reviewHeading }
+      const assignment = reviewerAssignments.find(
+        (a) => a.enrollmentId === row.id,
+      )
+      const reviewerEval = assignment
+        ? evaluations.find(
+            (e) =>
+              e.enrollmentId === row.id &&
+              e.evaluatorId === assignment.reviewerId,
+          )
+        : undefined
+      const reviewerAdmissionCategory = reviewerEval?.admissionCategory ?? null
+      return {
+        ...base,
+        evaluationSum,
+        evaluationCount,
+        reviewHeading,
+        reviewerAdmissionCategory,
+      }
     })
 
     return { enrollments: enrollmentsOut, total, evaluations }

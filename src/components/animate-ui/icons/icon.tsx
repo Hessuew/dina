@@ -13,6 +13,10 @@ import type {
 import type { WithAsChild } from '@/components/animate-ui/primitives/animate/slot'
 import { cn } from '@/lib/utils'
 import { Slot } from '@/components/animate-ui/primitives/animate/slot'
+import {
+  computeVariants,
+  resolveOverriddenAnimateProps,
+} from './domain/icon-animation.domain'
 
 const staticAnimations = {
   path: {
@@ -534,14 +538,6 @@ function renderIconComponent<T extends string>(
   )
 }
 
-function resolveInheritedAnimate<T extends string>(
-  options: IconAnimationOptions<T>,
-  context: AnimateIconContextValue,
-): Trigger {
-  if (!context.active) return false
-  return options.animation ?? context.animation
-}
-
 function renderIconWithOverrides<T extends string>(
   IconComponent: React.ComponentType<IconProps<T>>,
   size: number,
@@ -550,37 +546,15 @@ function renderIconWithOverrides<T extends string>(
   props: IconSvgProps,
   context: AnimateIconContextValue,
 ) {
-  const animationToUse = options.animation ?? context.animation
-  const finalAnimate =
-    options.animate ??
-    context.animate ??
-    resolveInheritedAnimate(options, context)
+  const resolved = resolveOverriddenAnimateProps(options, context)
 
   return (
-    <AnimateIcon
-      animate={finalAnimate}
-      animateOnHover={options.animateOnHover}
-      animateOnTap={options.animateOnTap}
-      animateOnView={options.animateOnView}
-      animateOnViewMargin={options.animateOnViewMargin}
-      animateOnViewOnce={options.animateOnViewOnce}
-      animation={animationToUse}
-      loop={options.loop ?? context.loop}
-      loopDelay={options.loopDelay ?? context.loopDelay}
-      persistOnAnimateEnd={
-        options.persistOnAnimateEnd ?? context.persistOnAnimateEnd
-      }
-      initialOnAnimateEnd={
-        options.initialOnAnimateEnd ?? context.initialOnAnimateEnd
-      }
-      delay={options.delay ?? context.delay}
-      completeOnStop={options.completeOnStop ?? context.completeOnStop}
-    >
+    <AnimateIcon {...resolved}>
       {renderIconComponent(
         IconComponent,
         size,
         className,
-        animationToUse,
+        resolved.animation,
         props,
       )}
     </AnimateIcon>
@@ -737,24 +711,7 @@ function getVariants<
 >(animations: TData): T {
   const { animation: animationType } = useAnimateIconContext()
 
-  let result: T
-
-  if (animationType in staticAnimations) {
-    const variant = staticAnimations[animationType as StaticAnimations]
-    result = {} as T
-    for (const key in animations.default) {
-      if (
-        (animationType === 'path' || animationType === 'path-loop') &&
-        key.includes('group')
-      )
-        continue
-      result[key] = variant as T[Extract<keyof T, string>]
-    }
-  } else {
-    result = animations[animationType as keyof TData] as T
-  }
-
-  return result
+  return computeVariants(animationType, animations, staticAnimations)
 }
 
 export {
@@ -765,4 +722,7 @@ export {
   type IconProps,
   type IconWrapperProps,
   type AnimateIconProps,
+  type IconAnimationOptions,
+  type AnimateIconContextValue,
+  type Trigger,
 }
