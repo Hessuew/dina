@@ -1,4 +1,3 @@
-import sharp from 'sharp'
 import type {
   UploadAvatarInput,
   UploadCourseThumbnailInput,
@@ -13,7 +12,6 @@ import {
   decodeBase64DataUrl,
   extractStorageObjectName,
   resolveFileExtension,
-  shouldConvertToWebP,
   validateImageUpload,
 } from '@/utils/imageUpload/domain/imageUpload.domain'
 import {
@@ -22,29 +20,6 @@ import {
   updateCourseThumbnail,
   updateProfileAvatar,
 } from '@/utils/imageUpload/repository/imageUpload.repository'
-
-// Convert image buffer to WebP format at specified quality
-async function convertToWebP(
-  buffer: Buffer,
-  fileType: string,
-  quality = 80,
-): Promise<{ buffer: Buffer; fileType: string }> {
-  // Skip conversion for GIF (preserve animations)
-  if (!shouldConvertToWebP(fileType)) {
-    return { buffer, fileType }
-  }
-
-  // Convert JPEG, PNG, WebP to WebP
-  try {
-    const webpBuffer = await sharp(buffer).webp({ quality }).toBuffer()
-
-    return { buffer: webpBuffer, fileType: 'image/webp' }
-  } catch (error) {
-    // If conversion fails, return original buffer
-    console.error('WebP conversion failed, using original:', error)
-    return { buffer, fileType }
-  }
-}
 
 // Best-effort delete of a previous storage object. Uses the service-role admin
 // client to bypass Storage RLS (the RLS-bound user client silently fails to
@@ -77,17 +52,13 @@ export async function uploadImageService(
 
   const buffer = decodeBase64DataUrl(data.fileData)
 
-  // Convert to WebP (reduces file size while maintaining quality)
-  const { buffer: convertedBuffer, fileType: convertedFileType } =
-    await convertToWebP(buffer, data.fileType, 80)
-
-  const fileExt = resolveFileExtension(convertedFileType, data.fileName)
+  const fileExt = resolveFileExtension(data.fileType, data.fileName)
   const finalFileName = `${userId}-${Date.now()}.${fileExt}`
 
   const { error: uploadError } = await supabase.storage
     .from(data.bucket)
-    .upload(finalFileName, convertedBuffer, {
-      contentType: convertedFileType,
+    .upload(finalFileName, buffer, {
+      contentType: data.fileType,
       upsert: false,
     })
 
