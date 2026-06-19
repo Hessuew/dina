@@ -37,6 +37,10 @@ import {
   updateComment,
   updatePost,
 } from '@/utils/post/posts'
+import {
+  buildCommentsSectionViewModel,
+  type CommentsSectionViewModel,
+} from '@/components/post/domain/comments-section.domain'
 
 type CurrentUser = {
   id: string
@@ -341,50 +345,35 @@ function CommentsSection({
   onCommentDeleted: (id: string) => void
   onCommentUpdated: (comment: CommentWithAuthor) => void
 }) {
+  const vm = buildCommentsSectionViewModel({
+    commentCount,
+    commentsLength: comments.length,
+    showAllComments,
+    hasMoreComments,
+    loadingComments,
+  })
+
   return (
     <div className="border-t border-[#1A1A1A]/8 px-5 py-3">
-      {commentCount > 0 && (
-        <div className="mb-3 flex items-center gap-2">
-          <MessageCircle className="size-3.5 text-[#8E816D]" />
-          <span className="text-[0.68rem] font-medium tracking-widest text-[#8E816D] uppercase">
-            {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
-          </span>
-          {!showAllComments && commentCount > 3 && (
-            <button
-              type="button"
-              onClick={onLoadAllComments}
-              className="ml-auto text-[0.68rem] font-medium text-[#9B7A41] hover:text-[#C5A059]"
-              disabled={loadingComments}
-            >
-              {loadingComments ? 'Loading…' : 'View all'}
-            </button>
-          )}
-        </div>
-      )}
+      <CommentsCountHeader vm={vm} onLoadAllComments={onLoadAllComments} />
 
-      {comments.length > 0 && (
-        <div className="mb-3 flex flex-col gap-2">
-          {comments.map((comment) => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              currentUser={currentUser}
-              canModerate={canModerate}
-              onDeleted={onCommentDeleted}
-              onUpdated={onCommentUpdated}
-            />
-          ))}
-        </div>
-      )}
+      <CommentItemsList
+        vm={vm}
+        comments={comments}
+        currentUser={currentUser}
+        canModerate={canModerate}
+        onCommentDeleted={onCommentDeleted}
+        onCommentUpdated={onCommentUpdated}
+      />
 
-      {showAllComments && hasMoreComments && (
+      {vm.showLoadMoreButton && (
         <button
           type="button"
           onClick={onLoadMoreComments}
           className="mb-4 text-[0.72rem] font-medium text-[#9B7A41] hover:text-[#C5A059]"
-          disabled={loadingComments}
+          disabled={vm.loadMoreDisabled}
         >
-          {loadingComments ? 'Loading…' : 'Load more comments'}
+          {vm.loadMoreLabel}
         </button>
       )}
 
@@ -393,6 +382,66 @@ function CommentsSection({
         currentUser={currentUser}
         onCreated={onCommentCreated}
       />
+    </div>
+  )
+}
+
+function CommentsCountHeader({
+  vm,
+  onLoadAllComments,
+}: {
+  vm: CommentsSectionViewModel
+  onLoadAllComments: () => void
+}) {
+  if (!vm.showHeader) return null
+  return (
+    <div className="mb-3 flex items-center gap-2">
+      <MessageCircle className="size-3.5 text-[#8E816D]" />
+      <span className="text-[0.68rem] font-medium tracking-widest text-[#8E816D] uppercase">
+        {vm.countLabel}
+      </span>
+      {vm.showViewAllButton && (
+        <button
+          type="button"
+          onClick={onLoadAllComments}
+          className="ml-auto text-[0.68rem] font-medium text-[#9B7A41] hover:text-[#C5A059]"
+          disabled={vm.viewAllDisabled}
+        >
+          {vm.viewAllLabel}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function CommentItemsList({
+  vm,
+  comments,
+  currentUser,
+  canModerate,
+  onCommentDeleted,
+  onCommentUpdated,
+}: {
+  vm: CommentsSectionViewModel
+  comments: Array<CommentWithAuthor>
+  currentUser: CurrentUser
+  canModerate: boolean
+  onCommentDeleted: (id: string) => void
+  onCommentUpdated: (comment: CommentWithAuthor) => void
+}) {
+  if (!vm.showComments) return null
+  return (
+    <div className="mb-3 flex flex-col gap-2">
+      {comments.map((comment) => (
+        <CommentItem
+          key={comment.id}
+          comment={comment}
+          currentUser={currentUser}
+          canModerate={canModerate}
+          onDeleted={onCommentDeleted}
+          onUpdated={onCommentUpdated}
+        />
+      ))}
     </div>
   )
 }
