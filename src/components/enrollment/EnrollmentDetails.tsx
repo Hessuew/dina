@@ -1,6 +1,6 @@
-import { format } from 'date-fns'
 import type { ReactNode } from 'react'
 import type { MaybeRedactedEnrollment } from '@/utils/enrolment/domain/enrolment.domain'
+import { buildEnrollmentDetailsView } from '@/components/enrollment/domain/enrollment-details.domain'
 import { EnrollmentStatusChip } from '@/components/table/chips'
 
 function FieldLabel({ children }: { children: ReactNode }) {
@@ -53,9 +53,7 @@ export function EnrollmentDetails({
   statusAction?: ReactNode
   essaysAside?: boolean
 }) {
-  const address = [enrollment.currentCity, enrollment.currentCountry]
-    .filter(Boolean)
-    .join(', ')
+  const view = buildEnrollmentDetailsView({ enrollment, isAdmin })
 
   const shortFields = (
     <>
@@ -67,30 +65,24 @@ export function EnrollmentDetails({
         </div>
       </div>
 
-      <Field label="Submitted">
-        {format(new Date(enrollment.createdAt), 'MMM d, yyyy')}
-      </Field>
+      <Field label="Submitted">{view.submitted}</Field>
 
-      <Field label="Preferred name">{enrollment.preferredName || '—'}</Field>
+      <Field label="Preferred name">{view.preferredName}</Field>
 
-      {isAdmin && <Field label="Email">{enrollment.email}</Field>}
+      {view.showContact && <Field label="Email">{view.email}</Field>}
 
-      {isAdmin && <Field label="WhatsApp">{enrollment.phoneWhatsApp}</Field>}
+      {view.showContact && <Field label="WhatsApp">{view.whatsApp}</Field>}
 
-      <Field label="Year of birth">{enrollment.yearOfBirth}</Field>
+      <Field label="Year of birth">{view.yearOfBirth}</Field>
 
-      <Field label="Gender">
-        {enrollment.gender === 'male' ? 'Male' : 'Female'}
-      </Field>
+      <Field label="Gender">{view.gender}</Field>
 
-      <Field label="Nationality/citizenship">
-        {enrollment.nationalityCitizenship || '—'}
-      </Field>
+      <Field label="Nationality/citizenship">{view.nationality}</Field>
 
-      <Field label="Current address">{address || '—'}</Field>
+      <Field label="Current address">{view.address}</Field>
 
       <LongField label="Church affiliations">
-        {enrollment.churchAffiliations || '—'}
+        {view.churchAffiliations}
       </LongField>
     </>
   )
