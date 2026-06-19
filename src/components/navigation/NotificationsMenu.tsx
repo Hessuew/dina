@@ -28,30 +28,9 @@ import { BellRing } from '@/components/animate-ui/icons/bell-ring'
 import { AnimateIcon } from '@/components/animate-ui/icons/icon'
 import { CircleCheckBig } from '@/components/animate-ui/icons/circle-check-big'
 import { CircleCheck } from '@/components/animate-ui/icons/circle-check'
+import { buildNotificationRowViewModel } from '@/components/navigation/domain/notification-row.domain'
 
 const POLL_MS = 45_000
-
-function buildGroupTitle(group: PostNotificationGroup) {
-  if (group.event === 'comment_created') {
-    const n = group.unreadCount
-    if (n === 1) return 'New comment on your post'
-    return `${n} new comments on your post`
-  }
-
-  if (group.courseId) {
-    return `New post in ${group.courseTitle ?? 'Course'}`
-  }
-
-  return 'New post in General'
-}
-
-function buildGroupSubtitle(group: PostNotificationGroup) {
-  if (group.event === 'comment_created') {
-    return group.postExcerpt
-  }
-
-  return `${group.postAuthorName} · ${group.postExcerpt}`
-}
 
 function NotificationTriggerButton({
   isDark,
@@ -189,65 +168,28 @@ function NotificationRow({
   onOpen: (group: PostNotificationGroup) => void
   onMarkRead: (group: PostNotificationGroup) => void
 }) {
-  const isUnread = group.unreadCount > 0
-  const search = group.courseId
-    ? ({ channel: group.courseId, focusPostId: group.postId } as const)
-    : ({ focusPostId: group.postId } as const)
+  const vm = buildNotificationRowViewModel(group, isDark)
 
   return (
     <Link
       key={`${group.event}-${group.postId}`}
       to="/posts"
-      search={search as any}
+      search={vm.search as any}
       onClick={() => onOpen(group)}
       className="block"
     >
-      <DropdownMenuItem
-        className={cn(
-          'mx-0 flex items-start gap-3 rounded-none px-3 py-3 transition-all',
-          isDark
-            ? 'text-[#D6CCBE] hover:bg-white/8 hover:text-[#F8F4EC] focus:bg-white/8 focus:text-[#F8F4EC]'
-            : 'text-[#4E463D] hover:bg-[#EDE8DE] hover:text-[#1C1815] focus:bg-[#EDE8DE] focus:text-[#1C1815]',
-          isUnread ? 'opacity-100' : 'opacity-60',
-        )}
-      >
+      <DropdownMenuItem className={vm.rowClassName}>
         <div className="grid flex-1 gap-1">
           <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                'text-sm font-medium',
-                isDark ? 'text-[#F8F4EC]' : 'text-[#1C1815]',
-              )}
-            >
-              {buildGroupTitle(group)}
-            </div>
-            {isUnread && (
-              <span
-                className={cn(
-                  'inline-flex h-5 items-center rounded-none px-1.5 text-[0.68rem] font-medium',
-                  isDark
-                    ? 'bg-[#C5A059]/18 text-[#E9D9B4]'
-                    : 'bg-[#9B7A41]/14 text-[#9B7A41]',
-                )}
-              >
+            <div className={vm.titleClassName}>{vm.title}</div>
+            {vm.isUnread && (
+              <span className={vm.unreadBadgeClassName}>
                 {group.unreadCount}
               </span>
             )}
           </div>
-          <div
-            className={cn(
-              'text-xs leading-relaxed',
-              isDark ? 'text-[#8E816D]' : 'text-[#5E5549]',
-            )}
-          >
-            {buildGroupSubtitle(group)}
-          </div>
-          <div
-            className={cn(
-              'text-[0.68rem]',
-              isDark ? 'text-[#AFA28F]' : 'text-[#8E816D]',
-            )}
-          >
+          <div className={vm.subtitleClassName}>{vm.subtitle}</div>
+          <div className={vm.timeClassName}>
             {formatDistanceToNow(new Date(group.lastActivityAt), {
               addSuffix: true,
             })}
@@ -258,19 +200,14 @@ function NotificationRow({
           type="button"
           size="icon"
           variant="ghost"
-          theme={isDark ? 'dark' : 'lightGhost'}
-          className={cn(
-            'mt-0.5 size-8 rounded-none border-none bg-transparent shadow-none hover:translate-y-0',
-            isDark
-              ? 'text-[#8E816D] hover:bg-white/8 hover:text-[#C5A059]'
-              : 'text-[#8E816D] hover:bg-black/5 hover:text-[#9B7A41]',
-          )}
+          theme={vm.buttonTheme}
+          className={vm.markReadButtonClassName}
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
             onMarkRead(group)
           }}
-          disabled={!isUnread}
+          disabled={!vm.isUnread}
         >
           <CircleCheck animateOnHover />
         </Button>
@@ -326,7 +263,6 @@ export function NotificationsMenu({ variant }: { variant: 'light' | 'dark' }) {
   const pollRef = useRef<number | null>(null)
 
   const shouldAnimate = unreadGroupCount > 0
-  const BellIcon = shouldAnimate ? BellRing : Bell
   const isDark = variant === 'dark'
   const isCollapsed = state === 'collapsed'
 
