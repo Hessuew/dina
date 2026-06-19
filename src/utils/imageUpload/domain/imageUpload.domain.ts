@@ -24,16 +24,11 @@ export function validateImageUpload(fileSize: number, fileType: string): void {
   }
 }
 
-// GIF is left untouched to preserve animation; everything else converts to WebP.
-export function shouldConvertToWebP(fileType: string): boolean {
-  return fileType !== 'image/gif'
-}
-
 export function resolveFileExtension(
-  convertedFileType: string,
+  fileType: string,
   originalName: string,
 ): string {
-  if (convertedFileType === 'image/webp') {
+  if (fileType === 'image/webp') {
     return 'webp'
   }
   return originalName.slice(originalName.lastIndexOf('.') + 1)

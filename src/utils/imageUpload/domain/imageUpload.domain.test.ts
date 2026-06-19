@@ -4,7 +4,6 @@ import {
   decodeBase64DataUrl,
   extractStorageObjectName,
   resolveFileExtension,
-  shouldConvertToWebP,
   validateImageUpload,
 } from '@/utils/imageUpload/domain/imageUpload.domain'
 
@@ -32,18 +31,8 @@ describe('validateImageUpload', () => {
   })
 })
 
-describe('shouldConvertToWebP', () => {
-  it('returns false for GIF to preserve animation', () => {
-    expect(shouldConvertToWebP('image/gif')).toBe(false)
-  })
-
-  it('returns true for other image types', () => {
-    expect(shouldConvertToWebP('image/png')).toBe(true)
-  })
-})
-
 describe('resolveFileExtension', () => {
-  it('returns webp when the file was converted', () => {
+  it('returns webp for image/webp input', () => {
     expect(resolveFileExtension('image/webp', 'photo.gif')).toBe('webp')
   })
 

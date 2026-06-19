@@ -10,9 +10,9 @@ import {
 } from '@/utils/imageUpload/service/imageUpload.service'
 import { courses, profiles } from '@/db/schema'
 
-// imageUpload's service does heavy/external IO (sharp WebP conversion + Supabase
-// Storage) that PGlite can't run. We mock ONLY those two boundaries; the DB stays
-// real, so the avatar/course thumbnail persistence is exercised for real.
+// imageUpload's service does heavy/external IO (Supabase Storage) that PGlite
+// can't run. We mock ONLY that boundary; the DB stays real, so the
+// avatar/course thumbnail persistence is exercised for real.
 // See docs/TESTING_GUIDE.md / ADR 0009.
 const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
@@ -21,14 +21,6 @@ const mocks = vi.hoisted(() => ({
   // Old-object deletion now runs through the service-role admin client, so it
   // has its own remove mock distinct from the RLS-bound user client above.
   adminRemove: vi.fn(),
-}))
-
-vi.mock('sharp', () => ({
-  default: vi.fn(() => ({
-    webp: () => ({
-      toBuffer: () => Promise.resolve(Buffer.from('webp-bytes')),
-    }),
-  })),
 }))
 
 vi.mock('@/utils/supabase', () => ({
