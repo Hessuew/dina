@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
+import { shouldRefetch } from './domain/cache-refetch.domain'
+
 const DEFAULT_CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
 type UseCachedDataResult<T> = {
@@ -35,12 +37,15 @@ export function useCachedData<TResponse, TData>(
   }, [fetchFn, extractFn])
 
   useEffect(() => {
-    if (!shouldFetch) return
-
-    const now = Date.now()
-    const isStale = !lastFetchTime || now - lastFetchTime > cacheDuration
-
-    if (isStale && !isLoading) {
+    if (
+      shouldRefetch({
+        shouldFetch,
+        isLoading,
+        lastFetchTime,
+        now: Date.now(),
+        cacheDuration,
+      })
+    ) {
       fetchData()
     }
   }, [shouldFetch, cacheDuration, isLoading, lastFetchTime, fetchData])
