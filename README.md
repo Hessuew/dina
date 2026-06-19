@@ -103,3 +103,5 @@ Use the `_authed` layout route to protect pages:
 // Routes under _authed/ require authentication
 // The beforeLoad checks context.user and shows login if not authenticated
 ```
+
+y
