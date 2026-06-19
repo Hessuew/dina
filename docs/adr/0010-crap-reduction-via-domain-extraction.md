@@ -48,9 +48,19 @@ front then all code (horizontal slicing) — that produces tests of imagined sha
   React hook (hook view-model, carousel planners, mutation state derivation). The hook becomes
   a folder with an `index.ts` (the hook itself) and a `domain/` subfolder. Simple hooks with no
   extracted domain stay as flat files.
+- **`src/components/<area>/.../domain/`** — for domain logic owned by the component layer (a
+  component, a route, or a component-area helper like a table action builder). Put it in a
+  `domain/` folder **colocated with its use site** — in the same parent folder as the component
+  or helper it serves — never in a far-away `src/utils/<feature>/` folder.
 
-Never place hook-only domain logic in `src/utils/`. The boundary is ownership: if the only
-consumer of the domain file is a React hook, the domain lives next to that hook.
+**The boundary is ownership, not multi-consumer-ness — domain lives next to its owner.** A
+helper used by several components is still component-layer code: colocate it in a `domain/`
+folder beside those components, do **not** relocate it into `src/utils/`. `src/utils/<feature>/`
+is reserved for logic genuinely owned by a server function or shared backend feature. Pushing a
+component helper into `src/utils/` (or a hook's logic into `src/utils/`) scatters it far from
+where it is read and is a placement bug. All four coverage roots — `src/domain/**`,
+`src/utils/**/domain/**`, `src/hooks/**/domain/**`, `src/components/**/domain/**` — are gated at
+100% in `vitest.config.ts`, so a colocated component `domain/` folder is covered automatically.
 
 - **Pure function / hook** (e.g. `getYoutubeVideoId`, `getUserFriendlyError`, a hook's
   `handleKeyDown`): TDD a canonical copy into the appropriate domain layer (see placement rule
@@ -58,10 +68,11 @@ consumer of the domain file is a React hook, the domain lives next to that hook.
   to import it. Coverage rises → CRAP collapses. No behavior change.
 - **React component / route body** (e.g. `EvaluationOverlay`, `MediaCard`, `SignupForm`):
   extract the pure view-model logic — initial-value/input builders, validation, mode/branch
-  derivation — into `src/utils/<feature>/domain/` and unit-test it. The component shell shrinks
-  to orchestration, so its cyclomatic/cognitive — and therefore CRAP — fall under threshold.
-  **Never** add `*.test.tsx` render tests. Use a colocated `<name>.logic.ts` only for glue that
-  genuinely does not belong in the shared domain layer.
+  derivation — into a `domain/` folder **colocated with the component** (per the placement rule
+  above) and unit-test it. The component shell shrinks to orchestration, so its
+  cyclomatic/cognitive — and therefore CRAP — fall under threshold. **Never** add `*.test.tsx`
+  render tests. Use a colocated `<name>.logic.ts` only for glue that genuinely does not belong
+  in a `domain/` file.
 
   **Phase B React Compiler pitfall — stable-ref consumers.** When you extract a named
   sub-component that receives a prop whose _identity_ is stable but whose internal state
@@ -73,9 +84,9 @@ consumer of the domain file is a React hook, the domain lives next to that hook.
   (`DataTableHead`, `DataTableRows`, `DataTableContent`, `PaginationFooter`) carry this
   directive for exactly this reason.
 
-Both `src/utils/**/domain/**` and `src/hooks/**/domain/**` are in `vitest.config.ts` coverage at
-100% lines/branches/functions/statements, so extracted domain files in either layer are gated
-automatically.
+All of `src/utils/**/domain/**`, `src/hooks/**/domain/**`, and `src/components/**/domain/**` are
+in `vitest.config.ts` coverage at 100% lines/branches/functions/statements, so extracted domain
+files in any of these layers are gated automatically.
 
 ### Sequencing
 
@@ -156,7 +167,11 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **124** open (14 critical / 45 high / 65 moderate) after extracting
+only moves down. Latest: **123** open (14 critical / 45 high / 64 moderate) after extracting
+`createCrudActions` into `src/components/table/functions/domain/crud-actions.domain.ts` (pure CRUD
+button-config builder, colocated with its component-layer use site; the original file now
+re-exports it). Prior: **124** open (14 critical / 45 high / 65
+moderate) after extracting
 `goNext`/`goPrev` orchestration into `navigateForward`/`navigateBackward` (DI side effects) in
 `enrollment-review.domain.ts`, collapsing both hook callbacks to CC-1 wrappers. Prior: **126**
 open (14 critical / 45 high / 67 moderate) after the
@@ -362,7 +377,7 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ⬜ todo | 🟡 mod  | 30   | `<arrow>`                       | B component | `src/components/table/DataTable.tsx:214`                                     | —                                                               | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 30   | `cell`                          | B component | `src/components/table/EnrollmentsTable.tsx:231`                              | —                                                               | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 30   | `EnrollmentsTable`              | B component | `src/components/table/EnrollmentsTable.tsx:81`                               | —                                                               | —                               | —                    |
-| 🔨 in progress | 🟡 mod  | 30   | `createCrudActions`             | A pure      | `src/components/table/functions/createCrudActions.ts:51`                     | `src/utils/table/domain/crud-actions.domain.ts`                 | —                               | hessuew / 2026-06-16 |
+| ✅ done | 🟡 mod  | 30   | `createCrudActions`             | A pure      | `src/components/table/functions/createCrudActions.ts:51`                     | `src/components/table/functions/domain/crud-actions.domain.ts`  | 1 CRAP finding (CRAP 30)        | hessuew / 2026-06-16 |
 | ⬜ todo | 🟡 mod  | 30   | `SidebarMenuButton`             | B component | `src/components/ui/sidebar.tsx:508`                                          | —                                                               | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 30   | `<arrow>`                       | A hook      | `src/hooks/useCachedData.ts:37`                                              | —                                                               | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 30   | `mutate`                        | A hook      | `src/hooks/useMutation.ts:19`                                                | —                                                               | —                               | —                    |
