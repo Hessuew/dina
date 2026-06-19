@@ -1,7 +1,25 @@
 import { useEffect } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import type { AssignmentStatus } from '@/types/database.types'
+import {
+  buildAssignmentSubmitAction,
+  buildGradeSubmitData,
+  formatSubmissionCountWarning,
+  getAssignmentFormCopy,
+  getAssignmentInitialValues,
+  getGradingInitialValues,
+  getSubmissionPreviewModel,
+  getSubmissionStudentName,
+  resolveMaxGrade,
+} from './domain/assignment-dialog.domain'
+import type { DeleteAssignmentInput } from '@/schemas/assignment.schema'
+import type { MutationReturn } from '@/hooks/useEntityMutation/domain/entity-mutation.domain'
+import type {
+  AssignmentData,
+  AssignmentDialogMode,
+  AssignmentFormMode,
+  SubmissionData,
+} from './domain/assignment-dialog.domain'
 import {
   createAssignmentSchema,
   gradeSubmissionSchema,
@@ -22,7 +40,7 @@ import { FieldGroup } from '@/components/ui/field'
 import { SelectItem } from '@/components/ui/select'
 import { useMutation } from '@/hooks/useMutation'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
-import { useAppForm } from '@/hooks/form'
+import { useAppForm, withForm } from '@/hooks/form'
 import {
   createAssignment,
   deleteAssignment,
@@ -31,81 +49,15 @@ import {
 } from '@/utils/assignments/assignments'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 
-type AssignmentFormData = {
-  title: string
-  description: string
-  dueDate: string
-  maxGrade: number
-  status: AssignmentStatus
-}
-
-const emptyAssignmentForm: AssignmentFormData = {
-  title: '',
-  description: '',
-  dueDate: '',
-  maxGrade: 100,
-  status: 'draft',
-}
-
-type GradingFormData = {
-  grade: number
-  feedback: string
-}
-
-const emptyGradingForm: GradingFormData = {
-  grade: 0,
-  feedback: '',
-}
-
 type AssignmentDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  mode: 'create' | 'edit' | 'delete' | 'grade'
+  mode: AssignmentDialogMode
   lessonId?: string
-  assignment?: {
-    id: string
-    title: string
-    description: string | null
-    dueDate: Date
-    maxGrade: number | null
-    status: AssignmentStatus
-  }
-  submission?: {
-    id: string
-    content: string | null
-    fileUrl: string | null
-    grade: number | null
-    feedback: string | null
-    student: { fullName: string }
-  } | null
+  assignment?: AssignmentData
+  submission?: SubmissionData | null
   submissionCount?: number
   onDeleteSuccess?: () => void
-}
-
-function getAssignmentInitialValues(
-  assignment: AssignmentDialogProps['assignment'],
-  mode: AssignmentDialogProps['mode'],
-): AssignmentFormData {
-  if (!assignment || mode === 'create') return { ...emptyAssignmentForm }
-
-  return {
-    title: assignment.title,
-    description: assignment.description ?? '',
-    dueDate: new Date(assignment.dueDate).toISOString().slice(0, 16),
-    maxGrade: assignment.maxGrade ?? 100,
-    status: assignment.status,
-  }
-}
-
-function getGradingInitialValues(
-  submission: AssignmentDialogProps['submission'],
-): GradingFormData {
-  if (!submission) return { ...emptyGradingForm }
-
-  return {
-    grade: submission.grade ?? 0,
-    feedback: submission.feedback ?? '',
-  }
 }
 
 const dialogStyle = {
@@ -143,9 +95,7 @@ function DeleteWithSubmissionsWarning({
               Delete Assignment
             </DialogTitle>
             <DialogDescription className="text-[#AFA28F]">
-              This assignment has {submissionCount} submission
-              {submissionCount !== 1 ? 's' : ''}. Assignments with submissions
-              cannot be deleted.
+              {formatSubmissionCountWarning(submissionCount)}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
@@ -163,11 +113,52 @@ function DeleteWithSubmissionsWarning({
   )
 }
 
+function DeleteAssignmentFlow({
+  open,
+  onOpenChange,
+  submissionCount,
+  assignment,
+  deleteMutation,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  submissionCount: number
+  assignment: AssignmentData | undefined
+  deleteMutation: MutationReturn<{ data: DeleteAssignmentInput }>
+}) {
+  if (submissionCount > 0) {
+    return (
+      <DeleteWithSubmissionsWarning
+        open={open}
+        onOpenChange={onOpenChange}
+        submissionCount={submissionCount}
+      />
+    )
+  }
+
+  return (
+    <DeleteConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      entityName="Assignment"
+      onConfirm={() =>
+        assignment &&
+        deleteMutation.mutate({
+          data: { assignmentId: assignment.id },
+        })
+      }
+      isDeleting={deleteMutation.isPending}
+    />
+  )
+}
+
 function SubmissionPreview({
   submission,
 }: {
-  submission: AssignmentDialogProps['submission']
+  submission: SubmissionData | null | undefined
 }) {
+  const { contentText, fileUrl } = getSubmissionPreviewModel(submission)
+
   return (
     <>
       <div>
@@ -176,28 +167,123 @@ function SubmissionPreview({
         </div>
         <div className="mt-2 border border-white/10 bg-white/4 px-4 py-3">
           <p className="text-sm whitespace-pre-wrap text-[#AFA28F]">
-            {submission?.content || 'No content provided'}
+            {contentText}
           </p>
         </div>
       </div>
-      {submission?.fileUrl && (
+      {fileUrl && (
         <div>
           <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
             File URL
           </div>
           <a
-            href={submission.fileUrl}
+            href={fileUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-1 block text-sm text-[#9B7A41] hover:underline"
           >
-            {submission.fileUrl}
+            {fileUrl}
           </a>
         </div>
       )}
     </>
   )
 }
+
+type GradeDialogExtraProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  submission: SubmissionData | null | undefined
+  studentName: string
+  maxGrade: number
+  isSaving: boolean
+}
+
+const GradeSubmissionDialog = withForm({
+  defaultValues: getGradingInitialValues(null),
+  props: {} as GradeDialogExtraProps,
+  render: ({
+    form,
+    open,
+    onOpenChange,
+    submission,
+    studentName,
+    maxGrade,
+    isSaving,
+  }) => (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
+        style={dialogStyle}
+        showCloseButton={false}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <DialogHeader>
+            <div className="mb-1">
+              <div className="h-px w-8 bg-[#C5A059]/40" />
+              <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+                Grade submission
+              </div>
+            </div>
+            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
+              {studentName}
+            </DialogTitle>
+          </DialogHeader>
+
+          <DialogBody>
+            <div className="mt-4 space-y-4">
+              <SubmissionPreview submission={submission} />
+              <FieldGroup>
+                <form.AppField
+                  name="grade"
+                  validators={{ onSubmit: gradeSubmissionSchema.shape.grade }}
+                >
+                  {(field) => (
+                    <field.NumberField
+                      id="grade"
+                      label={`Grade (max: ${maxGrade})`}
+                      min={0}
+                      max={maxGrade}
+                      placeholder="0"
+                    />
+                  )}
+                </form.AppField>
+                <form.AppField name="feedback">
+                  {(field) => (
+                    <field.TextAreaField
+                      id="feedback"
+                      label="Feedback"
+                      placeholder="Provide feedback to the student..."
+                      rows={4}
+                    />
+                  )}
+                </form.AppField>
+              </FieldGroup>
+            </div>
+          </DialogBody>
+
+          <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
+            <Button
+              variant="outline"
+              theme="dark"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              theme="dark"
+              onClick={() => void form.handleSubmit()}
+              disabled={isSaving}
+            >
+              {isSaving ? 'Saving...' : 'Save Grade'}
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  ),
+})
 
 export function AssignmentDialog({
   open,
@@ -238,42 +324,23 @@ export function AssignmentDialog({
   const assignmentForm = useAppForm({
     defaultValues: getAssignmentInitialValues(assignment, mode),
     onSubmit: ({ value }) => {
-      const shared = {
-        title: value.title,
-        description: value.description || undefined,
-        dueDate: value.dueDate,
-        maxGrade: value.maxGrade > 0 ? value.maxGrade : undefined,
-      }
-
-      if (mode === 'create') {
-        if (!lessonId) return
-        createMutation.mutate({ data: { ...shared, lessonId } })
-        return
-      }
-
-      if (!assignment) return
-      updateMutation.mutate({
-        data: {
-          ...shared,
-          assignmentId: assignment.id,
-          status: value.status,
-        },
+      const action = buildAssignmentSubmitAction({
+        value,
+        mode: mode as AssignmentFormMode,
+        lessonId,
+        assignment,
       })
+      if (action.kind === 'create') createMutation.mutate({ data: action.data })
+      else if (action.kind === 'update')
+        updateMutation.mutate({ data: action.data })
     },
   })
 
   const gradeForm = useAppForm({
     defaultValues: getGradingInitialValues(submission),
     onSubmit: ({ value }) => {
-      if (!submission || !assignment) return
-      gradeMutation.mutate({
-        data: {
-          submissionId: submission.id,
-          assignmentId: assignment.id,
-          grade: value.grade,
-          feedback: value.feedback || undefined,
-        },
-      })
+      const data = buildGradeSubmitData({ value, submission, assignment })
+      if (data) gradeMutation.mutate({ data })
     },
   })
 
@@ -284,123 +351,44 @@ export function AssignmentDialog({
   }, [open, mode, assignment, submission, assignmentForm, gradeForm])
 
   if (mode === 'delete') {
-    if (submissionCount > 0) {
-      return (
-        <DeleteWithSubmissionsWarning
-          open={open}
-          onOpenChange={onOpenChange}
-          submissionCount={submissionCount}
-        />
-      )
-    }
-
     return (
-      <DeleteConfirmDialog
+      <DeleteAssignmentFlow
         open={open}
         onOpenChange={onOpenChange}
-        entityName="Assignment"
-        onConfirm={() =>
-          assignment &&
-          deleteMutation.mutate({
-            data: { assignmentId: assignment.id },
-          })
-        }
-        isDeleting={deleteMutation.isPending}
+        submissionCount={submissionCount}
+        assignment={assignment}
+        deleteMutation={deleteMutation}
       />
     )
   }
 
   if (mode === 'grade') {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
-          style={dialogStyle}
-          showCloseButton={false}
-        >
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-          <div className="relative flex min-h-0 flex-1 flex-col">
-            <DialogHeader>
-              <div className="mb-1">
-                <div className="h-px w-8 bg-[#C5A059]/40" />
-                <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Grade submission
-                </div>
-              </div>
-              <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-                {submission?.student.fullName}
-              </DialogTitle>
-            </DialogHeader>
-
-            <DialogBody>
-              <div className="mt-4 space-y-4">
-                <SubmissionPreview submission={submission} />
-                <FieldGroup>
-                  <gradeForm.AppField
-                    name="grade"
-                    validators={{ onSubmit: gradeSubmissionSchema.shape.grade }}
-                  >
-                    {(field) => (
-                      <field.NumberField
-                        id="grade"
-                        label={`Grade (max: ${assignment?.maxGrade ?? 100})`}
-                        min={0}
-                        max={assignment?.maxGrade ?? 100}
-                        placeholder="0"
-                      />
-                    )}
-                  </gradeForm.AppField>
-                  <gradeForm.AppField name="feedback">
-                    {(field) => (
-                      <field.TextAreaField
-                        id="feedback"
-                        label="Feedback"
-                        placeholder="Provide feedback to the student..."
-                        rows={4}
-                      />
-                    )}
-                  </gradeForm.AppField>
-                </FieldGroup>
-              </div>
-            </DialogBody>
-
-            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-              <Button
-                variant="outline"
-                theme="dark"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                theme="dark"
-                onClick={() => void gradeForm.handleSubmit()}
-                disabled={gradeMutation.isPending}
-              >
-                {gradeMutation.isPending ? 'Saving...' : 'Save Grade'}
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <GradeSubmissionDialog
+        form={gradeForm}
+        open={open}
+        onOpenChange={onOpenChange}
+        submission={submission}
+        studentName={getSubmissionStudentName(submission)}
+        maxGrade={resolveMaxGrade(assignment)}
+        isSaving={gradeMutation.isPending}
+      />
     )
   }
+
+  const copy = getAssignmentFormCopy(mode)
 
   return (
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
-      title={mode === 'create' ? 'Create Assignment' : 'Edit Assignment'}
-      subtitle={
-        mode === 'create'
-          ? 'Add a new assignment for this lesson'
-          : 'Update the assignment information'
-      }
+      title={copy.title}
+      subtitle={copy.subtitle}
       maxWidth="3xl"
       onSubmit={() => void assignmentForm.handleSubmit()}
       isSubmitting={isAnyPending}
-      submitLabel={mode === 'create' ? 'Create Assignment' : 'Save Changes'}
+      submitLabel={copy.submitLabel}
     >
       <DialogBody>
         <FieldGroup className="mt-6">
