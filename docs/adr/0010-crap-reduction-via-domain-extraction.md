@@ -167,7 +167,11 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **117** open (14 critical / 45 high / 58 moderate) after extracting
+only moves down. Latest: **116** open (14 critical / 45 high / 57 moderate) after extracting
+`vite.config.ts`'s `config` callback decisions — mode→`isCloudflare`, the resolve-alias builder,
+and the client-shim `resolveId` decision — into `scripts/vite-config.domain.ts`; the config
+callback now only orchestrates plugin assembly. Prior: **117** open (14 critical / 45 high / 58
+moderate) after extracting
 `useMutation`'s `mutate` error-dispatch decision into `dispatchMutationError`
 (`src/hooks/useMutation/domain/mutation-error.domain.ts`), colocating the hook into a folder;
 the `catch` shell now just records error state and delegates handler selection. Prior: **118**
@@ -434,7 +438,7 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ⬜ todo | 🟡 mod  | 30   | `<arrow>`                         | B component | `src/routes/_authed/posts.tsx:137`                                           | —                                                                                                | —                                               | —          |
 | ⬜ todo | 🟡 mod  | 30   | `<arrow>`                         | B component | `src/routes/_authed/posts.tsx:156`                                           | —                                                                                                | —                                               | —          |
 | ✅ done | 🟡 mod  | 30   | `deliver`                         | A pure      | `src/utils/notifications/delivery.ts:11`                                     | `src/utils/notifications/domain/notification-rows.domain.ts`                                     | 1 CRAP finding (CRAP 30)                        | 2026-06-16 |
-| 🔨 in progress | 🟡 mod  | 30   | `config`                          | A pure      | `vite.config.ts:11`                                                          | —                                                                                                | —                                               | 2026-06-16T20:09Z |
+| ✅ done | 🟡 mod  | 30   | `config`                          | A pure      | `vite.config.ts:11`                                                          | `scripts/vite-config.domain.ts`                                                                  | 1 CRAP finding (CRAP 30)                        | 2026-06-16 |
 
 Add a new row per target. Leave the table as the live worklist; do not delete `✅ done` rows —
 they are the fix history.
