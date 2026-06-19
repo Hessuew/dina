@@ -16,6 +16,11 @@ a single, durable method for **paying down the existing 138** that every contrib
 cloud agent) follows the same way. This ADR is that playbook; it is binding like the rules in
 `docs/rules/complexity.md`, which it operationalizes.
 
+## Rules
+
+These state of this document is the current state of the work, and should be followed as
+the source of truth. No external origin/main checkups should be done.
+
 ## Decision
 
 Pay down CRAP by **extracting logic into the feature's `src/utils/<feature>/domain/` layer and
@@ -167,86 +172,13 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **106** open (7 critical / 46 high / 53 moderate) after extracting
-`SignupForm`'s view-model — the three mutation outcomes (signup / verify-OTP / resend, via
-`resolveSignupOutcome`/`resolveVerifyOutcome`/`resolveResendOutcome`), the OTP-complete and
-submit-disabled gates, the resend label/disabled helpers, and the email-field status view
-(`buildEmailFieldView`, replacing the stacked `&&` blocks) — into
-`src/components/auth/domain/signup-form.domain.ts`, and splitting the render into
-`SignupEmailField` + `SignupOtpPanel` so each shell stays under the CRAP threshold (this cleared
-both the `SignupForm` and the email-field `<arrow>` findings). Prior: **106** open
-(8 critical / 46 high / 52 moderate) after extracting
-`NotificationRow`'s view-model — the unread gate, the post-vs-comment `search` params, the group
-title/subtitle builders (`buildGroupTitle`/`buildGroupSubtitle`, moved out of the component
-file), and all the theme (`isDark`) + unread row/badge/button class strings — into
-`src/components/navigation/domain/notification-row.domain.ts` (`buildNotificationRowViewModel`);
-the `NotificationRow` shell now derives the view model once and only orchestrates the render
-(this cleared both the `NotificationRow` and `buildGroupTitle` findings). Prior: **108** open
-(9 critical / 46 high / 53 moderate) after extracting
-`AssignmentDetailComponent`'s view-model — submission status-chip variant, the grade and
-submitted-date formatters, the initial submission-form values, the student/past-due/can-submit
-permission flags, the edit-dialog mode gate, and the back / post-delete navigation decisions
-(DI side effects) — into `src/utils/assignments/domain/assignment-detail.domain.ts`; the route
-shell now derives the view model and only orchestrates the render. Prior: **109** open
-(10 critical / 46 high / 53 moderate) after extracting
-`MediaCard`'s view-model — thumbnail-URL resolution, the media-type config
-(`resolveMediaTypeConfig` + `MEDIA_TYPE_CONFIG`, moved out of the component file), width class,
-course-number/draft-badge visibility gates, and the badge border/icon-fill styles — into
-`src/components/library/domain/media-card.domain.ts` (`buildMediaCardViewModel`), and splitting
-the render into `MediaCardAura`/`MediaCardThumbnail`/`MediaCardBadge`/`MediaCardMeta`/`MediaCardBody`
-so each shell stays under threshold (this cleared both the `MediaCard` and `resolveMediaTypeConfig`
-findings). Prior: **111** open (11 critical / 46 high / 54 moderate) after extracting
-`LessonRow`'s view-model — `isPublished`/`showContent` derivation, the index label, status-chip
-visibility/variant, and the content/meta visibility gates — into
-`src/components/course/domain/lesson-row.domain.ts` (`resolveLessonRowView`), and splitting the
-render into `LessonRowBody` + `LessonRowMeta` so each shell stays under the CRAP threshold.
-Prior: **112** open (13 critical / 45 high / 54 moderate) after extracting
-the `AssignmentsView` card-map's per-card view-model — overdue check, submission-status label,
-status-chip variant (role→submission-variant-or-assignment-status), and the student
-grade-display gate — into `src/components/view/domain/assignments-view.domain.ts`
-(`buildAssignmentCardViewModel` + helpers); the `courseAssignments.map` callback now derives the
-view model once and only orchestrates the card render. Prior: **113** open (14 critical / 45 high
-/ 54 moderate) after extracting
-`SidebarMenuButton`'s tooltip-resolution decision — string-vs-object normalization, the
-wrap-or-not gate, and the `hidden` computation — into
-`src/components/ui/domain/sidebar-menu-button.domain.ts` (`resolveMenuButtonTooltip`); the
-component shell now derives `tooltipProps` once and only orchestrates the render. Prior: **114**
-open (14 critical / 45 high / 55 moderate) after extracting
-the posts route's two focus-post effects — the focus-fetch and focus-scroll decisions (plus a
-`prependPostIfAbsent` list helper) — into `src/utils/post/domain/focus-post.domain.ts`; both
-`useEffect` shells now just call the pure decision and perform the side effect. Prior: **116**
-open (14 critical / 45 high / 57 moderate) after extracting
-`vite.config.ts`'s `config` callback decisions — mode→`isCloudflare`, the resolve-alias builder,
-and the client-shim `resolveId` decision — into `scripts/vite-config.domain.ts`; the config
-callback now only orchestrates plugin assembly. Prior: **117** open (14 critical / 45 high / 58
-moderate) after extracting
-`useMutation`'s `mutate` error-dispatch decision into `dispatchMutationError`
-(`src/hooks/useMutation/domain/mutation-error.domain.ts`), colocating the hook into a folder;
-the `catch` shell now just records error state and delegates handler selection. Prior: **118**
-open (14 critical / 45 high / 59 moderate) after extracting
-`quality-gate.mjs`'s pure decisions — `extractJson`/verdict + exit-status helpers into
-`scripts/quality-gate.domain.mjs`, and `runInheritedCheck` onto the shared
-`describeCheck`/`interpretCheckResult`/`formatCommand` in `scripts/quality-fix.domain.mjs`
-(removing the duplicated local `formatCommand`); the three shells now only orchestrate. Prior:
-**121** open (14 critical / 45 high / 62 moderate) after extracting
-`useCachedData`'s refetch-staleness decision into `shouldRefetch`
-(`src/hooks/useCachedData/domain/cache-refetch.domain.ts`), colocating the hook into a folder;
-the `useEffect` shell now just calls the pure decision. Prior: **122** open (14 critical / 45
-high / 63 moderate) after extracting
-`runCheck`'s decision logic (`describeCheck`/`interpretCheckResult`/`formatCommand`) into
-`scripts/quality-fix.domain.mjs`, colocated with its owning tooling script; the residual
-`runCheck` shell only orchestrates spawn + logging. Prior: **123** open (14 critical / 45 high / 64
-moderate) after extracting
-`createCrudActions` into `src/components/table/functions/domain/crud-actions.domain.ts` (pure CRUD
-button-config builder, colocated with its component-layer use site; the original file now
-re-exports it). Prior: **124** open (14 critical / 45 high / 65
-moderate) after extracting
-`goNext`/`goPrev` orchestration into `navigateForward`/`navigateBackward` (DI side effects) in
-`enrollment-review.domain.ts`, collapsing both hook callbacks to CC-1 wrappers. Prior: **126**
-open (14 critical / 45 high / 67 moderate) after the
-`createEvent`/`updateEvent` input-builder extraction (`event-input.domain.ts`); **128**
-open after `requestPasswordResetService` and `resetPasswordService` (extracted into
-`password-reset-flow.domain.ts`); **130** after `useEntityMutation` and `useEnrollmentReview`.
+only moves down. Latest: **106** open (6 critical / 46 high / 54 moderate) after extracting
+the enrollments route's `navigate` callback decision — the per-field default merge (each
+unspecified param falls back to the current value) and the no-op-vs-navigate gate (skip the
+list reload when nothing changed) — into
+`src/utils/enrolment/domain/enrollments-navigation.domain.ts` (`resolveEnrollmentsNavigation`);
+the `navigate` callback now derives the decision and only performs the side effects
+(`setIsListLoading` + `router.navigate`).
 
 The **ledger** below is the durable record of what has been fixed and what is being worked on
 right now. It is the single source of truth for the burndown — keep it current as part of every
@@ -338,7 +270,7 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ✅ done | 🔴 crit | 156  | `AssignmentDetailComponent`       | B component | `src/routes/_authed/assignments/$assignmentId.tsx:86`                        | `src/utils/assignments/domain/assignment-detail.domain.ts`                                       | 1 CRAP finding (CRAP 156)                       | 2026-06-18 |
 | ✅ done | 🔴 crit | 132  | `SignupForm`                      | B component | `src/components/auth/signup-form.tsx:90`                                     | `src/components/auth/domain/signup-form.domain.ts`                                               | 1 CRAP finding (CRAP 132)                       | 2026-06-18 |
 | ✅ done | 🔴 crit | 132  | `NotificationRow`                 | B component | `src/components/navigation/NotificationsMenu.tsx:181`                        | `src/components/navigation/domain/notification-row.domain.ts`                                    | 1 CRAP finding (CRAP 132)                       | 2026-06-18 |
-| ⬜ todo | 🔴 crit | 132  | `navigate`                        | B component | `src/routes/_authed/enrollments/index.tsx:129`                               | —                                                                                                | —                                               | —          |
+| ✅ done | 🔴 crit | 132  | `navigate`                        | B component | `src/routes/_authed/enrollments/index.tsx:129`                               | `src/utils/enrolment/domain/enrollments-navigation.domain.ts`                                    | 1 CRAP finding (CRAP 132)                       | 2026-06-19 |
 | ⬜ todo | 🔴 crit | 110  | `renderIconWithOverrides`         | B component | `src/components/animate-ui/icons/icon.tsx:545`                               | —                                                                                                | —                                               | —          |
 | ⬜ todo | 🔴 crit | 110  | `CourseDialog`                    | B component | `src/components/dialog/CourseDialog.tsx:154`                                 | —                                                                                                | —                                               | —          |
 | ⬜ todo | 🔴 crit | 110  | `CommentsSection`                 | B component | `src/components/post/PostCard.tsx:315`                                       | —                                                                                                | —                                               | —          |
