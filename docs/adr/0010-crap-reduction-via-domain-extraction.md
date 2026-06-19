@@ -167,7 +167,12 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **121** open (14 critical / 45 high / 62 moderate) after extracting
+only moves down. Latest: **118** open (14 critical / 45 high / 59 moderate) after extracting
+`quality-gate.mjs`'s pure decisions — `extractJson`/verdict + exit-status helpers into
+`scripts/quality-gate.domain.mjs`, and `runInheritedCheck` onto the shared
+`describeCheck`/`interpretCheckResult`/`formatCommand` in `scripts/quality-fix.domain.mjs`
+(removing the duplicated local `formatCommand`); the three shells now only orchestrate. Prior:
+**121** open (14 critical / 45 high / 62 moderate) after extracting
 `useCachedData`'s refetch-staleness decision into `shouldRefetch`
 (`src/hooks/useCachedData/domain/cache-refetch.domain.ts`), colocating the hook into a folder;
 the `useEffect` shell now just calls the pure decision. Prior: **122** open (14 critical / 45
@@ -358,9 +363,9 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ✅ done | 🟡 mod  | 42   | `<arrow>` (createEvent)         | A pure      | `src/utils/event/events.ts:59`                                               | `src/utils/event/domain/event-input.domain.ts`                  | 1 CRAP finding (CRAP 42)        | hessuew / 2026-06-16 |
 | ✅ done | 🟡 mod  | 42   | `<arrow>` (updateEvent)         | A pure      | `src/utils/event/events.ts:80`                                               | `src/utils/event/domain/event-input.domain.ts`                  | 1 CRAP finding (CRAP 42)        | hessuew / 2026-06-16 |
 | ✅ done | 🟡 mod  | 30   | `runCheck`                      | A pure      | `scripts/quality-fix.mjs:17`                                                 | `scripts/quality-fix.domain.mjs`                                | 1 CRAP finding (CRAP 30)        | hessuew / 2026-06-16 |
-| ⬜ todo | 🟡 mod  | 30   | `runInheritedCheck`             | A pure      | `scripts/quality-gate.mjs:62`                                                | —                                                               | —                               | —                    |
-| ⬜ todo | 🟡 mod  | 30   | `extractJson`                   | A pure      | `scripts/quality-gate.mjs:92`                                                | —                                                               | —                               | —                    |
-| ⬜ todo | 🟡 mod  | 30   | `reportFallowOutcome`           | A pure      | `scripts/quality-gate.mjs:239`                                               | —                                                               | —                               | —                    |
+| ✅ done | 🟡 mod  | 30   | `runInheritedCheck`             | A pure      | `scripts/quality-gate.mjs:62`                                                | `scripts/quality-fix.domain.mjs` (reused `describeCheck`/`interpretCheckResult`/`formatCommand`) | 1 CRAP finding (CRAP 30) + `formatCommand` dupe | hessuew / 2026-06-16 |
+| ✅ done | 🟡 mod  | 30   | `extractJson`                   | A pure      | `scripts/quality-gate.mjs:92`                                                | `scripts/quality-gate.domain.mjs`                               | 1 CRAP finding (CRAP 30)        | hessuew / 2026-06-16 |
+| ✅ done | 🟡 mod  | 30   | `reportFallowOutcome`           | A pure      | `scripts/quality-gate.mjs:239`                                               | `scripts/quality-gate.domain.mjs`                               | 1 CRAP finding (CRAP 30)        | hessuew / 2026-06-16 |
 | ⬜ todo | 🟡 mod  | 30   | `completeStoppedAnimation`      | B component | `src/components/animate-ui/icons/icon.tsx:269`                               | —                                                               | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 30   | `AnimateIcon`                   | B component | `src/components/animate-ui/icons/icon.tsx:124`                               | —                                                               | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 30   | `mergeProps`                    | B component | `src/components/animate-ui/primitives/animate/slot.tsx:38`                   | —                                                               | —                               | —                    |
