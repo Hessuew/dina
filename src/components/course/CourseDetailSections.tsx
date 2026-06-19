@@ -9,6 +9,7 @@ import {
   TrashIcon,
 } from 'lucide-react'
 import type { MediaLibraryRow } from '@/utils/library/library'
+import type { LessonRowView } from '@/components/course/domain/lesson-row.domain'
 import { Button } from '@/components/ui/button'
 import { StatusChip } from '@/components/ui/status-chip'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
@@ -16,10 +17,7 @@ import { DarkCard } from '@/components/ui/dark-card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { MediaCard } from '@/components/library/MediaCard'
 import { cn } from '@/lib/utils'
-import {
-  resolveLessonRowView,
-  type LessonRowView,
-} from '@/components/course/domain/lesson-row.domain'
+import { resolveLessonRowView } from '@/components/course/domain/lesson-row.domain'
 
 type Lesson = {
   id: string
@@ -199,7 +197,7 @@ function MaterialsSection({
   const canManage = permissions.canEdit && permissions.isCourseTeacher
 
   return (
-    <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
+    <div className="overflow-hidden border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
       <SectionHeader
         title="Materials"
         count={materials.length}
@@ -227,7 +225,7 @@ function MaterialsSection({
         <div className="px-6 py-5">
           <div className="flex gap-4 overflow-x-auto pb-2">
             {materials.map((material) => (
-              <div key={material.id} className="group relative shrink-0">
+              <div key={material.id} className="group relative w-60 shrink-0">
                 <MediaCard item={material} viewerRole={role} size="panel" />
                 {canManage && (
                   <div
@@ -511,7 +509,7 @@ export function CourseDetailSections({
 }: CourseDetailSectionsProps) {
   return (
     <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <CourseAboutCard
           thumbnailUrl={course.thumbnailUrl}
           description={course.description}
@@ -521,7 +519,7 @@ export function CourseDetailSections({
         )}
       </div>
 
-      <div className="flex flex-col gap-6">
+      <div className="flex min-w-0 flex-col gap-6">
         {showMaterials && (
           <MaterialsSection
             materials={materials}

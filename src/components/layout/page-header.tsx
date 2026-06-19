@@ -30,7 +30,7 @@ export function PageHeader({
         Back
       </Button>
 
-      <div className="flex items-start justify-between gap-6">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="h-px w-10 bg-[#C5A059]/50" />
           <h1
@@ -42,14 +42,14 @@ export function PageHeader({
             {title}
           </h1>
           {metadata && (
-            <div className="mt-3 flex items-center gap-4 text-[0.68rem] text-[#9B8C7C]">
+            <div className="mt-3 flex flex-wrap items-center gap-4 text-[0.68rem] text-[#9B8C7C]">
               {metadata}
             </div>
           )}
         </div>
 
         {actions && (
-          <div className="flex items-center gap-3 pt-4">{actions}</div>
+          <div className="flex items-center gap-3 pt-0 sm:pt-4">{actions}</div>
         )}
       </div>
     </div>

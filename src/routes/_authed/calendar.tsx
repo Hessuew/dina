@@ -125,6 +125,7 @@ function CalendarComponent() {
     navigate({
       search: { month: date.toISOString() },
       replace: true,
+      resetScroll: false,
     })
   }
 

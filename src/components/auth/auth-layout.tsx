@@ -281,7 +281,7 @@ export function AuthPageShell({
 
       <div
         className={cn(
-          'relative mx-auto px-3 py-18 sm:max-w-[calc(100%-4rem)] sm:px-6 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24',
+          'relative mx-auto px-3 py-2 sm:max-w-[calc(100%-4rem)] sm:px-6 sm:py-22 lg:max-w-[calc(100%-8rem)] lg:px-12 lg:py-24',
           containerClassName,
         )}
       >
@@ -303,18 +303,6 @@ export function AuthPageShell({
             <AuthPageFooter theme={theme} />
           </div>
 
-          <div className="mb-8 w-full text-center lg:hidden">
-            <h1
-              className={cn(
-                'font-serif text-[clamp(2.5rem,5vw,4rem)] leading-[0.92] tracking-[-0.055em]',
-                theme.title,
-                titleClassName,
-              )}
-            >
-              {title}
-            </h1>
-          </div>
-
           {children}
         </div>
       </div>
@@ -326,7 +314,7 @@ export function AuthFeaturePanel({
   backgroundImage,
   children,
   chip,
-  minHeightClassName = 'min-h-72 lg:min-h-84',
+  minHeightClassName = 'min-h-60 lg:min-h-84',
   brandLabelClassName = 'text-[#E9D9B4]',
 }: AuthFeaturePanelProps) {
   return (
