@@ -1,5 +1,3 @@
-import { Link } from '@tanstack/react-router'
-import { ArrowRight } from 'lucide-react'
 import footerBackground from '@/assets/images/bg/bg_footer.webp'
 import {
   LandingImageSection,
@@ -33,18 +31,10 @@ export function LandingFooter() {
 
               <div className="mx-auto h-px w-24 bg-[#C5A059]/50" />
 
-              <div className="space-y-4 pt-6">
+              <div className="pt-6">
                 <div className="text-[0.7rem] font-medium tracking-[0.3em] text-[#C5A059] uppercase">
-                  Enrollment Open for 2026
+                  Enrollment for 2027 opens early next year
                 </div>
-                <Link
-                  to="/enrolment"
-                  search={{ success: undefined }}
-                  className="group inline-flex h-14 items-center justify-center gap-3 border border-[#C5A059]/55 bg-linear-to-b from-[#2A2A2A] to-[#111111] px-8 font-serif text-base tracking-[0.12em] text-[#E9D9B4] shadow-[0_28px_60px_-28px_rgba(0,0,0,0.7)] transition-all hover:-translate-y-0.5 hover:border-[#D6B16E] hover:text-white"
-                >
-                  Apply Now
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </Link>
               </div>
             </div>
           </div>

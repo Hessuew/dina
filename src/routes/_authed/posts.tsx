@@ -154,7 +154,10 @@ function PostsComponent() {
       .then((res) => {
         setAllPosts((prev) => prependPostIfAbsent(prev, res.post))
       })
-      .catch(() => {})
+      .catch(() => {
+        focusFetchKeyRef.current = null
+        toast.error('Could not load the linked post')
+      })
   }, [allPosts, focusPostId, selectedChannel])
 
   useEffect(() => {

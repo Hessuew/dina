@@ -32,9 +32,12 @@ import {
 } from '@/utils/enrolment/service/enrolment.service'
 import { findAbsentTeacherIdsWithActiveSubstitution } from '@/utils/enrolment/repository/enrolment.repository'
 
+const ENROLLMENT_OPEN = false as boolean
+
 export const createEnrollment = createServerFn({ method: 'POST' })
   .inputValidator(createEnrollmentSchema)
   .handler(({ data }) => {
+    if (!ENROLLMENT_OPEN) throw new Error('Enrollment is currently closed.')
     return createEnrollmentService(data)
   })
 

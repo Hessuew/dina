@@ -429,8 +429,9 @@ export async function findCourseIdsForViewer(
 
 /**
  * Fetches all course team members (teachers + substitutes) for a batch of
- * course IDs in two queries and returns a map from course ID to member list.
- * Used to build the Review heading column.
+ * course IDs and returns a map from course ID to member list. Absent teachers
+ * with an active substitution are excluded — their substitute stands in for
+ * them — so the Review heading peer never resolves to an absent teacher.
  */
 export async function findPeersForReviewers(
   courseIds: Array<string>,
@@ -454,6 +455,7 @@ export async function findPeersForReviewers(
       .select({
         courseId: courseSubstitutes.courseId,
         id: courseSubstitutes.substituteTeacherId,
+        absentTeacherId: courseSubstitutes.absentTeacherId,
         name: profiles.fullName,
       })
       .from(courseSubstitutes)
@@ -464,7 +466,17 @@ export async function findPeersForReviewers(
       .where(inArray(courseSubstitutes.courseId, courseIds)),
   ])
 
+  // Absent teachers (per course) are on leave: drop them from the team so the
+  // substitute represents them in peer resolution.
+  const absentByCourse = new Map<string, Set<string>>()
+  for (const row of substituteRows) {
+    const absent = absentByCourse.get(row.courseId) ?? new Set<string>()
+    absent.add(row.absentTeacherId)
+    absentByCourse.set(row.courseId, absent)
+  }
+
   for (const row of [...teacherRows, ...substituteRows]) {
+    if (absentByCourse.get(row.courseId)?.has(row.id)) continue
     const members = result.get(row.courseId) ?? []
     if (!members.some((m) => m.id === row.id)) {
       members.push({ id: row.id, name: row.name })

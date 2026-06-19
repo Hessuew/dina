@@ -16,7 +16,7 @@ describe('dispatchMutationError', () => {
   })
 
   it('awaits an async onError', async () => {
-    const order: string[] = []
+    const order: Array<string> = []
     const onError = vi.fn(async () => {
       await Promise.resolve()
       order.push('onError')
