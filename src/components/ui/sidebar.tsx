@@ -25,6 +25,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { resolveMenuButtonTooltip } from '@/components/ui/domain/sidebar-menu-button.domain'
 
 const SIDEBAR_COOKIE_NAME = 'sidebar_state'
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -519,6 +520,7 @@ function SidebarMenuButton({
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
   } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const { isMobile, state } = useSidebar()
+  const tooltipProps = resolveMenuButtonTooltip(tooltip, { state, isMobile })
   const comp = useRender({
     defaultTagName: 'button',
     props: mergeProps<'button'>(
@@ -527,7 +529,7 @@ function SidebarMenuButton({
       },
       props,
     ),
-    render: !tooltip ? render : <TooltipTrigger render={render} />,
+    render: tooltipProps ? <TooltipTrigger render={render} /> : render,
     state: {
       slot: 'sidebar-menu-button',
       sidebar: 'menu-button',
@@ -536,25 +538,14 @@ function SidebarMenuButton({
     },
   })
 
-  if (!tooltip) {
+  if (!tooltipProps) {
     return comp
-  }
-
-  if (typeof tooltip === 'string') {
-    tooltip = {
-      children: tooltip,
-    }
   }
 
   return (
     <Tooltip>
       {comp}
-      <TooltipContent
-        side="right"
-        align="center"
-        hidden={state !== 'collapsed' || isMobile}
-        {...tooltip}
-      />
+      <TooltipContent side="right" align="center" {...tooltipProps} />
     </Tooltip>
   )
 }
