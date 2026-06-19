@@ -216,6 +216,11 @@ target's change, not as an afterthought.
 > it — even if the working tree already holds a complete-looking implementation (that is another
 > agent's uncommitted work, not an invitation to finish it). Only the agent who flipped a row may
 > complete it.
+>
+> **When you encounter a `🔨 in progress` row, simply skip it and pick the next `⬜ todo` row.** Do not
+> investigate the files, check if they've been modified, or examine what's been done. The ledger is
+> the single source of truth; a `🔨 in progress` row means "not available," period. Move to the next
+> available target without any file inspection or git operations.
 
 So multiple agents (local or cloud) can pay down findings at once without colliding:
 
@@ -383,7 +388,7 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ⬜ todo | 🟡 mod  | 30   | `EnrollmentsTable`              | B component | `src/components/table/EnrollmentsTable.tsx:81`                               | —                                                               | —                               | —                    |
 | ✅ done | 🟡 mod  | 30   | `createCrudActions`             | A pure      | `src/components/table/functions/createCrudActions.ts:51`                     | `src/components/table/functions/domain/crud-actions.domain.ts`  | 1 CRAP finding (CRAP 30)        | hessuew / 2026-06-16 |
 | ⬜ todo | 🟡 mod  | 30   | `SidebarMenuButton`             | B component | `src/components/ui/sidebar.tsx:508`                                          | —                                                               | —                               | —                    |
-| ⬜ todo | 🟡 mod  | 30   | `<arrow>`                       | A hook      | `src/hooks/useCachedData.ts:37`                                              | —                                                               | —                               | —                    |
+| 🔨 in progress | 🟡 mod  | 30   | `<arrow>` (useCachedData refetch) | A hook    | `src/hooks/useCachedData.ts:37`                                              | `src/hooks/useCachedData/domain/cache-refetch.domain.ts`        | —                               | hessuew / 2026-06-16 |
 | ⬜ todo | 🟡 mod  | 30   | `mutate`                        | A hook      | `src/hooks/useMutation.ts:19`                                                | —                                                               | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 30   | `<arrow>`                       | B component | `src/routes/_authed/posts.tsx:137`                                           | —                                                               | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 30   | `<arrow>`                       | B component | `src/routes/_authed/posts.tsx:156`                                           | —                                                               | —                               | —                    |
