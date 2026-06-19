@@ -1,8 +1,9 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { EyeIcon, FileTextIcon } from 'lucide-react'
+import { EyeIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.repository'
+import type { EnrollmentsNavRequest } from '@/utils/enrolment/domain/enrollments-navigation.domain'
 import { Button } from '@/components/ui/button'
 import { EnrollmentsTable } from '@/components/table/EnrollmentsTable'
 import { EvaluationOverlay } from '@/components/enrollment/EvaluationOverlay'
@@ -15,6 +16,7 @@ import {
 import { checkTeacherAccess } from '@/utils/auth/admin'
 import { distributeEnrollments, getEnrollments } from '@/utils/enrolment'
 import { parseEnrollmentsSearch } from '@/utils/enrolment/domain/enrollments-search.domain'
+import { resolveEnrollmentsNavigation } from '@/utils/enrolment/domain/enrollments-navigation.domain'
 import { useEnrollmentReview } from '@/hooks/useEnrollmentReview'
 import { toUserError } from '@/utils/errors'
 
@@ -117,28 +119,13 @@ function EnrollmentsPage() {
   }
 
   const navigate = useCallback(
-    (params: {
-      page?: number
-      pageSize?: number
-      search?: string
-      sortBy?: EnrollmentSortKey
-      sortDir?: 'asc' | 'desc'
-    }) => {
-      const next = {
-        page: params.page ?? page,
-        pageSize: params.pageSize ?? pageSize,
-        search: params.search ?? search,
-        sortBy: params.sortBy ?? sortBy,
-        sortDir: params.sortDir ?? sortDir,
-      }
+    (params: EnrollmentsNavRequest) => {
+      const decision = resolveEnrollmentsNavigation(
+        { page, pageSize, search, sortBy, sortDir },
+        params,
+      )
 
-      if (
-        next.page === page &&
-        next.pageSize === pageSize &&
-        next.search === search &&
-        next.sortBy === sortBy &&
-        next.sortDir === sortDir
-      ) {
+      if (decision.kind === 'noop') {
         setIsListLoading(false)
         return
       }
@@ -147,7 +134,7 @@ function EnrollmentsPage() {
       router.navigate({
         to: '/enrollments',
         search: {
-          ...next,
+          ...decision.next,
           review: undefined,
           viewAll,
         },
