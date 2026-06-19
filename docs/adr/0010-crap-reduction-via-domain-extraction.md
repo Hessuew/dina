@@ -225,10 +225,32 @@ target's change, not as an afterthought.
 > invisible to agents on other branches — each branched from `main` before yours merged, so both
 > can claim the same row and only collide at integration. This has already caused a double-claim.
 
-> **A `🔨 in progress` row you didn't set in this session is hands-off.** Never start, continue,
-> verify, or finish it — even if the working tree already holds a complete-looking implementation
-> (that is another agent's uncommitted work, not an invitation to finish it). Only the agent that
-> wrote the `Claimed at` timestamp in this session may complete the row.
+> **A `🔨 in progress` row is hands-off unless you wrote its `Claimed at` timestamp earlier in the
+> live conversation you are running right now.** Never start, continue, verify, or finish it
+> otherwise — not even to "resume" it. Only the agent that set the timestamp _within the current
+> running session_ may complete the row.
+>
+> **"This session" means the current live agent invocation — nothing else confers ownership.** A row
+> is **not** yours just because:
+>
+> - the **branch name** mentions the target (e.g. `…-claim-mutate-usemutation`),
+> - a **prior commit** on this branch (including HEAD) claimed it,
+> - the **working tree** holds a complete-looking implementation, or
+> - it otherwise "looks like" your effort.
+>
+> None of those are evidence of ownership. The **only** valid proof is that _you_ flipped the row to
+> `🔨 in progress` and wrote its timestamp during this same conversation, with that act still visible
+> in your current context. If you did not do that in the session you are running right now, the row
+> is **someone else's** — treat it exactly like any other in-progress row: hands-off.
+>
+> **Corollary — a pre-existing claim is never a task to "implement."** If you begin a session and
+> find a `🔨 in progress` row (even one your branch was named for, even at HEAD), do **not** adopt it,
+> resume it, or write its domain/test code. The claim half of the workflow already being done is
+> **not** an invitation to do the implement half — claiming and implementing a target are one
+> indivisible unit of work that must happen in the same session. Skip the row and pick the next
+> `⬜ todo` row instead; claim that fresh, then implement it, all in the one session. (The >24h-stale
+> reclaim rule below is the _only_ exception, and it still requires you to first flip the row back to
+> `⬜ todo`, clear its timestamp, and re-claim it yourself this session.)
 >
 > **When you encounter a `🔨 in progress` row, simply skip it and pick the next `⬜ todo` row.** Do not
 > investigate the files, check if they've been modified, or examine what's been done. The ledger is
@@ -412,7 +434,7 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ⬜ todo | 🟡 mod  | 30   | `<arrow>`                         | B component | `src/routes/_authed/posts.tsx:137`                                           | —                                                                                                | —                                               | —          |
 | ⬜ todo | 🟡 mod  | 30   | `<arrow>`                         | B component | `src/routes/_authed/posts.tsx:156`                                           | —                                                                                                | —                                               | —          |
 | ✅ done | 🟡 mod  | 30   | `deliver`                         | A pure      | `src/utils/notifications/delivery.ts:11`                                     | `src/utils/notifications/domain/notification-rows.domain.ts`                                     | 1 CRAP finding (CRAP 30)                        | 2026-06-16 |
-| ⬜ todo | 🟡 mod  | 30   | `config`                          | A pure      | `vite.config.ts:11`                                                          | —                                                                                                | —                                               | —          |
+| 🔨 in progress | 🟡 mod  | 30   | `config`                          | A pure      | `vite.config.ts:11`                                                          | —                                                                                                | —                                               | 2026-06-16T20:09Z |
 
 Add a new row per target. Leave the table as the live worklist; do not delete `✅ done` rows —
 they are the fix history.
