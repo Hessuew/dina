@@ -143,7 +143,10 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **131** open (14 critical / 48 high / 69 moderate) after `useEntityMutation`.
+only moves down. Latest: **130** open (14 critical / 47 high / 69 moderate) after `useEntityMutation`
+and `useEnrollmentReview`. (Same pass reduced `goNext`/`goPrev` from CRAP 42→30 via the shared
+`planForward`/`planBackward` planners in `enrollment-review.domain.ts`, but they remain at-threshold
+findings — still `⬜ todo`.)
 
 The **ledger** below is the durable record of what has been fixed and what is being worked on
 right now. It is the single source of truth for the burndown — keep it current as part of every
@@ -227,7 +230,7 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ⬜ todo | 🟠 high | 72   | `NotificationTriggerButton`     | B component | `src/components/navigation/NotificationsMenu.tsx:56`                         | —                                                          | —                               | —                    |
 | ⬜ todo | 🟠 high | 72   | `FormDialog`                    | B component | `src/components/ui/form-dialog.tsx:63`                                       | —                                                          | —                               | —                    |
 | ⬜ todo | 🟠 high | 72   | `Sidebar`                       | B component | `src/components/ui/sidebar.tsx:158`                                          | —                                                          | —                               | —                    |
-| ⬜ todo | 🟠 high | 72   | `useEnrollmentReview`           | A hook      | `src/hooks/useEnrollmentReview.ts:57`                                        | —                                                          | —                               | —                    |
+| ✅ done | 🟠 high | 72   | `useEnrollmentReview`           | A hook      | `src/hooks/useEnrollmentReview.ts:57`                                        | `src/utils/enrolment/domain/enrollment-review.domain.ts`   | 1 CRAP finding (CRAP 72)         | hessuew / 2026-06-16 |
 | ⬜ todo | 🟠 high | 72   | `<arrow>`                       | B component | `src/routes/__root.tsx:26`                                                   | —                                                          | —                               | —                    |
 | ⬜ todo | 🟠 high | 72   | `<arrow>`                       | B component | `src/routes/_authed/courses/$courseId.tsx:93`                                | —                                                          | —                               | —                    |
 | ⬜ todo | 🟠 high | 72   | `EnrollmentsPage`               | B component | `src/routes/_authed/enrollments/index.tsx:65`                                | —                                                          | —                               | —                    |
