@@ -185,8 +185,15 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **98** open (6 critical / 44 high / 48 moderate) after extracting the
-animate-ui icon view-model logic — `renderIconWithOverrides`' option/context `??` merge chain
+only moves down. Latest: **95** open after extracting `CourseDialog`'s view-model logic — the
+submit-action builder (`buildCourseSubmitAction`, mode/initialData branching), the created-course
+id extractor (`extractCreatedCourseId`), the initial-values/chrome/label derivations
+(`getInitialValues`, `getCourseDialogChrome`, `getCourseLoadingLabel`,
+`isCourseDialogSubmitting`, `shouldLoadCourseTeachers`) — into
+`src/components/dialog/domain/course-dialog.domain.ts`; the `CourseDialog.tsx` shell now only
+orchestrates (CRAP 110 → cleared). Prior: **98** open (6 critical / 44 high / 48 moderate) after
+extracting the animate-ui icon view-model logic — `renderIconWithOverrides`' option/context `??`
+merge chain
 (into `resolveOverriddenAnimateProps` + `resolveInheritedAnimate`) and `getVariants`' variant
 selection (into `computeVariants`, with `staticAnimations` injected) — into
 `src/components/animate-ui/icons/domain/icon-animation.domain.ts`; the `icon.tsx` shells now
@@ -285,7 +292,7 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ✅ done | 🔴 crit | 132  | `NotificationRow`                 | B component | `src/components/navigation/NotificationsMenu.tsx:181`                        | `src/components/navigation/domain/notification-row.domain.ts`                                    | 1 CRAP finding (CRAP 132)                       | 2026-06-18 |
 | ✅ done | 🔴 crit | 132  | `navigate`                        | B component | `src/routes/_authed/enrollments/index.tsx:129`                               | `src/utils/enrolment/domain/enrollments-navigation.domain.ts`                                    | 1 CRAP finding (CRAP 132)                       | 2026-06-19 |
 | ✅ done | 🔴 crit | 110  | `renderIconWithOverrides`         | B component | `src/components/animate-ui/icons/icon.tsx:545`                               | `src/components/animate-ui/icons/domain/icon-animation.domain.ts`                                 | 1 CRAP finding (CRAP 110)                       | 2026-06-19 |
-| ⬜ todo | 🔴 crit | 110  | `CourseDialog`                    | B component | `src/components/dialog/CourseDialog.tsx:154`                                 | —                                                                                                | —                                               | —          |
+| ✅ done | 🔴 crit | 110  | `CourseDialog`                    | B component | `src/components/dialog/CourseDialog.tsx:154`                                 | `src/components/dialog/domain/course-dialog.domain.ts`                                            | 1 CRAP finding (CRAP 110)                       | 2026-06-19 |
 | ⬜ todo | 🔴 crit | 110  | `CommentsSection`                 | B component | `src/components/post/PostCard.tsx:315`                                       | —                                                                                                | —                                               | —          |
 | ⬜ todo | 🔴 crit | 110  | `EmptyState`                      | B component | `src/components/ui/empty-state.tsx:19`                                       | —                                                                                                | —                                               | —          |
 | ✅ done | 🔴 crit | 110  | `useEntityMutation`               | A hook      | `src/hooks/useEntityMutation.ts:58`                                          | `src/utils/mutation/domain/entity-mutation.domain.ts`                                            | 1 CRAP finding (CRAP 110)                       | 2026-06-16 |
