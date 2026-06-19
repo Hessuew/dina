@@ -13,6 +13,15 @@ import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { CourseDetailSections } from '@/components/course/CourseDetailSections'
+import {
+  buildCourseEditData,
+  buildLessonInitialData,
+  buildMediaDialogKey,
+  getCourseStatus,
+  handleDialogDismiss,
+  isDialogModeActive,
+  shouldShowMaterials,
+} from '@/utils/courses/domain/course-detail.domain'
 
 export const Route = createFileRoute('/_authed/courses/$courseId')({
   loader: async ({ params }) => {
@@ -63,8 +72,7 @@ function CourseDetailComponent() {
     },
   })
 
-  const showMaterials =
-    permissions.canEdit || materials.some((m) => m.isPublished)
+  const showMaterials = shouldShowMaterials(permissions.canEdit, materials)
 
   return (
     <PageLayout>
@@ -87,20 +95,14 @@ function CourseDetailComponent() {
         }
         actions={
           <EntityHeaderActions
-            status={course.isPublished ? 'published' : 'draft'}
+            status={getCourseStatus(course.isPublished)}
             canEdit={permissions.canEdit}
             isCourseTeacher={permissions.isCourseTeacher}
             onEdit={() => {
-              courseDialog.openDialog('edit', {
-                courseId: course.id,
-                title: course.title,
-                description: course.description || '',
-                thumbnailUrl: course.thumbnailUrl,
-                isPublished: course.isPublished ?? false,
-                teacher1Id: courseTeachersData[0]?.teacher?.id || null,
-                teacher2Id: courseTeachersData[1]?.teacher?.id || null,
-                orderIndex: course.orderIndex ?? 0,
-              })
+              courseDialog.openDialog(
+                'edit',
+                buildCourseEditData(course, courseTeachersData),
+              )
             }}
             onDelete={() => courseDialog.openDialog('delete')}
           />
@@ -135,8 +137,8 @@ function CourseDetailComponent() {
 
       {/* Edit Course Dialog */}
       <CourseDialog
-        open={courseDialog.isOpen && courseDialog.dialogMode === 'edit'}
-        onOpenChange={(open) => !open && courseDialog.closeDialog()}
+        open={isDialogModeActive(courseDialog.isOpen, courseDialog.dialogMode, 'edit')}
+        onOpenChange={(open) => handleDialogDismiss(open, courseDialog.closeDialog)}
         mode="edit"
         isAdmin={permissions.isAdmin}
         initialData={courseDialog.dialogItem}
@@ -144,8 +146,12 @@ function CourseDetailComponent() {
 
       {/* Delete Course Dialog */}
       <DeleteConfirmDialog
-        open={courseDialog.isOpen && courseDialog.dialogMode === 'delete'}
-        onOpenChange={(open) => !open && courseDialog.closeDialog()}
+        open={isDialogModeActive(
+          courseDialog.isOpen,
+          courseDialog.dialogMode,
+          'delete',
+        )}
+        onOpenChange={(open) => handleDialogDismiss(open, courseDialog.closeDialog)}
         entityName="Course"
         onConfirm={() =>
           deleteCourseMutation.mutate({
@@ -160,31 +166,25 @@ function CourseDetailComponent() {
       {lessonDialog.isOpen && (
         <LessonDialog
           open={true}
-          onOpenChange={(open) => {
-            if (!open) lessonDialog.closeDialog()
-          }}
+          onOpenChange={(open) => handleDialogDismiss(open, lessonDialog.closeDialog)}
           mode={lessonDialog.dialogMode as 'create' | 'edit' | 'delete'}
           courseId={course.id}
           lessonCount={course.lessons.length}
-          initialData={
-            lessonDialog.dialogItem
-              ? {
-                  ...lessonDialog.dialogItem,
-                  lessonId: lessonDialog.dialogItem.id,
-                }
-              : undefined
-          }
+          initialData={buildLessonInitialData(lessonDialog.dialogItem)}
         />
       )}
 
       {/* Material Dialog (create / edit / delete) */}
       {materialDialog.isOpen && (
         <MediaDialog
-          key={`${materialDialog.dialogMode}-${materialDialog.dialogItem?.id}`}
+          key={buildMediaDialogKey(
+            materialDialog.dialogMode,
+            materialDialog.dialogItem,
+          )}
           open={true}
-          onOpenChange={(open) => {
-            if (!open) materialDialog.closeDialog()
-          }}
+          onOpenChange={(open) =>
+            handleDialogDismiss(open, materialDialog.closeDialog)
+          }
           mode={materialDialog.dialogMode as 'create' | 'edit' | 'delete'}
           media={materialDialog.dialogItem}
           courseId={course.id}
