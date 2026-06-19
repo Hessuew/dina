@@ -154,6 +154,14 @@ target's change, not as an afterthought.
 
 #### Protocol — claim before you work (safe for parallel agents)
 
+> **Reserve first, unconditionally — flip the row to `🔨 in progress` before touching any code.**
+> This is the always-first step for **every** agent, including a single agent on a purely local
+> Graphite stack. The `origin/main` landing requirement below is an _additional_ safeguard for
+> parallel agents; its non-applicability (e.g. the ADR not yet being on `origin/main`) is **never**
+> a reason to skip the reservation itself. No reservation commit = do not start. If you find
+> yourself writing domain/test code before the row reads `🔨 in progress` with your id, stop and
+> reserve first.
+
 > **A claim only counts once it's on `origin/main`.** A claim on your feature branch alone is
 > invisible to agents on other branches — each branched from `main` before yours merged, so both
 > can claim the same row and only collide at integration. This has already caused a double-claim.
@@ -170,8 +178,11 @@ So multiple agents (local or cloud) can pay down findings at once without collid
    never pick from a stale local copy.
 2. **Pick a `⬜ todo` row and flip it to `🔨 in progress` first — before any code.** Set your id
    and the date in a doc-only commit (2–3 same-feature targets allowed:
-   `gt c -m "chore(crap): claim <t1>, <t2>"`) and **land it on `origin/main` before starting
-   work**. Create the implementation branch only after the claim is up.
+   `gt c -m "chore(crap): claim <t1>, <t2>"`). This reservation commit is **mandatory in every
+   case**. _When other agents may be active_, additionally **land it on `origin/main` before
+   starting work** and create the implementation branch only after the claim is up; when you are
+   the only agent on a local stack, the doc-only commit alone is the reservation — but it must
+   still exist before any domain/test code.
 3. **If the push is rejected, someone claimed first** — rebase, re-read the ledger, and take
    another `⬜ todo` row. A merge conflict on this table is the same signal: yield.
 4. **On completion, flip the row to `✅ done`** with the date, the domain file, and the
