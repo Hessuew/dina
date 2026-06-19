@@ -65,6 +65,14 @@ const testimonials: Array<TestimonialItem> = [
     theme: 'Walls',
   },
   {
+    id: 'nonso',
+    name: 'Nonso',
+    role: 'Pastor, -',
+    quote:
+      'Discipleship was primarily instrumental to my encounter with the reality of the person of the Holy Spirit, who carried me into the fellowship of his fullness. My personal walk with the Lord which hitherto was routine, usual and uneventful became a flaming and exciting daily walk of love and faith in ever increasing strides.',
+    theme: 'Framing',
+  },
+  {
     id: 'sade',
     name: 'Sade P.',
     role: 'Pastor, -',
@@ -72,14 +80,14 @@ const testimonials: Array<TestimonialItem> = [
       'My journey of discipleship is rooted in God’s grace! Discipleship has helped me to live intentionally and with purpose for Christ. It came to me at a point in my life where I had no direction and all hope seemed lost. Now I seek to live out Christ’s love daily, growing in faith and guiding others toward purpose and truth.',
     theme: 'Framing',
   },
-  {
-    id: 'blessing',
-    name: 'Blessing A.',
-    role: 'Pastor, -',
-    quote:
-      'Raised in a Christian home and active in church from a young age, I later came to a personal surrender to God through His mercy at a crusade. My discipleship journey continues by His grace as I grow in faith, serve in youth ministry, and participate in evangelism. I desire to help others discover their identity, draw closer to God, and experience wholeness in every area of life.',
-    theme: 'Framing',
-  },
+  // {
+  //   id: 'blessing',
+  //   name: 'Blessing A.',
+  //   role: 'Pastor, -',
+  //   quote:
+  //     'Raised in a Christian home and active in church from a young age, I later came to a personal surrender to God through His mercy at a crusade. My discipleship journey continues by His grace as I grow in faith, serve in youth ministry, and participate in evangelism. I desire to help others discover their identity, draw closer to God, and experience wholeness in every area of life.',
+  //   theme: 'Framing',
+  // },
   {
     id: 'kene',
     name: 'Kene O.',
