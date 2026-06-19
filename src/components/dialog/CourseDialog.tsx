@@ -15,55 +15,23 @@ import { useFileUpload } from '@/hooks/useFileUpload'
 import { createCourse, updateCourse } from '@/utils/courses'
 import { uploadCourseThumbnailFn } from '@/utils/imageUpload'
 import { getTeacherName } from '@/utils/teachers/domain/teachers.domain'
-
-type CourseFormData = {
-  title: string
-  description: string
-  orderIndex: number
-  teacher1Id: string
-  teacher2Id: string
-  isPublished: boolean
-}
-
-const emptyFormData: CourseFormData = {
-  title: '',
-  description: '',
-  orderIndex: 0,
-  teacher1Id: '',
-  teacher2Id: '',
-  isPublished: false,
-}
+import {
+  buildCourseSubmitAction,
+  extractCreatedCourseId,
+  getCourseDialogChrome,
+  getCourseLoadingLabel,
+  getInitialValues,
+  isCourseDialogSubmitting,
+  shouldLoadCourseTeachers,
+  type CourseInitialData,
+} from './domain/course-dialog.domain'
 
 type CourseDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   mode: 'create' | 'edit'
   isAdmin: boolean
-  initialData?: {
-    courseId: string
-    title: string
-    description: string
-    thumbnailUrl: string | null
-    isPublished: boolean
-    teacher1Id: string | null
-    teacher2Id: string | null
-    orderIndex: number
-  }
-}
-
-function getInitialValues(
-  initialData: CourseDialogProps['initialData'],
-): CourseFormData {
-  if (!initialData) return { ...emptyFormData }
-
-  return {
-    title: initialData.title,
-    description: initialData.description,
-    orderIndex: initialData.orderIndex,
-    teacher1Id: initialData.teacher1Id ?? '',
-    teacher2Id: initialData.teacher2Id ?? '',
-    isPublished: initialData.isPublished,
-  }
+  initialData?: CourseInitialData
 }
 
 function TeacherSelectItems({
@@ -307,7 +275,9 @@ export function CourseDialog({
 
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
 
-  const { teachers, error: teachersError } = useAllTeachers(open && isAdmin)
+  const { teachers, error: teachersError } = useAllTeachers(
+    shouldLoadCourseTeachers(open, isAdmin),
+  )
 
   if (teachersError) {
     console.error('Failed to load teachers:', teachersError)
@@ -339,9 +309,9 @@ export function CourseDialog({
     onSuccessMessage: (_mode) =>
       `Course ${_mode === 'create' ? 'created' : 'updated'} successfully!`,
     onSuccess: async ({ data: _data }) => {
-      const data = _data as { course: { id: string } }
-      if ('course' in data) {
-        await handleThumbnailUpload(data.course.id)
+      const courseId = extractCreatedCourseId(_data)
+      if (courseId) {
+        await handleThumbnailUpload(courseId)
         clearFile()
         setThumbnailUrl(null)
         onOpenChange(false)
@@ -352,28 +322,19 @@ export function CourseDialog({
   const form = useAppForm({
     defaultValues: getInitialValues(initialData),
     onSubmit: ({ value }) => {
-      const shared = {
-        title: value.title,
-        description: value.description,
-        orderIndex: value.orderIndex,
-        teacher1Id: value.teacher1Id || undefined,
-        teacher2Id: value.teacher2Id || undefined,
-        isPublished: value.isPublished,
-      }
-
-      if (mode === 'create') {
-        createMutation.mutate({ data: shared })
+      const action = buildCourseSubmitAction(
+        mode,
+        value,
+        initialData,
+        thumbnailUrl,
+      )
+      if (action.kind === 'create') {
+        createMutation.mutate({ data: action.data })
         return
       }
-
-      if (!initialData) return
-      updateMutation.mutate({
-        data: {
-          ...shared,
-          courseId: initialData.courseId,
-          thumbnailUrl: thumbnailUrl || undefined,
-        },
-      })
+      if (action.kind === 'update') {
+        updateMutation.mutate({ data: action.data })
+      }
     },
   })
 
@@ -384,22 +345,20 @@ export function CourseDialog({
     form.reset(getInitialValues(initialData))
   }, [open, initialData, mode, form, clearFile])
 
+  const chrome = getCourseDialogChrome(mode)
+
   return (
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
-      title={mode === 'create' ? 'Create Course' : 'Edit Course'}
-      subtitle={
-        mode === 'create'
-          ? 'Add a new course and assign teachers'
-          : 'Update the course information'
-      }
+      title={chrome.title}
+      subtitle={chrome.subtitle}
       maxWidth="3xl"
       onSubmit={() => void form.handleSubmit()}
-      isSubmitting={isAnyPending || isUploading}
-      submitLabel={mode === 'create' ? 'Create Course' : 'Save Changes'}
-      loadingLabel={isUploading ? 'Uploading...' : undefined}
+      isSubmitting={isCourseDialogSubmitting(isAnyPending, isUploading)}
+      submitLabel={chrome.submitLabel}
+      loadingLabel={getCourseLoadingLabel(isUploading)}
     >
       <DialogBody>
         <CourseFormFieldsContent
