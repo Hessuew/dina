@@ -1,6 +1,7 @@
 import { ArrowRight, CalendarIcon } from 'lucide-react'
 import { useState } from 'react'
 import type { AssignmentStatus, SubmissionStatus } from '@/types/database.types'
+import { buildAssignmentCardViewModel } from '@/components/view/domain/assignments-view.domain'
 import { ButtonLink } from '@/components/ui/button-link'
 import { StatusChip } from '@/components/ui/status-chip'
 import {
@@ -71,15 +72,6 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
     ),
   }))
 
-  const isOverdue = (dueDate: Date) => new Date(dueDate) < new Date()
-
-  const getSubmissionStatus = (assignment: Assignment) => {
-    if (!assignment.submission) return 'Not Submitted'
-    if (assignment.submission.grade !== null) return 'Graded'
-    if (assignment.submission.status === 'submitted') return 'Submitted'
-    return 'Draft'
-  }
-
   return (
     <div className="space-y-10">
       {/* Header */}
@@ -135,16 +127,8 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {courseAssignments.map((assignment) => {
-                const overdue = isOverdue(assignment.dueDate)
-                const submissionStatus = getSubmissionStatus(assignment)
-                const submissionVariant =
-                  submissionStatus === 'Graded'
-                    ? 'graded'
-                    : submissionStatus === 'Submitted'
-                      ? 'submitted'
-                      : submissionStatus === 'Draft'
-                        ? 'draft'
-                        : 'not-submitted'
+                const { overdue, statusChipVariant, showStudentGrade } =
+                  buildAssignmentCardViewModel(assignment, role)
 
                 return (
                   <div
@@ -154,14 +138,7 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                     <div className="bg-[#151515]/88 px-5 pt-5 pb-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="mt-1 h-px w-6 shrink-0 bg-[#C5A059]/40" />
-                        <StatusChip
-                          variant={
-                            role === 'student'
-                              ? submissionVariant
-                              : assignment.status
-                          }
-                          size="sm"
-                        />
+                        <StatusChip variant={statusChipVariant} size="sm" />
                       </div>
                       <h4 className="mt-2 font-serif text-base leading-snug text-[#F8F4EC]">
                         {assignment.title}
@@ -188,14 +165,13 @@ export function AssignmentsView({ assignments, role }: AssignmentsViewProps) {
                       </div>
 
                       {role === 'student' ? (
-                        assignment.submission?.grade !== null &&
-                        assignment.submission?.grade !== undefined ? (
+                        showStudentGrade ? (
                           <div className="mt-2 flex items-center justify-between">
                             <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
                               Grade
                             </span>
                             <span className="font-serif text-sm text-[#E9D9B4]">
-                              {assignment.submission.grade} /{' '}
+                              {assignment.submission?.grade} /{' '}
                               {assignment.maxGrade ?? 100}
                             </span>
                           </div>
