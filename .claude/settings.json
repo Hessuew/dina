@@ -11,5 +11,110 @@
         ]
       }
     ]
-  }
+  },
+  "allowedCommands": [
+    "ls",
+    "pwd",
+    "find",
+    "cat",
+    "head",
+    "tail",
+    "grep",
+    "rg",
+    "sed",
+    "awk",
+
+    "bun install",
+    "bun run dev",
+    "bun run build",
+    "bun run test",
+    "bun run lint",
+    "bun run typecheck",
+
+    "vitest",
+    "vitest run",
+    "vitest watch",
+
+    "vite",
+    "vite build",
+
+    "tsc",
+    "tsc --noEmit",
+
+    "graphql-codegen",
+
+    "gt create",
+    "gt modify",
+    "gt submit",
+    "gt sync",
+    "gt checkout",
+    "gt log",
+
+    "git status",
+    "git diff",
+    "git log",
+    "git show",
+    "git branch",
+    "git fetch",
+
+    "docker ps",
+    "docker logs"
+  ],
+  "deniedCommands": [
+    "git reset",
+    "git reset --hard",
+    "git clean",
+    "git clean -fd",
+    "git clean -fdx",
+
+    "git rebase --interactive",
+    "git push --force",
+    "git push --force-with-lease",
+
+    "rm -rf",
+    "sudo",
+
+    "chmod -R",
+
+    "curl | sh",
+    "wget | sh",
+
+    "npm publish",
+    "bun publish",
+
+    "terraform apply",
+    "terraform destroy",
+
+    "kubectl delete",
+    "kubectl scale",
+
+    "docker system prune",
+
+    "mysql",
+    "psql",
+
+    "aws iam",
+    "gcloud iam"
+  ],
+  "requireApproval": [
+    "git commit",
+    "git push",
+
+    "bun install",
+
+    "docker compose up",
+    "docker compose down",
+
+    "aws *",
+    "gcloud *",
+    "az *",
+
+    "kubectl *",
+
+    "terraform *",
+
+    "pnpm add",
+    "npm install",
+    "bun add"
+  ]
 }
