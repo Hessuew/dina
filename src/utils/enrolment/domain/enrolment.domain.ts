@@ -1,5 +1,9 @@
 import crypto from 'node:crypto'
-import type { enrollments, invitations } from '@/db/schema'
+import type {
+  enrollmentEvaluations,
+  enrollments,
+  invitations,
+} from '@/db/schema'
 import { scoreRequiresAdmissionCategory } from '@/utils/enrolment/domain/evaluation.domain'
 
 type Invitation = typeof invitations.$inferSelect
@@ -89,6 +93,7 @@ export type EnrollmentWithEvaluation = MaybeRedactedEnrollment & {
   evaluationSum: number
   evaluationCount: number
   reviewHeading: ReviewHeading
+  reviewerAdmissionCategory: (typeof enrollmentEvaluations.$inferSelect)['admissionCategory']
 }
 
 /**
