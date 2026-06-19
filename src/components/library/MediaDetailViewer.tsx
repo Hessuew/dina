@@ -1,6 +1,12 @@
 import { ExternalLinkIcon, FileTextIcon, VideoIcon } from 'lucide-react'
 import { Suspense, lazy } from 'react'
+import type { ReactNode } from 'react'
 import { YouTubeEmbed } from '@/components/library/YouTubeEmbed'
+import {
+  buildMediaContentViewModel,
+  type MediaContentKind,
+  type MediaContentViewModel,
+} from '@/components/library/domain/media-content.domain'
 
 const PdfViewer = lazy(() =>
   import('@/components/library/PdfViewer').then((m) => ({
@@ -16,25 +22,6 @@ type MediaDetailViewerProps = {
     fileUrl: string
   }
   viewerUrl: string | null
-}
-
-function getYoutubeVideoId(url: string): string | null {
-  try {
-    const u = new URL(url)
-    if (u.hostname === 'youtu.be') return u.pathname.replace('/', '') || null
-    if (u.hostname !== 'www.youtube.com' && u.hostname !== 'youtube.com') {
-      return null
-    }
-    if (u.searchParams.get('v')) return u.searchParams.get('v')
-    if (!u.pathname.startsWith('/embed/')) return null
-    return u.pathname.split('/embed/')[1]?.split('/')[0] ?? null
-  } catch {
-    return null
-  }
-}
-
-function getFileExtension(url: string): string {
-  return url.split('?')[0].split('.').pop()?.toLowerCase() ?? ''
 }
 
 function MediaDescription({ description }: { description: string | null }) {
@@ -126,42 +113,51 @@ function OfficeContent({ viewerUrl }: { viewerUrl: string | null }) {
 }
 
 function MediaContent({
+  viewModel,
   media,
   viewerUrl,
 }: {
+  viewModel: MediaContentViewModel
   media: MediaDetailViewerProps['media']
   viewerUrl: string | null
 }) {
-  const isVideo = media.fileType === 'video'
-  const ext = getFileExtension(media.fileUrl)
-  const isPdf = ext === 'pdf'
-  const isOffice = ext === 'pptx' || ext === 'docx'
-  const videoId = isVideo ? getYoutubeVideoId(media.fileUrl) : null
+  const { kind, videoId } = viewModel
 
-  return (
-    <div className="overflow-hidden">
-      {isVideo && videoId && (
-        <YouTubeEmbed videoId={videoId} originalUrl={media.fileUrl} />
-      )}
-      {isVideo && !videoId && <UnembeddableVideo fileUrl={media.fileUrl} />}
-      {isPdf && <PdfContent viewerUrl={viewerUrl} />}
-      {isOffice && <OfficeContent viewerUrl={viewerUrl} />}
-    </div>
-  )
+  const bodyByKind: Record<MediaContentKind, ReactNode> = {
+    youtube: (
+      <YouTubeEmbed videoId={videoId ?? ''} originalUrl={media.fileUrl} />
+    ),
+    'unembeddable-video': <UnembeddableVideo fileUrl={media.fileUrl} />,
+    pdf: <PdfContent viewerUrl={viewerUrl} />,
+    office: <OfficeContent viewerUrl={viewerUrl} />,
+    none: (
+      <p className="px-6 py-8 text-sm text-[#8E816D]">
+        This file type cannot be previewed.
+      </p>
+    ),
+  }
+
+  return <div className="overflow-hidden">{bodyByKind[kind]}</div>
 }
 
 export function MediaDetailViewer({
   media,
   viewerUrl,
 }: MediaDetailViewerProps) {
-  const isVideo = media.fileType === 'video'
+  const viewModel = buildMediaContentViewModel(media)
+  const isVideo =
+    viewModel.kind === 'youtube' || viewModel.kind === 'unembeddable-video'
 
   return (
     <>
       <MediaDescription description={media.description} />
       <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
         <MediaViewerHeader isVideo={isVideo} />
-        <MediaContent media={media} viewerUrl={viewerUrl} />
+        <MediaContent
+          viewModel={viewModel}
+          media={media}
+          viewerUrl={viewerUrl}
+        />
       </div>
     </>
   )

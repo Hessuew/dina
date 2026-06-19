@@ -94,8 +94,13 @@ export function YouTubeEmbed({ videoId, originalUrl }: Props) {
       )
     }, 800)
 
+    const YOUTUBE_ORIGINS = new Set([
+      'https://www.youtube.com',
+      'https://youtube.com',
+    ])
+
     function handleMessage(event: MessageEvent) {
-      if (!event.origin.includes('youtube.com')) return
+      if (!YOUTUBE_ORIGINS.has(event.origin)) return
       const data = parseYouTubeMessage(event.data)
       if (!data) return
       if (
