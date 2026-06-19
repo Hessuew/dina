@@ -167,7 +167,11 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **116** open (14 critical / 45 high / 57 moderate) after extracting
+only moves down. Latest: **114** open (14 critical / 45 high / 55 moderate) after extracting
+the posts route's two focus-post effects — the focus-fetch and focus-scroll decisions (plus a
+`prependPostIfAbsent` list helper) — into `src/utils/post/domain/focus-post.domain.ts`; both
+`useEffect` shells now just call the pure decision and perform the side effect. Prior: **116**
+open (14 critical / 45 high / 57 moderate) after extracting
 `vite.config.ts`'s `config` callback decisions — mode→`isCloudflare`, the resolve-alias builder,
 and the client-shim `resolveId` decision — into `scripts/vite-config.domain.ts`; the config
 callback now only orchestrates plugin assembly. Prior: **117** open (14 critical / 45 high / 58
@@ -435,8 +439,8 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ⬜ todo | 🟡 mod  | 30   | `SidebarMenuButton`               | B component | `src/components/ui/sidebar.tsx:508`                                          | —                                                                                                | —                                               | —          |
 | ✅ done | 🟡 mod  | 30   | `<arrow>` (useCachedData refetch) | A hook      | `src/hooks/useCachedData/index.ts:37`                                        | `src/hooks/useCachedData/domain/cache-refetch.domain.ts`                                         | 1 CRAP finding (CRAP 30)                        | 2026-06-16 |
 | ✅ done | 🟡 mod  | 30   | `mutate`                          | A hook      | `src/hooks/useMutation.ts:19`                                                | `src/hooks/useMutation/domain/mutation-error.domain.ts`                                          | 1 CRAP finding (CRAP 30)                        | 2026-06-16 |
-| 🔨 in progress | 🟡 mod  | 30   | `<arrow>`                         | B component | `src/routes/_authed/posts.tsx:137`                                           | —                                                                                                | —                                               | 2026-06-16T20:11Z |
-| 🔨 in progress | 🟡 mod  | 30   | `<arrow>`                         | B component | `src/routes/_authed/posts.tsx:156`                                           | —                                                                                                | —                                               | 2026-06-16T20:11Z |
+| ✅ done | 🟡 mod  | 30   | `<arrow>` (focus-fetch effect)    | B component | `src/routes/_authed/posts.tsx:137`                                           | `src/utils/post/domain/focus-post.domain.ts`                                                     | 1 CRAP finding (CRAP 30)                        | 2026-06-16 |
+| ✅ done | 🟡 mod  | 30   | `<arrow>` (focus-scroll effect)   | B component | `src/routes/_authed/posts.tsx:156`                                           | `src/utils/post/domain/focus-post.domain.ts`                                                     | 1 CRAP finding (CRAP 30)                        | 2026-06-16 |
 | ✅ done | 🟡 mod  | 30   | `deliver`                         | A pure      | `src/utils/notifications/delivery.ts:11`                                     | `src/utils/notifications/domain/notification-rows.domain.ts`                                     | 1 CRAP finding (CRAP 30)                        | 2026-06-16 |
 | ✅ done | 🟡 mod  | 30   | `config`                          | A pure      | `vite.config.ts:11`                                                          | `scripts/vite-config.domain.ts`                                                                  | 1 CRAP finding (CRAP 30)                        | 2026-06-16 |
 
