@@ -7,6 +7,7 @@ import {
   deleteEventSchema,
   updateEventSchema,
 } from '@/schemas/event.schema'
+import { buildEventValues } from '@/utils/event/domain/event-input.domain'
 
 export type CalendarEventRow = {
   id: string
@@ -60,16 +61,7 @@ export const createEvent = createServerFn({ method: 'POST' })
     const db = await getDb()
     const [event] = await db
       .insert(calendarEvents)
-      .values({
-        title: data.title,
-        description: data.description ?? null,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        location: data.location ?? null,
-        zoomLink: data.zoomLink ?? null,
-        category: data.category ?? null,
-        courseId: data.courseId ?? null,
-      })
+      .values(buildEventValues(data))
       .returning()
 
     return { event }
@@ -81,17 +73,7 @@ export const updateEvent = createServerFn({ method: 'POST' })
     const db = await getDb()
     const [event] = await db
       .update(calendarEvents)
-      .set({
-        title: data.title,
-        description: data.description ?? null,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        location: data.location ?? null,
-        zoomLink: data.zoomLink ?? null,
-        category: data.category ?? null,
-        courseId: data.courseId ?? null,
-        updatedAt: new Date(),
-      })
+      .set({ ...buildEventValues(data), updatedAt: new Date() })
       .where(eq(calendarEvents.id, data.eventId))
       .returning()
 

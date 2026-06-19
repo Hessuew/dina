@@ -143,8 +143,10 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
 moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
 worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **130** open (14 critical / 47 high / 69 moderate) after `useEntityMutation`
-and `useEnrollmentReview`. (Same pass reduced `goNext`/`goPrev` from CRAP 42→30 via the shared
+only moves down. Latest: **126** open (14 critical / 45 high / 67 moderate) after the
+`createEvent`/`updateEvent` input-builder extraction (`event-input.domain.ts`). Prior: **128**
+open after `requestPasswordResetService` and `resetPasswordService` (extracted into
+`password-reset-flow.domain.ts`); **130** after `useEntityMutation` and `useEnrollmentReview`. (Same pass reduced `goNext`/`goPrev` from CRAP 42→30 via the shared
 `planForward`/`planBackward` planners in `enrollment-review.domain.ts`, but they remain at-threshold
 findings — still `⬜ todo`.)
 
@@ -153,6 +155,17 @@ right now. It is the single source of truth for the burndown — keep it current
 target's change, not as an afterthought.
 
 #### Protocol — claim before you work (safe for parallel agents)
+
+> **Fast path — get to work, don't investigate.** The ledger below is the single source of truth
+> and is pre-populated, so picking a target is a **pure table read**. Open this file, take the top
+> `⬜ todo` row by the selection rule (Sev → CRAP, Phase A hooks/pure before Phase B components),
+> flip it to `🔨 in progress`, and start the TDD slice. **Do not** run `git status`, `git log`,
+> `git branch`, `git diff`, or `git show <ref>:…`, and do not inspect what previous commits did,
+> the current branch name, or the working-tree state to decide what to pick or to "reconcile"
+> earlier agents' work — none of that changes the next target and it burns calls for nothing. The
+> only git you need is the reservation commit (step 2) and, **when parallel agents may be active**,
+> the `origin/main` refresh in step 1. A row someone else already finished is their problem; you
+> just take the next `⬜ todo`.
 
 > **Reserve first, unconditionally — flip the row to `🔨 in progress` before touching any code.**
 > This is the always-first step for **every** agent, including a single agent on a purely local
@@ -173,9 +186,12 @@ target's change, not as an afterthought.
 
 So multiple agents (local or cloud) can pay down findings at once without colliding:
 
-1. **Refresh from `origin/main`.** `git fetch origin`, then read the ledger as it stands on
-   `origin/main` (`git show origin/main:docs/adr/0010-crap-reduction-via-domain-extraction.md`) —
-   never pick from a stale local copy.
+1. **Refresh from `origin/main` _only when parallel agents may be active_.** In that case
+   `git fetch origin` and read the ledger as it stands on `origin/main`
+   (`git show origin/main:docs/adr/0010-crap-reduction-via-domain-extraction.md`) so you don't
+   pick from a stale local copy. **If you are the only agent on a local stack — or the ADR isn't
+   on `origin/main` yet — skip this entirely** and read the local file; there is no remote copy to
+   be stale against, so the fetch/show is pure wasted work.
 2. **Pick a `⬜ todo` row and flip it to `🔨 in progress` first — before any code.** Set your id
    and the date in a doc-only commit (2–3 same-feature targets allowed:
    `gt c -m "chore(crap): claim <t1>, <t2>"`). This reservation commit is **mandatory in every
@@ -267,8 +283,8 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ⬜ todo | 🟠 high | 56   | `getFirstError`                 | B component | `src/components/ui/app-form-fields.tsx:66`                                   | —                                                          | —                               | —                    |
 | ⬜ todo | 🟠 high | 56   | `FormFieldNumberInput`          | B component | `src/components/ui/form-field.tsx:92`                                        | —                                                          | —                               | —                    |
 | ⬜ todo | 🟠 high | 56   | `<arrow>`                       | B component | `src/components/view/CalendarView.tsx:152`                                   | —                                                          | —                               | —                    |
-| 🔨 in progress | 🟠 high | 56   | `requestPasswordResetService`   | A pure      | `src/utils/password-reset/service/password-reset.service.ts:22`              | —                                                          | —                               | hessuew / 2026-06-16 |
-| 🔨 in progress | 🟠 high | 56   | `resetPasswordService`          | A pure      | `src/utils/password-reset/service/password-reset.service.ts:111`             | —                                                          | —                               | hessuew / 2026-06-16 |
+| ✅ done | 🟠 high | 56   | `requestPasswordResetService`   | A pure      | `src/utils/password-reset/service/password-reset.service.ts:22`              | `src/utils/password-reset/domain/password-reset-flow.domain.ts` | 1 CRAP finding (CRAP 56)        | hessuew / 2026-06-16 |
+| ✅ done | 🟠 high | 56   | `resetPasswordService`          | A pure      | `src/utils/password-reset/service/password-reset.service.ts:111`             | `src/utils/password-reset/domain/password-reset-flow.domain.ts` | 1 CRAP finding (CRAP 56)        | hessuew / 2026-06-16 |
 | ⬜ todo | 🟡 mod  | 42   | `continueLoop`                  | B component | `src/components/animate-ui/icons/icon.tsx:334`                               | —                                                          | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 42   | `getVariants`                   | B component | `src/components/animate-ui/icons/icon.tsx:734`                               | —                                                          | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 42   | `validYear`                     | B component | `src/components/auth/enrolment-form.tsx:55`                                  | —                                                          | —                               | —                    |
@@ -297,8 +313,8 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ⬜ todo | 🟡 mod  | 42   | `MediaDetailComponent`          | B component | `src/routes/_authed/library/$mediaId.tsx:18`                                 | —                                                          | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 42   | `StudentDetailComponent`        | B component | `src/routes/_authed/students/$studentId.tsx:18`                              | —                                                          | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 42   | `VerifyEmailChangeComp`         | B component | `src/routes/verify-email-change.tsx:19`                                      | —                                                          | —                               | —                    |
-| ⬜ todo | 🟡 mod  | 42   | `<arrow>`                       | A pure      | `src/utils/event/events.ts:59`                                               | —                                                          | —                               | —                    |
-| ⬜ todo | 🟡 mod  | 42   | `<arrow>`                       | A pure      | `src/utils/event/events.ts:80`                                               | —                                                          | —                               | —                    |
+| ✅ done | 🟡 mod  | 42   | `<arrow>` (createEvent)         | A pure      | `src/utils/event/events.ts:59`                                               | `src/utils/event/domain/event-input.domain.ts`             | 1 CRAP finding (CRAP 42)        | hessuew / 2026-06-16 |
+| ✅ done | 🟡 mod  | 42   | `<arrow>` (updateEvent)         | A pure      | `src/utils/event/events.ts:80`                                               | `src/utils/event/domain/event-input.domain.ts`             | 1 CRAP finding (CRAP 42)        | hessuew / 2026-06-16 |
 | ⬜ todo | 🟡 mod  | 30   | `runCheck`                      | A pure      | `scripts/quality-fix.mjs:17`                                                 | —                                                          | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 30   | `runInheritedCheck`             | A pure      | `scripts/quality-gate.mjs:62`                                                | —                                                          | —                               | —                    |
 | ⬜ todo | 🟡 mod  | 30   | `extractJson`                   | A pure      | `scripts/quality-gate.mjs:92`                                                | —                                                          | —                               | —                    |
