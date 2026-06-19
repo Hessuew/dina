@@ -52,9 +52,10 @@ enforced-by: <how violations are caught — gate / eslint / review>
 
 ## Rules
 
-| Rule                          | Scope                              | Enforced by                                        |
-| ----------------------------- | ---------------------------------- | -------------------------------------------------- |
-| [complexity](./complexity.md) | new/changed components & endpoints | `quality:gate` (fallow `introduced` cyc/cog/CRAP) + ESLint warn |
+| Rule                                            | Scope                                | Enforced by                                                     |
+| ----------------------------------------------- | ------------------------------------ | --------------------------------------------------------------- |
+| [complexity](./complexity.md)                   | new/changed components & endpoints   | `quality:gate` (fallow `introduced` cyc/cog/CRAP) + ESLint warn |
+| [react-compiler-memo](./react-compiler-memo.md) | src/components/\*\*, src/routes/\*\* | review                                                          |
 
 ## Backlog (candidate rules)
 

@@ -50,6 +50,16 @@ front then all code (horizontal slicing) — that produces tests of imagined sha
   **Never** add `*.test.tsx` render tests. Use a colocated `<name>.logic.ts` only for glue that
   genuinely does not belong in the shared domain layer.
 
+  **Phase B React Compiler pitfall — stable-ref consumers.** When you extract a named
+  sub-component that receives a prop whose _identity_ is stable but whose internal state
+  changes (a **stable-ref consumer** — e.g. a TanStack `useReactTable` instance), the React
+  Compiler will memoize the new component on the stable ref and it will silently go stale.
+  The fix is `'use no memo'` as the first statement of the function body with a comment
+  naming the prop. This is a binding rule — see `docs/rules/react-compiler-memo.md`. The
+  DataTable modularization is the canonical example: all four extracted sub-components
+  (`DataTableHead`, `DataTableRows`, `DataTableContent`, `PaginationFooter`) carry this
+  directive for exactly this reason.
+
 The `src/utils/**/domain/**` glob is already in `vitest.config.ts` coverage at 100%
 lines/branches/functions/statements, so extracted domain files are gated automatically with no
 config change.
@@ -62,6 +72,13 @@ config change.
   helper that exists in N files is an N-for-one win — a single extraction clears every copy's
   CRAP finding _and_ removes the fallow duplicate. (The first target cleared two copies; a
   later sweep found a third.)
+- **Within a tier, prioritize hooks/functions over components.** When selecting targets from a
+  severity tier (critical/high/moderate), choose hooks, functions, or similar non-component
+  targets first; choose components last. This front-loads the cheaper extractions and defers
+  the heavier component view-model work.
+- **When components must be chosen, take from the bottom of the list.** When the only remaining
+  targets in a tier are components, select from the bottom of the fallow health output (i.e.,
+  the least severe/moderate ones first) to build momentum before tackling the harder cases.
 
 **Batching within a session** — Phase A pure functions are fast; 3–5 per session is fine.
 Phase B component extractions are heavier (understanding the component is the real cost), so

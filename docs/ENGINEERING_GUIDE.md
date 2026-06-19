@@ -48,6 +48,14 @@ Defines eng + repo nav guidance for AI changes.
   - Server fns in `src/utils/` are thin adapters: validate → call domain → return.
   - Domain services accept `db` param (testable with mock DB).
   - Example: `AssignmentService.validateSubmissionWindow(assignment, now)` holds rule; server fn calls it.
+- **Stable-ref consumers** (`docs/rules/react-compiler-memo.md`)
+  - React Compiler (`babel-plugin-react-compiler`) memoizes components by prop identity. A
+    **stable-ref consumer** is a sub-component that receives a prop whose _identity_ is stable
+    but whose internal state changes — e.g. a TanStack `useReactTable` instance. The compiler
+    sees no prop change and skips the re-render, causing silent stale output.
+  - Any stable-ref consumer must add `'use no memo'` as its first statement with a comment
+    naming the stable-ref prop. See `docs/rules/react-compiler-memo.md` for the full rule.
+  - Known stable-ref types: `TanstackTable<TData>` from `useReactTable`.
 
 ## Documentation Contract (Keep Docs Updated)
 

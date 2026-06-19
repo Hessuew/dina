@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { toast } from 'sonner'
+import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { toUserError } from '@/utils/errors'
 import { Button } from '@/components/ui/button'
 import {
@@ -59,7 +60,7 @@ function TeacherSelect({
       <Select value={value} onValueChange={(v) => onChange(v ?? '')}>
         <SelectTrigger
           id={id}
-          className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] focus:border-[#C5A059]/50"
+          className="rounded-none border-white/12 bg-white/10 text-[#F8F4EC] focus:border-[#C5A059]/50"
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
@@ -127,53 +128,64 @@ export function StartSubstitutionDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-xl tracking-[-0.01em]">
-            Substitute Teacher
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <DialogBody className="pt-4">
-            <FieldGroup className="gap-6">
-              <TeacherSelect
-                id="absent-teacher"
-                label="Absent Teacher"
-                value={absentTeacherId}
-                onChange={setAbsentTeacherId}
-                teachers={teachers}
-                placeholder="Select absent teacher"
-              />
-              <TeacherSelect
-                id="substitute-teacher"
-                label="Substitute Teacher"
-                value={substituteTeacherId}
-                onChange={setSubstituteTeacherId}
-                teachers={availableSubstitutes}
-                placeholder="Select substitute teacher"
-              />
-            </FieldGroup>
-          </DialogBody>
-          <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-            <Button
-              type="button"
-              variant="ghost"
-              theme="dark"
-              onClick={() => handleOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              theme="dark"
-              disabled={
-                mutation.isPending || !absentTeacherId || !substituteTeacherId
-              }
-            >
-              {mutation.isPending ? 'Saving...' : 'Activate Substitution'}
-            </Button>
-          </DialogFooter>
-        </form>
+      <DialogContent
+        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-lg"
+        style={{
+          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+        showCloseButton={false}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
+        <div className="relative">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl tracking-[-0.01em]">
+              Substitute Teacher
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <DialogBody className="pt-4">
+              <FieldGroup className="gap-6">
+                <TeacherSelect
+                  id="absent-teacher"
+                  label="Absent Teacher"
+                  value={absentTeacherId}
+                  onChange={setAbsentTeacherId}
+                  teachers={teachers}
+                  placeholder="Select absent teacher"
+                />
+                <TeacherSelect
+                  id="substitute-teacher"
+                  label="Substitute Teacher"
+                  value={substituteTeacherId}
+                  onChange={setSubstituteTeacherId}
+                  teachers={availableSubstitutes}
+                  placeholder="Select substitute teacher"
+                />
+              </FieldGroup>
+            </DialogBody>
+            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
+              <Button
+                type="button"
+                variant="ghost"
+                theme="dark"
+                onClick={() => handleOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                theme="dark"
+                disabled={
+                  mutation.isPending || !absentTeacherId || !substituteTeacherId
+                }
+              >
+                {mutation.isPending ? 'Saving...' : 'Activate Substitution'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   )
@@ -232,43 +244,54 @@ export function EndSubstitutionDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-xl tracking-[-0.01em]">
-            End Substitution
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <DialogBody className="pt-4">
-            <FieldGroup>
-              <TeacherSelect
-                id="absent-teacher-end"
-                label="Absent Teacher"
-                value={absentTeacherId}
-                onChange={setAbsentTeacherId}
-                teachers={absentTeachers}
-                placeholder="Select absent teacher"
-              />
-            </FieldGroup>
-          </DialogBody>
-          <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-            <Button
-              type="button"
-              variant="ghost"
-              theme="dark"
-              onClick={() => handleOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              theme="dark"
-              disabled={mutation.isPending || !absentTeacherId}
-            >
-              {mutation.isPending ? 'Saving...' : 'End Substitution'}
-            </Button>
-          </DialogFooter>
-        </form>
+      <DialogContent
+        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-lg"
+        style={{
+          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+        showCloseButton={false}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
+        <div className="relative">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl tracking-[-0.01em]">
+              End Substitution
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <DialogBody className="pt-4">
+              <FieldGroup>
+                <TeacherSelect
+                  id="absent-teacher-end"
+                  label="Absent Teacher"
+                  value={absentTeacherId}
+                  onChange={setAbsentTeacherId}
+                  teachers={absentTeachers}
+                  placeholder="Select absent teacher"
+                />
+              </FieldGroup>
+            </DialogBody>
+            <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
+              <Button
+                type="button"
+                variant="ghost"
+                theme="dark"
+                onClick={() => handleOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                theme="dark"
+                disabled={mutation.isPending || !absentTeacherId}
+              >
+                {mutation.isPending ? 'Saving...' : 'End Substitution'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   )
