@@ -2,6 +2,34 @@
 
 React hooks for data fetching and UI state.
 
+## Structure
+
+Simple hooks live as flat files (`useMutation.ts`, `useDialogState.ts`, etc.).
+A hook that has extracted domain logic (for CRAP reduction / testability) becomes a folder:
+
+```
+src/hooks/
+  useMutation.ts                    ← flat: no private domain
+  useEntityMutation/
+    index.ts                        ← hook implementation (exported as useEntityMutation)
+    domain/
+      entity-mutation.domain.ts     ← pure domain logic, 100% coverage enforced
+      entity-mutation.domain.test.ts
+  useEnrollmentReview/
+    index.ts
+    domain/
+      enrollment-review.domain.ts
+      enrollment-review.domain.test.ts
+  index.ts                          ← barrel: re-exports all public hooks
+```
+
+**Rule:** Hook-private domain logic lives in `src/hooks/<hookName>/domain/`, NOT in
+`src/utils/`. `src/utils/` is server-function territory. See ADR 0010 for the full placement
+rule.
+
+Both `src/hooks/**/domain/**` and `src/utils/**/domain/**` are under the 100% coverage gate in
+`vitest.config.ts`.
+
 ## useCachedData
 
 Generic data fetching hook with time-based caching.

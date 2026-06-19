@@ -9,7 +9,11 @@ export default defineConfig({
     exclude: [...configDefaults.exclude, 'src/**/*.integration.test.ts'],
     coverage: {
       provider: 'v8',
-      include: ['src/domain/**', 'src/utils/**/domain/**'],
+      include: [
+        'src/domain/**',
+        'src/utils/**/domain/**',
+        'src/hooks/**/domain/**',
+      ],
       exclude: ['src/domain/index.ts'],
       thresholds: {
         lines: 100,

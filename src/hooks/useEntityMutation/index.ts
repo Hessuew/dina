@@ -1,16 +1,16 @@
 import * as React from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import { useMutation } from '../useMutation'
 import {
   buildMutationReturn,
   deriveIsAnyPending,
   resolveSuccessMessage,
-} from '../utils/mutation/domain/entity-mutation.domain'
-import { useMutation } from './useMutation'
+} from './domain/entity-mutation.domain'
 import type {
   MutationMode,
   MutationReturn,
-} from '../utils/mutation/domain/entity-mutation.domain'
+} from './domain/entity-mutation.domain'
 
 interface UseEntityMutationOptions<
   TCreateData = unknown,

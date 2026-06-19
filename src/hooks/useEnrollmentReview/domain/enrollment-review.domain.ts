@@ -1,4 +1,4 @@
-import type { EvaluationWithAuthor } from '../repository/enrolment.repository'
+import type { EvaluationWithAuthor } from '@/utils/enrolment/repository/enrolment.repository'
 
 export type EvalMap = Map<string, Array<EvaluationWithAuthor>>
 
@@ -91,4 +91,90 @@ export function planBackward(
   if (index > 0) return { kind: 'retreat', prevIndex: index - 1 }
   if (minPage > 1) return { kind: 'load-prepend', targetPage: minPage - 1 }
   return { kind: 'noop' }
+}
+
+type EnrollmentRef = { id: string }
+
+/** Apply a new carousel index, supporting React's value-or-updater dispatch. */
+type SetIndex = (
+  action: number | ((current: number | null) => number | null),
+) => void
+
+/** Fetch a page and merge it into the loaded list, returning the new items. */
+type LoadPage = (
+  targetPage: number,
+  mode: 'append' | 'prepend',
+) => Promise<Array<EnrollmentRef>>
+
+export interface ForwardNavDeps {
+  index: number | null
+  items: Array<EnrollmentRef>
+  maxPage: number
+  totalPages: number
+  loadPage: LoadPage
+  setIndex: SetIndex
+  syncReviewParam: (id: string | null) => void
+  onError: (message: string) => void
+}
+
+/**
+ * Move the carousel forward: step within loaded items, or fetch+append the next
+ * page at the edge and step onto its first item. Side effects (state, URL,
+ * loading, error reporting) are injected so the orchestration is unit-testable.
+ */
+export async function navigateForward(deps: ForwardNavDeps): Promise<void> {
+  const { index, items, maxPage, totalPages, loadPage } = deps
+  const { setIndex, syncReviewParam, onError } = deps
+  const plan = planForward(index, items.length, maxPage, totalPages)
+  if (plan.kind === 'advance') {
+    setIndex(plan.nextIndex)
+    syncReviewParam(items[plan.nextIndex].id)
+    return
+  }
+  if (plan.kind !== 'load-append') return
+  // load-append implies the carousel is open at the list edge.
+  const edgeIndex = index as number
+  try {
+    const fetched = await loadPage(plan.targetPage, 'append')
+    if (fetched.length === 0) return
+    setIndex((current) => (current === null ? null : edgeIndex + 1))
+    syncReviewParam(fetched[0].id)
+  } catch {
+    onError('Failed to load next page')
+  }
+}
+
+export interface BackwardNavDeps {
+  index: number | null
+  items: Array<EnrollmentRef>
+  minPage: number
+  loadPage: LoadPage
+  setIndex: SetIndex
+  syncReviewParam: (id: string | null) => void
+  onError: (message: string) => void
+}
+
+/**
+ * Move the carousel backward: step within loaded items, or fetch+prepend the
+ * previous page at the start and step onto its last item. Side effects are
+ * injected so the orchestration is unit-testable.
+ */
+export async function navigateBackward(deps: BackwardNavDeps): Promise<void> {
+  const { index, items, minPage, loadPage } = deps
+  const { setIndex, syncReviewParam, onError } = deps
+  const plan = planBackward(index, minPage)
+  if (plan.kind === 'retreat') {
+    setIndex(plan.prevIndex)
+    syncReviewParam(items[plan.prevIndex].id)
+    return
+  }
+  if (plan.kind !== 'load-prepend') return
+  try {
+    const fetched = await loadPage(plan.targetPage, 'prepend')
+    if (fetched.length === 0) return
+    setIndex((current) => (current === null ? null : fetched.length - 1))
+    syncReviewParam(fetched[fetched.length - 1].id)
+  } catch {
+    onError('Failed to load previous page')
+  }
 }
