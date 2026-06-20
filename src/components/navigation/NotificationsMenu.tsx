@@ -29,6 +29,10 @@ import { AnimateIcon } from '@/components/animate-ui/icons/icon'
 import { CircleCheckBig } from '@/components/animate-ui/icons/circle-check-big'
 import { CircleCheck } from '@/components/animate-ui/icons/circle-check'
 import { buildNotificationRowViewModel } from '@/components/navigation/domain/notification-row.domain'
+import {
+  buildNotificationMenuHeaderViewModel,
+  buildNotificationTriggerViewModel,
+} from '@/components/navigation/domain/notifications-menu.domain'
 
 const POLL_MS = 45_000
 
@@ -46,17 +50,16 @@ function NotificationTriggerButton({
   displayUnreadCount: string
 } & React.ComponentProps<typeof SidebarMenuButton>) {
   const BellIcon = shouldAnimate ? BellRing : Bell
+  const vm = buildNotificationTriggerViewModel(
+    isDark,
+    isCollapsed,
+    shouldAnimate,
+  )
 
   return (
     <SidebarMenuButton
       tooltip="Notifications"
-      className={cn(
-        'h-10 rounded-none transition-all',
-        isDark
-          ? 'border-l-2 border-transparent text-[#AFA28F] hover:border-[#C5A059]/30 hover:bg-[#1A1716]/60 hover:text-[#F8F4EC] data-[state=open]:border-[#C5A059]/60 data-[state=open]:bg-[#1A1716] data-[state=open]:text-[#F8F4EC]'
-          : 'border-l-2 border-transparent text-[#4E463D] hover:border-[#9B7A41]/30 hover:bg-[#EDE8DE]/60 hover:text-[#1C1815] data-[state=open]:border-[#9B7A41]/60 data-[state=open]:bg-[#EDE8DE] data-[state=open]:text-[#1C1815]',
-        className,
-      )}
+      className={cn(vm.buttonClassName, className)}
       {...props}
     >
       <AnimateIcon
@@ -65,32 +68,12 @@ function NotificationTriggerButton({
         loop={shouldAnimate}
         className="flex h-full w-full flex-row items-center gap-2 py-2"
       >
-        <BellIcon
-          size={18}
-          className={cn(
-            'shrink-0',
-            shouldAnimate
-              ? 'text-destructive'
-              : isDark
-                ? 'text-[#C5A059]'
-                : 'text-[#9B7A41]',
-          )}
-        />
+        <BellIcon size={18} className={vm.iconClassName} />
         <span>Notifications</span>
       </AnimateIcon>
 
-      {shouldAnimate && (
-        <div
-          className={cn(
-            'animate-in fade-in pointer-events-none absolute flex size-5 items-center justify-center rounded-none px-1.5 text-xs font-medium tabular-nums duration-1000',
-            isCollapsed ? 'hidden' : 'right-2',
-            isDark
-              ? 'bg-destructive text-[#E9D9B4]'
-              : 'bg-destructive text-[#9B7A41]',
-          )}
-        >
-          {displayUnreadCount}
-        </div>
+      {vm.showBadge && (
+        <div className={vm.badgeClassName}>{displayUnreadCount}</div>
       )}
     </SidebarMenuButton>
   )
@@ -107,26 +90,18 @@ function NotificationMenuHeader({
   unreadGroupCount: number
   onMarkAllRead: () => void
 }) {
+  const vm = buildNotificationMenuHeaderViewModel(
+    isDark,
+    shouldAnimate,
+    unreadGroupCount,
+  )
+
   return (
     <>
       <div className="flex items-center justify-between gap-3 px-3 py-3">
         <div className="grid">
-          <div
-            className={cn(
-              'text-[0.68rem] font-medium tracking-[0.24em] uppercase',
-              isDark ? 'text-[#C5A059]' : 'text-[#9B7A41]',
-            )}
-          >
-            Notifications
-          </div>
-          <div
-            className={cn(
-              'mt-0.5 text-xs',
-              isDark ? 'text-[#8E816D]' : 'text-[#5E5549]',
-            )}
-          >
-            {shouldAnimate ? `${unreadGroupCount} unread` : 'All caught up'}
-          </div>
+          <div className={vm.eyebrowClassName}>Notifications</div>
+          <div className={vm.subtitleClassName}>{vm.subtitleText}</div>
         </div>
 
         <Button
@@ -134,25 +109,15 @@ function NotificationMenuHeader({
           size="icon"
           variant="ghost"
           theme={isDark ? 'dark' : 'lightGhost'}
-          className={cn(
-            'size-8 rounded-none border-none bg-transparent shadow-none hover:translate-y-0',
-            isDark
-              ? 'text-[#C5A059] hover:bg-white/8 hover:text-[#D6B16E]'
-              : 'text-[#9B7A41] hover:bg-black/5 hover:text-[#1C1815]',
-          )}
+          className={vm.markAllButtonClassName}
           onClick={onMarkAllRead}
-          disabled={!shouldAnimate}
+          disabled={vm.markAllDisabled}
         >
           <CircleCheckBig animateOnHover />
         </Button>
       </div>
 
-      <div
-        className={cn(
-          'border-t',
-          isDark ? 'border-white/8' : 'border-[#1A1A1A]/10',
-        )}
-      />
+      <div className={vm.dividerClassName} />
     </>
   )
 }
