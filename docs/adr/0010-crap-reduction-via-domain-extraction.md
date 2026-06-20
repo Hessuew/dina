@@ -183,22 +183,10 @@ removed **three CRAP findings and the fallow duplicate** — the canonical patte
 ### Tracking & the progress ledger
 
 Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 high / 71
-moderate)** as of 2026-06-15, now **132 (16 critical / 46 high / 70 moderate)** open — the full
-worklist below is pre-populated from this snapshot. The gate prevents regressions, so the count
-only moves down. Latest: **95** open after extracting `CourseDialog`'s view-model logic — the
-submit-action builder (`buildCourseSubmitAction`, mode/initialData branching), the created-course
-id extractor (`extractCreatedCourseId`), the initial-values/chrome/label derivations
-(`getInitialValues`, `getCourseDialogChrome`, `getCourseLoadingLabel`,
-`isCourseDialogSubmitting`, `shouldLoadCourseTeachers`) — into
-`src/components/dialog/domain/course-dialog.domain.ts`; the `CourseDialog.tsx` shell now only
-orchestrates (CRAP 110 → cleared). Prior: **98** open (6 critical / 44 high / 48 moderate) after
-extracting the animate-ui icon view-model logic — `renderIconWithOverrides`' option/context `??`
-merge chain
-(into `resolveOverriddenAnimateProps` + `resolveInheritedAnimate`) and `getVariants`' variant
-selection (into `computeVariants`, with `staticAnimations` injected) — into
-`src/components/animate-ui/icons/domain/icon-animation.domain.ts`; the `icon.tsx` shells now
-only call the tested builders (`renderIconWithOverrides` returns `<AnimateIcon {...resolved}>`,
-`getVariants` only reads the context then delegates).
+moderate)** as of 2026-06-15. The gate prevents regressions, so the count only moves down. The
+full worklist below is pre-populated from this snapshot.
+
+**Current open:** 91 (2 critical / 44 high / 48 moderate)
 
 The **ledger** below is the durable record of what has been fixed and what is being worked on
 right now. It is the single source of truth for the burndown — keep it current as part of every
@@ -263,7 +251,7 @@ So multiple agents (local or cloud) can pay down findings at once without collid
    the reservation — no commit or git operation needed.
 2. **On completion, flip the row to `✅ done`** and replace the `Claimed at` timestamp with the
    completion date (YYYY-MM-DD), fill in the domain file and the finding(s)/duplicate(s) cleared,
-   and drop the new `fallow health` total in the count above.
+   and decrement **Current open** above by the number of findings cleared.
 3. **Release if you abandon it** — flip the row back to `⬜ todo` and clear `Claimed at` to `—`
    so it isn't stranded as permanently "in progress".
 
@@ -291,12 +279,12 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ✅ done | 🔴 crit | 132  | `SignupForm`                      | B component | `src/components/auth/signup-form.tsx:90`                                     | `src/components/auth/domain/signup-form.domain.ts`                                               | 1 CRAP finding (CRAP 132)                       | 2026-06-18 |
 | ✅ done | 🔴 crit | 132  | `NotificationRow`                 | B component | `src/components/navigation/NotificationsMenu.tsx:181`                        | `src/components/navigation/domain/notification-row.domain.ts`                                    | 1 CRAP finding (CRAP 132)                       | 2026-06-18 |
 | ✅ done | 🔴 crit | 132  | `navigate`                        | B component | `src/routes/_authed/enrollments/index.tsx:129`                               | `src/utils/enrolment/domain/enrollments-navigation.domain.ts`                                    | 1 CRAP finding (CRAP 132)                       | 2026-06-19 |
-| ✅ done | 🔴 crit | 110  | `renderIconWithOverrides`         | B component | `src/components/animate-ui/icons/icon.tsx:545`                               | `src/components/animate-ui/icons/domain/icon-animation.domain.ts`                                 | 1 CRAP finding (CRAP 110)                       | 2026-06-19 |
-| ✅ done | 🔴 crit | 110  | `CourseDialog`                    | B component | `src/components/dialog/CourseDialog.tsx:154`                                 | `src/components/dialog/domain/course-dialog.domain.ts`                                            | 1 CRAP finding (CRAP 110)                       | 2026-06-19 |
-| ⬜ todo | 🔴 crit | 110  | `CommentsSection`                 | B component | `src/components/post/PostCard.tsx:315`                                       | —                                                                                                | —                                               | —          |
-| ⬜ todo | 🔴 crit | 110  | `EmptyState`                      | B component | `src/components/ui/empty-state.tsx:19`                                       | —                                                                                                | —                                               | —          |
+| ✅ done | 🔴 crit | 110  | `renderIconWithOverrides`         | B component | `src/components/animate-ui/icons/icon.tsx:545`                               | `src/components/animate-ui/icons/domain/icon-animation.domain.ts`                                | 1 CRAP finding (CRAP 110)                       | 2026-06-19 |
+| ✅ done | 🔴 crit | 110  | `CourseDialog`                    | B component | `src/components/dialog/CourseDialog.tsx:154`                                 | `src/components/dialog/domain/course-dialog.domain.ts`                                           | 1 CRAP finding (CRAP 110)                       | 2026-06-19 |
+| ✅ done | 🔴 crit | 110  | `CommentsSection`                 | B component | `src/components/post/PostCard.tsx:315`                                       | `src/components/post/domain/comments-section.domain.ts`                                          | 1 CRAP finding (CRAP 110)                       | 2026-06-19 |
+| ✅ done | 🔴 crit | 110  | `EmptyState`                      | B component | `src/components/ui/empty-state.tsx:19`                                       | `src/components/ui/domain/empty-state.domain.ts`                                                 | 1 CRAP finding (CRAP 110)                       | 2026-06-19 |
 | ✅ done | 🔴 crit | 110  | `useEntityMutation`               | A hook      | `src/hooks/useEntityMutation.ts:58`                                          | `src/utils/mutation/domain/entity-mutation.domain.ts`                                            | 1 CRAP finding (CRAP 110)                       | 2026-06-16 |
-| ⬜ todo | 🔴 crit | 110  | `CourseDetailComponent`           | B component | `src/routes/_authed/courses/$courseId.tsx:46`                                | —                                                                                                | —                                               | —          |
+| ✅ done | 🔴 crit | 110  | `CourseDetailComponent`           | B component | `src/routes/_authed/courses/$courseId.tsx:46`                                | `src/utils/courses/domain/course-detail.domain.ts`                                               | 1 CRAP finding (CRAP 110)                       | 2026-06-19 |
 | ✅ done | 🔴 crit | 110  | `validateSearch`                  | A pure      | `src/routes/_authed/enrollments/index.tsx:18`                                | `src/utils/enrolment/domain/enrollments-search.domain.ts`                                        | 1 CRAP finding (CRAP 110)                       | 2026-06-15 |
 | ⬜ todo | 🔴 crit | 110  | `LessonDetailComponent`           | B component | `src/routes/_authed/lessons/$lessonId.tsx:52`                                | —                                                                                                | —                                               | —          |
 | ⬜ todo | 🔴 crit | 110  | `PostsComponent`                  | B component | `src/routes/_authed/posts.tsx:62`                                            | —                                                                                                | —                                               | —          |
@@ -347,7 +335,7 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ✅ done | 🟠 high | 56   | `requestPasswordResetService`     | A pure      | `src/utils/password-reset/service/password-reset.service.ts:22`              | `src/utils/password-reset/domain/password-reset-flow.domain.ts`                                  | 1 CRAP finding (CRAP 56)                        | 2026-06-16 |
 | ✅ done | 🟠 high | 56   | `resetPasswordService`            | A pure      | `src/utils/password-reset/service/password-reset.service.ts:111`             | `src/utils/password-reset/domain/password-reset-flow.domain.ts`                                  | 1 CRAP finding (CRAP 56)                        | 2026-06-16 |
 | ⬜ todo | 🟡 mod  | 42   | `continueLoop`                    | B component | `src/components/animate-ui/icons/icon.tsx:334`                               | —                                                                                                | —                                               | —          |
-| ✅ done | 🟡 mod  | 42   | `getVariants`                     | B component | `src/components/animate-ui/icons/icon.tsx:734`                               | `src/components/animate-ui/icons/domain/icon-animation.domain.ts`                                 | 1 CRAP finding (CRAP 42)                        | 2026-06-19 |
+| ✅ done | 🟡 mod  | 42   | `getVariants`                     | B component | `src/components/animate-ui/icons/icon.tsx:734`                               | `src/components/animate-ui/icons/domain/icon-animation.domain.ts`                                | 1 CRAP finding (CRAP 42)                        | 2026-06-19 |
 | ⬜ todo | 🟡 mod  | 42   | `validYear`                       | B component | `src/components/auth/enrolment-form.tsx:55`                                  | —                                                                                                | —                                               | —          |
 | ⬜ todo | 🟡 mod  | 42   | `<arrow>`                         | B component | `src/components/auth/enrolment-form.tsx:135`                                 | —                                                                                                | —                                               | —          |
 | ⬜ todo | 🟡 mod  | 42   | `ResetPasswordForm`               | B component | `src/components/auth/reset-password-form.tsx:25`                             | —                                                                                                | —                                               | —          |

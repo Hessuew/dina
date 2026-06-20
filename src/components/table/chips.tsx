@@ -116,33 +116,33 @@ type EnrollmentStatusChipProps = {
 const ENROLLMENT_STATUS_CONFIG = {
   pending: {
     icon: Clock,
-    label: 'Pending',
-    classes: 'border-[#C5A059]/30 bg-[#1A1716]/60 text-amber-600',
+    label: 'Waiting review',
+    classes: 'border-white/30 bg-white/20 text-white',
   },
   under_review: {
     icon: AlertCircle,
     label: 'Under review',
-    classes: 'border-sky-500/28 bg-sky-950/40 text-sky-600',
+    classes: 'border-sky-500/28 bg-sky-950/40 text-sky-400',
   },
   awaiting_approval: {
     icon: ShieldCheck,
     label: 'Awaiting approval',
-    classes: 'border-purple-500/50 bg-[#1A1716] text-purple-600',
+    classes: 'border-purple-400/80 bg-purple-950/20 text-purple-400',
   },
   approved: {
     icon: CheckCircle2,
     label: 'Approved',
-    classes: 'border-emerald-500/30 bg-emerald-950/40 text-green-600',
+    classes: 'border-green-500/30 bg-green-800/40 text-green-600',
   },
   rejected: {
     icon: XCircle,
     label: 'Rejected',
-    classes: 'border-red-500/28 bg-red-950/40 text-red-600',
+    classes: 'border-red-600/40 bg-red-950/20 text-red-600',
   },
   waitlisted: {
     icon: CircleDot,
     label: 'Waitlisted',
-    classes: 'border-amber-500/28 bg-amber-950/40 text-yellow-600',
+    classes: 'border-amber-500/40 bg-amber-950/40 text-yellow-600',
   },
   withdrawn: {
     icon: Ban,
@@ -191,12 +191,12 @@ const ENROLLMENT_CATEGORY_CONFIG = {
   emerging: {
     icon: PenLine,
     label: 'Emerging leader',
-    iconClass: 'text-red-600',
+    iconClass: 'text-orange-400',
   },
   established: {
     icon: PenTool,
     label: 'Established leader',
-    iconClass: 'text-orange-400',
+    iconClass: 'text-red-600',
   },
 } as const
 
@@ -215,7 +215,7 @@ export function EnrollmentCategoryChip({
         className,
       )}
     >
-      <Icon className={cn('size-3.5 shrink-0', config.iconClass)} />
+      <Icon className={cn('size-4 shrink-0', config.iconClass)} />
       {config.label}
     </span>
   )
