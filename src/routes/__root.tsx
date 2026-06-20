@@ -22,12 +22,16 @@ import { seo } from '@/utils/seo'
 import { getDb } from '@/db'
 import { getSupabaseServerClient } from '@/utils/supabase'
 import { AppSidebar } from '@/components/navigation/AppSidebar'
+import {
+  buildUserContext,
+  isAuthenticatedUser,
+} from '@/utils/auth/domain/user-context.domain'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = getSupabaseServerClient()
   const { data, error: _error } = await supabase.auth.getUser()
 
-  if (!data.user?.email) {
+  if (!isAuthenticatedUser(data.user)) {
     return null
   }
 
@@ -44,14 +48,7 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
     },
   })
 
-  return {
-    avatarUrl: profile?.avatarUrl,
-    bio: profile?.bio,
-    email: data.user.email,
-    id: data.user.id,
-    fullName: profile?.fullName,
-    role: profile?.role || 'student',
-  }
+  return buildUserContext(data.user, profile)
 })
 
 export const Route = createRootRoute({
