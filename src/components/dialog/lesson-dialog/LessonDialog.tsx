@@ -1,5 +1,13 @@
 import { useEffect } from 'react'
 import { toast } from 'sonner'
+import {
+  MAX_LESSONS_PER_COURSE,
+  buildLessonCreateInput,
+  buildLessonDialogConfig,
+  buildLessonUpdateInput,
+  getLessonInitialValues,
+} from './lesson-dialog.domain'
+import type { LessonInitialData } from './lesson-dialog.domain'
 import { createLessonSchema } from '@/schemas/lesson.schema'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { DialogBody } from '@/components/ui/dialog'
@@ -9,54 +17,13 @@ import { useAppForm } from '@/hooks/form'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { createLesson, deleteLesson, updateLesson } from '@/utils/courses'
 
-type LessonFormData = {
-  title: string
-  content: string
-  scheduledTime: string
-  duration: number
-  isPublished: boolean
-}
-
-const emptyFormData: LessonFormData = {
-  title: '',
-  content: '',
-  scheduledTime: '',
-  duration: 0,
-  isPublished: false,
-}
-
 type LessonDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   mode: 'create' | 'edit' | 'delete'
   courseId: string
   lessonCount?: number
-  initialData?: {
-    lessonId: string
-    title: string
-    content: string | null
-    scheduledTime: Date | null
-    duration: number | null
-    isPublished: boolean | null
-    orderIndex: number
-  }
-}
-
-function getInitialValues(
-  initialData: LessonDialogProps['initialData'],
-  mode: LessonDialogProps['mode'],
-): LessonFormData {
-  if (!initialData || mode === 'create') return { ...emptyFormData }
-
-  return {
-    title: initialData.title,
-    content: initialData.content ?? '',
-    scheduledTime: initialData.scheduledTime
-      ? new Date(initialData.scheduledTime).toISOString().slice(0, 16)
-      : '',
-    duration: initialData.duration ?? 0,
-    isPublished: initialData.isPublished ?? false,
-  }
+  initialData?: LessonInitialData
 }
 
 export function LessonDialog({
@@ -76,39 +43,29 @@ export function LessonDialog({
     })
 
   const form = useAppForm({
-    defaultValues: getInitialValues(initialData, mode),
+    defaultValues: getLessonInitialValues(initialData, mode),
     onSubmit: ({ value }) => {
-      const shared = {
-        title: value.title,
-        content: value.content || undefined,
-        scheduledTime: value.scheduledTime
-          ? new Date(value.scheduledTime)
-          : undefined,
-        duration: value.duration > 0 ? value.duration : undefined,
-        isPublished: value.isPublished,
-      }
-
       if (mode === 'create') {
-        if (lessonCount >= 3) {
+        if (lessonCount >= MAX_LESSONS_PER_COURSE) {
           toast.error('Maximum 3 lessons allowed per course')
           return
         }
         createMutation.mutate({
-          data: { ...shared, courseId, orderIndex: lessonCount },
+          data: buildLessonCreateInput(value, courseId, lessonCount),
         })
         return
       }
 
       if (!initialData) return
       updateMutation.mutate({
-        data: { ...shared, lessonId: initialData.lessonId, courseId },
+        data: buildLessonUpdateInput(value, initialData.lessonId, courseId),
       })
     },
   })
 
   useEffect(() => {
     if (!open) return
-    form.reset(getInitialValues(initialData, mode))
+    form.reset(getLessonInitialValues(initialData, mode))
   }, [open, initialData, mode, form])
 
   if (mode === 'delete') {
@@ -128,21 +85,18 @@ export function LessonDialog({
     )
   }
 
+  const config = buildLessonDialogConfig(mode)
   return (
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
-      title={mode === 'create' ? 'Create Lesson' : 'Edit Lesson'}
-      subtitle={
-        mode === 'create'
-          ? 'Add a new lesson to this course'
-          : 'Update the lesson information'
-      }
+      title={config.title}
+      subtitle={config.subtitle}
       maxWidth="3xl"
       onSubmit={() => void form.handleSubmit()}
       isSubmitting={isAnyPending}
-      submitLabel={mode === 'create' ? 'Create Lesson' : 'Save Changes'}
+      submitLabel={config.submitLabel}
     >
       <DialogBody>
         <FieldGroup className="mt-6 gap-8">

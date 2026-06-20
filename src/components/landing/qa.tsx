@@ -6,7 +6,7 @@ import {
   LandingScriptureSectionHeader,
   LandingSectionContainer,
   LandingSectionOverlay,
-} from '@/components/landing/primitives'
+} from '@/components/landing/primitives/primitives'
 
 type QAItem = {
   id: string

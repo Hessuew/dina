@@ -1,4 +1,5 @@
 import aboutBackground from '@/assets/images/bg/bg_about.webp'
+import { resolveAwardRowStyle } from '@/components/landing/about/about.domain'
 import {
   LandingFeaturePanel,
   LandingFeaturePanelBody,
@@ -7,7 +8,7 @@ import {
   LandingScriptureSectionHeader,
   LandingSectionContainer,
   LandingSectionOverlay,
-} from '@/components/landing/primitives'
+} from '@/components/landing/primitives/primitives'
 
 type TimelineEvent = {
   month: string
@@ -50,10 +51,8 @@ type AwardRowProps = {
 }
 
 function AwardRow({ rank, label, prize }: AwardRowProps) {
-  const borderOpacity = rank === 1 ? '50' : rank === 2 ? '40' : '30'
-  const textColor = rank === 1 ? '#E9D9B4' : rank === 2 ? '#D3CAC0' : '#C9C0B6'
-  const paddingBottom = rank === 3 ? '1' : '3'
-  const borderBottom = rank === 3 ? 'border-b-0' : 'border-b'
+  const { borderOpacity, textColor, paddingBottom, borderBottom } =
+    resolveAwardRowStyle(rank)
 
   return (
     <div

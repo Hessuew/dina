@@ -14,7 +14,7 @@ import {
   LandingScriptureSectionHeader,
   LandingSectionContainer,
   LandingSectionOverlay,
-} from '@/components/landing/primitives'
+} from '@/components/landing/primitives/primitives'
 
 type LeadershipMember = {
   name: string

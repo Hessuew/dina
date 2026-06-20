@@ -1,6 +1,5 @@
 import { Trash2Icon } from 'lucide-react'
 import { useEffect } from 'react'
-import type { ZoomLinkRow, ZoomLinkSection } from '@/utils/zoomLink'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
@@ -28,24 +27,17 @@ import {
   updateZoomLink,
 } from '@/utils/zoomLink'
 import { createZoomLinkSchema } from '@/schemas/zoomLink.schema'
+import {
+  buildZoomLinkPayload,
+  getZoomLinkDialogConfig,
+  getZoomLinkInitialValues,
+  resolveZoomLink,
+} from './zoom-link-dialog/zoom-link-dialog.domain'
+import type { ZoomLinkDialogState } from './zoom-link-dialog/zoom-link-dialog.domain'
+import type { ZoomLinkSection } from '@/utils/zoomLink'
+export type { ZoomLinkDialogState } from './zoom-link-dialog/zoom-link-dialog.domain'
 
 type ZoomCourse = { id: string; title: string }
-
-type ZoomFormData = {
-  title: string
-  description: string
-  section: string
-  courseId: string
-  zoomUrl: string
-  meetingId: string
-  passcode: string
-  orderIndex: number
-}
-
-export type ZoomLinkDialogState =
-  | { mode: 'create' }
-  | { mode: 'edit'; link: ZoomLinkRow }
-  | null
 
 type ZoomLinkDialogProps = {
   courses: Array<ZoomCourse>
@@ -53,37 +45,9 @@ type ZoomLinkDialogProps = {
   onOpenChange: (open: boolean) => void
 }
 
-const emptyZoomForm: ZoomFormData = {
-  title: '',
-  description: '',
-  section: 'general_class_lecture',
-  courseId: 'none',
-  zoomUrl: '',
-  meetingId: '',
-  passcode: '',
-  orderIndex: 0,
-}
-
 const sectionTitle: Record<ZoomLinkSection, string> = {
   general_class_lecture: 'General Class Lectures',
   discipleship_group: 'Discipleship Groups',
-}
-
-function getInitialValues(dialogState: ZoomLinkDialogState): ZoomFormData {
-  if (dialogState?.mode === 'edit') {
-    const link = dialogState.link
-    return {
-      title: link.title,
-      description: link.description ?? '',
-      section: link.section,
-      courseId: link.courseId ?? 'none',
-      zoomUrl: link.zoomUrl,
-      meetingId: link.meetingId,
-      passcode: link.passcode,
-      orderIndex: link.orderIndex,
-    }
-  }
-  return emptyZoomForm
 }
 
 export function ZoomLinkDialog({
@@ -91,8 +55,9 @@ export function ZoomLinkDialog({
   dialogState,
   onOpenChange,
 }: ZoomLinkDialogProps) {
-  const link = dialogState?.mode === 'edit' ? dialogState.link : null
+  const link = resolveZoomLink(dialogState)
   const open = dialogState !== null
+  const config = getZoomLinkDialogConfig(link !== null)
 
   const { createMutation, updateMutation, deleteMutation, isAnyPending } =
     useEntityMutation({
@@ -106,26 +71,13 @@ export function ZoomLinkDialog({
     })
 
   const zoomForm = useAppForm({
-    defaultValues: getInitialValues(dialogState),
+    defaultValues: getZoomLinkInitialValues(dialogState),
     onSubmit: ({ value }) => {
-      const payload = {
-        title: value.title,
-        description: value.description || undefined,
-        section: value.section as ZoomLinkSection,
-        courseId: value.courseId === 'none' ? undefined : value.courseId,
-        zoomUrl: value.zoomUrl,
-        meetingId: value.meetingId,
-        passcode: value.passcode,
-        orderIndex: Number.isFinite(value.orderIndex)
-          ? value.orderIndex
-          : undefined,
-      }
-
+      const payload = buildZoomLinkPayload(value)
       if (link) {
         updateMutation.mutate({ data: { zoomLinkId: link.id, ...payload } })
         return
       }
-
       createMutation.mutate({ data: payload })
     },
   })
@@ -137,7 +89,7 @@ export function ZoomLinkDialog({
 
   useEffect(() => {
     if (!open) return
-    zoomForm.reset(getInitialValues(dialogState))
+    zoomForm.reset(getZoomLinkInitialValues(dialogState))
   }, [open, dialogState, zoomForm])
 
   return (
@@ -157,11 +109,11 @@ export function ZoomLinkDialog({
             <div>
               <div className="h-px w-8 bg-[#C5A059]/40" />
               <p className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                {link ? 'Edit meeting details' : 'New meeting details'}
+                {config.subtitle}
               </p>
             </div>
             <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-              {link ? 'Edit Zoom Link' : 'Add Zoom Link'}
+              {config.title}
             </DialogTitle>
             <DialogDescription className="text-[#AFA28F]">
               Add the Zoom URL, meeting ID, and passcode shown to students and

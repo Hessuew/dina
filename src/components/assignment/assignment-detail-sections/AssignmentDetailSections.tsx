@@ -1,4 +1,8 @@
 import { SaveIcon, SendIcon } from 'lucide-react'
+import {
+  buildSubmissionHeaderViewModel,
+  buildSubmissionStatusViewModel,
+} from './assignment-detail-sections.domain'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
 import { StatusChip } from '@/components/ui/status-chip'
@@ -113,14 +117,12 @@ function SubmissionHeader({
   isPastDue: boolean
   submissionCount: number
 }) {
-  const title = isStudent ? 'Your Submission' : 'Submissions'
-  const subtitle = isStudent
-    ? canSubmit
-      ? 'Submit before the due date'
-      : isPastDue
-        ? 'Submission period ended'
-        : 'Not yet open'
-    : `${submissionCount} submitted`
+  const { title, subtitle } = buildSubmissionHeaderViewModel({
+    isStudent,
+    canSubmit,
+    isPastDue,
+    submissionCount,
+  })
 
   return (
     <div className="border-b border-white/8 px-6 py-5">
@@ -137,10 +139,10 @@ function SubmissionStatusCard({
   submission,
   maxGrade,
 }: {
-  submission: Submission | null | undefined
+  submission: Submission
   maxGrade: number | null
 }) {
-  if (!submission) return null
+  const vm = buildSubmissionStatusViewModel(submission, maxGrade)
 
   return (
     <div className="border border-white/10 bg-white/4 px-4 py-4 text-sm">
@@ -148,38 +150,33 @@ function SubmissionStatusCard({
         <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
           Status
         </span>
-        <StatusChip
-          variant={submission.status === 'submitted' ? 'submitted' : 'draft'}
-          size="sm"
-        />
+        <StatusChip variant={vm.statusVariant} size="sm" />
       </div>
-      {submission.submittedAt && (
+      {vm.showSubmittedAt && (
         <div className="mt-3 flex items-center justify-between">
           <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
             Submitted
           </span>
-          <span className="text-xs text-[#AFA28F]">
-            {new Date(submission.submittedAt).toLocaleString()}
-          </span>
+          <span className="text-xs text-[#AFA28F]">{vm.submittedAtLabel}</span>
         </div>
       )}
-      {submission.grade !== null && (
+      {vm.showGradeSection && (
         <>
           <div className="mt-3 flex items-center justify-between">
             <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
               Grade
             </span>
             <span className="font-serif text-base text-[#F8F4EC]">
-              {submission.grade} / {maxGrade ?? 100}
+              {vm.gradeLabel}
             </span>
           </div>
-          {submission.feedback && (
+          {vm.showFeedback && (
             <div className="mt-3">
               <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
                 Feedback
               </span>
               <p className="mt-2 text-sm whitespace-pre-wrap text-[#CFC6B7]">
-                {submission.feedback}
+                {vm.feedback}
               </p>
             </div>
           )}
@@ -261,10 +258,12 @@ function StudentSubmissionForm({
         />
       </Field>
 
-      <SubmissionStatusCard
-        submission={submission}
-        maxGrade={assignment.maxGrade}
-      />
+      {submission && (
+        <SubmissionStatusCard
+          submission={submission}
+          maxGrade={assignment.maxGrade}
+        />
+      )}
 
       {canSubmit && (
         <div className="flex gap-3">

@@ -5,7 +5,7 @@ import {
   LandingScriptureSectionHeader,
   LandingSectionContainer,
   LandingSectionOverlay,
-} from '@/components/landing/primitives'
+} from '@/components/landing/primitives/primitives'
 
 export function LandingOfficialInfo() {
   return (
