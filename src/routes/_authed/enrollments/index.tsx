@@ -2,23 +2,30 @@ import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { EyeIcon } from 'lucide-react'
 import { toast } from 'sonner'
-import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.repository'
 import type { EnrollmentsNavRequest } from '@/utils/enrolment/domain/enrollments-navigation.domain'
 import { Button } from '@/components/ui/button'
 import { EnrollmentsTable } from '@/components/table/EnrollmentsTable'
-import { EvaluationOverlay } from '@/components/enrollment/EvaluationOverlay'
+import { EvaluationOverlay } from '@/components/enrollment/evaluation-overlay/EvaluationOverlay'
 import { AdminActionsDropdown } from '@/components/enrollment/AdminActionsDropdown'
 import { PageLayout } from '@/components/layout/page-layout'
-import {
-  EndSubstitutionDialog,
-  StartSubstitutionDialog,
-} from '@/components/dialog/SubstituteTeacherDialog'
 import { checkTeacherAccess } from '@/utils/auth/admin'
 import { distributeEnrollments, getEnrollments } from '@/utils/enrolment'
 import { parseEnrollmentsSearch } from '@/utils/enrolment/domain/enrollments-search.domain'
 import { resolveEnrollmentsNavigation } from '@/utils/enrolment/domain/enrollments-navigation.domain'
+import {
+  buildDistributeToastMessage,
+  buildSortChangeRequest,
+  getViewAllButtonProps,
+  resolveIsAdmin,
+  resolveReviewOverlayContext,
+  resolveSearchChange,
+} from '@/utils/enrolment/domain/enrollments-page.domain'
 import { useEnrollmentReview } from '@/hooks/useEnrollmentReview'
 import { toUserError } from '@/utils/errors'
+import {
+  EndSubstitutionDialog,
+  StartSubstitutionDialog,
+} from '@/components/dialog/SubstituteTeacherDialog'
 
 export const Route = createFileRoute('/_authed/enrollments/')({
   validateSearch: parseEnrollmentsSearch,
@@ -59,7 +66,7 @@ function EnrollmentsPage() {
   const router = useRouter()
   const { page, pageSize, search, sortBy, sortDir, review, viewAll } =
     Route.useSearch()
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = resolveIsAdmin(user)
   const [isListLoading, setIsListLoading] = useState(false)
   const [isDistributing, setIsDistributing] = useState(false)
   const [isStartSubDialogOpen, setIsStartSubDialogOpen] = useState(false)
@@ -105,11 +112,7 @@ function EnrollmentsPage() {
     setIsDistributing(true)
     try {
       const { assigned } = await distributeEnrollments({ data: {} })
-      toast.success(
-        assigned > 0
-          ? `Distributed ${assigned} enrollment${assigned === 1 ? '' : 's'}`
-          : 'No unassigned enrollments to distribute',
-      )
+      toast.success(buildDistributeToastMessage(assigned))
       void router.invalidate()
     } catch (error) {
       toast.error(toUserError(error).message)
@@ -155,6 +158,13 @@ function EnrollmentsPage() {
     }
   }, [])
 
+  const viewAllButton = getViewAllButtonProps(viewAll)
+  const reviewOverlay = resolveReviewOverlayContext({
+    isOpen: reviewState.isOpen,
+    current: reviewState.current,
+    user,
+  })
+
   return (
     <PageLayout>
       <div className="mb-10 flex items-end justify-between gap-6">
@@ -170,11 +180,11 @@ function EnrollmentsPage() {
         <div className="flex items-center gap-2">
           <Button
             theme="light"
-            variant={viewAll ? 'default' : 'outline'}
+            variant={viewAllButton.variant}
             onClick={handleToggleViewAll}
           >
             <EyeIcon className="size-3.5" />
-            {viewAll ? 'Show Own' : 'View All'}
+            {viewAllButton.label}
           </Button>
           {isAdmin && (
             <AdminActionsDropdown
@@ -203,22 +213,17 @@ function EnrollmentsPage() {
         onPageSizeChange={(ps) => navigate({ page: 1, pageSize: ps })}
         onSearchChange={(s) => {
           if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
-          if (s === search) {
+          const decision = resolveSearchChange(s, search)
+          if (decision.kind === 'noop') {
             setIsListLoading(false)
             return
           }
           setIsListLoading(true)
           searchDebounceRef.current = setTimeout(() => {
-            navigate({ page: 1, search: s })
+            navigate(decision.request)
           }, 300)
         }}
-        onSortingChange={(by, dir) =>
-          navigate({
-            page: 1,
-            sortBy: (by ?? 'createdAt') as EnrollmentSortKey,
-            sortDir: by ? dir : 'desc',
-          })
-        }
+        onSortingChange={(by, dir) => navigate(buildSortChangeRequest(by, dir))}
       />
 
       {isAdmin && (
@@ -236,12 +241,12 @@ function EnrollmentsPage() {
         </>
       )}
 
-      {reviewState.isOpen && reviewState.current && user && (
+      {reviewOverlay && (
         <EvaluationOverlay
-          enrollment={reviewState.current}
+          enrollment={reviewOverlay.enrollment}
           evaluations={reviewState.currentEvaluations}
           isAdmin={isAdmin}
-          userId={user.id}
+          userId={reviewOverlay.userId}
           hasPrev={reviewState.hasPrev}
           hasNext={reviewState.hasNext}
           onPrev={reviewState.prev}
@@ -253,8 +258,8 @@ function EnrollmentsPage() {
           onLocalEvaluation={(enrollmentId, patch) =>
             reviewState.applyLocalEvaluation(
               enrollmentId,
-              user.id,
-              user.fullName ?? user.email,
+              reviewOverlay.userId,
+              reviewOverlay.evaluatorName,
               patch,
             )
           }

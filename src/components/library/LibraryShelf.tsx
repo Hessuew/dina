@@ -1,5 +1,5 @@
 import type { MediaLibraryRow } from '@/utils/library/library'
-import { MediaCard } from '@/components/library/MediaCard'
+import { MediaCard } from '@/components/library/media-card/MediaCard'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 
 type LibraryShelfPermissions = {

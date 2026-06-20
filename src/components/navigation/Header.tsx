@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { LandingPublicHeader } from '@/components/landing/hero'
-import { SidebarTrigger } from '@/components/ui/sidebar'
+import { SidebarTrigger } from '@/components/ui/sidebar/Sidebar'
 import { Button } from '@/components/ui/button'
 import { getDb } from '@/db'
 import { profiles } from '@/db/schema'

@@ -5,9 +5,9 @@ import { useDialogState } from '@/hooks/useDialogState'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { useMutation } from '@/hooks/useMutation'
 import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
-import { CourseDialog } from '@/components/dialog/CourseDialog'
+import { CourseDialog } from '@/components/dialog/course-dialog/CourseDialog'
 import { LessonDialog } from '@/components/dialog/LessonDialog'
-import { MediaDialog } from '@/components/dialog/MediaDialog'
+import { MediaDialog } from '@/components/dialog/media-dialog/MediaDialog'
 import { deleteCourse, getCourse } from '@/utils/courses'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
@@ -137,8 +137,14 @@ function CourseDetailComponent() {
 
       {/* Edit Course Dialog */}
       <CourseDialog
-        open={isDialogModeActive(courseDialog.isOpen, courseDialog.dialogMode, 'edit')}
-        onOpenChange={(open) => handleDialogDismiss(open, courseDialog.closeDialog)}
+        open={isDialogModeActive(
+          courseDialog.isOpen,
+          courseDialog.dialogMode,
+          'edit',
+        )}
+        onOpenChange={(open) =>
+          handleDialogDismiss(open, courseDialog.closeDialog)
+        }
         mode="edit"
         isAdmin={permissions.isAdmin}
         initialData={courseDialog.dialogItem}
@@ -151,7 +157,9 @@ function CourseDetailComponent() {
           courseDialog.dialogMode,
           'delete',
         )}
-        onOpenChange={(open) => handleDialogDismiss(open, courseDialog.closeDialog)}
+        onOpenChange={(open) =>
+          handleDialogDismiss(open, courseDialog.closeDialog)
+        }
         entityName="Course"
         onConfirm={() =>
           deleteCourseMutation.mutate({
@@ -166,7 +174,9 @@ function CourseDetailComponent() {
       {lessonDialog.isOpen && (
         <LessonDialog
           open={true}
-          onOpenChange={(open) => handleDialogDismiss(open, lessonDialog.closeDialog)}
+          onOpenChange={(open) =>
+            handleDialogDismiss(open, lessonDialog.closeDialog)
+          }
           mode={lessonDialog.dialogMode as 'create' | 'edit' | 'delete'}
           courseId={course.id}
           lessonCount={course.lessons.length}

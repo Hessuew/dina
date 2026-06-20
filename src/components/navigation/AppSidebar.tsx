@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { Link, useRouter, useRouterState } from '@tanstack/react-router'
-import { NavUser } from '@/components/navigation/nav-user'
+import { NotificationsMenu } from '@/components/navigation/notifications-menu'
+import { NavUser } from '@/components/navigation/NavUser'
 import {
   Sidebar,
   SidebarContent,
@@ -14,10 +15,9 @@ import {
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
-} from '@/components/ui/sidebar'
+} from '@/components/ui/sidebar/Sidebar'
 import { cn } from '@/lib/utils'
 import heroEmblem from '@/assets/images/bg/logo.webp'
-import { NotificationsMenu } from '@/components/navigation/NotificationsMenu'
 import { LayoutDashboard } from '@/components/animate-ui/icons/layout-dashboard'
 import { ClipboardList } from '@/components/animate-ui/icons/clipboard-list'
 import { CalendarCheckIcon } from '@/components/animate-ui/icons/calendar-check'

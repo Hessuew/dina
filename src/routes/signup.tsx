@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { SignupForm } from '@/components/auth/signup-form'
+import { SignupForm } from '@/components/auth/signup-form/signup-form'
 
 export const Route = createFileRoute('/signup')({
   beforeLoad: ({ search }) => {

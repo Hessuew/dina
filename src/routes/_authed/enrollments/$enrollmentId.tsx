@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
-import { EnrollmentDetails } from '@/components/enrollment/EnrollmentDetails'
+import { EnrollmentDetails } from '@/components/enrollment/enrollment-details/EnrollmentDetails'
 import {
   Select,
   SelectContent,

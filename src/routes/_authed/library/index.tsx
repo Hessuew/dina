@@ -3,16 +3,21 @@ import { FileTextIcon, PlusIcon } from 'lucide-react'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { MediaLibraryRow } from '@/utils/library'
+import type { Role } from '@/utils/authz/types'
 import { useDialogState } from '@/hooks/useDialogState'
-import { MediaDialog } from '@/components/dialog/MediaDialog'
+import { MediaDialog } from '@/components/dialog/media-dialog/MediaDialog'
 import { Button } from '@/components/ui/button'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { getLibraryMedia } from '@/utils/library'
-import { getYoutubeVideoId } from '@/utils/library/domain/youtube.domain'
+import {
+  canCreateMedia,
+  canManageMediaRow,
+  getVisibleShelfTopics,
+  getYoutubeThumbnail,
+} from '@/utils/library/domain/library-view.domain'
 import { PageLayout } from '@/components/layout/page-layout'
-import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyState } from '@/components/ui/empty-state/EmptyState'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
-import { LIBRARY_TOPICS, buildShelves } from '@/lib/library-topics'
 import { LibraryShelf } from '@/components/library/LibraryShelf'
 
 export const Route = createFileRoute('/_authed/library/')({
@@ -24,10 +29,68 @@ export const Route = createFileRoute('/_authed/library/')({
 
 const columnHelper = createColumnHelper<MediaLibraryRow>()
 
-function getYoutubeThumbnail(url: string): string | null {
-  const id = getYoutubeVideoId(url)
-  if (!id) return null
-  return `https://img.youtube.com/vi/${id}/hqdefault.jpg`
+function ThumbCell({ row }: { row: MediaLibraryRow }) {
+  if (row.fileType === 'video') {
+    const thumb = getYoutubeThumbnail(row.fileUrl)
+
+    return (
+      <Link
+        to="/library/$mediaId"
+        params={{ mediaId: row.id }}
+        className="group relative block aspect-video w-28 border border-white/10 bg-black/20"
+      >
+        {thumb ? (
+          <img
+            src={thumb}
+            alt={row.title}
+            className="size-full object-cover transition-transform group-hover:scale-[1.02]"
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center text-xs text-[#8E816D]">
+            Video
+          </div>
+        )}
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-black/10 via-transparent to-black/50" />
+      </Link>
+    )
+  }
+
+  return (
+    <Link
+      to="/library/$mediaId"
+      params={{ mediaId: row.id }}
+      className="group relative flex aspect-video w-28 items-center justify-center border border-white/10 bg-black/20 text-[#8E816D]"
+    >
+      {row.thumbnailUrl ? (
+        <img
+          src={row.thumbnailUrl}
+          alt={row.title}
+          className="size-full object-cover transition-transform group-hover:scale-[1.02]"
+        />
+      ) : (
+        <FileTextIcon className="size-4" />
+      )}
+    </Link>
+  )
+}
+
+function PublishedCell({
+  isPublished,
+  viewerRole,
+}: {
+  isPublished: boolean
+  viewerRole: Role
+}) {
+  if (viewerRole === 'student') return <span className="text-[#8E816D]">—</span>
+  return isPublished ? (
+    <span className="border border-[#C5A059]/35 px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.12em] text-[#D4B373] uppercase">
+      Yes
+    </span>
+  ) : (
+    <span className="border border-white/12 px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.12em] text-[#8E816D] uppercase">
+      No
+    </span>
+  )
 }
 
 function LibraryComponent() {
@@ -41,71 +104,18 @@ function LibraryComponent() {
     closeDialog,
   } = useDialogState<MediaLibraryRow>()
 
-  const canCreate = viewer.role === 'teacher' || viewer.role === 'admin'
+  const canCreate = canCreateMedia(viewer.role)
 
-  const shelves = buildShelves(media)
-  const shelfTopics = LIBRARY_TOPICS.filter((topic) => {
-    const s = shelves.get(topic)
-    return (s?.ebooks.length ?? 0) > 0 || (s?.audioVisual.length ?? 0) > 0
-  })
+  const { shelves, shelfTopics } = getVisibleShelfTopics(media)
 
-  const canManageRow = (row: MediaLibraryRow) => {
-    if (viewer.role === 'admin') return true
-    if (viewer.role === 'teacher') return row.uploaderId === viewer.id
-    return false
-  }
+  const canManageRow = (row: MediaLibraryRow) => canManageMediaRow(viewer, row)
 
   const columns: Array<ColumnDef<MediaLibraryRow, any>> = [
     columnHelper.display({
       id: 'thumb',
       header: '',
       enableSorting: false,
-      cell: (info) => {
-        const row = info.row.original
-
-        if (row.fileType === 'video') {
-          const thumb = getYoutubeThumbnail(row.fileUrl)
-
-          return (
-            <Link
-              to="/library/$mediaId"
-              params={{ mediaId: row.id }}
-              className="group relative block aspect-video w-28 border border-white/10 bg-black/20"
-            >
-              {thumb ? (
-                <img
-                  src={thumb}
-                  alt={row.title}
-                  className="size-full object-cover transition-transform group-hover:scale-[1.02]"
-                />
-              ) : (
-                <div className="flex size-full items-center justify-center text-xs text-[#8E816D]">
-                  Video
-                </div>
-              )}
-              <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-black/10 via-transparent to-black/50" />
-            </Link>
-          )
-        }
-
-        return (
-          <Link
-            to="/library/$mediaId"
-            params={{ mediaId: row.id }}
-            className="group relative flex aspect-video w-28 items-center justify-center border border-white/10 bg-black/20 text-[#8E816D]"
-          >
-            {row.thumbnailUrl ? (
-              <img
-                src={row.thumbnailUrl}
-                alt={row.title}
-                className="size-full object-cover transition-transform group-hover:scale-[1.02]"
-              />
-            ) : (
-              <FileTextIcon className="size-4" />
-            )}
-          </Link>
-        )
-      },
+      cell: (info) => <ThumbCell row={info.row.original} />,
     }),
     columnHelper.accessor('title', {
       header: 'Name',
@@ -121,19 +131,9 @@ function LibraryComponent() {
     }),
     columnHelper.accessor('isPublished', {
       header: 'Published',
-      cell: (info) => {
-        if (viewer.role === 'student')
-          return <span className="text-[#8E816D]">—</span>
-        return info.getValue() ? (
-          <span className="border border-[#C5A059]/35 px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.12em] text-[#D4B373] uppercase">
-            Yes
-          </span>
-        ) : (
-          <span className="border border-white/12 px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.12em] text-[#8E816D] uppercase">
-            No
-          </span>
-        )
-      },
+      cell: (info) => (
+        <PublishedCell isPublished={info.getValue()} viewerRole={viewer.role} />
+      ),
     }),
     createButtonColumn([
       ...createCrudActions<MediaLibraryRow>({

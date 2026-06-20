@@ -22,7 +22,7 @@ import { PageLayout } from '@/components/layout/page-layout'
 import { Textarea } from '@/components/ui/textarea'
 import { useMutation } from '@/hooks/useMutation'
 import { cn } from '@/lib/utils'
-import { PostCard } from '@/components/post/PostCard'
+import { PostCard } from '@/components/post/post-card/PostCard'
 import { getCurrentUser, getUserProfile } from '@/utils/auth/auth'
 import {
   createPost,
