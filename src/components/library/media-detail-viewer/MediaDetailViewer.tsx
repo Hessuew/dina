@@ -1,6 +1,6 @@
 import { ExternalLinkIcon, FileTextIcon, VideoIcon } from 'lucide-react'
 import { Suspense, lazy } from 'react'
-import { YouTubeEmbed } from '../YouTubeEmbed'
+import { YouTubeEmbed } from '../youtube-embed/YouTubeEmbed'
 import type { ReactNode } from 'react'
 import type {
   MediaContentKind,

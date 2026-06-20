@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Link, useRouter, useRouterState } from '@tanstack/react-router'
 import { NotificationsMenu } from '@/components/navigation/notifications-menu'
-import { NavUser } from '@/components/navigation/NavUser'
+import { NavUser } from '@/components/navigation/nav-user/NavUser'
 import {
   Sidebar,
   SidebarContent,

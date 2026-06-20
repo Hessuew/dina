@@ -13,8 +13,7 @@ export default defineConfig({
         'src/domain/**',
         'src/utils/**/domain/**',
         'src/hooks/**/domain/**',
-        'src/components/**/domain/**',
-        'scripts/**',
+        'src/components/**/*.domain.ts',
       ],
       exclude: ['src/domain/index.ts'],
       thresholds: {

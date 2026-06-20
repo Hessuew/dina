@@ -18,6 +18,7 @@ import { createEnrollment } from '@/utils/enrolment/enrollments'
 import { env } from '@/env'
 import {
   resolveEnrolmentKeyNavigation,
+  runEnrolmentSuccessEffects,
   validateEnrolmentYear,
 } from '@/components/auth/enrolment-form/enrolment-form.domain'
 
@@ -130,24 +131,18 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
   const [currentStep, setCurrentStep] = useState(0)
 
   useEffect(() => {
-    if (success) {
-      setSubmitted(true)
-      if (typeof window !== 'undefined' && window.gtag) {
-        window.gtag('event', 'conversion', {
-          send_to: `${env.VITE_GOOGLE_ADS_ID}/-2LiCJCpp7AcEJ6zn81D`,
-          value: 1.0,
-          currency: 'EUR',
-        })
-      }
-      if (typeof window !== 'undefined' && window.fbq) {
-        window.fbq('track', 'Lead')
-      }
-      void router.navigate({
-        to: '/enrolment',
-        search: { success: undefined },
-        replace: true,
-      })
-    }
+    runEnrolmentSuccessEffects({
+      success,
+      windowRef: typeof window !== 'undefined' ? window : undefined,
+      googleAdsId: env.VITE_GOOGLE_ADS_ID,
+      onSubmitted: () => setSubmitted(true),
+      navigate: () =>
+        void router.navigate({
+          to: '/enrolment',
+          search: { success: undefined },
+          replace: true,
+        }),
+    })
   }, [success])
 
   const createEnrollmentFn = useServerFn(createEnrollment)

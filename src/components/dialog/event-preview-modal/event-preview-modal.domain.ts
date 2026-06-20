@@ -38,6 +38,7 @@ export function getEventChip(event: CalendarEvent): {
     }
     return TYPE_CHIP.other
   }
+  /* c8 ignore next */ // Escape-hatch: defensive fallback if new event type is added without updating TYPE_CHIP
   return TYPE_CHIP[event.type] ?? TYPE_CHIP.other
 }
 

@@ -9,6 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  formatNumberFieldValue,
+  parseNumberFieldValue,
+  resolveFieldFootnote,
+} from '@/components/ui/form-field/form-field.domain'
 
 interface BaseFormFieldProps {
   id: string
@@ -104,13 +109,15 @@ export function FormFieldNumberInput({
   step,
 }: FormFieldNumberInputProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value === '' ? 0 : Number(e.target.value))
+    onChange(parseNumberFieldValue(e.target.value))
   }
 
   const inputClassName = cn(
     'rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50',
     error && 'border-red-500/60',
   )
+
+  const footnote = resolveFieldFootnote(error, description)
 
   return (
     <Field className={className}>
@@ -123,7 +130,7 @@ export function FormFieldNumberInput({
       <Input
         id={id}
         type="number"
-        value={value === 0 ? '' : value}
+        value={formatNumberFieldValue(value)}
         onChange={handleChange}
         placeholder={placeholder}
         min={min}
@@ -131,10 +138,7 @@ export function FormFieldNumberInput({
         step={step}
         className={inputClassName}
       />
-      {error && <p className="text-destructive text-[0.68rem]">{error}</p>}
-      {description && !error && (
-        <p className="text-xs text-[#8E816D]">{description}</p>
-      )}
+      {footnote && <p className={footnote.className}>{footnote.text}</p>}
     </Field>
   )
 }

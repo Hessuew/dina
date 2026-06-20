@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   resolveEnrolmentKeyNavigation,
+  runEnrolmentSuccessEffects,
   validateEnrolmentYear,
 } from './enrolment-form.domain'
 
@@ -77,5 +78,109 @@ describe('validateEnrolmentYear', () => {
 
   it('accepts numeric input', () => {
     expect(validateEnrolmentYear(1990, 2025)).toBeUndefined()
+  })
+})
+
+describe('runEnrolmentSuccessEffects', () => {
+  it('does nothing when success is falsy', () => {
+    const onSubmitted = vi.fn()
+    const navigate = vi.fn()
+    const gtag = vi.fn()
+    const fbq = vi.fn()
+
+    runEnrolmentSuccessEffects({
+      success: undefined,
+      windowRef: { gtag, fbq },
+      googleAdsId: 'AW-123',
+      onSubmitted,
+      navigate,
+    })
+
+    expect(onSubmitted).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+    expect(gtag).not.toHaveBeenCalled()
+    expect(fbq).not.toHaveBeenCalled()
+  })
+
+  it('marks submitted and navigates when no window trackers exist', () => {
+    const onSubmitted = vi.fn()
+    const navigate = vi.fn()
+
+    runEnrolmentSuccessEffects({
+      success: true,
+      windowRef: undefined,
+      googleAdsId: 'AW-123',
+      onSubmitted,
+      navigate,
+    })
+
+    expect(onSubmitted).toHaveBeenCalledOnce()
+    expect(navigate).toHaveBeenCalledOnce()
+  })
+
+  it('does not fire trackers when window exists but trackers are absent', () => {
+    const onSubmitted = vi.fn()
+    const navigate = vi.fn()
+
+    runEnrolmentSuccessEffects({
+      success: true,
+      windowRef: {},
+      googleAdsId: 'AW-123',
+      onSubmitted,
+      navigate,
+    })
+
+    expect(onSubmitted).toHaveBeenCalledOnce()
+    expect(navigate).toHaveBeenCalledOnce()
+  })
+
+  it('fires the gtag conversion event with the configured send_to', () => {
+    const gtag = vi.fn()
+
+    runEnrolmentSuccessEffects({
+      success: true,
+      windowRef: { gtag },
+      googleAdsId: 'AW-123',
+      onSubmitted: vi.fn(),
+      navigate: vi.fn(),
+    })
+
+    expect(gtag).toHaveBeenCalledWith('event', 'conversion', {
+      send_to: 'AW-123/-2LiCJCpp7AcEJ6zn81D',
+      value: 1.0,
+      currency: 'EUR',
+    })
+  })
+
+  it('fires the fbq Lead event', () => {
+    const fbq = vi.fn()
+
+    runEnrolmentSuccessEffects({
+      success: true,
+      windowRef: { fbq },
+      googleAdsId: 'AW-123',
+      onSubmitted: vi.fn(),
+      navigate: vi.fn(),
+    })
+
+    expect(fbq).toHaveBeenCalledWith('track', 'Lead')
+  })
+
+  it('fires both trackers then navigates when both exist', () => {
+    const gtag = vi.fn()
+    const fbq = vi.fn()
+    const navigate = vi.fn()
+
+    runEnrolmentSuccessEffects({
+      success: true,
+      windowRef: { gtag, fbq },
+      googleAdsId: 'AW-123',
+      onSubmitted: vi.fn(),
+      navigate,
+    })
+
+    expect(gtag).toHaveBeenCalledOnce()
+    expect(fbq).toHaveBeenCalledOnce()
+    expect(navigate).toHaveBeenCalledOnce()
   })
 })

@@ -17,6 +17,34 @@ export function resolveEnrolmentKeyNavigation(
   return 'none'
 }
 
+type Tracker = (...args: Array<unknown>) => void
+
+export interface EnrolmentSuccessEffectsInput {
+  success: boolean | undefined
+  windowRef: { gtag?: Tracker; fbq?: Tracker } | undefined
+  googleAdsId: string
+  onSubmitted: () => void
+  navigate: () => void
+}
+
+export function runEnrolmentSuccessEffects(
+  input: EnrolmentSuccessEffectsInput,
+): void {
+  if (!input.success) return
+  input.onSubmitted()
+  if (input.windowRef?.gtag) {
+    input.windowRef.gtag('event', 'conversion', {
+      send_to: `${input.googleAdsId}/-2LiCJCpp7AcEJ6zn81D`,
+      value: 1.0,
+      currency: 'EUR',
+    })
+  }
+  if (input.windowRef?.fbq) {
+    input.windowRef.fbq('track', 'Lead')
+  }
+  input.navigate()
+}
+
 export function validateEnrolmentYear(
   value: string | number,
   currentYear = new Date().getFullYear(),

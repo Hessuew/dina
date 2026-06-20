@@ -1,22 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { ExternalLinkIcon, PlayIcon } from 'lucide-react'
+import { shouldBlockYouTubePlayback } from './youtube-embed.domain'
 
 type Props = {
   videoId: string
   originalUrl: string
-}
-
-type YouTubeMessageData = {
-  event?: string
-  info?: number | Record<string, unknown>
-}
-
-function parseYouTubeMessage(raw: unknown): YouTubeMessageData | null {
-  try {
-    const data = typeof raw === 'string' ? JSON.parse(raw) : raw
-    if (data && typeof data === 'object') return data as YouTubeMessageData
-  } catch {}
-  return null
 }
 
 function YouTubeBlockedFallback({
@@ -94,19 +82,8 @@ export function YouTubeEmbed({ videoId, originalUrl }: Props) {
       )
     }, 800)
 
-    const YOUTUBE_ORIGINS = new Set([
-      'https://www.youtube.com',
-      'https://youtube.com',
-    ])
-
     function handleMessage(event: MessageEvent) {
-      if (!YOUTUBE_ORIGINS.has(event.origin)) return
-      const data = parseYouTubeMessage(event.data)
-      if (!data) return
-      if (
-        data.event === 'onError' &&
-        (data.info === 100 || data.info === 101 || data.info === 150)
-      ) {
+      if (shouldBlockYouTubePlayback(event.origin, event.data)) {
         setBlocked(true)
       }
     }

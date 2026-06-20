@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ChevronsUpDown } from 'lucide-react'
 import type React from 'react'
+import { buildUserTextView } from '@/components/navigation/nav-user/nav-user.domain'
 import { ProfileModal } from '@/components/dialog/profile-modal/ProfileModal'
 import { LogOut } from '@/components/animate-ui/icons/log-out'
 import { BadgeCheck } from '@/components/animate-ui/icons/badge-check'
@@ -96,30 +97,11 @@ function UserText({
   isDark: boolean
   compact?: boolean
 }) {
+  const view = buildUserTextView({ user, isDark, compact })
   return (
-    <div
-      className={cn(
-        'grid flex-1 text-left',
-        compact ? 'text-sm leading-tight' : 'leading-tight',
-      )}
-    >
-      <span
-        className={cn(
-          'truncate font-medium',
-          !compact && 'text-sm',
-          !compact && (isDark ? 'text-[#F8F4EC]' : 'text-[#1C1815]'),
-        )}
-      >
-        {user.fullName || user.email}
-      </span>
-      <span
-        className={cn(
-          'truncate text-[0.68rem] tracking-[0.04em]',
-          isDark ? 'text-[#8E816D]' : 'text-[#5E5549]',
-        )}
-      >
-        {user.email}
-      </span>
+    <div className={view.containerClassName}>
+      <span className={view.nameClassName}>{view.displayName}</span>
+      <span className={view.emailClassName}>{view.email}</span>
     </div>
   )
 }

@@ -75,3 +75,17 @@ function reducer(state, event) {
 ```
 
 Use sparingly. A suppression without a reason is a code-review failure.
+
+The same discipline applies to the **100% domain-coverage** gate (`vitest.config.ts`, enforced on
+`src/**/domain/**` and `src/components/**/*.domain.ts`). It stays at 100% — do not lower it or
+write hollow tests to buy the number. The only sanctioned exception is a **genuinely unreachable**
+defensive branch (e.g. a `?? DEFAULT` after an exhaustive enum lookup), suppressed with a
+justified v8 ignore directive:
+
+```ts
+/* v8 ignore next -- defensive default, enum lookup is exhaustive */
+return TYPE_CHIP[event.type] ?? TYPE_CHIP.other
+```
+
+Never use it to skip a reachable, simply-untested branch — write the test. An unjustified
+`v8 ignore` is a code-review failure. See ADR 0010 for the full coverage-escape-hatch policy.
