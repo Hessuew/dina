@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { LandingAboutSection } from '@/components/landing/about'
+import { LandingAboutSection } from '@/components/landing/about/about'
 import { LandingCourseShowcase } from '@/components/landing/courses'
 import { LandingHeroEditorial } from '@/components/landing/hero'
 import { LandingMarksSection } from '@/components/landing/marks'

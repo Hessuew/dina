@@ -127,35 +127,25 @@ function UserText({
 function NavUserTrigger({
   user,
   initials,
-  isDark,
   className,
   ...props
 }: {
   user: NavUserData
   initials: string
-  isDark: boolean
 } & React.ComponentProps<typeof SidebarMenuButton>) {
   return (
     <SidebarMenuButton
       size="lg"
       tooltip="Account settings"
       className={cn(
-        'rounded-none border transition-all',
-        isDark
-          ? 'border-white/8 bg-[#1A1716]/60 text-[#D6CCBE] hover:border-[#C5A059]/30 hover:bg-[#1A1716] hover:text-[#F8F4EC] data-[state=open]:border-[#C5A059]/40 data-[state=open]:bg-[#1A1716]'
-          : 'border-[#1A1A1A]/10 bg-[#EDE8DE]/60 text-[#4E463D] hover:border-[#9B7A41]/30 hover:bg-[#EDE8DE] hover:text-[#1C1815] data-[state=open]:border-[#9B7A41]/40 data-[state=open]:bg-[#EDE8DE]',
+        'rounded-none border border-white/8 bg-[#1A1716]/60 text-[#D6CCBE] transition-all hover:border-[#C5A059]/30 hover:bg-[#1A1716] hover:text-[#F8F4EC] data-[state=open]:border-[#C5A059]/40 data-[state=open]:bg-[#1A1716]',
         className,
       )}
       {...props}
     >
-      <UserAvatar user={user} initials={initials} isDark={isDark} />
-      <UserText user={user} isDark={isDark} compact />
-      <ChevronsUpDown
-        className={cn(
-          'ml-auto size-4',
-          isDark ? 'text-[#8E816D]' : 'text-[#5E5549]',
-        )}
-      />
+      <UserAvatar user={user} initials={initials} isDark={true} />
+      <UserText user={user} isDark={true} compact />
+      <ChevronsUpDown className="ml-auto size-4 text-[#8E816D]" />
     </SidebarMenuButton>
   )
 }
@@ -187,26 +177,20 @@ function NavUserMenuItem({
 function NavUserMenuContent({
   user,
   initials,
-  isDark,
   isMobile,
   onOpenProfile,
   onLogoutClick,
 }: {
   user: NavUserData
   initials: string
-  isDark: boolean
   isMobile: boolean
   onOpenProfile: () => void
   onLogoutClick: () => void
 }) {
+  const isDark = true
   return (
     <DropdownMenuContent
-      className={cn(
-        'w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-none border shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]',
-        isDark
-          ? 'border-white/10 bg-[#151515] text-[#F8F4EC]'
-          : 'border-[#1A1A1A]/12 bg-[#F8F4EC] text-[#1C1815]',
-      )}
+      className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-none border border-white/10 bg-[#151515] text-[#F8F4EC] shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]"
       side={isMobile ? 'bottom' : 'right'}
       align="end"
       sideOffset={4}
@@ -218,38 +202,24 @@ function NavUserMenuContent({
             <UserText user={user} isDark={isDark} />
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator
-          className={isDark ? 'bg-white/8' : 'bg-[#1A1A1A]/10'}
-        />
+        <DropdownMenuSeparator className="bg-white/8" />
         <NavUserMenuItem isDark={isDark} onClick={onOpenProfile}>
           <AnimateIcon
             animateOnHover
             className="flex h-full w-full flex-row items-center gap-2 py-2"
           >
-            <BadgeCheck
-              className={cn(
-                'size-4 shrink-0 group-hover/button:text-[#C5A059] group-focus/button:text-[#C5A059]',
-                isDark ? 'text-[#C5A059]!' : 'text-[#9B7A41]!',
-              )}
-            />
+            <BadgeCheck className="size-4 shrink-0 text-[#C5A059]! group-hover/button:text-[#C5A059] group-focus/button:text-[#C5A059]" />
             My Profile
           </AnimateIcon>
         </NavUserMenuItem>
-        <DropdownMenuSeparator
-          className={isDark ? 'bg-white/8' : 'bg-[#1A1A1A]/10'}
-        />
+        <DropdownMenuSeparator className="bg-white/8" />
         <Link onClick={onLogoutClick} to="/logout">
           <NavUserMenuItem isDark={isDark}>
             <AnimateIcon
               animateOnHover
               className="flex h-full w-full flex-row items-center gap-2 py-2"
             >
-              <LogOut
-                className={cn(
-                  'size-4 shrink-0',
-                  isDark ? 'text-[#C5A059]!' : 'text-[#9B7A41]!',
-                )}
-              />
+              <LogOut className="size-4 shrink-0 text-[#C5A059]!" />
               Log out
             </AnimateIcon>
           </NavUserMenuItem>
@@ -259,11 +229,7 @@ function NavUserMenuContent({
   )
 }
 
-export function NavUser({
-  user,
-  onProfileUpdate,
-  variant = 'dark',
-}: NavUserProps) {
+export function NavUser({ user, onProfileUpdate }: NavUserProps) {
   const { isMobile, setOpen } = useSidebar()
   const [profileModalOpen, setProfileModalOpen] = useState(false)
 
@@ -272,7 +238,6 @@ export function NavUser({
   }
 
   const initials = getInitials(user)
-  const isDark = variant === 'dark'
 
   return (
     <>
@@ -280,18 +245,11 @@ export function NavUser({
         <SidebarMenuItem>
           <DropdownMenu>
             <DropdownMenuTrigger
-              render={
-                <NavUserTrigger
-                  user={user}
-                  initials={initials}
-                  isDark={isDark}
-                />
-              }
+              render={<NavUserTrigger user={user} initials={initials} />}
             />
             <NavUserMenuContent
               user={user}
               initials={initials}
-              isDark={isDark}
               isMobile={isMobile}
               onOpenProfile={() => setProfileModalOpen(true)}
               onLogoutClick={() => setOpen(false)}

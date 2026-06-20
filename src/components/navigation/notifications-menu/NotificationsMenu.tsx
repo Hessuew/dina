@@ -220,7 +220,7 @@ function NotificationsList({
   )
 }
 
-export function NotificationsMenu({ variant }: { variant: 'light' | 'dark' }) {
+export function NotificationsMenu() {
   const { isMobile, setOpen, state } = useSidebar()
   const [open, setOpenDropdown] = useState(false)
   const [groups, setGroups] = useState<Array<PostNotificationGroup>>([])
@@ -228,7 +228,6 @@ export function NotificationsMenu({ variant }: { variant: 'light' | 'dark' }) {
   const pollRef = useRef<number | null>(null)
 
   const shouldAnimate = unreadGroupCount > 0
-  const isDark = variant === 'dark'
   const isCollapsed = state === 'collapsed'
 
   const load = async () => {
@@ -298,7 +297,7 @@ export function NotificationsMenu({ variant }: { variant: 'light' | 'dark' }) {
           <DropdownMenuTrigger
             render={
               <NotificationTriggerButton
-                isDark={isDark}
+                isDark={true}
                 isCollapsed={isCollapsed}
                 shouldAnimate={shouldAnimate}
                 displayUnreadCount={displayUnreadCount}
@@ -306,25 +305,22 @@ export function NotificationsMenu({ variant }: { variant: 'light' | 'dark' }) {
             }
           />
           <DropdownMenuContent
-            className={cn(
-              'min-w-80 rounded-none border p-0 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]',
-              isDark
-                ? 'border-white/10 bg-[#151515] text-[#F8F4EC]'
-                : 'border-[#1A1A1A]/12 bg-[#F8F4EC] text-[#1C1815]',
-            )}
+            className={
+              'shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]border-white/10 min-w-80 rounded-none border bg-[#151515] p-0 text-[#F8F4EC]'
+            }
             side={isMobile ? 'bottom' : 'right'}
             align="end"
             sideOffset={4}
           >
             <NotificationMenuHeader
-              isDark={isDark}
+              isDark={true}
               shouldAnimate={shouldAnimate}
               unreadGroupCount={unreadGroupCount}
               onMarkAllRead={handleMarkAllRead}
             />
             <NotificationsList
               groups={groups}
-              isDark={isDark}
+              isDark={true}
               onOpenGroup={(group) => {
                 if (group.unreadCount > 0) handleMarkGroupRead(group)
                 if (isMobile) setOpen(false)

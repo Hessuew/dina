@@ -1,5 +1,14 @@
 import { Trash2Icon } from 'lucide-react'
 import { useEffect } from 'react'
+import {
+  buildZoomLinkPayload,
+  getZoomLinkDialogConfig,
+  getZoomLinkInitialValues,
+  resolveZoomLink,
+} from './zoom-link-dialog.domain'
+import type { ZoomLinkDialogState } from './zoom-link-dialog.domain'
+import type { ZoomLinkSection } from '@/utils/zoomLink'
+import { createZoomLinkSchema } from '@/schemas/zoomLink.schema'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,16 +35,8 @@ import {
   deleteZoomLink,
   updateZoomLink,
 } from '@/utils/zoomLink'
-import { createZoomLinkSchema } from '@/schemas/zoomLink.schema'
-import {
-  buildZoomLinkPayload,
-  getZoomLinkDialogConfig,
-  getZoomLinkInitialValues,
-  resolveZoomLink,
-} from './zoom-link-dialog/zoom-link-dialog.domain'
-import type { ZoomLinkDialogState } from './zoom-link-dialog/zoom-link-dialog.domain'
-import type { ZoomLinkSection } from '@/utils/zoomLink'
-export type { ZoomLinkDialogState } from './zoom-link-dialog/zoom-link-dialog.domain'
+
+export type { ZoomLinkDialogState } from './zoom-link-dialog.domain'
 
 type ZoomCourse = { id: string; title: string }
 
