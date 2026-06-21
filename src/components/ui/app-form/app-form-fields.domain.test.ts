@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getFirstError } from './app-form/app-form-fields.domain'
+import { getFirstError } from './app-form-fields.domain'
 
 describe('getFirstError', () => {
   it('returns undefined when there are no errors', () => {
