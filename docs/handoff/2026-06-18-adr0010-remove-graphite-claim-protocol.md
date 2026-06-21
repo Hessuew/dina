@@ -84,15 +84,15 @@ So multiple agents (local or cloud) can pay down findings at once without collid
 
 ### Summary of what changed and why
 
-| Old text | New text | Reason |
-|---|---|---|
-| Lines 263–266: `"The only git you need is the reservation commit (step 2) and, **when parallel agents may be active**, the \`origin/main\` refresh in step 1."` | `"No git operations are needed for claiming."` | Remove all git references |
-| Lines 269–274: mentions "purely local Graphite stack", `origin/main` landing requirement, "No reservation commit = do not start." | "pure local changes", origin/main requirement removed, "No row flip = do not start." | Remove Graphite + commit requirement |
-| Lines 276–278: entire "A claim only counts once it's on `origin/main`." callout | *(deleted)* | No longer relevant — no push required |
-| Lines 312–315: `origin/main` in stale-row callout, commit message example | Remove `origin/main` qualifier, remove commit message example | No commits in this workflow |
-| Lines 319–331: Step 1 (origin/main refresh), Step 2 (commit + push to origin/main) | Step 1 deleted; new Step 1 = flip row, no commit | Core change |
-| Lines 332–333: Step 3 (push rejection / rebase) | *(deleted)* | No push = no rejection |
-| Steps 4→2, 5→3 | Renumbered | Steps 1 and 3 removed |
+| Old text                                                                                                                                                        | New text                                                                             | Reason                                |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------- |
+| Lines 263–266: `"The only git you need is the reservation commit (step 2) and, **when parallel agents may be active**, the \`origin/main\` refresh in step 1."` | `"No git operations are needed for claiming."`                                       | Remove all git references             |
+| Lines 269–274: mentions "purely local Graphite stack", `origin/main` landing requirement, "No reservation commit = do not start."                               | "pure local changes", origin/main requirement removed, "No row flip = do not start." | Remove Graphite + commit requirement  |
+| Lines 276–278: entire "A claim only counts once it's on `origin/main`." callout                                                                                 | _(deleted)_                                                                          | No longer relevant — no push required |
+| Lines 312–315: `origin/main` in stale-row callout, commit message example                                                                                       | Remove `origin/main` qualifier, remove commit message example                        | No commits in this workflow           |
+| Lines 319–331: Step 1 (origin/main refresh), Step 2 (commit + push to origin/main)                                                                              | Step 1 deleted; new Step 1 = flip row, no commit                                     | Core change                           |
+| Lines 332–333: Step 3 (push rejection / rebase)                                                                                                                 | _(deleted)_                                                                          | No push = no rejection                |
+| Steps 4→2, 5→3                                                                                                                                                  | Renumbered                                                                           | Steps 1 and 3 removed                 |
 
 ## Verification
 

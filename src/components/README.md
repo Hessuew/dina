@@ -16,7 +16,7 @@ This folder contains:
   - Shared UI primitives, largely shadcn-style components.
   - These are the building blocks used across routes and feature components.
   - Includes `DeleteConfirmDialog` for standardized delete confirmation flows.
-  - Includes `FormDialog` for standardized form dialog structure with background styling, mode-based labels, and default footer with Cancel/Submit buttons.
+  - Includes `FormDialog` for standardized form dialog structure with background styling, mode-based labels, one owned scroll body, and default footer with Cancel/Submit buttons. Pass form contents directly as children; do not wrap them in `DialogBody`.
   - Includes `StatusChip` for standardized status badges with auto-capitalization, size variants (sm/md), and strict design system color tokens. Variants: published, draft, closed, submitted, graded, not-submitted.
   - Includes `app-form-fields.tsx` — TanStack Form-aware field components (`TextField`, `NumberField`, `TextAreaField`, `SelectField`, `SwitchField`) that read from `useFieldContext()` internally and render existing DINA design-system primitives. Use these inside `form.AppField` render-prop children.
 

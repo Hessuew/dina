@@ -132,6 +132,8 @@ describe('extractJson', () => {
   })
 
   it('wraps JSON syntax errors with a parse-failure message', () => {
-    expect(() => extractJson('{not valid json}')).toThrow(/^Failed to parse JSON:/u)
+    expect(() => extractJson('{not valid json}')).toThrow(
+      /^Failed to parse JSON:/u,
+    )
   })
 })

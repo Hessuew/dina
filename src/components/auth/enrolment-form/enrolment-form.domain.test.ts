@@ -1,9 +1,62 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  buildEnrolmentSubmissionData,
   resolveEnrolmentKeyNavigation,
   runEnrolmentSuccessEffects,
   validateEnrolmentYear,
 } from './enrolment-form.domain'
+import type { EnrolmentFormValues } from './enrolment-form.domain'
+
+const FULL_VALUES: EnrolmentFormValues = {
+  fullLegalName: 'John Doe',
+  preferredName: 'John',
+  email: 'john@example.com',
+  yearOfBirth: '1996',
+  gender: 'male',
+  nationalityCitizenship: 'Finnish',
+  phoneWhatsApp: '+358 40 123 4567',
+  currentCity: 'Helsinki',
+  currentCountry: 'Finland',
+  churchAffiliations: 'Some church',
+  aboutYourself: 'About me',
+  expectationsAlignment: 'My expectations',
+}
+
+describe('buildEnrolmentSubmissionData', () => {
+  it('maps all provided values, coercing year and keeping optional text', () => {
+    expect(buildEnrolmentSubmissionData(FULL_VALUES)).toEqual({
+      fullLegalName: 'John Doe',
+      preferredName: 'John',
+      email: 'john@example.com',
+      yearOfBirth: 1996,
+      gender: 'male',
+      nationalityCitizenship: 'Finnish',
+      phoneWhatsApp: '+358 40 123 4567',
+      currentCity: 'Helsinki',
+      currentCountry: 'Finland',
+      churchAffiliations: 'Some church',
+      aboutYourself: 'About me',
+      expectationsAlignment: 'My expectations',
+    })
+  })
+
+  it('converts blank/whitespace optional fields to undefined', () => {
+    const result = buildEnrolmentSubmissionData({
+      ...FULL_VALUES,
+      preferredName: '   ',
+      nationalityCitizenship: '',
+      currentCity: '',
+      currentCountry: '  ',
+      churchAffiliations: '',
+    })
+
+    expect(result.preferredName).toBeUndefined()
+    expect(result.nationalityCitizenship).toBeUndefined()
+    expect(result.currentCity).toBeUndefined()
+    expect(result.currentCountry).toBeUndefined()
+    expect(result.churchAffiliations).toBeUndefined()
+  })
+})
 
 describe('resolveEnrolmentKeyNavigation', () => {
   it('returns none when target is a textarea', () => {

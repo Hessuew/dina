@@ -5,7 +5,7 @@
 
 ## Context
 
-ADR 0010 paid down **fallow CRAP** to near-zero. The next quality axis is **unit size** —
+The next quality axis is **unit size** —
 functions whose body exceeds **60 lines of code**. `docs/rules/complexity.md` already names
 "Body ≤ 60 lines" as a target and `docs/rules/README.md` lists **unit-size** as a candidate
 rule; this ADR promotes it to an enforced rule and provides the paydown playbook, exactly as
@@ -16,7 +16,7 @@ Fallow surfaces unit size through `bunx fallow audit` (**not** `health`):
 - **`complexity.large_functions`** — a whole-repo list (`functions_analyzed: 2124`) of every
   function over 60 LOC as `{ path, name, line, line_count }`. This is the worklist.
 - **`vital_signs.unit_size_profile`** — the score: `low_risk 75.1 / medium_risk 13 /
-  high_risk 7.1 / very_high_risk 4.8`, plus `functions_over_60_loc_per_k: 47.6`.
+high_risk 7.1 / very_high_risk 4.8`, plus `functions_over_60_loc_per_k: 47.6`.
 
 **Baseline (2026-06-20): 101 large functions — 75 production, 26 in test files.** Sizes run
 443 → 62 LOC. Only **9 of the 75 overlap a CRAP finding**; the other ~66 are **size-only**, so
@@ -30,7 +30,9 @@ render tests). The canonical example is `EnrolmentForm`
 (`src/components/auth/enrolment-form/enrolment-form.tsx`, **443 LOC**): its logic was already
 extracted to `enrolment-form.domain.ts` for CRAP, yet it is still 443 lines — entirely from
 the `renderedFields` JSX map, `pageShell`, and step-rendering markup. Coverage cannot shrink
-it; only pulling the JSX into named sub-components can.
+it; only pulling the JSX into named sub-components can. It is now **done** via the canonical
+form pattern below — six per-step `withForm` sections dispatched by a thin body (see
+[Form targets](#form-targets--decompose-into-per-stepper-section-withform-components-canonical)).
 
 ## Rules
 
@@ -77,6 +79,51 @@ Behaviour must be preserved: a JSX extraction is a mechanical cut (move markup i
 pass the props it reads). Any extracted **logic** stays covered at 100% via its `domain/` test
 (the `src/utils/**/domain/**`, `src/hooks/**/domain/**`, and `src/components/**/*.domain.ts`
 coverage roots in `vitest.config.ts`).
+
+### Form targets — decompose into per-step/per-section `withForm` components (canonical)
+
+Multi-field forms built on the repo's TanStack Form hook (`useAppForm` / `withForm` from
+`src/hooks/form.ts`) are the largest unit-size targets, and a flat JSX extraction (one big
+`render` arrow) does **not** reduce the count — it just relocates the bulk. The **canonical**
+decomposition for form targets is **per-step (or per-section) `withForm` components**, one
+small typed section per logical group of fields, matching the established repo convention in
+`EventDialog`/`CourseDialog`:
+
+```tsx
+const IdentityStepFields = withForm({
+  defaultValues: ENROLMENT_DEFAULT_VALUES,
+  render: ({ form }) => (
+    /* only this step's <form.AppField> markup */
+  ),
+})
+// …one per step: Contact, Location, Church, Story, Roof
+```
+
+The shell renders the active section by dispatching on the step/section id:
+
+```tsx
+{stepConfig.id === 'identity' && <IdentityStepFields form={form} />}
+{stepConfig.id === 'contact' && <ContactStepFields form={form} />}
+// …
+```
+
+Rules for this pattern:
+
+- **One `withForm` component per step/section**, each well under 60 LOC. Dispatch them from a
+  thin body component (itself a `withForm` wrapper) on the step/section id.
+- **Do not** add `'use no memo'` to these sections — `withForm` owns the form reactivity, so
+  they are **not** stable-ref consumers in the `react-compiler-memo` sense (the existing
+  `withForm` components in the repo carry no directive). The pitfall below applies only to
+  hand-rolled sub-components that receive a stable mutable instance (e.g. a TanStack `table`).
+- **Route the submission/derivation logic to `domain/`** — the value→payload builder (e.g.
+  `buildEnrolmentSubmissionData`), key-navigation resolution, and success effects go into the
+  colocated `*.domain.ts` and are unit-tested at 100%; the shell only orchestrates.
+- The reference implementation is `EnrolmentForm`
+  (`src/components/auth/enrolment-form/enrolment-form.tsx`): six per-step `withForm` sections
+  (`IdentityStepFields` … `RoofStepFields`) dispatched by `EnrolmentFormBody`, with
+  `useEnrolmentStepNavigation` owning step state and `enrolment-form.domain.ts` owning the
+  logic. Apply the same shape to the other form targets in the ledger (`SignupForm`,
+  `ResetPasswordForm`, dialog forms, etc.).
 
 ### React Compiler pitfall — stable-ref consumers
 
@@ -173,7 +220,7 @@ On completion: flip to `✅ done`, replace `Claimed at` with the completion date
 sub-components extracted, and decrement **Current open** below. Release an abandoned claim by
 flipping back to `⬜ todo` and clearing `Claimed at` to `—`.
 
-**Current open:** 75 (29 very-high / 15 high / 7 med / 24 low)
+**Current open:** 74 (28 very-high / 15 high / 7 med / 24 low)
 
 #### Ledger
 
@@ -182,83 +229,83 @@ Pre-populated from the `bunx fallow audit` snapshot (2026-06-20), production fun
 you work. `LOC` and `Tier` are the snapshot line count and size band. `File / site` is
 `path:line`.
 
-| Status  | LOC | Tier      | Target (function)              | File / site                                                                              | Sub-components extracted | Claimed at |
-| ------- | --- | --------- | ------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------ | ---------- |
-| ⬜ todo | 443 | very-high | `EnrolmentForm`                | `src/components/auth/enrolment-form/enrolment-form.tsx:128`                               | —                        | —          |
-| ⬜ todo | 395 | very-high | `SignupForm`                   | `src/components/auth/signup-form/signup-form.tsx:51`                                      | —                        | —          |
-| ⬜ todo | 355 | very-high | `ProfileModal`                 | `src/components/dialog/profile-modal/ProfileModal.tsx:51`                                 | —                        | —          |
-| ⬜ todo | 324 | very-high | `AnimateIcon`                  | `src/components/animate-ui/icons/icon.tsx:129`                                            | —                        | —          |
-| ⬜ todo | 296 | very-high | `MediaDialog`                  | `src/components/dialog/media-dialog/MediaDialog.tsx:269`                                  | —                        | —          |
-| ⬜ todo | 268 | very-high | `PostsComponent`               | `src/routes/_authed/posts.tsx:81`                                                         | —                        | —          |
-| ⬜ todo | 267 | very-high | `LandingLecturerGemsSection`   | `src/components/landing/lecturers.tsx:405`                                                | —                        | —          |
-| ⬜ todo | 255 | very-high | `EvaluationOverlay`            | `src/components/enrollment/evaluation-overlay/EvaluationOverlay.tsx:327`                  | —                        | —          |
-| ⬜ todo | 246 | very-high | `ZoomLinkDialog`               | `src/components/dialog/zoom-link-dialog/ZoomLinkDialog.tsx:54`                            | —                        | —          |
-| ⬜ todo | 214 | very-high | `ResetPasswordForm`            | `src/components/auth/reset-password-form.tsx:33`                                          | —                        | —          |
-| ⬜ todo | 208 | very-high | `CalendarComponent`            | `src/routes/_authed/calendar.tsx:75`                                                      | —                        | —          |
-| ⬜ todo | 208 | very-high | `EnrollmentsPage`              | `src/routes/_authed/enrollments/index.tsx:63`                                             | —                        | —          |
-| ⬜ todo | 198 | very-high | `AssignmentDetailComponent`    | `src/routes/_authed/assignments/$assignmentId.tsx:96`                                     | —                        | —          |
-| ⬜ todo | 197 | very-high | `StudentDetailComponent`       | `src/routes/_authed/students/$studentId.tsx:27`                                           | —                        | —          |
-| ⬜ todo | 193 | very-high | `PostCard`                     | `src/components/post/post-card/PostCard.tsx:447`                                          | —                        | —          |
-| ⬜ todo | 172 | very-high | `EnrollmentDetailPage`         | `src/routes/_authed/enrollments/$enrollmentId.tsx:62`                                     | —                        | —          |
-| ⬜ todo | 169 | very-high | `AssignmentDialog`             | `src/components/dialog/assignment-dialog/AssignmentDialog.tsx:288`                        | —                        | —          |
-| ⬜ todo | 152 | very-high | `LandingCourseShowcase`        | `src/components/landing/courses.tsx:111`                                                  | —                        | —          |
-| ⬜ todo | 152 | very-high | `CourseDetailComponent`        | `src/routes/_authed/courses/$courseId.tsx:55`                                             | —                        | —          |
-| ⬜ todo | 151 | very-high | `LandingAboutSection`          | `src/components/landing/about/about.tsx:101`                                              | —                        | —          |
-| ⬜ todo | 143 | very-high | `LandingTestimonialsSection`   | `src/components/landing/testimonials.tsx:177`                                             | —                        | —          |
-| ⬜ todo | 141 | very-high | `DataTable`                    | `src/components/table/DataTable.tsx:467`                                                  | —                        | —          |
-| ⬜ todo | 137 | very-high | `PdfViewer`                    | `src/components/library/PdfViewer.tsx:17`                                                 | —                        | —          |
-| ⬜ todo | 133 | very-high | `LessonDialog`                 | `src/components/dialog/lesson-dialog/LessonDialog.tsx:29`                                 | —                        | —          |
-| ⬜ todo | 131 | very-high | `<arrow>`                      | `src/components/animate-ui/icons/icon.tsx:248`                                            | —                        | —          |
-| ⬜ todo | 130 | very-high | `CalendarView`                 | `src/components/view/CalendarView.tsx:18`                                                 | —                        | —          |
-| ⬜ todo | 123 | very-high | `CourseDialog`                 | `src/components/dialog/course-dialog/CourseDialog.tsx:259`                                | —                        | —          |
-| ⬜ todo | 120 | very-high | `render`                       | `src/components/dialog/course-dialog/CourseDialog.tsx:137`                                | —                        | —          |
-| ⬜ todo | 120 | very-high | `LandingMarksSection`          | `src/components/landing/marks.tsx:200`                                                    | —                        | —          |
-| ⬜ todo | 118 | high      | `CommentItem`                  | `src/components/post/post-card/PostCard.tsx:788`                                          | —                        | —          |
-| ⬜ todo | 114 | high      | `LessonDetailComponent`        | `src/routes/_authed/lessons/$lessonId.tsx:87`                                             | —                        | —          |
-| ⬜ todo | 113 | high      | `NotificationsMenu`            | `src/components/navigation/notifications-menu/NotificationsMenu.tsx:223`                  | —                        | —          |
-| ⬜ todo | 111 | high      | `LandingOfficialInfo`          | `src/components/landing/official-info.tsx:10`                                             | —                        | —          |
-| ⬜ todo | 109 | high      | `EventsComponent`              | `src/routes/_authed/events.tsx:66`                                                        | —                        | —          |
-| ⬜ todo | 108 | high      | `PaginationFooter`             | `src/components/table/DataTable.tsx:358`                                                  | —                        | —          |
-| ⬜ todo | 103 | high      | `StudentSubmissionForm`        | `src/components/assignment/assignment-detail-sections/AssignmentDetailSections.tsx:189`   | —                        | —          |
-| ⬜ todo | 100 | high      | `SidebarProvider`              | `src/components/ui/sidebar/Sidebar.tsx:60`                                                | —                        | —          |
-| ⬜ todo | 100 | high      | `Sidebar`                      | `src/components/ui/sidebar/Sidebar.tsx:161`                                               | —                        | —          |
-| ⬜ todo | 100 | high      | `<arrow>`                      | `src/routes/_authed/students/$studentId.tsx:109`                                          | —                        | —          |
-| ⬜ todo | 99  | high      | `LibraryComponent`             | `src/routes/_authed/library/index.tsx:184`                                               | —                        | —          |
-| ⬜ todo | 98  | high      | `render`                       | `src/components/dialog/event-dialog/EventDialog.tsx:199`                                  | —                        | —          |
-| ⬜ todo | 97  | high      | `AssignmentCard`               | `src/components/view/AssignmentCard.tsx:14`                                               | —                        | —          |
-| ⬜ todo | 91  | high      | `AssignmentsView`              | `src/components/view/assignments-view/AssignmentsView.tsx:51`                             | —                        | —          |
-| ⬜ todo | 90  | high      | `FormDialog`                   | `src/components/ui/form-dialog/FormDialog.tsx:36`                                         | —                        | —          |
-| ⬜ todo | 86  | med       | `LibraryBody`                  | `src/routes/_authed/library/index.tsx:97`                                                | —                        | —          |
-| ⬜ todo | 85  | med       | `DocumentFileControl`          | `src/components/dialog/media-dialog/MediaDialog.tsx:119`                                  | —                        | —          |
-| ⬜ todo | 81  | med       | `render`                       | `src/components/dialog/assignment-dialog/AssignmentDialog.tsx:205`                        | —                        | —          |
-| ⬜ todo | 81  | med       | `CommentComposer`              | `src/components/post/post-card/PostCard.tsx:909`                                          | —                        | —          |
-| ⬜ todo | 77  | med       | `EventPreviewModal`            | `src/components/dialog/event-preview-modal/EventPreviewModal.tsx:135`                     | —                        | —          |
-| ⬜ todo | 76  | med       | `IconWrapper`                  | `src/components/animate-ui/icons/icon.tsx:631`                                            | —                        | —          |
-| ⬜ todo | 75  | med       | `PostComposer`                 | `src/routes/_authed/posts.tsx:359`                                                        | —                        | —          |
-| ⬜ todo | 74  | low       | `MaterialsSection`             | `src/components/course/CourseDetailSections.tsx:182`                                      | —                        | —          |
-| ⬜ todo | 74  | low       | `GemLecturerCard`              | `src/components/landing/lecturers.tsx:256`                                                | —                        | —          |
-| ⬜ todo | 74  | low       | `TeachersView`                 | `src/components/view/TeachersView.tsx:10`                                                 | —                        | —          |
-| ⬜ todo | 74  | low       | `ZoomComponent`                | `src/routes/_authed/zoom.tsx:39`                                                          | —                        | —          |
-| ⬜ todo | 73  | low       | `LandingActiveItemNav`         | `src/components/landing/primitives/primitives.tsx:363`                                    | —                        | —          |
-| ⬜ todo | 73  | low       | `UpcomingAssignmentRow`        | `src/components/list/upcoming-assignments-list/UpcomingAssignmentRow.tsx:15`              | —                        | —          |
-| ⬜ todo | 72  | low       | `LessonActions`                | `src/components/course/CourseDetailSections.tsx:257`                                      | —                        | —          |
-| ⬜ todo | 72  | low       | `TeacherModal`                 | `src/components/dialog/teacher-modal/TeacherModal.tsx:79`                                 | —                        | —          |
-| ⬜ todo | 71  | low       | `EnrollmentDetails`            | `src/components/enrollment/enrollment-details/EnrollmentDetails.tsx:45`                   | —                        | —          |
-| ⬜ todo | 70  | low       | `SignupOtpPanel`               | `src/components/auth/signup-form/signup-form.tsx:501`                                     | —                        | —          |
-| ⬜ todo | 70  | low       | `NoteEditor`                   | `src/components/enrollment/evaluation-overlay/EvaluationOverlay.tsx:158`                  | —                        | —          |
-| ⬜ todo | 70  | low       | `LandingScriptureSectionHeader`| `src/components/landing/primitives/primitives.tsx:292`                                    | —                        | —          |
-| ⬜ todo | 69  | low       | `CourseCard`                   | `src/components/card/course-card/CourseCard.tsx:266`                                      | —                        | —          |
-| ⬜ todo | 69  | low       | `LessonsSection`               | `src/components/course/CourseDetailSections.tsx:429`                                      | —                        | —          |
-| ⬜ todo | 69  | low       | `CommentsSection`              | `src/components/post/post-card/PostCard.tsx:317`                                          | —                        | —          |
-| ⬜ todo | 68  | low       | `MediaDetailComponent`         | `src/routes/_authed/library/$mediaId.tsx:18`                                             | —                        | —          |
-| ⬜ todo | 67  | low       | `EventViewMode`                | `src/components/dialog/event-dialog/EventDialog.tsx:129`                                  | —                        | —          |
-| ⬜ todo | 67  | low       | `AppSidebar`                   | `src/components/navigation/AppSidebar.tsx:196`                                            | —                        | —          |
-| ⬜ todo | 66  | low       | `LandingLeadershipSection`     | `src/components/landing/leadership.tsx:132`                                               | —                        | —          |
-| ⬜ todo | 63  | low       | `ThumbnailControl`             | `src/components/dialog/media-dialog/MediaDialog.tsx:205`                                  | —                        | —          |
-| ⬜ todo | 63  | low       | `LandingQASection`             | `src/components/landing/qa.tsx:161`                                                       | —                        | —          |
-| ⬜ todo | 63  | low       | `CourseListInternal`           | `src/components/list/CourseList.tsx:48`                                                   | —                        | —          |
-| ⬜ todo | 62  | low       | `ThumbnailUploadField`         | `src/components/dialog/course-dialog/CourseDialog.tsx:60`                                 | —                        | —          |
-| ⬜ todo | 62  | low       | `YouTubeBlockedFallback`       | `src/components/library/YouTubeEmbed.tsx:10`                                              | —                        | —          |
+| Status         | LOC | Tier      | Target (function)               | File / site                                                                             | Sub-components extracted | Claimed at        |
+| -------------- | --- | --------- | ------------------------------- | --------------------------------------------------------------------------------------- | ------------------------ | ----------------- |
+| ✅ done        | 443 | very-high | `EnrolmentForm`                 | `src/components/auth/enrolment-form/enrolment-form.tsx:128`                             | `IdentityStepFields`, `ContactStepFields`, `LocationStepFields`, `ChurchStepFields`, `StoryStepFields`, `RoofStepFields` (per-step `withForm` sections), `EnrolmentFormBody`, `EnrolmentPageFrame`, `EnrolmentSubmittedPanel`, `EnrolmentStepHeader`, `EnrolmentFooterNav`, `useEnrolmentStepNavigation` hook, `buildEnrolmentSubmissionData` domain | 2026-06-21 |
+| ⬜ todo        | 395 | very-high | `SignupForm`                    | `src/components/auth/signup-form/signup-form.tsx:51`                                    | —                        | —                 |
+| ⬜ todo        | 355 | very-high | `ProfileModal`                  | `src/components/dialog/profile-modal/ProfileModal.tsx:51`                               | —                        | —                 |
+| ⬜ todo        | 324 | very-high | `AnimateIcon`                   | `src/components/animate-ui/icons/icon.tsx:129`                                          | —                        | —                 |
+| ⬜ todo        | 296 | very-high | `MediaDialog`                   | `src/components/dialog/media-dialog/MediaDialog.tsx:269`                                | —                        | —                 |
+| ⬜ todo        | 268 | very-high | `PostsComponent`                | `src/routes/_authed/posts.tsx:81`                                                       | —                        | —                 |
+| ⬜ todo        | 267 | very-high | `LandingLecturerGemsSection`    | `src/components/landing/lecturers.tsx:405`                                              | —                        | —                 |
+| ⬜ todo        | 255 | very-high | `EvaluationOverlay`             | `src/components/enrollment/evaluation-overlay/EvaluationOverlay.tsx:327`                | —                        | —                 |
+| ⬜ todo        | 246 | very-high | `ZoomLinkDialog`                | `src/components/dialog/zoom-link-dialog/ZoomLinkDialog.tsx:54`                          | —                        | —                 |
+| ⬜ todo        | 214 | very-high | `ResetPasswordForm`             | `src/components/auth/reset-password-form.tsx:33`                                        | —                        | —                 |
+| ⬜ todo        | 208 | very-high | `CalendarComponent`             | `src/routes/_authed/calendar.tsx:75`                                                    | —                        | —                 |
+| ⬜ todo        | 208 | very-high | `EnrollmentsPage`               | `src/routes/_authed/enrollments/index.tsx:63`                                           | —                        | —                 |
+| ⬜ todo        | 198 | very-high | `AssignmentDetailComponent`     | `src/routes/_authed/assignments/$assignmentId.tsx:96`                                   | —                        | —                 |
+| ⬜ todo        | 197 | very-high | `StudentDetailComponent`        | `src/routes/_authed/students/$studentId.tsx:27`                                         | —                        | —                 |
+| ⬜ todo        | 193 | very-high | `PostCard`                      | `src/components/post/post-card/PostCard.tsx:447`                                        | —                        | —                 |
+| ⬜ todo        | 172 | very-high | `EnrollmentDetailPage`          | `src/routes/_authed/enrollments/$enrollmentId.tsx:62`                                   | —                        | —                 |
+| ⬜ todo        | 169 | very-high | `AssignmentDialog`              | `src/components/dialog/assignment-dialog/AssignmentDialog.tsx:288`                      | —                        | —                 |
+| ⬜ todo        | 152 | very-high | `LandingCourseShowcase`         | `src/components/landing/courses.tsx:111`                                                | —                        | —                 |
+| ⬜ todo        | 152 | very-high | `CourseDetailComponent`         | `src/routes/_authed/courses/$courseId.tsx:55`                                           | —                        | —                 |
+| ⬜ todo        | 151 | very-high | `LandingAboutSection`           | `src/components/landing/about/about.tsx:101`                                            | —                        | —                 |
+| ⬜ todo        | 143 | very-high | `LandingTestimonialsSection`    | `src/components/landing/testimonials.tsx:177`                                           | —                        | —                 |
+| ⬜ todo        | 141 | very-high | `DataTable`                     | `src/components/table/DataTable.tsx:467`                                                | —                        | —                 |
+| ⬜ todo        | 137 | very-high | `PdfViewer`                     | `src/components/library/PdfViewer.tsx:17`                                               | —                        | —                 |
+| ⬜ todo        | 133 | very-high | `LessonDialog`                  | `src/components/dialog/lesson-dialog/LessonDialog.tsx:29`                               | —                        | —                 |
+| ⬜ todo        | 131 | very-high | `<arrow>`                       | `src/components/animate-ui/icons/icon.tsx:248`                                          | —                        | —                 |
+| ⬜ todo        | 130 | very-high | `CalendarView`                  | `src/components/view/CalendarView.tsx:18`                                               | —                        | —                 |
+| ⬜ todo        | 123 | very-high | `CourseDialog`                  | `src/components/dialog/course-dialog/CourseDialog.tsx:259`                              | —                        | —                 |
+| ⬜ todo        | 120 | very-high | `render`                        | `src/components/dialog/course-dialog/CourseDialog.tsx:137`                              | —                        | —                 |
+| ⬜ todo        | 120 | very-high | `LandingMarksSection`           | `src/components/landing/marks.tsx:200`                                                  | —                        | —                 |
+| ⬜ todo        | 118 | high      | `CommentItem`                   | `src/components/post/post-card/PostCard.tsx:788`                                        | —                        | —                 |
+| ⬜ todo        | 114 | high      | `LessonDetailComponent`         | `src/routes/_authed/lessons/$lessonId.tsx:87`                                           | —                        | —                 |
+| ⬜ todo        | 113 | high      | `NotificationsMenu`             | `src/components/navigation/notifications-menu/NotificationsMenu.tsx:223`                | —                        | —                 |
+| ⬜ todo        | 111 | high      | `LandingOfficialInfo`           | `src/components/landing/official-info.tsx:10`                                           | —                        | —                 |
+| ⬜ todo        | 109 | high      | `EventsComponent`               | `src/routes/_authed/events.tsx:66`                                                      | —                        | —                 |
+| ⬜ todo        | 108 | high      | `PaginationFooter`              | `src/components/table/DataTable.tsx:358`                                                | —                        | —                 |
+| ⬜ todo        | 103 | high      | `StudentSubmissionForm`         | `src/components/assignment/assignment-detail-sections/AssignmentDetailSections.tsx:189` | —                        | —                 |
+| ⬜ todo        | 100 | high      | `SidebarProvider`               | `src/components/ui/sidebar/Sidebar.tsx:60`                                              | —                        | —                 |
+| ⬜ todo        | 100 | high      | `Sidebar`                       | `src/components/ui/sidebar/Sidebar.tsx:161`                                             | —                        | —                 |
+| ⬜ todo        | 100 | high      | `<arrow>`                       | `src/routes/_authed/students/$studentId.tsx:109`                                        | —                        | —                 |
+| ⬜ todo        | 99  | high      | `LibraryComponent`              | `src/routes/_authed/library/index.tsx:184`                                              | —                        | —                 |
+| ⬜ todo        | 98  | high      | `render`                        | `src/components/dialog/event-dialog/EventDialog.tsx:199`                                | —                        | —                 |
+| ⬜ todo        | 97  | high      | `AssignmentCard`                | `src/components/view/AssignmentCard.tsx:14`                                             | —                        | —                 |
+| ⬜ todo        | 91  | high      | `AssignmentsView`               | `src/components/view/assignments-view/AssignmentsView.tsx:51`                           | —                        | —                 |
+| ⬜ todo        | 90  | high      | `FormDialog`                    | `src/components/ui/form-dialog/FormDialog.tsx:36`                                       | —                        | —                 |
+| ⬜ todo        | 86  | med       | `LibraryBody`                   | `src/routes/_authed/library/index.tsx:97`                                               | —                        | —                 |
+| ⬜ todo        | 85  | med       | `DocumentFileControl`           | `src/components/dialog/media-dialog/MediaDialog.tsx:119`                                | —                        | —                 |
+| ⬜ todo        | 81  | med       | `render`                        | `src/components/dialog/assignment-dialog/AssignmentDialog.tsx:205`                      | —                        | —                 |
+| ⬜ todo        | 81  | med       | `CommentComposer`               | `src/components/post/post-card/PostCard.tsx:909`                                        | —                        | —                 |
+| ⬜ todo        | 77  | med       | `EventPreviewModal`             | `src/components/dialog/event-preview-modal/EventPreviewModal.tsx:135`                   | —                        | —                 |
+| ⬜ todo        | 76  | med       | `IconWrapper`                   | `src/components/animate-ui/icons/icon.tsx:631`                                          | —                        | —                 |
+| ⬜ todo        | 75  | med       | `PostComposer`                  | `src/routes/_authed/posts.tsx:359`                                                      | —                        | —                 |
+| ⬜ todo        | 74  | low       | `MaterialsSection`              | `src/components/course/CourseDetailSections.tsx:182`                                    | —                        | —                 |
+| ⬜ todo        | 74  | low       | `GemLecturerCard`               | `src/components/landing/lecturers.tsx:256`                                              | —                        | —                 |
+| ⬜ todo        | 74  | low       | `TeachersView`                  | `src/components/view/TeachersView.tsx:10`                                               | —                        | —                 |
+| ⬜ todo        | 74  | low       | `ZoomComponent`                 | `src/routes/_authed/zoom.tsx:39`                                                        | —                        | —                 |
+| ⬜ todo        | 73  | low       | `LandingActiveItemNav`          | `src/components/landing/primitives/primitives.tsx:363`                                  | —                        | —                 |
+| ⬜ todo        | 73  | low       | `UpcomingAssignmentRow`         | `src/components/list/upcoming-assignments-list/UpcomingAssignmentRow.tsx:15`            | —                        | —                 |
+| ⬜ todo        | 72  | low       | `LessonActions`                 | `src/components/course/CourseDetailSections.tsx:257`                                    | —                        | —                 |
+| ⬜ todo        | 72  | low       | `TeacherModal`                  | `src/components/dialog/teacher-modal/TeacherModal.tsx:79`                               | —                        | —                 |
+| ⬜ todo        | 71  | low       | `EnrollmentDetails`             | `src/components/enrollment/enrollment-details/EnrollmentDetails.tsx:45`                 | —                        | —                 |
+| ⬜ todo        | 70  | low       | `SignupOtpPanel`                | `src/components/auth/signup-form/signup-form.tsx:501`                                   | —                        | —                 |
+| ⬜ todo        | 70  | low       | `NoteEditor`                    | `src/components/enrollment/evaluation-overlay/EvaluationOverlay.tsx:158`                | —                        | —                 |
+| ⬜ todo        | 70  | low       | `LandingScriptureSectionHeader` | `src/components/landing/primitives/primitives.tsx:292`                                  | —                        | —                 |
+| ⬜ todo        | 69  | low       | `CourseCard`                    | `src/components/card/course-card/CourseCard.tsx:266`                                    | —                        | —                 |
+| ⬜ todo        | 69  | low       | `LessonsSection`                | `src/components/course/CourseDetailSections.tsx:429`                                    | —                        | —                 |
+| ⬜ todo        | 69  | low       | `CommentsSection`               | `src/components/post/post-card/PostCard.tsx:317`                                        | —                        | —                 |
+| ⬜ todo        | 68  | low       | `MediaDetailComponent`          | `src/routes/_authed/library/$mediaId.tsx:18`                                            | —                        | —                 |
+| ⬜ todo        | 67  | low       | `EventViewMode`                 | `src/components/dialog/event-dialog/EventDialog.tsx:129`                                | —                        | —                 |
+| ⬜ todo        | 67  | low       | `AppSidebar`                    | `src/components/navigation/AppSidebar.tsx:196`                                          | —                        | —                 |
+| ⬜ todo        | 66  | low       | `LandingLeadershipSection`      | `src/components/landing/leadership.tsx:132`                                             | —                        | —                 |
+| ⬜ todo        | 63  | low       | `ThumbnailControl`              | `src/components/dialog/media-dialog/MediaDialog.tsx:205`                                | —                        | —                 |
+| ⬜ todo        | 63  | low       | `LandingQASection`              | `src/components/landing/qa.tsx:161`                                                     | —                        | —                 |
+| ⬜ todo        | 63  | low       | `CourseListInternal`            | `src/components/list/CourseList.tsx:48`                                                 | —                        | —                 |
+| ⬜ todo        | 62  | low       | `ThumbnailUploadField`          | `src/components/dialog/course-dialog/CourseDialog.tsx:60`                               | —                        | —                 |
+| ⬜ todo        | 62  | low       | `YouTubeBlockedFallback`        | `src/components/library/YouTubeEmbed.tsx:10`                                            | —                        | —                 |
 
 Add a new row per target if a later audit surfaces one. Leave the table as the live worklist;
 do not delete `✅ done` rows — they are the fix history.

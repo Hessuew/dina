@@ -29,9 +29,9 @@ describe('decideFocusFetch', () => {
   })
 
   it('does not fetch while the channel has not settled', () => {
-    expect(
-      decideFocusFetch({ ...base, loadedChannel: 'course-1' }),
-    ).toEqual({ fetch: false })
+    expect(decideFocusFetch({ ...base, loadedChannel: 'course-1' })).toEqual({
+      fetch: false,
+    })
   })
 
   it('does not fetch when the post is already loaded', () => {
@@ -41,9 +41,9 @@ describe('decideFocusFetch', () => {
   })
 
   it('does not fetch when this exact fetch was already issued', () => {
-    expect(
-      decideFocusFetch({ ...base, lastFetchKey: 'p1:general' }),
-    ).toEqual({ fetch: false })
+    expect(decideFocusFetch({ ...base, lastFetchKey: 'p1:general' })).toEqual({
+      fetch: false,
+    })
   })
 
   it('keys the fetch by post id and selected channel', () => {
@@ -81,15 +81,15 @@ describe('decideFocusScroll', () => {
   })
 
   it('does not scroll while the channel has not settled', () => {
-    expect(
-      decideFocusScroll({ ...base, loadedChannel: 'course-1' }),
-    ).toEqual({ scroll: false })
+    expect(decideFocusScroll({ ...base, loadedChannel: 'course-1' })).toEqual({
+      scroll: false,
+    })
   })
 
   it('does not scroll when this exact scroll was already performed', () => {
-    expect(
-      decideFocusScroll({ ...base, lastScrollKey: 'p1:general' }),
-    ).toEqual({ scroll: false })
+    expect(decideFocusScroll({ ...base, lastScrollKey: 'p1:general' })).toEqual(
+      { scroll: false },
+    )
   })
 })
 

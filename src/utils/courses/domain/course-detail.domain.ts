@@ -70,9 +70,9 @@ export function buildMediaDialogKey(
   return `${mode}-${item?.id}`
 }
 
-export function buildLessonInitialData<
-  T extends { id: string },
->(dialogItem: T | null | undefined): (T & { lessonId: string }) | undefined {
+export function buildLessonInitialData<T extends { id: string }>(
+  dialogItem: T | null | undefined,
+): (T & { lessonId: string }) | undefined {
   if (!dialogItem) return undefined
   return { ...dialogItem, lessonId: dialogItem.id }
 }

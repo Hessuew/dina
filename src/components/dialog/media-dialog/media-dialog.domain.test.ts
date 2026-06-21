@@ -275,13 +275,19 @@ describe('preflightDocumentUrl', () => {
 
   it('returns null when a file is picked even if an existing doc is present', () => {
     expect(
-      preflightDocumentUrl({ hasFile: true, existingDocUrl: 'https://cdn/old.pdf' }),
+      preflightDocumentUrl({
+        hasFile: true,
+        existingDocUrl: 'https://cdn/old.pdf',
+      }),
     ).toBeNull()
   })
 
   it('returns existing url when no file but existing doc is present', () => {
     expect(
-      preflightDocumentUrl({ hasFile: false, existingDocUrl: 'https://cdn/old.pdf' }),
+      preflightDocumentUrl({
+        hasFile: false,
+        existingDocUrl: 'https://cdn/old.pdf',
+      }),
     ).toEqual({ ok: true, url: 'https://cdn/old.pdf' })
   })
 
@@ -353,7 +359,12 @@ describe('buildMediaPayload', () => {
 
   it('maps all fields from the form value', () => {
     expect(
-      buildMediaPayload({ value, url: value.url, fileSize: undefined, courseId: 'c1' }),
+      buildMediaPayload({
+        value,
+        url: value.url,
+        fileSize: undefined,
+        courseId: 'c1',
+      }),
     ).toEqual({
       title: 'My Video',
       category: 'Faith',

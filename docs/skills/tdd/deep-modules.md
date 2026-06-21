@@ -27,6 +27,7 @@ From "A Philosophy of Software Design":
 ```
 
 When designing interfaces, ask:
+
 - Can I reduce the number of methods?
 - Can I simplify the parameters?
 - Can I hide more complexity inside?

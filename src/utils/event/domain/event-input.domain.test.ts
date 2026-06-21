@@ -6,14 +6,22 @@ const end = new Date('2026-01-01T11:00:00.000Z')
 
 describe('buildEventValues', () => {
   it('passes required fields through unchanged', () => {
-    const values = buildEventValues({ title: 'Exam', startTime: start, endTime: end })
+    const values = buildEventValues({
+      title: 'Exam',
+      startTime: start,
+      endTime: end,
+    })
     expect(values.title).toBe('Exam')
     expect(values.startTime).toBe(start)
     expect(values.endTime).toBe(end)
   })
 
   it('normalizes every omitted optional to null', () => {
-    const values = buildEventValues({ title: 'Exam', startTime: start, endTime: end })
+    const values = buildEventValues({
+      title: 'Exam',
+      startTime: start,
+      endTime: end,
+    })
     expect(values).toEqual({
       title: 'Exam',
       description: null,

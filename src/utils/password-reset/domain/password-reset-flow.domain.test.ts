@@ -118,7 +118,11 @@ describe('resolveValidResetUser', () => {
 
   it('rejects with the validity message when the token is expired', () => {
     const result = resolveValidResetUser(
-      { id: 'u1', resetTokenExpiresAt: at('2000-01-01T12:00:00Z'), resetTokenAttempts: 0 },
+      {
+        id: 'u1',
+        resetTokenExpiresAt: at('2000-01-01T12:00:00Z'),
+        resetTokenAttempts: 0,
+      },
       now,
     )
     expect(result.ok).toBe(false)

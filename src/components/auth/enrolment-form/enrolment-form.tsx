@@ -13,10 +13,11 @@ import { EnrolmentPageShell } from '@/components/auth/auth-layout'
 import { Button } from '@/components/ui/button'
 import { FieldDescription, FieldGroup } from '@/components/ui/field'
 import { SelectItem } from '@/components/ui/select'
-import { useAppForm } from '@/hooks/form'
+import { useAppForm, withForm } from '@/hooks/form'
 import { createEnrollment } from '@/utils/enrolment/enrollments'
 import { env } from '@/env'
 import {
+  buildEnrolmentSubmissionData,
   resolveEnrolmentKeyNavigation,
   runEnrolmentSuccessEffects,
   validateEnrolmentYear,
@@ -27,11 +28,6 @@ declare global {
     gtag?: (...args: Array<unknown>) => void
     fbq?: (...args: Array<unknown>) => void
   }
-}
-
-function optionalText(value: string): string | undefined {
-  const trimmed = value.trim()
-  return trimmed ? trimmed : undefined
 }
 
 function required({ value }: { value: string | number }) {
@@ -119,70 +115,30 @@ const STEPS = [
   },
 ] as const
 
+type EnrolmentStep = (typeof STEPS)[number]
 type EnrolmentFieldName = (typeof STEPS)[number]['fields'][number]
 
 interface EnrolmentFormProps {
   success?: boolean
 }
 
-export function EnrolmentForm({ success }: EnrolmentFormProps) {
-  const router = useRouter()
-  const [submitted, setSubmitted] = useState(success === true)
+interface EnrolmentStepNavigationOptions {
+  validateField: (
+    name: EnrolmentFieldName,
+  ) => ReadonlyArray<unknown> | Promise<ReadonlyArray<unknown>>
+  submit: () => void
+}
+
+function useEnrolmentStepNavigation({
+  validateField,
+  submit,
+}: EnrolmentStepNavigationOptions) {
   const [currentStep, setCurrentStep] = useState(0)
-
-  useEffect(() => {
-    runEnrolmentSuccessEffects({
-      success,
-      windowRef: typeof window !== 'undefined' ? window : undefined,
-      googleAdsId: env.VITE_GOOGLE_ADS_ID,
-      onSubmitted: () => setSubmitted(true),
-      navigate: () =>
-        void router.navigate({
-          to: '/enrolment',
-          search: { success: undefined },
-          replace: true,
-        }),
-    })
-  }, [success])
-
-  const createEnrollmentFn = useServerFn(createEnrollment)
-
-  const form = useAppForm({
-    defaultValues: ENROLMENT_DEFAULT_VALUES,
-    onSubmit: async ({ value }) => {
-      try {
-        await createEnrollmentFn({
-          data: {
-            fullLegalName: value.fullLegalName,
-            preferredName: optionalText(value.preferredName),
-            email: value.email,
-            yearOfBirth: Number(value.yearOfBirth),
-            gender: value.gender as 'male' | 'female',
-            nationalityCitizenship: optionalText(value.nationalityCitizenship),
-            phoneWhatsApp: value.phoneWhatsApp,
-            currentCity: optionalText(value.currentCity),
-            currentCountry: optionalText(value.currentCountry),
-            churchAffiliations: optionalText(value.churchAffiliations),
-            aboutYourself: value.aboutYourself,
-            expectationsAlignment: value.expectationsAlignment,
-          },
-        })
-
-        await router.navigate({ to: '/enrolment', search: { success: true } })
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Submission failed'
-        toast.error(message)
-      }
-    },
-  })
-
   const currentStepConfig = STEPS[currentStep]
 
   const validateCurrentStep = async (): Promise<boolean> => {
     const results = await Promise.all(
-      currentStepConfig.fields.map((fieldName) =>
-        form.validateField(fieldName, 'change'),
-      ),
+      currentStepConfig.fields.map(validateField),
     )
     const hasErrors = results.some((errors) => errors.length > 0)
     if (hasErrors) {
@@ -198,7 +154,7 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1)
     } else {
-      form.handleSubmit()
+      submit()
     }
   }
 
@@ -229,11 +185,21 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [currentStep, handleNext, handleBack])
 
-  const pageShell = (rightPanel: React.ReactNode) => (
+  return { currentStep, currentStepConfig, handleNext, handleBack }
+}
+
+function EnrolmentPageFrame({
+  stepConfig,
+  children,
+}: {
+  stepConfig: EnrolmentStep
+  children: React.ReactNode
+}) {
+  return (
     <EnrolmentPageShell
-      image={currentStepConfig.image}
-      imageAlt={currentStepConfig.title}
-      imageKey={currentStepConfig.id}
+      image={stepConfig.image}
+      imageAlt={stepConfig.title}
+      imageKey={stepConfig.id}
       label="Enrolment 2026"
       title="Apply for enrolment"
       quote={
@@ -243,36 +209,139 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
         </>
       }
     >
-      {rightPanel}
+      {children}
     </EnrolmentPageShell>
   )
+}
 
-  if (submitted) {
-    return pageShell(
-      <div className="space-y-5">
-        <div className="flex items-center gap-3">
-          <CheckCircle className="h-5 w-5 shrink-0 text-[#6FCF97]" />
-          <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#6FCF97] uppercase">
-            Application submitted
+function EnrolmentSubmittedPanel() {
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <CheckCircle className="h-5 w-5 shrink-0 text-[#6FCF97]" />
+        <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#6FCF97] uppercase">
+          Application submitted
+        </div>
+      </div>
+      <p className="text-sm leading-7 text-[#D6CCBE]">
+        Thank you for applying. We will review your application and be in touch.
+      </p>
+      <div className="h-px w-full bg-white/10" />
+      <Link
+        to="/"
+        className="inline-flex items-center gap-2 text-[0.68rem] font-medium tracking-[0.14em] text-[#9B8A73] uppercase transition-colors hover:text-[#C5A059]"
+      >
+        ← Back to home
+      </Link>
+    </div>
+  )
+}
+
+function EnrolmentStepHeader({
+  currentStep,
+  stepConfig,
+}: {
+  currentStep: number
+  stepConfig: EnrolmentStep
+}) {
+  return (
+    <div className="mb-8 flex items-start gap-4 lg:block">
+      <div className="relative h-20 w-20 shrink-0 overflow-hidden border border-white/10 lg:hidden">
+        <img
+          key={stepConfig.id}
+          src={stepConfig.image}
+          alt=""
+          className="animate-in fade-in h-full w-full object-cover duration-1500"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-linear-to-t from-black/44 to-transparent" />
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="mb-3 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+            Step {currentStep + 1} of {STEPS.length}
+          </div>
+          <div className="grid w-full grid-cols-6 gap-1 sm:flex sm:w-auto">
+            {STEPS.map((_, index) => (
+              <div
+                key={index}
+                className={`h-1 min-w-0 transition-colors duration-300 sm:w-8 ${
+                  index <= currentStep ? 'bg-[#C5A059]' : 'bg-white/20'
+                }`}
+              />
+            ))}
           </div>
         </div>
-        <p className="text-sm leading-7 text-[#D6CCBE]">
-          Thank you for applying. We will review your application and be in
-          touch.
-        </p>
-        <div className="h-px w-full bg-white/10" />
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-[0.68rem] font-medium tracking-[0.14em] text-[#9B8A73] uppercase transition-colors hover:text-[#C5A059]"
+        <h2
+          key={currentStep}
+          className="animate-in fade-in slide-in-from-right-8 font-serif text-2xl leading-tight text-[#F8F4EC] duration-500"
         >
-          ← Back to home
-        </Link>
-      </div>,
-    )
-  }
+          {stepConfig.title}
+        </h2>
+      </div>
+    </div>
+  )
+}
 
-  const renderedFields: Record<EnrolmentFieldName, React.ReactNode> = {
-    fullLegalName: (
+function EnrolmentFooterNav({
+  currentStep,
+  onBack,
+  onNext,
+}: {
+  currentStep: number
+  onBack: () => void
+  onNext: () => void
+}) {
+  return (
+    <div className="mt-auto pt-8">
+      <FieldDescription theme="dark" className="mb-4 text-center">
+        Already have an account?{' '}
+        <Link
+          to="/login"
+          className="text-[#C5A059] underline-offset-4 transition-colors hover:underline"
+        >
+          Sign in
+        </Link>
+      </FieldDescription>
+
+      <div className="flex items-center justify-between gap-4">
+        {currentStep > 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            theme="lightGhost"
+            size="sm"
+            onClick={onBack}
+            className="h-auto px-0 text-[0.68rem] tracking-[0.14em] text-[#9B8A73] uppercase shadow-none hover:bg-transparent hover:text-[#C5A059]"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back
+          </Button>
+        ) : (
+          <div />
+        )}
+        <Button
+          type="button"
+          theme="dark"
+          size="lg"
+          onClick={onNext}
+          className="h-11 px-6"
+        >
+          {currentStep === STEPS.length - 1 ? 'Submit' : 'Next'}
+          {currentStep < STEPS.length - 1 && (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+const IdentityStepFields = withForm({
+  defaultValues: ENROLMENT_DEFAULT_VALUES,
+  render: ({ form }) => (
+    <>
       <form.AppField
         name="fullLegalName"
         validators={{
@@ -290,8 +359,6 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
           />
         )}
       </form.AppField>
-    ),
-    preferredName: (
       <form.AppField name="preferredName">
         {(field) => (
           <field.TextField
@@ -301,8 +368,6 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
           />
         )}
       </form.AppField>
-    ),
-    email: (
       <form.AppField
         name="email"
         validators={{
@@ -321,8 +386,14 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
           />
         )}
       </form.AppField>
-    ),
-    phoneWhatsApp: (
+    </>
+  ),
+})
+
+const ContactStepFields = withForm({
+  defaultValues: ENROLMENT_DEFAULT_VALUES,
+  render: ({ form }) => (
+    <>
       <form.AppField
         name="phoneWhatsApp"
         validators={{
@@ -341,8 +412,6 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
           />
         )}
       </form.AppField>
-    ),
-    yearOfBirth: (
       <form.AppField
         name="yearOfBirth"
         validators={{
@@ -360,8 +429,6 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
           />
         )}
       </form.AppField>
-    ),
-    gender: (
       <form.AppField
         name="gender"
         validators={{
@@ -377,8 +444,14 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
           </field.SelectField>
         )}
       </form.AppField>
-    ),
-    nationalityCitizenship: (
+    </>
+  ),
+})
+
+const LocationStepFields = withForm({
+  defaultValues: ENROLMENT_DEFAULT_VALUES,
+  render: ({ form }) => (
+    <>
       <form.AppField name="nationalityCitizenship">
         {(field) => (
           <field.TextField
@@ -388,8 +461,6 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
           />
         )}
       </form.AppField>
-    ),
-    currentCity: (
       <form.AppField name="currentCity">
         {(field) => (
           <field.TextField
@@ -399,8 +470,6 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
           />
         )}
       </form.AppField>
-    ),
-    currentCountry: (
       <form.AppField name="currentCountry">
         {(field) => (
           <field.TextField
@@ -410,161 +479,179 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
           />
         )}
       </form.AppField>
-    ),
-    churchAffiliations: (
-      <form.AppField name="churchAffiliations">
-        {(field) => (
-          <field.TextField
-            id="enrol-church"
-            label="Church affiliations"
-            placeholder="Church name, network, etc."
-          />
-        )}
-      </form.AppField>
-    ),
-    aboutYourself: (
-      <form.AppField
-        name="aboutYourself"
-        validators={{
-          onChange: requiredTextWithMaxWords(200),
-          onSubmit: requiredTextWithMaxWords(200),
-        }}
-      >
-        {(field) => (
-          <field.TextAreaFieldWithWordCount
-            id="enrol-about"
-            label="Tell us about yourself and why you are interested in this program"
-            required
-            placeholder="Write up to 200 words..."
-            rows={6}
-            maxWords={200}
-          />
-        )}
-      </form.AppField>
-    ),
-    expectationsAlignment: (
-      <form.AppField
-        name="expectationsAlignment"
-        validators={{
-          onChange: requiredTextWithMaxWords(200),
-          onSubmit: requiredTextWithMaxWords(200),
-        }}
-      >
-        {(field) => (
-          <field.TextAreaFieldWithWordCount
-            id="enrol-expectations"
-            label="Tell us what you expect to achieve at the end of this program, and how it would align with your personal pursuit of Jesus Christ"
-            required
-            placeholder="Write up to 200 words..."
-            rows={6}
-            maxWords={200}
-          />
-        )}
-      </form.AppField>
-    ),
-  }
+    </>
+  ),
+})
 
-  const renderField = (fieldName: EnrolmentFieldName) =>
-    renderedFields[fieldName]
+const ChurchStepFields = withForm({
+  defaultValues: ENROLMENT_DEFAULT_VALUES,
+  render: ({ form }) => (
+    <form.AppField name="churchAffiliations">
+      {(field) => (
+        <field.TextField
+          id="enrol-church"
+          label="Church affiliations"
+          placeholder="Church name, network, etc."
+        />
+      )}
+    </form.AppField>
+  ),
+})
 
-  return pageShell(
+const StoryStepFields = withForm({
+  defaultValues: ENROLMENT_DEFAULT_VALUES,
+  render: ({ form }) => (
+    <form.AppField
+      name="aboutYourself"
+      validators={{
+        onChange: requiredTextWithMaxWords(200),
+        onSubmit: requiredTextWithMaxWords(200),
+      }}
+    >
+      {(field) => (
+        <field.TextAreaFieldWithWordCount
+          id="enrol-about"
+          label="Tell us about yourself and why you are interested in this program"
+          required
+          placeholder="Write up to 200 words..."
+          rows={6}
+          maxWords={200}
+        />
+      )}
+    </form.AppField>
+  ),
+})
+
+const RoofStepFields = withForm({
+  defaultValues: ENROLMENT_DEFAULT_VALUES,
+  render: ({ form }) => (
+    <form.AppField
+      name="expectationsAlignment"
+      validators={{
+        onChange: requiredTextWithMaxWords(200),
+        onSubmit: requiredTextWithMaxWords(200),
+      }}
+    >
+      {(field) => (
+        <field.TextAreaFieldWithWordCount
+          id="enrol-expectations"
+          label="Tell us what you expect to achieve at the end of this program, and how it would align with your personal pursuit of Jesus Christ"
+          required
+          placeholder="Write up to 200 words..."
+          rows={6}
+          maxWords={200}
+        />
+      )}
+    </form.AppField>
+  ),
+})
+
+interface EnrolmentFormBodyProps {
+  currentStep: number
+  stepConfig: EnrolmentStep
+  onNext: () => void
+  onBack: () => void
+}
+
+const EnrolmentFormBody = withForm({
+  defaultValues: ENROLMENT_DEFAULT_VALUES,
+  props: {} as EnrolmentFormBodyProps,
+  render: ({ form, currentStep, stepConfig, onNext, onBack }) => (
     <form
       className="flex min-h-136 flex-col border border-white/10 bg-[#171717]/88 p-5 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:min-h-144 sm:p-8"
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
-        void handleNext()
+        onNext()
       }}
     >
       <div className="flex flex-1 flex-col">
-        <div className="mb-8 flex items-start gap-4 lg:block">
-          <div className="relative h-20 w-20 shrink-0 overflow-hidden border border-white/10 lg:hidden">
-            <img
-              key={currentStepConfig.id}
-              src={currentStepConfig.image}
-              alt=""
-              className="animate-in fade-in h-full w-full object-cover duration-1500"
-              loading="lazy"
-            />
-            <div className="absolute inset-0 bg-linear-to-t from-black/44 to-transparent" />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <div className="mb-3 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
-                Step {currentStep + 1} of {STEPS.length}
-              </div>
-              <div className="grid w-full grid-cols-6 gap-1 sm:flex sm:w-auto">
-                {STEPS.map((_, index) => (
-                  <div
-                    key={index}
-                    className={`h-1 min-w-0 transition-colors duration-300 sm:w-8 ${
-                      index <= currentStep ? 'bg-[#C5A059]' : 'bg-white/20'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-            <h2
-              key={currentStep}
-              className="animate-in fade-in slide-in-from-right-8 font-serif text-2xl leading-tight text-[#F8F4EC] duration-500"
-            >
-              {currentStepConfig.title}
-            </h2>
-          </div>
-        </div>
+        <EnrolmentStepHeader
+          currentStep={currentStep}
+          stepConfig={stepConfig}
+        />
 
         <FieldGroup className="flex-1">
           <div
             key={currentStep}
             className="animate-in fade-in slide-in-from-right-4 space-y-8 duration-500"
           >
-            {currentStepConfig.fields.map(renderField)}
+            {stepConfig.id === 'identity' && <IdentityStepFields form={form} />}
+            {stepConfig.id === 'contact' && <ContactStepFields form={form} />}
+            {stepConfig.id === 'location' && <LocationStepFields form={form} />}
+            {stepConfig.id === 'church' && <ChurchStepFields form={form} />}
+            {stepConfig.id === 'story' && <StoryStepFields form={form} />}
+            {stepConfig.id === 'roof' && <RoofStepFields form={form} />}
           </div>
         </FieldGroup>
 
-        <div className="mt-auto pt-8">
-          <FieldDescription theme="dark" className="mb-4 text-center">
-            Already have an account?{' '}
-            <Link
-              to="/login"
-              className="text-[#C5A059] underline-offset-4 transition-colors hover:underline"
-            >
-              Sign in
-            </Link>
-          </FieldDescription>
-
-          <div className="flex items-center justify-between gap-4">
-            {currentStep > 0 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                theme="lightGhost"
-                size="sm"
-                onClick={handleBack}
-                className="h-auto px-0 text-[0.68rem] tracking-[0.14em] text-[#9B8A73] uppercase shadow-none hover:bg-transparent hover:text-[#C5A059]"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Back
-              </Button>
-            ) : (
-              <div />
-            )}
-            <Button
-              type="button"
-              theme="dark"
-              size="lg"
-              onClick={handleNext}
-              className="h-11 px-6"
-            >
-              {currentStep === STEPS.length - 1 ? 'Submit' : 'Next'}
-              {currentStep < STEPS.length - 1 && (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </div>
+        <EnrolmentFooterNav
+          currentStep={currentStep}
+          onBack={onBack}
+          onNext={onNext}
+        />
       </div>
-    </form>,
+    </form>
+  ),
+})
+
+export function EnrolmentForm({ success }: EnrolmentFormProps) {
+  const router = useRouter()
+  const [submitted, setSubmitted] = useState(success === true)
+
+  useEffect(() => {
+    runEnrolmentSuccessEffects({
+      success,
+      windowRef: typeof window !== 'undefined' ? window : undefined,
+      googleAdsId: env.VITE_GOOGLE_ADS_ID,
+      onSubmitted: () => setSubmitted(true),
+      navigate: () =>
+        void router.navigate({
+          to: '/enrolment',
+          search: { success: undefined },
+          replace: true,
+        }),
+    })
+  }, [success])
+
+  const createEnrollmentFn = useServerFn(createEnrollment)
+
+  const form = useAppForm({
+    defaultValues: ENROLMENT_DEFAULT_VALUES,
+    onSubmit: async ({ value }) => {
+      try {
+        await createEnrollmentFn({ data: buildEnrolmentSubmissionData(value) })
+        await router.navigate({ to: '/enrolment', search: { success: true } })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Submission failed'
+        toast.error(message)
+      }
+    },
+  })
+
+  const { currentStep, currentStepConfig, handleNext, handleBack } =
+    useEnrolmentStepNavigation({
+      validateField: (name) => form.validateField(name, 'change'),
+      submit: () => form.handleSubmit(),
+    })
+
+  if (submitted) {
+    return (
+      <EnrolmentPageFrame stepConfig={currentStepConfig}>
+        <EnrolmentSubmittedPanel />
+      </EnrolmentPageFrame>
+    )
+  }
+
+  return (
+    <EnrolmentPageFrame stepConfig={currentStepConfig}>
+      <EnrolmentFormBody
+        form={form}
+        currentStep={currentStep}
+        stepConfig={currentStepConfig}
+        onNext={() => void handleNext()}
+        onBack={handleBack}
+      />
+    </EnrolmentPageFrame>
   )
 }

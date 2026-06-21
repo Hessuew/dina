@@ -76,7 +76,11 @@ describe('deriveIsAnyPending', () => {
 
   it('ignores a pending status when its mutation was not provided', () => {
     expect(
-      deriveIsAnyPending({ ...idle, hasCreate: false, createStatus: 'pending' }),
+      deriveIsAnyPending({
+        ...idle,
+        hasCreate: false,
+        createStatus: 'pending',
+      }),
     ).toBe(false)
   })
 

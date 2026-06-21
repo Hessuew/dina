@@ -41,7 +41,9 @@ describe('resolveEnrollmentsNavigation', () => {
   })
 
   it('navigates when only the search term changes', () => {
-    expect(resolveEnrollmentsNavigation(current, { page: 1, search: 'bob' })).toEqual({
+    expect(
+      resolveEnrollmentsNavigation(current, { page: 1, search: 'bob' }),
+    ).toEqual({
       kind: 'navigate',
       next: {
         page: 1,
