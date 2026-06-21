@@ -14,10 +14,18 @@
     // ]
   },
   "health": {
-    // Trivial carousel index hook: flagged as a "split_high_impact" refactor
-    // target only because of fan-in (4 importers) + density on a 6-line body.
-    // Nothing to extract; exclude it from health analysis rather than refactor.
-    "ignore": ["src/components/landing/hooks.ts"]
+    // Glob patterns excluded from complexity analysis (incl. large_functions).
+    // Test files are exempt from the unit-size rule (ADR 0011): long
+    // describe/it/arrange-act-assert bodies are normal and decomposing them
+    // adds no production value. Excluding them here is the config-level mirror
+    // of `--production-health`, so `fallow audit` reports the production
+    // burndown without the test-file noise (no per-run flag needed).
+    "ignore": [
+      "src/components/landing/hooks.ts",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.integration.test.ts"
+    ]
   },
   "rules": {
     "unused-dependencies": "warn",

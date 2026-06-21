@@ -1,7 +1,8 @@
 import { URL, fileURLToPath } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import { devtools } from '@tanstack/devtools-vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { sentryTanstackStart } from '@sentry/tanstackstart-react/vite'
 import viteReact from '@vitejs/plugin-react'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 
@@ -16,6 +17,7 @@ import {
 
 const config = defineConfig(({ mode }) => {
   const isCloudflare = isCloudflareMode(mode)
+  const sentryAuthToken = loadEnv(mode, process.cwd(), '').SENTRY_AUTH_TOKEN
 
   const shimPath = fileURLToPath(
     new URL('./src/cloudflare-shim.ts', import.meta.url),
@@ -49,6 +51,15 @@ const config = defineConfig(({ mode }) => {
       }),
       tailwindcss(),
       tanstackStart(),
+      ...(sentryAuthToken
+        ? [
+            sentryTanstackStart({
+              org: 'cherubim-it',
+              project: 'dina',
+              authToken: sentryAuthToken,
+            }),
+          ]
+        : []),
       viteReact({
         babel: {
           plugins: ['babel-plugin-react-compiler'],
