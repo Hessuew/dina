@@ -63,15 +63,33 @@ function TeacherAvatarPanel({
 
 type BioPanelProps = {
   bio: string | null
+  gemImage?: { url: string; alt: string } | null
 }
 
-function TeacherBioPanel({ bio }: BioPanelProps) {
+function TeacherBioPanel({ bio, gemImage }: BioPanelProps) {
   if (!bio) return null
   return (
-    <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/8 pt-7 pr-2 lg:mt-8">
-      <p className="text-sm leading-7 whitespace-pre-wrap text-[#D8D0C7] sm:text-base sm:leading-8">
-        {bio}
-      </p>
+    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/8 pt-7 pr-2 lg:mt-8">
+      <div>
+        <div className="h-px w-12 bg-[#C5A059]/50" />
+        <div className="mt-5 flex items-end gap-4">
+          {gemImage && (
+            <img
+              src={gemImage.url}
+              alt={gemImage.alt}
+              className="size-10 object-contain drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)] lg:size-16"
+            />
+          )}
+          <h3 className="font-serif text-[clamp(3rem,7vw,5.4rem)] leading-[0.88] tracking-[-0.06em] text-[#F8F4EC]">
+            about me
+          </h3>
+        </div>
+      </div>
+      <div className="mt-4">
+        <p className="text-sm leading-7 whitespace-pre-wrap text-[#D8D0C7] sm:text-base sm:leading-8">
+          {bio}
+        </p>
+      </div>
     </div>
   )
 }
@@ -114,7 +132,7 @@ export function TeacherModal({
           </DialogHeader>
 
           <DialogBody className="relative overflow-hidden">
-            <div className="grid h-full min-h-0 grid-rows-[minmax(16rem,0.88fr)_minmax(0,1.12fr)] lg:grid-cols-[minmax(16rem,0.92fr)_minmax(0,1.08fr)] lg:grid-rows-none">
+            <div className="grid h-full min-h-0 grid-rows-[minmax(12rem,0.88fr)_minmax(0,1.12fr)] lg:grid-cols-[minmax(16rem,0.92fr)_minmax(0,1.08fr)] lg:grid-rows-none">
               <TeacherAvatarPanel
                 avatarUrl={teacher.avatarUrl}
                 fullName={teacher.fullName}
@@ -123,23 +141,7 @@ export function TeacherModal({
               />
 
               <div className="flex min-h-0 flex-col overflow-hidden bg-[#151515]/88 px-7 py-4 sm:px-10 md:py-10 lg:px-12">
-                <div>
-                  <div className="h-px w-12 bg-[#C5A059]/50" />
-                  <div className="mt-5 flex items-end gap-4">
-                    {vm.gemImage && (
-                      <img
-                        src={vm.gemImage.url}
-                        alt={vm.gemImage.alt}
-                        className="size-10 object-contain drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)] lg:size-16"
-                      />
-                    )}
-                    <h3 className="font-serif text-[clamp(3rem,7vw,5.4rem)] leading-[0.88] tracking-[-0.06em] text-[#F8F4EC]">
-                      about me
-                    </h3>
-                  </div>
-                </div>
-
-                <TeacherBioPanel bio={teacher.bio} />
+                <TeacherBioPanel bio={teacher.bio} gemImage={vm.gemImage} />
               </div>
             </div>
           </DialogBody>

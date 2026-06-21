@@ -21,7 +21,6 @@ import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import { Button } from '@/components/ui/button'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
-import { DialogBody } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { FormDialog } from '@/components/ui/form-dialog/FormDialog'
 import { Input } from '@/components/ui/input'
@@ -373,192 +372,190 @@ export function MediaDialog({
       submitLabel={chrome.submitLabel}
       loadingLabel={getMediaLoadingLabel(docUpload.isUploading)}
     >
-      <DialogBody>
-        <FieldGroup className="mt-6 gap-8">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <form.AppField
-              name="title"
-              validators={{ onSubmit: createMediaSchema.shape.title }}
-            >
-              {(field) => (
-                <field.TextField
-                  id="media-title"
-                  label="Name"
-                  required
-                  className="sm:col-span-2"
-                  placeholder="Lesson recap video"
-                />
-              )}
-            </form.AppField>
+      <FieldGroup className="mt-6 gap-8">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <form.AppField
+            name="title"
+            validators={{ onSubmit: createMediaSchema.shape.title }}
+          >
+            {(field) => (
+              <field.TextField
+                id="media-title"
+                label="Name"
+                required
+                className="sm:col-span-2"
+                placeholder="Lesson recap video"
+              />
+            )}
+          </form.AppField>
 
-            <form.AppField
-              name="category"
-              validators={{ onSubmit: createMediaSchema.shape.category }}
-            >
-              {(field) => (
-                <FormFieldSelect
-                  id="media-category"
-                  label="Category"
-                  required
-                  value={field.state.value}
-                  onChange={(value) => field.handleChange(value)}
-                  placeholder="Select topic..."
-                  error={
-                    field.state.meta.errors.length > 0
-                      ? String(field.state.meta.errors[0])
-                      : undefined
+          <form.AppField
+            name="category"
+            validators={{ onSubmit: createMediaSchema.shape.category }}
+          >
+            {(field) => (
+              <FormFieldSelect
+                id="media-category"
+                label="Category"
+                required
+                value={field.state.value}
+                onChange={(value) => field.handleChange(value)}
+                placeholder="Select topic..."
+                error={
+                  field.state.meta.errors.length > 0
+                    ? String(field.state.meta.errors[0])
+                    : undefined
+                }
+              >
+                {LIBRARY_TOPICS.map((topic) => (
+                  <SelectItem key={topic} value={topic}>
+                    {topic}
+                  </SelectItem>
+                ))}
+              </FormFieldSelect>
+            )}
+          </form.AppField>
+
+          <form.AppField name="kind">
+            {(field) => (
+              <FormFieldSelect
+                id="media-kind"
+                label="Type"
+                value={field.state.value}
+                onChange={(value) => {
+                  field.handleChange(value as MediaKind)
+                  if (value === 'youtube') {
+                    docUpload.clearFile()
+                    thumbUpload.clearFile()
+                    setThumbnailUrl(null)
                   }
-                >
-                  {LIBRARY_TOPICS.map((topic) => (
-                    <SelectItem key={topic} value={topic}>
-                      {topic}
-                    </SelectItem>
-                  ))}
-                </FormFieldSelect>
-              )}
-            </form.AppField>
+                }}
+              >
+                <SelectItem value="youtube">YouTube</SelectItem>
+                <SelectItem value="document">Document</SelectItem>
+              </FormFieldSelect>
+            )}
+          </form.AppField>
 
-            <form.AppField name="kind">
-              {(field) => (
-                <FormFieldSelect
-                  id="media-kind"
-                  label="Type"
-                  value={field.state.value}
-                  onChange={(value) => {
-                    field.handleChange(value as MediaKind)
-                    if (value === 'youtube') {
-                      docUpload.clearFile()
-                      thumbUpload.clearFile()
-                      setThumbnailUrl(null)
-                    }
+          {/* YouTube URL — only for video kind */}
+          <form.Subscribe selector={(state) => state.values.kind}>
+            {(kind) =>
+              kind === 'youtube' ? (
+                <form.AppField
+                  name="url"
+                  validators={{
+                    onSubmit: ({ value }) => {
+                      if (!value) return 'URL is required'
+                      return undefined
+                    },
                   }}
                 >
-                  <SelectItem value="youtube">YouTube</SelectItem>
-                  <SelectItem value="document">Document</SelectItem>
-                </FormFieldSelect>
-              )}
-            </form.AppField>
+                  {(field) => (
+                    <Field className="sm:col-span-2">
+                      <FieldLabel
+                        htmlFor="media-url"
+                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                      >
+                        YouTube URL
+                        <span className="text-[#C5A059]">*</span>
+                      </FieldLabel>
+                      <Input
+                        id="media-url"
+                        value={field.state.value}
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50 ${field.state.meta.errors.length > 0 ? 'border-red-500/60' : ''}`}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-[0.68rem] text-red-400">
+                          {String(field.state.meta.errors[0])}
+                        </p>
+                      )}
+                    </Field>
+                  )}
+                </form.AppField>
+              ) : null
+            }
+          </form.Subscribe>
 
-            {/* YouTube URL — only for video kind */}
-            <form.Subscribe selector={(state) => state.values.kind}>
-              {(kind) =>
-                kind === 'youtube' ? (
-                  <form.AppField
-                    name="url"
-                    validators={{
-                      onSubmit: ({ value }) => {
-                        if (!value) return 'URL is required'
-                        return undefined
-                      },
-                    }}
-                  >
+          {/* Document upload + thumbnail — only for document kind */}
+          <form.Subscribe selector={(state) => state.values.kind}>
+            {(kind) =>
+              kind === 'document' ? (
+                <>
+                  <DocumentFileControl
+                    docUpload={docUpload}
+                    existingDocUrl={existingDocUrl}
+                    mode={mode}
+                  />
+
+                  {/* Description + Thumbnail side by side */}
+                  <form.AppField name="description">
                     {(field) => (
-                      <Field className="sm:col-span-2">
-                        <FieldLabel
-                          htmlFor="media-url"
-                          className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                        >
-                          YouTube URL
-                          <span className="text-[#C5A059]">*</span>
-                        </FieldLabel>
-                        <Input
-                          id="media-url"
-                          value={field.state.value}
-                          placeholder="https://www.youtube.com/watch?v=..."
-                          className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50 ${field.state.meta.errors.length > 0 ? 'border-red-500/60' : ''}`}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                        />
-                        {field.state.meta.errors.length > 0 && (
-                          <p className="text-[0.68rem] text-red-400">
-                            {String(field.state.meta.errors[0])}
-                          </p>
-                        )}
-                      </Field>
+                      <field.TextAreaField
+                        id="media-description"
+                        label="Description"
+                        placeholder="Short summary for students"
+                        rows={6}
+                      />
                     )}
                   </form.AppField>
-                ) : null
-              }
-            </form.Subscribe>
 
-            {/* Document upload + thumbnail — only for document kind */}
-            <form.Subscribe selector={(state) => state.values.kind}>
-              {(kind) =>
-                kind === 'document' ? (
-                  <>
-                    <DocumentFileControl
-                      docUpload={docUpload}
-                      existingDocUrl={existingDocUrl}
-                      mode={mode}
-                    />
+                  <ThumbnailControl
+                    thumbUpload={thumbUpload}
+                    thumbnailUrl={thumbnailUrl}
+                    onClearThumbnail={() => {
+                      thumbUpload.clearFile()
+                      setThumbnailUrl(null)
+                    }}
+                  />
 
-                    {/* Description + Thumbnail side by side */}
-                    <form.AppField name="description">
-                      {(field) => (
-                        <field.TextAreaField
-                          id="media-description"
-                          label="Description"
-                          placeholder="Short summary for students"
-                          rows={6}
-                        />
-                      )}
-                    </form.AppField>
+                  <form.AppField name="isPublished">
+                    {(field) => (
+                      <field.SwitchField
+                        id="media-published"
+                        label="Published"
+                        className="sm:col-span-2"
+                      />
+                    )}
+                  </form.AppField>
+                </>
+              ) : null
+            }
+          </form.Subscribe>
 
-                    <ThumbnailControl
-                      thumbUpload={thumbUpload}
-                      thumbnailUrl={thumbnailUrl}
-                      onClearThumbnail={() => {
-                        thumbUpload.clearFile()
-                        setThumbnailUrl(null)
-                      }}
-                    />
+          {/* Fields shown only for youtube kind */}
+          <form.Subscribe selector={(state) => state.values.kind}>
+            {(kind) =>
+              kind === 'youtube' ? (
+                <>
+                  <form.AppField name="description">
+                    {(field) => (
+                      <field.TextAreaField
+                        id="media-description"
+                        label="Description"
+                        className="sm:col-span-2"
+                        placeholder="Short summary for students"
+                        rows={6}
+                      />
+                    )}
+                  </form.AppField>
 
-                    <form.AppField name="isPublished">
-                      {(field) => (
-                        <field.SwitchField
-                          id="media-published"
-                          label="Published"
-                          className="sm:col-span-2"
-                        />
-                      )}
-                    </form.AppField>
-                  </>
-                ) : null
-              }
-            </form.Subscribe>
-
-            {/* Fields shown only for youtube kind */}
-            <form.Subscribe selector={(state) => state.values.kind}>
-              {(kind) =>
-                kind === 'youtube' ? (
-                  <>
-                    <form.AppField name="description">
-                      {(field) => (
-                        <field.TextAreaField
-                          id="media-description"
-                          label="Description"
-                          className="sm:col-span-2"
-                          placeholder="Short summary for students"
-                          rows={6}
-                        />
-                      )}
-                    </form.AppField>
-
-                    <form.AppField name="isPublished">
-                      {(field) => (
-                        <field.SwitchField
-                          id="media-published"
-                          label="Published"
-                          className="sm:col-span-2"
-                        />
-                      )}
-                    </form.AppField>
-                  </>
-                ) : null
-              }
-            </form.Subscribe>
-          </div>
-        </FieldGroup>
-      </DialogBody>
+                  <form.AppField name="isPublished">
+                    {(field) => (
+                      <field.SwitchField
+                        id="media-published"
+                        label="Published"
+                        className="sm:col-span-2"
+                      />
+                    )}
+                  </form.AppField>
+                </>
+              ) : null
+            }
+          </form.Subscribe>
+        </div>
+      </FieldGroup>
     </FormDialog>
   )
 }

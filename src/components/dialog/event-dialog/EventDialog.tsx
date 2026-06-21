@@ -347,9 +347,7 @@ function EventFormFields({
       isSubmitting={isAnyPending}
       submitLabel={mode === 'create' ? 'Create Event' : 'Save Changes'}
     >
-      <DialogBody>
-        <EventFormFieldsContent form={form} />
-      </DialogBody>
+      <EventFormFieldsContent form={form} />
     </FormDialog>
   )
 }

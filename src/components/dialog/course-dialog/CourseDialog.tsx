@@ -13,7 +13,6 @@ import {
 import type { CourseInitialData } from './course-dialog.domain'
 import { toUserError } from '@/utils/errors'
 import { Button } from '@/components/ui/button'
-import { DialogBody } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { FormDialog } from '@/components/ui/form-dialog/FormDialog'
 import { SelectItem } from '@/components/ui/select'
@@ -360,22 +359,20 @@ export function CourseDialog({
       submitLabel={chrome.submitLabel}
       loadingLabel={getCourseLoadingLabel(isUploading)}
     >
-      <DialogBody>
-        <CourseFormFieldsContent
-          form={form}
-          teachers={teachers}
-          isAdmin={isAdmin}
-          fileInputRef={fileInputRef}
-          fileData={fileData}
-          thumbnailUrl={thumbnailUrl}
-          onFileChange={handleFileChange}
-          onClearThumbnail={() => {
-            setThumbnailUrl(null)
-            clearFile()
-          }}
-          mode={mode}
-        />
-      </DialogBody>
+      <CourseFormFieldsContent
+        form={form}
+        teachers={teachers}
+        isAdmin={isAdmin}
+        fileInputRef={fileInputRef}
+        fileData={fileData}
+        thumbnailUrl={thumbnailUrl}
+        onFileChange={handleFileChange}
+        onClearThumbnail={() => {
+          setThumbnailUrl(null)
+          clearFile()
+        }}
+        mode={mode}
+      />
     </FormDialog>
   )
 }
