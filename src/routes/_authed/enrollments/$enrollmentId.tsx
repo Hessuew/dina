@@ -76,6 +76,9 @@ function EnrollmentDetailPage() {
       toast.success('Status updated')
       router.invalidate()
     },
+    onError: (error) => {
+      toast.error(toUserError(error).message)
+    },
   })
 
   const inviteMutation = useMutation({
@@ -145,14 +148,16 @@ function EnrollmentDetailPage() {
           isAdmin ? (
             <Select
               value={enrollment.status}
-              onValueChange={(value) =>
-                statusMutation.mutate({
-                  data: {
-                    enrollmentId: enrollment.id,
-                    status: value as (typeof STATUS_OPTIONS)[number]['value'],
-                  },
-                })
-              }
+              onValueChange={(value) => {
+                if (
+                  STATUS_OPTIONS.some((opt) => opt.value === value) &&
+                  value !== null
+                ) {
+                  statusMutation.mutate({
+                    data: { enrollmentId: enrollment.id, status: value },
+                  })
+                }
+              }}
             >
               <SelectTrigger className="h-9 rounded-none border-white/12 bg-[#1A1716] text-[#F8F4EC]">
                 <SelectValue />
