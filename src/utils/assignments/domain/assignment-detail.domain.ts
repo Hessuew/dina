@@ -1,9 +1,12 @@
-export type SubmissionStatusVariant = 'graded' | 'submitted' | 'draft'
+import type { submissionStatusEnum } from '@/db/schema/enums.schema'
+
+export type SubmissionStatusVariant =
+  (typeof submissionStatusEnum.enumValues)[number]
 
 /** Status-chip variant for a submission: graded wins, then submitted, else draft. */
 export function resolveSubmissionStatusVariant(sub: {
   grade: number | null
-  status: 'draft' | 'submitted' | 'graded'
+  status: SubmissionStatusVariant
 }): SubmissionStatusVariant {
   if (sub.grade !== null) return 'graded'
   if (sub.status === 'submitted') return 'submitted'

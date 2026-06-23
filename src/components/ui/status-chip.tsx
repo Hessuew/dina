@@ -7,6 +7,7 @@ export type StatusChipVariant =
   | 'submitted'
   | 'graded'
   | 'not-submitted'
+  | 'returned'
 
 type StatusChipSize = 'sm' | 'md'
 
@@ -23,6 +24,7 @@ const variantColors: Record<StatusChipVariant, string> = {
   submitted: 'border-blue-300/60 text-blue-600',
   graded: 'border-[#C5A059]/40 text-[#9B7A41]',
   'not-submitted': 'border-[#1A1A1A]/10 text-[#9B8C7C]',
+  returned: 'border-[#1A1A1A]/10 text-[#9B8C7C]',
 }
 
 const sizeClasses: Record<StatusChipSize, string> = {
@@ -37,6 +39,7 @@ const variantLabels: Record<StatusChipVariant, string> = {
   submitted: 'Submitted',
   graded: 'Graded',
   'not-submitted': 'Not Submitted',
+  returned: 'Returned',
 }
 
 export function StatusChip({
