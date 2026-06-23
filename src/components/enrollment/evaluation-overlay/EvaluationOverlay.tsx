@@ -487,6 +487,7 @@ function useEvaluationActions({
 
   const saveNote = useCallback(
     async (note: string) => {
+      if (noteMutation.isPending) return
       onLocalEvaluation(enrollmentId, { note })
       await noteMutation.mutate({ data: { enrollmentId, note } })
     },
