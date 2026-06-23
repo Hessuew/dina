@@ -6,6 +6,7 @@ import {
   distributeEnrollmentsSchema,
   endSubstitutionSchema,
   getEnrollmentByIdSchema,
+  getEnrollmentEmailsSchema,
   getEnrollmentsSchema,
   sendInvitationForEnrollmentSchema,
   setEnrollmentSpecialCaseSchema,
@@ -21,6 +22,7 @@ import {
   distributeEnrollmentsService,
   endSubstitutionService,
   getEnrollmentByIdService,
+  getEnrollmentEmailsService,
   getEnrollmentsService,
   sendInvitationForEnrollmentService,
   setEnrollmentSpecialCaseService,
@@ -131,3 +133,10 @@ export const getActiveSubstitutedTeacherIds = createServerFn({
   const teacherIds = await findAbsentTeacherIdsWithActiveSubstitution()
   return { teacherIds }
 })
+
+export const getEnrollmentEmails = createServerFn({ method: 'POST' })
+  .inputValidator(getEnrollmentEmailsSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    return getEnrollmentEmailsService(data, user.id)
+  })

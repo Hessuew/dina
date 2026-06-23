@@ -5,6 +5,7 @@ import type {
   DeleteEnrollmentInput,
   EndSubstitutionInput,
   GetEnrollmentByIdInput,
+  GetEnrollmentEmailsInput,
   GetEnrollmentsInput,
   SendInvitationForEnrollmentInput,
   SetEnrollmentSpecialCaseInput,
@@ -38,6 +39,7 @@ import {
   findCourseIdsForViewer,
   findCourseTeamIds,
   findEnrollmentById,
+  findEnrollmentEmailsByGroup,
   findEnrollmentsPage,
   findEvaluationsForEnrollments,
   findInvitationByEmail,
@@ -643,5 +645,27 @@ export async function endSubstitutionService(
         details: { absentTeacherId: data.absentTeacherId },
       })
     }
+  })
+}
+
+/**
+ * Returns all enrollment emails for the requested group.
+ * Accessible to both admins and teachers — email redaction is intentionally
+ * bypassed for this export use-case.
+ */
+export async function getEnrollmentEmailsService(
+  data: GetEnrollmentEmailsInput,
+  userId: string,
+): Promise<{ emails: Array<string> }> {
+  return withRequestCache(async () => {
+    const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+    if (!isAdmin && !isTeacher) {
+      throw new AuthorizationError('admin or teacher access required', {
+        code: 'ROLE_REQUIRED',
+        details: {},
+      })
+    }
+    const emails = await findEnrollmentEmailsByGroup(data.group)
+    return { emails }
   })
 }

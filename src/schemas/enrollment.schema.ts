@@ -146,3 +146,9 @@ export type SetEvaluationAdmissionCategoryInput = z.infer<
 export type SetEvaluationNoteInput = z.infer<typeof setEvaluationNoteSchema>
 export type SubstituteTeacherInput = z.infer<typeof substituteTeacherSchema>
 export type EndSubstitutionInput = z.infer<typeof endSubstitutionSchema>
+
+export const getEnrollmentEmailsSchema = z.object({
+  group: z.enum(['approved', 'all']),
+})
+
+export type GetEnrollmentEmailsInput = z.infer<typeof getEnrollmentEmailsSchema>

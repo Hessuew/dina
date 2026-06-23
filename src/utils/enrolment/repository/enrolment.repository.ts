@@ -706,4 +706,22 @@ export async function deleteCourseSubstituteByAbsent(
     .returning({ id: courseSubstitutes.id })
   return deleted.length
 }
+
+/**
+ * Returns all enrollment emails, optionally filtered to approved-only.
+ * Used by the export-emails feature (accessible to both admins and teachers).
+ */
+export async function findEnrollmentEmailsByGroup(
+  group: 'approved' | 'all',
+): Promise<Array<string>> {
+  const db = await getDb()
+  const rows = await db
+    .select({ email: enrollments.email })
+    .from(enrollments)
+    .where(
+      group === 'approved' ? eq(enrollments.status, 'approved') : undefined,
+    )
+    .orderBy(asc(enrollments.createdAt))
+  return rows.map((r) => r.email)
+}
 /* v8 ignore end */
