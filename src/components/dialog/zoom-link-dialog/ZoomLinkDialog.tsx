@@ -52,6 +52,11 @@ const sectionTitle: Record<ZoomLinkSection, string> = {
   discipleship_group: 'Discipleship Groups',
 }
 
+function courseLabel(courses: Array<ZoomCourse>, courseId: string): string {
+  if (courseId === 'none') return 'No course'
+  return courses.find((course) => course.id === courseId)?.title ?? 'No course'
+}
+
 const ZoomSectionField = withForm({
   defaultValues: emptyZoomForm,
   render: ({ form }) => (
@@ -63,9 +68,11 @@ const ZoomSectionField = withForm({
           </FieldLabel>
           <Select
             value={field.state.value}
-            onValueChange={(value) =>
-              field.handleChange(value ?? field.state.value)
-            }
+            onValueChange={(value) => {
+              if (value !== null) {
+                field.handleChange(value)
+              }
+            }}
           >
             <SelectTrigger className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
               <SelectValue>
@@ -89,7 +96,7 @@ const ZoomSectionField = withForm({
 
 const ZoomCourseField = withForm({
   defaultValues: emptyZoomForm,
-  props: {} as { courses: Array<ZoomCourse> },
+  props: { courses: [] as Array<ZoomCourse> },
   render: ({ form, courses }) => (
     <form.AppField name="courseId">
       {(field) => (
@@ -196,9 +203,7 @@ const ZoomNoteFields = withForm({
   render: ({ form }) => (
     <>
       <form.AppField name="orderIndex">
-        {(field) => (
-          <field.NumberField id="zoom-order" label="Order" min={0} />
-        )}
+        {(field) => <field.NumberField id="zoom-order" label="Order" min={0} />}
       </form.AppField>
       <form.AppField name="description">
         {(field) => (
@@ -217,7 +222,7 @@ const ZoomNoteFields = withForm({
 
 const ZoomLinkFields = withForm({
   defaultValues: emptyZoomForm,
-  props: {} as { courses: Array<ZoomCourse> },
+  props: { courses: [] as Array<ZoomCourse> },
   render: ({ form, courses }) => (
     <FieldGroup className="mt-6">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -371,9 +376,4 @@ export function ZoomLinkDialog({
       </DialogContent>
     </Dialog>
   )
-}
-
-function courseLabel(courses: Array<ZoomCourse>, courseId: string): string {
-  if (courseId === 'none') return 'No course'
-  return courses.find((course) => course.id === courseId)?.title ?? 'No course'
 }
