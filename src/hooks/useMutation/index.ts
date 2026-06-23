@@ -16,6 +16,12 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
     'idle' | 'pending' | 'success' | 'error'
   >('idle')
 
+  // Keep a stable ref to opts so `mutate` never needs to be recreated when
+  // callbacks change. Without this, every render produces a new `opts` object
+  // → new `mutate` reference → all dependents (useCallback, useEffect) re-run.
+  const optsRef = React.useRef(opts)
+  optsRef.current = opts
+
   const mutate = React.useCallback(
     async (vars: TVariables): Promise<TData | undefined> => {
       setStatus('pending')
@@ -24,8 +30,8 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
       setError(undefined)
 
       try {
-        const result = await opts.fn(vars)
-        await opts.onSuccess?.({ data: result })
+        const result = await optsRef.current.fn(vars)
+        await optsRef.current.onSuccess?.({ data: result })
         setStatus('success')
         setData(result)
         return result
@@ -35,13 +41,13 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
         setError(tError)
 
         await dispatchMutationError(tError, {
-          onError: opts.onError,
-          errorHandler: opts.errorHandler,
+          onError: optsRef.current.onError,
+          errorHandler: optsRef.current.errorHandler,
           fallback: toastErrorHandler,
         })
       }
     },
-    [opts],
+    [],
   )
 
   return {

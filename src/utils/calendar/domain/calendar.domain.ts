@@ -1,3 +1,5 @@
+import { isAfter } from 'date-fns'
+
 export type SpecialEventCategory = 'exam' | 'chapel' | 'personal' | 'other'
 
 export type CalendarEvent = {
@@ -93,4 +95,56 @@ export function buildCalendarEvents(
   return [...lessonEvents, ...assignmentEvents, ...specialCalendarEvents].sort(
     (a, b) => a.date.getTime() - b.date.getTime(),
   )
+}
+
+export type CalendarCourse = { id: string; name: string }
+
+export function parseCalendarMonth(
+  month: string | undefined,
+  fallback: Date = new Date(),
+): Date {
+  if (!month) return fallback
+  const parsed = new Date(month)
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed
+}
+
+export function deriveCalendarCourses(
+  events: Array<CalendarEvent>,
+): Array<CalendarCourse> {
+  return Array.from(
+    new Map(
+      events
+        .filter((e) => e.courseId)
+        .map((e) => [e.courseId, { id: e.courseId, name: e.courseName }]),
+    ).values(),
+  ).sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export function filterCalendarEvents(
+  events: Array<CalendarEvent>,
+  selectedCourse: string,
+  selectedType: string,
+): Array<CalendarEvent> {
+  return events.filter((event) => {
+    const courseMatch =
+      selectedCourse === 'all' || event.courseId === selectedCourse
+    const typeMatch = selectedType === 'all' || event.type === selectedType
+    return courseMatch && typeMatch
+  })
+}
+
+export function deriveUpcomingSpecials(
+  events: Array<CalendarEvent>,
+  now: Date = new Date(),
+): Array<CalendarEvent> {
+  return events
+    .filter((e) => e.type === 'special' && isAfter(new Date(e.date), now))
+    .slice(0, 3)
+}
+
+export function deriveUpcomingEvents(
+  events: Array<CalendarEvent>,
+  now: Date = new Date(),
+): Array<CalendarEvent> {
+  return events.filter((e) => isAfter(new Date(e.date), now)).slice(0, 5)
 }
