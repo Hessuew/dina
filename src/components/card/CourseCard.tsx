@@ -1,7 +1,12 @@
 import { ArrowRight, BookOpenIcon } from 'lucide-react'
+import type {
+  CourseCardRole,
+  CourseCardVariant,
+} from '@/components/card/domain/course-card.domain'
 import { cn } from '@/lib/utils'
 import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
 import { ButtonLink } from '@/components/ui/button-link'
+import { buildCourseCardViewModel } from '@/components/card/domain/course-card.domain'
 
 type CourseCardProps = {
   course: {
@@ -11,9 +16,6 @@ type CourseCardProps = {
     thumbnailUrl: string | null
     isPublished: boolean
     lessons: Array<{ id: string }>
-    teacher?: {
-      fullName: string
-    }
     courseTeachers?: Array<{
       teacher: {
         id: string
@@ -26,8 +28,8 @@ type CourseCardProps = {
     totalAssignments?: number
     orderIndex: number | null
   }
-  role: 'student' | 'teacher' | 'admin'
-  variant?: 'light' | 'dark'
+  role: CourseCardRole
+  variant?: CourseCardVariant
 }
 
 type CourseCardCourse = CourseCardProps['course']
@@ -219,13 +221,6 @@ function CourseProgress({
           />
         </div>
       </div>
-
-      <p
-        className={cn(
-          'text-[0.65rem] font-medium tracking-[0.12em]',
-          theme.mutedLabel,
-        )}
-      />
     </div>
   )
 }
@@ -273,12 +268,16 @@ export function CourseCard({
   role,
   variant = 'dark',
 }: CourseCardProps) {
-  const isTeacher = role === 'teacher' || role === 'admin'
-  const lessonCount = course.lessons.length
-  const submittedCount = course.submittedAssignments ?? 0
-  const gradedCount = course.gradedAssignments ?? 0
-  const totalAssignments = course.totalAssignments ?? 0
-  const isDark = variant === 'dark'
+  const {
+    isTeacher,
+    lessonCount,
+    submittedCount,
+    gradedCount,
+    totalAssignments,
+    isDark,
+    hasDescription,
+    showProgress,
+  } = buildCourseCardViewModel({ course, role, variant })
   const theme = getCourseCardTheme(isDark)
 
   return (
@@ -304,7 +303,7 @@ export function CourseCard({
           {course.title}
         </h3>
 
-        {course.description && (
+        {hasDescription && (
           <p
             className={cn(
               'mt-2 line-clamp-2 text-sm leading-6 whitespace-pre-wrap',
@@ -315,7 +314,7 @@ export function CourseCard({
           </p>
         )}
 
-        {!isTeacher && course.totalAssignments !== undefined && (
+        {showProgress && (
           <CourseProgress
             submittedCount={submittedCount}
             gradedCount={gradedCount}
