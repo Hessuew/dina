@@ -1,6 +1,5 @@
 import {
   boolean,
-  index,
   integer,
   pgPolicy,
   pgTable,

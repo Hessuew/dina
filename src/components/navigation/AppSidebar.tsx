@@ -116,13 +116,7 @@ const adminNavItems: Array<NavItem> = [
   },
 ]
 
-function NavItemList({
-  items,
-  variant,
-}: {
-  items: Array<NavItem>
-  variant: SidebarVariant
-}) {
+function NavItemList({ items }: { items: Array<NavItem> }) {
   const routerState = useRouterState()
   return (
     <SidebarMenu>
@@ -135,12 +129,8 @@ function NavItemList({
               className={cn(
                 'h-10 rounded-none transition-all',
                 isActive
-                  ? variant === 'dark'
-                    ? 'border-l-2 border-[#C5A059]/60 bg-[#1A1716] text-[#F8F4EC] hover:bg-[#1A1716] hover:text-[#F8F4EC]'
-                    : 'border-l-2 border-[#9B7A41]/60 bg-[#EDE8DE] text-[#1C1815] hover:bg-[#EDE8DE] hover:text-[#1C1815]'
-                  : variant === 'dark'
-                    ? 'border-l-2 border-transparent text-[#AFA28F] hover:border-[#C5A059]/30 hover:bg-[#1A1716]/60 hover:text-[#F8F4EC]'
-                    : 'border-l-2 border-transparent text-[#4E463D] hover:border-[#9B7A41]/30 hover:bg-[#EDE8DE]/60 hover:text-[#1C1815]',
+                  ? 'border-l-2 border-[#C5A059]/60 bg-[#1A1716] text-[#F8F4EC] hover:bg-[#1A1716] hover:text-[#F8F4EC]'
+                  : 'border-l-2 border-transparent text-[#AFA28F] hover:border-[#C5A059]/30 hover:bg-[#1A1716]/60 hover:text-[#F8F4EC]',
               )}
               isActive={isActive}
               render={
@@ -165,11 +155,9 @@ function NavItemList({
 
 function TeacherContent({
   isTeacherOrAdmin,
-  variant,
   state,
 }: {
   isTeacherOrAdmin: boolean
-  variant: SidebarVariant
   state: 'expanded' | 'collapsed'
 }) {
   if (!isTeacherOrAdmin) return null
@@ -179,7 +167,7 @@ function TeacherContent({
         For teachers
       </SidebarGroupLabel>
       <SidebarGroupContent>
-        <NavItemList items={teacherNavItems} variant={variant} />
+        <NavItemList items={teacherNavItems} />
       </SidebarGroupContent>
     </>
   )
@@ -187,11 +175,9 @@ function TeacherContent({
 
 function AdminContent({
   isAdmin,
-  variant,
   state,
 }: {
   isAdmin: boolean
-  variant: SidebarVariant
   state: 'expanded' | 'collapsed'
 }) {
   if (!isAdmin) return null
@@ -201,7 +187,7 @@ function AdminContent({
         For admins
       </SidebarGroupLabel>
       <SidebarGroupContent>
-        <NavItemList items={adminNavItems} variant={variant} />
+        <NavItemList items={adminNavItems} />
       </SidebarGroupContent>
     </>
   )
@@ -210,7 +196,6 @@ function AdminContent({
 export function AppSidebar({
   user,
   role,
-  sidebarVariant = 'dark',
   ...props
 }: AppSidebarProps & React.ComponentProps<typeof Sidebar>) {
   const router = useRouter()
@@ -222,9 +207,7 @@ export function AppSidebar({
     <Sidebar
       collapsible={user ? 'icon' : 'offcanvas'}
       variant="inset"
-      className={
-        sidebarVariant === 'dark' ? 'dina-dark py-0 pl-0' : 'dina-light'
-      }
+      className={'dina-dark py-0 pl-0'}
       {...props}
     >
       <SidebarHeader>
@@ -259,27 +242,18 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupLabel>Platform</SidebarGroupLabel>
           <SidebarGroupContent>
-            <NavItemList items={navItems} variant={sidebarVariant} />
+            <NavItemList items={navItems} />
           </SidebarGroupContent>
 
-          <TeacherContent
-            isTeacherOrAdmin={isTeacherOrAdmin}
-            state={state}
-            variant={sidebarVariant}
-          />
-          <AdminContent
-            isAdmin={role === 'admin'}
-            state={state}
-            variant={sidebarVariant}
-          />
+          <TeacherContent isTeacherOrAdmin={isTeacherOrAdmin} state={state} />
+          <AdminContent isAdmin={role === 'admin'} state={state} />
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="pl-3">
-        <NotificationsMenu variant={sidebarVariant} />
+        <NotificationsMenu />
         <NavUser
           user={user as any}
           onProfileUpdate={() => router.invalidate()}
-          variant={sidebarVariant}
         />
       </SidebarFooter>
       <SidebarRail />

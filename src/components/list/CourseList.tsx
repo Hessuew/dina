@@ -6,6 +6,7 @@ import { CourseCard } from '@/components/card/course-card/CourseCard'
 import { CourseDialog } from '@/components/dialog/course-dialog/CourseDialog'
 import { Button } from '@/components/ui/button'
 import { UpcomingLessonsList } from '@/components/list/UpcomingLessonsList'
+import { buildCourseListViewModel } from '@/components/list/domain/course-list.domain'
 
 type Course = {
   id: string
@@ -48,22 +49,16 @@ function CourseListInternal({
   courses,
   role,
 }: Omit<CourseListProps, 'assignments' | 'lessons'>) {
-  const isAdmin = role === 'admin'
-  const isTeacher = role === 'teacher' || role === 'admin'
+  const { isAdmin, isTeacher, emptyHeading, emptyDescription } =
+    buildCourseListViewModel(role)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
 
   if (courses.length === 0) {
     return (
       <>
         <div className="flex flex-col items-center justify-center border border-dashed border-[#1A1A1A]/20 bg-[#EDE8DE]/40 p-12 text-center">
-          <h3 className="font-serif text-lg text-[#1C1815]">
-            {isTeacher ? 'No courses yet' : 'No enrolled courses'}
-          </h3>
-          <p className="mt-2 text-sm text-[#5E5549]">
-            {isTeacher
-              ? 'Create your first course to get started'
-              : 'You are not enrolled in any courses yet'}
-          </p>
+          <h3 className="font-serif text-lg text-[#1C1815]">{emptyHeading}</h3>
+          <p className="mt-2 text-sm text-[#5E5549]">{emptyDescription}</p>
           {isAdmin && (
             <Button
               theme="light"

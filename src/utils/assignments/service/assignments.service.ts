@@ -12,7 +12,6 @@ import type {
 import {
   calculateAssignmentStats,
   canDeleteAssignment,
-  filterAssignmentsForStudent,
   validateSubmissionWindow,
 } from '@/domain/assignment.service'
 import {

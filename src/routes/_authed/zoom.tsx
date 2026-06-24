@@ -8,9 +8,9 @@ import {
   VideoIcon,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import type { ZoomLinkDialogState } from '@/components/dialog/ZoomLinkDialog'
+import type { ZoomLinkDialogState } from '@/components/dialog/zoom-link-dialog/ZoomLinkDialog'
 import type { ZoomLinkRow, ZoomLinkSection } from '@/utils/zoomLink'
-import { ZoomLinkDialog } from '@/components/dialog/ZoomLinkDialog'
+import { ZoomLinkDialog } from '@/components/dialog/zoom-link-dialog/ZoomLinkDialog'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import { getZoomLinks } from '@/utils/zoomLink'

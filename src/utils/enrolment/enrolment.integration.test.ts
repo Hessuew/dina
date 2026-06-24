@@ -116,7 +116,7 @@ describe('setEvaluationScoreService (integration)', () => {
   })
 
   it('keeps a non-assigned evaluator advisory — status unchanged', async () => {
-    const { reviewerId, peerId, enrollmentId } = await seedPeerReviewScenario()
+    const { peerId, enrollmentId } = await seedPeerReviewScenario()
 
     // The peer (not the assigned Reviewer) scores a strong admit.
     await setEvaluationScoreService({ enrollmentId, score: 4 }, peerId)
