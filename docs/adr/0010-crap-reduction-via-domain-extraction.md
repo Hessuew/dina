@@ -184,7 +184,12 @@ noise is irrelevant to a paydown target and the suites are slow, so don't use it
 loop. Instead:
 
 1. **Progress metric (cheap, no test run):** `bunx fallow health --format json --quiet` — the
-   target finding is gone and the total dropped. This _is_ the burndown number.
+   target finding is gone and the total dropped. This _is_ the burndown number. The count is
+   **production-only**: `.fallowrc.json` `health.ignore` excludes `**/*.test.ts(x)` and
+   `**/*.integration.test.ts` from complexity analysis (schema: *"Glob patterns to exclude from
+   complexity analysis"*), so a target's own `*.domain.test.ts` never lands in `findings` and
+   inflates the burndown. This is the same exclusion ADR 0011 relies on — one config key serves
+   both CRAP and unit-size.
 2. **Coverage of the new domain file:** `bun run test:coverage` (or a scoped `vitest run` on the
    `*.domain.test.ts` during red→green).
 3. **Isolate _introduced_ complexity, not the whole branch:** the gate only blocks on fallow's

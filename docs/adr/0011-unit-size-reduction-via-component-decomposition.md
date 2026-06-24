@@ -158,10 +158,24 @@ analogue of fallow's `introduced` flag, with near-zero custom code:
 bodies are normal and decomposing them scatters the test flow with no production value. The 26
 test-file entries in `large_functions` are **not** worklist targets.
 
+> **Test files are excluded from complexity analysis at the config level** — no per-run flag
+> needed. `.fallowrc.json` `health.ignore` carries `**/*.test.ts`, `**/*.test.tsx`, and
+> `**/*.integration.test.ts` (schema: *"Glob patterns to exclude from complexity analysis"*),
+> so `complexity.large_functions` already omits test files for every `fallow audit` / `fallow
+> health` run. This is the durable mirror of `--production-health`. **Why it matters:** a
+> `describe(...)` callback wrapping a dozen `it(...)` cases legitimately exceeds 60 LOC, so
+> without this exclusion the new `*.domain.test.ts` you add when decomposing a component shows
+> up in the raw array at the same path prefix and reads like an unfinished target. Concretely:
+> before the exclusion, a plain audit reported 105 `large_functions` (32 in test files); after,
+> 73, none in test files — the real production signal. (Passing `--production-health` still
+> works and is equivalent for this metric; the config just makes it the default.)
+
 ### Definition of done (per target)
 
 - The function no longer appears in `complexity.large_functions`
-  (`bunx fallow audit --format json`); body < 61 LOC.
+  (`bunx fallow audit --format json --base main`); body < 61 LOC. Test files are already
+  excluded via `.fallowrc.json` `health.ignore`, so the target's own new `*.domain.test.ts`
+  `describe` block won't show up looking like leftover work.
 - Its `eslint-suppressions.json` entry is pruned (`bunx eslint --prune-suppressions`).
 - `bun run typecheck` clean.
 - Any extracted `domain/` logic is covered at 100%.
@@ -174,7 +188,13 @@ test-file entries in `large_functions` are **not** worklist targets.
 Per project practice, do **not** run the full `bun run quality:gate` as the inner loop. Instead:
 
 1. **Progress metric (cheap):** `bunx fallow audit --format json --base main` → the target is
-   gone from `complexity.large_functions` and the count dropped. This is the burndown number.
+   gone from `complexity.large_functions` and the production count dropped. This is the
+   burndown number. **Read `large_functions`, not the verdict** (this bit us on `EnrolmentForm`):
+   `audit --base main` returns a whole-branch `verdict` (pass/warn/fail) over *every* changed
+   file; on a long-lived paydown branch that `fail` is dominated by unrelated pre-existing
+   findings (dead code, other commits) and is **not** your per-target signal. Confirm your
+   function left `large_functions`; ignore the global verdict. (Test files are already excluded
+   via `.fallowrc.json` `health.ignore`, so the array is production-only without any flag.)
 2. **Lint baseline:** `bun run lint` clean; `bunx eslint --prune-suppressions` to drop the
    cleared entry.
 3. **Coverage of any new domain file:** scoped `vitest run` on its `*.domain.test.ts`.
@@ -220,7 +240,7 @@ On completion: flip to `✅ done`, replace `Claimed at` with the completion date
 sub-components extracted, and decrement **Current open** below. Release an abandoned claim by
 flipping back to `⬜ todo` and clearing `Claimed at` to `—`.
 
-**Current open:** 74 (28 very-high / 15 high / 7 med / 24 low)
+**Current open:** 72 (26 very-high / 15 high / 7 med / 24 low)
 
 #### Ledger
 
@@ -232,10 +252,10 @@ you work. `LOC` and `Tier` are the snapshot line count and size band. `File / si
 | Status         | LOC | Tier      | Target (function)               | File / site                                                                             | Sub-components extracted | Claimed at        |
 | -------------- | --- | --------- | ------------------------------- | --------------------------------------------------------------------------------------- | ------------------------ | ----------------- |
 | ✅ done        | 443 | very-high | `EnrolmentForm`                 | `src/components/auth/enrolment-form/enrolment-form.tsx:128`                             | `IdentityStepFields`, `ContactStepFields`, `LocationStepFields`, `ChurchStepFields`, `StoryStepFields`, `RoofStepFields` (per-step `withForm` sections), `EnrolmentFormBody`, `EnrolmentPageFrame`, `EnrolmentSubmittedPanel`, `EnrolmentStepHeader`, `EnrolmentFooterNav`, `useEnrolmentStepNavigation` hook, `buildEnrolmentSubmissionData` domain | 2026-06-21 |
-| ⬜ todo        | 395 | very-high | `SignupForm`                    | `src/components/auth/signup-form/signup-form.tsx:51`                                    | —                        | —                 |
-| ⬜ todo        | 355 | very-high | `ProfileModal`                  | `src/components/dialog/profile-modal/ProfileModal.tsx:51`                               | —                        | —                 |
-| ⬜ todo        | 324 | very-high | `AnimateIcon`                   | `src/components/animate-ui/icons/icon.tsx:129`                                          | —                        | —                 |
-| ⬜ todo        | 296 | very-high | `MediaDialog`                   | `src/components/dialog/media-dialog/MediaDialog.tsx:269`                                | —                        | —                 |
+| ✅ done        | 395 | very-high | `SignupForm`                    | `src/components/auth/signup-form/signup-form.tsx:51`                                    | `SignupPageFrame`, `SignupCredentialsForm` + `SignupAccountFields` + `SignupSecurityFields` (`withForm` sections), `SignupEmailField`, `SignupPasswordField` + `PasswordStrengthMeter`, `SignupConfirmPasswordField`, `SignupSubmitSection`, `SignupOtpPanel` + `OtpPanelHeader` + `OtpCodeInput` + `OtpResendButton`, `useSignupForm` + `useInvitationState` + `useResendCooldown` + `useSignupSubmit` + `useSignupInvitation` + `useOtpVerification` + `useOtpResend` hooks | 2026-06-22 |
+| ✅ done        | 355 | very-high | `ProfileModal`                  | `src/components/dialog/profile-modal/ProfileModal.tsx:51`                               | `ProfileModalHeader`, `ProfileAvatarPanel`, `PasswordFields` + `PasswordSection` (`withForm`), `ProfileFields` + `ProfileSection` (`withForm`), `ProfileRightColumn`, `useAvatarUpload`, `useProfileForm`, `usePasswordForm`, `useProfileModal` hooks | 2026-06-22 |
+| 🔨 in progress | 324 | very-high | `AnimateIcon`                   | `src/components/animate-ui/icons/icon.tsx:129`                                          | —                        | 2026-06-21T21:24Z |
+| 🔨 in progress | 296 | very-high | `MediaDialog`                   | `src/components/dialog/media-dialog/MediaDialog.tsx:269`                                | —                        | 2026-06-21T21:34Z |
 | ⬜ todo        | 268 | very-high | `PostsComponent`                | `src/routes/_authed/posts.tsx:81`                                                       | —                        | —                 |
 | ⬜ todo        | 267 | very-high | `LandingLecturerGemsSection`    | `src/components/landing/lecturers.tsx:405`                                              | —                        | —                 |
 | ⬜ todo        | 255 | very-high | `EvaluationOverlay`             | `src/components/enrollment/evaluation-overlay/EvaluationOverlay.tsx:327`                | —                        | —                 |
@@ -255,7 +275,7 @@ you work. `LOC` and `Tier` are the snapshot line count and size band. `File / si
 | ⬜ todo        | 141 | very-high | `DataTable`                     | `src/components/table/DataTable.tsx:467`                                                | —                        | —                 |
 | ⬜ todo        | 137 | very-high | `PdfViewer`                     | `src/components/library/PdfViewer.tsx:17`                                               | —                        | —                 |
 | ⬜ todo        | 133 | very-high | `LessonDialog`                  | `src/components/dialog/lesson-dialog/LessonDialog.tsx:29`                               | —                        | —                 |
-| ⬜ todo        | 131 | very-high | `<arrow>`                       | `src/components/animate-ui/icons/icon.tsx:248`                                          | —                        | —                 |
+| 🔨 in progress | 131 | very-high | `<arrow>`                       | `src/components/animate-ui/icons/icon.tsx:248`                                          | —                        | 2026-06-21T21:24Z |
 | ⬜ todo        | 130 | very-high | `CalendarView`                  | `src/components/view/CalendarView.tsx:18`                                               | —                        | —                 |
 | ⬜ todo        | 123 | very-high | `CourseDialog`                  | `src/components/dialog/course-dialog/CourseDialog.tsx:259`                              | —                        | —                 |
 | ⬜ todo        | 120 | very-high | `render`                        | `src/components/dialog/course-dialog/CourseDialog.tsx:137`                              | —                        | —                 |

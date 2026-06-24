@@ -14,12 +14,13 @@
     // ]
   },
   "health": {
-    // Glob patterns excluded from complexity analysis (incl. large_functions).
-    // Test files are exempt from the unit-size rule (ADR 0011): long
-    // describe/it/arrange-act-assert bodies are normal and decomposing them
-    // adds no production value. Excluding them here is the config-level mirror
-    // of `--production-health`, so `fallow audit` reports the production
-    // burndown without the test-file noise (no per-run flag needed).
+    // Glob patterns excluded from complexity analysis (large_functions + CRAP
+    // findings). Test files are exempt from both paydown ADRs: unit-size
+    // (ADR 0011 — long describe/it/arrange-act-assert bodies are normal) and
+    // CRAP (ADR 0010 — a target's own *.domain.test.ts must not count as a
+    // finding). Excluding them here is the config-level mirror of
+    // `--production-health`, so `fallow health` / `fallow audit` report the
+    // production burndown without test-file noise (no per-run flag needed).
     "ignore": [
       "src/components/landing/hooks.ts",
       "**/*.test.ts",
