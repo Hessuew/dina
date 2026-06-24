@@ -1,36 +1,13 @@
 import type { TeacherWithCourse } from '@/types/teacher'
-import { GEM_IMAGE_MAP } from '@/utils/gems'
-
-function getInitials(fullName: string): string {
-  const names = fullName.trim().split(' ')
-  if (names.length === 1) {
-    return names[0].substring(0, 2).toUpperCase()
-  }
-  return (names[0][0] + names[names.length - 1][0]).toUpperCase()
-}
+import { buildTeacherCardViewModel } from './domain/teacher-card.domain'
 
 type TeacherCardProps = {
   teacher: TeacherWithCourse
   onClick: () => void
 }
 
-const COURSE_ORDER_THEMES: Record<number, string> = {
-  1: 'Ground',
-  2: 'Foundation',
-  3: 'Walls',
-  4: 'Framing',
-  5: 'Interior',
-  6: 'Roof',
-}
-
 export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
-  const initials = getInitials(teacher.fullName)
-  const topLabel =
-    (teacher.course?.orderIndex != null
-      ? COURSE_ORDER_THEMES[teacher.course.orderIndex]
-      : undefined) ??
-    teacher.lecturerTitle ??
-    undefined
+  const { initials, topLabel, gemImage } = buildTeacherCardViewModel(teacher)
 
   return (
     <div
@@ -73,10 +50,10 @@ export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
       <div className="absolute inset-x-0 bottom-5 z-20 flex flex-col items-center gap-2 px-4">
         <div className="h-px w-7 bg-[#C5A05988]" />
         <div className="flex items-center gap-2">
-          {teacher.gemstone && GEM_IMAGE_MAP[teacher.gemstone] && (
+          {gemImage && (
             <img
-              src={GEM_IMAGE_MAP[teacher.gemstone]}
-              alt={teacher.gemstone}
+              src={gemImage.url}
+              alt={gemImage.alt}
               className="size-8 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
             />
           )}
