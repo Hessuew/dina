@@ -75,7 +75,10 @@ describe('buildNotificationRows', () => {
   })
 
   it('returns an empty array for an unknown event type', () => {
-    const unknown = { type: 'unknown', actorId: 'a' } as unknown as PostCreatedEvent
+    const unknown = {
+      type: 'unknown',
+      actorId: 'a',
+    } as unknown as PostCreatedEvent
     expect(buildNotificationRows(unknown, ['u1'])).toEqual([])
   })
 })

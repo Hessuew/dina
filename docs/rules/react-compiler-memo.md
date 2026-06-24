@@ -9,7 +9,7 @@ enforced-by: review
 ## Rule
 
 A **stable-ref consumer** — any extracted sub-component that receives a prop whose
-*identity* is stable but whose *internal state* changes — must add `'use no memo'` as its
+_identity_ is stable but whose _internal state_ changes — must add `'use no memo'` as its
 first statement, with an inline comment naming which prop is the stable ref and why.
 
 ```tsx
@@ -52,6 +52,7 @@ stopped rendering.
    ```
 
 Known stable-ref types in this codebase:
+
 - `TanstackTable<TData>` (from `useReactTable`) — all sub-components receiving this prop.
 
 ## Enforcement

@@ -82,6 +82,8 @@ export function buildZoomLinkPayload(value: ZoomFormData): ZoomLinkPayload {
     zoomUrl: value.zoomUrl,
     meetingId: value.meetingId,
     passcode: value.passcode,
-    orderIndex: Number.isFinite(value.orderIndex) ? value.orderIndex : undefined,
+    orderIndex: Number.isFinite(value.orderIndex)
+      ? value.orderIndex
+      : undefined,
   }
 }

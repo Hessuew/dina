@@ -105,10 +105,7 @@ export function buildCalendarDayCell(params: {
         ),
       }
     })
-  const overflowCount = Math.max(
-    dayEvents.length - MAX_VISIBLE_DAY_EVENTS,
-    0,
-  )
+  const overflowCount = Math.max(dayEvents.length - MAX_VISIBLE_DAY_EVENTS, 0)
 
   return {
     isDayInCurrentMonth,

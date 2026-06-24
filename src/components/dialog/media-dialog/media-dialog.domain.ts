@@ -145,7 +145,8 @@ export function resolveDocumentUploadResult(params: {
   currentUrl: string
   fileSize: number
 }): DocumentResolution {
-  if (params.fileUrl) return { ok: true, url: params.fileUrl, fileSize: params.fileSize }
+  if (params.fileUrl)
+    return { ok: true, url: params.fileUrl, fileSize: params.fileSize }
   return { ok: true, url: params.currentUrl }
 }
 
@@ -168,7 +169,9 @@ export function buildPdfUploadData(params: {
     fileName: params.fileName,
     fileType: params.fileType,
     fileSize: params.fileSize,
-    ...(params.mode === 'edit' && params.media ? { mediaId: params.media.id } : {}),
+    ...(params.mode === 'edit' && params.media
+      ? { mediaId: params.media.id }
+      : {}),
   }
 }
 

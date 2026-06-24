@@ -27,7 +27,9 @@ export function resolveFieldFootnote(
   error?: string,
   description?: string,
 ): FieldFootnote | null {
-  if (error) return { text: error, className: 'text-destructive text-[0.68rem]' }
-  if (description) return { text: description, className: 'text-xs text-[#8E816D]' }
+  if (error)
+    return { text: error, className: 'text-destructive text-[0.68rem]' }
+  if (description)
+    return { text: description, className: 'text-xs text-[#8E816D]' }
   return null
 }

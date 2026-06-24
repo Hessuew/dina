@@ -40,7 +40,12 @@ describe('buildCourseEditData', () => {
   it('falls back to empty description and null teachers when absent', () => {
     expect(
       buildCourseEditData(
-        { ...baseCourse, description: null, isPublished: null, orderIndex: null },
+        {
+          ...baseCourse,
+          description: null,
+          isPublished: null,
+          orderIndex: null,
+        },
         [],
       ),
     ).toEqual({
@@ -72,13 +77,19 @@ describe('shouldShowMaterials', () => {
 
   it('is true when any material is published', () => {
     expect(
-      shouldShowMaterials(false, [{ isPublished: null }, { isPublished: true }]),
+      shouldShowMaterials(false, [
+        { isPublished: null },
+        { isPublished: true },
+      ]),
     ).toBe(true)
   })
 
   it('is false when the viewer cannot edit and nothing is published', () => {
     expect(
-      shouldShowMaterials(false, [{ isPublished: false }, { isPublished: null }]),
+      shouldShowMaterials(false, [
+        { isPublished: false },
+        { isPublished: null },
+      ]),
     ).toBe(false)
   })
 

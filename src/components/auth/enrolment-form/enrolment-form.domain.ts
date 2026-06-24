@@ -1,3 +1,44 @@
+import type { CreateEnrollmentInput } from '@/schemas/enrollment.schema'
+
+export interface EnrolmentFormValues {
+  fullLegalName: string
+  preferredName: string
+  email: string
+  yearOfBirth: string
+  gender: string
+  nationalityCitizenship: string
+  phoneWhatsApp: string
+  currentCity: string
+  currentCountry: string
+  churchAffiliations: string
+  aboutYourself: string
+  expectationsAlignment: string
+}
+
+function optionalText(value: string): string | undefined {
+  const trimmed = value.trim()
+  return trimmed ? trimmed : undefined
+}
+
+export function buildEnrolmentSubmissionData(
+  value: EnrolmentFormValues,
+): CreateEnrollmentInput {
+  return {
+    fullLegalName: value.fullLegalName,
+    preferredName: optionalText(value.preferredName),
+    email: value.email,
+    yearOfBirth: Number(value.yearOfBirth),
+    gender: value.gender as CreateEnrollmentInput['gender'],
+    nationalityCitizenship: optionalText(value.nationalityCitizenship),
+    phoneWhatsApp: value.phoneWhatsApp,
+    currentCity: optionalText(value.currentCity),
+    currentCountry: optionalText(value.currentCountry),
+    churchAffiliations: optionalText(value.churchAffiliations),
+    aboutYourself: value.aboutYourself,
+    expectationsAlignment: value.expectationsAlignment,
+  }
+}
+
 export type EnrolmentKeyNavigation =
   | 'next'
   | 'next-prevent-default'

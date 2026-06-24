@@ -1,4 +1,7 @@
-import type { CreateLessonInput, UpdateLessonInput } from '@/schemas/lesson.schema'
+import type {
+  CreateLessonInput,
+  UpdateLessonInput,
+} from '@/schemas/lesson.schema'
 
 export const MAX_LESSONS_PER_COURSE = 3
 
@@ -32,7 +35,9 @@ function buildLessonSharedInput(value: LessonFormData) {
   return {
     title: value.title,
     content: value.content || undefined,
-    scheduledTime: value.scheduledTime ? new Date(value.scheduledTime) : undefined,
+    scheduledTime: value.scheduledTime
+      ? new Date(value.scheduledTime)
+      : undefined,
     duration: value.duration > 0 ? value.duration : undefined,
     isPublished: value.isPublished,
   }

@@ -108,7 +108,10 @@ export async function resetPasswordService(
     return { success: false, message: input.message }
   }
 
-  const tokenHash = crypto.createHash('sha256').update(input.token).digest('hex')
+  const tokenHash = crypto
+    .createHash('sha256')
+    .update(input.token)
+    .digest('hex')
   const user = await findProfileByResetTokenHash(tokenHash)
 
   const resolved = resolveValidResetUser(user, new Date())

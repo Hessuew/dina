@@ -10,7 +10,7 @@ function processOrder(order, paymentGateway) {}
 
 // Hard to test
 function processOrder(order) {
-  const gateway = new StripeGateway();
+  const gateway = new StripeGateway()
 }
 ```
 
@@ -22,10 +22,11 @@ function calculateDiscount(cart): Discount {}
 
 // Hard to test
 function applyDiscount(cart): void {
-  cart.total -= discount;
+  cart.total -= discount
 }
 ```
 
 3. **Small surface area**
+
 - Fewer methods = fewer tests needed
 - Fewer params = simpler test setup
