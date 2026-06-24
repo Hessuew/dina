@@ -390,67 +390,65 @@ export function AssignmentDialog({
       isSubmitting={isAnyPending}
       submitLabel={copy.submitLabel}
     >
-      <DialogBody>
-        <FieldGroup className="mt-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <assignmentForm.AppField
-              name="title"
-              validators={{ onSubmit: createAssignmentSchema.shape.title }}
-            >
-              {(field) => (
-                <field.TextField
-                  id="title"
-                  label="Title"
-                  required
-                  className="sm:col-span-2"
-                />
-              )}
-            </assignmentForm.AppField>
-            <assignmentForm.AppField
-              name="dueDate"
-              validators={{ onSubmit: createAssignmentSchema.shape.dueDate }}
-            >
-              {(field) => (
-                <field.TextField
-                  id="dueDate"
-                  label="Due Date"
-                  required
-                  type="datetime-local"
-                />
-              )}
-            </assignmentForm.AppField>
-            <assignmentForm.AppField name="maxGrade">
-              {(field) => (
-                <field.NumberField
-                  id="maxGrade"
-                  label="Maximum Grade"
-                  min={0}
-                  placeholder="100"
-                />
-              )}
-            </assignmentForm.AppField>
-            <assignmentForm.AppField name="status">
-              {(field) => (
-                <field.SelectField id="status" label="Status">
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </field.SelectField>
-              )}
-            </assignmentForm.AppField>
-            <assignmentForm.AppField name="description">
-              {(field) => (
-                <field.TextAreaField
-                  id="description"
-                  label="Description"
-                  className="sm:col-span-2"
-                  rows={5}
-                />
-              )}
-            </assignmentForm.AppField>
-          </div>
-        </FieldGroup>
-      </DialogBody>
+      <FieldGroup className="mt-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <assignmentForm.AppField
+            name="title"
+            validators={{ onSubmit: createAssignmentSchema.shape.title }}
+          >
+            {(field) => (
+              <field.TextField
+                id="title"
+                label="Title"
+                required
+                className="sm:col-span-2"
+              />
+            )}
+          </assignmentForm.AppField>
+          <assignmentForm.AppField
+            name="dueDate"
+            validators={{ onSubmit: createAssignmentSchema.shape.dueDate }}
+          >
+            {(field) => (
+              <field.TextField
+                id="dueDate"
+                label="Due Date"
+                required
+                type="datetime-local"
+              />
+            )}
+          </assignmentForm.AppField>
+          <assignmentForm.AppField name="maxGrade">
+            {(field) => (
+              <field.NumberField
+                id="maxGrade"
+                label="Maximum Grade"
+                min={0}
+                placeholder="100"
+              />
+            )}
+          </assignmentForm.AppField>
+          <assignmentForm.AppField name="status">
+            {(field) => (
+              <field.SelectField id="status" label="Status">
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="published">Published</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </field.SelectField>
+            )}
+          </assignmentForm.AppField>
+          <assignmentForm.AppField name="description">
+            {(field) => (
+              <field.TextAreaField
+                id="description"
+                label="Description"
+                className="sm:col-span-2"
+                rows={5}
+              />
+            )}
+          </assignmentForm.AppField>
+        </div>
+      </FieldGroup>
     </FormDialog>
   )
 }

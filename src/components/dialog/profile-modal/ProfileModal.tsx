@@ -204,7 +204,7 @@ export function ProfileModal({
 
           <DialogBody className="relative overflow-hidden">
             {/* Two-column layout */}
-            <div className="grid h-full min-h-0 grid-rows-[minmax(16rem,0.88fr)_minmax(0,1.12fr)] lg:grid-cols-[minmax(16rem,0.92fr)_minmax(0,1.08fr)] lg:grid-rows-none">
+            <div className="grid h-full min-h-0 grid-rows-[minmax(12rem,0.88fr)_minmax(0,1.12fr)] lg:grid-cols-[minmax(16rem,0.92fr)_minmax(0,1.08fr)] lg:grid-rows-none">
               {/* Left: Avatar */}
               <div className="relative min-h-0 overflow-hidden border-b border-white/10 bg-[#171717] lg:border-r lg:border-b-0">
                 {user.avatarUrl ? (
@@ -269,129 +269,164 @@ export function ProfileModal({
                         </Button>
                         <div className="h-px flex-1 bg-[#C5A059]/50" />
                       </div>
-                      <h3 className="mt-5 font-serif text-5xl leading-[0.88] tracking-[-0.06em] text-[#F8F4EC]">
-                        security
-                      </h3>
                     </div>
                     <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/8 pt-7 pr-2 lg:mt-8">
-                      <FieldGroup>
-                        <passwordForm.AppField
-                          name="newPassword"
-                          validators={{
-                            onSubmit: updatePasswordSchema.shape.newPassword,
-                          }}
-                        >
-                          {(field) => (
-                            <field.TextField
-                              id="newPassword"
-                              label="New Password"
-                              type="password"
-                              required
-                            />
-                          )}
-                        </passwordForm.AppField>
-                        <passwordForm.AppField
-                          name="confirmPassword"
-                          validators={{
-                            onSubmit: ({ value, fieldApi }) =>
-                              validateConfirmPassword(
-                                value,
-                                fieldApi.form.state.values.newPassword,
-                              ),
-                          }}
-                        >
-                          {(field) => (
-                            <field.TextField
-                              id="confirmPassword"
-                              label="Confirm New Password"
-                              type="password"
-                              required
-                            />
-                          )}
-                        </passwordForm.AppField>
-                        <div className="flex justify-end pt-2">
-                          <Button
-                            type="button"
-                            theme="dark"
-                            onClick={() => void passwordForm.handleSubmit()}
-                            disabled={updatePasswordMutation.isPending}
+                      <div>
+                        <div className="h-px w-12 bg-[#C5A059]/50" />
+                        <h3 className="mt-5 font-serif text-5xl leading-[0.88] tracking-[-0.06em] text-[#F8F4EC]">
+                          security
+                        </h3>
+                      </div>
+                      <div className="mt-4 min-h-0 flex-1">
+                        <FieldGroup>
+                          <passwordForm.AppField
+                            name="newPassword"
+                            validators={{
+                              onSubmit: updatePasswordSchema.shape.newPassword,
+                            }}
                           >
-                            {getPasswordButtonLabel(
-                              updatePasswordMutation.isPending,
+                            {(field) => (
+                              <field.TextField
+                                id="newPassword"
+                                label="New Password"
+                                type="password"
+                                required
+                              />
                             )}
-                          </Button>
-                        </div>
-                      </FieldGroup>
+                          </passwordForm.AppField>
+                          <passwordForm.AppField
+                            name="confirmPassword"
+                            validators={{
+                              onSubmit: ({ value, fieldApi }) =>
+                                validateConfirmPassword(
+                                  value,
+                                  fieldApi.form.state.values.newPassword,
+                                ),
+                            }}
+                          >
+                            {(field) => (
+                              <field.TextField
+                                id="confirmPassword"
+                                label="Confirm New Password"
+                                type="password"
+                                required
+                              />
+                            )}
+                          </passwordForm.AppField>
+                          <div className="hidden lg:flex lg:justify-end lg:pt-2">
+                            <Button
+                              type="button"
+                              theme="dark"
+                              onClick={() => void passwordForm.handleSubmit()}
+                              disabled={updatePasswordMutation.isPending}
+                            >
+                              {getPasswordButtonLabel(
+                                updatePasswordMutation.isPending,
+                              )}
+                            </Button>
+                          </div>
+                        </FieldGroup>
+                      </div>
+                    </div>
+                    <div className="sticky bottom-0 border-t border-white/8 bg-[#151515]/88 p-4 lg:hidden">
+                      <div className="flex justify-end">
+                        <Button
+                          type="button"
+                          theme="dark"
+                          onClick={() => void passwordForm.handleSubmit()}
+                          disabled={updatePasswordMutation.isPending}
+                        >
+                          {getPasswordButtonLabel(
+                            updatePasswordMutation.isPending,
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </>
                 ) : (
                   /* Profile mode */
                   <>
-                    <div>
-                      <div className="h-px w-12 bg-[#C5A059]/50" />
-                      <h3 className="mt-5 font-serif text-5xl leading-[0.88] tracking-[-0.06em] text-[#F8F4EC]">
-                        about me
-                      </h3>
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/8 pt-7 pr-2 lg:mt-8">
+                      <div>
+                        <div className="h-px w-12 bg-[#C5A059]/50" />
+                        <h3 className="mt-5 font-serif text-5xl leading-[0.88] tracking-[-0.06em] text-[#F8F4EC]">
+                          about me
+                        </h3>
+                      </div>
+                      <div className="mt-4 min-h-0 flex-1">
+                        <FieldGroup className="min-h-0 flex-1">
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <profileForm.AppField
+                              name="email"
+                              validators={{
+                                onSubmit: updateProfileSchema.shape.email,
+                              }}
+                            >
+                              {(field) => (
+                                <field.TextField
+                                  id="email"
+                                  label="Email"
+                                  type="email"
+                                  required
+                                  description={getEmailFieldDescription(
+                                    pendingEmailSent,
+                                  )}
+                                />
+                              )}
+                            </profileForm.AppField>
+                            <profileForm.AppField
+                              name="fullName"
+                              validators={{
+                                onSubmit: updateProfileSchema.shape.fullName,
+                              }}
+                            >
+                              {(field) => (
+                                <field.TextField
+                                  id="fullName"
+                                  label="Full Name"
+                                  required
+                                />
+                              )}
+                            </profileForm.AppField>
+                          </div>
+                          <profileForm.AppField name="bio">
+                            {(field) => (
+                              <field.TextAreaField
+                                id="bio"
+                                label="Bio"
+                                placeholder="Tell us about yourself..."
+                                className="flex min-h-0 flex-1 flex-col [&_textarea]:flex-1 [&_textarea]:resize-none"
+                              />
+                            )}
+                          </profileForm.AppField>
+                          <div className="hidden lg:flex lg:justify-end">
+                            <Button
+                              type="button"
+                              theme="dark"
+                              onClick={() => void profileForm.handleSubmit()}
+                              disabled={updateProfileMutation.isPending}
+                            >
+                              {getProfileButtonLabel(
+                                updateProfileMutation.isPending,
+                              )}
+                            </Button>
+                          </div>
+                        </FieldGroup>
+                      </div>
                     </div>
-                    <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/8 pt-7 pr-2 lg:mt-8">
-                      <FieldGroup className="min-h-0 flex-1">
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <profileForm.AppField
-                            name="email"
-                            validators={{
-                              onSubmit: updateProfileSchema.shape.email,
-                            }}
-                          >
-                            {(field) => (
-                              <field.TextField
-                                id="email"
-                                label="Email"
-                                type="email"
-                                required
-                                description={getEmailFieldDescription(
-                                  pendingEmailSent,
-                                )}
-                              />
-                            )}
-                          </profileForm.AppField>
-                          <profileForm.AppField
-                            name="fullName"
-                            validators={{
-                              onSubmit: updateProfileSchema.shape.fullName,
-                            }}
-                          >
-                            {(field) => (
-                              <field.TextField
-                                id="fullName"
-                                label="Full Name"
-                                required
-                              />
-                            )}
-                          </profileForm.AppField>
-                        </div>
-                        <profileForm.AppField name="bio">
-                          {(field) => (
-                            <field.TextAreaField
-                              id="bio"
-                              label="Bio"
-                              placeholder="Tell us about yourself..."
-                              className="flex min-h-0 flex-1 flex-col [&_textarea]:flex-1 [&_textarea]:resize-none"
-                            />
+                    <div className="sticky bottom-0 border-t border-white/8 bg-[#151515]/88 p-4 lg:hidden">
+                      <div className="flex justify-end">
+                        <Button
+                          type="button"
+                          theme="dark"
+                          onClick={() => void profileForm.handleSubmit()}
+                          disabled={updateProfileMutation.isPending}
+                        >
+                          {getProfileButtonLabel(
+                            updateProfileMutation.isPending,
                           )}
-                        </profileForm.AppField>
-                        <div className="flex justify-end">
-                          <Button
-                            type="button"
-                            theme="dark"
-                            onClick={() => void profileForm.handleSubmit()}
-                            disabled={updateProfileMutation.isPending}
-                          >
-                            {getProfileButtonLabel(
-                              updateProfileMutation.isPending,
-                            )}
-                          </Button>
-                        </div>
-                      </FieldGroup>
+                        </Button>
+                      </div>
                     </div>
                   </>
                 )}

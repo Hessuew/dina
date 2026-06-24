@@ -10,7 +10,6 @@ import {
 import type { LessonInitialData } from './lesson-dialog.domain'
 import { createLessonSchema } from '@/schemas/lesson.schema'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
-import { DialogBody } from '@/components/ui/dialog'
 import { FieldGroup } from '@/components/ui/field'
 import { FormDialog } from '@/components/ui/form-dialog/FormDialog'
 import { useAppForm } from '@/hooks/form'
@@ -98,64 +97,59 @@ export function LessonDialog({
       isSubmitting={isAnyPending}
       submitLabel={config.submitLabel}
     >
-      <DialogBody>
-        <FieldGroup className="mt-6 gap-8">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <form.AppField
-              name="title"
-              validators={{ onSubmit: createLessonSchema.shape.title }}
-            >
-              {(field) => (
-                <field.TextField
-                  id="lesson-title"
-                  label="Title"
-                  required
-                  className="sm:col-span-2"
-                  placeholder="Lesson title"
-                />
-              )}
-            </form.AppField>
-            <form.AppField name="scheduledTime">
-              {(field) => (
-                <field.TextField
-                  id="lesson-time"
-                  label="Scheduled Time"
-                  required
-                  type="datetime-local"
-                />
-              )}
-            </form.AppField>
-            <form.AppField name="duration">
-              {(field) => (
-                <field.NumberField
-                  id="lesson-duration"
-                  label="Duration (minutes)"
-                  placeholder="60"
-                />
-              )}
-            </form.AppField>
-            <form.AppField name="content">
-              {(field) => (
-                <field.TextAreaField
-                  id="lesson-content"
-                  label="Content"
-                  className="sm:col-span-2"
-                  placeholder="Lesson content or description"
-                  rows={8}
-                />
-              )}
-            </form.AppField>
-            <form.AppField name="isPublished">
-              {(field) => (
-                <field.SwitchField
-                  id="lesson-published"
-                  label="Publish lesson"
-                />
-              )}
-            </form.AppField>
-          </div>
-        </FieldGroup>
-      </DialogBody>
+      <FieldGroup className="mt-6 gap-8">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <form.AppField
+            name="title"
+            validators={{ onSubmit: createLessonSchema.shape.title }}
+          >
+            {(field) => (
+              <field.TextField
+                id="lesson-title"
+                label="Title"
+                required
+                className="sm:col-span-2"
+                placeholder="Lesson title"
+              />
+            )}
+          </form.AppField>
+          <form.AppField name="scheduledTime">
+            {(field) => (
+              <field.TextField
+                id="lesson-time"
+                label="Scheduled Time"
+                required
+                type="datetime-local"
+              />
+            )}
+          </form.AppField>
+          <form.AppField name="duration">
+            {(field) => (
+              <field.NumberField
+                id="lesson-duration"
+                label="Duration (minutes)"
+                placeholder="60"
+              />
+            )}
+          </form.AppField>
+          <form.AppField name="content">
+            {(field) => (
+              <field.TextAreaField
+                id="lesson-content"
+                label="Content"
+                className="sm:col-span-2"
+                placeholder="Lesson content or description"
+                rows={8}
+              />
+            )}
+          </form.AppField>
+          <form.AppField name="isPublished">
+            {(field) => (
+              <field.SwitchField id="lesson-published" label="Publish lesson" />
+            )}
+          </form.AppField>
+        </div>
+      </FieldGroup>
     </FormDialog>
   )
 }
