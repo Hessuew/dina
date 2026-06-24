@@ -4,6 +4,7 @@ import {
   buildSubmissionStatusViewModel,
 } from './assignment-detail-sections.domain'
 import type { ColumnDef } from '@tanstack/react-table'
+import type { SubmissionStatusVariant } from '@/utils/assignments/domain/assignment-detail.domain'
 import { Button } from '@/components/ui/button'
 import { StatusChip } from '@/components/ui/status-chip'
 import { Field, FieldLabel } from '@/components/ui/field'
@@ -23,7 +24,7 @@ type Assignment = {
 type Submission = {
   content: string | null
   fileUrl: string | null
-  status: 'draft' | 'submitted' | 'graded' | 'returned'
+  status: SubmissionStatusVariant
   grade: number | null
   feedback: string | null
   submittedAt: Date | null
@@ -33,7 +34,7 @@ type SubmissionWithStudent = {
   id: string
   content: string | null
   fileUrl: string | null
-  status: 'draft' | 'submitted' | 'graded'
+  status: SubmissionStatusVariant
   grade: number | null
   feedback: string | null
   submittedAt: Date | null
