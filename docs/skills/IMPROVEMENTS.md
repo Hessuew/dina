@@ -14,3 +14,5 @@ Source tag: `[auto]` (hook, from a tool error) · `[model]` (agent judgment).
 ## Entries
 
 <!-- newest first; remove a line once applied via PR -->
+
+- [2026-06-23] reviewing-code · type: better · observation: staged-only review scope was requested but the skill does not say how to proceed when the staged diff cannot be read directly · suggestion: add a fallback step to request a pasted staged diff or explicitly downgrade scope before reporting findings · [model]
