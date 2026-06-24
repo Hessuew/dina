@@ -9,7 +9,6 @@ import {
   VideoIcon,
 } from 'lucide-react'
 import { z } from 'zod'
-import { format } from 'date-fns'
 import type { CalendarEventRow } from '@/utils/event/events'
 import { createEventSchema } from '@/schemas/event.schema'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
@@ -29,9 +28,19 @@ import { SelectItem } from '@/components/ui/select'
 import { useAppForm, withForm } from '@/hooks/form'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { createEvent, deleteEvent, updateEvent } from '@/utils/event/events'
+import {
+  buildEventViewModel,
+  getEventDefaultValues,
+} from '@/components/dialog/domain/event-dialog.domain'
+import type {
+  EventCategory,
+  EventCategoryDisplay,
+  EventDetailIconKey,
+  EventDetailRow,
+  EventDialogMode,
+  EventFormValues,
+} from '@/components/dialog/domain/event-dialog.domain'
 import { cn } from '@/lib/utils'
-
-type EventDialogMode = 'view' | 'create' | 'edit' | 'delete'
 
 type EventDialogProps = {
   open: boolean
@@ -44,22 +53,17 @@ type EventFormFieldsProps = Omit<EventDialogProps, 'mode'> & {
   mode: 'create' | 'edit'
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  chapel: 'Chapel',
-  exam: 'Exam',
-  personal: 'Personal',
-}
-
-const CATEGORY_ICON: Record<string, React.ElementType> = {
+const CATEGORY_ICON: Record<EventCategory, React.ElementType> = {
   chapel: HeartHandshakeIcon,
   exam: AlertTriangleIcon,
   personal: UserIcon,
 }
 
-const CATEGORY_CHIP: Record<string, string> = {
-  chapel: 'border-violet-500/30 bg-violet-950/40 text-violet-300',
-  exam: 'border-red-500/30 bg-red-950/40 text-red-300',
-  personal: 'border-sky-500/30 bg-sky-950/40 text-sky-300',
+const DETAIL_ICON: Record<EventDetailIconKey, React.ElementType> = {
+  calendar: CalendarIcon,
+  clock: ClockIcon,
+  mappin: MapPinIcon,
+  video: VideoIcon,
 }
 
 const dialogStyle = {
@@ -69,42 +73,6 @@ const dialogStyle = {
 }
 
 const requiredDateTimeString = z.string().min(1, 'This field is required')
-
-type EventFormValues = {
-  title: string
-  description: string
-  startTime: string
-  endTime: string
-  location: string
-  zoomLink: string
-  category: string
-}
-
-function getDefaultValues(
-  mode: EventDialogMode,
-  event?: CalendarEventRow,
-): EventFormValues {
-  if ((mode === 'edit' || mode === 'view') && event) {
-    return {
-      title: event.title,
-      description: event.description ?? '',
-      startTime: new Date(event.startTime).toISOString().slice(0, 16),
-      endTime: new Date(event.endTime).toISOString().slice(0, 16),
-      location: event.location ?? '',
-      zoomLink: event.zoomLink ?? '',
-      category: event.category ?? '',
-    }
-  }
-  return {
-    title: '',
-    description: '',
-    startTime: '',
-    endTime: '',
-    location: '',
-    zoomLink: '',
-    category: '',
-  }
-}
 
 function buildEventInput(value: EventFormValues) {
   return {
@@ -122,6 +90,42 @@ function buildEventInput(value: EventFormValues) {
   }
 }
 
+function EventCategoryChip({ category }: { category: EventCategoryDisplay }) {
+  const CategoryIcon = CATEGORY_ICON[category.iconKey]
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 border px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.15em] uppercase',
+        category.chipClass,
+      )}
+    >
+      <CategoryIcon className="size-2.5" />
+      {category.label}
+    </span>
+  )
+}
+
+function EventDetailRowItem({ row }: { row: EventDetailRow }) {
+  const Icon = DETAIL_ICON[row.iconKey]
+  return (
+    <div className="flex items-center gap-2.5 text-sm">
+      <Icon className="size-3.5 shrink-0 text-[#8E816D]" />
+      {row.href ? (
+        <a
+          href={row.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="truncate text-[#9B7A41] hover:underline"
+        >
+          {row.text}
+        </a>
+      ) : (
+        <span className="text-[#D6CCBE]">{row.text}</span>
+      )}
+    </div>
+  )
+}
+
 function EventViewMode({
   event,
   open,
@@ -131,10 +135,7 @@ function EventViewMode({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const CategoryIcon = event.category
-    ? CATEGORY_ICON[event.category]
-    : CalendarIcon
-  const chipClass = event.category ? CATEGORY_CHIP[event.category] : ''
+  const vm = buildEventViewModel(event)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -153,66 +154,25 @@ function EventViewMode({
                   Event details
                 </div>
               </div>
-              {event.category && (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1.5 border px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.15em] uppercase',
-                    chipClass,
-                  )}
-                >
-                  <CategoryIcon className="size-2.5" />
-                  {CATEGORY_LABELS[event.category]}
-                </span>
-              )}
+              {vm.category && <EventCategoryChip category={vm.category} />}
             </div>
             <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
               {event.title}
             </DialogTitle>
-            {event.courseName && (
-              <p className="text-[0.78rem] text-[#AFA28F]">
-                {event.courseName}
-              </p>
+            {vm.courseName && (
+              <p className="text-[0.78rem] text-[#AFA28F]">{vm.courseName}</p>
             )}
           </DialogHeader>
 
           <DialogBody>
             <div className="mt-4 space-y-3">
-              <div className="flex items-center gap-2.5 text-sm">
-                <CalendarIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                <span className="text-[#D6CCBE]">
-                  {format(new Date(event.startTime), 'PPP')}
-                </span>
-              </div>
-              <div className="flex items-center gap-2.5 text-sm">
-                <ClockIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                <span className="text-[#D6CCBE]">
-                  {format(new Date(event.startTime), 'p')} –{' '}
-                  {format(new Date(event.endTime), 'p')}
-                </span>
-              </div>
-              {event.location && (
-                <div className="flex items-center gap-2.5 text-sm">
-                  <MapPinIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                  <span className="text-[#D6CCBE]">{event.location}</span>
-                </div>
-              )}
-              {event.zoomLink && (
-                <div className="flex items-center gap-2.5 text-sm">
-                  <VideoIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-                  <a
-                    href={event.zoomLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="truncate text-[#9B7A41] hover:underline"
-                  >
-                    {event.zoomLink}
-                  </a>
-                </div>
-              )}
-              {event.description && (
+              {vm.detailRows.map((row) => (
+                <EventDetailRowItem key={row.iconKey} row={row} />
+              ))}
+              {vm.description && (
                 <div className="mt-4 border border-white/8 bg-white/4 p-3">
                   <p className="line-clamp-6 text-[0.82rem] leading-relaxed text-[#AFA28F]">
-                    {event.description}
+                    {vm.description}
                   </p>
                 </div>
               )}
@@ -235,7 +195,7 @@ function EventViewMode({
 }
 
 const EventFormFieldsContent = withForm({
-  defaultValues: getDefaultValues('create'),
+  defaultValues: getEventDefaultValues('create'),
   render: ({ form }) => (
     <FieldGroup className="mt-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -352,7 +312,7 @@ function EventFormFields({
   })
 
   const form = useAppForm({
-    defaultValues: getDefaultValues(mode, event),
+    defaultValues: getEventDefaultValues(mode, event),
     onSubmit: ({ value }) => {
       const shared = buildEventInput(value)
 
@@ -368,7 +328,7 @@ function EventFormFields({
 
   useEffect(() => {
     if (!open) return
-    form.reset(getDefaultValues(mode, event))
+    form.reset(getEventDefaultValues(mode, event))
   }, [open, mode, event, form])
 
   return (
