@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import type { CalendarEvent } from '@/utils/calendar/calendar'
 import {
+  EVENT_STYLES,
+  MAX_VISIBLE_DAY_EVENTS,
   buildCalendarDayCell,
   buildCalendarDays,
-  EVENT_STYLES,
   getEventStyle,
-  MAX_VISIBLE_DAY_EVENTS,
-} from './calendar-view/calendar-view.domain'
+} from './calendar-view.domain'
+import type { CalendarEvent } from '@/utils/calendar/calendar'
 
 function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
   return {

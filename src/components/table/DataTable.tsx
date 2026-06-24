@@ -486,6 +486,9 @@ export function DataTable<TData>({
 }: DataTableProps<TData>) {
   const isServerMode = rowCount !== undefined
   const tableTopRef = useRef<HTMLDivElement>(null)
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onSearchChangeRef = useRef(onSearchChange)
+  onSearchChangeRef.current = onSearchChange
 
   const [sorting, setSorting] = useState<SortingState>(
     initialSortBy
@@ -517,6 +520,12 @@ export function DataTable<TData>({
     )
   }, [initialSortBy, initialSortDir])
 
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
+  }, [])
+
   const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
     const next = typeof updater === 'function' ? updater(sorting) : updater
     setSorting(next)
@@ -546,7 +555,10 @@ export function DataTable<TData>({
     globalFilterFn: 'includesString',
     onGlobalFilterChange: (value) => {
       setGlobalFilter(value)
-      onSearchChange?.(value)
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+      searchDebounceRef.current = setTimeout(() => {
+        onSearchChangeRef.current?.(value)
+      }, 300)
     },
     onPaginationChange: handlePaginationChange,
     onSortingChange: handleSortingChange,

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   parseYouTubeMessage,
   shouldBlockYouTubePlayback,
-} from './youtube-embed/youtube-embed.domain'
+} from './youtube-embed.domain'
 
 describe('parseYouTubeMessage', () => {
   it('parses a JSON string payload into an object', () => {

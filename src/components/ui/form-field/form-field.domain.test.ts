@@ -3,7 +3,7 @@ import {
   formatNumberFieldValue,
   parseNumberFieldValue,
   resolveFieldFootnote,
-} from './form-field/form-field.domain'
+} from './form-field.domain'
 
 describe('parseNumberFieldValue', () => {
   it('treats an empty string as 0', () => {
