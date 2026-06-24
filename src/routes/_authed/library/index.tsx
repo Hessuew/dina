@@ -12,6 +12,7 @@ import { getLibraryMedia } from '@/utils/library'
 import {
   canCreateMedia,
   canManageMediaRow,
+  getLibraryEmptyStateDescription,
   getVisibleShelfTopics,
   getYoutubeThumbnail,
 } from '@/utils/library/domain/library-view.domain'
@@ -90,6 +91,93 @@ function PublishedCell({
     <span className="border border-white/12 px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.12em] text-[#8E816D] uppercase">
       No
     </span>
+  )
+}
+
+function LibraryBody({
+  media,
+  canCreate,
+  columns,
+  shelves,
+  shelfTopics,
+  viewerRole,
+  openDialog,
+}: {
+  media: Array<MediaLibraryRow>
+  canCreate: boolean
+  columns: Array<ColumnDef<MediaLibraryRow, any>>
+  shelves: ReturnType<typeof getVisibleShelfTopics>['shelves']
+  shelfTopics: ReturnType<typeof getVisibleShelfTopics>['shelfTopics']
+  viewerRole: Role
+  openDialog: (
+    mode: 'create' | 'edit' | 'delete' | 'view',
+    item?: MediaLibraryRow,
+  ) => void
+}) {
+  if (media.length === 0) {
+    return (
+      <EmptyState
+        icon={FileTextIcon}
+        heading="No media yet"
+        description={getLibraryEmptyStateDescription(canCreate)}
+        actionLabel="Add Media"
+        onAction={() => openDialog('create')}
+        showAction={canCreate}
+        variant="light"
+      />
+    )
+  }
+
+  return (
+    <>
+      {shelfTopics.length === 0 ? (
+        <p className="text-sm text-[#8E816D]">
+          No content has been organized into shelves yet.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-12">
+          {shelfTopics.map((topic) => {
+            const shelf = shelves.get(topic)
+            if (!shelf) return null
+            return (
+              <LibraryShelf
+                key={topic}
+                topic={topic}
+                ebooks={shelf.ebooks}
+                audioVisual={shelf.audioVisual}
+                viewerRole={viewerRole}
+                permissions={{
+                  canEdit: canCreate,
+                  isCourseTeacher: canCreate,
+                }}
+                onEditMedia={(item) => openDialog('edit', item)}
+                onDeleteMedia={(item) => openDialog('delete', item)}
+              />
+            )
+          })}
+        </div>
+      )}
+
+      {canCreate && (
+        <div className="mt-16">
+          <div className="mb-6">
+            <div className="h-px w-8 bg-[#9B7A41]/50" />
+            <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+              Manage
+            </div>
+            <h2 className="mt-1 font-serif text-xl tracking-[-0.02em] text-[#1C1815]">
+              All Media
+            </h2>
+          </div>
+          <DataTable
+            columns={columns}
+            data={media}
+            pageSize={15}
+            searchPlaceholder="Search library…"
+          />
+        </div>
+      )}
+    </>
   )
 }
 
@@ -172,71 +260,15 @@ function LibraryComponent() {
         )}
       </div>
 
-      {media.length === 0 ? (
-        <EmptyState
-          icon={FileTextIcon}
-          heading="No media yet"
-          description={
-            canCreate
-              ? 'Add the first library item to get started'
-              : 'Check back later for new materials'
-          }
-          actionLabel="Add Media"
-          onAction={() => openDialog('create')}
-          showAction={canCreate}
-          variant="light"
-        />
-      ) : (
-        <>
-          {shelfTopics.length === 0 ? (
-            <p className="text-sm text-[#8E816D]">
-              No content has been organized into shelves yet.
-            </p>
-          ) : (
-            <div className="flex flex-col gap-12">
-              {shelfTopics.map((topic) => {
-                const shelf = shelves.get(topic)
-                if (!shelf) return null
-                return (
-                  <LibraryShelf
-                    key={topic}
-                    topic={topic}
-                    ebooks={shelf.ebooks}
-                    audioVisual={shelf.audioVisual}
-                    viewerRole={viewer.role}
-                    permissions={{
-                      canEdit: canCreate,
-                      isCourseTeacher: canCreate,
-                    }}
-                    onEditMedia={(media) => openDialog('edit', media)}
-                    onDeleteMedia={(media) => openDialog('delete', media)}
-                  />
-                )
-              })}
-            </div>
-          )}
-
-          {canCreate && (
-            <div className="mt-16">
-              <div className="mb-6">
-                <div className="h-px w-8 bg-[#9B7A41]/50" />
-                <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-                  Manage
-                </div>
-                <h2 className="mt-1 font-serif text-xl tracking-[-0.02em] text-[#1C1815]">
-                  All Media
-                </h2>
-              </div>
-              <DataTable
-                columns={columns}
-                data={media}
-                pageSize={15}
-                searchPlaceholder="Search library…"
-              />
-            </div>
-          )}
-        </>
-      )}
+      <LibraryBody
+        media={media}
+        canCreate={canCreate}
+        columns={columns}
+        shelves={shelves}
+        shelfTopics={shelfTopics}
+        viewerRole={viewer.role}
+        openDialog={openDialog}
+      />
 
       <MediaDialog
         key={`${dialogMode}-${dialogMedia?.id}`}

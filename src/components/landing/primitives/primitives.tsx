@@ -1,4 +1,5 @@
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { buildScriptureSectionHeaderViewModel } from './landing-scripture-section-header.domain'
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -302,6 +303,18 @@ export function LandingScriptureSectionHeader({
   headlineColor = '#1C1815',
   className,
 }: LandingScriptureSectionHeaderProps) {
+  const {
+    headlineClassName,
+    showBody,
+    showIntroScriptureSeparator,
+    scriptureLines,
+  } = buildScriptureSectionHeaderViewModel({
+    hasIntroText: Boolean(introText),
+    scriptures,
+    headlineMaxW,
+    headlineNowrap,
+  })
+
   return (
     <div className={cn('space-y-6', className)}>
       <LandingSectionEyebrow
@@ -311,44 +324,36 @@ export function LandingScriptureSectionHeader({
         topLineCount={eyebrowTopLineCount}
       />
 
-      <h2
-        className={cn(
-          'block font-serif text-[clamp(3rem,5vw,5.1rem)] leading-[0.92] tracking-[-0.055em]',
-          headlineMaxW,
-          headlineNowrap && 'whitespace-nowrap',
-        )}
-        style={{ color: headlineColor }}
-      >
+      <h2 className={headlineClassName} style={{ color: headlineColor }}>
         {headline}
       </h2>
 
-      {(introText || scriptures) && (
+      {showBody && (
         <p
           className="max-w-xl text-base leading-8 font-light tracking-[0.04em] sm:text-lg"
           style={{ color: textColor }}
         >
           {introText}
-          {introText && scriptures && (
+          {showIntroScriptureSeparator && (
             <>
               <br />
               <br />
             </>
           )}
-          {scriptures &&
-            scriptures.map((scripture, index) => (
-              <span key={index}>
-                {index > 0 && (
-                  <>
-                    <br />
-                    <br />
-                  </>
-                )}
-                "{scripture.quote}"
-                <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
-                  &nbsp;{scripture.reference}
-                </span>
+          {scriptureLines.map((line, index) => (
+            <span key={index}>
+              {line.showLeadingSeparator && (
+                <>
+                  <br />
+                  <br />
+                </>
+              )}
+              "{line.quote}"
+              <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
+                &nbsp;{line.reference}
               </span>
-            ))}
+            </span>
+          ))}
         </p>
       )}
     </div>

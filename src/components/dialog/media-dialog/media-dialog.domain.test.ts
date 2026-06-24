@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildMediaPayload,
+  buildPdfUploadData,
   computeOpenResetState,
+  emptyFormData,
+  fromFileType,
   getDocumentFileVariant,
   getFilenameFromUrl,
+  getInitialValues,
   getMediaDialogChrome,
   getMediaLoadingLabel,
   getThumbnailPreviewSrc,
   isMediaDialogSubmitting,
+  preflightDocumentUrl,
+  resolveDocumentUploadResult,
 } from './media-dialog.domain'
 import type { MediaLibraryRow } from '@/utils/library/library'
 
@@ -15,14 +22,93 @@ const docMedia = {
   fileType: 'document',
   fileUrl: 'https://cdn/docs/lesson.pdf',
   thumbnailUrl: 'https://cdn/thumbs/lesson.png',
+  title: 'Lesson Doc',
+  category: 'Faith',
+  description: 'A lesson document',
+  isPublished: true,
 } as unknown as MediaLibraryRow
 
 const videoMedia = {
   id: 'media-2',
-  fileType: 'youtube',
+  fileType: 'video',
   fileUrl: null,
   thumbnailUrl: null,
+  title: 'Video Title',
+  category: 'Music',
+  description: null,
+  isPublished: false,
 } as unknown as MediaLibraryRow
+
+describe('fromFileType', () => {
+  it('maps document to document', () => {
+    expect(fromFileType('document')).toBe('document')
+  })
+
+  it('maps video to youtube', () => {
+    expect(fromFileType('video')).toBe('youtube')
+  })
+
+  it('maps audio to youtube', () => {
+    expect(fromFileType('audio')).toBe('youtube')
+  })
+})
+
+describe('getInitialValues', () => {
+  it('returns empty form with youtube kind when creating without courseId', () => {
+    expect(getInitialValues(undefined, 'create', undefined)).toEqual({
+      ...emptyFormData,
+      kind: 'youtube',
+    })
+  })
+
+  it('returns empty form with document kind when creating with courseId', () => {
+    expect(getInitialValues(undefined, 'create', 'course-1')).toEqual({
+      ...emptyFormData,
+      kind: 'document',
+    })
+  })
+
+  it('ignores media in create mode and returns empty form', () => {
+    expect(getInitialValues(docMedia, 'create', undefined)).toEqual({
+      ...emptyFormData,
+      kind: 'youtube',
+    })
+  })
+
+  it('returns empty form in delete mode', () => {
+    expect(getInitialValues(undefined, 'delete', undefined)).toEqual({
+      ...emptyFormData,
+      kind: 'youtube',
+    })
+  })
+
+  it('populates from media in edit mode for a document', () => {
+    expect(getInitialValues(docMedia, 'edit', undefined)).toEqual({
+      title: 'Lesson Doc',
+      category: 'Faith',
+      description: 'A lesson document',
+      kind: 'document',
+      url: '',
+      isPublished: true,
+    })
+  })
+
+  it('populates from media in edit mode for a video', () => {
+    expect(getInitialValues(videoMedia, 'edit', undefined)).toEqual({
+      title: 'Video Title',
+      category: 'Music',
+      description: '',
+      kind: 'youtube',
+      url: '',
+      isPublished: false,
+    })
+  })
+
+  it('converts null description to empty string', () => {
+    const result = getInitialValues(videoMedia, 'edit', undefined)
+    expect(result.description).toBe('')
+  })
+})
 
 describe('getFilenameFromUrl', () => {
   it('extracts the trailing path segment', () => {
@@ -177,5 +263,127 @@ describe('isMediaDialogSubmitting', () => {
         isThumbUploading: false,
       }),
     ).toBe(false)
+  })
+})
+
+describe('preflightDocumentUrl', () => {
+  it('returns null when a file is picked (upload should proceed)', () => {
+    expect(
+      preflightDocumentUrl({ hasFile: true, existingDocUrl: null }),
+    ).toBeNull()
+  })
+
+  it('returns null when a file is picked even if an existing doc is present', () => {
+    expect(
+      preflightDocumentUrl({ hasFile: true, existingDocUrl: 'https://cdn/old.pdf' }),
+    ).toBeNull()
+  })
+
+  it('returns existing url when no file but existing doc is present', () => {
+    expect(
+      preflightDocumentUrl({ hasFile: false, existingDocUrl: 'https://cdn/old.pdf' }),
+    ).toEqual({ ok: true, url: 'https://cdn/old.pdf' })
+  })
+
+  it('returns error when no file and no existing doc', () => {
+    expect(
+      preflightDocumentUrl({ hasFile: false, existingDocUrl: null }),
+    ).toEqual({ ok: false, message: 'Please upload a document file' })
+  })
+})
+
+describe('resolveDocumentUploadResult', () => {
+  it('returns the uploaded fileUrl and fileSize when upload returns a url', () => {
+    expect(
+      resolveDocumentUploadResult({
+        fileUrl: 'https://cdn/new.pdf',
+        currentUrl: 'https://cdn/current.pdf',
+        fileSize: 1024,
+      }),
+    ).toEqual({ ok: true, url: 'https://cdn/new.pdf', fileSize: 1024 })
+  })
+
+  it('falls back to currentUrl when upload returns no fileUrl', () => {
+    expect(
+      resolveDocumentUploadResult({
+        fileUrl: undefined,
+        currentUrl: 'https://cdn/current.pdf',
+        fileSize: 1024,
+      }),
+    ).toEqual({ ok: true, url: 'https://cdn/current.pdf' })
+  })
+})
+
+describe('buildPdfUploadData', () => {
+  const base = {
+    fileData: 'base64data',
+    fileName: 'lesson.pdf',
+    fileType: 'application/pdf',
+    fileSize: 2048,
+  }
+
+  it('omits mediaId in create mode', () => {
+    expect(
+      buildPdfUploadData({ ...base, mode: 'create', media: undefined }),
+    ).toEqual(base)
+  })
+
+  it('includes mediaId when editing an existing media row', () => {
+    expect(
+      buildPdfUploadData({ ...base, mode: 'edit', media: docMedia }),
+    ).toEqual({ ...base, mediaId: 'media-1' })
+  })
+
+  it('omits mediaId when editing but media is undefined', () => {
+    expect(
+      buildPdfUploadData({ ...base, mode: 'edit', media: undefined }),
+    ).toEqual(base)
+  })
+})
+
+describe('buildMediaPayload', () => {
+  const value = {
+    title: 'My Video',
+    category: 'Faith',
+    description: 'A summary',
+    kind: 'youtube' as const,
+    url: 'https://youtube.com/watch?v=abc',
+    isPublished: true,
+  }
+
+  it('maps all fields from the form value', () => {
+    expect(
+      buildMediaPayload({ value, url: value.url, fileSize: undefined, courseId: 'c1' }),
+    ).toEqual({
+      title: 'My Video',
+      category: 'Faith',
+      description: 'A summary',
+      kind: 'youtube',
+      url: 'https://youtube.com/watch?v=abc',
+      isPublished: true,
+      fileSize: undefined,
+      courseId: 'c1',
+    })
+  })
+
+  it('converts empty description to undefined', () => {
+    const result = buildMediaPayload({
+      value: { ...value, description: '' },
+      url: value.url,
+      fileSize: undefined,
+      courseId: undefined,
+    })
+    expect(result.description).toBeUndefined()
+  })
+
+  it('passes through url and fileSize from params, not value.url', () => {
+    const result = buildMediaPayload({
+      value: { ...value, url: 'old-url' },
+      url: 'resolved-url',
+      fileSize: 4096,
+      courseId: undefined,
+    })
+    expect(result.url).toBe('resolved-url')
+    expect(result.fileSize).toBe(4096)
   })
 })

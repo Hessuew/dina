@@ -4,6 +4,7 @@ import type { Role } from '@/utils/authz/types'
 import {
   canCreateMedia,
   canManageMediaRow,
+  getLibraryEmptyStateDescription,
   getVisibleShelfTopics,
   getYoutubeThumbnail,
 } from '@/utils/library/domain/library-view.domain'
@@ -56,6 +57,20 @@ describe('canManageMediaRow', () => {
   it('student cannot manage rows', () => {
     const viewer = { id: 's1', role: 'student' as Role }
     expect(canManageMediaRow(viewer, makeRow({ uploaderId: 's1' }))).toBe(false)
+  })
+})
+
+describe('getLibraryEmptyStateDescription', () => {
+  it('prompts creators to add the first item', () => {
+    expect(getLibraryEmptyStateDescription(true)).toBe(
+      'Add the first library item to get started',
+    )
+  })
+
+  it('tells non-creators to check back later', () => {
+    expect(getLibraryEmptyStateDescription(false)).toBe(
+      'Check back later for new materials',
+    )
   })
 })
 

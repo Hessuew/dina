@@ -5,7 +5,7 @@ import {
   LandingImageSection,
   LandingSectionContainer,
   LandingSectionEyebrowCentered,
-} from '@/components/landing/primitives'
+} from '@/components/landing/primitives/primitives'
 import { useCarousel } from '@/components/landing/hooks'
 
 type TestimonialItem = LandingItemBase & {

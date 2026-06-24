@@ -3,7 +3,11 @@ import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { uploadThumbnailIfPresent } from './media-dialog.logic'
 import type { MediaLibraryRow } from '@/utils/library/library'
-import type { LibraryTopic } from '@/lib/library-topics'
+import type {
+  MediaDialogMode,
+  MediaKind,
+  MediaSubmitPayload,
+} from '@/components/dialog/media-dialog/media-dialog.domain'
 import { createMediaSchema } from '@/schemas/media.schema'
 import {
   createLibraryMedia,
@@ -25,27 +29,25 @@ import { SelectItem } from '@/components/ui/select'
 import { FormFieldSelect } from '@/components/ui/form-field'
 import { LIBRARY_TOPICS } from '@/lib/library-topics'
 import {
+  buildMediaPayload,
+  buildPdfUploadData,
   computeOpenResetState,
   getDocumentFileVariant,
   getFilenameFromUrl,
+  getInitialValues,
   getMediaDialogChrome,
   getMediaLoadingLabel,
   getThumbnailPreviewSrc,
   isMediaDialogSubmitting,
+  preflightDocumentUrl,
+  resolveDocumentUploadResult,
 } from '@/components/dialog/media-dialog/media-dialog.domain'
 
-type MediaDialogMode = 'create' | 'edit' | 'delete'
-
-type MediaKind = 'youtube' | 'document'
-
-type MediaFormData = {
-  title: string
-  category: string
-  description: string
-  kind: MediaKind
-  url: string
-  isPublished: boolean
-}
+const DOCUMENT_ACCEPT = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+].join(',')
 
 type MediaDialogProps = {
   open: boolean
@@ -56,90 +58,62 @@ type MediaDialogProps = {
   onSuccess?: () => void
 }
 
-const DOCUMENT_ACCEPT = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-].join(',')
-
-const emptyFormData: MediaFormData = {
-  title: '',
-  category: '',
-  description: '',
-  kind: 'youtube',
-  url: '',
-  isPublished: false,
-}
-
-function fromFileType(fileType: MediaLibraryRow['fileType']): MediaKind {
-  return fileType === 'document' ? 'document' : 'youtube'
-}
-
-function getInitialValues(
-  media: MediaDialogProps['media'],
-  mode: MediaDialogMode,
-  courseId: string | undefined,
-): MediaFormData {
-  if (!media || mode === 'create') {
-    return { ...emptyFormData, kind: courseId ? 'document' : 'youtube' }
-  }
-
-  return {
-    title: media.title,
-    category: media.category,
-    description: media.description ?? '',
-    kind: fromFileType(media.fileType),
-    url: '',
-    isPublished: media.isPublished,
-  }
-}
-
-type DocumentResolution =
-  | { ok: true; url: string; fileSize?: number }
-  | { ok: false; message: string }
-
-/**
- * Resolve the document URL for a media submission: upload a freshly picked
- * file, fall back to the existing document URL, or fail with a user message.
- */
 async function resolveDocumentUrl(params: {
   docUpload: ReturnType<typeof useFileUpload>
   existingDocUrl: string | null
   mode: MediaDialogMode
   media: MediaLibraryRow | undefined
   currentUrl: string
-}): Promise<DocumentResolution> {
+}) {
   const { docUpload, existingDocUrl, mode, media, currentUrl } = params
 
-  if (!docUpload.fileObject) {
-    if (existingDocUrl) return { ok: true, url: existingDocUrl }
-    return { ok: false, message: 'Please upload a document file' }
-  }
+  const preflight = preflightDocumentUrl({
+    hasFile: Boolean(docUpload.fileObject),
+    existingDocUrl,
+  })
+  if (preflight !== null) return preflight
 
   docUpload.setUploading(true)
   try {
     const uploaded = await uploadMediaPdfFn({
-      data: {
+      data: buildPdfUploadData({
         fileData: docUpload.fileData!,
-        fileName: docUpload.fileObject.name,
-        fileType: docUpload.fileObject.type,
-        fileSize: docUpload.fileObject.size,
-        ...(mode === 'edit' && media ? { mediaId: media.id } : {}),
-      },
+        fileName: docUpload.fileObject!.name,
+        fileType: docUpload.fileObject!.type,
+        fileSize: docUpload.fileObject!.size,
+        mode,
+        media,
+      }),
     })
-    if (uploaded.fileUrl) {
-      return {
-        ok: true,
-        url: uploaded.fileUrl,
-        fileSize: docUpload.fileObject.size,
-      }
-    }
-    return { ok: true, url: currentUrl }
+    return resolveDocumentUploadResult({
+      fileUrl: uploaded.fileUrl,
+      currentUrl,
+      fileSize: docUpload.fileObject!.size,
+    })
   } catch (error) {
-    return { ok: false, message: toUserError(error).message }
+    return { ok: false as const, message: toUserError(error).message }
   } finally {
     docUpload.setUploading(false)
   }
+}
+
+function dispatchMediaMutation(params: {
+  mode: MediaDialogMode
+  media: MediaLibraryRow | undefined
+  payload: MediaSubmitPayload
+  createMutation: { mutate: (args: { data: MediaSubmitPayload }) => void }
+  updateMutation: {
+    mutate: (args: { data: MediaSubmitPayload & { mediaId: string } }) => void
+  }
+}) {
+  if (params.mode === 'create') {
+    params.createMutation.mutate({ data: params.payload })
+    return
+  }
+  if (!params.media) return
+  params.updateMutation.mutate({
+    data: { ...params.payload, mediaId: params.media.id },
+  })
 }
 
 function DocumentFileControl({
@@ -342,24 +316,13 @@ export function MediaDialog({
         fileSize = resolved.fileSize
       }
 
-      const payload = {
-        title: value.title,
-        category: value.category as LibraryTopic,
-        description: value.description || undefined,
-        isPublished: value.isPublished,
-        kind: value.kind,
-        url,
-        fileSize,
-        courseId,
-      }
-
-      if (mode === 'create') {
-        createMutation.mutate({ data: payload })
-        return
-      }
-
-      if (!media) return
-      updateMutation.mutate({ data: { ...payload, mediaId: media.id } })
+      dispatchMediaMutation({
+        mode,
+        media,
+        payload: buildMediaPayload({ value, url, fileSize, courseId }),
+        createMutation,
+        updateMutation,
+      })
     },
   })
 

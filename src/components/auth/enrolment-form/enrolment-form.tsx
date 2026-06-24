@@ -16,6 +16,10 @@ import { SelectItem } from '@/components/ui/select'
 import { useAppForm } from '@/hooks/form'
 import { createEnrollment } from '@/utils/enrolment/enrollments'
 import { env } from '@/env'
+import {
+  resolveEnrolmentKeyNavigation,
+  validateEnrolmentYear,
+} from '@/components/auth/enrolment-form/enrolment-form.domain'
 
 declare global {
   interface Window {
@@ -53,14 +57,7 @@ function maxWords(max: number) {
 }
 
 function validYear({ value }: { value: string | number }) {
-  const trimmed = String(value).trim()
-  if (!trimmed || trimmed === '0') return 'Year of birth is required'
-  const year = Number(trimmed)
-  if (!Number.isInteger(year)) return 'Year of birth must be a whole number'
-  const current = new Date().getFullYear()
-  if (year < 1900) return 'Year of birth must be reasonable'
-  if (year > current) return 'Year of birth cannot be in the future'
-  return undefined
+  return validateEnrolmentYear(value)
 }
 
 function requiredTextWithMaxWords(max: number) {
@@ -218,16 +215,19 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLTextAreaElement) return
-
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault()
-        void handleNext()
-      } else if (e.key === 'ArrowRight') {
-        void handleNext()
-      } else if (e.key === 'ArrowLeft' && currentStep > 0) {
+      const nav = resolveEnrolmentKeyNavigation(
+        e.key,
+        e.shiftKey,
+        e.target instanceof HTMLTextAreaElement,
+        currentStep,
+      )
+      if (nav === 'none') return
+      if (nav === 'next-prevent-default') e.preventDefault()
+      if (nav === 'back') {
         handleBack()
+        return
       }
+      void handleNext()
     }
 
     window.addEventListener('keydown', handleKeyDown)

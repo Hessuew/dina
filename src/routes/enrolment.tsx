@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { EnrolmentForm } from '@/components/auth/enrolment-form'
+import { EnrolmentForm } from '@/components/auth/enrolment-form/enrolment-form'
 import { env } from '@/env'
 
 export const Route = createFileRoute('/enrolment')({

@@ -16,7 +16,7 @@ import {
   LandingScriptureSectionHeader,
   LandingSectionContainer,
   LandingSectionOverlay,
-} from '@/components/landing/primitives'
+} from '@/components/landing/primitives/primitives'
 import { useCarousel } from '@/components/landing/hooks'
 
 type CourseShowcaseItem = LandingShowcaseItem & {

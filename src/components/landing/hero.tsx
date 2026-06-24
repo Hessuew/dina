@@ -6,7 +6,7 @@ import {
   LandingSectionContainer,
   LandingSectionEyebrow,
   LandingSectionOverlay,
-} from '@/components/landing/primitives'
+} from '@/components/landing/primitives/primitives'
 import { cn } from '@/lib/utils'
 
 type LandingHeroProps = {

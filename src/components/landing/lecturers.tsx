@@ -23,7 +23,7 @@ import {
   LandingScriptureSectionHeader,
   LandingSectionContainer,
   LandingSectionOverlay,
-} from '@/components/landing/primitives'
+} from '@/components/landing/primitives/primitives'
 import { useCarousel } from '@/components/landing/hooks'
 
 const LECTURER_BIO_MAP: Record<string, string> = {

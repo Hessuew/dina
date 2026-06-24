@@ -28,7 +28,7 @@ import { AssignmentDialog } from '@/components/dialog/assignment-dialog/Assignme
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
-import { AssignmentDetailSections } from '@/components/assignment/AssignmentDetailSections'
+import { AssignmentDetailSections } from '@/components/assignment/assignment-detail-sections/AssignmentDetailSections'
 
 const getAssignmentData = createServerFn({ method: 'POST' })
   .inputValidator((d: { assignmentId: string }) => d)
