@@ -102,6 +102,22 @@ Do not finish without basic correctness check.
 
 ---
 
+## 6. New Code Size Contract
+
+Before writing any new function, component, or hook:
+
+1. **Budget ≤ 60 lines per function body — plan before writing, not after.**
+   Identify sub-units upfront:
+   - JSX sub-trees → named sub-component functions (same file, each ≤ 60 lines)
+   - Branchy / pure logic → `<name>.domain.ts` + `<name>.domain.test.ts` at 100% coverage
+   - State + async handlers → `useXxx` hook function
+2. **Write order: domain → hook → shell.** Tested unit first, shell last.
+3. **Never write a monolith and split later.** Post-hoc splits produce the oversized sub-functions that block `quality:gate`.
+
+Binding docs: [`docs/rules/complexity.md`](docs/rules/complexity.md), ADR 0010, ADR 0011.
+
+---
+
 ## Rules
 
 - Binding, always-on project rules live once in `docs/rules/<name>.md` (`.claude/rules` is a symlink to it). Edit only in `docs/rules/`, never through a symlink.

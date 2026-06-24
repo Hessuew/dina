@@ -14,7 +14,7 @@ server function — must stay under all of:
 - **Cyclomatic complexity ≤ 20** _(enforced)_
 - **Cognitive complexity ≤ 15** _(enforced)_
 - **CRAP under threshold** — must not introduce a fallow CRAP finding _(enforced)_
-- **Body ≤ 60 lines** (target; treat >60 as a refactor signal)
+- **Body ≤ 60 lines** _(enforced — plan decomposition before writing, not after; see Pre-write checklist below)_
 
 The enforced complexity limits match the `fallow health` thresholds (`maxCyclomatic 20` /
 `maxCognitive 15`). The rule governs the code your change introduces — it does not require
@@ -32,6 +32,18 @@ refactoring untouched legacy functions.
 large dialogs, forms, tables, and route bodies. Complex functions are the hardest to test,
 review, and change safely. Blocking _new_ complexity stops the pile from growing while legacy
 hotspots are paid down separately.
+
+## Pre-write checklist — new components and functions
+
+Run this **before writing the first line** of any new function, component, or hook:
+
+1. **Budget the body to ≤ 60 lines before writing.** If the spec implies more, name the sub-units now:
+   - JSX sub-trees → named sub-component functions in the same file (each ≤ 60 lines)
+   - Branchy logic → `domain/` pure function + 100% unit test (`<name>.domain.ts` / `.domain.test.ts`)
+   - State + async handlers → `useXxx` hook function (same file or its own file)
+2. **Write bottom-up: domain → hook → shell.** Smallest, testable unit first.
+3. **Verify each function as you write it** — count the body, split immediately if > 60. Every extracted sub-component must itself pass the 60-line test (decomposition is recursive).
+4. **Never write a monolith and split later.** Post-hoc splits produce oversized sub-functions that fail the same gate.
 
 ## How to comply
 
