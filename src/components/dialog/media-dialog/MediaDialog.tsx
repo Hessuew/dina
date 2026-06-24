@@ -5,6 +5,7 @@ import { uploadThumbnailIfPresent } from './media-dialog.logic'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import type {
   MediaDialogMode,
+  MediaFormData,
   MediaKind,
   MediaSubmitPayload,
 } from '@/components/dialog/media-dialog/media-dialog.domain'
@@ -16,7 +17,7 @@ import {
   uploadMediaPdfFn,
 } from '@/utils/library/library'
 import { toUserError } from '@/utils/errors'
-import { useAppForm } from '@/hooks/form'
+import { useAppForm, withForm } from '@/hooks/form'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import { Button } from '@/components/ui/button'
@@ -31,6 +32,7 @@ import {
   buildMediaPayload,
   buildPdfUploadData,
   computeOpenResetState,
+  emptyFormData,
   getDocumentFileVariant,
   getFilenameFromUrl,
   getInitialValues,
@@ -115,6 +117,159 @@ function dispatchMediaMutation(params: {
   })
 }
 
+async function submitMediaForm(params: {
+  value: MediaFormData
+  docUpload: ReturnType<typeof useFileUpload>
+  existingDocUrl: string | null
+  mode: MediaDialogMode
+  media: MediaLibraryRow | undefined
+  courseId: string | undefined
+  createMutation: { mutate: (args: { data: MediaSubmitPayload }) => void }
+  updateMutation: {
+    mutate: (args: { data: MediaSubmitPayload & { mediaId: string } }) => void
+  }
+}) {
+  const {
+    value,
+    docUpload,
+    existingDocUrl,
+    mode,
+    media,
+    courseId,
+    createMutation,
+    updateMutation,
+  } = params
+
+  let url = value.url
+  let fileSize: number | undefined
+
+  if (value.kind === 'document') {
+    const resolved = await resolveDocumentUrl({
+      docUpload,
+      existingDocUrl,
+      mode,
+      media,
+      currentUrl: value.url,
+    })
+    if (!resolved.ok) {
+      toast.error(resolved.message)
+      return
+    }
+    url = resolved.url
+    fileSize = resolved.fileSize
+  }
+
+  dispatchMediaMutation({
+    mode,
+    media,
+    payload: buildMediaPayload({ value, url, fileSize, courseId }),
+    createMutation,
+    updateMutation,
+  })
+}
+
+function DocumentFilePicked({
+  docUpload,
+}: {
+  docUpload: ReturnType<typeof useFileUpload>
+}) {
+  return (
+    <div className="flex items-center justify-between border border-white/10 bg-black/20 px-4 py-3">
+      <div className="min-w-0">
+        <div className="truncate text-sm text-[#F8F4EC]">
+          {docUpload.fileObject!.name}
+        </div>
+        <div className="mt-1 text-xs text-[#8E816D]">
+          File will be uploaded on save
+        </div>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        theme="dark"
+        size="icon"
+        className="rounded-none"
+        onClick={docUpload.clearFile}
+      >
+        <XIcon className="size-4" />
+      </Button>
+    </div>
+  )
+}
+
+function DocumentFileExisting({
+  existingDocUrl,
+  docUpload,
+}: {
+  existingDocUrl: string
+  docUpload: ReturnType<typeof useFileUpload>
+}) {
+  return (
+    <div className="flex items-center justify-between border border-white/10 bg-black/20 px-4 py-3">
+      <div className="min-w-0">
+        <div className="truncate text-sm text-[#F8F4EC]">
+          {getFilenameFromUrl(existingDocUrl)}
+        </div>
+        <div className="mt-1 text-xs text-[#8E816D]">
+          Current file — upload a new one to replace
+        </div>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        theme="dark"
+        size="sm"
+        className="shrink-0 rounded-none border-white/12"
+        onClick={() => docUpload.fileInputRef.current?.click()}
+      >
+        Replace
+      </Button>
+    </div>
+  )
+}
+
+function DocumentFileEmpty({
+  docUpload,
+}: {
+  docUpload: ReturnType<typeof useFileUpload>
+}) {
+  return (
+    <Button
+      theme="dark"
+      type="button"
+      variant="outline"
+      onClick={() => docUpload.fileInputRef.current?.click()}
+      className="w-full rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
+    >
+      <UploadIcon className="mr-2 size-4" />
+      Upload Document
+    </Button>
+  )
+}
+
+function DocumentFileVariant({
+  variant,
+  docUpload,
+  existingDocUrl,
+}: {
+  variant: ReturnType<typeof getDocumentFileVariant>
+  docUpload: ReturnType<typeof useFileUpload>
+  existingDocUrl: string | null
+}) {
+  if (variant === 'picked') {
+    return <DocumentFilePicked docUpload={docUpload} />
+  }
+  if (variant === 'existing') {
+    return (
+      <DocumentFileExisting
+        existingDocUrl={existingDocUrl!}
+        docUpload={docUpload}
+      />
+    )
+  }
+  return <DocumentFileEmpty docUpload={docUpload} />
+}
+
 function DocumentFileControl({
   docUpload,
   existingDocUrl,
@@ -142,74 +297,27 @@ function DocumentFileControl({
         onChange={docUpload.handleFileChange}
         className="hidden"
       />
-      {variant === 'picked' ? (
-        <div className="flex items-center justify-between border border-white/10 bg-black/20 px-4 py-3">
-          <div className="min-w-0">
-            <div className="truncate text-sm text-[#F8F4EC]">
-              {docUpload.fileObject!.name}
-            </div>
-            <div className="mt-1 text-xs text-[#8E816D]">
-              File will be uploaded on save
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            theme="dark"
-            size="icon"
-            className="rounded-none"
-            onClick={docUpload.clearFile}
-          >
-            <XIcon className="size-4" />
-          </Button>
-        </div>
-      ) : variant === 'existing' ? (
-        <div className="flex items-center justify-between border border-white/10 bg-black/20 px-4 py-3">
-          <div className="min-w-0">
-            <div className="truncate text-sm text-[#F8F4EC]">
-              {getFilenameFromUrl(existingDocUrl!)}
-            </div>
-            <div className="mt-1 text-xs text-[#8E816D]">
-              Current file — upload a new one to replace
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            theme="dark"
-            size="sm"
-            className="shrink-0 rounded-none border-white/12"
-            onClick={() => docUpload.fileInputRef.current?.click()}
-          >
-            Replace
-          </Button>
-        </div>
-      ) : (
-        <Button
-          theme="dark"
-          type="button"
-          variant="outline"
-          onClick={() => docUpload.fileInputRef.current?.click()}
-          className="w-full rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
-        >
-          <UploadIcon className="mr-2 size-4" />
-          Upload Document
-        </Button>
-      )}
+      <DocumentFileVariant
+        variant={variant}
+        docUpload={docUpload}
+        existingDocUrl={existingDocUrl}
+      />
       <p className="text-xs text-[#8E816D]">PDF, PPTX, or DOCX. Max 25MB.</p>
     </Field>
   )
+}
+
+type ThumbnailControlProps = {
+  thumbUpload: ReturnType<typeof useFileUpload>
+  thumbnailUrl: string | null
+  onClearThumbnail: () => void
 }
 
 function ThumbnailControl({
   thumbUpload,
   thumbnailUrl,
   onClearThumbnail,
-}: {
-  thumbUpload: ReturnType<typeof useFileUpload>
-  thumbnailUrl: string | null
-  onClearThumbnail: () => void
-}) {
+}: ThumbnailControlProps) {
   const previewSrc = getThumbnailPreviewSrc({
     fileData: thumbUpload.fileData,
     thumbnailUrl,
@@ -265,18 +373,305 @@ function ThumbnailControl({
   )
 }
 
-export function MediaDialog({
-  open,
-  onOpenChange,
-  mode,
-  media,
-  courseId,
-  onSuccess,
-}: MediaDialogProps) {
+type MediaFormFieldsProps = {
+  docUpload: ReturnType<typeof useFileUpload>
+  thumbUpload: ReturnType<typeof useFileUpload>
+  existingDocUrl: string | null
+  thumbnailUrl: string | null
+  mode: MediaDialogMode
+  onYoutubeSelected: () => void
+  onClearThumbnail: () => void
+}
+
+type MediaDocumentFieldsProps = {
+  docUpload: ReturnType<typeof useFileUpload>
+  thumbUpload: ReturnType<typeof useFileUpload>
+  existingDocUrl: string | null
+  thumbnailUrl: string | null
+  mode: MediaDialogMode
+  onClearThumbnail: () => void
+}
+
+const MediaTitleCategoryFields = withForm({
+  defaultValues: emptyFormData,
+  render: ({ form }) => (
+    <>
+      <form.AppField
+        name="title"
+        validators={{ onSubmit: createMediaSchema.shape.title }}
+      >
+        {(field) => (
+          <field.TextField
+            id="media-title"
+            label="Name"
+            required
+            className="sm:col-span-2"
+            placeholder="Lesson recap video"
+          />
+        )}
+      </form.AppField>
+
+      <form.AppField
+        name="category"
+        validators={{ onSubmit: createMediaSchema.shape.category }}
+      >
+        {(field) => (
+          <FormFieldSelect
+            id="media-category"
+            label="Category"
+            required
+            value={field.state.value}
+            onChange={(value) => field.handleChange(value)}
+            placeholder="Select topic..."
+            error={
+              field.state.meta.errors.length > 0
+                ? String(field.state.meta.errors[0])
+                : undefined
+            }
+          >
+            {LIBRARY_TOPICS.map((topic) => (
+              <SelectItem key={topic} value={topic}>
+                {topic}
+              </SelectItem>
+            ))}
+          </FormFieldSelect>
+        )}
+      </form.AppField>
+    </>
+  ),
+})
+
+const MediaKindField = withForm({
+  defaultValues: emptyFormData,
+  props: {} as { onYoutubeSelected: () => void },
+  render: ({ form, onYoutubeSelected }) => (
+    <form.AppField name="kind">
+      {(field) => (
+        <FormFieldSelect
+          id="media-kind"
+          label="Type"
+          value={field.state.value}
+          onChange={(value) => {
+            field.handleChange(value as MediaKind)
+            if (value === 'youtube') onYoutubeSelected()
+          }}
+        >
+          <SelectItem value="youtube">YouTube</SelectItem>
+          <SelectItem value="document">Document</SelectItem>
+        </FormFieldSelect>
+      )}
+    </form.AppField>
+  ),
+})
+
+const MediaYoutubeUrlField = withForm({
+  defaultValues: emptyFormData,
+  render: ({ form }) => (
+    <form.Subscribe selector={(state) => state.values.kind}>
+      {(kind) =>
+        kind === 'youtube' ? (
+          <form.AppField
+            name="url"
+            validators={{
+              onSubmit: ({ value }) => {
+                if (!value) return 'URL is required'
+                return undefined
+              },
+            }}
+          >
+            {(field) => (
+              <Field className="sm:col-span-2">
+                <FieldLabel
+                  htmlFor="media-url"
+                  className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+                >
+                  YouTube URL
+                  <span className="text-[#C5A059]">*</span>
+                </FieldLabel>
+                <Input
+                  id="media-url"
+                  value={field.state.value}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50 ${field.state.meta.errors.length > 0 ? 'border-red-500/60' : ''}`}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                />
+                {field.state.meta.errors.length > 0 && (
+                  <p className="text-[0.68rem] text-red-400">
+                    {String(field.state.meta.errors[0])}
+                  </p>
+                )}
+              </Field>
+            )}
+          </form.AppField>
+        ) : null
+      }
+    </form.Subscribe>
+  ),
+})
+
+const MediaDocumentFields = withForm({
+  defaultValues: emptyFormData,
+  props: {} as MediaDocumentFieldsProps,
+  render: ({
+    form,
+    docUpload,
+    thumbUpload,
+    existingDocUrl,
+    thumbnailUrl,
+    mode,
+    onClearThumbnail,
+  }) => (
+    <form.Subscribe selector={(state) => state.values.kind}>
+      {(kind) =>
+        kind === 'document' ? (
+          <>
+            <DocumentFileControl
+              docUpload={docUpload}
+              existingDocUrl={existingDocUrl}
+              mode={mode}
+            />
+
+            {/* Description + Thumbnail side by side */}
+            <form.AppField name="description">
+              {(field) => (
+                <field.TextAreaField
+                  id="media-description"
+                  label="Description"
+                  placeholder="Short summary for students"
+                  rows={6}
+                />
+              )}
+            </form.AppField>
+
+            <ThumbnailControl
+              thumbUpload={thumbUpload}
+              thumbnailUrl={thumbnailUrl}
+              onClearThumbnail={onClearThumbnail}
+            />
+
+            <form.AppField name="isPublished">
+              {(field) => (
+                <field.SwitchField
+                  id="media-published"
+                  label="Published"
+                  className="sm:col-span-2"
+                />
+              )}
+            </form.AppField>
+          </>
+        ) : null
+      }
+    </form.Subscribe>
+  ),
+})
+
+const MediaYoutubeExtraFields = withForm({
+  defaultValues: emptyFormData,
+  render: ({ form }) => (
+    <form.Subscribe selector={(state) => state.values.kind}>
+      {(kind) =>
+        kind === 'youtube' ? (
+          <>
+            <form.AppField name="description">
+              {(field) => (
+                <field.TextAreaField
+                  id="media-description"
+                  label="Description"
+                  className="sm:col-span-2"
+                  placeholder="Short summary for students"
+                  rows={6}
+                />
+              )}
+            </form.AppField>
+
+            <form.AppField name="isPublished">
+              {(field) => (
+                <field.SwitchField
+                  id="media-published"
+                  label="Published"
+                  className="sm:col-span-2"
+                />
+              )}
+            </form.AppField>
+          </>
+        ) : null
+      }
+    </form.Subscribe>
+  ),
+})
+
+const MediaFormFields = withForm({
+  defaultValues: emptyFormData,
+  props: {} as MediaFormFieldsProps,
+  render: ({
+    form,
+    docUpload,
+    thumbUpload,
+    existingDocUrl,
+    thumbnailUrl,
+    mode,
+    onYoutubeSelected,
+    onClearThumbnail,
+  }) => (
+    <FieldGroup className="mt-6 gap-8">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <MediaTitleCategoryFields form={form} />
+        <MediaKindField form={form} onYoutubeSelected={onYoutubeSelected} />
+        <MediaYoutubeUrlField form={form} />
+        <MediaDocumentFields
+          form={form}
+          docUpload={docUpload}
+          thumbUpload={thumbUpload}
+          existingDocUrl={existingDocUrl}
+          thumbnailUrl={thumbnailUrl}
+          mode={mode}
+          onClearThumbnail={onClearThumbnail}
+        />
+        <MediaYoutubeExtraFields form={form} />
+      </div>
+    </FieldGroup>
+  ),
+})
+
+function useMediaUploads() {
   const docUpload = useFileUpload()
   const thumbUpload = useFileUpload()
   const [existingDocUrl, setExistingDocUrl] = useState<string | null>(null)
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
+
+  const onYoutubeSelected = () => {
+    docUpload.clearFile()
+    thumbUpload.clearFile()
+    setThumbnailUrl(null)
+  }
+
+  const onClearThumbnail = () => {
+    thumbUpload.clearFile()
+    setThumbnailUrl(null)
+  }
+
+  return {
+    docUpload,
+    thumbUpload,
+    existingDocUrl,
+    setExistingDocUrl,
+    thumbnailUrl,
+    setThumbnailUrl,
+    onYoutubeSelected,
+    onClearThumbnail,
+  }
+}
+
+function useMediaDialog(props: MediaDialogProps) {
+  const { open, onOpenChange, mode, media, courseId, onSuccess } = props
+  const uploads = useMediaUploads()
+  const {
+    docUpload,
+    thumbUpload,
+    existingDocUrl,
+    setExistingDocUrl,
+    setThumbnailUrl,
+  } = uploads
 
   const { createMutation, updateMutation, deleteMutation, isAnyPending } =
     useEntityMutation({
@@ -295,34 +690,17 @@ export function MediaDialog({
 
   const form = useAppForm({
     defaultValues: getInitialValues(media, mode, courseId),
-    onSubmit: async ({ value }) => {
-      let url = value.url
-      let fileSize: number | undefined
-
-      if (value.kind === 'document') {
-        const resolved = await resolveDocumentUrl({
-          docUpload,
-          existingDocUrl,
-          mode,
-          media,
-          currentUrl: value.url,
-        })
-        if (!resolved.ok) {
-          toast.error(resolved.message)
-          return
-        }
-        url = resolved.url
-        fileSize = resolved.fileSize
-      }
-
-      dispatchMediaMutation({
+    onSubmit: ({ value }) =>
+      submitMediaForm({
+        value,
+        docUpload,
+        existingDocUrl,
         mode,
         media,
-        payload: buildMediaPayload({ value, url, fileSize, courseId }),
+        courseId,
         createMutation,
         updateMutation,
-      })
-    },
+      }),
   })
 
   const clearDocFile = docUpload.clearFile
@@ -337,6 +715,21 @@ export function MediaDialog({
     clearThumbFile()
     form.reset(getInitialValues(media, mode, courseId))
   }, [open, media, mode, form, courseId, clearDocFile, clearThumbFile])
+
+  return { uploads, form, deleteMutation, isAnyPending }
+}
+
+export function MediaDialog(props: MediaDialogProps) {
+  const { open, onOpenChange, mode, media } = props
+  const { uploads, form, deleteMutation, isAnyPending } = useMediaDialog(props)
+  const {
+    docUpload,
+    thumbUpload,
+    existingDocUrl,
+    thumbnailUrl,
+    onYoutubeSelected,
+    onClearThumbnail,
+  } = uploads
 
   if (mode === 'delete') {
     return (
@@ -372,190 +765,16 @@ export function MediaDialog({
       submitLabel={chrome.submitLabel}
       loadingLabel={getMediaLoadingLabel(docUpload.isUploading)}
     >
-      <FieldGroup className="mt-6 gap-8">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <form.AppField
-            name="title"
-            validators={{ onSubmit: createMediaSchema.shape.title }}
-          >
-            {(field) => (
-              <field.TextField
-                id="media-title"
-                label="Name"
-                required
-                className="sm:col-span-2"
-                placeholder="Lesson recap video"
-              />
-            )}
-          </form.AppField>
-
-          <form.AppField
-            name="category"
-            validators={{ onSubmit: createMediaSchema.shape.category }}
-          >
-            {(field) => (
-              <FormFieldSelect
-                id="media-category"
-                label="Category"
-                required
-                value={field.state.value}
-                onChange={(value) => field.handleChange(value)}
-                placeholder="Select topic..."
-                error={
-                  field.state.meta.errors.length > 0
-                    ? String(field.state.meta.errors[0])
-                    : undefined
-                }
-              >
-                {LIBRARY_TOPICS.map((topic) => (
-                  <SelectItem key={topic} value={topic}>
-                    {topic}
-                  </SelectItem>
-                ))}
-              </FormFieldSelect>
-            )}
-          </form.AppField>
-
-          <form.AppField name="kind">
-            {(field) => (
-              <FormFieldSelect
-                id="media-kind"
-                label="Type"
-                value={field.state.value}
-                onChange={(value) => {
-                  field.handleChange(value as MediaKind)
-                  if (value === 'youtube') {
-                    docUpload.clearFile()
-                    thumbUpload.clearFile()
-                    setThumbnailUrl(null)
-                  }
-                }}
-              >
-                <SelectItem value="youtube">YouTube</SelectItem>
-                <SelectItem value="document">Document</SelectItem>
-              </FormFieldSelect>
-            )}
-          </form.AppField>
-
-          {/* YouTube URL — only for video kind */}
-          <form.Subscribe selector={(state) => state.values.kind}>
-            {(kind) =>
-              kind === 'youtube' ? (
-                <form.AppField
-                  name="url"
-                  validators={{
-                    onSubmit: ({ value }) => {
-                      if (!value) return 'URL is required'
-                      return undefined
-                    },
-                  }}
-                >
-                  {(field) => (
-                    <Field className="sm:col-span-2">
-                      <FieldLabel
-                        htmlFor="media-url"
-                        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-                      >
-                        YouTube URL
-                        <span className="text-[#C5A059]">*</span>
-                      </FieldLabel>
-                      <Input
-                        id="media-url"
-                        value={field.state.value}
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        className={`rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50 ${field.state.meta.errors.length > 0 ? 'border-red-500/60' : ''}`}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                      />
-                      {field.state.meta.errors.length > 0 && (
-                        <p className="text-[0.68rem] text-red-400">
-                          {String(field.state.meta.errors[0])}
-                        </p>
-                      )}
-                    </Field>
-                  )}
-                </form.AppField>
-              ) : null
-            }
-          </form.Subscribe>
-
-          {/* Document upload + thumbnail — only for document kind */}
-          <form.Subscribe selector={(state) => state.values.kind}>
-            {(kind) =>
-              kind === 'document' ? (
-                <>
-                  <DocumentFileControl
-                    docUpload={docUpload}
-                    existingDocUrl={existingDocUrl}
-                    mode={mode}
-                  />
-
-                  {/* Description + Thumbnail side by side */}
-                  <form.AppField name="description">
-                    {(field) => (
-                      <field.TextAreaField
-                        id="media-description"
-                        label="Description"
-                        placeholder="Short summary for students"
-                        rows={6}
-                      />
-                    )}
-                  </form.AppField>
-
-                  <ThumbnailControl
-                    thumbUpload={thumbUpload}
-                    thumbnailUrl={thumbnailUrl}
-                    onClearThumbnail={() => {
-                      thumbUpload.clearFile()
-                      setThumbnailUrl(null)
-                    }}
-                  />
-
-                  <form.AppField name="isPublished">
-                    {(field) => (
-                      <field.SwitchField
-                        id="media-published"
-                        label="Published"
-                        className="sm:col-span-2"
-                      />
-                    )}
-                  </form.AppField>
-                </>
-              ) : null
-            }
-          </form.Subscribe>
-
-          {/* Fields shown only for youtube kind */}
-          <form.Subscribe selector={(state) => state.values.kind}>
-            {(kind) =>
-              kind === 'youtube' ? (
-                <>
-                  <form.AppField name="description">
-                    {(field) => (
-                      <field.TextAreaField
-                        id="media-description"
-                        label="Description"
-                        className="sm:col-span-2"
-                        placeholder="Short summary for students"
-                        rows={6}
-                      />
-                    )}
-                  </form.AppField>
-
-                  <form.AppField name="isPublished">
-                    {(field) => (
-                      <field.SwitchField
-                        id="media-published"
-                        label="Published"
-                        className="sm:col-span-2"
-                      />
-                    )}
-                  </form.AppField>
-                </>
-              ) : null
-            }
-          </form.Subscribe>
-        </div>
-      </FieldGroup>
+      <MediaFormFields
+        form={form}
+        docUpload={docUpload}
+        thumbUpload={thumbUpload}
+        existingDocUrl={existingDocUrl}
+        thumbnailUrl={thumbnailUrl}
+        mode={mode}
+        onYoutubeSelected={onYoutubeSelected}
+        onClearThumbnail={onClearThumbnail}
+      />
     </FormDialog>
   )
 }
