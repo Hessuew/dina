@@ -27,6 +27,7 @@ import {
   StartSubstitutionDialog,
 } from '@/components/dialog/SubstituteTeacherDialog'
 import { ExportEmailsDialog } from '@/components/enrollment/exports-email-dialog/ExportEmailsDialog'
+import { BulkGradeDialog } from '@/components/enrollment/bulk-grade-dialog/BulkGradeDialog'
 
 export const Route = createFileRoute('/_authed/enrollments/')({
   validateSearch: parseEnrollmentsSearch,
@@ -135,6 +136,7 @@ function useEnrollmentsActions(router: AppRouter, params: EnrollmentsSearch) {
   const [isEndSubDialogOpen, setIsEndSubDialogOpen] = useState(false)
   const [isExportEmailsDialogOpen, setIsExportEmailsDialogOpen] =
     useState(false)
+  const [isBulkGradeDialogOpen, setIsBulkGradeDialogOpen] = useState(false)
 
   const handleRefresh = () => {
     router.invalidate()
@@ -178,6 +180,8 @@ function useEnrollmentsActions(router: AppRouter, params: EnrollmentsSearch) {
     setIsEndSubDialogOpen,
     isExportEmailsDialogOpen,
     setIsExportEmailsDialogOpen,
+    isBulkGradeDialogOpen,
+    setIsBulkGradeDialogOpen,
     handleRefresh,
     handleToggleViewAll,
     handleDistribute,
@@ -244,6 +248,7 @@ type EnrollmentsPageHeaderProps = {
   onStartSubstitution: () => void
   onEndSubstitution: () => void
   onExportEmails: () => void
+  onBulkGrade: () => void
 }
 
 function EnrollmentsPageHeader({
@@ -256,6 +261,7 @@ function EnrollmentsPageHeader({
   onStartSubstitution,
   onEndSubstitution,
   onExportEmails,
+  onBulkGrade,
 }: EnrollmentsPageHeaderProps) {
   return (
     <div className="mb-10 flex items-end justify-between gap-6">
@@ -288,6 +294,7 @@ function EnrollmentsPageHeader({
             onDistribute={onDistribute}
             onStartSubstitution={onStartSubstitution}
             onEndSubstitution={onEndSubstitution}
+            onBulkGrade={onBulkGrade}
             isDistributing={isDistributing}
           />
         )}
@@ -402,6 +409,7 @@ function EnrollmentsPage() {
         onStartSubstitution={() => c.setIsStartSubDialogOpen(true)}
         onEndSubstitution={() => c.setIsEndSubDialogOpen(true)}
         onExportEmails={() => c.setIsExportEmailsDialogOpen(true)}
+        onBulkGrade={() => c.setIsBulkGradeDialogOpen(true)}
       />
 
       <EnrollmentsTableSection c={c} />
@@ -420,6 +428,14 @@ function EnrollmentsPage() {
         <ExportEmailsDialog
           open={c.isExportEmailsDialogOpen}
           onOpenChange={c.setIsExportEmailsDialogOpen}
+        />
+      )}
+
+      {c.isAdmin && (
+        <BulkGradeDialog
+          open={c.isBulkGradeDialogOpen}
+          onOpenChange={c.setIsBulkGradeDialogOpen}
+          onSuccess={() => void c.router.invalidate()}
         />
       )}
 

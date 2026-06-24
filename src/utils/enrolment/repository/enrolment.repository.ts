@@ -724,4 +724,62 @@ export async function findEnrollmentEmailsByGroup(
     .orderBy(asc(enrollments.createdAt))
   return rows.map((r) => r.email)
 }
+
+/**
+ * Returns the evaluation sum (score total across all evaluators) and specialCase flag
+ * for every `awaiting_approval` enrollment. Used by the bulk-grade feature to preview
+ * and execute score-threshold-based status decisions. SpecialCase enrollments are
+ * auto-approved regardless of score.
+ */
+export async function findAwaitingApprovalIdsWithSum(): Promise<
+  Array<{ id: string; sum: number; specialCase: boolean }>
+> {
+  const db = await getDb()
+  const evalSum = sql<number>`coalesce(sum(${enrollmentEvaluations.score}), 0)::int`
+  const rows = await db
+    .select({
+      id: enrollments.id,
+      sum: evalSum,
+      specialCase: enrollments.specialCase,
+    })
+    .from(enrollments)
+    .leftJoin(
+      enrollmentEvaluations,
+      eq(enrollmentEvaluations.enrollmentId, enrollments.id),
+    )
+    .where(eq(enrollments.status, 'awaiting_approval'))
+    .groupBy(enrollments.id)
+  return rows
+}
+
+/**
+ * Batch-updates the status for a set of enrollments given as `{ id, status }`
+ * pairs. Groups updates by target status and issues one UPDATE per group.
+ * No-op when the array is empty.
+ */
+export async function bulkUpdateEnrollmentStatuses(
+  updates: Array<{
+    id: string
+    status: (typeof enrollments.$inferSelect)['status']
+  }>,
+): Promise<void> {
+  if (updates.length === 0) return
+  const db = await getDb()
+  const now = new Date()
+  const grouped = new Map<
+    (typeof enrollments.$inferSelect)['status'],
+    Array<string>
+  >()
+  for (const { id, status } of updates) {
+    const ids = grouped.get(status) ?? []
+    ids.push(id)
+    grouped.set(status, ids)
+  }
+  for (const [status, ids] of grouped) {
+    await db
+      .update(enrollments)
+      .set({ status, updatedAt: now })
+      .where(inArray(enrollments.id, ids))
+  }
+}
 /* v8 ignore end */

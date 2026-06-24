@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getCurrentUser } from '@/utils/auth/auth'
 import {
+  bulkGradeEnrollmentsSchema,
   createEnrollmentSchema,
   deleteEnrollmentSchema,
   distributeEnrollmentsSchema,
@@ -17,6 +18,7 @@ import {
   updateEnrollmentStatusSchema,
 } from '@/schemas/enrollment.schema'
 import {
+  bulkGradeEnrollmentsService,
   createEnrollmentService,
   deleteEnrollmentService,
   distributeEnrollmentsService,
@@ -139,4 +141,11 @@ export const getEnrollmentEmails = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return getEnrollmentEmailsService(data, user.id)
+  })
+
+export const bulkGradeEnrollments = createServerFn({ method: 'POST' })
+  .inputValidator(bulkGradeEnrollmentsSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    return bulkGradeEnrollmentsService(data, user.id)
   })

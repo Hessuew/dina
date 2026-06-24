@@ -1,6 +1,7 @@
 import { render } from '@react-email/render'
 import { Resend } from 'resend'
 import type {
+  BulkGradeEnrollmentsInput,
   CreateEnrollmentInput,
   DeleteEnrollmentInput,
   EndSubstitutionInput,
@@ -29,11 +30,17 @@ import {
   redactEnrollmentForTeacher,
 } from '@/utils/enrolment/domain/enrolment.domain'
 import {
+  assignBulkGradeStatus,
+  computeBulkGradePreview,
+} from '@/utils/enrolment/domain/bulk-grade.domain'
+import {
   bulkAssignEnrollments,
+  bulkUpdateEnrollmentStatuses,
   deleteCourseSubstituteByAbsent,
   deleteEnrollmentById,
   deleteInvitationById,
   findAllTeacherIds,
+  findAwaitingApprovalIdsWithSum,
   findCourseIdByTeacherId,
   findCourseIdsByTeacherIds,
   findCourseIdsForViewer,
@@ -667,5 +674,72 @@ export async function getEnrollmentEmailsService(
     }
     const emails = await findEnrollmentEmailsByGroup(data.group)
     return { emails }
+  })
+}
+
+/**
+ * Preview or execute a bulk grade operation on all `awaiting_approval`
+ * enrollments. In preview mode returns counts only; in execute mode applies
+ * the threshold-based status transitions and returns the same counts.
+ *
+ * - `dryRun: true` → count how many would be approved/waitlisted/rejected.
+ * - `dryRun: false` (default) → apply statuses and return the counts written.
+ */
+export async function bulkGradeEnrollmentsService(
+  data: BulkGradeEnrollmentsInput,
+  userId: string,
+): Promise<{
+  approved: number
+  waitlisted: number
+  rejected: number
+  total: number
+}> {
+  return withRequestCache(async () => {
+    await authz(userId).hasRole('admin')
+
+    const thresholds = {
+      approveMin: data.approveMin,
+      waitlistMin: data.waitlistMin ?? undefined,
+    }
+
+    const rows = await findAwaitingApprovalIdsWithSum()
+
+    const specialCaseCount = rows.filter((r) => r.specialCase).length
+    const regularRows = rows.filter((r) => !r.specialCase)
+
+    const countsBySum = regularRows.reduce<
+      Array<{ sum: number; count: number }>
+    >((acc, row) => {
+      const entry = acc.find((e) => e.sum === row.sum)
+      if (entry) entry.count++
+      else acc.push({ sum: row.sum, count: 1 })
+      return acc
+    }, [])
+
+    const preview = computeBulkGradePreview(countsBySum, thresholds)
+
+    // Add specialCase enrollments to approved count
+    const finalPreview = {
+      approved: preview.approved + specialCaseCount,
+      waitlisted: preview.waitlisted,
+      rejected: preview.rejected,
+      total: preview.total + specialCaseCount,
+    }
+
+    if (data.dryRun) return finalPreview
+
+    const updates = rows.map((row) => ({
+      id: row.id,
+      status: row.specialCase
+        ? 'approved'
+        : (assignBulkGradeStatus(row.sum, thresholds) as
+            | 'approved'
+            | 'waitlisted'
+            | 'rejected'),
+    }))
+
+    await bulkUpdateEnrollmentStatuses(updates)
+
+    return finalPreview
   })
 }

@@ -1,4 +1,4 @@
-import { UserRoundXIcon, UsersIcon } from 'lucide-react'
+import { GraduationCapIcon, UserRoundXIcon, UsersIcon } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { AnimateIcon } from '@/components/animate-ui/icons/icon'
 import {
@@ -20,6 +20,7 @@ type AdminActionsDropdownProps = {
   onDistribute: () => void
   onStartSubstitution: () => void
   onEndSubstitution: () => void
+  onBulkGrade: () => void
   isDistributing?: boolean
   disabled?: boolean
 }
@@ -46,6 +47,7 @@ export function AdminActionsDropdown({
   onDistribute,
   onStartSubstitution,
   onEndSubstitution,
+  onBulkGrade,
   isDistributing = false,
   disabled = false,
 }: AdminActionsDropdownProps) {
@@ -65,6 +67,11 @@ export function AdminActionsDropdown({
       icon: UserRoundXIcon,
       label: 'End substitution',
       onClick: onEndSubstitution,
+    },
+    {
+      icon: GraduationCapIcon,
+      label: 'Bulk grade',
+      onClick: onBulkGrade,
     },
   ]
 

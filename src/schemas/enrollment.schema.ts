@@ -152,3 +152,28 @@ export const getEnrollmentEmailsSchema = z.object({
 })
 
 export type GetEnrollmentEmailsInput = z.infer<typeof getEnrollmentEmailsSchema>
+
+/** Max possible evaluation sum (two reviewers × max score 4). */
+const BULK_GRADE_SUM_MAX = 8
+
+export const bulkGradeEnrollmentsSchema = z
+  .object({
+    approveMin: z
+      .number()
+      .int()
+      .min(0)
+      .max(
+        BULK_GRADE_SUM_MAX,
+        `Approval threshold cannot exceed ${BULK_GRADE_SUM_MAX}`,
+      ),
+    waitlistMin: z.number().int().min(0).max(BULK_GRADE_SUM_MAX).optional(),
+    dryRun: z.boolean().default(false),
+  })
+  .refine((d) => d.waitlistMin === undefined || d.waitlistMin < d.approveMin, {
+    message: 'Waitlist threshold must be below the approval threshold',
+    path: ['waitlistMin'],
+  })
+
+export type BulkGradeEnrollmentsInput = z.infer<
+  typeof bulkGradeEnrollmentsSchema
+>
