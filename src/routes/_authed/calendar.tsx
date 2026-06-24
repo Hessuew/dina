@@ -9,7 +9,7 @@ import {
 import { useEffect, useState } from 'react'
 import type { CalendarEvent, SpecialEventCategory } from '@/utils/calendar'
 import { CalendarView } from '@/components/view/CalendarView'
-import { EventPreviewModal } from '@/components/dialog/EventPreviewModal'
+import { EventPreviewModal } from '@/components/dialog/event-preview-modal/EventPreviewModal'
 import { EventListSidebar } from '@/components/calendar/EventListSidebar'
 import { PageLayout } from '@/components/layout/page-layout'
 import {

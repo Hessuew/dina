@@ -5,8 +5,8 @@ import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { cn } from '@/lib/utils'
 import { getLibraryMediaItem } from '@/utils/library'
 import { useDialogState } from '@/hooks/useDialogState'
-import { MediaDialog } from '@/components/dialog/MediaDialog'
-import { MediaDetailViewer } from '@/components/library/MediaDetailViewer'
+import { MediaDialog } from '@/components/dialog/media-dialog/MediaDialog'
+import { MediaDetailViewer } from '@/components/library/media-detail-viewer/MediaDetailViewer'
 
 export const Route = createFileRoute('/_authed/library/$mediaId')({
   loader: async ({ params }) => {

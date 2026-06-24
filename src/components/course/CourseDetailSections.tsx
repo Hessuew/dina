@@ -9,15 +9,15 @@ import {
   TrashIcon,
 } from 'lucide-react'
 import type { MediaLibraryRow } from '@/utils/library/library'
-import type { LessonRowView } from '@/components/course/domain/lesson-row.domain'
+import type { LessonRowView } from '@/components/course/lesson-row.domain'
 import { Button } from '@/components/ui/button'
 import { StatusChip } from '@/components/ui/status-chip'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { DarkCard } from '@/components/ui/dark-card'
-import { EmptyState } from '@/components/ui/empty-state'
-import { MediaCard } from '@/components/library/MediaCard'
+import { EmptyState } from '@/components/ui/empty-state/EmptyState'
+import { MediaCard } from '@/components/library/media-card/MediaCard'
 import { cn } from '@/lib/utils'
-import { resolveLessonRowView } from '@/components/course/domain/lesson-row.domain'
+import { resolveLessonRowView } from '@/components/course/lesson-row.domain'
 
 type Lesson = {
   id: string

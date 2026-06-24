@@ -1,11 +1,11 @@
 import { PlusIcon } from 'lucide-react'
 import { useState } from 'react'
-import type { Assignment } from '../view/AssignmentsView'
-import { CourseCard } from '@/components/card/CourseCard'
-import { CourseDialog } from '@/components/dialog/CourseDialog'
+import type { Assignment } from '@/components/view/assignments-view/AssignmentsView'
+import { UpcomingAssignmentsList } from '@/components/list/upcoming-assignments-list/UpcomingAssignmentsList'
+import { CourseCard } from '@/components/card/course-card/CourseCard'
+import { CourseDialog } from '@/components/dialog/course-dialog/CourseDialog'
 import { Button } from '@/components/ui/button'
 import { UpcomingLessonsList } from '@/components/list/UpcomingLessonsList'
-import { UpcomingAssignmentsList } from '@/components/list/UpcomingAssignmentsList'
 
 type Course = {
   id: string

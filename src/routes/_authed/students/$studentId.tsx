@@ -3,6 +3,15 @@ import { CalendarIcon } from 'lucide-react'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { getStudentDetail } from '@/utils/student'
+import {
+  computeCourseAverageGrade,
+  formatAssignmentDueDate,
+  formatAssignmentGrade,
+  getAssignmentRowStatus,
+  getStudentInitials,
+  groupAssignmentsByCourse,
+  shouldShowOverdueBadge,
+} from '@/utils/student/domain/student-detail-view.domain'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/_authed/students/$studentId')({
@@ -31,19 +40,12 @@ function StudentDetailComponent() {
     })
   }
 
-  const initials = student.fullName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+  const initials = getStudentInitials(student.fullName)
 
-  const assignmentsByCourse = student.enrollments.map((enrollment) => ({
-    course: enrollment,
-    assignments: student.assignments.filter(
-      (a) => a.courseId === enrollment.courseId,
-    ),
-  }))
+  const assignmentsByCourse = groupAssignmentsByCourse(
+    student.enrollments,
+    student.assignments,
+  )
 
   return (
     <PageLayout>
@@ -107,22 +109,7 @@ function StudentDetailComponent() {
         {assignmentsByCourse.map(({ course, assignments }) => {
           if (assignments.length === 0) return null
 
-          const courseGrades = assignments
-            .filter((a) => a.submission?.grade !== null)
-            .map((a) => ({
-              grade: a.submission!.grade!,
-              maxGrade: a.maxGrade ?? 100,
-            }))
-
-          const averageGrade =
-            courseGrades.length > 0
-              ? Math.round(
-                  courseGrades.reduce(
-                    (sum, g) => sum + (g.grade / g.maxGrade) * 100,
-                    0,
-                  ) / courseGrades.length,
-                )
-              : null
+          const averageGrade = computeCourseAverageGrade(assignments)
 
           const now = new Date()
 
@@ -155,9 +142,7 @@ function StudentDetailComponent() {
               <div className="px-5 pb-5">
                 <div className="space-y-6">
                   {assignments.map((assignment, idx) => {
-                    const isGraded = assignment.submission?.grade !== null
-                    const isSubmitted = assignment.submission !== null
-                    const overdue = new Date(assignment.dueDate) < now
+                    const status = getAssignmentRowStatus(assignment, now)
 
                     return (
                       <div
@@ -175,11 +160,7 @@ function StudentDetailComponent() {
                                 {assignment.title}
                               </div>
                               <div className="mt-1 font-serif text-base text-[#F8F4EC] group-hover:text-white">
-                                {isGraded
-                                  ? `${assignment.submission!.grade} / ${assignment.maxGrade ?? 100}`
-                                  : isSubmitted
-                                    ? 'Submitted'
-                                    : 'Not submitted'}
+                                {formatAssignmentGrade(assignment, status)}
                               </div>
                             </div>
                             {/* <div
@@ -202,22 +183,15 @@ function StudentDetailComponent() {
                             <div
                               className={cn(
                                 'flex items-center gap-1',
-                                overdue
+                                status.overdue
                                   ? 'text-destructive font-medium'
                                   : 'text-[#8E816D]',
                               )}
                             >
                               <CalendarIcon className="size-3" />
-                              Due{' '}
-                              {new Date(assignment.dueDate).toLocaleDateString(
-                                'en-US',
-                                {
-                                  month: 'short',
-                                  day: 'numeric',
-                                },
-                              )}
+                              Due {formatAssignmentDueDate(assignment.dueDate)}
                             </div>
-                            {overdue && !isGraded && (
+                            {shouldShowOverdueBadge(status) && (
                               <span className="ml-1 text-[#C5A059]">
                                 (Overdue)
                               </span>

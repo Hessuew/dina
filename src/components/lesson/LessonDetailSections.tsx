@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { StatusChip } from '@/components/ui/status-chip'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { DarkCard } from '@/components/ui/dark-card'
-import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyState } from '@/components/ui/empty-state/EmptyState'
 
 type Assignment = {
   id: string

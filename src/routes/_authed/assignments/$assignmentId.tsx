@@ -24,7 +24,7 @@ import {
   resolveEditDialogMode,
   resolveSubmissionStatusVariant,
 } from '@/utils/assignments/domain/assignment-detail.domain'
-import { AssignmentDialog } from '@/components/dialog/AssignmentDialog'
+import { AssignmentDialog } from '@/components/dialog/assignment-dialog/AssignmentDialog'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
@@ -253,28 +253,28 @@ function AssignmentDetailComponent() {
 
       {/* Assignment Dialog (edit / delete) */}
       {editDialogMode && (
-          <AssignmentDialog
-            open={true}
-            onOpenChange={(open) => {
-              if (!open) assignmentDialog.closeDialog()
-            }}
-            mode={editDialogMode}
-            assignment={assignment}
-            onDeleteSuccess={() => {
-              navigateAfterDelete(
-                { fromDashboard },
-                {
-                  toAssignments: () => router.navigate({ to: '/assignments' }),
-                  toLesson: () =>
-                    router.navigate({
-                      to: '/lessons/$lessonId',
-                      params: { lessonId: assignment.lesson.id },
-                    }),
-                },
-              )
-            }}
-          />
-        )}
+        <AssignmentDialog
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) assignmentDialog.closeDialog()
+          }}
+          mode={editDialogMode}
+          assignment={assignment}
+          onDeleteSuccess={() => {
+            navigateAfterDelete(
+              { fromDashboard },
+              {
+                toAssignments: () => router.navigate({ to: '/assignments' }),
+                toLesson: () =>
+                  router.navigate({
+                    to: '/lessons/$lessonId',
+                    params: { lessonId: assignment.lesson.id },
+                  }),
+              },
+            )
+          }}
+        />
+      )}
 
       {/* Grade Dialog */}
       {gradeDialog.isOpen && gradeDialog.dialogItem && (

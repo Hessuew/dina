@@ -2,6 +2,10 @@
 
 import * as React from 'react'
 import { motion, useAnimation, useInView } from 'motion/react'
+import {
+  computeVariants,
+  resolveOverriddenAnimateProps,
+} from './icon-animation.domain'
 import type {
   HTMLMotionProps,
   LegacyAnimationControls,
@@ -13,10 +17,6 @@ import type {
 import type { WithAsChild } from '@/components/animate-ui/primitives/animate/slot'
 import { cn } from '@/lib/utils'
 import { Slot } from '@/components/animate-ui/primitives/animate/slot'
-import {
-  computeVariants,
-  resolveOverriddenAnimateProps,
-} from './domain/icon-animation.domain'
 
 const staticAnimations = {
   path: {

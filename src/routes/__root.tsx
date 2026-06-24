@@ -10,10 +10,9 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
 
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { DefaultCatchBoundary } from '@/components/navigation/DefaultCatchBoundary'
-import { Header } from '@/components/navigation/Header'
-import { NotFound } from '@/components/navigation/NotFound'
+import type { User } from '@supabase/supabase-js'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar/Sidebar'
+import { AppSidebar } from '@/components/navigation/AppSidebar'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import appCss from '@/styles/app.css?url'
@@ -21,11 +20,13 @@ import { seo } from '@/utils/seo'
 
 import { getDb } from '@/db'
 import { getSupabaseServerClient } from '@/utils/supabase'
-import { AppSidebar } from '@/components/navigation/AppSidebar'
 import {
   buildUserContext,
   isAuthenticatedUser,
 } from '@/utils/auth/domain/user-context.domain'
+import { DefaultCatchBoundary } from '@/components/navigation/DefaultCatchBoundary'
+import { NotFound } from '@/components/navigation/NotFound'
+import { Header } from '@/components/navigation/Header'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = getSupabaseServerClient()
@@ -39,7 +40,7 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const db = await getDb()
 
   const profile = await db.query.profiles.findFirst({
-    where: (t, { eq }) => eq(t.id, data.user.id),
+    where: (t, { eq }) => eq(t.id, (data.user as User).id),
     columns: {
       avatarUrl: true,
       bio: true,

@@ -60,7 +60,7 @@ type ButtonConfig<TData> = {
   show?: (row: TData) => boolean
 }
 
-export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
 // Approximate rendered heights, used to cap the scroll area to `maxRows` rows.
 // A body row's tallest cell is the size-8 (32px) action button + py-3 padding;
@@ -142,7 +142,10 @@ function buildPageWindow(current: number, total: number): Array<number | '…'> 
 }
 
 // Table-option fragments that differ between server-side and client-side modes.
-function serverModeOptions(isServerMode: boolean, rowCount: number | undefined) {
+function serverModeOptions(
+  isServerMode: boolean,
+  rowCount: number | undefined,
+) {
   return isServerMode
     ? {
         manualPagination: true,
