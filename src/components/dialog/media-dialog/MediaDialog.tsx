@@ -26,7 +26,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { FormDialog } from '@/components/ui/form-dialog/FormDialog'
 import { Input } from '@/components/ui/input'
 import { SelectItem } from '@/components/ui/select'
-import { FormFieldSelect } from '@/components/ui/form-field'
+import { FormFieldSelect } from '@/components/ui/form-field/form-field'
 import { LIBRARY_TOPICS } from '@/lib/library-topics'
 import {
   buildMediaPayload,

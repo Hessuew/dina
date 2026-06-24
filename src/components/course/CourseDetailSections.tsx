@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/ui/empty-state/EmptyState'
 import { MediaCard } from '@/components/library/media-card/MediaCard'
 import { cn } from '@/lib/utils'
 import { resolveLessonRowView } from '@/components/course/lesson-row.domain'
+import { resolveLessonActionsView } from '@/components/course/lesson-actions.domain'
 
 type Lesson = {
   id: string
@@ -272,31 +273,35 @@ function LessonActions({
   onEditLesson: (lesson: Lesson) => void
   onDeleteLesson: (lesson: Lesson) => void
 }) {
-  const canManage = permissions.canEdit && permissions.isCourseTeacher
+  const view = resolveLessonActionsView({
+    role,
+    isPublished,
+    isCompleted,
+    permissions,
+  })
 
   return (
     <div
       className="flex shrink-0 items-center gap-2"
       onClick={(e) => e.stopPropagation()}
     >
-      {role === 'student' &&
-        isPublished &&
-        (isCompleted ? (
-          <span className="border border-[#C5A059]/40 px-2.5 py-1 text-[0.6rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase">
-            Completed
-          </span>
-        ) : (
-          <Button
-            variant="ghost"
-            theme="dark"
-            size="icon"
-            className="size-8 border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E]"
-            onClick={() => onOpenLesson(lesson.id)}
-          >
-            <ArrowRight className="size-3.5" />
-          </Button>
-        ))}
-      {canManage && (
+      {view.showCompletedBadge && (
+        <span className="border border-[#C5A059]/40 px-2.5 py-1 text-[0.6rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase">
+          Completed
+        </span>
+      )}
+      {view.showOpenButton && (
+        <Button
+          variant="ghost"
+          theme="dark"
+          size="icon"
+          className="size-8 border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E]"
+          onClick={() => onOpenLesson(lesson.id)}
+        >
+          <ArrowRight className="size-3.5" />
+        </Button>
+      )}
+      {view.canManage && (
         <>
           <Button
             variant="ghost"

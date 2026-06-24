@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   computeVariants,
   resolveInheritedAnimate,
   resolveOverriddenAnimateProps,
+  runContinueLoop,
 } from './icon-animation.domain'
+import type { ContinueLoopDeps } from './icon-animation.domain'
 import type { Variants } from 'motion/react'
 import type { AnimateIconContextValue, IconAnimationOptions } from './icon'
 
@@ -159,5 +161,79 @@ describe('computeVariants', () => {
       group1: variant,
       path1: variant,
     })
+  })
+})
+
+describe('runContinueLoop', () => {
+  function makeDeps(
+    overrides: Partial<ContinueLoopDeps> = {},
+  ): ContinueLoopDeps {
+    return {
+      loop: true,
+      loopDelay: 0,
+      waitForLoopDelay: vi.fn(async () => {}),
+      resetInitialIfStale: vi.fn(async () => false),
+      stopInactiveLoop: vi.fn(async () => false),
+      run: vi.fn(async () => {}),
+      ...overrides,
+    }
+  }
+
+  it('does nothing when loop is disabled', async () => {
+    const deps = makeDeps({ loop: false })
+    await runContinueLoop(deps)
+    expect(deps.waitForLoopDelay).not.toHaveBeenCalled()
+    expect(deps.stopInactiveLoop).not.toHaveBeenCalled()
+    expect(deps.run).not.toHaveBeenCalled()
+  })
+
+  it('skips the delay wait when loopDelay is zero', async () => {
+    const deps = makeDeps({ loopDelay: 0 })
+    await runContinueLoop(deps)
+    expect(deps.waitForLoopDelay).not.toHaveBeenCalled()
+    expect(deps.run).toHaveBeenCalledTimes(1)
+  })
+
+  it('waits for the loop delay before continuing when loopDelay is positive', async () => {
+    const deps = makeDeps({ loopDelay: 5 })
+    await runContinueLoop(deps)
+    expect(deps.waitForLoopDelay).toHaveBeenCalledTimes(1)
+    expect(deps.run).toHaveBeenCalledTimes(1)
+  })
+
+  it('stops after the delay when the run became stale', async () => {
+    const deps = makeDeps({
+      loopDelay: 5,
+      resetInitialIfStale: vi.fn(async () => true),
+    })
+    await runContinueLoop(deps)
+    expect(deps.waitForLoopDelay).toHaveBeenCalledTimes(1)
+    expect(deps.resetInitialIfStale).toHaveBeenCalledTimes(1)
+    expect(deps.stopInactiveLoop).not.toHaveBeenCalled()
+    expect(deps.run).not.toHaveBeenCalled()
+  })
+
+  it('stops when the loop is inactive', async () => {
+    const deps = makeDeps({ stopInactiveLoop: vi.fn(async () => true) })
+    await runContinueLoop(deps)
+    expect(deps.stopInactiveLoop).toHaveBeenCalledTimes(1)
+    expect(deps.run).not.toHaveBeenCalled()
+  })
+
+  it('stops when the run became stale after the inactive check', async () => {
+    const deps = makeDeps({
+      loopDelay: 0,
+      resetInitialIfStale: vi.fn(async () => true),
+    })
+    await runContinueLoop(deps)
+    expect(deps.stopInactiveLoop).toHaveBeenCalledTimes(1)
+    expect(deps.resetInitialIfStale).toHaveBeenCalledTimes(1)
+    expect(deps.run).not.toHaveBeenCalled()
+  })
+
+  it('runs the next iteration when all guards pass', async () => {
+    const deps = makeDeps()
+    await runContinueLoop(deps)
+    expect(deps.run).toHaveBeenCalledTimes(1)
   })
 })

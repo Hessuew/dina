@@ -7,7 +7,7 @@ import {
   TextAreaField,
   TextAreaFieldWithWordCount,
   TextField,
-} from '@/components/ui/app-form-fields'
+} from '@/components/ui/app-form/app-form-fields'
 
 export const { useAppForm, withForm } = createFormHook({
   fieldComponents: {

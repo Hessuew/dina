@@ -1,61 +1,15 @@
-import {
-  eachDayOfInterval,
-  endOfMonth,
-  endOfWeek,
-  format,
-  isSameDay,
-  isSameMonth,
-  startOfMonth,
-  startOfWeek,
-} from 'date-fns'
+import { format, isSameMonth } from 'date-fns'
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { useState } from 'react'
+import { buildCalendarDayCell, buildCalendarDays } from './calendar-view.domain'
 import type { CalendarEvent } from '@/utils/calendar/calendar'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 
 type CalendarViewProps = {
   events: Array<CalendarEvent>
   onEventClick?: (event: CalendarEvent) => void
   initialDate?: Date
   onDateChange?: (date: Date) => void
-}
-
-const EVENT_STYLES: Record<string, { dot: string; pill: string }> = {
-  assignment: {
-    dot: 'bg-[#C5A059]',
-    pill: 'border-[#C5A059]/40 bg-[#C5A059]/10 text-[#E9D9B4] hover:bg-[#C5A059]/20',
-  },
-  chapel: {
-    dot: 'bg-violet-400',
-    pill: 'border-violet-500/30 bg-violet-950/50 text-violet-300 hover:bg-violet-950/70',
-  },
-  exam: {
-    dot: 'bg-red-400',
-    pill: 'border-red-500/30 bg-red-950/50 text-red-300 hover:bg-red-950/70',
-  },
-  lesson: {
-    dot: 'bg-emerald-400',
-    pill: 'border-emerald-500/30 bg-emerald-950/50 text-emerald-300 hover:bg-emerald-950/70',
-  },
-  personal: {
-    dot: 'bg-sky-400',
-    pill: 'border-sky-500/30 bg-sky-950/50 text-sky-300 hover:bg-sky-950/70',
-  },
-  other: {
-    dot: 'bg-gray-400',
-    pill: 'border-gray-500/30 bg-gray-950/50 text-gray-300 hover:bg-gray-950/70',
-  },
-}
-
-function getEventStyle(event: CalendarEvent) {
-  if (event.type === 'special') {
-    if (event.specialCategory) {
-      return EVENT_STYLES[event.specialCategory]
-    }
-    return EVENT_STYLES.other
-  }
-  return EVENT_STYLES[event.type]
 }
 
 export function CalendarView({
@@ -66,14 +20,7 @@ export function CalendarView({
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(initialDate ?? new Date())
 
-  const monthStart = startOfMonth(currentDate)
-  const monthEnd = endOfMonth(currentDate)
-  const calendarStart = startOfWeek(monthStart)
-  const calendarEnd = endOfWeek(monthEnd)
-  const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
-
-  const getEventsForDay = (day: Date) =>
-    events.filter((event) => isSameDay(new Date(event.date), day))
+  const days = buildCalendarDays(currentDate)
 
   const previousMonth = () => {
     const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1)
@@ -150,60 +97,35 @@ export function CalendarView({
       {/* Day grid */}
       <div className="grid grid-cols-7 divide-x divide-white/6">
         {days.map((day, idx) => {
-          const dayEvents = getEventsForDay(day)
-          const isDayInCurrentMonth = day.getMonth() === currentDate.getMonth()
-          const isToday = isSameDay(day, new Date())
-          const isLastRow = idx >= days.length - 7
+          const cell = buildCalendarDayCell({
+            day,
+            index: idx,
+            totalDays: days.length,
+            currentDate,
+            events,
+            hasEventClick: Boolean(onEventClick),
+          })
 
           return (
-            <div
-              key={day.toISOString()}
-              className={cn(
-                'min-h-28 p-2',
-                !isLastRow && 'border-b border-white/6',
-                !isDayInCurrentMonth && 'bg-white/2',
-                isToday && 'bg-[#C5A059]/6',
-              )}
-            >
-              <div
-                className={cn(
-                  'mb-1.5 flex size-6 items-center justify-center text-[0.72rem]',
-                  isToday
-                    ? 'bg-[#C5A059] font-semibold text-[#0F0E0C]'
-                    : isDayInCurrentMonth
-                      ? 'text-[#D6CCBE]'
-                      : 'text-[#8E816D]/50',
-                )}
-              >
-                {format(day, 'd')}
-              </div>
+            <div key={day.toISOString()} className={cell.cellClassName}>
+              <div className={cell.dayNumberClassName}>{format(day, 'd')}</div>
               <div className="space-y-0.5">
-                {dayEvents.slice(0, 3).map((event) => {
-                  const style = getEventStyle(event)
-                  return (
+                {cell.visibleEvents.map(
+                  ({ event, dotClassName, pillClassName }) => (
                     <button
                       key={event.id}
                       type="button"
                       onClick={() => onEventClick?.(event)}
-                      className={cn(
-                        'flex w-full items-center gap-1 truncate border px-1.5 py-0.5 text-[0.6rem] leading-4 transition-colors',
-                        style.pill,
-                        !onEventClick && 'pointer-events-none',
-                      )}
+                      className={pillClassName}
                     >
-                      <span
-                        className={cn(
-                          'size-1.5 shrink-0 rounded-full',
-                          style.dot,
-                        )}
-                      />
+                      <span className={dotClassName} />
                       <span className="truncate">{event.title}</span>
                     </button>
-                  )
-                })}
-                {dayEvents.length > 3 && (
+                  ),
+                )}
+                {cell.overflowCount > 0 && (
                   <div className="px-1.5 text-[0.58rem] text-[#8E816D]">
-                    +{dayEvents.length - 3} more
+                    +{cell.overflowCount} more
                   </div>
                 )}
               </div>

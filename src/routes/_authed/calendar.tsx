@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { CalendarEvent, SpecialEventCategory } from '@/utils/calendar'
-import { CalendarView } from '@/components/view/CalendarView'
+import { CalendarView } from '@/components/view/calendar-view/CalendarView'
 import { EventPreviewModal } from '@/components/dialog/event-preview-modal/EventPreviewModal'
 import { EventListSidebar } from '@/components/calendar/EventListSidebar'
 import { PageLayout } from '@/components/layout/page-layout'

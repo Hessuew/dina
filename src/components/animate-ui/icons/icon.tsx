@@ -5,6 +5,7 @@ import { motion, useAnimation, useInView } from 'motion/react'
 import {
   computeVariants,
   resolveOverriddenAnimateProps,
+  runContinueLoop,
 } from './icon-animation.domain'
 import type {
   HTMLMotionProps,
@@ -335,16 +336,15 @@ function AnimateIcon({
       return false
     }
 
-    const continueLoop = async () => {
-      if (!loop) return
-      if (loopDelay > 0) {
-        await waitForLoopDelay()
-        if (await resetInitialIfStale()) return
-      }
-      if (await stopInactiveLoop()) return
-      if (await resetInitialIfStale()) return
-      await run()
-    }
+    const continueLoop = () =>
+      runContinueLoop({
+        loop,
+        loopDelay,
+        waitForLoopDelay,
+        resetInitialIfStale,
+        stopInactiveLoop,
+        run,
+      })
 
     async function run() {
       if (cancelledRef.current) {

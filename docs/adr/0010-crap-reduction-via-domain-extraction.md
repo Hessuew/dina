@@ -77,8 +77,10 @@ folder beside those components, do **not** relocate it into `src/utils/`. `src/u
 is reserved for logic genuinely owned by a server function or shared backend feature. Pushing a
 component helper into `src/utils/` (or a hook's logic into `src/utils/`) scatters it far from
 where it is read and is a placement bug. All four coverage roots — `src/domain/**`,
-`src/utils/**/domain/**`, `src/hooks/**/domain/**`, `src/components/**/domain/**` — are gated at
-100% in `vitest.config.ts`, so a colocated component `domain/` folder is covered automatically.
+`src/utils/**/domain/**`, `src/hooks/**/domain/**`, `src/components/**/*.domain.ts` — are gated at
+100% in `vitest.config.ts`, so a colocated component `*.domain.ts` file is covered automatically.
+(The component glob matches the file suffix, not a `domain/` path segment, so it covers both the
+colocated `<area>/<component>/<name>.domain.ts` layout and any legacy `<area>/domain/` subfolder.)
 
 - **Pure function / hook** (e.g. `getYoutubeVideoId`, `getUserFriendlyError`, a hook's
   `handleKeyDown`): TDD a canonical copy into the appropriate domain layer (see placement rule
@@ -102,9 +104,33 @@ where it is read and is a placement bug. All four coverage roots — `src/domain
   (`DataTableHead`, `DataTableRows`, `DataTableContent`, `PaginationFooter`) carry this
   directive for exactly this reason.
 
-All of `src/utils/**/domain/**`, `src/hooks/**/domain/**`, and `src/components/**/domain/**` are
+All of `src/utils/**/domain/**`, `src/hooks/**/domain/**`, and `src/components/**/*.domain.ts` are
 in `vitest.config.ts` coverage at 100% lines/branches/functions/statements, so extracted domain
 files in any of these layers are gated automatically.
+
+### Coverage escape hatch — genuinely-unreachable branches only
+
+The 100% domain-coverage gate is a **bright line** and stays at 100%: extracted domain logic
+must be fully covered, because the CRAP collapse this playbook relies on
+(`CRAP = CC² · (1 − cov)³ + CC`) depends on coverage reaching 1. Do **not** lower the threshold,
+and do **not** write hollow tests that execute a line without asserting its behavior just to buy
+the number.
+
+The single sanctioned exception is a branch that is **genuinely unreachable** — a defensive
+guard or `?? fallback` that no input can trigger because the type system already excludes it
+(e.g. a `?? DEFAULT` after an exhaustive enum lookup). For those, and only those, mark the branch
+with a v8 ignore directive plus a justification, mirroring the `fallow-ignore-next-line`
+convention in `docs/rules/complexity.md`:
+
+```ts
+// the enum lookup is exhaustive over CalendarEvent['type']; this fallback is unreachable
+/* v8 ignore next -- defensive default, no input reaches it */
+return TYPE_CHIP[event.type] ?? TYPE_CHIP.other
+```
+
+Never use it to skip a **reachable** branch you simply did not test — write the test instead. A
+`v8 ignore` without a justification comment is a code-review failure, exactly like an unjustified
+`fallow-ignore`.
 
 ### Sequencing
 
@@ -186,7 +212,7 @@ Progress is the `fallow health` finding count; baseline **138 (21 critical / 46 
 moderate)** as of 2026-06-15. The gate prevents regressions, so the count only moves down. The
 full worklist below is pre-populated from this snapshot.
 
-**Current open:** 42 (0 critical / 8 high / 34 moderate)
+**Current open:** 32 (0 critical / 2 high / 30 moderate)
 
 The **ledger** below is the durable record of what has been fixed and what is being worked on
 right now. It is the single source of truth for the burndown — keep it current as part of every
@@ -323,23 +349,23 @@ might surface later are appended as fresh `⬜ todo` rows.
 | ✅ done        | 🟠 high | 56   | `TeacherModal`                    | B component | `src/components/dialog/TeacherModal.tsx:25`                                  | `src/components/dialog/domain/teacher-modal.domain.ts`                                              | 1 CRAP finding (CRAP 56)                              | 2026-06-20        |
 | ✅ done        | 🟠 high | 56   | `ZoomLinkDialog`                  | B component | `src/components/dialog/ZoomLinkDialog.tsx:89`                                | `src/components/dialog/domain/zoom-link-dialog.domain.ts`                                           | 1 CRAP finding (CRAP 56)                              | 2026-06-20        |
 | ✅ done        | 🟠 high | 56   | `AwardRow`                        | B component | `src/components/landing/about.tsx:52`                                        | `src/components/landing/domain/about.domain.ts`                                                     | 1 CRAP finding (CRAP 56)                              | 2026-06-20        |
-| 🔨 in progress | 🟠 high | 56   | `LandingScriptureSectionHeader`   | B component | `src/components/landing/primitives.tsx:291`                                  | —                                                                                                   | —                                                     | 2026-06-20T18:10Z |
+| ✅ done        | 🟠 high | 56   | `LandingScriptureSectionHeader`   | B component | `src/components/landing/primitives/primitives.tsx:291`                       | `src/components/landing/primitives/landing-scripture-section-header.domain.ts`                       | 1 CRAP finding (CRAP 56)                              | 2026-06-20        |
 | ✅ done        | 🟠 high | 56   | `handleMessage`                   | B component | `src/components/library/YouTubeEmbed.tsx:97`                                 | `src/components/library/youtube-embed.domain.ts`                                                     | 1 CRAP finding (CRAP 56)                              | 2026-06-20        |
 | ✅ done        | 🟠 high | 56   | `CourseListInternal`              | B component | `src/components/list/CourseList.tsx:47`                                      | `src/components/list/domain/course-list.domain.ts`                                                  | 1 CRAP finding (CRAP 56)                              | 2026-06-20        |
-| ⬜ todo        | 🟠 high | 56   | `UserText`                        | B component | `src/components/navigation/nav-user.tsx:90`                                  | —                                                                                                   | —                                                     | —                 |
-| ⬜ todo        | 🟠 high | 56   | `NavUserMenuContent`              | B component | `src/components/navigation/nav-user.tsx:187`                                 | —                                                                                                   | —                                                     | —                 |
+| ✅ done        | 🟠 high | 56   | `UserText`                        | B component | `src/components/navigation/nav-user.tsx:90`                                  | `src/components/navigation/domain/nav-user.domain.ts`                                                | 1 CRAP finding (CRAP 56)                              | 2026-06-20        |
+| ✅ done        | 🟠 high | 56   | `NavUserMenuContent`              | B component | `src/components/navigation/nav-user.tsx:187`                                 | — (already absent from fallow — cleared by prior NavUser refactoring)                                | 1 CRAP finding (CRAP 56) — already gone               | 2026-06-20        |
 | ✅ done        | 🟠 high | 56   | `NotificationMenuHeader`          | B component | `src/components/navigation/NotificationsMenu.tsx:120`                        | `src/components/navigation/domain/notifications-menu.domain.ts`                                     | 1 CRAP finding (CRAP 56)                              | 2026-06-20        |
-| ⬜ todo        | 🟠 high | 56   | `getFirstError`                   | B component | `src/components/ui/app-form-fields.tsx:66`                                   | —                                                                                                   | —                                                     | —                 |
-| ⬜ todo        | 🟠 high | 56   | `FormFieldNumberInput`            | B component | `src/components/ui/form-field.tsx:92`                                        | —                                                                                                   | —                                                     | —                 |
-| ⬜ todo        | 🟠 high | 56   | `<arrow>`                         | B component | `src/components/view/CalendarView.tsx:152`                                   | —                                                                                                   | —                                                     | —                 |
+| ✅ done        | 🟠 high | 56   | `getFirstError`                   | A pure      | `src/components/ui/app-form-fields.tsx:66`                                   | `src/components/ui/app-form-fields.domain.ts`                                                        | 1 CRAP finding (CRAP 56)                              | 2026-06-20        |
+| ✅ done        | 🟠 high | 56   | `FormFieldNumberInput`            | B component | `src/components/ui/form-field.tsx:92`                                        | `src/components/ui/form-field.domain.ts`                                                            | 1 CRAP finding (CRAP 56)                              | 2026-06-20        |
+| ✅ done        | 🟠 high | 56   | `<arrow>`                         | B component | `src/components/view/CalendarView.tsx:152`                                   | `src/components/view/calendar-view.domain.ts`                                                        | 1 CRAP finding (CRAP 56)                              | 2026-06-20        |
 | ✅ done        | 🟠 high | 56   | `requestPasswordResetService`     | A pure      | `src/utils/password-reset/service/password-reset.service.ts:22`              | `src/utils/password-reset/domain/password-reset-flow.domain.ts`                                     | 1 CRAP finding (CRAP 56)                              | 2026-06-16        |
 | ✅ done        | 🟠 high | 56   | `resetPasswordService`            | A pure      | `src/utils/password-reset/service/password-reset.service.ts:111`             | `src/utils/password-reset/domain/password-reset-flow.domain.ts`                                     | 1 CRAP finding (CRAP 56)                              | 2026-06-16        |
-| ⬜ todo        | 🟡 mod  | 42   | `continueLoop`                    | B component | `src/components/animate-ui/icons/icon.tsx:334`                               | —                                                                                                   | —                                                     | —                 |
+| ✅ done        | 🟡 mod  | 42   | `continueLoop`                    | B component | `src/components/animate-ui/icons/icon.tsx:334`                               | `src/components/animate-ui/icons/icon-animation.domain.ts` (`runContinueLoop`)                       | 1 CRAP finding (CRAP 42)                              | 2026-06-20        |
 | ✅ done        | 🟡 mod  | 42   | `getVariants`                     | B component | `src/components/animate-ui/icons/icon.tsx:734`                               | `src/components/animate-ui/icons/domain/icon-animation.domain.ts`                                   | 1 CRAP finding (CRAP 42)                              | 2026-06-19        |
 | ✅ done        | 🟡 mod  | 42   | `validYear`                       | B component | `src/components/auth/enrolment-form.tsx:55`                                  | `src/components/auth/domain/enrolment-form.domain.ts`                                               | 1 CRAP finding (CRAP 42)                              | 2026-06-20        |
-| ⬜ todo        | 🟡 mod  | 42   | `<arrow>`                         | B component | `src/components/auth/enrolment-form.tsx:135`                                 | —                                                                                                   | —                                                     | —                 |
-| ⬜ todo        | 🟡 mod  | 42   | `ResetPasswordForm`               | B component | `src/components/auth/reset-password-form.tsx:25`                             | —                                                                                                   | —                                                     | —                 |
-| ⬜ todo        | 🟡 mod  | 42   | `LessonActions`                   | B component | `src/components/course/CourseDetailSections.tsx:254`                         | —                                                                                                   | —                                                     | —                 |
+| ✅ done        | 🟡 mod  | 42   | `<arrow>`                         | B component | `src/components/auth/enrolment-form.tsx:135`                                 | `src/components/auth/enrolment-form/enrolment-form.domain.ts` (`runEnrolmentSuccessEffects`)         | 1 CRAP finding (CRAP 42)                              | 2026-06-20        |
+| ✅ done        | 🟡 mod  | 42   | `ResetPasswordForm`               | B component | `src/components/auth/reset-password-form.tsx:25`                             | `src/components/auth/reset-password-form.domain.ts`                                                  | 1 CRAP finding (CRAP 42)                              | 2026-06-20        |
+| ✅ done        | 🟡 mod  | 42   | `LessonActions`                   | B component | `src/components/course/CourseDetailSections.tsx:254`                         | `src/components/course/lesson-actions.domain.ts`                                                    | 1 CRAP finding (CRAP 42)                              | 2026-06-20        |
 | ✅ done        | 🟡 mod  | 42   | `onSubmit`                        | B component | `src/components/dialog/AssignmentDialog.tsx:240`                             | src/components/dialog/domain/assignment-dialog.domain.ts                                            | 1 CRAP finding (CRAP 42)                              | 2026-06-19        |
 | ⬜ todo        | 🟡 mod  | 42   | `onSubmit`                        | B component | `src/components/dialog/CourseDialog.tsx:217`                                 | —                                                                                                   | —                                                     | —                 |
 | ⬜ todo        | 🟡 mod  | 42   | `EventDialog`                     | B component | `src/components/dialog/EventDialog.tsx:397`                                  | —                                                                                                   | —                                                     | —                 |

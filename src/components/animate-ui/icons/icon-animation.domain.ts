@@ -43,6 +43,33 @@ export function resolveOverriddenAnimateProps<T extends string>(
   }
 }
 
+export interface ContinueLoopDeps {
+  loop: boolean
+  loopDelay: number
+  waitForLoopDelay: () => Promise<void>
+  resetInitialIfStale: () => Promise<boolean>
+  stopInactiveLoop: () => Promise<boolean>
+  run: () => Promise<void>
+}
+
+export async function runContinueLoop({
+  loop,
+  loopDelay,
+  waitForLoopDelay,
+  resetInitialIfStale,
+  stopInactiveLoop,
+  run,
+}: ContinueLoopDeps): Promise<void> {
+  if (!loop) return
+  if (loopDelay > 0) {
+    await waitForLoopDelay()
+    if (await resetInitialIfStale()) return
+  }
+  if (await stopInactiveLoop()) return
+  if (await resetInitialIfStale()) return
+  await run()
+}
+
 export function computeVariants<
   TData extends { default: T; [key: string]: T },
   T extends Record<string, Variants>,

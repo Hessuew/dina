@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react'
-import type { FormFieldType } from '@/components/ui/form-field'
+import type { FormFieldType } from '@/components/ui/form-field/form-field'
+import { getFirstError } from '@/components/ui/app-form/app-form-fields.domain'
 import { Field, FieldLabel } from '@/components/ui/field'
 import {
   FormFieldInput,
   FormFieldNumberInput,
   FormFieldSelect,
   FormFieldTextarea,
-} from '@/components/ui/form-field'
+} from '@/components/ui/form-field/form-field'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useFieldContext } from '@/hooks/form-context'
@@ -62,23 +63,6 @@ interface SwitchFieldProps {
   id: string
   label: string
   className?: string
-}
-
-function getFirstError(errors: Array<unknown>): string | undefined {
-  const firstError = errors[0]
-
-  if (!firstError) return undefined
-  if (typeof firstError === 'string') return firstError
-  if (firstError instanceof Error) return firstError.message
-  if (
-    typeof firstError === 'object' &&
-    'message' in firstError &&
-    typeof firstError.message === 'string'
-  ) {
-    return firstError.message
-  }
-
-  return String(firstError)
 }
 
 export function TextField(props: TextFieldProps) {

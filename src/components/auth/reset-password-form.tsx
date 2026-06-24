@@ -17,6 +17,14 @@ import { useMutation } from '@/hooks/useMutation'
 import { resetPasswordFn, validateResetTokenFn } from '@/utils/password-reset'
 import { resetPasswordSchema } from '@/schemas/auth.schema'
 import { calculatePasswordStrength } from '@/utils/password'
+import {
+  NO_TOKEN_ERROR,
+  VALIDATION_FAILED_ERROR,
+  resolveInvalidLinkMessage,
+  resolveResetPasswordViewMode,
+  resolveTokenValidationResult,
+  validateConfirmPassword,
+} from '@/components/auth/reset-password-form.domain'
 
 interface ResetPasswordFormProps {
   token: string
@@ -60,30 +68,32 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   useEffect(() => {
     if (!token) {
       setIsValidating(false)
-      setTokenError('No reset token provided')
+      setTokenError(NO_TOKEN_ERROR)
       return
     }
 
     validateTokenFn({ data: { token } })
       .then((result: { valid: boolean; message: string }) => {
-        if (result.valid) {
-          setTokenValid(true)
-          setTokenError(null)
-        } else {
-          setTokenValid(false)
-          setTokenError(result.message)
-        }
+        const state = resolveTokenValidationResult(result)
+        setTokenValid(state.tokenValid)
+        setTokenError(state.tokenError)
       })
       .catch(() => {
         setTokenValid(false)
-        setTokenError('Failed to validate reset token')
+        setTokenError(VALIDATION_FAILED_ERROR)
       })
       .finally(() => {
         setIsValidating(false)
       })
   }, [token, validateTokenFn])
 
-  if (isValidating) {
+  const viewMode = resolveResetPasswordViewMode({
+    isValidating,
+    tokenValid,
+    tokenError,
+  })
+
+  if (viewMode === 'loading') {
     return (
       <AuthLoadingState backgroundImage={aboutBackground}>
         <Loader2 className="h-8 w-8 animate-spin text-[#9B7A41]" />
@@ -91,7 +101,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
     )
   }
 
-  if (!tokenValid || tokenError) {
+  if (viewMode === 'invalid') {
     return (
       <AuthCenteredState
         backgroundImage={aboutBackground}
@@ -99,7 +109,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         title="Invalid Reset Link"
       >
         <p className="mt-6 text-base leading-8 font-light tracking-[0.04em] text-[#4E463D]">
-          {tokenError || 'The reset link is invalid or has expired.'}
+          {resolveInvalidLinkMessage(tokenError)}
         </p>
 
         <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:justify-center">
@@ -188,12 +198,11 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
               <form.AppField
                 name="confirmPassword"
                 validators={{
-                  onSubmit: ({ value, fieldApi }) => {
-                    if (!value) return 'Please confirm your password'
-                    if (value !== fieldApi.form.state.values.password)
-                      return 'Passwords do not match'
-                    return undefined
-                  },
+                  onSubmit: ({ value, fieldApi }) =>
+                    validateConfirmPassword(
+                      value,
+                      fieldApi.form.state.values.password,
+                    ),
                 }}
               >
                 {(field) => (
