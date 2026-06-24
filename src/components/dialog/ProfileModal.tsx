@@ -20,22 +20,20 @@ import {
   updatePasswordSchema,
   updateProfileSchema,
 } from '@/schemas/profile.schema'
-
-type ProfileFormData = {
-  fullName: string
-  email: string
-  bio: string
-}
-
-type PasswordFormData = {
-  newPassword: string
-  confirmPassword: string
-}
-
-const emptyPasswordForm: PasswordFormData = {
-  newPassword: '',
-  confirmPassword: '',
-}
+import {
+  buildAvatarUploadInput,
+  buildProfileUpdateInput,
+  emptyPasswordForm,
+  getAvatarAriaLabel,
+  getEmailFieldDescription,
+  getPasswordButtonLabel,
+  getProfileButtonLabel,
+  getProfileDisplayName,
+  getProfileInitialValues,
+  getProfileInitials,
+  resolveProfileUpdateOutcome,
+  validateConfirmPassword,
+} from './domain/profile-modal.domain'
 
 type ProfileModalProps = {
   open: boolean
@@ -50,16 +48,6 @@ type ProfileModalProps = {
   onProfileUpdate?: () => void
 }
 
-function getProfileInitialValues(
-  user: ProfileModalProps['user'],
-): ProfileFormData {
-  return {
-    fullName: user.fullName ?? '',
-    email: user.email,
-    bio: user.bio ?? '',
-  }
-}
-
 export function ProfileModal({
   open,
   onOpenChange,
@@ -70,14 +58,7 @@ export function ProfileModal({
   const [pendingEmailSent, setPendingEmailSent] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const initials = user.fullName
-    ? user.fullName
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : user.email.slice(0, 2).toUpperCase()
+  const initials = getProfileInitials(user)
 
   const updateProfileMutation = useMutation<
     Parameters<typeof updateProfileFn>[0],
@@ -85,14 +66,9 @@ export function ProfileModal({
   >({
     fn: updateProfileFn,
     onSuccess: (ctx) => {
-      if (ctx.data.emailChangePending && ctx.data.pendingEmail) {
-        setPendingEmailSent(ctx.data.pendingEmail)
-        toast.success(
-          'Profile updated. Check your inbox to verify your new email.',
-        )
-      } else {
-        toast.success('Profile updated successfully')
-      }
+      const outcome = resolveProfileUpdateOutcome(ctx.data)
+      if (outcome.pendingEmail) setPendingEmailSent(outcome.pendingEmail)
+      toast.success(outcome.message)
       onProfileUpdate?.()
     },
     onError: (error) => {
@@ -103,10 +79,12 @@ export function ProfileModal({
   const uploadAvatarMutation = useMutation({
     fn: uploadAvatarFn,
     onSuccess: () => {
+      toast.dismiss('avatar-upload')
       toast.success('Avatar uploaded successfully')
       onProfileUpdate?.()
     },
     onError: (error) => {
+      toast.dismiss('avatar-upload')
       toast.error(toUserError(error).message)
     },
   })
@@ -126,13 +104,7 @@ export function ProfileModal({
   const profileForm = useAppForm({
     defaultValues: getProfileInitialValues(user),
     onSubmit: ({ value }) => {
-      updateProfileMutation.mutate({
-        data: {
-          fullName: value.fullName,
-          email: value.email,
-          bio: value.bio || undefined,
-        },
-      })
+      updateProfileMutation.mutate({ data: buildProfileUpdateInput(value) })
     },
   })
 
@@ -151,24 +123,27 @@ export function ProfileModal({
 
     const reader = new FileReader()
     reader.onloadend = () => {
-      const fileData = reader.result as string
+      const fileData = reader.result
+      if (typeof fileData !== 'string') {
+        toast.error('Failed to read file')
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        return
+      }
 
       toast.loading('Uploading avatar...', { id: 'avatar-upload' })
 
       uploadAvatarMutation.mutate({
-        data: {
-          fileData,
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-        },
+        data: buildAvatarUploadInput(file, fileData),
       })
-
-      toast.dismiss('avatar-upload')
 
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
+    }
+
+    reader.onerror = () => {
+      toast.error('Failed to read file')
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
 
     reader.readAsDataURL(file)
@@ -237,7 +212,7 @@ export function ProfileModal({
                     className="absolute inset-0 bg-cover bg-center"
                     style={{ backgroundImage: `url(${user.avatarUrl})` }}
                     role="img"
-                    aria-label={user.fullName ?? user.email}
+                    aria-label={getProfileDisplayName(user)}
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-[#1A1716]">
@@ -264,11 +239,9 @@ export function ProfileModal({
                   className="absolute top-4 right-4 z-10 flex size-8 items-center justify-center border border-white/20 bg-black/50 text-white/70 transition-colors hover:bg-black/70 hover:text-white disabled:opacity-40"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadAvatarMutation.isPending}
-                  aria-label={
-                    uploadAvatarMutation.isPending
-                      ? 'Uploading...'
-                      : 'Change avatar'
-                  }
+                  aria-label={getAvatarAriaLabel(
+                    uploadAvatarMutation.isPending,
+                  )}
                 >
                   <PencilIcon className="size-3.5" />
                 </button>
@@ -320,13 +293,11 @@ export function ProfileModal({
                         <passwordForm.AppField
                           name="confirmPassword"
                           validators={{
-                            onSubmit: ({ value, fieldApi }) => {
-                              const newPassword =
-                                fieldApi.form.state.values.newPassword
-                              if (value !== newPassword)
-                                return 'Passwords do not match'
-                              return undefined
-                            },
+                            onSubmit: ({ value, fieldApi }) =>
+                              validateConfirmPassword(
+                                value,
+                                fieldApi.form.state.values.newPassword,
+                              ),
                           }}
                         >
                           {(field) => (
@@ -345,9 +316,9 @@ export function ProfileModal({
                             onClick={() => void passwordForm.handleSubmit()}
                             disabled={updatePasswordMutation.isPending}
                           >
-                            {updatePasswordMutation.isPending
-                              ? 'Updating...'
-                              : 'Update Password'}
+                            {getPasswordButtonLabel(
+                              updatePasswordMutation.isPending,
+                            )}
                           </Button>
                         </div>
                       </FieldGroup>
@@ -377,11 +348,9 @@ export function ProfileModal({
                                 label="Email"
                                 type="email"
                                 required
-                                description={
-                                  pendingEmailSent
-                                    ? `Verification sent to ${pendingEmailSent}. Click the link to confirm.`
-                                    : 'Changing your email will require verification'
-                                }
+                                description={getEmailFieldDescription(
+                                  pendingEmailSent,
+                                )}
                               />
                             )}
                           </profileForm.AppField>
@@ -417,9 +386,9 @@ export function ProfileModal({
                             onClick={() => void profileForm.handleSubmit()}
                             disabled={updateProfileMutation.isPending}
                           >
-                            {updateProfileMutation.isPending
-                              ? 'Saving...'
-                              : 'Save Changes'}
+                            {getProfileButtonLabel(
+                              updateProfileMutation.isPending,
+                            )}
                           </Button>
                         </div>
                       </FieldGroup>
