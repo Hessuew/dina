@@ -269,20 +269,7 @@ function GemLecturerCard({
       <div className="pointer-events-none absolute inset-[7px] z-10 border border-[#C5A059]/20 transition-colors duration-300 group-hover:border-[#C5A059]/40" />
 
       {/* full-bleed image or initials fallback */}
-      {teacher.avatarUrl ? (
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${teacher.avatarUrl})` }}
-          role="img"
-          aria-label={teacher.fullName}
-        />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#1A1716]">
-          <div className="flex size-20 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-2xl text-[#E9D9B4]">
-            {getGemInitials(teacher.fullName)}
-          </div>
-        </div>
-      )}
+      <GemCardMedia teacher={teacher} />
 
       {/* top dark gradient for label readability */}
       <div className="absolute inset-x-0 top-0 h-28 bg-linear-to-b from-black/70 to-transparent" />
@@ -298,31 +285,57 @@ function GemLecturerCard({
       )}
 
       {/* bottom frosted overlay — always visible, taller to fit name + bio */}
+      <GemCardOverlay teacher={teacher} />
+    </div>
+  )
+}
+
+function GemCardMedia({ teacher }: { teacher: TeacherWithCourse }) {
+  if (teacher.avatarUrl) {
+    return (
       <div
-        className="absolute inset-x-0 bottom-0 z-20 h-[55%] mask-[linear-gradient(to_bottom,transparent_0%,black_28%)]"
-        style={{
-          background:
-            'linear-gradient(to bottom, transparent 0%, rgba(5,4,2,0.92) 100%)',
-        }}
-      >
-        <div className="flex h-full flex-col justify-end gap-1.5 px-3 pb-4">
-          <div className="h-px w-7 bg-white/20" />
-          <div className="flex items-center gap-2">
-            {teacher.gemstone && GEM_IMAGE_MAP[teacher.gemstone] && (
-              <img
-                src={GEM_IMAGE_MAP[teacher.gemstone]}
-                alt={teacher.gemstone}
-                className="size-10 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
-              />
-            )}
-            <h3 className="font-serif text-xl leading-tight text-white italic">
-              {teacher.fullName}
-            </h3>
-          </div>
-          {teacher.bio && (
-            <p className="text-sm leading-[1.6] text-white/75">{teacher.bio}</p>
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${teacher.avatarUrl})` }}
+        role="img"
+        aria-label={teacher.fullName}
+      />
+    )
+  }
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-[#1A1716]">
+      <div className="flex size-20 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] font-serif text-2xl text-[#E9D9B4]">
+        {getGemInitials(teacher.fullName)}
+      </div>
+    </div>
+  )
+}
+
+function GemCardOverlay({ teacher }: { teacher: TeacherWithCourse }) {
+  return (
+    <div
+      className="absolute inset-x-0 bottom-0 z-20 h-[55%] mask-[linear-gradient(to_bottom,transparent_0%,black_28%)]"
+      style={{
+        background:
+          'linear-gradient(to bottom, transparent 0%, rgba(5,4,2,0.92) 100%)',
+      }}
+    >
+      <div className="flex h-full flex-col justify-end gap-1.5 px-3 pb-4">
+        <div className="h-px w-7 bg-white/20" />
+        <div className="flex items-center gap-2">
+          {teacher.gemstone && GEM_IMAGE_MAP[teacher.gemstone] && (
+            <img
+              src={GEM_IMAGE_MAP[teacher.gemstone]}
+              alt={teacher.gemstone}
+              className="size-10 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+            />
           )}
+          <h3 className="font-serif text-xl leading-tight text-white italic">
+            {teacher.fullName}
+          </h3>
         </div>
+        {teacher.bio && (
+          <p className="text-sm leading-[1.6] text-white/75">{teacher.bio}</p>
+        )}
       </div>
     </div>
   )
@@ -402,35 +415,14 @@ function getGemCardMotionStyle(offset: number) {
   }
 }
 
-export function LandingLecturerGemsSection() {
-  const { activeIndex, setActiveIndex, goToPrevious, goToNext } = useCarousel(
-    PAIR_META.length,
-  )
-  const m = useCarousel(gemLecturers.length)
+type Carousel = ReturnType<typeof useCarousel>
 
-  const activePair = PAIR_META[activeIndex]
-
+function GemsSectionHeader() {
   return (
-    <LandingImageSection
-      id="teacher-gems"
-      backgroundImageUrl={facultyBackground}
-      gradientFrom="rgba(255,255,255,0.9)"
-      gradientTo="rgba(255,255,255,0.9)"
-      className="border-b border-[#1A1A1A]/10 text-[#1C1815]"
-    >
-      <LandingSectionOverlay
-        gradientFrom="rgba(197,160,89,0.12)"
-        secondaryGradientFrom="rgba(255,255,255,0.28)"
-        linePosition="right"
-        lineColor="#1A1A1A/12"
-      />
-
-      <LandingSectionContainer className="relative px-0 py-18 sm:py-22 lg:py-24">
-        <div className="space-y-14">
-          <div className="grid gap-12 px-5 sm:px-0 lg:grid-cols-[minmax(0,0.90fr)_minmax(24rem,1.10fr)] lg:items-start lg:gap-12">
-            {/* Two-column header */}
-            {/* Left: scriptures + two-line headline */}
-            <LandingScriptureSectionHeader
+    <div className="grid gap-12 px-5 sm:px-0 lg:grid-cols-[minmax(0,0.90fr)_minmax(24rem,1.10fr)] lg:items-start lg:gap-12">
+      {/* Two-column header */}
+      {/* Left: scriptures + two-line headline */}
+      <LandingScriptureSectionHeader
               eyebrowLabel="Teaching Faculty"
               eyebrowTone="deep"
               headlineColor="#1C1815"
@@ -457,51 +449,61 @@ export function LandingLecturerGemsSection() {
             />
 
             {/* Right: dark feature panel — active pair info + gems image */}
-            <LandingFeaturePanel>
-              <LandingFeaturePanelHeader backgroundImageUrl={facultyBackground}>
-                <div className="relative flex min-h-48 flex-col justify-between gap-5 p-4 sm:p-6 lg:min-h-72">
-                  <div className="flex items-start justify-between gap-6">
-                    <div>
-                      <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
-                        The Twelve Stones
-                      </div>
-                      <div className="mt-3 max-w-[22ch] font-serif text-[clamp(1rem,2vw,1.5rem)] leading-tight tracking-[-0.02em] text-white/90 italic">
-                        "The foundations of the wall of the city were garnished
-                        with all manner of precious stones."
-                      </div>
-                    </div>
-                    <div className="shrink-0 border border-[#C5A059]/35 bg-black/24 px-3 py-2 text-[0.8rem] font-medium tracking-[0.26em] text-[#E9D9B4] uppercase">
-                      Rev. 21
-                    </div>
-                  </div>
-                  <div className="h-px w-full bg-[#C5A059]/20" />
-                  <div className="border border-white/12 bg-black/24 px-4 py-3 backdrop-blur-sm">
-                    <div className="text-[0.58rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
-                      The Twelve Foundations
-                    </div>
-                    <div className="mt-2 text-[0.68rem] leading-[1.9] font-medium tracking-[0.18em] text-[#D4B373] uppercase">
-                      Jasper · Sapphire · Chalcedony · Emerald
-                      <br className="hidden sm:block" />
-                      Sardonyx · Sardius · Chrysolyte · Beryl
-                      <br className="hidden sm:block" />
-                      Topaz · Chrysoprasus · Jacinth · Amethyst
-                    </div>
-                  </div>
-                </div>
-              </LandingFeaturePanelHeader>
-              <LandingFeaturePanelBody>
-                <img
-                  src={gemsImage}
-                  alt="The twelve stones"
-                  className="w-full p-2"
-                  loading="lazy"
-                />
-              </LandingFeaturePanelBody>
-            </LandingFeaturePanel>
+            <GemsFeaturePanel />
           </div>
+  )
+}
 
-          {/* MOBILE: one lecturer at a time over all 12 */}
-          <div className="space-y-10 md:hidden">
+function GemsFeaturePanel() {
+  return (
+    <LandingFeaturePanel>
+      <LandingFeaturePanelHeader backgroundImageUrl={facultyBackground}>
+        <div className="relative flex min-h-48 flex-col justify-between gap-5 p-4 sm:p-6 lg:min-h-72">
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+                The Twelve Stones
+              </div>
+              <div className="mt-3 max-w-[22ch] font-serif text-[clamp(1rem,2vw,1.5rem)] leading-tight tracking-[-0.02em] text-white/90 italic">
+                "The foundations of the wall of the city were garnished with all
+                manner of precious stones."
+              </div>
+            </div>
+            <div className="shrink-0 border border-[#C5A059]/35 bg-black/24 px-3 py-2 text-[0.8rem] font-medium tracking-[0.26em] text-[#E9D9B4] uppercase">
+              Rev. 21
+            </div>
+          </div>
+          <div className="h-px w-full bg-[#C5A059]/20" />
+          <div className="border border-white/12 bg-black/24 px-4 py-3 backdrop-blur-sm">
+            <div className="text-[0.58rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
+              The Twelve Foundations
+            </div>
+            <div className="mt-2 text-[0.68rem] leading-[1.9] font-medium tracking-[0.18em] text-[#D4B373] uppercase">
+              Jasper · Sapphire · Chalcedony · Emerald
+              <br className="hidden sm:block" />
+              Sardonyx · Sardius · Chrysolyte · Beryl
+              <br className="hidden sm:block" />
+              Topaz · Chrysoprasus · Jacinth · Amethyst
+            </div>
+          </div>
+        </div>
+      </LandingFeaturePanelHeader>
+      <LandingFeaturePanelBody>
+        <img
+          src={gemsImage}
+          alt="The twelve stones"
+          className="w-full p-2"
+          loading="lazy"
+        />
+      </LandingFeaturePanelBody>
+    </LandingFeaturePanel>
+  )
+}
+
+function GemsMobileCarousel({ carousel: m }: { carousel: Carousel }) {
+  return (
+    <div className="space-y-10 md:hidden">
+      {/* MOBILE: one lecturer at a time over all 12 */}
             <LandingActiveItemNav
               className="items-center"
               label="Active pair"
@@ -514,58 +516,86 @@ export function LandingLecturerGemsSection() {
               labelColor="text-[#6e562d]"
               valueColor="text-[#1C1815]"
             />
-            <div className="relative h-120 overflow-hidden">
-              {gemLecturers.map((lecturer, index) => {
-                const offset = getGemRelativeOffset(
-                  m.activeIndex,
-                  index,
-                  gemLecturers.length,
-                )
-                const isVisible = Math.abs(offset) <= 1
-                return (
-                  <div
-                    key={lecturer.id}
-                    aria-hidden={!isVisible}
-                    className="absolute top-0 left-1/2 w-full"
-                    style={{
-                      height: '100%',
-                      ...getMobileSingleCardMotionStyle(offset),
-                      transition:
-                        'transform 700ms cubic-bezier(0.22,1,0.36,1), opacity 700ms cubic-bezier(0.22,1,0.36,1)',
-                    }}
-                  >
-                    <GemLecturerCard
-                      teacher={lecturer}
-                      onClick={() => m.setActiveIndex(index)}
-                    />
-                  </div>
-                )
-              })}
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {PAIR_META.map((pair, index) => {
-                const isActive = index === Math.floor(m.activeIndex / 2)
-                return (
-                  <button
-                    key={pair.id}
-                    type="button"
-                    onClick={() => m.setActiveIndex(index * 2)}
-                    aria-label={`Show ${pair.theme} lecturers`}
-                    className={`border px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.28em] uppercase transition-all duration-500 ease-out ${
-                      isActive
-                        ? 'border-[#C5A059]/42 bg-[#1A1716]/8 text-[#1C1815] shadow-[0_24px_44px_-34px_rgba(0,0,0,0.2)]'
-                        : 'border-[#1A1A1A]/10 bg-white/40 text-[#8A7B68] hover:border-[#1A1A1A]/18 hover:bg-white/60'
-                    }`}
-                  >
-                    {pair.theme}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+            <GemsMobileTrack carousel={m} />
+            <PairThemeButtons
+              activePairIndex={Math.floor(m.activeIndex / 2)}
+              onSelect={(index) => m.setActiveIndex(index * 2)}
+            />
+    </div>
+  )
+}
 
-          {/* DESKTOP: pair 3D carousel (unchanged) */}
-          <div className="hidden space-y-10 md:block">
+function GemsMobileTrack({ carousel: m }: { carousel: Carousel }) {
+  return (
+    <div className="relative h-120 overflow-hidden">
+      {gemLecturers.map((lecturer, index) => {
+        const offset = getGemRelativeOffset(
+          m.activeIndex,
+          index,
+          gemLecturers.length,
+        )
+        const isVisible = Math.abs(offset) <= 1
+        return (
+          <div
+            key={lecturer.id}
+            aria-hidden={!isVisible}
+            className="absolute top-0 left-1/2 w-full"
+            style={{
+              height: '100%',
+              ...getMobileSingleCardMotionStyle(offset),
+              transition:
+                'transform 700ms cubic-bezier(0.22,1,0.36,1), opacity 700ms cubic-bezier(0.22,1,0.36,1)',
+            }}
+          >
+            <GemLecturerCard
+              teacher={lecturer}
+              onClick={() => m.setActiveIndex(index)}
+            />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function PairThemeButtons({
+  activePairIndex,
+  onSelect,
+}: {
+  activePairIndex: number
+  onSelect: (index: number) => void
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      {PAIR_META.map((pair, index) => {
+        const isActive = index === activePairIndex
+        return (
+          <button
+            key={pair.id}
+            type="button"
+            onClick={() => onSelect(index)}
+            aria-label={`Show ${pair.theme} lecturers`}
+            className={`border px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.28em] uppercase transition-all duration-500 ease-out ${
+              isActive
+                ? 'border-[#C5A059]/42 bg-[#1A1716]/8 text-[#1C1815] shadow-[0_24px_44px_-34px_rgba(0,0,0,0.2)]'
+                : 'border-[#1A1A1A]/10 bg-white/40 text-[#8A7B68] hover:border-[#1A1A1A]/18 hover:bg-white/60'
+            }`}
+          >
+            {pair.theme}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function GemsDesktopCarousel({ carousel }: { carousel: Carousel }) {
+  const { activeIndex, setActiveIndex, goToPrevious, goToNext } = carousel
+  const activePair = PAIR_META[activeIndex]
+
+  return (
+    <div className="hidden space-y-10 md:block">
+      {/* DESKTOP: pair 3D carousel (unchanged) */}
             <LandingActiveItemNav
               className="max-w-xs items-center"
               label="Active pair"
@@ -580,90 +610,113 @@ export function LandingLecturerGemsSection() {
             />
 
             {/* Pair carousel: 2 cards side by side per slot */}
-            <div className="relative h-96 overflow-hidden sm:h-104 md:h-112 lg:min-h-120">
-              {PAIR_META.map((pair, index) => {
-                const offset = getGemRelativeOffset(activeIndex, index)
-                const isVisible = Math.abs(offset) <= 2
-
-                return (
-                  <div
-                    key={pair.id}
-                    aria-hidden={!isVisible}
-                    className="absolute top-0 left-1/2 w-76 cursor-pointer sm:w-92 md:w-152 lg:w-200"
-                    style={{
-                      height: '100%',
-                      ...getGemCardMotionStyle(offset),
-                      transition:
-                        'transform 700ms cubic-bezier(0.22,1,0.36,1), opacity 700ms cubic-bezier(0.22,1,0.36,1), filter 700ms cubic-bezier(0.22,1,0.36,1)',
-                    }}
-                    onClick={() => setActiveIndex(index)}
-                  >
-                    <div className="relative h-full">
-                      <div className="absolute inset-y-0 left-0 w-full sm:w-[calc(50%-0.25rem)]">
-                        <GemLecturerCard
-                          teacher={gemLecturers[index * 2]}
-                          onClick={() => setActiveIndex(index)}
-                        />
-                      </div>
-                      <div className="absolute inset-y-0 right-0 sm:w-[calc(50%-0.25rem)]">
-                        <GemLecturerCard
-                          teacher={gemLecturers[index * 2 + 1]}
-                          onClick={() => setActiveIndex(index)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            <GemsDesktopTrack carousel={carousel} />
 
             {/* 6 theme buttons — single row */}
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {PAIR_META.map((pair, index) => {
-                const isActive = index === activeIndex
-                return (
-                  <button
-                    key={pair.id}
-                    type="button"
-                    onClick={() => setActiveIndex(index)}
-                    aria-label={`Show ${pair.theme} lecturers`}
-                    className={`border px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.28em] uppercase transition-all duration-500 ease-out ${
-                      isActive
-                        ? 'border-[#C5A059]/42 bg-[#1A1716]/8 text-[#1C1815] shadow-[0_24px_44px_-34px_rgba(0,0,0,0.2)]'
-                        : 'border-[#1A1A1A]/10 bg-white/40 text-[#8A7B68] hover:border-[#1A1A1A]/18 hover:bg-white/60'
-                    }`}
-                  >
-                    {pair.theme}
-                  </button>
-                )
-              })}
+            <PairThemeButtons
+              activePairIndex={activeIndex}
+              onSelect={setActiveIndex}
+            />
+    </div>
+  )
+}
+
+function GemsDesktopTrack({ carousel }: { carousel: Carousel }) {
+  const { activeIndex, setActiveIndex } = carousel
+  return (
+    <div className="relative h-96 overflow-hidden sm:h-104 md:h-112 lg:min-h-120">
+      {PAIR_META.map((pair, index) => {
+        const offset = getGemRelativeOffset(activeIndex, index)
+        const isVisible = Math.abs(offset) <= 2
+
+        return (
+          <div
+            key={pair.id}
+            aria-hidden={!isVisible}
+            className="absolute top-0 left-1/2 w-76 cursor-pointer sm:w-92 md:w-152 lg:w-200"
+            style={{
+              height: '100%',
+              ...getGemCardMotionStyle(offset),
+              transition:
+                'transform 700ms cubic-bezier(0.22,1,0.36,1), opacity 700ms cubic-bezier(0.22,1,0.36,1), filter 700ms cubic-bezier(0.22,1,0.36,1)',
+            }}
+            onClick={() => setActiveIndex(index)}
+          >
+            <div className="relative h-full">
+              <div className="absolute inset-y-0 left-0 w-full sm:w-[calc(50%-0.25rem)]">
+                <GemLecturerCard
+                  teacher={gemLecturers[index * 2]}
+                  onClick={() => setActiveIndex(index)}
+                />
+              </div>
+              <div className="absolute inset-y-0 right-0 sm:w-[calc(50%-0.25rem)]">
+                <GemLecturerCard
+                  teacher={gemLecturers[index * 2 + 1]}
+                  onClick={() => setActiveIndex(index)}
+                />
+              </div>
             </div>
           </div>
+        )
+      })}
+    </div>
+  )
+}
 
-          <div className="w-full pt-10 text-center xl:pt-20">
-            <span className="mb-2 block text-lg font-medium tracking-[0.28em] text-[#9B7A41] uppercase">
-              The DINA Anthem · A Song of Commanders
-            </span>
-            <span className="text-lg text-[#C5A059]">♫</span> <br />
-            <em className="text-lg">
-              Command me Lord,
-              <br />
-              Command me Lord,
-              <br />
-              That I may be, a commander,
-              <br />
-              <br />
-              Command me Lord,
-              <br />
-              To lead battalions,
-              <br />
-              That will turn men's hearts,
-              <br />
-              back to God
-            </em>{' '}
-            <br />
-            <span className="text-lg text-[#C5A059]">♫</span>
-          </div>
+function GemsAnthem() {
+  return (
+    <div className="w-full pt-10 text-center xl:pt-20">
+      <span className="mb-2 block text-lg font-medium tracking-[0.28em] text-[#9B7A41] uppercase">
+        The DINA Anthem · A Song of Commanders
+      </span>
+      <span className="text-lg text-[#C5A059]">♫</span> <br />
+      <em className="text-lg">
+        Command me Lord,
+        <br />
+        Command me Lord,
+        <br />
+        That I may be, a commander,
+        <br />
+        <br />
+        Command me Lord,
+        <br />
+        To lead battalions,
+        <br />
+        That will turn men's hearts,
+        <br />
+        back to God
+      </em>{' '}
+      <br />
+      <span className="text-lg text-[#C5A059]">♫</span>
+    </div>
+  )
+}
+
+export function LandingLecturerGemsSection() {
+  const pairCarousel = useCarousel(PAIR_META.length)
+  const lecturerCarousel = useCarousel(gemLecturers.length)
+
+  return (
+    <LandingImageSection
+      id="teacher-gems"
+      backgroundImageUrl={facultyBackground}
+      gradientFrom="rgba(255,255,255,0.9)"
+      gradientTo="rgba(255,255,255,0.9)"
+      className="border-b border-[#1A1A1A]/10 text-[#1C1815]"
+    >
+      <LandingSectionOverlay
+        gradientFrom="rgba(197,160,89,0.12)"
+        secondaryGradientFrom="rgba(255,255,255,0.28)"
+        linePosition="right"
+        lineColor="#1A1A1A/12"
+      />
+
+      <LandingSectionContainer className="relative px-0 py-18 sm:py-22 lg:py-24">
+        <div className="space-y-14">
+          <GemsSectionHeader />
+          <GemsMobileCarousel carousel={lecturerCarousel} />
+          <GemsDesktopCarousel carousel={pairCarousel} />
+          <GemsAnthem />
         </div>
       </LandingSectionContainer>
     </LandingImageSection>
