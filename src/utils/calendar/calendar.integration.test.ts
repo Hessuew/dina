@@ -7,6 +7,10 @@ import {
 } from 'test/integration/seed'
 import { getCalendarEventsService } from './service/calendar.service'
 
+async function getCalendarEventsForSeededViewer() {
+  return getCalendarEventsService()
+}
+
 describe('getCalendarEventsService', () => {
   it('maps a published, scheduled lesson with its course join', async () => {
     const courseId = await seedCourse({ title: 'Foundations' })
@@ -20,7 +24,7 @@ describe('getCalendarEventsService', () => {
       duration: 60,
     })
 
-    const { events } = await getCalendarEventsService()
+    const { events } = await getCalendarEventsForSeededViewer()
 
     expect(events).toHaveLength(1)
     expect(events[0]).toMatchObject({
@@ -48,7 +52,7 @@ describe('getCalendarEventsService', () => {
       isPublished: true,
     })
 
-    const { events } = await getCalendarEventsService()
+    const { events } = await getCalendarEventsForSeededViewer()
 
     expect(events).toHaveLength(0)
   })
@@ -70,7 +74,7 @@ describe('getCalendarEventsService', () => {
       status: 'draft',
     })
 
-    const { events } = await getCalendarEventsService()
+    const { events } = await getCalendarEventsForSeededViewer()
 
     expect(events).toHaveLength(1)
     expect(events[0]).toMatchObject({
@@ -91,7 +95,7 @@ describe('getCalendarEventsService', () => {
       category: 'exam',
     })
 
-    const { events } = await getCalendarEventsService()
+    const { events } = await getCalendarEventsForSeededViewer()
 
     expect(events).toHaveLength(1)
     expect(events[0]).toMatchObject({
@@ -123,7 +127,7 @@ describe('getCalendarEventsService', () => {
       category: 'chapel',
     })
 
-    const { events } = await getCalendarEventsService()
+    const { events } = await getCalendarEventsForSeededViewer()
 
     expect(events.map((e) => e.title)).toEqual([
       'Homework',

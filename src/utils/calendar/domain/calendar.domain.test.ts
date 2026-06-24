@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { buildCalendarEvents } from './calendar.domain'
+import {
+  buildCalendarEvents,
+  deriveCalendarCourses,
+  deriveUpcomingEvents,
+  deriveUpcomingSpecials,
+  filterCalendarEvents,
+  parseCalendarMonth,
+} from './calendar.domain'
+import type { CalendarEvent } from './calendar.domain'
+
+const makeEvent = (overrides: Partial<CalendarEvent> = {}): CalendarEvent => ({
+  id: 'ev-1',
+  title: 'Event',
+  date: new Date('2024-06-01T10:00:00Z'),
+  type: 'lesson',
+  courseId: 'c-1',
+  courseName: 'Course 1',
+  ...overrides,
+})
 
 const makeLesson = (
   overrides: Partial<{
@@ -123,5 +141,95 @@ describe('buildCalendarEvents', () => {
     expect(result[0].type).toBe('assignment')
     expect(result[1].type).toBe('special')
     expect(result[2].type).toBe('lesson')
+  })
+})
+
+describe('deriveCalendarCourses', () => {
+  it('excludes events without a courseId', () => {
+    const result = deriveCalendarCourses([
+      makeEvent({ courseId: '', courseName: 'No Course' }),
+      makeEvent({ courseId: 'c-1', courseName: 'Course 1' }),
+    ])
+    expect(result).toEqual([{ id: 'c-1', name: 'Course 1' }])
+  })
+
+  it('deduplicates by courseId and sorts by name ascending', () => {
+    const result = deriveCalendarCourses([
+      makeEvent({ courseId: 'c-2', courseName: 'Zebra' }),
+      makeEvent({ courseId: 'c-1', courseName: 'Alpha' }),
+      makeEvent({ courseId: 'c-1', courseName: 'Alpha' }),
+    ])
+    expect(result).toEqual([
+      { id: 'c-1', name: 'Alpha' },
+      { id: 'c-2', name: 'Zebra' },
+    ])
+  })
+})
+
+describe('parseCalendarMonth', () => {
+  const fallback = new Date('2026-01-01T00:00:00Z')
+
+  it('returns the parsed month when valid', () => {
+    expect(parseCalendarMonth('2026-06-01T00:00:00Z', fallback)).toEqual(
+      new Date('2026-06-01T00:00:00Z'),
+    )
+  })
+
+  it('falls back when the month is missing or invalid', () => {
+    expect(parseCalendarMonth(undefined, fallback)).toBe(fallback)
+    expect(parseCalendarMonth('not-a-date', fallback)).toBe(fallback)
+  })
+})
+
+describe('filterCalendarEvents', () => {
+  const events = [
+    makeEvent({ id: 'a', courseId: 'c-1', type: 'lesson' }),
+    makeEvent({ id: 'b', courseId: 'c-2', type: 'assignment' }),
+  ]
+
+  it('returns all events when course and type are "all"', () => {
+    expect(filterCalendarEvents(events, 'all', 'all')).toHaveLength(2)
+  })
+
+  it('filters by course', () => {
+    const result = filterCalendarEvents(events, 'c-1', 'all')
+    expect(result.map((e) => e.id)).toEqual(['a'])
+  })
+
+  it('filters by type', () => {
+    const result = filterCalendarEvents(events, 'all', 'assignment')
+    expect(result.map((e) => e.id)).toEqual(['b'])
+  })
+
+  it('excludes events failing either filter', () => {
+    expect(filterCalendarEvents(events, 'c-1', 'assignment')).toEqual([])
+  })
+})
+
+describe('deriveUpcomingSpecials', () => {
+  const now = new Date('2024-06-10T00:00:00Z')
+
+  it('keeps only future special events and caps at 3', () => {
+    const events = [
+      makeEvent({ type: 'special', date: new Date('2024-06-09T00:00:00Z') }),
+      makeEvent({ type: 'lesson', date: new Date('2024-06-11T00:00:00Z') }),
+      makeEvent({ type: 'special', date: new Date('2024-06-11T00:00:00Z') }),
+      makeEvent({ type: 'special', date: new Date('2024-06-12T00:00:00Z') }),
+      makeEvent({ type: 'special', date: new Date('2024-06-13T00:00:00Z') }),
+      makeEvent({ type: 'special', date: new Date('2024-06-14T00:00:00Z') }),
+    ]
+    expect(deriveUpcomingSpecials(events, now)).toHaveLength(3)
+  })
+})
+
+describe('deriveUpcomingEvents', () => {
+  const now = new Date('2024-06-10T00:00:00Z')
+
+  it('keeps only future events of any type and caps at 5', () => {
+    const events = Array.from({ length: 7 }, (_, i) =>
+      makeEvent({ date: new Date(`2024-06-${11 + i}T00:00:00Z`) }),
+    )
+    events.push(makeEvent({ date: new Date('2024-06-01T00:00:00Z') }))
+    expect(deriveUpcomingEvents(events, now)).toHaveLength(5)
   })
 })
