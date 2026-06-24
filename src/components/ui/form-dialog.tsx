@@ -10,8 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-
-type FormDialogMode = 'create' | 'edit' | 'view'
+import {
+  buildFormDialogViewModel,
+  type FormDialogMaxWidth,
+  type FormDialogMode,
+} from '@/components/ui/domain/form-dialog.domain'
 
 interface FormDialogProps {
   open: boolean
@@ -21,43 +24,13 @@ interface FormDialogProps {
   subtitle?: string
   children: React.ReactNode
   footer?: React.ReactNode
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'
+  maxWidth?: FormDialogMaxWidth
   showCloseButton?: boolean
   className?: string
   onSubmit?: () => void
   isSubmitting?: boolean
   submitLabel?: string
   loadingLabel?: string
-}
-
-const modeLabels: Record<FormDialogMode, string> = {
-  create: 'New',
-  edit: 'Edit',
-  view: 'View',
-}
-
-const defaultSubmitLabels: Record<FormDialogMode, string | null> = {
-  create: 'Create',
-  edit: 'Save Changes',
-  view: null,
-}
-
-const loadingLabels: Record<FormDialogMode, string> = {
-  create: 'Creating...',
-  edit: 'Saving...',
-  view: '',
-}
-
-const maxWidthClasses: Record<
-  NonNullable<FormDialogProps['maxWidth']>,
-  string
-> = {
-  sm: 'sm:max-w-sm',
-  md: 'sm:max-w-md',
-  lg: 'sm:max-w-lg',
-  xl: 'sm:max-w-xl',
-  '2xl': 'sm:max-w-2xl',
-  '3xl': 'sm:max-w-3xl',
 }
 
 export function FormDialog({
@@ -76,12 +49,21 @@ export function FormDialog({
   submitLabel,
   loadingLabel,
 }: FormDialogProps) {
+  const viewModel = buildFormDialogViewModel({
+    mode,
+    maxWidth,
+    hasSubmitHandler: Boolean(onSubmit),
+    isSubmitting,
+    submitLabel,
+    loadingLabel,
+  })
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
           'rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]',
-          maxWidthClasses[maxWidth],
+          viewModel.maxWidthClass,
           className,
         )}
         style={{
@@ -98,7 +80,7 @@ export function FormDialog({
             <div className="mb-1">
               <div className="h-px w-8 bg-[#C5A059]/40" />
               <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                {modeLabels[mode]}
+                {viewModel.modeLabel}
               </div>
             </div>
             <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
@@ -124,15 +106,13 @@ export function FormDialog({
                 >
                   Cancel
                 </Button>
-                {onSubmit && defaultSubmitLabels[mode] && (
+                {viewModel.showSubmitButton && (
                   <Button
                     theme="dark"
                     onClick={onSubmit}
                     disabled={isSubmitting}
                   >
-                    {isSubmitting
-                      ? loadingLabel || loadingLabels[mode]
-                      : submitLabel || defaultSubmitLabels[mode]}
+                    {viewModel.submitButtonLabel}
                   </Button>
                 )}
               </>
