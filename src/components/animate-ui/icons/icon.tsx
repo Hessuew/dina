@@ -5,8 +5,9 @@ import { motion, useAnimation, useInView } from 'motion/react'
 import {
   computeVariants,
   resolveOverriddenAnimateProps,
-  runContinueLoop,
+  runAnimationLoop,
 } from './icon-animation.domain'
+import type { StartAnim } from './icon-animation.domain'
 import type {
   HTMLMotionProps,
   LegacyAnimationControls,
@@ -126,7 +127,381 @@ function composeEventHandlers<T extends React.SyntheticEvent<unknown>>(
 
 type AnyProps = Record<string, any>
 
-function AnimateIcon({
+type Timer = ReturnType<typeof setTimeout>
+type AnimationName = string | StaticAnimations
+type SetBool = React.Dispatch<React.SetStateAction<boolean>>
+type SetAnimation = React.Dispatch<React.SetStateAction<AnimationName>>
+
+// Mutable container bundle for the animation run-loop. Created once via
+// useState lazy init so its identity is stable for the component lifetime.
+interface IconRefs {
+  delayRef: { current: Timer | null }
+  loopDelayRef: { current: Timer | null }
+  isAnimateInProgressRef: { current: boolean }
+  animateEndPromiseRef: { current: Promise<void> | null }
+  resolveAnimateEndRef: { current: (() => void) | null }
+  activeRef: { current: boolean }
+  runGenRef: { current: number }
+  cancelledRef: { current: boolean }
+}
+
+function createIconRefs(initialActive: boolean): IconRefs {
+  return {
+    delayRef: { current: null },
+    loopDelayRef: { current: null },
+    isAnimateInProgressRef: { current: false },
+    animateEndPromiseRef: { current: null },
+    resolveAnimateEndRef: { current: null },
+    activeRef: { current: initialActive },
+    runGenRef: { current: 0 },
+    cancelledRef: { current: false },
+  }
+}
+
+interface UseAnimateIconParams {
+  animate: Trigger
+  animateOnHover: Trigger
+  animateOnTap: Trigger
+  animateOnView: Trigger
+  animateOnViewMargin: UseInViewOptions['margin']
+  animateOnViewOnce: boolean
+  animation: AnimationName
+  loop: boolean
+  loopDelay: number
+  initialOnAnimateEnd: boolean
+  completeOnStop: boolean
+  persistOnAnimateEnd: boolean
+  delay: number
+}
+
+function useAnimateIconState(
+  animate: Trigger,
+  animation: AnimationName,
+  delay: number,
+) {
+  const controls = useAnimation()
+  const [localAnimate, setLocalAnimate] = React.useState<boolean>(() => {
+    if (animate === false) return false
+    return delay <= 0
+  })
+  const [currentAnimation, setCurrentAnimation] = React.useState<AnimationName>(
+    typeof animate === 'string' ? animate : animation,
+  )
+  const [status, setStatus] = React.useState<'initial' | 'animate'>('initial')
+  const [refs] = React.useState<IconRefs>(() => createIconRefs(localAnimate))
+  return {
+    controls,
+    localAnimate,
+    setLocalAnimate,
+    currentAnimation,
+    setCurrentAnimation,
+    status,
+    setStatus,
+    refs,
+  }
+}
+
+function useAnimateIconCallbacks({
+  refs,
+  animation,
+  delay,
+  setLocalAnimate,
+  setCurrentAnimation,
+}: {
+  refs: IconRefs
+  animation: AnimationName
+  delay: number
+  setLocalAnimate: SetBool
+  setCurrentAnimation: SetAnimation
+}) {
+  const bumpGeneration = React.useCallback(() => {
+    refs.runGenRef.current++
+  }, [refs])
+
+  const startAnimation = React.useCallback(
+    (trigger: TriggerProp) => {
+      const next = typeof trigger === 'string' ? trigger : animation
+      bumpGeneration()
+      if (refs.delayRef.current) {
+        clearTimeout(refs.delayRef.current)
+        refs.delayRef.current = null
+      }
+      setCurrentAnimation(next)
+      if (delay > 0) {
+        setLocalAnimate(false)
+        refs.delayRef.current = setTimeout(() => {
+          setLocalAnimate(true)
+        }, delay)
+      } else {
+        setLocalAnimate(true)
+      }
+    },
+    [
+      animation,
+      delay,
+      bumpGeneration,
+      refs,
+      setCurrentAnimation,
+      setLocalAnimate,
+    ],
+  )
+
+  const stopAnimation = React.useCallback(() => {
+    bumpGeneration()
+    if (refs.delayRef.current) {
+      clearTimeout(refs.delayRef.current)
+      refs.delayRef.current = null
+    }
+    if (refs.loopDelayRef.current) {
+      clearTimeout(refs.loopDelayRef.current)
+      refs.loopDelayRef.current = null
+    }
+    setLocalAnimate(false)
+  }, [bumpGeneration, refs, setLocalAnimate])
+
+  return { startAnimation, stopAnimation }
+}
+
+function useAnimateIconEffects({
+  refs,
+  localAnimate,
+  animate,
+  animation,
+  setCurrentAnimation,
+  startAnimation,
+  stopAnimation,
+}: {
+  refs: IconRefs
+  localAnimate: boolean
+  animate: Trigger
+  animation: AnimationName
+  setCurrentAnimation: SetAnimation
+  startAnimation: (trigger: TriggerProp) => void
+  stopAnimation: () => void
+}) {
+  React.useEffect(() => {
+    refs.activeRef.current = localAnimate
+  }, [localAnimate, refs])
+
+  React.useEffect(() => {
+    setCurrentAnimation(animate ? (animate as string) : animation)
+    if (animate) startAnimation(animate as TriggerProp)
+    else stopAnimation()
+  }, [animate])
+
+  React.useEffect(() => {
+    return () => {
+      if (refs.delayRef.current) clearTimeout(refs.delayRef.current)
+      if (refs.loopDelayRef.current) clearTimeout(refs.loopDelayRef.current)
+    }
+  }, [refs])
+}
+
+function useIconViewTrigger({
+  animateOnView,
+  animateOnViewOnce,
+  animateOnViewMargin,
+  startAnimation,
+  stopAnimation,
+}: {
+  animateOnView: Trigger
+  animateOnViewOnce: boolean
+  animateOnViewMargin: UseInViewOptions['margin']
+  startAnimation: (trigger: TriggerProp) => void
+  stopAnimation: () => void
+}) {
+  const viewOuterRef = React.useRef<HTMLElement>(null)
+  const inViewResult = useInView(viewOuterRef, {
+    once: animateOnViewOnce,
+    margin: animateOnViewMargin,
+  })
+  const isInView = !animateOnView || inViewResult
+
+  React.useEffect(() => {
+    if (!animateOnView) return
+    if (isInView) startAnimation(animateOnView)
+    else stopAnimation()
+  }, [isInView, animateOnView, startAnimation, stopAnimation])
+
+  return viewOuterRef
+}
+
+type U = {
+  refs: IconRefs
+  controls: LegacyAnimationControls
+  setStatus: React.Dispatch<React.SetStateAction<'initial' | 'animate'>>
+  localAnimate: boolean
+  status: 'initial' | 'animate'
+  loop: boolean
+  loopDelay: number
+  completeOnStop: boolean
+  persistOnAnimateEnd: boolean
+  initialOnAnimateEnd: boolean
+}
+
+function useAnimationRunLoop({
+  refs,
+  controls,
+  setStatus,
+  localAnimate,
+  status,
+  loop,
+  loopDelay,
+  completeOnStop,
+  persistOnAnimateEnd,
+  initialOnAnimateEnd,
+}: U) {
+  const startAnim = React.useCallback<StartAnim>(
+    async (anim, method = 'start') => {
+      try {
+        await controls[method](anim)
+        setStatus(anim)
+      } catch {
+        return
+      }
+    },
+    [controls],
+  )
+
+  React.useEffect(() => {
+    const gen = ++refs.runGenRef.current
+    refs.cancelledRef.current = false
+    void runAnimationLoop({
+      gen,
+      refs,
+      config: {
+        loop,
+        loopDelay,
+        completeOnStop,
+        persistOnAnimateEnd,
+        initialOnAnimateEnd,
+        localAnimate,
+        status,
+      },
+      startAnim,
+    })
+
+    return () => {
+      refs.cancelledRef.current = true
+      if (refs.delayRef.current) {
+        clearTimeout(refs.delayRef.current)
+        refs.delayRef.current = null
+      }
+      if (refs.loopDelayRef.current) {
+        clearTimeout(refs.loopDelayRef.current)
+        refs.loopDelayRef.current = null
+      }
+    }
+  }, [localAnimate, controls])
+}
+
+function useAnimateIcon(p: UseAnimateIconParams) {
+  const {
+    controls,
+    localAnimate,
+    setLocalAnimate,
+    currentAnimation,
+    setCurrentAnimation,
+    status,
+    setStatus,
+    refs,
+  } = useAnimateIconState(p.animate, p.animation, p.delay)
+
+  const { startAnimation, stopAnimation } = useAnimateIconCallbacks({
+    refs,
+    animation: p.animation,
+    delay: p.delay,
+    setLocalAnimate,
+    setCurrentAnimation,
+  })
+
+  useAnimateIconEffects({
+    refs,
+    localAnimate,
+    animate: p.animate,
+    animation: p.animation,
+    setCurrentAnimation,
+    startAnimation,
+    stopAnimation,
+  })
+
+  const viewOuterRef = useIconViewTrigger({
+    animateOnView: p.animateOnView,
+    animateOnViewOnce: p.animateOnViewOnce,
+    animateOnViewMargin: p.animateOnViewMargin,
+    startAnimation,
+    stopAnimation,
+  })
+
+  useAnimationRunLoop({
+    refs,
+    controls,
+    setStatus,
+    localAnimate,
+    status,
+    loop: p.loop,
+    loopDelay: p.loopDelay,
+    completeOnStop: p.completeOnStop,
+    persistOnAnimateEnd: p.persistOnAnimateEnd,
+    initialOnAnimateEnd: p.initialOnAnimateEnd,
+  })
+
+  return {
+    controls,
+    currentAnimation,
+    localAnimate,
+    viewOuterRef,
+    startAnimation,
+    stopAnimation,
+  }
+}
+
+function buildIconPointerHandlers({
+  children,
+  animateOnHover,
+  animateOnTap,
+  startAnimation,
+  stopAnimation,
+}: {
+  children: React.ReactNode
+  animateOnHover: Trigger
+  animateOnTap: Trigger
+  startAnimation: (trigger: TriggerProp) => void
+  stopAnimation: () => void
+}) {
+  const childProps = (
+    React.isValidElement(children) ? (children as React.ReactElement).props : {}
+  ) as AnyProps
+
+  return {
+    onMouseEnter: composeEventHandlers<React.MouseEvent<HTMLElement>>(
+      childProps.onMouseEnter,
+      () => {
+        if (animateOnHover) startAnimation(animateOnHover)
+      },
+    ),
+    onMouseLeave: composeEventHandlers<React.MouseEvent<HTMLElement>>(
+      childProps.onMouseLeave,
+      () => {
+        if (animateOnHover || animateOnTap) stopAnimation()
+      },
+    ),
+    onPointerDown: composeEventHandlers<React.PointerEvent<HTMLElement>>(
+      childProps.onPointerDown,
+      () => {
+        if (animateOnTap) startAnimation(animateOnTap)
+      },
+    ),
+    onPointerUp: composeEventHandlers<React.PointerEvent<HTMLElement>>(
+      childProps.onPointerUp,
+      () => {
+        if (animateOnTap) stopAnimation()
+      },
+    ),
+  }
+}
+
+function splitAnimateIconProps({
   asChild = false,
   animate = false,
   animateOnHover = false,
@@ -142,310 +517,72 @@ function AnimateIcon({
   persistOnAnimateEnd = false,
   delay = 0,
   children,
-  ...props
+  ...rest
 }: AnimateIconProps) {
-  const controls = useAnimation()
+  const options: UseAnimateIconParams = {
+    animate,
+    animateOnHover,
+    animateOnTap,
+    animateOnView,
+    animateOnViewMargin,
+    animateOnViewOnce,
+    animation,
+    loop,
+    loopDelay,
+    initialOnAnimateEnd,
+    completeOnStop,
+    persistOnAnimateEnd,
+    delay,
+  }
+  return { asChild, children, rest, options }
+}
 
-  const [localAnimate, setLocalAnimate] = React.useState<boolean>(() => {
-    if (animate === false) return false
-    return delay <= 0
+function buildIconContextValue(
+  options: UseAnimateIconParams,
+  view: {
+    controls: LegacyAnimationControls
+    currentAnimation: AnimationName
+    localAnimate: boolean
+  },
+): AnimateIconContextValue {
+  return {
+    controls: view.controls,
+    animation: view.currentAnimation,
+    loop: options.loop,
+    loopDelay: options.loopDelay,
+    active: view.localAnimate,
+    animate: options.animate,
+    initialOnAnimateEnd: options.initialOnAnimateEnd,
+    completeOnStop: options.completeOnStop,
+    delay: options.delay,
+  }
+}
+
+function AnimateIcon(props: AnimateIconProps) {
+  const { asChild, children, rest, options } = splitAnimateIconProps(props)
+  const view = useAnimateIcon(options)
+  const contextValue = buildIconContextValue(options, view)
+
+  const handlers = buildIconPointerHandlers({
+    children,
+    animateOnHover: options.animateOnHover,
+    animateOnTap: options.animateOnTap,
+    startAnimation: view.startAnimation,
+    stopAnimation: view.stopAnimation,
   })
-  const [currentAnimation, setCurrentAnimation] = React.useState<
-    string | StaticAnimations
-  >(typeof animate === 'string' ? animate : animation)
-  const [status, setStatus] = React.useState<'initial' | 'animate'>('initial')
-
-  const delayRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  const loopDelayRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isAnimateInProgressRef = React.useRef<boolean>(false)
-  const animateEndPromiseRef = React.useRef<Promise<void> | null>(null)
-  const resolveAnimateEndRef = React.useRef<(() => void) | null>(null)
-  const activeRef = React.useRef<boolean>(localAnimate)
-
-  const runGenRef = React.useRef(0)
-  const cancelledRef = React.useRef(false)
-
-  const bumpGeneration = React.useCallback(() => {
-    runGenRef.current++
-  }, [])
-
-  const startAnimation = React.useCallback(
-    (trigger: TriggerProp) => {
-      const next = typeof trigger === 'string' ? trigger : animation
-      bumpGeneration()
-      if (delayRef.current) {
-        clearTimeout(delayRef.current)
-        delayRef.current = null
-      }
-      setCurrentAnimation(next)
-      if (delay > 0) {
-        setLocalAnimate(false)
-        delayRef.current = setTimeout(() => {
-          setLocalAnimate(true)
-        }, delay)
-      } else {
-        setLocalAnimate(true)
-      }
-    },
-    [animation, delay, bumpGeneration],
-  )
-
-  const stopAnimation = React.useCallback(() => {
-    bumpGeneration()
-    if (delayRef.current) {
-      clearTimeout(delayRef.current)
-      delayRef.current = null
-    }
-    if (loopDelayRef.current) {
-      clearTimeout(loopDelayRef.current)
-      loopDelayRef.current = null
-    }
-    setLocalAnimate(false)
-  }, [bumpGeneration])
-
-  React.useEffect(() => {
-    activeRef.current = localAnimate
-  }, [localAnimate])
-
-  React.useEffect(() => {
-    setCurrentAnimation(animate ? (animate as string) : animation)
-    if (animate) startAnimation(animate as TriggerProp)
-    else stopAnimation()
-  }, [animate])
-
-  React.useEffect(() => {
-    return () => {
-      if (delayRef.current) clearTimeout(delayRef.current)
-      if (loopDelayRef.current) clearTimeout(loopDelayRef.current)
-    }
-  }, [])
-
-  const viewOuterRef = React.useRef<HTMLElement>(null)
-  const inViewResult = useInView(viewOuterRef, {
-    once: animateOnViewOnce,
-    margin: animateOnViewMargin,
-  })
-  const isInView = !animateOnView || inViewResult
-
-  const startAnim = React.useCallback(
-    async (anim: 'initial' | 'animate', method: 'start' | 'set' = 'start') => {
-      try {
-        await controls[method](anim)
-        setStatus(anim)
-      } catch {
-        return
-      }
-    },
-    [controls],
-  )
-
-  React.useEffect(() => {
-    if (!animateOnView) return
-    if (isInView) startAnimation(animateOnView)
-    else stopAnimation()
-  }, [isInView, animateOnView, startAnimation, stopAnimation])
-
-  React.useEffect(() => {
-    const gen = ++runGenRef.current
-    cancelledRef.current = false
-
-    const isStaleRun = () => gen !== runGenRef.current
-
-    const resetInitialIfStale = async () => {
-      if (!isStaleRun()) return false
-      await startAnim('initial')
-      return true
-    }
-
-    const clearAnimationEndState = () => {
-      isAnimateInProgressRef.current = false
-      resolveAnimateEndRef.current?.()
-      resolveAnimateEndRef.current = null
-      animateEndPromiseRef.current = null
-    }
-
-    const resetActiveAnimationIfStale = async () => {
-      if (!isStaleRun()) return false
-      clearAnimationEndState()
-      await startAnim('initial')
-      return true
-    }
-
-    const completeStoppedAnimation = async () => {
-      if (
-        !completeOnStop ||
-        !isAnimateInProgressRef.current ||
-        !animateEndPromiseRef.current
-      ) {
-        return
-      }
-
-      try {
-        await animateEndPromiseRef.current
-      } catch {
-        // noop
-      }
-    }
-
-    const waitForLoopDelay = () =>
-      new Promise<void>((resolve) => {
-        loopDelayRef.current = setTimeout(() => {
-          loopDelayRef.current = null
-          resolve()
-        }, loopDelay)
-      })
-
-    const stopInactiveLoop = async () => {
-      if (activeRef.current) return false
-      if (status !== 'initial' && !persistOnAnimateEnd) {
-        await startAnim('initial')
-      }
-      return true
-    }
-
-    const runInactiveBranch = async () => {
-      await completeStoppedAnimation()
-      if (persistOnAnimateEnd) return
-      if (await resetInitialIfStale()) return
-      await startAnim('initial')
-    }
-
-    const resetForLoopStart = async () => {
-      if (!loop) return false
-      if (await resetInitialIfStale()) return true
-      await startAnim('initial', 'set')
-      return false
-    }
-
-    const runAnimatePhase = async () => {
-      isAnimateInProgressRef.current = true
-      animateEndPromiseRef.current = new Promise<void>((resolve) => {
-        resolveAnimateEndRef.current = resolve
-      })
-      if (await resetActiveAnimationIfStale()) return true
-      await startAnim('animate')
-      if (await resetActiveAnimationIfStale()) return true
-      clearAnimationEndState()
-      return false
-    }
-
-    const resetAfterAnimateEnd = async () => {
-      if (!initialOnAnimateEnd) return false
-      if (await resetInitialIfStale()) return true
-      await startAnim('initial', 'set')
-      return false
-    }
-
-    const continueLoop = () =>
-      runContinueLoop({
-        loop,
-        loopDelay,
-        waitForLoopDelay,
-        resetInitialIfStale,
-        stopInactiveLoop,
-        run,
-      })
-
-    async function run() {
-      if (cancelledRef.current) {
-        await startAnim('initial')
-        return
-      }
-      if (await resetInitialIfStale()) return
-      if (!localAnimate) {
-        await runInactiveBranch()
-        return
-      }
-      if (await resetForLoopStart()) return
-      if (await runAnimatePhase()) return
-      if (await resetAfterAnimateEnd()) return
-      await continueLoop()
-    }
-
-    void run()
-
-    return () => {
-      cancelledRef.current = true
-      if (delayRef.current) {
-        clearTimeout(delayRef.current)
-        delayRef.current = null
-      }
-      if (loopDelayRef.current) {
-        clearTimeout(loopDelayRef.current)
-        loopDelayRef.current = null
-      }
-    }
-  }, [localAnimate, controls])
-
-  const childProps = (
-    React.isValidElement(children) ? (children as React.ReactElement).props : {}
-  ) as AnyProps
-
-  const handleMouseEnter = composeEventHandlers<React.MouseEvent<HTMLElement>>(
-    childProps.onMouseEnter,
-    () => {
-      if (animateOnHover) startAnimation(animateOnHover)
-    },
-  )
-
-  const handleMouseLeave = composeEventHandlers<React.MouseEvent<HTMLElement>>(
-    childProps.onMouseLeave,
-    () => {
-      if (animateOnHover || animateOnTap) stopAnimation()
-    },
-  )
-
-  const handlePointerDown = composeEventHandlers<
-    React.PointerEvent<HTMLElement>
-  >(childProps.onPointerDown, () => {
-    if (animateOnTap) startAnimation(animateOnTap)
-  })
-
-  const handlePointerUp = composeEventHandlers<React.PointerEvent<HTMLElement>>(
-    childProps.onPointerUp,
-    () => {
-      if (animateOnTap) stopAnimation()
-    },
-  )
 
   const content = asChild ? (
-    <Slot
-      ref={viewOuterRef}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      {...props}
-    >
+    <Slot ref={view.viewOuterRef} {...handlers} {...rest}>
       {children}
     </Slot>
   ) : (
-    <motion.span
-      ref={viewOuterRef}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      {...props}
-    >
+    <motion.span ref={view.viewOuterRef} {...handlers} {...rest}>
       {children}
     </motion.span>
   )
 
   return (
-    <AnimateIconContext.Provider
-      value={{
-        controls,
-        animation: currentAnimation,
-        loop,
-        loopDelay,
-        active: localAnimate,
-        animate,
-        initialOnAnimateEnd,
-        completeOnStop,
-        delay,
-      }}
-    >
+    <AnimateIconContext.Provider value={contextValue}>
       {content}
     </AnimateIconContext.Provider>
   )
@@ -522,13 +659,19 @@ function getIconClassName<T extends string>(
   return cn(className, isPathAnimation(animation) && pathClassName)
 }
 
-function renderIconComponent<T extends string>(
-  IconComponent: React.ComponentType<any>,
-  size: number,
-  className: IconProps<T>['className'],
-  animation: string | undefined,
-  props: IconSvgProps,
-) {
+function renderIconComponent<T extends string>({
+  IconComponent,
+  size,
+  className,
+  props,
+  animation,
+}: {
+  IconComponent: React.ComponentType<any>
+  size: number
+  className: IconProps<T>['className']
+  props: IconSvgProps
+  animation: string | undefined
+}) {
   return (
     <IconComponent
       size={size}
@@ -538,37 +681,51 @@ function renderIconComponent<T extends string>(
   )
 }
 
-function renderIconWithOverrides<T extends string>(
-  IconComponent: React.ComponentType<IconProps<T>>,
-  size: number,
-  className: IconProps<T>['className'],
-  options: IconAnimationOptions<T>,
-  props: IconSvgProps,
-  context: AnimateIconContextValue,
-) {
+function renderIconWithOverrides<T extends string>({
+  IconComponent,
+  size,
+  className,
+  props,
+  options,
+  context,
+}: {
+  IconComponent: React.ComponentType<IconProps<T>>
+  size: number
+  className: IconProps<T>['className']
+  props: IconSvgProps
+  options: IconAnimationOptions<T>
+  context: AnimateIconContextValue
+}) {
   const resolved = resolveOverriddenAnimateProps(options, context)
 
   return (
     <AnimateIcon {...resolved}>
-      {renderIconComponent(
+      {renderIconComponent({
         IconComponent,
         size,
         className,
-        resolved.animation,
         props,
-      )}
+        animation: resolved.animation,
+      })}
     </AnimateIcon>
   )
 }
 
-function renderInheritedIcon<T extends string>(
-  IconComponent: React.ComponentType<IconProps<T>>,
-  size: number,
-  className: IconProps<T>['className'],
-  animationProp: T | StaticAnimations | undefined,
-  props: IconSvgProps,
-  context: AnimateIconContextValue,
-) {
+function renderInheritedIcon<T extends string>({
+  IconComponent,
+  size,
+  className,
+  props,
+  animationProp,
+  context,
+}: {
+  IconComponent: React.ComponentType<IconProps<T>>
+  size: number
+  className: IconProps<T>['className']
+  props: IconSvgProps
+  animationProp: T | StaticAnimations | undefined
+  context: AnimateIconContextValue
+}) {
   const animationToUse = animationProp ?? context.animation
 
   return (
@@ -585,24 +742,30 @@ function renderInheritedIcon<T extends string>(
         completeOnStop: context.completeOnStop,
       }}
     >
-      {renderIconComponent(
+      {renderIconComponent({
         IconComponent,
         size,
         className,
-        animationToUse,
         props,
-      )}
+        animation: animationToUse,
+      })}
     </AnimateIconContext.Provider>
   )
 }
 
-function renderStandaloneAnimatedIcon<T extends string>(
-  IconComponent: React.ComponentType<IconProps<T>>,
-  size: number,
-  className: IconProps<T>['className'],
-  options: IconAnimationOptions<T>,
-  props: IconSvgProps,
-) {
+function renderStandaloneAnimatedIcon<T extends string>({
+  IconComponent,
+  size,
+  className,
+  props,
+  options,
+}: {
+  IconComponent: React.ComponentType<IconProps<T>>
+  size: number
+  className: IconProps<T>['className']
+  props: IconSvgProps
+  options: IconAnimationOptions<T>
+}) {
   return (
     <AnimateIcon
       animate={options.animate}
@@ -617,13 +780,13 @@ function renderStandaloneAnimatedIcon<T extends string>(
       delay={options.delay}
       completeOnStop={options.completeOnStop}
     >
-      {renderIconComponent(
+      {renderIconComponent({
         IconComponent,
         size,
         className,
-        options.animation,
         props,
-      )}
+        animation: options.animation,
+      })}
     </AnimateIcon>
   )
 }
@@ -664,45 +827,18 @@ function IconWrapper<T extends string>({
     completeOnStop,
   }
 
+  const commonProps = { IconComponent, size, className, props }
+
   if (context) {
     if (hasIconAnimationOverrides(options)) {
-      return renderIconWithOverrides(
-        IconComponent,
-        size,
-        className,
-        options,
-        props,
-        context,
-      )
+      return renderIconWithOverrides({ ...commonProps, options, context })
     }
-
-    return renderInheritedIcon(
-      IconComponent,
-      size,
-      className,
-      animationProp,
-      props,
-      context,
-    )
+    return renderInheritedIcon({ ...commonProps, animationProp, context })
   }
-
   if (hasStandaloneAnimation(options)) {
-    return renderStandaloneAnimatedIcon(
-      IconComponent,
-      size,
-      className,
-      options,
-      props,
-    )
+    return renderStandaloneAnimatedIcon({ ...commonProps, options })
   }
-
-  return renderIconComponent(
-    IconComponent,
-    size,
-    className,
-    animationProp,
-    props,
-  )
+  return renderIconComponent({ ...commonProps, animation: animationProp })
 }
 
 function getVariants<
