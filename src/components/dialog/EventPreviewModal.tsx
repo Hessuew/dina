@@ -1,5 +1,4 @@
 import { useRouter } from '@tanstack/react-router'
-import { format } from 'date-fns'
 import {
   AlertTriangleIcon,
   BookOpenIcon,
@@ -9,6 +8,14 @@ import {
   HeartHandshakeIcon,
   UserIcon,
 } from 'lucide-react'
+import {
+  buildEventDetailsViewModel,
+  buildEventNavigation,
+  canNavigateToEvent,
+  getEventChip,
+  isEventOverdue,
+} from './domain/event-preview-modal.domain'
+import type { EventDetailIconKey } from './domain/event-preview-modal.domain'
 import type {
   CalendarEvent,
   SpecialEventCategory,
@@ -32,33 +39,6 @@ type EventPreviewModalProps = {
   currentMonth?: Date
 }
 
-const TYPE_CHIP: Record<string, { label: string; classes: string }> = {
-  assignment: {
-    label: 'Assignment',
-    classes: 'border-[#C5A059]/40 bg-[#C5A059]/10 text-[#E9D9B4]',
-  },
-  chapel: {
-    label: 'Chapel',
-    classes: 'border-violet-500/30 bg-violet-950/50 text-violet-300',
-  },
-  exam: {
-    label: 'Exam',
-    classes: 'border-red-500/30 bg-red-950/50 text-red-300',
-  },
-  lesson: {
-    label: 'Lesson',
-    classes: 'border-emerald-500/30 bg-emerald-950/50 text-emerald-300',
-  },
-  personal: {
-    label: 'Personal',
-    classes: 'border-sky-500/30 bg-sky-950/50 text-sky-300',
-  },
-  other: {
-    label: 'Other',
-    classes: 'border-gray-500/30 bg-gray-950/50 text-gray-300',
-  },
-}
-
 const SPECIAL_ICONS: Record<SpecialEventCategory, React.ElementType> = {
   chapel: HeartHandshakeIcon,
   exam: AlertTriangleIcon,
@@ -66,14 +46,10 @@ const SPECIAL_ICONS: Record<SpecialEventCategory, React.ElementType> = {
   other: CalendarIcon,
 }
 
-function getChip(event: CalendarEvent) {
-  if (event.type === 'special') {
-    if (event.specialCategory) {
-      return TYPE_CHIP[event.specialCategory]
-    }
-    return TYPE_CHIP.other
-  }
-  return TYPE_CHIP[event.type]
+const ROW_ICONS: Record<EventDetailIconKey, React.ElementType> = {
+  clock: ClockIcon,
+  book: BookOpenIcon,
+  graduation: GraduationCapIcon,
 }
 
 function useEventNavigation(
@@ -83,27 +59,15 @@ function useEventNavigation(
 ) {
   const router = useRouter()
   return () => {
-    if (event?.type !== 'lesson' && event?.type !== 'assignment') return
-    router.navigate({
-      to:
-        event.type === 'lesson'
-          ? '/lessons/$lessonId'
-          : '/assignments/$assignmentId',
-      params:
-        event.type === 'lesson'
-          ? { lessonId: event.id }
-          : { assignmentId: event.id },
-      search: {
-        fromCalendar: true,
-        calendarMonth: currentMonth?.toISOString(),
-      } as any,
-    })
+    const nav = buildEventNavigation(event, currentMonth)
+    if (!nav) return
+    router.navigate(nav)
     onClose()
   }
 }
 
 function EventTypeChip({ event }: { event: CalendarEvent }) {
-  const chip = getChip(event)
+  const chip = getEventChip(event)
   const SpecialIcon =
     event.type === 'special' && event.specialCategory
       ? SPECIAL_ICONS[event.specialCategory]
@@ -128,15 +92,18 @@ function EventDetailsSection({
   event: CalendarEvent
   isOverdue: boolean
 }) {
+  const vm = buildEventDetailsViewModel(event, isOverdue)
   return (
     <div className="mt-4 space-y-3">
       <div className="flex items-center gap-2.5 text-sm">
         <CalendarIcon className="size-3.5 shrink-0 text-[#8E816D]" />
         <span
-          className={isOverdue ? 'font-medium text-red-400' : 'text-[#D6CCBE]'}
+          className={
+            vm.isOverdue ? 'font-medium text-red-400' : 'text-[#D6CCBE]'
+          }
         >
-          {format(new Date(event.date), 'PPPP')}
-          {isOverdue && (
+          {vm.dateLabel}
+          {vm.isOverdue && (
             <span className="ml-2 text-[0.65rem] tracking-wider text-red-400/80 uppercase">
               Overdue
             </span>
@@ -144,35 +111,20 @@ function EventDetailsSection({
         </span>
       </div>
 
-      {event.type === 'lesson' && event.duration && (
-        <div className="flex items-center gap-2.5 text-sm">
-          <ClockIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-          <span className="text-[#D6CCBE]">
-            {format(new Date(event.date), 'p')} · {event.duration} min
-          </span>
-        </div>
-      )}
+      {vm.rows.map((row) => {
+        const Icon = ROW_ICONS[row.iconKey]
+        return (
+          <div key={row.iconKey} className="flex items-center gap-2.5 text-sm">
+            <Icon className="size-3.5 shrink-0 text-[#8E816D]" />
+            <span className="text-[#D6CCBE]">{row.text}</span>
+          </div>
+        )
+      })}
 
-      {event.type === 'lesson' && (
-        <div className="flex items-center gap-2.5 text-sm">
-          <BookOpenIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-          <span className="text-[#D6CCBE]">Lesson</span>
-        </div>
-      )}
-
-      {event.type === 'assignment' && event.maxGrade != null && (
-        <div className="flex items-center gap-2.5 text-sm">
-          <GraduationCapIcon className="size-3.5 shrink-0 text-[#8E816D]" />
-          <span className="text-[#D6CCBE]">
-            Max grade: {event.maxGrade} pts
-          </span>
-        </div>
-      )}
-
-      {event.description && (
+      {vm.description && (
         <div className="mt-4 border border-white/8 bg-white/4 p-3">
           <p className="line-clamp-4 text-[0.82rem] leading-relaxed text-[#AFA28F]">
-            {event.description}
+            {vm.description}
           </p>
         </div>
       )}
@@ -192,10 +144,9 @@ export function EventPreviewModal({
 
   if (!event) return null
 
-  const isOverdue =
-    event.type === 'assignment' && new Date(event.date) < new Date()
+  const isOverdue = isEventOverdue(event)
 
-  const canNavigate = event.type === 'lesson' || event.type === 'assignment'
+  const canNavigate = canNavigateToEvent(event)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
