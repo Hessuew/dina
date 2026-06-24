@@ -9,6 +9,14 @@ import {
   decideFocusScroll,
   prependPostIfAbsent,
 } from '@/utils/post/domain/focus-post.domain'
+import {
+  canModeratePosts,
+  courseIdForChannel,
+  nextChannelSearch,
+  removePost,
+  replacePost,
+  resolveChannelView,
+} from '@/utils/post/domain/posts-view.domain'
 import { Button } from '@/components/ui/button'
 import { PageLayout } from '@/components/layout/page-layout'
 import { Textarea } from '@/components/ui/textarea'
@@ -77,9 +85,8 @@ function PostsComponent() {
   const { currentUser } = loaderData
 
   const channels = loaderData.channels
-  const selectedChannel = search.channel ?? 'general'
-  const selectedCourseId =
-    selectedChannel === 'general' ? null : selectedChannel
+  const { selectedChannel, selectedCourseId, channelLabel } =
+    resolveChannelView({ searchChannel: search.channel, channels })
 
   const focusPostId = search.focusPostId
 
@@ -94,8 +101,7 @@ function PostsComponent() {
   const focusFetchKeyRef = useRef<string | null>(null)
   const focusScrollKeyRef = useRef<string | null>(null)
 
-  const canModerate =
-    currentUser.role === 'teacher' || currentUser.role === 'admin'
+  const canModerate = canModeratePosts(currentUser.role)
 
   const handleLoadMore = async () => {
     if (!nextCursor) return
@@ -114,11 +120,7 @@ function PostsComponent() {
   const handleSelectChannel = async (channelId: string) => {
     setChannelDropdownOpen(false)
     await navigate({
-      search: {
-        ...search,
-        channel: channelId === 'general' ? undefined : channelId,
-        focusPostId: undefined,
-      },
+      search: nextChannelSearch(search, channelId),
       replace: false,
     })
   }
@@ -129,7 +131,7 @@ function PostsComponent() {
     const requestId = ++latestChannelRequestId.current
     setLoadingMore(true)
 
-    const courseId = selectedChannel === 'general' ? null : selectedChannel
+    const courseId = courseIdForChannel(selectedChannel)
     getPosts({ data: { limit: 10, courseId } })
       .then((data) => {
         if (latestChannelRequestId.current !== requestId) return
@@ -189,11 +191,11 @@ function PostsComponent() {
   }
 
   const handlePostUpdated = (updated: PostWithDetails) => {
-    setAllPosts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+    setAllPosts((prev) => replacePost(prev, updated))
   }
 
   const handlePostDeleted = (postId: string) => {
-    setAllPosts((prev) => prev.filter((p) => p.id !== postId))
+    setAllPosts((prev) => removePost(prev, postId))
   }
 
   return (
@@ -239,11 +241,7 @@ function PostsComponent() {
             <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
               Posts
             </h1>
-            <p className="mt-2 text-sm text-[#5E5549]">
-              {selectedChannel === 'general'
-                ? 'General channel'
-                : `Channel: ${channels.find((c) => c.id === selectedChannel)?.name ?? ''}`}
-            </p>
+            <p className="mt-2 text-sm text-[#5E5549]">{channelLabel}</p>
 
             {/* Mobile channel dropdown */}
             <div className="mt-4 block lg:hidden">
