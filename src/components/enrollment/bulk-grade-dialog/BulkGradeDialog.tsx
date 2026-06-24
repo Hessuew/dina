@@ -278,7 +278,8 @@ export function BulkGradeDialog({
             <p className="mb-5 text-[0.78rem] text-[#8E816D]">
               Set score thresholds to approve or reject all{' '}
               <strong className="text-[#AFA28F]">awaiting approval</strong>{' '}
-              enrollments at once. Score range is 0–{BULK_GRADE_SUM_MAX}.{' '}
+              enrollments at once. Score range is 0–{BULK_GRADE_SUM_MAX}. <br />
+              <br />
               <strong className="text-[#C5A059]">
                 Special case enrollments are automatically approved regardless
                 of score.

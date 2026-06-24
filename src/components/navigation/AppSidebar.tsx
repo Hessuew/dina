@@ -97,6 +97,11 @@ const teacherNavItems: Array<NavItem> = [
     icon: BookText,
   },
   {
+    title: 'Discipleship',
+    url: '/discipleship',
+    icon: Users,
+  },
+  {
     title: 'Events',
     url: '/events',
     icon: CalendarDaysIcon,
