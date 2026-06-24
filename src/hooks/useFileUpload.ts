@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { fileToBase64 } from '@/utils/imageUpload'
 
 interface UseFileUploadReturn {
@@ -27,13 +27,13 @@ export function useFileUpload(): UseFileUploadReturn {
     setFileObject(file)
   }
 
-  const clearFile = () => {
+  const clearFile = useCallback(() => {
     setFileData(null)
     setFileObject(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
-  }
+  }, [])
 
   return {
     fileInputRef,

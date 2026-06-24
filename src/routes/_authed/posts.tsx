@@ -3,7 +3,11 @@ import { createServerFn } from '@tanstack/react-start'
 import { Loader2, MessageCircle, SendIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import type { PostWithDetails } from '@/utils/post/domain/post.domain'
+import type {
+  PostChannel,
+  PostWithDetails,
+} from '@/utils/post/domain/post.domain'
+import type { PostsSearch } from '@/utils/post/domain/posts-view.domain'
 import {
   decideFocusFetch,
   decideFocusScroll,
@@ -76,6 +80,153 @@ export const Route = createFileRoute('/_authed/posts')({
   component: PostsComponent,
 })
 
+// ── Feed state + effects ────────────────────────────────────────────────────
+
+type LoaderData = ReturnType<typeof Route.useLoaderData>
+type NextCursor = LoaderData['nextCursor']
+type PostsState = ReturnType<typeof usePostsState>
+
+function usePostsState(
+  initialPosts: Array<PostWithDetails>,
+  initialCursor: NextCursor,
+) {
+  const [allPosts, setAllPosts] = useState<Array<PostWithDetails>>(initialPosts)
+  const [nextCursor, setNextCursor] = useState<NextCursor>(initialCursor)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [channelDropdownOpen, setChannelDropdownOpen] = useState(false)
+  const latestChannelRequestId = useRef<number>(0)
+  const loadedChannelRef = useRef<string>('general')
+  const focusFetchKeyRef = useRef<string | null>(null)
+  const focusScrollKeyRef = useRef<string | null>(null)
+  return {
+    allPosts,
+    setAllPosts,
+    nextCursor,
+    setNextCursor,
+    loadingMore,
+    setLoadingMore,
+    channelDropdownOpen,
+    setChannelDropdownOpen,
+    latestChannelRequestId,
+    loadedChannelRef,
+    focusFetchKeyRef,
+    focusScrollKeyRef,
+  }
+}
+
+type UsePostsFeedArgs = {
+  initialPosts: Array<PostWithDetails>
+  initialCursor: NextCursor
+  selectedChannel: string
+  selectedCourseId: string | null
+  focusPostId: string | undefined
+  search: PostsSearch
+  navigate: ReturnType<typeof Route.useNavigate>
+}
+
+function usePostsFeed(args: UsePostsFeedArgs) {
+  const s = usePostsState(args.initialPosts, args.initialCursor)
+  const handleLoadMore = async () => {
+    if (!s.nextCursor) return
+    s.setLoadingMore(true)
+    try {
+      const data = await getPosts({
+        data: {
+          limit: 10,
+          cursor: s.nextCursor,
+          courseId: args.selectedCourseId,
+        },
+      })
+      s.setAllPosts((prev) => [...prev, ...data.posts])
+      s.setNextCursor(data.nextCursor)
+    } finally {
+      s.setLoadingMore(false)
+    }
+  }
+  const handleSelectChannel = async (channelId: string) => {
+    s.setChannelDropdownOpen(false)
+    await args.navigate({
+      search: nextChannelSearch(args.search, channelId),
+      replace: false,
+    })
+  }
+  useChannelPostsEffect(args.selectedChannel, s)
+  useFocusPostEffect(args.focusPostId, args.selectedChannel, s)
+  return {
+    ...s,
+    handleLoadMore,
+    handleSelectChannel,
+    handlePostCreated: (post: PostWithDetails) =>
+      s.setAllPosts((prev) => [post, ...prev]),
+    handlePostUpdated: (updated: PostWithDetails) =>
+      s.setAllPosts((prev) => replacePost(prev, updated)),
+    handlePostDeleted: (postId: string) =>
+      s.setAllPosts((prev) => removePost(prev, postId)),
+  }
+}
+
+function useChannelPostsEffect(selectedChannel: string, s: PostsState) {
+  useEffect(() => {
+    if (selectedChannel === s.loadedChannelRef.current) return
+    const requestId = ++s.latestChannelRequestId.current
+    s.setLoadingMore(true)
+    const courseId = courseIdForChannel(selectedChannel)
+    getPosts({ data: { limit: 10, courseId } })
+      .then((data) => {
+        if (s.latestChannelRequestId.current !== requestId) return
+        s.setAllPosts(data.posts)
+        s.setNextCursor(data.nextCursor)
+        s.loadedChannelRef.current = selectedChannel
+      })
+      .catch(() => {
+        if (s.latestChannelRequestId.current !== requestId) return
+        toast.error('Failed to load posts')
+      })
+      .finally(() => {
+        if (s.latestChannelRequestId.current !== requestId) return
+        s.setLoadingMore(false)
+      })
+  }, [selectedChannel])
+}
+
+function useFocusPostEffect(
+  focusPostId: string | undefined,
+  selectedChannel: string,
+  s: PostsState,
+) {
+  useEffect(() => {
+    const decision = decideFocusFetch({
+      focusPostId,
+      loadedChannel: s.loadedChannelRef.current,
+      selectedChannel,
+      loadedPostIds: s.allPosts.map((p) => p.id),
+      lastFetchKey: s.focusFetchKeyRef.current,
+    })
+    if (!decision.fetch) return
+    s.focusFetchKeyRef.current = decision.focusKey
+    getPostById({ data: { postId: decision.postId } })
+      .then((res) => s.setAllPosts((prev) => prependPostIfAbsent(prev, res.post)))
+      .catch(() => {
+        s.focusFetchKeyRef.current = null
+        toast.error('Could not load the linked post')
+      })
+  }, [s.allPosts, focusPostId, selectedChannel])
+
+  useEffect(() => {
+    const decision = decideFocusScroll({
+      focusPostId,
+      loadedChannel: s.loadedChannelRef.current,
+      selectedChannel,
+      lastScrollKey: s.focusScrollKeyRef.current,
+    })
+    if (!decision.scroll) return
+    const el = document.getElementById(decision.elementId)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    s.focusScrollKeyRef.current = decision.focusKey
+  }, [s.allPosts, focusPostId, selectedChannel])
+}
+
 // ── Main Component ────────────────────────────────────────────────────────
 
 function PostsComponent() {
@@ -83,267 +234,264 @@ function PostsComponent() {
   const navigate = Route.useNavigate()
   const search = Route.useSearch()
   const { currentUser } = loaderData
-
   const channels = loaderData.channels
   const { selectedChannel, selectedCourseId, channelLabel } =
     resolveChannelView({ searchChannel: search.channel, channels })
-
-  const focusPostId = search.focusPostId
-
-  const [allPosts, setAllPosts] = useState<Array<PostWithDetails>>(
-    loaderData.posts,
-  )
-  const [nextCursor, setNextCursor] = useState(loaderData.nextCursor)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [channelDropdownOpen, setChannelDropdownOpen] = useState(false)
-  const latestChannelRequestId = useRef<number>(0)
-  const loadedChannelRef = useRef<string>('general')
-  const focusFetchKeyRef = useRef<string | null>(null)
-  const focusScrollKeyRef = useRef<string | null>(null)
-
   const canModerate = canModeratePosts(currentUser.role)
 
-  const handleLoadMore = async () => {
-    if (!nextCursor) return
-    setLoadingMore(true)
-    try {
-      const data = await getPosts({
-        data: { limit: 10, cursor: nextCursor, courseId: selectedCourseId },
-      })
-      setAllPosts((prev) => [...prev, ...data.posts])
-      setNextCursor(data.nextCursor)
-    } finally {
-      setLoadingMore(false)
-    }
-  }
-
-  const handleSelectChannel = async (channelId: string) => {
-    setChannelDropdownOpen(false)
-    await navigate({
-      search: nextChannelSearch(search, channelId),
-      replace: false,
-    })
-  }
-
-  useEffect(() => {
-    if (selectedChannel === loadedChannelRef.current) return
-
-    const requestId = ++latestChannelRequestId.current
-    setLoadingMore(true)
-
-    const courseId = courseIdForChannel(selectedChannel)
-    getPosts({ data: { limit: 10, courseId } })
-      .then((data) => {
-        if (latestChannelRequestId.current !== requestId) return
-        setAllPosts(data.posts)
-        setNextCursor(data.nextCursor)
-        loadedChannelRef.current = selectedChannel
-      })
-      .catch(() => {
-        if (latestChannelRequestId.current !== requestId) return
-        toast.error('Failed to load posts')
-      })
-      .finally(() => {
-        if (latestChannelRequestId.current !== requestId) return
-        setLoadingMore(false)
-      })
-  }, [selectedChannel])
-
-  useEffect(() => {
-    const decision = decideFocusFetch({
-      focusPostId,
-      loadedChannel: loadedChannelRef.current,
-      selectedChannel,
-      loadedPostIds: allPosts.map((p) => p.id),
-      lastFetchKey: focusFetchKeyRef.current,
-    })
-    if (!decision.fetch) return
-
-    focusFetchKeyRef.current = decision.focusKey
-    getPostById({ data: { postId: decision.postId } })
-      .then((res) => {
-        setAllPosts((prev) => prependPostIfAbsent(prev, res.post))
-      })
-      .catch(() => {
-        focusFetchKeyRef.current = null
-        toast.error('Could not load the linked post')
-      })
-  }, [allPosts, focusPostId, selectedChannel])
-
-  useEffect(() => {
-    const decision = decideFocusScroll({
-      focusPostId,
-      loadedChannel: loadedChannelRef.current,
-      selectedChannel,
-      lastScrollKey: focusScrollKeyRef.current,
-    })
-    if (!decision.scroll) return
-
-    const el = document.getElementById(decision.elementId)
-    if (!el) return
-
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    focusScrollKeyRef.current = decision.focusKey
-  }, [allPosts, focusPostId, selectedChannel])
-
-  const handlePostCreated = (post: PostWithDetails) => {
-    setAllPosts((prev) => [post, ...prev])
-  }
-
-  const handlePostUpdated = (updated: PostWithDetails) => {
-    setAllPosts((prev) => replacePost(prev, updated))
-  }
-
-  const handlePostDeleted = (postId: string) => {
-    setAllPosts((prev) => removePost(prev, postId))
-  }
+  const feed = usePostsFeed({
+    initialPosts: loaderData.posts,
+    initialCursor: loaderData.nextCursor,
+    selectedChannel,
+    selectedCourseId,
+    focusPostId: search.focusPostId,
+    search,
+    navigate,
+  })
 
   return (
     <PageLayout>
       <div className="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
-        {/* Channels */}
-        <div className="hidden self-start lg:sticky lg:top-10 lg:block">
-          <div className="border border-[#1A1A1A]/10 bg-white/60 p-5 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.08)]">
-            <div className="h-px w-8 bg-[#9B7A41]/50" />
-            <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-              Channels
-            </div>
-            <div className="mt-4 flex flex-col gap-1.5">
-              {channels.map((ch) => (
-                <Button
-                  key={ch.id}
-                  type="button"
-                  variant="ghost"
-                  theme="lightGhost"
-                  onClick={() => handleSelectChannel(ch.id)}
-                  className={cn(
-                    'flex h-9 w-full cursor-pointer items-center justify-between border px-3 py-2 text-left shadow-none transition-all hover:translate-y-0',
-                    ch.id === selectedChannel
-                      ? 'border-[#C5A059]/42 bg-white/70 hover:border-[#C5A059]/60'
-                      : 'border-[#1A1A1A]/10 bg-white/40 hover:border-[#C5A059]/30',
-                  )}
-                >
-                  <span className="text-sm text-[#1C1815]">{ch.name}</span>
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Main */}
+        <ChannelSidebar
+          channels={channels}
+          selectedChannel={selectedChannel}
+          onSelect={feed.handleSelectChannel}
+        />
         <div className="min-w-0">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="h-px w-8 bg-[#9B7A41]/50" />
-            <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-              Community
-            </div>
-            <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
-              Posts
-            </h1>
-            <p className="mt-2 text-sm text-[#5E5549]">{channelLabel}</p>
-
-            {/* Mobile channel dropdown */}
-            <div className="mt-4 block lg:hidden">
-              <DropdownMenu
-                open={channelDropdownOpen}
-                onOpenChange={setChannelDropdownOpen}
-              >
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      theme="lightGhost"
-                      className="flex h-9 w-full items-center justify-between border border-[#1A1A1A]/10 bg-white/40 px-3 py-2 text-left shadow-none transition-all hover:translate-y-0 hover:border-[#C5A059]/30"
-                    >
-                      <div className="flex items-center gap-2">
-                        <MessageCircle className="size-4 text-[#9B7A41]" />
-                        <span className="text-sm text-[#1C1815]">Channels</span>
-                      </div>
-                    </Button>
-                  }
-                />
-                <DropdownMenuContent
-                  align="start"
-                  className="w-full min-w-[200px]"
-                >
-                  {channels.map((ch) => (
-                    <DropdownMenuItem
-                      key={ch.id}
-                      onClick={() => handleSelectChannel(ch.id)}
-                      className={cn(
-                        'flex cursor-pointer items-center justify-between px-3 py-2',
-                        ch.id === selectedChannel
-                          ? 'bg-[#C5A059]/10 text-[#1C1815]'
-                          : 'text-[#5E5549]',
-                      )}
-                    >
-                      <span className="text-sm">{ch.name}</span>
-                      {ch.id === selectedChannel && (
-                        <div className="ml-auto size-1.5 rounded-full bg-[#C5A059]" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
+          <PostsPageHeader
+            channelLabel={channelLabel}
+            channels={channels}
+            selectedChannel={selectedChannel}
+            onSelect={feed.handleSelectChannel}
+            dropdownOpen={feed.channelDropdownOpen}
+            onDropdownOpenChange={feed.setChannelDropdownOpen}
+          />
           <PostComposer
             currentUser={currentUser}
             courseId={selectedCourseId}
-            onCreated={handlePostCreated}
+            onCreated={feed.handlePostCreated}
           />
-
-          <div className="mt-8 flex flex-col gap-6">
-            {allPosts.length === 0 ? (
-              <div className="border border-dashed border-[#1A1A1A]/20 bg-[#EDE8DE]/40 p-16 text-center">
-                <MessageCircle className="mx-auto mb-3 size-8 text-[#9B7A41]/50" />
-                <h3 className="font-serif text-lg text-[#1C1815]">
-                  No posts yet
-                </h3>
-                <p className="mt-2 text-sm text-[#5E5549]">
-                  Be the first to share something with the community
-                </p>
-              </div>
-            ) : (
-              allPosts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  currentUser={currentUser}
-                  canModerate={canModerate}
-                  onUpdated={handlePostUpdated}
-                  onDeleted={handlePostDeleted}
-                />
-              ))
-            )}
-          </div>
-
-          {/* Load more */}
-          {nextCursor && (
-            <div className="mt-8 text-center">
-              <Button
-                theme="light"
-                variant="outline"
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-              >
-                {loadingMore ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Loading…
-                  </>
-                ) : (
-                  'Load more'
-                )}
-              </Button>
-            </div>
-          )}
+          <PostsList
+            allPosts={feed.allPosts}
+            currentUser={currentUser}
+            canModerate={canModerate}
+            onUpdated={feed.handlePostUpdated}
+            onDeleted={feed.handlePostDeleted}
+          />
+          <LoadMoreButton
+            nextCursor={feed.nextCursor}
+            loadingMore={feed.loadingMore}
+            onLoadMore={feed.handleLoadMore}
+          />
         </div>
       </div>
     </PageLayout>
+  )
+}
+
+// ── Channels ────────────────────────────────────────────────────────────────
+
+function ChannelSidebar({
+  channels,
+  selectedChannel,
+  onSelect,
+}: {
+  channels: Array<PostChannel>
+  selectedChannel: string
+  onSelect: (channelId: string) => void
+}) {
+  return (
+    <div className="hidden self-start lg:sticky lg:top-10 lg:block">
+      <div className="border border-[#1A1A1A]/10 bg-white/60 p-5 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.08)]">
+        <div className="h-px w-8 bg-[#9B7A41]/50" />
+        <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+          Channels
+        </div>
+        <div className="mt-4 flex flex-col gap-1.5">
+          {channels.map((ch) => (
+            <Button
+              key={ch.id}
+              type="button"
+              variant="ghost"
+              theme="lightGhost"
+              onClick={() => onSelect(ch.id)}
+              className={cn(
+                'flex h-9 w-full cursor-pointer items-center justify-between border px-3 py-2 text-left shadow-none transition-all hover:translate-y-0',
+                ch.id === selectedChannel
+                  ? 'border-[#C5A059]/42 bg-white/70 hover:border-[#C5A059]/60'
+                  : 'border-[#1A1A1A]/10 bg-white/40 hover:border-[#C5A059]/30',
+              )}
+            >
+              <span className="text-sm text-[#1C1815]">{ch.name}</span>
+            </Button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PostsPageHeader({
+  channelLabel,
+  channels,
+  selectedChannel,
+  onSelect,
+  dropdownOpen,
+  onDropdownOpenChange,
+}: {
+  channelLabel: string
+  channels: Array<PostChannel>
+  selectedChannel: string
+  onSelect: (channelId: string) => void
+  dropdownOpen: boolean
+  onDropdownOpenChange: (open: boolean) => void
+}) {
+  return (
+    <div className="mb-8">
+      <div className="h-px w-8 bg-[#9B7A41]/50" />
+      <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+        Community
+      </div>
+      <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
+        Posts
+      </h1>
+      <p className="mt-2 text-sm text-[#5E5549]">{channelLabel}</p>
+
+      <div className="mt-4 block lg:hidden">
+        <MobileChannelDropdown
+          channels={channels}
+          selectedChannel={selectedChannel}
+          onSelect={onSelect}
+          open={dropdownOpen}
+          onOpenChange={onDropdownOpenChange}
+        />
+      </div>
+    </div>
+  )
+}
+
+function MobileChannelDropdown({
+  channels,
+  selectedChannel,
+  onSelect,
+  open,
+  onOpenChange,
+}: {
+  channels: Array<PostChannel>
+  selectedChannel: string
+  onSelect: (channelId: string) => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  return (
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            theme="lightGhost"
+            className="flex h-9 w-full items-center justify-between border border-[#1A1A1A]/10 bg-white/40 px-3 py-2 text-left shadow-none transition-all hover:translate-y-0 hover:border-[#C5A059]/30"
+          >
+            <div className="flex items-center gap-2">
+              <MessageCircle className="size-4 text-[#9B7A41]" />
+              <span className="text-sm text-[#1C1815]">Channels</span>
+            </div>
+          </Button>
+        }
+      />
+      <DropdownMenuContent align="start" className="w-full min-w-[200px]">
+        {channels.map((ch) => (
+          <DropdownMenuItem
+            key={ch.id}
+            onClick={() => onSelect(ch.id)}
+            className={cn(
+              'flex cursor-pointer items-center justify-between px-3 py-2',
+              ch.id === selectedChannel
+                ? 'bg-[#C5A059]/10 text-[#1C1815]'
+                : 'text-[#5E5549]',
+            )}
+          >
+            <span className="text-sm">{ch.name}</span>
+            {ch.id === selectedChannel && (
+              <div className="ml-auto size-1.5 rounded-full bg-[#C5A059]" />
+            )}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+// ── Posts list ──────────────────────────────────────────────────────────────
+
+function PostsList({
+  allPosts,
+  currentUser,
+  canModerate,
+  onUpdated,
+  onDeleted,
+}: {
+  allPosts: Array<PostWithDetails>
+  currentUser: CurrentUser
+  canModerate: boolean
+  onUpdated: (post: PostWithDetails) => void
+  onDeleted: (postId: string) => void
+}) {
+  return (
+    <div className="mt-8 flex flex-col gap-6">
+      {allPosts.length === 0 ? (
+        <div className="border border-dashed border-[#1A1A1A]/20 bg-[#EDE8DE]/40 p-16 text-center">
+          <MessageCircle className="mx-auto mb-3 size-8 text-[#9B7A41]/50" />
+          <h3 className="font-serif text-lg text-[#1C1815]">No posts yet</h3>
+          <p className="mt-2 text-sm text-[#5E5549]">
+            Be the first to share something with the community
+          </p>
+        </div>
+      ) : (
+        allPosts.map((post) => (
+          <PostCard
+            key={post.id}
+            post={post}
+            currentUser={currentUser}
+            canModerate={canModerate}
+            onUpdated={onUpdated}
+            onDeleted={onDeleted}
+          />
+        ))
+      )}
+    </div>
+  )
+}
+
+function LoadMoreButton({
+  nextCursor,
+  loadingMore,
+  onLoadMore,
+}: {
+  nextCursor: NextCursor
+  loadingMore: boolean
+  onLoadMore: () => void
+}) {
+  if (!nextCursor) return null
+  return (
+    <div className="mt-8 text-center">
+      <Button
+        theme="light"
+        variant="outline"
+        onClick={onLoadMore}
+        disabled={loadingMore}
+      >
+        {loadingMore ? (
+          <>
+            <Loader2 className="size-4 animate-spin" />
+            Loading…
+          </>
+        ) : (
+          'Load more'
+        )}
+      </Button>
+    </div>
   )
 }
 
