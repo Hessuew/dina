@@ -12,6 +12,16 @@ import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { LessonDetailSections } from '@/components/lesson/LessonDetailSections'
+import {
+  buildLessonBackNavigation,
+  buildLessonDialogInitialData,
+  formatLessonSchedule,
+  getLessonStatus,
+  handleDialogDismiss,
+  resolveDeleteErrorMessage,
+  resolveLessonPublished,
+  shouldShowLessonContent,
+} from '@/utils/lessons/domain/lesson-detail.domain'
 
 const getLessonData = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ lessonId: z.uuid() }))
@@ -49,6 +59,31 @@ type Assignment = {
   updatedAt: Date
 }
 
+function LessonHeaderMetadata({
+  scheduleLabel,
+  duration,
+}: {
+  scheduleLabel: string | null
+  duration: number | null
+}) {
+  return (
+    <>
+      {scheduleLabel && (
+        <div className="flex items-center gap-1.5">
+          <CalendarIcon className="size-3" />
+          <span>{scheduleLabel}</span>
+        </div>
+      )}
+      {duration && (
+        <div className="flex items-center gap-1.5">
+          <ClockIcon className="size-3" />
+          <span>{duration} min</span>
+        </div>
+      )}
+    </>
+  )
+}
+
 function LessonDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
@@ -57,8 +92,8 @@ function LessonDetailComponent() {
   const lessonDialog = useDialogState()
   const assignmentDialog = useDialogState<Assignment>()
   const [submissionCount, setSubmissionCount] = useState(0)
-  const isPublished = lesson.isPublished ?? false
-  const showContent = isPublished || permissions.canEdit
+  const isPublished = resolveLessonPublished(lesson.isPublished)
+  const showContent = shouldShowLessonContent(isPublished, permissions.canEdit)
 
   const handleDeleteAssignmentClick = async (assignment: Assignment) => {
     try {
@@ -67,24 +102,24 @@ function LessonDetailComponent() {
       })
       setSubmissionCount(result.count)
       assignmentDialog.openDialog('delete', assignment)
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to check submissions')
+    } catch (error) {
+      toast.error(resolveDeleteErrorMessage(error))
     }
   }
 
   const goBack = () => {
-    if (search.fromCalendar && search.calendarMonth) {
-      router.navigate({
-        to: '/calendar',
-        search: { month: search.calendarMonth },
-      })
+    const target = buildLessonBackNavigation(search, lesson.course.id)
+    if (target.kind === 'calendar') {
+      router.navigate({ to: '/calendar', search: { month: target.month } })
     } else {
       router.navigate({
         to: '/courses/$courseId',
-        params: { courseId: lesson.course.id },
+        params: { courseId: target.courseId },
       })
     }
   }
+
+  const scheduleLabel = formatLessonSchedule(lesson.scheduledTime)
 
   return (
     <PageLayout>
@@ -92,36 +127,14 @@ function LessonDetailComponent() {
         title={lesson.title}
         onBack={goBack}
         metadata={
-          <>
-            {lesson.scheduledTime && (
-              <div className="flex items-center gap-1.5">
-                <CalendarIcon className="size-3" />
-                <span>
-                  {new Date(lesson.scheduledTime).toLocaleDateString('en-US', {
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}{' '}
-                  at{' '}
-                  {new Date(lesson.scheduledTime).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true,
-                  })}
-                </span>
-              </div>
-            )}
-            {lesson.duration && (
-              <div className="flex items-center gap-1.5">
-                <ClockIcon className="size-3" />
-                <span>{lesson.duration} min</span>
-              </div>
-            )}
-          </>
+          <LessonHeaderMetadata
+            scheduleLabel={scheduleLabel}
+            duration={lesson.duration}
+          />
         }
         actions={
           <EntityHeaderActions
-            status={isPublished ? 'published' : 'draft'}
+            status={getLessonStatus(isPublished)}
             canEdit={permissions.canEdit}
             isCourseTeacher={permissions.isCourseTeacher}
             onEdit={() => lessonDialog.openDialog('edit')}
@@ -157,12 +170,12 @@ function LessonDetailComponent() {
       {assignmentDialog.isOpen && (
         <AssignmentDialog
           open={true}
-          onOpenChange={(open) => {
-            if (!open) {
+          onOpenChange={(open) =>
+            handleDialogDismiss(open, () => {
               assignmentDialog.closeDialog()
               setSubmissionCount(0)
-            }
-          }}
+            })
+          }
           mode={assignmentDialog.dialogMode as 'create' | 'edit' | 'delete'}
           lessonId={lesson.id}
           assignment={assignmentDialog.dialogItem}
@@ -174,22 +187,12 @@ function LessonDetailComponent() {
       {lessonDialog.isOpen && (
         <LessonDialog
           open={true}
-          onOpenChange={(open) => {
-            if (!open) lessonDialog.closeDialog()
-          }}
+          onOpenChange={(open) =>
+            handleDialogDismiss(open, lessonDialog.closeDialog)
+          }
           mode={lessonDialog.dialogMode as 'edit' | 'delete'}
           courseId={lesson.course.id}
-          initialData={{
-            lessonId: lesson.id,
-            title: lesson.title,
-            content: lesson.content,
-            scheduledTime: lesson.scheduledTime
-              ? new Date(lesson.scheduledTime)
-              : null,
-            duration: lesson.duration,
-            isPublished: lesson.isPublished ?? false,
-            orderIndex: lesson.orderIndex,
-          }}
+          initialData={buildLessonDialogInitialData(lesson)}
         />
       )}
     </PageLayout>
