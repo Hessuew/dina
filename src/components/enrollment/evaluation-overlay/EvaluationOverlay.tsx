@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { toast } from 'sonner'
@@ -151,18 +151,15 @@ function AdmissionCategoryButton({
 }
 
 /**
- * Note field for the current evaluator, with debounced autosave (~400ms)
- * and a flush on unmount so a pending note isn't lost when navigating away.
- * Keyed by enrollment id by the parent so it re-initialises per applicant.
+ * Debounced (~400ms) autosave state for the note field, with a flush on
+ * unmount so a pending note isn't lost when navigating away.
  */
-function NoteEditor({
+function useDebouncedNoteSave({
   initialNote,
   onSave,
-  textareaRef,
 }: {
   initialNote: string
   onSave: (note: string) => Promise<void>
-  textareaRef: RefObject<HTMLTextAreaElement | null>
 }) {
   const [value, setValue] = useState(initialNote)
   const [state, setState] = useState<SaveState>('idle')
@@ -202,6 +199,27 @@ function NoteEditor({
       }
     }, 400)
   }
+
+  return { value, state, handleChange }
+}
+
+/**
+ * Note field for the current evaluator, with debounced autosave (~400ms).
+ * Keyed by enrollment id by the parent so it re-initialises per applicant.
+ */
+function NoteEditor({
+  initialNote,
+  onSave,
+  textareaRef,
+}: {
+  initialNote: string
+  onSave: (note: string) => Promise<void>
+  textareaRef: RefObject<HTMLTextAreaElement | null>
+}) {
+  const { value, state, handleChange } = useDebouncedNoteSave({
+    initialNote,
+    onSave,
+  })
 
   return (
     <div>
@@ -324,18 +342,61 @@ type EvaluationOverlayProps = {
   ) => void
 }
 
-export function EvaluationOverlay({
-  enrollment,
-  evaluations,
-  isAdmin,
-  userId,
-  hasPrev,
-  hasNext,
-  onPrev,
-  onNext,
-  onClose,
+/** Lock background scroll while the overlay is mounted. */
+function useLockBodyScroll() {
+  useEffect(() => {
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [])
+}
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+/** Trap Tab/Shift+Tab focus within the given element. */
+function useFocusTrap(ref: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const nodes = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE))
+      if (nodes.length === 0) return
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    el.addEventListener('keydown', handleTab)
+    return () => el.removeEventListener('keydown', handleTab)
+  }, [ref])
+}
+
+function useEvaluationMutations({
+  enrollmentId,
   onLocalEvaluation,
-}: EvaluationOverlayProps) {
+  pendingPrevScoreRef,
+  pendingPrevAdmissionCategoryRef,
+}: {
+  enrollmentId: string
+  onLocalEvaluation: EvaluationOverlayProps['onLocalEvaluation']
+  pendingPrevScoreRef: RefObject<number | null>
+  pendingPrevAdmissionCategoryRef: RefObject<AdmissionCategory | null>
+}) {
   const scoreFn = useServerFn(setEvaluationScore)
   const categoryFn = useServerFn(setEvaluationAdmissionCategory)
   const noteFn = useServerFn(setEvaluationNote)
@@ -343,7 +404,7 @@ export function EvaluationOverlay({
   const scoreMutation = useMutation({
     fn: scoreFn,
     onError: () => {
-      onLocalEvaluation(enrollment.id, {
+      onLocalEvaluation(enrollmentId, {
         score: pendingPrevScoreRef.current,
         admissionCategory: pendingPrevAdmissionCategoryRef.current,
       })
@@ -353,7 +414,7 @@ export function EvaluationOverlay({
   const categoryMutation = useMutation({
     fn: categoryFn,
     onError: () => {
-      onLocalEvaluation(enrollment.id, {
+      onLocalEvaluation(enrollmentId, {
         admissionCategory: pendingPrevAdmissionCategoryRef.current,
       })
       toast.error('Failed to save category')
@@ -361,33 +422,40 @@ export function EvaluationOverlay({
   })
   const noteMutation = useMutation({ fn: noteFn })
 
-  const noteRef = useRef<HTMLTextAreaElement>(null)
-  const pendingPrevScoreRef = useRef<number | null>(null)
-  const pendingPrevAdmissionCategoryRef = useRef<AdmissionCategory | null>(null)
+  return { scoreMutation, categoryMutation, noteMutation }
+}
 
-  const {
-    myScore,
-    myNote,
-    myAdmissionCategory,
-    admissionCategoryEnabled,
-    admissionCategoryMissing,
-    evaluationTotal,
-    evaluationCount,
-    otherEvaluators,
-    otherNotes,
-  } = deriveEvaluationView({ evaluations, userId })
+type EvaluationMutations = ReturnType<typeof useEvaluationMutations>
+
+function useEvaluationActions({
+  enrollmentId,
+  myScore,
+  myAdmissionCategory,
+  onLocalEvaluation,
+  mutations,
+  pendingPrevScoreRef,
+  pendingPrevAdmissionCategoryRef,
+}: {
+  enrollmentId: string
+  myScore: number | null
+  myAdmissionCategory: AdmissionCategory | null
+  onLocalEvaluation: EvaluationOverlayProps['onLocalEvaluation']
+  mutations: EvaluationMutations
+  pendingPrevScoreRef: RefObject<number | null>
+  pendingPrevAdmissionCategoryRef: RefObject<AdmissionCategory | null>
+}) {
+  const { scoreMutation, categoryMutation, noteMutation } = mutations
 
   const saveScore = useCallback(
     (score: number | null) => {
+      if (scoreMutation.isPending) return
       pendingPrevScoreRef.current = myScore
       pendingPrevAdmissionCategoryRef.current = myAdmissionCategory
-      onLocalEvaluation(enrollment.id, buildScorePatch(score))
-      void scoreMutation.mutate({
-        data: { enrollmentId: enrollment.id, score },
-      })
+      onLocalEvaluation(enrollmentId, buildScorePatch(score))
+      void scoreMutation.mutate({ data: { enrollmentId, score } })
     },
     [
-      enrollment.id,
+      enrollmentId,
       myAdmissionCategory,
       myScore,
       onLocalEvaluation,
@@ -398,155 +466,252 @@ export function EvaluationOverlay({
   const saveAdmissionCategory = useCallback(
     (admissionCategory: AdmissionCategory) => {
       if (myScore !== 3 && myScore !== 4) return
+      if (categoryMutation.isPending) return
       pendingPrevAdmissionCategoryRef.current = myAdmissionCategory
-      onLocalEvaluation(enrollment.id, { admissionCategory })
+      onLocalEvaluation(enrollmentId, { admissionCategory })
       void categoryMutation.mutate({
-        data: {
-          enrollmentId: enrollment.id,
-          score: myScore,
-          admissionCategory,
-        },
+        data: { enrollmentId, score: myScore, admissionCategory },
       })
     },
     [
       categoryMutation,
-      enrollment.id,
+      enrollmentId,
       myAdmissionCategory,
       myScore,
       onLocalEvaluation,
     ],
   )
 
-  const handleScoreButton = (value: EvaluationScore) => {
+  const handleScoreButton = (value: EvaluationScore) =>
     saveScore(toggleScoreValue(value, myScore))
-  }
 
   const saveNote = useCallback(
     async (note: string) => {
-      onLocalEvaluation(enrollment.id, { note })
-      await noteMutation.mutate({ data: { enrollmentId: enrollment.id, note } })
+      onLocalEvaluation(enrollmentId, { note })
+      await noteMutation.mutate({ data: { enrollmentId, note } })
     },
-    [enrollment.id, onLocalEvaluation, noteMutation],
+    [enrollmentId, onLocalEvaluation, noteMutation],
   )
 
-  // Prevent the page behind from scrolling while the overlay is open.
-  useEffect(() => {
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previous
-    }
-  }, [])
+  return { saveScore, saveAdmissionCategory, handleScoreButton, saveNote }
+}
+
+function useEvaluationOverlay({
+  enrollment,
+  evaluations,
+  userId,
+  onLocalEvaluation,
+  onNext,
+  onPrev,
+  onClose,
+}: EvaluationOverlayProps) {
+  const noteRef = useRef<HTMLTextAreaElement>(null)
+  const pendingPrevScoreRef = useRef<number | null>(null)
+  const pendingPrevAdmissionCategoryRef = useRef<AdmissionCategory | null>(null)
+
+  const view = deriveEvaluationView({ evaluations, userId })
+
+  const mutations = useEvaluationMutations({
+    enrollmentId: enrollment.id,
+    onLocalEvaluation,
+    pendingPrevScoreRef,
+    pendingPrevAdmissionCategoryRef,
+  })
+
+  const actions = useEvaluationActions({
+    enrollmentId: enrollment.id,
+    myScore: view.myScore,
+    myAdmissionCategory: view.myAdmissionCategory,
+    onLocalEvaluation,
+    mutations,
+    pendingPrevScoreRef,
+    pendingPrevAdmissionCategoryRef,
+  })
+
+  useLockBodyScroll()
 
   // Keyboard: scoring, navigation, close. Ignored while typing in the note.
   useEvaluationKeyboard({
-    myScore,
-    admissionCategoryEnabled,
+    myScore: view.myScore,
+    admissionCategoryEnabled: view.admissionCategoryEnabled,
     noteRef,
     onNext,
     onPrev,
     onClose,
-    saveScore,
-    saveAdmissionCategory,
+    saveScore: actions.saveScore,
+    saveAdmissionCategory: actions.saveAdmissionCategory,
   })
 
-  const scoreState = toSaveState(scoreMutation)
-  const categoryState = toSaveState(categoryMutation)
+  return {
+    ...view,
+    ...actions,
+    noteRef,
+    scoreState: toSaveState(mutations.scoreMutation),
+    categoryState: toSaveState(mutations.categoryMutation),
+  }
+}
+
+type EvaluationOverlayModel = ReturnType<typeof useEvaluationOverlay>
+
+function EvaluationOverlayHeader({
+  enrollment,
+  otherEvaluators,
+  titleId,
+  onClose,
+}: {
+  enrollment: EnrollmentWithEvaluation
+  otherEvaluators: Array<EvaluationWithAuthor>
+  titleId: string
+  onClose: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <h2
+          id={titleId}
+          className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]"
+        >
+          {enrollment.fullLegalName}
+        </h2>
+        <OtherEvaluatorScores evaluators={otherEvaluators} />
+      </div>
+      <div className="flex items-center gap-4">
+        <Link
+          to="/enrollments/$enrollmentId"
+          params={{ enrollmentId: enrollment.id }}
+          className="inline-flex items-center gap-1.5 text-[0.7rem] tracking-[0.12em] text-[#AFA28F] uppercase hover:text-[#F8F4EC]"
+        >
+          <SquareArrowOutUpRight className="size-3.5" />
+          Full record
+        </Link>
+        <button
+          autoFocus
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="flex size-8 items-center justify-center rounded-none border border-white/10 text-[#AFA28F] hover:border-white/25 hover:text-[#F8F4EC]"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ScoreCategoryColumn({ overlay }: { overlay: EvaluationOverlayModel }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex gap-1">
+        {EVALUATION_SCORES.map((value) => (
+          <ScoreButton
+            key={value}
+            value={value}
+            active={overlay.myScore === value}
+            onClick={() => overlay.handleScoreButton(value)}
+          />
+        ))}
+      </div>
+      <div className="flex items-center gap-1.5">
+        {ADMISSION_CATEGORY_OPTIONS.map((option) => (
+          <AdmissionCategoryButton
+            key={option.value}
+            category={option.value}
+            shortcut={option.shortcut}
+            label={option.label}
+            active={overlay.myAdmissionCategory === option.value}
+            disabled={!overlay.admissionCategoryEnabled}
+            onClick={overlay.saveAdmissionCategory}
+          />
+        ))}
+        <span
+          className={cn(
+            'text-[0.62rem] font-medium tracking-[0.18em] uppercase',
+            overlay.admissionCategoryMissing
+              ? 'text-[#C5A059]'
+              : 'text-[#8E816D]',
+          )}
+        >
+          Category
+        </span>
+        <SaveStatus state={overlay.categoryState} />
+      </div>
+    </div>
+  )
+}
+
+function TotalScoreColumn({ overlay }: { overlay: EvaluationOverlayModel }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span className="text-[0.62rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
+        Total score
+      </span>
+      <span className="font-serif text-2xl text-[#E9D9B4] tabular-nums">
+        {overlay.evaluationCount === 0
+          ? '—'
+          : formatScore(overlay.evaluationTotal)}
+      </span>
+      <SaveStatus state={overlay.scoreState} />
+    </div>
+  )
+}
+
+function EvaluationControlStrip({
+  overlay,
+  enrollmentId,
+}: {
+  overlay: EvaluationOverlayModel
+  enrollmentId: string
+}) {
+  return (
+    <div className="mt-3 flex items-start gap-4">
+      <ScoreCategoryColumn overlay={overlay} />
+      <TotalScoreColumn overlay={overlay} />
+      <div className="min-w-64 flex-1">
+        <NoteEditor
+          key={enrollmentId}
+          initialNote={overlay.myNote}
+          onSave={overlay.saveNote}
+          textareaRef={overlay.noteRef}
+        />
+      </div>
+    </div>
+  )
+}
+
+export function EvaluationOverlay(props: EvaluationOverlayProps) {
+  const { enrollment, isAdmin, hasPrev, hasNext, onPrev, onNext, onClose } =
+    props
+  const overlay = useEvaluationOverlay(props)
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+
+  useFocusTrap(overlayRef)
 
   return (
-    <div className="fixed inset-0 z-70 flex flex-col bg-[#0B0B0C]/96 pt-10 backdrop-blur-sm">
+    <div
+      ref={overlayRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      className="fixed inset-0 z-70 flex flex-col bg-[#0B0B0C]/96 pt-10 backdrop-blur-sm"
+    >
       {/* Evaluation panel — sits on top of the application content */}
       <div className="border-b border-white/10 bg-[#151515]/95">
         <div className="mx-auto w-full max-w-5xl px-6 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-                {enrollment.fullLegalName}
-              </h2>
-              <OtherEvaluatorScores evaluators={otherEvaluators} />
-            </div>
-            <div className="flex items-center gap-4">
-              <Link
-                to="/enrollments/$enrollmentId"
-                params={{ enrollmentId: enrollment.id }}
-                className="inline-flex items-center gap-1.5 text-[0.7rem] tracking-[0.12em] text-[#AFA28F] uppercase hover:text-[#F8F4EC]"
-              >
-                <SquareArrowOutUpRight className="size-3.5" />
-                Full record
-              </Link>
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close"
-                className="flex size-8 items-center justify-center rounded-none border border-white/10 text-[#AFA28F] hover:border-white/25 hover:text-[#F8F4EC]"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-          </div>
+          <EvaluationOverlayHeader
+            enrollment={enrollment}
+            otherEvaluators={overlay.otherEvaluators}
+            titleId={titleId}
+            onClose={onClose}
+          />
 
-          {/* Compact control strip */}
-          <div className="mt-3 flex items-start gap-4">
-            {/* Column 1: score buttons (row 1) + category buttons (row 2) */}
-            <div className="flex flex-col gap-1.5">
-              <div className="flex gap-1">
-                {EVALUATION_SCORES.map((value) => (
-                  <ScoreButton
-                    key={value}
-                    value={value}
-                    active={myScore === value}
-                    onClick={() => handleScoreButton(value)}
-                  />
-                ))}
-              </div>
-              <div className="flex items-center gap-1.5">
-                {ADMISSION_CATEGORY_OPTIONS.map((option) => (
-                  <AdmissionCategoryButton
-                    key={option.value}
-                    category={option.value}
-                    shortcut={option.shortcut}
-                    label={option.label}
-                    active={myAdmissionCategory === option.value}
-                    disabled={!admissionCategoryEnabled}
-                    onClick={saveAdmissionCategory}
-                  />
-                ))}
-                <span
-                  className={cn(
-                    'text-[0.62rem] font-medium tracking-[0.18em] uppercase',
-                    admissionCategoryMissing
-                      ? 'text-[#C5A059]'
-                      : 'text-[#8E816D]',
-                  )}
-                >
-                  Category
-                </span>
-                <SaveStatus state={categoryState} />
-              </div>
-            </div>
-            {/* Column 2: total score */}
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-[0.62rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
-                Total score
-              </span>
-              <span className="font-serif text-2xl text-[#E9D9B4] tabular-nums">
-                {evaluationCount === 0 ? '—' : formatScore(evaluationTotal)}
-              </span>
-              <SaveStatus state={scoreState} />
-            </div>
-            {/* Column 3: note */}
-            <div className="min-w-64 flex-1">
-              <NoteEditor
-                key={enrollment.id}
-                initialNote={myNote}
-                onSave={saveNote}
-                textareaRef={noteRef}
-              />
-            </div>
-          </div>
+          <EvaluationControlStrip
+            overlay={overlay}
+            enrollmentId={enrollment.id}
+          />
 
           {/* Other evaluators' notes */}
-          <OtherNotesList notes={otherNotes} />
+          <OtherNotesList notes={overlay.otherNotes} />
         </div>
       </div>
 
