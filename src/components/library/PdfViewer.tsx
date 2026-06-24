@@ -82,25 +82,28 @@ export function PdfViewer({ url }: { url: string }) {
     let renderTask: RenderTask | null = null
     let cancelled = false
 
-    pdf.getPage(pageNum).then((page) => {
-      if (cancelled) return
-      const baseViewport = page.getViewport({ scale: 1 })
-      const widthScale = viewerSize.width / baseViewport.width
-      const heightScale = viewerSize.height / baseViewport.height
-      const scale = Math.max(0.1, Math.min(widthScale, heightScale))
-      const viewport = page.getViewport({ scale })
+    pdf
+      .getPage(pageNum)
+      .then((page) => {
+        if (cancelled) return
+        const baseViewport = page.getViewport({ scale: 1 })
+        const widthScale = viewerSize.width / baseViewport.width
+        const heightScale = viewerSize.height / baseViewport.height
+        const scale = Math.max(0.1, Math.min(widthScale, heightScale))
+        const viewport = page.getViewport({ scale })
 
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
 
-      canvas.height = viewport.height
-      canvas.width = viewport.width
-      canvas.style.height = `${viewport.height}px`
-      canvas.style.width = `${viewport.width}px`
+        canvas.height = viewport.height
+        canvas.width = viewport.width
+        canvas.style.height = `${viewport.height}px`
+        canvas.style.width = `${viewport.width}px`
 
-      renderTask = page.render({ canvas, canvasContext: ctx, viewport })
-      renderTask.promise.catch(() => {})
-    })
+        renderTask = page.render({ canvas, canvasContext: ctx, viewport })
+        renderTask.promise.catch(() => {})
+      })
+      .catch(() => {})
 
     return () => {
       cancelled = true
