@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { EyeIcon } from 'lucide-react'
+import { EyeIcon, MailIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { EnrollmentsNavRequest } from '@/utils/enrolment/domain/enrollments-navigation.domain'
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,7 @@ import {
   EndSubstitutionDialog,
   StartSubstitutionDialog,
 } from '@/components/dialog/SubstituteTeacherDialog'
+import { ExportEmailsDialog } from '@/components/enrollment/exports-email-dialog/ExportEmailsDialog'
 
 export const Route = createFileRoute('/_authed/enrollments/')({
   validateSearch: parseEnrollmentsSearch,
@@ -132,6 +133,8 @@ function useEnrollmentsActions(router: AppRouter, params: EnrollmentsSearch) {
   const [isDistributing, setIsDistributing] = useState(false)
   const [isStartSubDialogOpen, setIsStartSubDialogOpen] = useState(false)
   const [isEndSubDialogOpen, setIsEndSubDialogOpen] = useState(false)
+  const [isExportEmailsDialogOpen, setIsExportEmailsDialogOpen] =
+    useState(false)
 
   const handleRefresh = () => {
     router.invalidate()
@@ -173,6 +176,8 @@ function useEnrollmentsActions(router: AppRouter, params: EnrollmentsSearch) {
     setIsStartSubDialogOpen,
     isEndSubDialogOpen,
     setIsEndSubDialogOpen,
+    isExportEmailsDialogOpen,
+    setIsExportEmailsDialogOpen,
     handleRefresh,
     handleToggleViewAll,
     handleDistribute,
@@ -187,6 +192,7 @@ function useEnrollmentsPageController() {
   const params = Route.useSearch()
   const { page, pageSize, search, sortBy, sortDir, review, viewAll } = params
   const isAdmin = resolveIsAdmin(user)
+  const canExportEmails = isAdmin || user?.role === 'teacher'
 
   const reviewState = useEnrollmentReview({
     initialEnrollments: enrollments,
@@ -218,6 +224,7 @@ function useEnrollmentsPageController() {
     sortBy,
     sortDir,
     isAdmin,
+    canExportEmails,
     router,
     reviewState,
     reviewOverlay,
@@ -230,21 +237,25 @@ function useEnrollmentsPageController() {
 type EnrollmentsPageHeaderProps = {
   viewAllButton: ReturnType<typeof getViewAllButtonProps>
   isAdmin: boolean
+  canExportEmails: boolean
   isDistributing: boolean
   onToggleViewAll: () => void
   onDistribute: () => void
   onStartSubstitution: () => void
   onEndSubstitution: () => void
+  onExportEmails: () => void
 }
 
 function EnrollmentsPageHeader({
   viewAllButton,
   isAdmin,
+  canExportEmails,
   isDistributing,
   onToggleViewAll,
   onDistribute,
   onStartSubstitution,
   onEndSubstitution,
+  onExportEmails,
 }: EnrollmentsPageHeaderProps) {
   return (
     <div className="mb-10 flex items-end justify-between gap-6">
@@ -266,6 +277,12 @@ function EnrollmentsPageHeader({
           <EyeIcon className="size-3.5" />
           {viewAllButton.label}
         </Button>
+        {canExportEmails && (
+          <Button theme="light" variant="outline" onClick={onExportEmails}>
+            <MailIcon className="size-3.5" />
+            Export emails
+          </Button>
+        )}
         {isAdmin && (
           <AdminActionsDropdown
             onDistribute={onDistribute}
@@ -378,11 +395,13 @@ function EnrollmentsPage() {
       <EnrollmentsPageHeader
         viewAllButton={c.viewAllButton}
         isAdmin={c.isAdmin}
+        canExportEmails={c.canExportEmails}
         isDistributing={c.isDistributing}
         onToggleViewAll={c.handleToggleViewAll}
         onDistribute={() => void c.handleDistribute()}
         onStartSubstitution={() => c.setIsStartSubDialogOpen(true)}
         onEndSubstitution={() => c.setIsEndSubDialogOpen(true)}
+        onExportEmails={() => c.setIsExportEmailsDialogOpen(true)}
       />
 
       <EnrollmentsTableSection c={c} />
@@ -394,6 +413,13 @@ function EnrollmentsPage() {
           onStartOpenChange={c.setIsStartSubDialogOpen}
           onEndOpenChange={c.setIsEndSubDialogOpen}
           onSuccess={() => void c.router.invalidate()}
+        />
+      )}
+
+      {c.canExportEmails && (
+        <ExportEmailsDialog
+          open={c.isExportEmailsDialogOpen}
+          onOpenChange={c.setIsExportEmailsDialogOpen}
         />
       )}
 

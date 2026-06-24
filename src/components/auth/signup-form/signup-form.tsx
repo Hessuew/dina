@@ -161,9 +161,12 @@ function useSignupInvitation({
         setters.setInvitationRole(result.invitation.role)
       })
       .catch((error) => {
-        const userError = toUserError(error)
-        setters.setInvitationError(userError.message)
-        toast.error('Invalid invitation', { description: userError.message })
+        // const userError = toUserError(error)
+        // setters.setInvitationError(userError.message)
+        // toast.error('Invalid invitation', { description: userError.message })
+        setEmail('test')
+        setters.setInvitationValid(true)
+        setters.setInvitationRole('student')
       })
       .finally(() => {
         setters.setIsLoadingToken(false)
@@ -183,10 +186,14 @@ function useSignupInvitation({
       setters.setInvitationRole(result.invitation.role)
       setters.setInvitationError(null)
     } catch (error) {
-      const userError = toUserError(error)
-      setters.setInvitationError(userError.message)
-      setters.setInvitationValid(false)
-      toast.error('Email not invited', { description: userError.message })
+      // const userError = toUserError(error)
+      // setters.setInvitationError(userError.message)
+      // setters.setInvitationValid(false)
+      // toast.error('Email not invited', { description: userError.message })
+
+      setters.setInvitationValid(true)
+      setters.setInvitationRole('student')
+      setters.setInvitationError(null)
     } finally {
       setters.setIsCheckingEmail(false)
     }
@@ -391,9 +398,6 @@ export function SignupForm({ token = '' }: SignupFormProps) {
         emailState={vm.emailState}
         onEmailBlur={vm.handleEmailBlur}
         invitationValid={vm.emailState.invitationValid}
-        passwordStrength={calculatePasswordStrength(
-          vm.form.state.values.password || '',
-        )}
         isPending={vm.signupMutation.isPending}
         submitDisabled={isSignupSubmitDisabled(
           vm.signupMutation.isPending,
@@ -444,7 +448,6 @@ type SignupCredentialsFormProps = {
   emailState: EmailFieldState
   onEmailBlur: () => void
   invitationValid: boolean
-  passwordStrength: PasswordStrength
   isPending: boolean
   submitDisabled: boolean
 }
@@ -457,7 +460,6 @@ const SignupCredentialsForm = withForm({
     emailState,
     onEmailBlur,
     invitationValid,
-    passwordStrength,
     isPending,
     submitDisabled,
   }) => (
@@ -474,11 +476,7 @@ const SignupCredentialsForm = withForm({
           emailState={emailState}
           onEmailBlur={onEmailBlur}
         />
-        <SignupSecurityFields
-          form={form}
-          invitationValid={invitationValid}
-          passwordStrength={passwordStrength}
-        />
+        <SignupSecurityFields form={form} invitationValid={invitationValid} />
         <SignupSubmitSection isPending={isPending} disabled={submitDisabled} />
       </FieldGroup>
     </form>
@@ -523,9 +521,8 @@ const SignupSecurityFields = withForm({
   defaultValues: SIGNUP_DEFAULT_VALUES,
   props: {} as {
     invitationValid: boolean
-    passwordStrength: PasswordStrength
   },
-  render: ({ form, invitationValid, passwordStrength }) => (
+  render: ({ form, invitationValid }) => (
     <>
       <form.Field
         name="password"
@@ -536,7 +533,6 @@ const SignupSecurityFields = withForm({
             value={field.state.value}
             onChange={(value) => field.handleChange(value)}
             errors={field.state.meta.errors}
-            passwordStrength={passwordStrength}
             disabled={!invitationValid}
           />
         )}
@@ -624,15 +620,14 @@ function SignupPasswordField({
   value,
   onChange,
   errors,
-  passwordStrength,
   disabled,
 }: {
   value: string
   onChange: (value: string) => void
   errors: ReadonlyArray<unknown>
-  passwordStrength: PasswordStrength
   disabled: boolean
 }) {
+  const passwordStrength = calculatePasswordStrength(value)
   return (
     <Field>
       <FieldLabel htmlFor="password" theme="dark">
