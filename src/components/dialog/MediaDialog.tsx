@@ -9,7 +9,6 @@ import {
   deleteLibraryMedia,
   updateLibraryMedia,
   uploadMediaPdfFn,
-  uploadMediaThumbnailFn,
 } from '@/utils/library/library'
 import { toUserError } from '@/utils/errors'
 import { useAppForm } from '@/hooks/form'
@@ -24,6 +23,16 @@ import { Input } from '@/components/ui/input'
 import { SelectItem } from '@/components/ui/select'
 import { FormFieldSelect } from '@/components/ui/form-field'
 import { LIBRARY_TOPICS } from '@/lib/library-topics'
+import {
+  computeOpenResetState,
+  getDocumentFileVariant,
+  getFilenameFromUrl,
+  getMediaDialogChrome,
+  getMediaLoadingLabel,
+  getThumbnailPreviewSrc,
+  isMediaDialogSubmitting,
+} from '@/components/dialog/domain/media-dialog.domain'
+import { uploadThumbnailIfPresent } from '@/components/dialog/media-dialog.logic'
 
 type MediaDialogMode = 'create' | 'edit' | 'delete'
 
@@ -85,10 +94,6 @@ function getInitialValues(
   }
 }
 
-function getFilenameFromUrl(url: string): string {
-  return url.split('?')[0].split('/').pop() ?? url
-}
-
 type DocumentResolution =
   | { ok: true; url: string; fileSize?: number }
   | { ok: false; message: string }
@@ -137,6 +142,156 @@ async function resolveDocumentUrl(params: {
   }
 }
 
+function DocumentFileControl({
+  docUpload,
+  existingDocUrl,
+  mode,
+}: {
+  docUpload: ReturnType<typeof useFileUpload>
+  existingDocUrl: string | null
+  mode: MediaDialogMode
+}) {
+  const variant = getDocumentFileVariant({
+    hasPickedFile: Boolean(docUpload.fileObject),
+    hasExistingDoc: Boolean(existingDocUrl),
+  })
+
+  return (
+    <Field className="sm:col-span-2">
+      <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+        Document File
+        {mode === 'create' && <span className="text-[#C5A059]">*</span>}
+      </FieldLabel>
+      <input
+        ref={docUpload.fileInputRef}
+        type="file"
+        accept={DOCUMENT_ACCEPT}
+        onChange={docUpload.handleFileChange}
+        className="hidden"
+      />
+      {variant === 'picked' ? (
+        <div className="flex items-center justify-between border border-white/10 bg-black/20 px-4 py-3">
+          <div className="min-w-0">
+            <div className="truncate text-sm text-[#F8F4EC]">
+              {docUpload.fileObject!.name}
+            </div>
+            <div className="mt-1 text-xs text-[#8E816D]">
+              File will be uploaded on save
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            theme="dark"
+            size="icon"
+            className="rounded-none"
+            onClick={docUpload.clearFile}
+          >
+            <XIcon className="size-4" />
+          </Button>
+        </div>
+      ) : variant === 'existing' ? (
+        <div className="flex items-center justify-between border border-white/10 bg-black/20 px-4 py-3">
+          <div className="min-w-0">
+            <div className="truncate text-sm text-[#F8F4EC]">
+              {getFilenameFromUrl(existingDocUrl!)}
+            </div>
+            <div className="mt-1 text-xs text-[#8E816D]">
+              Current file — upload a new one to replace
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            theme="dark"
+            size="sm"
+            className="shrink-0 rounded-none border-white/12"
+            onClick={() => docUpload.fileInputRef.current?.click()}
+          >
+            Replace
+          </Button>
+        </div>
+      ) : (
+        <Button
+          theme="dark"
+          type="button"
+          variant="outline"
+          onClick={() => docUpload.fileInputRef.current?.click()}
+          className="w-full rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
+        >
+          <UploadIcon className="mr-2 size-4" />
+          Upload Document
+        </Button>
+      )}
+      <p className="text-xs text-[#8E816D]">PDF, PPTX, or DOCX. Max 25MB.</p>
+    </Field>
+  )
+}
+
+function ThumbnailControl({
+  thumbUpload,
+  thumbnailUrl,
+  onClearThumbnail,
+}: {
+  thumbUpload: ReturnType<typeof useFileUpload>
+  thumbnailUrl: string | null
+  onClearThumbnail: () => void
+}) {
+  const previewSrc = getThumbnailPreviewSrc({
+    fileData: thumbUpload.fileData,
+    thumbnailUrl,
+  })
+
+  return (
+    <Field>
+      <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+        Thumbnail
+      </FieldLabel>
+      <div className="space-y-2">
+        <input
+          ref={thumbUpload.fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={thumbUpload.handleFileChange}
+          className="hidden"
+        />
+        {previewSrc ? (
+          <div className="relative aspect-video w-full overflow-hidden border border-white/10">
+            <img
+              src={previewSrc}
+              alt="Media thumbnail"
+              className="size-full object-cover"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="absolute top-2 right-2 rounded-none border-white/20 bg-black/40 text-white hover:bg-black/60"
+              onClick={onClearThumbnail}
+            >
+              <XIcon className="size-4" />
+            </Button>
+          </div>
+        ) : (
+          <Button
+            theme="dark"
+            type="button"
+            variant="outline"
+            onClick={() => thumbUpload.fileInputRef.current?.click()}
+            className="w-full rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
+          >
+            <UploadIcon className="mr-2 size-4" />
+            Upload Thumbnail
+          </Button>
+        )}
+        <p className="text-xs text-[#8E816D]">
+          JPG, PNG, WebP or GIF. Max 2MB.
+        </p>
+      </div>
+    </Field>
+  )
+}
+
 export function MediaDialog({
   open,
   onOpenChange,
@@ -157,21 +312,7 @@ export function MediaDialog({
       deleteFn: deleteLibraryMedia,
       onSuccess: async ({ data }) => {
         const mediaId = (data as { media: { id: string } }).media.id
-        if (thumbUpload.fileObject) {
-          try {
-            await uploadMediaThumbnailFn({
-              data: {
-                mediaId,
-                fileData: thumbUpload.fileData!,
-                fileName: thumbUpload.fileObject.name,
-                fileType: thumbUpload.fileObject.type,
-                fileSize: thumbUpload.fileObject.size,
-              },
-            })
-          } catch (error) {
-            toast.error(toUserError(error).message)
-          }
-        }
+        await uploadThumbnailIfPresent(thumbUpload, mediaId)
         thumbUpload.clearFile()
         setThumbnailUrl(null)
         onOpenChange(false)
@@ -227,9 +368,9 @@ export function MediaDialog({
 
   useEffect(() => {
     if (!open) return
-    const isDocEdit = mode === 'edit' && media?.fileType === 'document'
-    setExistingDocUrl(isDocEdit ? media.fileUrl : null)
-    setThumbnailUrl(media?.thumbnailUrl ?? null)
+    const reset = computeOpenResetState({ mode, media })
+    setExistingDocUrl(reset.existingDocUrl)
+    setThumbnailUrl(reset.thumbnailUrl)
     clearDocFile()
     clearThumbFile()
     form.reset(getInitialValues(media, mode, courseId))
@@ -250,24 +391,24 @@ export function MediaDialog({
     )
   }
 
+  const chrome = getMediaDialogChrome(mode)
+
   return (
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
       mode={mode}
-      title={mode === 'create' ? 'Create Media' : 'Edit Media'}
-      subtitle={
-        mode === 'create'
-          ? 'Add a new item to the library'
-          : 'Update this library item'
-      }
+      title={chrome.title}
+      subtitle={chrome.subtitle}
       maxWidth="3xl"
       onSubmit={() => void form.handleSubmit()}
-      isSubmitting={
-        isAnyPending || docUpload.isUploading || thumbUpload.isUploading
-      }
-      submitLabel={mode === 'create' ? 'Create Media' : 'Save Changes'}
-      loadingLabel={docUpload.isUploading ? 'Uploading...' : undefined}
+      isSubmitting={isMediaDialogSubmitting({
+        isAnyPending,
+        isDocUploading: docUpload.isUploading,
+        isThumbUploading: thumbUpload.isUploading,
+      })}
+      submitLabel={chrome.submitLabel}
+      loadingLabel={getMediaLoadingLabel(docUpload.isUploading)}
     >
       <DialogBody>
         <FieldGroup className="mt-6 gap-8">
@@ -381,83 +522,11 @@ export function MediaDialog({
               {(kind) =>
                 kind === 'document' ? (
                   <>
-                    {/* Document file upload */}
-                    <Field className="sm:col-span-2">
-                      <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-                        Document File
-                        {mode === 'create' && (
-                          <span className="text-[#C5A059]">*</span>
-                        )}
-                      </FieldLabel>
-                      <input
-                        ref={docUpload.fileInputRef}
-                        type="file"
-                        accept={DOCUMENT_ACCEPT}
-                        onChange={docUpload.handleFileChange}
-                        className="hidden"
-                      />
-                      {docUpload.fileObject ? (
-                        <div className="flex items-center justify-between border border-white/10 bg-black/20 px-4 py-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm text-[#F8F4EC]">
-                              {docUpload.fileObject.name}
-                            </div>
-                            <div className="mt-1 text-xs text-[#8E816D]">
-                              File will be uploaded on save
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            theme="dark"
-                            size="icon"
-                            className="rounded-none"
-                            onClick={docUpload.clearFile}
-                          >
-                            <XIcon className="size-4" />
-                          </Button>
-                        </div>
-                      ) : existingDocUrl ? (
-                        <div className="flex items-center justify-between border border-white/10 bg-black/20 px-4 py-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm text-[#F8F4EC]">
-                              {getFilenameFromUrl(existingDocUrl)}
-                            </div>
-                            <div className="mt-1 text-xs text-[#8E816D]">
-                              Current file — upload a new one to replace
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            theme="dark"
-                            size="sm"
-                            className="shrink-0 rounded-none border-white/12"
-                            onClick={() =>
-                              docUpload.fileInputRef.current?.click()
-                            }
-                          >
-                            Replace
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          theme="dark"
-                          type="button"
-                          variant="outline"
-                          onClick={() =>
-                            docUpload.fileInputRef.current?.click()
-                          }
-                          className="w-full rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
-                        >
-                          <UploadIcon className="mr-2 size-4" />
-                          Upload Document
-                        </Button>
-                      )}
-                      <p className="text-xs text-[#8E816D]">
-                        PDF, PPTX, or DOCX. Max 25MB.
-                      </p>
-                    </Field>
+                    <DocumentFileControl
+                      docUpload={docUpload}
+                      existingDocUrl={existingDocUrl}
+                      mode={mode}
+                    />
 
                     {/* Description + Thumbnail side by side */}
                     <form.AppField name="description">
@@ -471,57 +540,14 @@ export function MediaDialog({
                       )}
                     </form.AppField>
 
-                    <Field>
-                      <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-                        Thumbnail
-                      </FieldLabel>
-                      <div className="space-y-2">
-                        <input
-                          ref={thumbUpload.fileInputRef}
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp,image/gif"
-                          onChange={thumbUpload.handleFileChange}
-                          className="hidden"
-                        />
-                        {thumbUpload.fileData || thumbnailUrl ? (
-                          <div className="relative aspect-video w-full overflow-hidden border border-white/10">
-                            <img
-                              src={thumbUpload.fileData || thumbnailUrl!}
-                              alt="Media thumbnail"
-                              className="size-full object-cover"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="absolute top-2 right-2 rounded-none border-white/20 bg-black/40 text-white hover:bg-black/60"
-                              onClick={() => {
-                                thumbUpload.clearFile()
-                                setThumbnailUrl(null)
-                              }}
-                            >
-                              <XIcon className="size-4" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            theme="dark"
-                            type="button"
-                            variant="outline"
-                            onClick={() =>
-                              thumbUpload.fileInputRef.current?.click()
-                            }
-                            className="w-full rounded-none border-white/12 bg-white/6 text-[#AFA28F] hover:border-[#C5A059]/40 hover:bg-white/10"
-                          >
-                            <UploadIcon className="mr-2 size-4" />
-                            Upload Thumbnail
-                          </Button>
-                        )}
-                        <p className="text-xs text-[#8E816D]">
-                          JPG, PNG, WebP or GIF. Max 2MB.
-                        </p>
-                      </div>
-                    </Field>
+                    <ThumbnailControl
+                      thumbUpload={thumbUpload}
+                      thumbnailUrl={thumbnailUrl}
+                      onClearThumbnail={() => {
+                        thumbUpload.clearFile()
+                        setThumbnailUrl(null)
+                      }}
+                    />
 
                     <form.AppField name="isPublished">
                       {(field) => (
