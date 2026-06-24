@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import {
   ErrorComponent,
   Link,
@@ -5,7 +6,26 @@ import {
   useMatch,
   useRouter,
 } from '@tanstack/react-router'
+import * as Sentry from '@sentry/tanstackstart-react'
 import type { ErrorComponentProps } from '@tanstack/react-router'
+
+const capturedServerErrors = new WeakSet<object>()
+
+function captureServerError(error: unknown, isServer: boolean) {
+  if (!isServer) {
+    return
+  }
+
+  if (error && (typeof error === 'object' || typeof error === 'function')) {
+    if (capturedServerErrors.has(error)) {
+      return
+    }
+
+    capturedServerErrors.add(error)
+  }
+
+  Sentry.captureException(error)
+}
 
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
   const router = useRouter()
@@ -13,6 +33,12 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
     strict: false,
     select: (state) => state.id === rootRouteId,
   })
+
+  useEffect(() => {
+    Sentry.captureException(error)
+  }, [error])
+
+  captureServerError(error, router.isServer)
 
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-6 p-4">

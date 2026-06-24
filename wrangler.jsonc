@@ -3,7 +3,10 @@
   "name": "christ-dina",
   "compatibility_date": "2026-04-23",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
+  "main": "src/server.ts",
+  "vars": {
+    "SENTRY_DSN": "https://429db766cd86c172967761f1c4b44804@o4506933534457856.ingest.us.sentry.io/4511601611964416",
+  },
   "observability": {
     "enabled": true,
     "logs": {
