@@ -44,8 +44,8 @@ import {
 
 const fetchCurrentUser = createServerFn({ method: 'POST' }).handler(
   async () => {
-    const user = await getCurrentUser()
     return withRequestCache(async () => {
+      const user = await getCurrentUser()
       const profile = await getUserProfile(user.id)
       return {
         id: user.id,

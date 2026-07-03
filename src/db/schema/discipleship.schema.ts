@@ -1,10 +1,4 @@
-import {
-  index,
-  pgPolicy,
-  pgTable,
-  timestamp,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { index, pgPolicy, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { authenticatedRole } from 'drizzle-orm/supabase'
 import { profiles } from './profile.schema'
@@ -28,7 +22,7 @@ export const discipleshipGroups = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (table) => [
+  () => [
     pgPolicy('staff_view_discipleship_groups', {
       for: 'select',
       to: authenticatedRole,
