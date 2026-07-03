@@ -36,6 +36,16 @@ A boolean admin flag (`enrollments.special_case`) marking an enrollment for spec
 
 A user with `profiles.role = 'student'` (default). Enrolled via an admin-sent invitation after their enrollment submission is approved. Cannot view the enrollment review surface.
 
+### Invitation lifecycle
+
+An invitation (`invitations` table) is the single, admin-issued gate into signup — there is no open registration. Its `status` enum has three values, and their precise meaning is:
+
+- **`pending`** — invited but **not yet signed up**. The account does **not** exist yet: through the entire signup + OTP window the invitation stays `pending`, so the `/signup?token` link keeps working and an abandoned OTP strands no one. The invitation row also carries the homegrown OTP state (`otp_hash`, `otp_expires_at`, `otp_attempts`).
+- **`accepted`** — **signup completed**: the OTP was verified and, only then, the Supabase auth user + `profiles` row were created. Set **exclusively** by `verifyOtpService` (see ADR 0012). It does **not** mean "the user started the form."
+- **`revoked`** — cancelled by an Admin; can no longer be used.
+
+Both signup guards (`validateSignupInvitation`, `validateInvitationActive`) require `pending`, so `accepted`/`revoked` invitations correctly refuse re-use.
+
 ### Affiliated Ministry
 
 External ministry organizations that DINA partners with or is spiritually connected to. Examples: Flame the Freeze, Prayer Church Finland. These are not database entities but external references used in marketing content.

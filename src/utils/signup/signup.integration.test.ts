@@ -50,13 +50,15 @@ vi.mock('@/utils/supabase', () => ({
 beforeEach(() => {
   mocks.createUser.mockReset()
   mocks.deleteUser.mockReset().mockResolvedValue(undefined)
-  mocks.updateUserById.mockReset().mockResolvedValue(undefined)
+  mocks.updateUserById
+    .mockReset()
+    .mockResolvedValue({ data: null, error: null })
   mocks.signInWithPassword.mockReset().mockResolvedValue({ error: null })
   mocks.sendEmail.mockReset().mockResolvedValue({ error: null })
 })
 
 describe('signupService (integration)', () => {
-  it('invalid token → error, no user created', async () => {
+  it('invalid token → error, no account touched', async () => {
     const result = await signupService({
       email: 'x@test.dev',
       password: 'password123',
@@ -67,7 +69,7 @@ describe('signupService (integration)', () => {
     expect(mocks.createUser).not.toHaveBeenCalled()
   })
 
-  it('already-used (revoked) invitation → error, no user created', async () => {
+  it('already-used (revoked) invitation → error, no account touched', async () => {
     const { token, email } = await seedInvitation({ status: 'revoked' })
 
     const result = await signupService({
@@ -83,7 +85,7 @@ describe('signupService (integration)', () => {
     expect(mocks.createUser).not.toHaveBeenCalled()
   })
 
-  it('expired invitation → error, no user created', async () => {
+  it('expired invitation → error, no account touched', async () => {
     const { token, email } = await seedInvitation({
       expiresAt: new Date(Date.now() - 1000),
     })
@@ -99,7 +101,7 @@ describe('signupService (integration)', () => {
     expect(mocks.createUser).not.toHaveBeenCalled()
   })
 
-  it('email does not match invitation → error, no user created', async () => {
+  it('email does not match invitation → error, no account touched', async () => {
     const { token } = await seedInvitation({ email: 'real@test.dev' })
 
     const result = await signupService({
@@ -113,13 +115,8 @@ describe('signupService (integration)', () => {
     expect(mocks.createUser).not.toHaveBeenCalled()
   })
 
-  it('happy path → inserts profile, accepts invitation, issues OTP', async () => {
-    const userId = randomUUID()
+  it('happy path → issues OTP but creates NO account and leaves invitation pending', async () => {
     const { token, email } = await seedInvitation({ role: 'teacher' })
-    mocks.createUser.mockResolvedValue({
-      data: { user: { id: userId, email } },
-      error: null,
-    })
 
     const result = await signupService({
       email,
@@ -130,46 +127,38 @@ describe('signupService (integration)', () => {
 
     expect(result.error).toBe(false)
     expect(result.requiresOtp).toBe(true)
-
-    const profile = await findProfileByEmail(email)
-    expect(profile?.id).toBe(userId)
-    expect(profile?.role).toBe('teacher')
+    // No account is created before OTP is proven.
+    expect(mocks.createUser).not.toHaveBeenCalled()
+    expect(await findProfileByEmail(email)).toBeUndefined()
 
     const invitation = await findInvitationByToken(token)
-    expect(invitation?.status).toBe('accepted')
-    expect(invitation?.acceptedAt).not.toBeNull()
+    expect(invitation?.status).toBe('pending')
+    expect(invitation?.acceptedAt).toBeNull()
     expect(invitation?.otpHash).not.toBeNull()
   })
 
-  it('Supabase createUser error → generic error, no profile inserted', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  it('re-entry after abandoning OTP still works (invitation stays pending)', async () => {
     const { token, email } = await seedInvitation()
-    mocks.createUser.mockResolvedValue({
-      data: null,
-      error: { message: 'boom' },
-    })
 
-    const result = await signupService({
+    const first = await signupService({ email, password: 'password123', token })
+    expect(first.requiresOtp).toBe(true)
+
+    // User closes the tab, comes back via the same link, resubmits the form.
+    const second = await signupService({
       email,
       password: 'password123',
       token,
     })
+    expect(second.error).toBe(false)
+    expect(second.requiresOtp).toBe(true)
 
-    expect(result.error).toBe(true)
-    expect(await findProfileByEmail(email)).toBeUndefined()
-    expect(errorSpy).toHaveBeenCalled()
-
-    errorSpy.mockRestore()
+    const invitation = await findInvitationByToken(token)
+    expect(invitation?.status).toBe('pending')
   })
 
-  it('email send fails → returns error, rolls back auth user', async () => {
+  it('email send fails → error, no account created, invitation stays pending', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const userId = randomUUID()
     const { token, email } = await seedInvitation()
-    mocks.createUser.mockResolvedValue({
-      data: { user: { id: userId, email } },
-      error: null,
-    })
     mocks.sendEmail.mockResolvedValue({ error: { message: 'smtp down' } })
 
     const result = await signupService({
@@ -179,10 +168,13 @@ describe('signupService (integration)', () => {
     })
 
     expect(result.error).toBe(true)
-    expect(mocks.deleteUser).toHaveBeenCalledWith(userId)
-    // Current behavior: the inserted profiles row is NOT rolled back — only the
-    // Supabase auth user is deleted, leaving an orphan profile. Documented, not fixed.
-    expect((await findProfileByEmail(email))?.id).toBe(userId)
+    expect(mocks.createUser).not.toHaveBeenCalled()
+    expect(mocks.deleteUser).not.toHaveBeenCalled()
+    expect(await findProfileByEmail(email)).toBeUndefined()
+
+    const invitation = await findInvitationByToken(token)
+    expect(invitation?.status).toBe('pending')
+    expect(invitation?.otpHash).toBeNull()
     expect(errorSpy).toHaveBeenCalled()
 
     errorSpy.mockRestore()
@@ -201,7 +193,7 @@ describe('verifyOtpService (integration)', () => {
     expect(result).toEqual({ success: false, message: 'Invalid invitation' })
   })
 
-  it('no OTP issued → failure, no auth update', async () => {
+  it('no OTP issued → failure, no account created', async () => {
     const { token, email } = await seedInvitation()
 
     const result = await verifyOtpService({
@@ -215,10 +207,10 @@ describe('verifyOtpService (integration)', () => {
     expect(result.message).toBe(
       'No verification code found. Please request a new one.',
     )
-    expect(mocks.updateUserById).not.toHaveBeenCalled()
+    expect(mocks.createUser).not.toHaveBeenCalled()
   })
 
-  it('wrong OTP → increments attempts in DB', async () => {
+  it('wrong OTP → increments attempts in DB, no account created', async () => {
     const { token, email } = await seedInvitation({
       otpHash: hashValue('123456'),
       otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
@@ -233,49 +225,106 @@ describe('verifyOtpService (integration)', () => {
 
     expect(result.success).toBe(false)
     expect(result.message).toBe('Invalid code. 4 attempts remaining.')
+    expect(mocks.createUser).not.toHaveBeenCalled()
 
     const invitation = await findInvitationByToken(token)
     expect(invitation?.otpAttempts).toBe(1)
   })
 
-  it('correct OTP but profile missing → failure', async () => {
+  it('correct OTP → creates account, accepts invitation, clears OTP, logs in', async () => {
+    const userId = randomUUID()
     const { token, email } = await seedInvitation({
+      role: 'teacher',
       otpHash: hashValue('123456'),
       otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    })
+    mocks.createUser.mockResolvedValue({
+      data: { user: { id: userId, email } },
+      error: null,
     })
 
     const result = await verifyOtpService({
       email,
-      password: 'p',
-      otp: '123456',
-      invitationToken: token,
-    })
-
-    expect(result).toEqual({ success: false, message: 'User not found' })
-  })
-
-  it('correct OTP → confirms email, clears OTP, logs in', async () => {
-    const { token, email } = await seedInvitation({
-      otpHash: hashValue('123456'),
-      otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
-    })
-    const profileId = await seedProfile({ email })
-
-    const result = await verifyOtpService({
-      email,
-      password: 'p',
+      password: 'password123',
+      fullName: 'New User',
       otp: '123456',
       invitationToken: token,
     })
 
     expect(result.success).toBe(true)
-    expect(mocks.updateUserById).toHaveBeenCalledWith(profileId, {
-      email_confirm: true,
-    })
+    expect(mocks.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({ email, email_confirm: true }),
+    )
     expect(mocks.signInWithPassword).toHaveBeenCalled()
 
+    const profile = await findProfileByEmail(email)
+    expect(profile?.id).toBe(userId)
+    expect(profile?.role).toBe('teacher')
+    expect(profile?.fullName).toBe('New User')
+
     const invitation = await findInvitationByToken(token)
+    expect(invitation?.status).toBe('accepted')
+    expect(invitation?.acceptedAt).not.toBeNull()
     expect(invitation?.otpHash).toBeNull()
+  })
+
+  it('correct OTP but user already exists → confirms existing user, succeeds', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { token, email } = await seedInvitation({
+      otpHash: hashValue('123456'),
+      otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    })
+    const existingId = await seedProfile({ email })
+    mocks.createUser.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'A user with this email address has already been registered',
+        code: 'email_exists',
+      },
+    })
+
+    const result = await verifyOtpService({
+      email,
+      password: 'password123',
+      otp: '123456',
+      invitationToken: token,
+    })
+
+    expect(result.success).toBe(true)
+    expect(mocks.updateUserById).toHaveBeenCalledWith(existingId, {
+      email_confirm: true,
+    })
+
+    const invitation = await findInvitationByToken(token)
+    expect(invitation?.status).toBe('accepted')
+
+    errorSpy.mockRestore()
+  })
+
+  it('createUser transient error → failure, no profile created, no existing user confirmed', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { token, email } = await seedInvitation({
+      otpHash: hashValue('123456'),
+      otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    })
+    mocks.createUser.mockResolvedValue({
+      data: null,
+      error: { message: 'Service unavailable', code: 'unexpected_failure' },
+    })
+
+    const result = await verifyOtpService({
+      email,
+      password: 'password123',
+      otp: '123456',
+      invitationToken: token,
+    })
+
+    expect(result.success).toBe(false)
+    expect(mocks.updateUserById).not.toHaveBeenCalled()
+    expect(await findProfileByEmail(email)).toBeUndefined()
+    expect(errorSpy).toHaveBeenCalled()
+
+    errorSpy.mockRestore()
   })
 })
 

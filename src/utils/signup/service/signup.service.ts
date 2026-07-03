@@ -66,71 +66,129 @@ export async function signupService(
     return { error: true, message: invValid.message }
   }
 
-  const supabaseAdmin = getSupabaseAdminClient()
-  const { data: authData, error } = await supabaseAdmin.auth.admin.createUser({
-    email: data.email,
-    password: data.password,
-    email_confirm: false,
+  const otp = generateOTP()
+  await updateInvitationOtp(invitation.id, {
+    otpHash: hashValue(otp),
+    otpExpiresAt: calculateOtpExpiry(new Date()),
+    otpAttempts: 0,
+    updatedAt: new Date(),
   })
 
-  if (error) {
-    console.error('Supabase user creation error:', error)
+  const { error: emailError } = await sendOtpEmail(data.email, otp)
+  if (emailError) {
+    console.error('Failed to send OTP email:', emailError)
+    try {
+      await clearInvitationOtp(invitation.id)
+    } catch (clearErr) {
+      console.error('Failed to clear stale OTP after email failure:', clearErr)
+    }
     return {
       error: true,
+      message: 'Unable to send verification email. Please contact support.',
+    }
+  }
+
+  return {
+    error: false,
+    requiresOtp: true,
+    email: data.email,
+    message: 'Please check your email for the verification code.',
+  }
+}
+
+// Confirms an existing auth user's email when createUser reports a duplicate.
+// Returns the existing profile id on success.
+async function confirmExistingUser(
+  email: string,
+  cause: { code?: string; message: string },
+): Promise<{ ok: true; userId: string } | { ok: false; message: string }> {
+  const existing = await findProfileByEmail(email)
+  if (!existing) {
+    console.error('Duplicate email but no profile found:', cause)
+    return {
+      ok: false,
+      message: 'This email is already registered. Please log in.',
+    }
+  }
+  const { error: updateError } =
+    await getSupabaseAdminClient().auth.admin.updateUserById(existing.id, {
+      email_confirm: true,
+    })
+  if (updateError) {
+    console.error('Failed to confirm existing user:', updateError)
+    return {
+      ok: false,
+      message:
+        'Something went wrong during signup. Please try again or contact support.',
+    }
+  }
+  return { ok: true, userId: existing.id }
+}
+
+// Resolves the auth userId for a verified email: creates a new user (happy path)
+// or confirms the existing one on a duplicate-email code. Returns isNew=false for
+// the idempotent path so the caller knows not to roll back on profile failure.
+async function resolveAuthUser(
+  email: string,
+  password: string,
+): Promise<
+  { ok: true; userId: string; isNew: boolean } | { ok: false; message: string }
+> {
+  const created = await getSupabaseAdminClient().auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  })
+  if (!created.error) {
+    return { ok: true, userId: created.data.user.id, isNew: true }
+  }
+  const isDuplicate =
+    created.error.code === 'email_exists' ||
+    created.error.code === 'user_already_exists'
+  if (!isDuplicate) {
+    console.error('createUser failed with non-duplicate error:', created.error)
+    return {
+      ok: false,
       message:
         'Unable to create your account. Please try again or contact support.',
     }
   }
+  const confirmed = await confirmExistingUser(email, created.error)
+  return confirmed.ok ? { ...confirmed, isNew: false } : confirmed
+}
+
+// Create the account only after the OTP proves the email. Rolls back a freshly-created
+// auth user if the subsequent profile insert throws.
+async function provisionVerifiedAccount(input: {
+  email: string
+  password: string
+  fullName?: string
+  role: Parameters<typeof insertProfileOnConflict>[0]['role']
+}): Promise<{ ok: true; userId: string } | { ok: false; message: string }> {
+  const resolved = await resolveAuthUser(input.email, input.password)
+  if (!resolved.ok) return resolved
 
   try {
     await insertProfileOnConflict({
-      id: authData.user.id,
-      email: authData.user.email!,
-      fullName: data.fullName || authData.user.email!.split('@')[0],
-      role: invitation.role,
+      id: resolved.userId,
+      email: input.email,
+      fullName: input.fullName || input.email.split('@')[0],
+      role: input.role,
     })
-
-    await markInvitationAccepted(invitation.id)
-
-    const otp = generateOTP()
-    const otpHash = hashValue(otp)
-    const otpExpiresAt = calculateOtpExpiry(new Date())
-
-    await updateInvitationOtp(invitation.id, {
-      otpHash,
-      otpExpiresAt,
-      otpAttempts: 0,
-      updatedAt: new Date(),
-    })
-
-    const { error: emailError } = await sendOtpEmail(data.email, otp)
-    if (emailError) {
-      console.error('Failed to send OTP email:', emailError)
-      throw new Error(
-        'Unable to send verification email. Please contact support.',
-      )
-    }
-
-    return {
-      error: false,
-      requiresOtp: true,
-      email: data.email,
-      message:
-        'Account created! Please check your email for the verification code.',
-    }
+    return { ok: true, userId: resolved.userId }
   } catch (err) {
-    console.error('Signup error:', err)
-    try {
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
-    } catch (deleteError) {
-      console.error('Failed to rollback user creation:', deleteError)
+    console.error('Profile insert failed after user creation:', err)
+    if (resolved.isNew) {
+      try {
+        await getSupabaseAdminClient().auth.admin.deleteUser(resolved.userId)
+      } catch (deleteError) {
+        console.error('Failed to rollback user creation:', deleteError)
+      }
     }
     return {
-      error: true,
+      ok: false,
       message:
-        err instanceof Error && err.message.includes('contact support')
-          ? err.message
-          : 'Something went wrong during signup. Please try again or contact support.',
+        'Something went wrong during signup. Please try again or contact support.',
     }
   }
 }
@@ -138,9 +196,6 @@ export async function signupService(
 export async function verifyOtpService(
   data: z.infer<typeof verifyOtpSchema>,
 ): Promise<{ success: boolean; loginFailed?: boolean; message: string }> {
-  const supabase = getSupabaseServerClient()
-  const supabaseAdmin = getSupabaseAdminClient()
-
   const invitation = await findInvitationByToken(data.invitationToken)
 
   if (!invitation) {
@@ -169,20 +224,24 @@ export async function verifyOtpService(
     }
   }
 
-  const profile = await findProfileByEmail(invitation.email)
-  if (!profile) {
-    return { success: false, message: 'User not found' }
+  const provision = await provisionVerifiedAccount({
+    email: invitation.email,
+    password: data.password,
+    fullName: data.fullName,
+    role: invitation.role,
+  })
+  if (!provision.ok) {
+    return { success: false, message: provision.message }
   }
 
-  await supabaseAdmin.auth.admin.updateUserById(profile.id, {
-    email_confirm: true,
-  })
+  await markInvitationAccepted(invitation.id)
   await clearInvitationOtp(invitation.id)
 
-  const { error: loginError } = await supabase.auth.signInWithPassword({
-    email: data.email,
-    password: data.password,
-  })
+  const { error: loginError } =
+    await getSupabaseServerClient().auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    })
 
   if (loginError) {
     console.error('Auto-login failed after OTP verification:', loginError)
