@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import * as Sentry from '@sentry/tanstackstart-react'
 import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 import { AuthenticationError, NotFoundError } from '@/utils/errors'
@@ -18,6 +19,11 @@ export async function getCurrentUser() {
   if (!user) {
     throw new AuthenticationError('Not authenticated')
   }
+
+  // Tag the request's Sentry isolation scope with the acting user so server
+  // errors are traceable. Set here (the auth boundary) rather than in a
+  // permission middleware — identity is separate from authorization.
+  Sentry.setUser({ id: user.id, email: user.email })
 
   return user
 }
