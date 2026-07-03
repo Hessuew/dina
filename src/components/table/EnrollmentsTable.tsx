@@ -331,13 +331,18 @@ export function EnrollmentsTable({
                   )}
 
                   <DropdownMenu>
-                    <DropdownMenuTrigger>
-                      <IconButton
-                        icon={MoreHorizontal}
-                        label="More options"
-                        onClick={() => {}}
-                      />
-                    </DropdownMenuTrigger>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          size="icon"
+                          theme="dark"
+                          aria-label="More options"
+                          className="size-8 rounded-none border-none bg-transparent hover:bg-white/5"
+                        >
+                          <MoreHorizontal className="size-3.5" />
+                        </Button>
+                      }
+                    />
                     <DropdownMenuContent
                       align="end"
                       className="rounded-none border border-white/10 bg-[#1A1716] text-[#F8F4EC]"

@@ -2,8 +2,8 @@
 name: fix-sentry
 description: >
   Fetches unresolved Sentry issues into the editor, triages them with stack
-  traces and Seer root-cause analysis, proposes a fix, and implements it only
-  after approval. Use when user says:
+  traces and breadcrumbs, proposes a fix, and implements it only after approval.
+  Use when user says:
     - "fix sentry"
     - "fix sentry issues"
     - "check sentry"
@@ -22,11 +22,11 @@ approved.
 The skill:
 
 - Lists unresolved Sentry issues for the project, ranked by frequency/recency.
-- Fetches full detail (stack trace, breadcrumbs) and runs Seer root-cause analysis.
+- Fetches full detail (stack trace, breadcrumbs) for manual root-cause analysis.
 - Maps the culprit frame to a repo file/line.
 - Presents a diagnosis + fix plan, and implements the fix **only after approval**.
-- Marks the Sentry issue resolved only after the fix ships and the user confirms — never on
-  the strength of an un-merged local change.
+- Marks the Sentry issue resolved automatically once verification (typecheck + scoped tests)
+  passes — posts a short comment explaining what was changed.
 
 ## Requirements
 
@@ -74,9 +74,8 @@ find the correct name — never guess.
 | Discover available catalog tools | `search_sentry_tools` — **call this if any tool is missing**                            |
 | Resolve org / project context    | `find_organizations`, `find_projects`                                                   |
 | List unresolved issues           | `search_issues` — use `is:unresolved` syntax or natural language with `projectSlugOrId` |
-| Full detail + stack trace        | `get_sentry_resource` with `url` or `resourceType: 'issue'` + `resourceId`              |
-| Breadcrumbs for an issue         | `get_sentry_resource` with same URL/ID but `resourceType: 'breadcrumbs'`                |
-| AI root-cause analysis (paid)    | `analyze_issue_with_seer` — gracefully skip if 402 (no budget)                          |
+| Full detail + stack trace        | `get_sentry_resource` with `url` **only** (no other params)                             |
+| Breadcrumbs for an issue         | `get_sentry_resource` with `resourceType: 'breadcrumbs'` + `resourceId` (no `url`)      |
 | Event stats / aggregations       | `search_events`                                                                         |
 | Mark resolved after fix ships    | `update_issue` (status → resolved)                                                      |
 
@@ -134,12 +133,10 @@ one at a time). Do not begin fixing until an issue is selected.
 For the selected issue, make these calls **sequentially** (never batched):
 
 1. `get_sentry_resource(url: '<issue_url>')` — full detail, stack trace, tags, latest event.
-2. `get_sentry_resource(url: '<issue_url>', resourceType: 'breadcrumbs')` — event trail leading
-   up to the error. This is a separate call even for the same issue URL.
-3. `analyze_issue_with_seer(issueUrl: '<issue_url>')` — AI root-cause analysis.
-   - If this returns **HTTP 402** ("No budget for Seer Autofix"), skip it gracefully and
-     continue with manual analysis from the stack trace + breadcrumbs + codebase search.
-   - Do NOT stop the workflow just because Seer is unavailable.
+   Pass **only** `url`; do not mix with `resourceType` or `resourceId`.
+2. `get_sentry_resource(resourceType: 'breadcrumbs', resourceId: '<issue_id>')` — event trail
+   leading up to the error. Pass **only** `resourceType` + `resourceId`; do not pass `url`
+   alongside these params — the tool requires one form or the other, never both.
 
 Map the top in-app culprit frame to the actual repo file and line. Read that code.
 Prefer frames inside this repo's `src/**` over framework/vendor frames.
@@ -155,7 +152,7 @@ be uploaded. Note this to the user. Still attempt to diagnose from:
 
 Show, before editing anything:
 
-- **Root cause** — what actually throws, and why (from stack trace + breadcrumbs + Seer + read code).
+- **Root cause** — what actually throws, and why (from stack trace + breadcrumbs + read code).
 - **Source map status** — note if the trace is minified/unresolvable; this limits confidence.
 - **Files to change** — repo-relative paths and the intended change.
 - **Approach** — the minimal fix, and any test to add that reproduces the error.
@@ -179,11 +176,22 @@ Follow repo rules exactly:
   (project memory: never run the full gate; use scoped vitest + typecheck).
 - Report what was checked and the result.
 
-### 7. Resolve in Sentry — only on confirmation
+### 7. Resolve in Sentry — auto after verification passes
 
-Do **not** auto-resolve. A fix in the working tree is not live yet. Offer resolving as an
-explicit follow-up, and only call `update_issue` (status → resolved) after the fix is
-merged/deployed **and** the user confirms.
+Once verification in Step 6 reports clean (no typecheck errors, no failing scoped tests), call
+`update_issue` (status → `resolved`) immediately. Include a `reason` comment that names the
+root cause and the files changed, so the Sentry activity feed is self-explanatory.
+
+```
+update_issue(
+  issueUrl: '<issue_url>',
+  status: 'resolved',
+  reason: 'Fixed <root cause>. Changed <file1>, <file2>. Typecheck passes.'
+)
+```
+
+If verification reveals errors, keep the issue unresolved, report the failure, and continue
+debugging before resolving.
 
 ---
 
@@ -192,7 +200,7 @@ merged/deployed **and** the user confirms.
 - Read-only fetch/triage first; no code edits or Sentry mutations without approval.
 - `--dry-run` never mutates code or Sentry.
 - Surgical diffs only — no unrelated cleanup or refactors.
-- Never mark a Sentry issue resolved based on an un-merged local change.
+- Auto-resolve only after verification passes (typecheck + scoped tests clean); never resolve when verification fails or was skipped.
 - Never batch `mcp_call_tool` calls (Windsurf/Devin); always include `server_name: 'sentry'`.
 - If a tool call fails with "tool not found", call `search_sentry_tools` to discover the
   correct name — never retry with a guess.

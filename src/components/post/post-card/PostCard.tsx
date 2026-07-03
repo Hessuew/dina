@@ -230,21 +230,23 @@ function ReactionPicker({
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        <Button
-          type="button"
-          size={buttonSize}
-          variant="ghost"
-          theme="lightGhost"
-          className={cn(
-            'rounded-none border-none bg-transparent text-[#8E816D] shadow-none hover:translate-y-0 hover:bg-black/5 hover:text-[#1C1815]',
-            buttonSize === 'icon' ? 'size-8' : undefined,
-            selectedEmoji ? 'text-[#9B7A41]' : undefined,
-          )}
-        >
-          <SmilePlus className={iconSize} />
-        </Button>
-      </DropdownMenuTrigger>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            type="button"
+            size={buttonSize}
+            variant="ghost"
+            theme="lightGhost"
+            className={cn(
+              'rounded-none border-none bg-transparent text-[#8E816D] shadow-none hover:translate-y-0 hover:bg-black/5 hover:text-[#1C1815]',
+              buttonSize === 'icon' ? 'size-8' : undefined,
+              selectedEmoji ? 'text-[#9B7A41]' : undefined,
+            )}
+          >
+            <SmilePlus className={iconSize} />
+          </Button>
+        }
+      />
       <DropdownMenuContent align="start" className="w-auto p-2">
         <div className="flex gap-0.5">
           {REACTION_EMOJIS.map((emoji) => (
