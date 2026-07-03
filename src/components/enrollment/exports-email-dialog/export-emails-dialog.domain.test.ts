@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import {
+  GROUP_OPTIONS,
   formatEmailsForExport,
   resolveEmailCountLabel,
 } from './export-emails-dialog.domain'
+
+describe('GROUP_OPTIONS', () => {
+  it('offers the four export cohorts in display order', () => {
+    expect(GROUP_OPTIONS).toEqual([
+      { value: 'all', label: 'All enrollments' },
+      { value: 'approved', label: 'Approved' },
+      { value: 'registered', label: 'Registered' },
+      { value: 'not_registered', label: 'Not yet registered' },
+    ])
+  })
+})
 
 describe('formatEmailsForExport', () => {
   it('joins multiple emails with semicolon-space separator', () => {

@@ -4,12 +4,16 @@ import {
   setEvaluationScoreService,
   substituteTeacherService,
 } from '@/utils/enrolment/service/enrolment.service'
-import { findEnrollmentById } from '@/utils/enrolment/repository/enrolment.repository'
+import {
+  findEnrollmentById,
+  findEnrollmentEmailsByGroup,
+} from '@/utils/enrolment/repository/enrolment.repository'
 import { AuthorizationError } from '@/utils/errors'
 import {
   seedCourse,
   seedCourseTeacher,
   seedEnrollment,
+  seedInvitation,
   seedProfile,
   seedReviewerAssignment,
 } from '@/../test/integration/seed'
@@ -240,5 +244,65 @@ describe('teacher substitution — Review heading peer resolution (integration)'
     expect(row?.reviewHeading.reviewerFirstName).toBe('Subby')
     expect(row?.reviewHeading.reviewerHasEvaluated).toBe(true)
     expect(row?.reviewHeading.peerFirstName).toBe('Bella')
+  })
+})
+
+describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
+  // Seeds four enrollments spanning every cohort boundary:
+  // - registered@   approved + linked invitation accepted   → registered
+  // - notreg@       approved + invitation_sent, still pending → not_registered
+  // - noinvite@     approved, never invited                  → approved only
+  // - pending@      pending, never invited                   → all only
+  async function seedExportCohorts() {
+    const accepted = await seedInvitation({ status: 'accepted' })
+    await seedEnrollment({
+      email: 'registered@test.dev',
+      status: 'approved',
+      invitationSent: true,
+      invitationId: accepted.id,
+    })
+    const pendingInvite = await seedInvitation({ status: 'pending' })
+    await seedEnrollment({
+      email: 'notreg@test.dev',
+      status: 'approved',
+      invitationSent: true,
+      invitationId: pendingInvite.id,
+    })
+    await seedEnrollment({ email: 'noinvite@test.dev', status: 'approved' })
+    await seedEnrollment({ email: 'pending@test.dev', status: 'pending' })
+  }
+
+  const cases: Array<{
+    group: 'all' | 'approved' | 'registered' | 'not_registered'
+    expected: Array<string>
+  }> = [
+    {
+      group: 'all',
+      expected: [
+        'registered@test.dev',
+        'notreg@test.dev',
+        'noinvite@test.dev',
+        'pending@test.dev',
+      ],
+    },
+    {
+      group: 'approved',
+      expected: [
+        'registered@test.dev',
+        'notreg@test.dev',
+        'noinvite@test.dev',
+      ],
+    },
+    { group: 'registered', expected: ['registered@test.dev'] },
+    { group: 'not_registered', expected: ['notreg@test.dev'] },
+  ]
+
+  it.each(cases)('$group cohort returns the right emails', async ({
+    group,
+    expected,
+  }) => {
+    await seedExportCohorts()
+    const emails = await findEnrollmentEmailsByGroup(group)
+    expect([...emails].sort()).toEqual([...expected].sort())
   })
 })

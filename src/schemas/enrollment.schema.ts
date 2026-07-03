@@ -148,7 +148,7 @@ export type SubstituteTeacherInput = z.infer<typeof substituteTeacherSchema>
 export type EndSubstitutionInput = z.infer<typeof endSubstitutionSchema>
 
 export const getEnrollmentEmailsSchema = z.object({
-  group: z.enum(['approved', 'all']),
+  group: z.enum(['approved', 'all', 'registered', 'not_registered']),
 })
 
 export type GetEnrollmentEmailsInput = z.infer<typeof getEnrollmentEmailsSchema>
