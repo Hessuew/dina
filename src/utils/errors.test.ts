@@ -6,6 +6,7 @@ import {
   NotFoundError,
   ValidationError,
   isAppError,
+  shouldSuppressFromSentry,
   toUserError,
 } from './errors'
 
@@ -113,5 +114,75 @@ describe('toUserError', () => {
     const result = toUserError(undefined)
     expect(result.code).toBe('UNEXPECTED_ERROR')
     expect(result.status).toBe(500)
+  })
+})
+
+describe('shouldSuppressFromSentry', () => {
+  it('suppresses 4xx AppErrors', () => {
+    expect(shouldSuppressFromSentry(new ValidationError('bad'))).toBe(true)
+    expect(shouldSuppressFromSentry(new NotFoundError('missing'))).toBe(true)
+    expect(shouldSuppressFromSentry(new AuthenticationError())).toBe(true)
+    expect(shouldSuppressFromSentry(new AuthorizationError())).toBe(true)
+  })
+
+  it('does not suppress 5xx AppErrors', () => {
+    const err = new ConflictError('conflict')
+    // Manually patch status to 500 to exercise the < 500 guard
+    Object.defineProperty(err, 'status', { value: 500 })
+    expect(shouldSuppressFromSentry(err)).toBe(false)
+  })
+
+  it('suppresses TanStack Start input validation errors (Zod issue JSON array)', () => {
+    const zodIssues = JSON.stringify(
+      [
+        {
+          origin: 'string',
+          code: 'invalid_format',
+          format: 'email',
+          path: ['email'],
+          message: 'Invalid email address',
+        },
+      ],
+      undefined,
+      2,
+    )
+    expect(shouldSuppressFromSentry(new Error(zodIssues))).toBe(true)
+  })
+
+  it('does not suppress plain Errors with non-JSON messages', () => {
+    expect(shouldSuppressFromSentry(new Error('Something went wrong'))).toBe(
+      false,
+    )
+  })
+
+  it('does not suppress plain Errors whose message is a JSON object (not array)', () => {
+    expect(
+      shouldSuppressFromSentry(
+        new Error('{"code":"x","path":[],"message":"y"}'),
+      ),
+    ).toBe(false)
+  })
+
+  it('does not suppress plain Errors whose message is an empty JSON array', () => {
+    expect(shouldSuppressFromSentry(new Error('[]'))).toBe(false)
+  })
+
+  it('does not suppress plain Errors whose message is a JSON array missing required keys', () => {
+    expect(shouldSuppressFromSentry(new Error('[{"foo":"bar"}]'))).toBe(false)
+  })
+
+  it('suppresses thrown Response objects (TanStack Start redirects)', () => {
+    expect(shouldSuppressFromSentry(new Response(null, { status: 302 }))).toBe(
+      true,
+    )
+    expect(shouldSuppressFromSentry(new Response(null, { status: 404 }))).toBe(
+      true,
+    )
+  })
+
+  it('does not suppress non-Error values', () => {
+    expect(shouldSuppressFromSentry(null)).toBe(false)
+    expect(shouldSuppressFromSentry('string error')).toBe(false)
+    expect(shouldSuppressFromSentry(undefined)).toBe(false)
   })
 })
