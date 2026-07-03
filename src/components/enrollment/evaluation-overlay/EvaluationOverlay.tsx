@@ -73,10 +73,12 @@ function SaveStatus({ state }: { state: SaveState }) {
 function ScoreButton({
   value,
   active,
+  disabled,
   onClick,
 }: {
   value: EvaluationScore
   active: boolean
+  disabled: boolean
   onClick: () => void
 }) {
   const label = EVALUATION_SCORE_LABELS[value]
@@ -86,6 +88,7 @@ function ScoreButton({
         render={
           <button
             type="button"
+            disabled={disabled}
             onClick={onClick}
             aria-label={`${value}: ${label}`}
             className={cn(
@@ -93,6 +96,8 @@ function ScoreButton({
               active
                 ? 'border-[#C5A059] bg-[#C5A059]/20 text-[#E9D9B4]'
                 : 'border-white/10 bg-[#1A1716] text-[#AFA28F] hover:border-white/25 hover:text-[#F8F4EC]',
+              disabled &&
+                'pointer-events-none border-white/5 bg-[#111111] text-[#5F574D] opacity-55',
             )}
           >
             {value}
@@ -211,10 +216,12 @@ function NoteEditor({
   initialNote,
   onSave,
   textareaRef,
+  readOnly,
 }: {
   initialNote: string
   onSave: (note: string) => Promise<void>
   textareaRef: RefObject<HTMLTextAreaElement | null>
+  readOnly: boolean
 }) {
   const { value, state, handleChange } = useDebouncedNoteSave({
     initialNote,
@@ -226,6 +233,7 @@ function NoteEditor({
       <textarea
         ref={textareaRef}
         value={value}
+        readOnly={readOnly}
         onChange={(e) => handleChange(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
@@ -235,7 +243,10 @@ function NoteEditor({
         }}
         rows={2}
         placeholder="Optional note… (Enter to finish, Shift+Enter for newline)"
-        className="w-full resize-none rounded-none border border-white/10 bg-[#1A1716] px-3 py-2 text-sm text-[#F8F4EC] placeholder:text-[#8E816D] focus-visible:border-[#C5A059]/40 focus-visible:outline-none"
+        className={cn(
+          'w-full resize-none rounded-none border border-white/10 bg-[#1A1716] px-3 py-2 text-sm text-[#F8F4EC] placeholder:text-[#8E816D] focus-visible:border-[#C5A059]/40 focus-visible:outline-none',
+          readOnly && 'cursor-default opacity-55',
+        )}
       />
       <div className="mt-1 flex justify-end">
         <SaveStatus state={state} />
@@ -431,6 +442,7 @@ function useEvaluationActions({
   enrollmentId,
   myScore,
   myAdmissionCategory,
+  canEvaluate,
   onLocalEvaluation,
   mutations,
   pendingPrevScoreRef,
@@ -439,6 +451,7 @@ function useEvaluationActions({
   enrollmentId: string
   myScore: number | null
   myAdmissionCategory: AdmissionCategory | null
+  canEvaluate: boolean
   onLocalEvaluation: EvaluationOverlayProps['onLocalEvaluation']
   mutations: EvaluationMutations
   pendingPrevScoreRef: RefObject<number | null>
@@ -448,6 +461,7 @@ function useEvaluationActions({
 
   const saveScore = useCallback(
     (score: number | null) => {
+      if (!canEvaluate) return
       if (scoreMutation.isPending) return
       pendingPrevScoreRef.current = myScore
       pendingPrevAdmissionCategoryRef.current = myAdmissionCategory
@@ -455,6 +469,7 @@ function useEvaluationActions({
       void scoreMutation.mutate({ data: { enrollmentId, score } })
     },
     [
+      canEvaluate,
       enrollmentId,
       myAdmissionCategory,
       myScore,
@@ -465,6 +480,7 @@ function useEvaluationActions({
 
   const saveAdmissionCategory = useCallback(
     (admissionCategory: AdmissionCategory) => {
+      if (!canEvaluate) return
       if (myScore !== 3 && myScore !== 4) return
       if (categoryMutation.isPending) return
       pendingPrevAdmissionCategoryRef.current = myAdmissionCategory
@@ -474,6 +490,7 @@ function useEvaluationActions({
       })
     },
     [
+      canEvaluate,
       categoryMutation,
       enrollmentId,
       myAdmissionCategory,
@@ -487,11 +504,12 @@ function useEvaluationActions({
 
   const saveNote = useCallback(
     async (note: string) => {
+      if (!canEvaluate) return
       if (noteMutation.isPending) return
       onLocalEvaluation(enrollmentId, { note })
       await noteMutation.mutate({ data: { enrollmentId, note } })
     },
-    [enrollmentId, onLocalEvaluation, noteMutation],
+    [canEvaluate, enrollmentId, onLocalEvaluation, noteMutation],
   )
 
   return { saveScore, saveAdmissionCategory, handleScoreButton, saveNote }
@@ -523,6 +541,7 @@ function useEvaluationOverlay({
     enrollmentId: enrollment.id,
     myScore: view.myScore,
     myAdmissionCategory: view.myAdmissionCategory,
+    canEvaluate: enrollment.canEvaluate,
     onLocalEvaluation,
     mutations,
     pendingPrevScoreRef,
@@ -547,6 +566,7 @@ function useEvaluationOverlay({
     ...view,
     ...actions,
     noteRef,
+    canEvaluate: enrollment.canEvaluate,
     scoreState: toSaveState(mutations.scoreMutation),
     categoryState: toSaveState(mutations.categoryMutation),
   }
@@ -608,6 +628,7 @@ function ScoreCategoryColumn({ overlay }: { overlay: EvaluationOverlayModel }) {
             key={value}
             value={value}
             active={overlay.myScore === value}
+            disabled={!overlay.canEvaluate}
             onClick={() => overlay.handleScoreButton(value)}
           />
         ))}
@@ -620,7 +641,7 @@ function ScoreCategoryColumn({ overlay }: { overlay: EvaluationOverlayModel }) {
             shortcut={option.shortcut}
             label={option.label}
             active={overlay.myAdmissionCategory === option.value}
-            disabled={!overlay.admissionCategoryEnabled}
+            disabled={!overlay.canEvaluate || !overlay.admissionCategoryEnabled}
             onClick={overlay.saveAdmissionCategory}
           />
         ))}
@@ -673,6 +694,7 @@ function EvaluationControlStrip({
           initialNote={overlay.myNote}
           onSave={overlay.saveNote}
           textareaRef={overlay.noteRef}
+          readOnly={!overlay.canEvaluate}
         />
       </div>
     </div>
