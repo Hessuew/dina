@@ -71,7 +71,7 @@ async function remediate(supa, invitation) {
   const account = await lookupAccount(supa, invitation.email)
   const action = classifyStrandedInvitation(account)
 
-  if (action === 'skip') {
+  if (action === 'skip' || action === 'reset-only') {
     console.log(`skip     ${invitation.email} (confirmed user, real signup)`)
     return action
   }

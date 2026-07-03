@@ -34,7 +34,8 @@ The hosted Sentry MCP (`https://mcp.sentry.dev/mcp`) must be registered and auth
 
 - **Claude Code**: `claude mcp add --transport http sentry https://mcp.sentry.dev/mcp`, then
   authenticate via `/mcp` → `sentry` (browser OAuth).
-- **Windsurf**: `sentry` entry in `~/.codeium/windsurf/mcp_config.json` using
+- **Windsurf / Devin**: `sentry` entry in `~/.codeium/windsurf/mcp_config.json` (Windsurf) or
+  `~/.config/devin/mcp_config.json` (Devin) using
   `npx -y mcp-remote https://mcp.sentry.dev/mcp`; OAuth opens on first connect.
 
 If the server shows "Needs authentication", stop and ask the user to complete the OAuth login
@@ -44,48 +45,54 @@ before continuing — the skill cannot authenticate headlessly.
 
 This skill is shared across editors, so the call style differs by host:
 
-- **Windsurf** uses `mcp_call_tool`. **NEVER batch multiple `mcp_call_tool` calls in a single
-  tool invocation** — each call must be made separately with the full `server_name: 'sentry'`
-  parameter. Batching or omitting `server_name` causes a "missing field `server_name`" parse
-  error.
+- **Windsurf / Devin** uses `mcp_call_tool`. **NEVER batch multiple `mcp_call_tool` calls in a
+  single tool invocation** — each call must be made separately with the full
+  `server_name: 'sentry'` parameter. Batching or omitting `server_name` causes a
+  "missing field `server_name`" parse error.
 
   ```javascript
   mcp_call_tool({
     server_name: 'sentry',
-    tool_name: 'get_issue_details',
+    tool_name: 'get_sentry_resource',
     arguments: {
-      /* ... */
+      url: 'https://my-org.sentry.io/issues/PROJECT-123',
     },
   })
   ```
 
 - **Claude Code** calls the native `mcp__sentry__<tool>` tools directly.
 
-**Discover the exact tool names from the connected server** at runtime — the table below is
-expected-but-verify. Hosted Sentry MCP tool names have changed over time; if a listed name is
-absent, use the closest equivalent the server exposes.
+**Discover the exact tool names from the connected server** at runtime using `search_sentry_tools`
+before assuming a tool exists. Tool names on the hosted Sentry MCP have changed over time.
+If a call fails with "tool not found", call `search_sentry_tools(query='...')` immediately to
+find the correct name — never guess.
 
 ## Sentry MCP Tools Used
 
-| Purpose                              | Likely tool                                                                          |
-| ------------------------------------ | ------------------------------------------------------------------------------------ |
-| Resolve org / project context        | `find_organizations`, `find_projects`                                                |
-| List / search unresolved issues      | `search_issues` / `find_issues` (natural-language, e.g. "unresolved issues in <project> sorted by freq") |
-| Full detail + stack trace + breadcrumbs | `get_issue_details`                                                               |
-| AI root-cause analysis               | `analyze_issue_with_seer`                                                             |
-| Mark resolved after fix ships        | `update_issue` (status → resolved)                                                   |
+| Purpose                          | Verified tool (as of 2026-07)                                                           |
+| -------------------------------- | --------------------------------------------------------------------------------------- |
+| Discover available catalog tools | `search_sentry_tools` — **call this if any tool is missing**                            |
+| Resolve org / project context    | `find_organizations`, `find_projects`                                                   |
+| List unresolved issues           | `search_issues` — use `is:unresolved` syntax or natural language with `projectSlugOrId` |
+| Full detail + stack trace        | `get_sentry_resource` with `url` or `resourceType: 'issue'` + `resourceId`              |
+| Breadcrumbs for an issue         | `get_sentry_resource` with same URL/ID but `resourceType: 'breadcrumbs'`                |
+| AI root-cause analysis (paid)    | `analyze_issue_with_seer` — gracefully skip if 402 (no budget)                          |
+| Event stats / aggregations       | `search_events`                                                                         |
+| Mark resolved after fix ships    | `update_issue` (status → resolved)                                                      |
 
-If the server exposes different discovery/mutation tools, use those. If no tool can resolve
-the org/project confidently, stop and ask the user.
+**Critical name corrections vs old skill versions:**
+
+- `get_issue_details` → does NOT exist; use `get_sentry_resource` instead
+- `find_issues` → may not exist; use `search_issues` instead
 
 ## Invocation Modes
 
-| Command                       | Meaning                                                                            |
-| ----------------------------- | --------------------------------------------------------------------------------- |
-| `fix sentry`                  | List unresolved issues, pick/triage, propose a fix, implement after approval.     |
-| `fix sentry --dry-run`        | Fetch + triage + diagnosis only; never edit code or mutate Sentry.                |
-| `fix sentry <ISSUE-ID/URL>`   | Go straight to one issue by Sentry short-ID or URL.                                |
-| `fix sentry --project <slug>` | Scope the listing to a single Sentry project.                                      |
+| Command                       | Meaning                                                                       |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| `fix sentry`                  | List unresolved issues, pick/triage, propose a fix, implement after approval. |
+| `fix sentry --dry-run`        | Fetch + triage + diagnosis only; never edit code or mutate Sentry.            |
+| `fix sentry <ISSUE-ID/URL>`   | Go straight to one issue by Sentry short-ID or URL.                           |
+| `fix sentry --project <slug>` | Scope the listing to a single Sentry project.                                 |
 
 Default behavior is safe: no code edit and no Sentry mutation without explicit approval.
 
@@ -113,21 +120,43 @@ Unresolved Sentry issues — <project>:
 Include short-ID, title, event count, last-seen, and culprit. Let the user pick one (or more,
 one at a time). Do not begin fixing until an issue is selected.
 
+**Query guidance for `search_issues`:**
+
+- Do NOT pass the issue short-ID (e.g. `DINA-D`) as the query — it will return nothing.
+  Use `get_sentry_resource` with `resourceType: 'issue'` + `resourceId` for direct ID lookups.
+- To list all unresolved issues in a project, pass `query: 'is:unresolved'` with
+  `projectSlugOrId: '<slug>'`.
+- Natural language that works: `"is:unresolved"`, `"level:error firstSeen:-7d"`.
+- Natural language that reliably fails: `"unresolved issues in <project> sorted by frequency"`.
+
 ### 3. Triage the Chosen Issue
 
-For the selected issue:
+For the selected issue, make these calls **sequentially** (never batched):
 
-- `get_issue_details` → stack trace, breadcrumbs, tags, latest event.
-- `analyze_issue_with_seer` → AI root-cause hypothesis and suggested fix location.
-- Map the top in-app culprit frame to the actual repo file and line. Read that code.
+1. `get_sentry_resource(url: '<issue_url>')` — full detail, stack trace, tags, latest event.
+2. `get_sentry_resource(url: '<issue_url>', resourceType: 'breadcrumbs')` — event trail leading
+   up to the error. This is a separate call even for the same issue URL.
+3. `analyze_issue_with_seer(issueUrl: '<issue_url>')` — AI root-cause analysis.
+   - If this returns **HTTP 402** ("No budget for Seer Autofix"), skip it gracefully and
+     continue with manual analysis from the stack trace + breadcrumbs + codebase search.
+   - Do NOT stop the workflow just because Seer is unavailable.
 
-Prefer the culprit frame that lives in this repo's `src/**` over framework/vendor frames.
+Map the top in-app culprit frame to the actual repo file and line. Read that code.
+Prefer frames inside this repo's `src/**` over framework/vendor frames.
+
+**If the stack trace shows only minified frames with `<unknown module>`**, source maps may not
+be uploaded. Note this to the user. Still attempt to diagnose from:
+
+- The breadcrumbs (often reveal the triggering sequence)
+- The error message itself
+- Searching the codebase for the error pattern
 
 ### 4. Present Diagnosis + Fix Plan
 
 Show, before editing anything:
 
-- **Root cause** — what actually throws, and why (from stack trace + Seer + the read code).
+- **Root cause** — what actually throws, and why (from stack trace + breadcrumbs + Seer + read code).
+- **Source map status** — note if the trace is minified/unresolvable; this limits confidence.
 - **Files to change** — repo-relative paths and the intended change.
 - **Approach** — the minimal fix, and any test to add that reproduces the error.
 
@@ -164,7 +193,9 @@ merged/deployed **and** the user confirms.
 - `--dry-run` never mutates code or Sentry.
 - Surgical diffs only — no unrelated cleanup or refactors.
 - Never mark a Sentry issue resolved based on an un-merged local change.
-- Never batch `mcp_call_tool` calls (Windsurf); always include `server_name: 'sentry'`.
+- Never batch `mcp_call_tool` calls (Windsurf/Devin); always include `server_name: 'sentry'`.
+- If a tool call fails with "tool not found", call `search_sentry_tools` to discover the
+  correct name — never retry with a guess.
 - If the culprit frame can't be mapped to repo code with confidence, report that and ask —
   do not guess a fix location.
 
