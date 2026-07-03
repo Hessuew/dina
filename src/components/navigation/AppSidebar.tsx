@@ -28,8 +28,9 @@ import { BookText } from '@/components/animate-ui/icons/book'
 import { CalendarDaysIcon } from '@/components/animate-ui/icons/calendar-days'
 import { AnimateIcon } from '@/components/animate-ui/icons/icon'
 import { List } from '@/components/animate-ui/icons/list'
-import { CookingPot } from '@/components/animate-ui/icons/cooking-pot'
 import { Clapperboard } from '@/components/animate-ui/icons/clapperboard'
+import { Send } from '@/components/animate-ui/icons/send'
+import { BrushIcon } from '@/components/animate-ui/icons/brush'
 
 type User = {
   id: string
@@ -99,7 +100,7 @@ const teacherNavItems: Array<NavItem> = [
   {
     title: 'Discipleship',
     url: '/discipleship',
-    icon: Users,
+    icon: BrushIcon,
   },
   {
     title: 'Events',
@@ -109,7 +110,7 @@ const teacherNavItems: Array<NavItem> = [
   {
     title: 'Enrollments',
     url: '/enrollments',
-    icon: CookingPot,
+    icon: Send,
   },
 ]
 
