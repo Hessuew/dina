@@ -211,6 +211,13 @@
       "when": 1783152067319,
       "tag": "0032_reflective_mathemanic",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1783155255097,
+      "tag": "0033_smart_iron_monger",
+      "breakpoints": true
     }
   ]
 }
