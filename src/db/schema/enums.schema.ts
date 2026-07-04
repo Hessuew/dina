@@ -65,6 +65,12 @@ export const enrollmentGenderEnum = pgEnum('enrollment_gender', [
   'female',
 ])
 
+// Extensible for delivery webhooks later ('delivered', 'read' can be appended).
+export const whatsappMessageStatusEnum = pgEnum('whatsapp_message_status', [
+  'sent',
+  'failed',
+])
+
 export const gemstoneEnum = pgEnum('gemstone', [
   'jasper',
   'sapphire',

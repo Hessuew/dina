@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   AuthenticationError,
   AuthorizationError,
+  CampaignLockedError,
   ConflictError,
   NotFoundError,
   ValidationError,
@@ -43,6 +44,13 @@ describe('error classes', () => {
     const err = new ConflictError('already exists')
     expect(err.code).toBe('CONFLICT')
     expect(err.status).toBe(409)
+  })
+
+  it('CampaignLockedError has code CAMPAIGN_LOCKED, status 409', () => {
+    const err = new CampaignLockedError()
+    expect(err.code).toBe('CAMPAIGN_LOCKED')
+    expect(err.status).toBe(409)
+    expect(err.name).toBe('CampaignLockedError')
   })
 
   it('accepts a custom code via options', () => {

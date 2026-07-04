@@ -5,5 +5,8 @@ export const env: Record<string, any> = {
   APP_URL: process.env.APP_URL,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+  WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+  WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+  WHATSAPP_API_VERSION: process.env.WHATSAPP_API_VERSION,
   HYPERDRIVE: undefined,
 }

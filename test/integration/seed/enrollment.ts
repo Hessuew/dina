@@ -19,17 +19,23 @@ export async function seedEnrollment(
     status?: EnrollmentStatus
     invitationSent?: boolean
     invitationId?: string | null
+    phoneWhatsApp?: string
+    preferredName?: string | null
+    fullLegalName?: string
   } = {},
 ): Promise<string> {
   const id = overrides.id ?? randomUUID()
   const db = await getDb()
   await db.insert(enrollments).values({
     id,
-    fullLegalName: 'Applicant Test',
+    fullLegalName: overrides.fullLegalName ?? 'Applicant Test',
     email: overrides.email ?? `${id}@test.dev`,
     yearOfBirth: 1995,
     gender: 'female',
-    phoneWhatsApp: '+10000000000',
+    phoneWhatsApp: overrides.phoneWhatsApp ?? '+10000000000',
+    ...(overrides.preferredName !== undefined
+      ? { preferredName: overrides.preferredName }
+      : {}),
     aboutYourself: 'about',
     expectationsAlignment: 'expectations',
     ...(overrides.status ? { status: overrides.status } : {}),

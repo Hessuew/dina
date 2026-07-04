@@ -1,4 +1,9 @@
-import { GraduationCapIcon, UserRoundXIcon, UsersIcon } from 'lucide-react'
+import {
+  GraduationCapIcon,
+  MessageCircleIcon,
+  UserRoundXIcon,
+  UsersIcon,
+} from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { AnimateIcon } from '@/components/animate-ui/icons/icon'
 import {
@@ -21,6 +26,7 @@ type AdminActionsDropdownProps = {
   onStartSubstitution: () => void
   onEndSubstitution: () => void
   onBulkGrade: () => void
+  onSendWhatsApp: () => void
   isDistributing?: boolean
   disabled?: boolean
 }
@@ -43,15 +49,15 @@ function AdminMenuItem({ icon: Icon, label, onClick, disabled }: AdminAction) {
   )
 }
 
-export function AdminActionsDropdown({
+function buildAdminActions({
   onDistribute,
   onStartSubstitution,
   onEndSubstitution,
   onBulkGrade,
+  onSendWhatsApp,
   isDistributing = false,
-  disabled = false,
-}: AdminActionsDropdownProps) {
-  const actions: Array<AdminAction> = [
+}: Omit<AdminActionsDropdownProps, 'disabled'>): Array<AdminAction> {
+  return [
     {
       icon: UsersIcon,
       label: isDistributing ? 'Distributing…' : 'Distribute unassigned',
@@ -73,7 +79,19 @@ export function AdminActionsDropdown({
       label: 'Bulk grade',
       onClick: onBulkGrade,
     },
+    {
+      icon: MessageCircleIcon,
+      label: 'Send WhatsApp',
+      onClick: onSendWhatsApp,
+    },
   ]
+}
+
+export function AdminActionsDropdown({
+  disabled = false,
+  ...actionProps
+}: AdminActionsDropdownProps) {
+  const actions = buildAdminActions(actionProps)
 
   return (
     <DropdownMenu>

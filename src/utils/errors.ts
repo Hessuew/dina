@@ -22,6 +22,7 @@ export type AppErrorCode =
   | 'EMAIL_SEND_FAILED'
   | 'PASSWORD_UPDATE_FAILED'
   | 'STORAGE_OPERATION_FAILED'
+  | 'CAMPAIGN_LOCKED'
 
 export type AppErrorDetails = Record<string, unknown>
 
@@ -131,6 +132,17 @@ export class ConflictError extends AppError {
       details: options.details,
     })
     this.name = 'ConflictError'
+  }
+}
+
+export class CampaignLockedError extends AppError {
+  constructor() {
+    super({
+      code: 'CAMPAIGN_LOCKED',
+      status: 409,
+      userMessage: 'This campaign is currently in use. Please try again shortly.',
+    })
+    this.name = 'CampaignLockedError'
   }
 }
 
