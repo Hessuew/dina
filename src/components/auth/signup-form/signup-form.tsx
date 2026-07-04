@@ -161,12 +161,9 @@ function useSignupInvitation({
         setters.setInvitationRole(result.invitation.role)
       })
       .catch((error) => {
-        // const userError = toUserError(error)
-        // setters.setInvitationError(userError.message)
-        // toast.error('Invalid invitation', { description: userError.message })
-        setEmail('test')
-        setters.setInvitationValid(true)
-        setters.setInvitationRole('student')
+        const userError = toUserError(error)
+        setters.setInvitationError(userError.message)
+        toast.error('Invalid invitation', { description: userError.message })
       })
       .finally(() => {
         setters.setIsLoadingToken(false)
@@ -186,14 +183,10 @@ function useSignupInvitation({
       setters.setInvitationRole(result.invitation.role)
       setters.setInvitationError(null)
     } catch (error) {
-      // const userError = toUserError(error)
-      // setters.setInvitationError(userError.message)
-      // setters.setInvitationValid(false)
-      // toast.error('Email not invited', { description: userError.message })
-
-      setters.setInvitationValid(true)
-      setters.setInvitationRole('student')
-      setters.setInvitationError(null)
+      const userError = toUserError(error)
+      setters.setInvitationError(userError.message)
+      setters.setInvitationValid(false)
+      toast.error('Email not invited', { description: userError.message })
     } finally {
       setters.setIsCheckingEmail(false)
     }
@@ -372,43 +365,6 @@ function useSignupForm(token: string) {
   }
 }
 
-export function SignupForm({ token = '' }: SignupFormProps) {
-  const vm = useSignupForm(token)
-
-  if (vm.showOtpInput) {
-    return (
-      <SignupPageFrame showOtpInput>
-        <SignupOtpPanel
-          email={vm.form.state.values.email}
-          otpValue={vm.otp.otpValue}
-          onOtpChange={vm.otp.handleOtpComplete}
-          isVerifying={vm.otp.isVerifying}
-          resendCooldown={vm.resend.resendCooldown}
-          onResend={vm.resend.handleResendOtp}
-          isResending={vm.resend.isResending}
-        />
-      </SignupPageFrame>
-    )
-  }
-
-  return (
-    <SignupPageFrame showOtpInput={false}>
-      <SignupCredentialsForm
-        form={vm.form}
-        emailState={vm.emailState}
-        onEmailBlur={vm.handleEmailBlur}
-        invitationValid={vm.emailState.invitationValid}
-        isPending={vm.signupMutation.isPending}
-        submitDisabled={isSignupSubmitDisabled(
-          vm.signupMutation.isPending,
-          vm.emailState.invitationValid,
-          vm.signupMutation.data,
-        )}
-      />
-    </SignupPageFrame>
-  )
-}
-
 function SignupPageFrame({
   showOtpInput,
   children,
@@ -451,37 +407,6 @@ type SignupCredentialsFormProps = {
   isPending: boolean
   submitDisabled: boolean
 }
-
-const SignupCredentialsForm = withForm({
-  defaultValues: SIGNUP_DEFAULT_VALUES,
-  props: {} as SignupCredentialsFormProps,
-  render: ({
-    form,
-    emailState,
-    onEmailBlur,
-    invitationValid,
-    isPending,
-    submitDisabled,
-  }) => (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        void form.handleSubmit()
-      }}
-    >
-      <FieldGroup>
-        <SignupAccountFields
-          form={form}
-          emailState={emailState}
-          onEmailBlur={onEmailBlur}
-        />
-        <SignupSecurityFields form={form} invitationValid={invitationValid} />
-        <SignupSubmitSection isPending={isPending} disabled={submitDisabled} />
-      </FieldGroup>
-    </form>
-  ),
-})
 
 const SignupAccountFields = withForm({
   defaultValues: SIGNUP_DEFAULT_VALUES,
@@ -752,52 +677,6 @@ function SignupSubmitSection({
   )
 }
 
-function SignupOtpPanel({
-  email,
-  otpValue,
-  onOtpChange,
-  isVerifying,
-  resendCooldown,
-  onResend,
-  isResending,
-}: {
-  email: string
-  otpValue: string
-  onOtpChange: (value: string) => void
-  isVerifying: boolean
-  resendCooldown: number
-  onResend: () => void
-  isResending: boolean
-}) {
-  return (
-    <Field>
-      <OtpPanelHeader email={email} />
-
-      <OtpCodeInput
-        otpValue={otpValue}
-        onOtpChange={onOtpChange}
-        isVerifying={isVerifying}
-      />
-
-      {isVerifying && (
-        <FieldDescription theme="dark" className="mt-3 flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Verifying code...
-        </FieldDescription>
-      )}
-      <FieldDescription theme="dark" className="mt-2">
-        Code expires in 10 minutes.
-      </FieldDescription>
-
-      <OtpResendButton
-        resendCooldown={resendCooldown}
-        onResend={onResend}
-        isResending={isResending}
-      />
-    </Field>
-  )
-}
-
 function OtpPanelHeader({ email }: { email: string }) {
   return (
     <div className="mb-5 space-y-1">
@@ -862,5 +741,119 @@ function OtpResendButton({
       <RefreshCwIcon className="h-3 w-3" />
       {resolveResendLabel(resendCooldown, isResending)}
     </button>
+  )
+}
+
+function SignupOtpPanel({
+  email,
+  otpValue,
+  onOtpChange,
+  isVerifying,
+  resendCooldown,
+  onResend,
+  isResending,
+}: {
+  email: string
+  otpValue: string
+  onOtpChange: (value: string) => void
+  isVerifying: boolean
+  resendCooldown: number
+  onResend: () => void
+  isResending: boolean
+}) {
+  return (
+    <Field>
+      <OtpPanelHeader email={email} />
+
+      <OtpCodeInput
+        otpValue={otpValue}
+        onOtpChange={onOtpChange}
+        isVerifying={isVerifying}
+      />
+
+      {isVerifying && (
+        <FieldDescription theme="dark" className="mt-3 flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Verifying code...
+        </FieldDescription>
+      )}
+      <FieldDescription theme="dark" className="mt-2">
+        Code expires in 10 minutes.
+      </FieldDescription>
+
+      <OtpResendButton
+        resendCooldown={resendCooldown}
+        onResend={onResend}
+        isResending={isResending}
+      />
+    </Field>
+  )
+}
+
+const SignupCredentialsForm = withForm({
+  defaultValues: SIGNUP_DEFAULT_VALUES,
+  props: {} as SignupCredentialsFormProps,
+  render: ({
+    form,
+    emailState,
+    onEmailBlur,
+    invitationValid,
+    isPending,
+    submitDisabled,
+  }) => (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        void form.handleSubmit()
+      }}
+    >
+      <FieldGroup>
+        <SignupAccountFields
+          form={form}
+          emailState={emailState}
+          onEmailBlur={onEmailBlur}
+        />
+        <SignupSecurityFields form={form} invitationValid={invitationValid} />
+        <SignupSubmitSection isPending={isPending} disabled={submitDisabled} />
+      </FieldGroup>
+    </form>
+  ),
+})
+
+export function SignupForm({ token = '' }: SignupFormProps) {
+  const vm = useSignupForm(token)
+
+  if (vm.showOtpInput) {
+    return (
+      <SignupPageFrame showOtpInput>
+        <SignupOtpPanel
+          email={vm.form.state.values.email}
+          otpValue={vm.otp.otpValue}
+          onOtpChange={vm.otp.handleOtpComplete}
+          isVerifying={vm.otp.isVerifying}
+          resendCooldown={vm.resend.resendCooldown}
+          onResend={vm.resend.handleResendOtp}
+          isResending={vm.resend.isResending}
+        />
+      </SignupPageFrame>
+    )
+  }
+
+  return (
+    <SignupPageFrame showOtpInput={false}>
+      <SignupCredentialsForm
+        form={vm.form}
+        emailState={vm.emailState}
+        onEmailBlur={vm.handleEmailBlur}
+        invitationValid={vm.emailState.invitationValid}
+        isPending={vm.signupMutation.isPending}
+        submitDisabled={isSignupSubmitDisabled(
+          vm.signupMutation.isPending,
+          vm.emailState.invitationValid,
+          vm.signupMutation.data,
+        )}
+      />
+    </SignupPageFrame>
   )
 }
