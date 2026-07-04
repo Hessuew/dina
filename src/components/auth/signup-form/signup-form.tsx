@@ -108,7 +108,7 @@ function useSignupSubmit({
         toast.error(outcome.message)
       } else if (outcome.kind === 'otp-required') {
         onOtpRequired()
-        toast.success('Account created!', {
+        toast.success('Verification code sent', {
           description: outcome.description,
           duration: 6000,
         })
@@ -200,7 +200,7 @@ function useOtpVerification({
   getCredentials,
 }: {
   token: string
-  getCredentials: () => { email: string; password: string }
+  getCredentials: () => { email: string; password: string; fullName?: string }
 }) {
   const router = useRouter()
   const [otpValue, setOtpValue] = useState('')
@@ -210,6 +210,7 @@ function useOtpVerification({
       data: {
         email: string
         password: string
+        fullName?: string
         otp: string
         invitationToken: string
       }
@@ -241,9 +242,9 @@ function useOtpVerification({
   const handleOtpComplete = (value: string) => {
     setOtpValue(value)
     if (isOtpComplete(value)) {
-      const { email, password } = getCredentials()
+      const { email, password, fullName } = getCredentials()
       verifyOtpMutation.mutate({
-        data: { email, password, otp: value, invitationToken: token },
+        data: { email, password, fullName, otp: value, invitationToken: token },
       })
     }
   }
@@ -344,6 +345,7 @@ function useSignupForm(token: string) {
     getCredentials: () => ({
       email: form.state.values.email,
       password: form.state.values.password,
+      fullName: form.state.values.name || undefined,
     }),
   })
 
