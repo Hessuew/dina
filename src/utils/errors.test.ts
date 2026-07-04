@@ -180,6 +180,20 @@ describe('shouldSuppressFromSentry', () => {
     )
   })
 
+  it('suppresses Firefox fetch-abort NetworkError', () => {
+    expect(
+      shouldSuppressFromSentry(
+        new TypeError('NetworkError when attempting to fetch resource.'),
+      ),
+    ).toBe(true)
+  })
+
+  it('does not suppress TypeErrors with different messages', () => {
+    expect(
+      shouldSuppressFromSentry(new TypeError('Cannot read properties of null')),
+    ).toBe(false)
+  })
+
   it('does not suppress non-Error values', () => {
     expect(shouldSuppressFromSentry(null)).toBe(false)
     expect(shouldSuppressFromSentry('string error')).toBe(false)

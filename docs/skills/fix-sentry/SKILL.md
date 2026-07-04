@@ -69,15 +69,15 @@ find the correct name — never guess.
 
 ## Sentry MCP Tools Used
 
-| Purpose                          | Verified tool (as of 2026-07)                                                           |
-| -------------------------------- | --------------------------------------------------------------------------------------- |
-| Discover available catalog tools | `search_sentry_tools` — **call this if any tool is missing**                            |
-| Resolve org / project context    | `find_organizations`, `find_projects`                                                   |
-| List unresolved issues           | `search_issues` — use `is:unresolved` syntax or natural language with `projectSlugOrId` |
-| Full detail + stack trace        | `get_sentry_resource` with `url` **only** (no other params)                             |
-| Breadcrumbs for an issue         | `get_sentry_resource` with `resourceType: 'breadcrumbs'` + `resourceId` (no `url`)      |
-| Event stats / aggregations       | `search_events`                                                                         |
-| Mark resolved after fix ships    | `update_issue` (status → resolved)                                                      |
+| Purpose                          | Verified tool (as of 2026-07)                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Discover available catalog tools | `search_sentry_tools` — **call this if any tool is missing**                                            |
+| Resolve org / project context    | `find_organizations`, `find_projects`                                                                   |
+| List unresolved issues           | `search_issues` — use `is:unresolved` syntax or natural language with `projectSlugOrId`                 |
+| Full detail + stack trace        | `get_sentry_resource` with `url` **only** (no other params)                                             |
+| Breadcrumbs for an issue         | `get_sentry_resource` with `organizationSlug` + `resourceType: 'breadcrumbs'` + `resourceId` (no `url`) |
+| Event stats / aggregations       | `search_events`                                                                                         |
+| Mark resolved after fix ships    | `update_issue` (status → resolved)                                                                      |
 
 **Critical name corrections vs old skill versions:**
 
@@ -134,9 +134,10 @@ For the selected issue, make these calls **sequentially** (never batched):
 
 1. `get_sentry_resource(url: '<issue_url>')` — full detail, stack trace, tags, latest event.
    Pass **only** `url`; do not mix with `resourceType` or `resourceId`.
-2. `get_sentry_resource(resourceType: 'breadcrumbs', resourceId: '<issue_id>')` — event trail
-   leading up to the error. Pass **only** `resourceType` + `resourceId`; do not pass `url`
-   alongside these params — the tool requires one form or the other, never both.
+2. `get_sentry_resource(organizationSlug: '<org_slug>', resourceType: 'breadcrumbs', resourceId: '<issue_id>')` — event trail
+   leading up to the error. Pass `organizationSlug` + `resourceType` + `resourceId`; do not
+   pass `url` alongside these params — the tool requires one form or the other, never both.
+   `organizationSlug` is always required when not using `url`.
 
 Map the top in-app culprit frame to the actual repo file and line. Read that code.
 Prefer frames inside this repo's `src/**` over framework/vendor frames.
@@ -154,10 +155,26 @@ Show, before editing anything:
 
 - **Root cause** — what actually throws, and why (from stack trace + breadcrumbs + read code).
 - **Source map status** — note if the trace is minified/unresolvable; this limits confidence.
-- **Files to change** — repo-relative paths and the intended change.
+- **Fix status** — is the fix already present in the local codebase? (Check git log, read the
+  affected files, compare with the Sentry event timestamp vs the fix commit date.)
+- **Files to change** (or already changed) — repo-relative paths and the intended change.
 - **Approach** — the minimal fix, and any test to add that reproduces the error.
 
-**Stop here on `--dry-run`.** Otherwise wait for approval.
+**Stop here on `--dry-run`.** Otherwise:
+
+- **If fix is already in the codebase**: skip to Step 6 (verify) without approval — no code
+  change is being made, only verification + Sentry resolution.
+- **If fix is needed**: wait for user approval, then proceed to Step 5.
+
+### 4a. Fix Already in Codebase — fast path
+
+When triage reveals the fix is already committed (the Sentry event pre-dates a commit that
+addresses the root cause):
+
+1. State clearly: "Fix already present in commit `<hash>` (`<short message>`). No code change
+   needed. Running verification before resolving in Sentry."
+2. Skip to Step 6 directly.
+3. After verification passes, auto-resolve in Sentry (Step 7) without waiting for approval.
 
 ### 5. Implement the Fix (after approval)
 
@@ -201,6 +218,7 @@ debugging before resolving.
 - `--dry-run` never mutates code or Sentry.
 - Surgical diffs only — no unrelated cleanup or refactors.
 - Auto-resolve only after verification passes (typecheck + scoped tests clean); never resolve when verification fails or was skipped.
+- If fix is already in the codebase (pre-dates the Sentry event or addresses the root cause), skip Step 5 and go straight to Step 6 — no approval needed since no code is being changed.
 - Never batch `mcp_call_tool` calls (Windsurf/Devin); always include `server_name: 'sentry'`.
 - If a tool call fails with "tool not found", call `search_sentry_tools` to discover the
   correct name — never retry with a guess.

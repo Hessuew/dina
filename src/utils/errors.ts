@@ -170,12 +170,26 @@ function isTanStackRedirectResponse(error: unknown): boolean {
   return typeof Response !== 'undefined' && error instanceof Response
 }
 
-/** Returns true for expected 4xx AppErrors, input validation errors, and TanStack Start redirect responses that should not be sent to Sentry. */
+/**
+ * Returns true for Firefox's representation of an aborted fetch.
+ * Firefox reports aborted fetch() calls (e.g. on navigation) as
+ * `TypeError: NetworkError when attempting to fetch resource.` instead of
+ * `AbortError`. These are not application bugs and are not actionable.
+ */
+function isFirefoxNetworkError(error: unknown): boolean {
+  return (
+    error instanceof TypeError &&
+    error.message === 'NetworkError when attempting to fetch resource.'
+  )
+}
+
+/** Returns true for expected 4xx AppErrors, input validation errors, TanStack Start redirect responses, and Firefox fetch-abort errors that should not be sent to Sentry. */
 export function shouldSuppressFromSentry(error: unknown): boolean {
   return (
     (isAppError(error) && error.status < 500) ||
     isInputValidationError(error) ||
-    isTanStackRedirectResponse(error)
+    isTanStackRedirectResponse(error) ||
+    isFirefoxNetworkError(error)
   )
 }
 

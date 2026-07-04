@@ -34,10 +34,10 @@ export async function requestPasswordResetService(
     return { success: true, message: RESET_ANONYMOUS_MESSAGE }
   }
 
-  const cooldownMessage = resolveCooldownMessage(
-    user.accountSecurity.lastResetRequestAt,
-    new Date(),
-  )
+  const lastResetRequestAt = (
+    user.accountSecurity as { lastResetRequestAt: Date } | null
+  )?.lastResetRequestAt
+  const cooldownMessage = resolveCooldownMessage(lastResetRequestAt, new Date())
   if (cooldownMessage) {
     return { success: false, message: cooldownMessage }
   }

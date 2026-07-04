@@ -17,6 +17,10 @@ export function getRouter() {
   if (!router.isServer) {
     Sentry.init({
       dsn: import.meta.env.VITE_SENTRY_DSN,
+      // Only capture errors with at least one frame from our JS bundle.
+      // Filters third-party inline script noise (e.g. Cloudflare bot-protection
+      // scripts injected directly into the HTML page).
+      allowUrls: [/\/assets\//],
       beforeSend: (event, hint) =>
         shouldSuppressFromSentry(hint.originalException) ? null : event,
     })
