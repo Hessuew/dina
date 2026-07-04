@@ -45,28 +45,30 @@ export function IconButton({
   const buttonClassName = `size-8 rounded-none border-none bg-transparent hover:bg-white/5 ${className || ''}`
   return (
     <Tooltip>
-      <TooltipTrigger>
-        {to ? (
-          <ButtonLink
-            {...to}
-            size="icon"
-            theme="dark"
-            className={buttonClassName}
-          >
-            <Icon className="size-3.5" />
-          </ButtonLink>
-        ) : (
-          <Button
-            size="icon"
-            theme="dark"
-            className={buttonClassName}
-            onClick={onClick}
-            disabled={disabled}
-          >
-            <Icon className="size-3.5" />
-          </Button>
-        )}
-      </TooltipTrigger>
+      <TooltipTrigger
+        render={
+          to ? (
+            <ButtonLink
+              {...to}
+              size="icon"
+              theme="dark"
+              className={buttonClassName}
+            >
+              <Icon className="size-3.5" />
+            </ButtonLink>
+          ) : (
+            <Button
+              size="icon"
+              theme="dark"
+              className={buttonClassName}
+              onClick={onClick}
+              disabled={disabled}
+            >
+              <Icon className="size-3.5" />
+            </Button>
+          )
+        }
+      />
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   )
