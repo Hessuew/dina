@@ -33,7 +33,7 @@ export function TeacherColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex w-72 shrink-0 flex-col gap-2 rounded-xl border border-black/10 bg-white/60 p-3',
+        'flex flex-col gap-2 rounded-xl border border-black/10 bg-white/60 p-3',
         isOver && 'ring-2 ring-[#C5A059]/70',
       )}
     >

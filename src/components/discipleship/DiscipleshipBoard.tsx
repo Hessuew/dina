@@ -43,17 +43,20 @@ function BoardLanes({
   data: DiscipleshipBoardData
   handlers: ColumnHandlers
 }) {
+  /* 13rem = topbar (4rem) + page-header (9rem) */
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4">
+    <div className="flex flex-col gap-3 pb-4 md:h-[calc(100dvh-13rem)] md:flex-row md:items-stretch">
       <UnassignedPool students={board.unassigned} canManage />
-      {board.columns.map((column) => (
-        <TeacherColumn
-          key={column.teacher.id}
-          column={column}
-          canManage={data.isAdmin || column.teacher.id === data.currentUserId}
-          handlers={handlers}
-        />
-      ))}
+      <div className="grid flex-1 content-start items-start gap-3 sm:grid-cols-1 md:min-h-0 md:grid-cols-2 md:overflow-y-auto lg:grid-cols-3">
+        {board.columns.map((column) => (
+          <TeacherColumn
+            key={column.teacher.id}
+            column={column}
+            canManage={data.isAdmin || column.teacher.id === data.currentUserId}
+            handlers={handlers}
+          />
+        ))}
+      </div>
     </div>
   )
 }

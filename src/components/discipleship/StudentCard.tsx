@@ -1,5 +1,4 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core'
-import { CSS } from '@dnd-kit/utilities'
 import { Link2Off } from 'lucide-react'
 import { MeetingTimeRow } from './MeetingTimeRow'
 import type { DragSource, DropTarget } from '@/utils/discipleship/domain/discipleship-drop.domain'
@@ -53,7 +52,6 @@ export function StudentCard({
         drag.setNodeRef(node)
         drop.setNodeRef(node)
       }}
-      style={{ transform: CSS.Translate.toString(drag.transform) }}
       className={cn(
         'rounded-lg border border-black/8 bg-white/80 p-2.5 shadow-sm',
         canManage && !overlay && 'cursor-grab active:cursor-grabbing',
