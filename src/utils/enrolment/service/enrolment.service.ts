@@ -22,6 +22,7 @@ import type {
 } from '@/utils/enrolment/domain/enrolment.domain'
 import {
   buildEnrollmentAssignments,
+  deriveCanEvaluate,
   deriveEnrollmentStatus,
   deriveReviewHeading,
   generateInvitationExpiry,
@@ -329,12 +330,19 @@ export async function getEnrollmentsService(
           )
         : undefined
       const reviewerAdmissionCategory = reviewerEval?.admissionCategory ?? null
+      const canEvaluate = deriveCanEvaluate(
+        userId,
+        isAdmin,
+        assignment ?? null,
+        peersForReviewers,
+      )
       return {
         ...base,
         evaluationSum,
         evaluationCount,
         reviewHeading,
         reviewerAdmissionCategory,
+        canEvaluate,
       }
     })
 

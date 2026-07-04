@@ -94,6 +94,36 @@ export type EnrollmentWithEvaluation = MaybeRedactedEnrollment & {
   evaluationCount: number
   reviewHeading: ReviewHeading
   reviewerAdmissionCategory: (typeof enrollmentEvaluations.$inferSelect)['admissionCategory']
+  /** Whether the current viewer may write evaluations for this enrollment. */
+  canEvaluate: boolean
+}
+
+/**
+ * Returns true when the viewer is allowed to write evaluations for an enrollment.
+ *
+ * Rules (mirrors `assertEvaluationAuthorized` in the service layer):
+ *  - admins always can
+ *  - the assigned reviewer can
+ *  - any course team member (teacher or active substitute) can
+ *  - everyone else cannot (e.g. a teacher viewing via View All for another course)
+ */
+export function deriveCanEvaluate(
+  userId: string,
+  isAdmin: boolean,
+  assignment:
+    | { reviewerId: string; courseId: string | null }
+    | null
+    | undefined,
+  peersForReviewers: Map<string, Array<{ id: string; name: string }>>,
+): boolean {
+  if (isAdmin) return true
+  if (!assignment) return false
+  if (assignment.reviewerId === userId) return true
+  if (!assignment.courseId) return false
+  return (
+    peersForReviewers.get(assignment.courseId)?.some((m) => m.id === userId) ??
+    false
+  )
 }
 
 /**

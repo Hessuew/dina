@@ -138,6 +138,11 @@ export function isAppError(error: unknown): error is AppError {
   return error instanceof AppError
 }
 
+/** Returns true for expected 4xx AppErrors that should not be sent to Sentry. */
+export function shouldSuppressFromSentry(error: unknown): boolean {
+  return isAppError(error) && error.status < 500
+}
+
 export function toUserError(error: unknown): UserError {
   if (isAppError(error)) {
     return {

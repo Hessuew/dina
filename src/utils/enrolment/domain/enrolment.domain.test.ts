@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildEnrollmentAssignments,
+  deriveCanEvaluate,
   deriveEnrollmentStatus,
   deriveReviewHeading,
   generateInvitationExpiry,
@@ -431,5 +432,66 @@ describe('redactEnrollmentForTeacher', () => {
     expect(redacted.specialCase).toBe(false)
     expect(redacted.createdAt).toEqual(enrollment.createdAt)
     expect(redacted.updatedAt).toEqual(enrollment.updatedAt)
+  })
+})
+
+describe('deriveCanEvaluate', () => {
+  const peersForReviewers = new Map([
+    [
+      'c1',
+      [
+        { id: 'r1', name: 'Alice' },
+        { id: 'p1', name: 'Bob' },
+      ],
+    ],
+  ])
+  const assignment = { reviewerId: 'r1', courseId: 'c1' }
+
+  it('returns true for admin regardless of assignment', () => {
+    expect(deriveCanEvaluate('anyone', true, null, peersForReviewers)).toBe(
+      true,
+    )
+    expect(
+      deriveCanEvaluate('anyone', true, assignment, peersForReviewers),
+    ).toBe(true)
+  })
+
+  it('returns false for non-admin with no assignment', () => {
+    expect(deriveCanEvaluate('u1', false, null, peersForReviewers)).toBe(false)
+  })
+
+  it('returns true for the assigned reviewer', () => {
+    expect(deriveCanEvaluate('r1', false, assignment, peersForReviewers)).toBe(
+      true,
+    )
+  })
+
+  it('returns true for a course team member (peer)', () => {
+    expect(deriveCanEvaluate('p1', false, assignment, peersForReviewers)).toBe(
+      true,
+    )
+  })
+
+  it('returns false for a teacher on a different course', () => {
+    expect(
+      deriveCanEvaluate('other-teacher', false, assignment, peersForReviewers),
+    ).toBe(false)
+  })
+
+  it('returns false when assignment has no courseId and user is not the reviewer', () => {
+    const noCoursAssignment = { reviewerId: 'r1', courseId: null }
+    expect(
+      deriveCanEvaluate('p1', false, noCoursAssignment, peersForReviewers),
+    ).toBe(false)
+  })
+
+  it('returns false when courseId has no entry in peersForReviewers', () => {
+    const otherCourse = { reviewerId: 'r2', courseId: 'c99' }
+    expect(deriveCanEvaluate('r2', false, otherCourse, peersForReviewers)).toBe(
+      true,
+    )
+    expect(deriveCanEvaluate('p1', false, otherCourse, peersForReviewers)).toBe(
+      false,
+    )
   })
 })
