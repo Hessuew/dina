@@ -46,11 +46,13 @@ or docs.
 
 1. Make and verify the local change first.
 2. Run `bun run docs:notion-check`.
-3. For every reported target, search/fetch the existing Notion row or page before creating a new
-   one.
-4. Update Notion with repo paths, PR/Linear links when available, status, evidence, owner/review
-   date when known, and a short summary of what changed.
-5. In the final response, list the Notion targets updated. If a target was skipped, say why.
+3. For every reported target, run `npx -y notion-axi search "<target name>"` to find the existing
+   Notion row or page before creating a new one.
+4. Update Notion via `npx -y notion-axi page update <id>` with repo paths, PR/Linear links,
+   status, evidence, owner/review date, and a short summary of what changed.
+5. Create a new row with `npx -y notion-axi page create --parent <db_id> --db` only when search
+   returns no match.
+6. In the final response, list the Notion targets updated. If a target was skipped, say why.
 
 ## Notion write timing
 
