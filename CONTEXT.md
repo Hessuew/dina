@@ -61,6 +61,31 @@ The four groups selectable in the export-emails dialog (`ExportEmailsDialog`), r
 
 All four are currently offered to both Admins and Teacher-users (email redaction is bypassed for export). This exposes invitation/registration tracking that the **Redacted Enrollment View** otherwise hides from Teacher-users; that carve-out is a known, temporary state to be tightened later.
 
+### WhatsApp Campaign
+
+An admin-triggered bulk WhatsApp send to a fixed enrollment cohort, launched from the enrollments page (`WhatsAppCampaignDialog`, Admin-only — stricter than email export). Two campaigns exist, each hard-paired to a **Message Template** and a cohort (`resolveCampaign`):
+
+- **Congratulations campaign** — template `dina_congratulations` → the **Approved** cohort (`status = 'approved'`).
+- **Signup-reminder campaign** — template `dina_signup_reminder` → the **Not yet registered** cohort (see **Email Export Cohorts**).
+
+A run is planned by `planBulkSend`: recipients already logged as `sent` for the campaign's template are skipped (dedupe — re-running is safe), free-text `phone_whatsapp` values that cannot be normalized to E.164 (explicit `+CC` required, `libphonenumber-js`) are skipped, and a run is capped at 100 sends (re-run for the remainder). Submitting the enrollment form's WhatsApp number is treated as messaging consent; STOP/opt-out handling is deferred (ADR 0014).
+
+### Message Template
+
+A Meta-approved WhatsApp template (Utility category, English) — the only way to send business-initiated WhatsApp messages; free-form bodies are impossible. Canonical bodies live in-repo in `WHATSAPP_TEMPLATES` (`src/utils/whatsapp/domain/templates.domain.ts`) and are submitted to Meta once; the single `{{1}}` variable is the recipient's name (preferred name, else first token of the full legal name).
+
+### WhatsApp Sender (port)
+
+The `WhatsAppSender` interface (`src/utils/whatsapp/types.ts`) behind which the Meta Cloud API adapter (`CloudApiWhatsAppSender`) sits. Swapped via the composition root (`get/setWhatsAppSender`, mirroring `authz`) — integration tests inject a fake; a future provider change stays behind this seam.
+
+### WhatsApp Message log
+
+The `whatsapp_messages` table: one row per send attempt (`sent` or `failed`), carrying the E.164 recipient phone, template name, provider message id, error message, and the sending admin. It is the campaign audit trail, the dedupe source (only `sent` rows dedupe — failures are retried on re-run), and the anchor for future delivery/read webhooks.
+
+### Campaign Lock
+
+A per-campaign mutex that prevents two admins from running the same WhatsApp campaign concurrently. Stored in `whatsapp_campaign_locks` (one row per `CampaignType`). Acquired when an admin clicks a campaign button in the `WhatsAppCampaignDialog` (alongside the preview request); released on send completion, dialog close, or campaign switch. A 5-minute TTL acts as the fallback if the browser closes without releasing. A locked campaign button shows "In use · try again shortly". See ADR 0015.
+
 ### Affiliated Ministry
 
 External ministry organizations that DINA partners with or is spiritually connected to. Examples: Flame the Freeze, Prayer Church Finland. These are not database entities but external references used in marketing content.

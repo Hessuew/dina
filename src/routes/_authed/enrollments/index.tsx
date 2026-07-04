@@ -28,6 +28,7 @@ import {
 } from '@/components/dialog/SubstituteTeacherDialog'
 import { ExportEmailsDialog } from '@/components/enrollment/exports-email-dialog/ExportEmailsDialog'
 import { BulkGradeDialog } from '@/components/enrollment/bulk-grade-dialog/BulkGradeDialog'
+import { WhatsAppCampaignDialog } from '@/components/enrollment/whatsapp-campaign-dialog/WhatsAppCampaignDialog'
 
 export const Route = createFileRoute('/_authed/enrollments/')({
   validateSearch: parseEnrollmentsSearch,
@@ -137,10 +138,9 @@ function useEnrollmentsActions(router: AppRouter, params: EnrollmentsSearch) {
   const [isExportEmailsDialogOpen, setIsExportEmailsDialogOpen] =
     useState(false)
   const [isBulkGradeDialogOpen, setIsBulkGradeDialogOpen] = useState(false)
+  const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false)
 
-  const handleRefresh = () => {
-    router.invalidate()
-  }
+  const handleRefresh = () => void router.invalidate()
 
   const handleToggleViewAll = () => {
     void router.navigate({
@@ -182,6 +182,8 @@ function useEnrollmentsActions(router: AppRouter, params: EnrollmentsSearch) {
     setIsExportEmailsDialogOpen,
     isBulkGradeDialogOpen,
     setIsBulkGradeDialogOpen,
+    isWhatsAppDialogOpen,
+    setIsWhatsAppDialogOpen,
     handleRefresh,
     handleToggleViewAll,
     handleDistribute,
@@ -249,6 +251,7 @@ type EnrollmentsPageHeaderProps = {
   onEndSubstitution: () => void
   onExportEmails: () => void
   onBulkGrade: () => void
+  onSendWhatsApp: () => void
 }
 
 function EnrollmentsPageHeader({
@@ -262,6 +265,7 @@ function EnrollmentsPageHeader({
   onEndSubstitution,
   onExportEmails,
   onBulkGrade,
+  onSendWhatsApp,
 }: EnrollmentsPageHeaderProps) {
   return (
     <div className="mb-10 flex items-end justify-between gap-6">
@@ -295,6 +299,7 @@ function EnrollmentsPageHeader({
             onStartSubstitution={onStartSubstitution}
             onEndSubstitution={onEndSubstitution}
             onBulkGrade={onBulkGrade}
+            onSendWhatsApp={onSendWhatsApp}
             isDistributing={isDistributing}
           />
         )}
@@ -395,6 +400,23 @@ function EnrollmentReviewOverlay({
   )
 }
 
+// Admin-only dialogs mounted alongside the page (bulk grade + WhatsApp send).
+function EnrollmentAdminDialogs({ c }: { c: EnrollmentsController }) {
+  return (
+    <>
+      <BulkGradeDialog
+        open={c.isBulkGradeDialogOpen}
+        onOpenChange={c.setIsBulkGradeDialogOpen}
+        onSuccess={() => void c.router.invalidate()}
+      />
+      <WhatsAppCampaignDialog
+        open={c.isWhatsAppDialogOpen}
+        onOpenChange={c.setIsWhatsAppDialogOpen}
+      />
+    </>
+  )
+}
+
 function EnrollmentsPage() {
   const c = useEnrollmentsPageController()
   return (
@@ -410,6 +432,7 @@ function EnrollmentsPage() {
         onEndSubstitution={() => c.setIsEndSubDialogOpen(true)}
         onExportEmails={() => c.setIsExportEmailsDialogOpen(true)}
         onBulkGrade={() => c.setIsBulkGradeDialogOpen(true)}
+        onSendWhatsApp={() => c.setIsWhatsAppDialogOpen(true)}
       />
 
       <EnrollmentsTableSection c={c} />
@@ -431,13 +454,7 @@ function EnrollmentsPage() {
         />
       )}
 
-      {c.isAdmin && (
-        <BulkGradeDialog
-          open={c.isBulkGradeDialogOpen}
-          onOpenChange={c.setIsBulkGradeDialogOpen}
-          onSuccess={() => void c.router.invalidate()}
-        />
-      )}
+      {c.isAdmin && <EnrollmentAdminDialogs c={c} />}
 
       {c.reviewOverlay && (
         <EnrollmentReviewOverlay
