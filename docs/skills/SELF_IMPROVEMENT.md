@@ -1,16 +1,20 @@
 # Skill Self-Improvement Rule
 
-Single source of truth for how every agent (Claude Code, Windsurf/Cascade, Devin) treats skills in this repo. Referenced — not copied — by `CLAUDE.md` and `.windsurfrules`.
+Single source of truth for how agents treat skills in this repo. Referenced — not copied — by
+tool entrypoints and adapter folders.
 
 ## Canonical location
 
-All skills live once in `docs/skills/<name>/SKILL.md`. Every tool dir is a symlink to it:
+Repo-owned skills live once in `docs/skills/<name>/SKILL.md`. Tool dirs expose those skills as
+adapters:
 
 - `.claude/skills/<name>` → `docs/skills/<name>` (Claude Code)
-- `.windsurf/workflows/<name>.md` → `docs/skills/<name>/SKILL.md` (Windsurf, invoked `/<name>`)
-- `.devin/skills/<name>` and `.agents/skills/<name>` → `docs/skills/<name>`
+- `.devin/skills/<name>` → `docs/skills/<name>` (Devin)
+- `.agents/skills/<name>` → `docs/skills/<name>` for repo-local agent adapters when the skill is
+  sourced from `docs/skills/`
 
-**Edit a skill in `docs/skills/` only.** Never edit through a symlink path or fork a copy into a tool dir.
+**Edit repo-owned skills in `docs/skills/` only.** Never edit through a symlink path or fork a
+copy into a tool dir.
 
 ## After using any skill
 
@@ -39,4 +43,6 @@ Entry format:
 
 ## Review loop
 
-Periodically (or when the log grows), triage `IMPROVEMENTS.md`: apply accepted entries by editing the relevant `docs/skills/<name>/SKILL.md`, then remove the handled lines. `new-skill` entries become a new `docs/skills/<name>/` dir plus its four symlinks.
+Periodically (or when the log grows), triage `IMPROVEMENTS.md`: apply accepted entries by editing
+the relevant `docs/skills/<name>/SKILL.md`, then remove the handled lines. `new-skill` entries
+become a new `docs/skills/<name>/` dir plus the adapter links each tool needs.
