@@ -1,8 +1,10 @@
-export type EmailGroup = 'approved' | 'all'
+export type EmailGroup = 'approved' | 'all' | 'registered' | 'not_registered'
 
 export const GROUP_OPTIONS: Array<{ value: EmailGroup; label: string }> = [
-  { value: 'approved', label: 'Approved' },
   { value: 'all', label: 'All enrollments' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'registered', label: 'Registered' },
+  { value: 'not_registered', label: 'Not yet registered' },
 ]
 
 /** Joins email array into a semicolon-separated string for Outlook. */

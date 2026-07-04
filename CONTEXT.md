@@ -46,6 +46,21 @@ An invitation (`invitations` table) is the single, admin-issued gate into signup
 
 Both signup guards (`validateSignupInvitation`, `validateInvitationActive`) require `pending`, so `accepted`/`revoked` invitations correctly refuse re-use.
 
+### Registered
+
+An applicant is **Registered** once they have **completed signup** — i.e. the enrollment's linked invitation reached `accepted` (OTP verified, `profiles` row created; see **Invitation lifecycle** and ADR 0012). "Registered" is a display alias for `accepted`; there is no separate column. Because signup is invitation-gated, a Registered applicant was necessarily invited (`invitation_sent = true`) and, in practice, was `approved` first.
+
+### Email Export Cohorts
+
+The four groups selectable in the export-emails dialog (`ExportEmailsDialog`), resolved by `findEnrollmentEmailsByGroup`. Emails are always ordered by enrollment `created_at`:
+
+- **All enrollments** — every enrollment, unfiltered.
+- **Approved** — `status = 'approved'`.
+- **Registered** — the enrollment's linked invitation is `accepted` (see **Registered**).
+- **Not yet registered** — **invited but not signed up**: `invitation_sent = true` **and** the linked invitation is not `accepted`. Deliberately anchored on _invited_, **not** on `status = 'approved'` — the cohort is the people who were emailed an invite and haven't finished creating their account, so they are the actionable "nudge to finish signup" list.
+
+All four are currently offered to both Admins and Teacher-users (email redaction is bypassed for export). This exposes invitation/registration tracking that the **Redacted Enrollment View** otherwise hides from Teacher-users; that carve-out is a known, temporary state to be tightened later.
+
 ### Affiliated Ministry
 
 External ministry organizations that DINA partners with or is spiritually connected to. Examples: Flame the Freeze, Prayer Church Finland. These are not database entities but external references used in marketing content.

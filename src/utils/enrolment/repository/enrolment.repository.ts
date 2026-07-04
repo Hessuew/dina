@@ -14,7 +14,10 @@ import {
   or,
   sql,
 } from 'drizzle-orm'
-import type { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
+import type {
+  ENROLLMENT_SORT_KEYS,
+  GetEnrollmentEmailsInput,
+} from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
 import {
   courseSubstitutes,
@@ -707,20 +710,38 @@ export async function deleteCourseSubstituteByAbsent(
   return deleted.length
 }
 
+/** WHERE predicate for each export cohort (see CONTEXT.md → Email Export Cohorts). */
+function emailGroupWhere(group: GetEnrollmentEmailsInput['group']) {
+  switch (group) {
+    case 'all':
+      return undefined
+    case 'approved':
+      return eq(enrollments.status, 'approved')
+    case 'registered':
+      return eq(invitations.status, 'accepted')
+    case 'not_registered':
+      return and(
+        eq(enrollments.invitationSent, true),
+        or(isNull(invitations.status), ne(invitations.status, 'accepted')),
+      )
+  }
+}
+
 /**
- * Returns all enrollment emails, optionally filtered to approved-only.
+ * Returns enrollment emails for the requested export cohort.
  * Used by the export-emails feature (accessible to both admins and teachers).
+ * LEFT joins invitations so the registered/not-registered cohorts can filter on
+ * the enrollment's linked invitation status.
  */
 export async function findEnrollmentEmailsByGroup(
-  group: 'approved' | 'all',
+  group: GetEnrollmentEmailsInput['group'],
 ): Promise<Array<string>> {
   const db = await getDb()
   const rows = await db
     .select({ email: enrollments.email })
     .from(enrollments)
-    .where(
-      group === 'approved' ? eq(enrollments.status, 'approved') : undefined,
-    )
+    .leftJoin(invitations, eq(enrollments.invitationId, invitations.id))
+    .where(emailGroupWhere(group))
     .orderBy(asc(enrollments.createdAt))
   return rows.map((r) => r.email)
 }

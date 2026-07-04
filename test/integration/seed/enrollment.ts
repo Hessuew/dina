@@ -13,7 +13,13 @@ type EnrollmentStatus =
   | 'deferred'
 
 export async function seedEnrollment(
-  overrides: { id?: string; email?: string; status?: EnrollmentStatus } = {},
+  overrides: {
+    id?: string
+    email?: string
+    status?: EnrollmentStatus
+    invitationSent?: boolean
+    invitationId?: string | null
+  } = {},
 ): Promise<string> {
   const id = overrides.id ?? randomUUID()
   const db = await getDb()
@@ -27,6 +33,12 @@ export async function seedEnrollment(
     aboutYourself: 'about',
     expectationsAlignment: 'expectations',
     ...(overrides.status ? { status: overrides.status } : {}),
+    ...(overrides.invitationSent !== undefined
+      ? { invitationSent: overrides.invitationSent }
+      : {}),
+    ...(overrides.invitationId !== undefined
+      ? { invitationId: overrides.invitationId }
+      : {}),
   })
   return id
 }
