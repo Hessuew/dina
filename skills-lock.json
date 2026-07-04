@@ -13,6 +13,18 @@
       "skillPath": "caveman-compress/SKILL.md",
       "computedHash": "25520dcbf1cc98a372ea9e53abc6a5be20ebf1c7bcbc2008cdc9a118de0311c6"
     },
+    "chrome-devtools-axi": {
+      "source": "kunchenguid/chrome-devtools-axi",
+      "sourceType": "github",
+      "skillPath": "skills/chrome-devtools-axi/SKILL.md",
+      "computedHash": "824e8e72ae7be58b79f2790ae0131b1cd6f555dd5fd2974db6e4e270c35d28c1"
+    },
+    "gh-axi": {
+      "source": "kunchenguid/gh-axi",
+      "sourceType": "github",
+      "skillPath": "skills/gh-axi/SKILL.md",
+      "computedHash": "d287f0eb606abd7aa09efc6628943bd07101e2f091c4acb1e92cbb8b957aa5f6"
+    },
     "improve-codebase-architecture": {
       "source": "mattpocock/skills",
       "sourceType": "github",
