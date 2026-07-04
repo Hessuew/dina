@@ -24,6 +24,7 @@ import { Route as AuthedTeachersRouteImport } from './routes/_authed/teachers'
 import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
 import { Route as AuthedInvitationsRouteImport } from './routes/_authed/invitations'
 import { Route as AuthedEventsRouteImport } from './routes/_authed/events'
+import { Route as AuthedDiscipleshipRouteImport } from './routes/_authed/discipleship'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedCalendarRouteImport } from './routes/_authed/calendar'
 import { Route as AuthedStudentsIndexRouteImport } from './routes/_authed/students/index'
@@ -112,6 +113,11 @@ const AuthedEventsRoute = AuthedEventsRouteImport.update({
   path: '/events',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedDiscipleshipRoute = AuthedDiscipleshipRouteImport.update({
+  id: '/discipleship',
+  path: '/discipleship',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -191,6 +197,7 @@ export interface FileRoutesByFullPath {
   '/verify-email-change': typeof VerifyEmailChangeRoute
   '/calendar': typeof AuthedCalendarRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/discipleship': typeof AuthedDiscipleshipRoute
   '/events': typeof AuthedEventsRoute
   '/invitations': typeof AuthedInvitationsRoute
   '/posts': typeof AuthedPostsRoute
@@ -220,6 +227,7 @@ export interface FileRoutesByTo {
   '/verify-email-change': typeof VerifyEmailChangeRoute
   '/calendar': typeof AuthedCalendarRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/discipleship': typeof AuthedDiscipleshipRoute
   '/events': typeof AuthedEventsRoute
   '/invitations': typeof AuthedInvitationsRoute
   '/posts': typeof AuthedPostsRoute
@@ -251,6 +259,7 @@ export interface FileRoutesById {
   '/verify-email-change': typeof VerifyEmailChangeRoute
   '/_authed/calendar': typeof AuthedCalendarRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/discipleship': typeof AuthedDiscipleshipRoute
   '/_authed/events': typeof AuthedEventsRoute
   '/_authed/invitations': typeof AuthedInvitationsRoute
   '/_authed/posts': typeof AuthedPostsRoute
@@ -282,6 +291,7 @@ export interface FileRouteTypes {
     | '/verify-email-change'
     | '/calendar'
     | '/dashboard'
+    | '/discipleship'
     | '/events'
     | '/invitations'
     | '/posts'
@@ -311,6 +321,7 @@ export interface FileRouteTypes {
     | '/verify-email-change'
     | '/calendar'
     | '/dashboard'
+    | '/discipleship'
     | '/events'
     | '/invitations'
     | '/posts'
@@ -341,6 +352,7 @@ export interface FileRouteTypes {
     | '/verify-email-change'
     | '/_authed/calendar'
     | '/_authed/dashboard'
+    | '/_authed/discipleship'
     | '/_authed/events'
     | '/_authed/invitations'
     | '/_authed/posts'
@@ -480,6 +492,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedEventsRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/discipleship': {
+      id: '/_authed/discipleship'
+      path: '/discipleship'
+      fullPath: '/discipleship'
+      preLoaderRoute: typeof AuthedDiscipleshipRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/dashboard': {
       id: '/_authed/dashboard'
       path: '/dashboard'
@@ -577,6 +596,7 @@ declare module '@tanstack/react-router' {
 interface AuthedRouteChildren {
   AuthedCalendarRoute: typeof AuthedCalendarRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedDiscipleshipRoute: typeof AuthedDiscipleshipRoute
   AuthedEventsRoute: typeof AuthedEventsRoute
   AuthedInvitationsRoute: typeof AuthedInvitationsRoute
   AuthedPostsRoute: typeof AuthedPostsRoute
@@ -598,6 +618,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedCalendarRoute: AuthedCalendarRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedDiscipleshipRoute: AuthedDiscipleshipRoute,
   AuthedEventsRoute: AuthedEventsRoute,
   AuthedInvitationsRoute: AuthedInvitationsRoute,
   AuthedPostsRoute: AuthedPostsRoute,

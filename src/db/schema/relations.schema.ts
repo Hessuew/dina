@@ -11,6 +11,11 @@ import {
   lessons,
 } from './course.schema'
 import { enrollmentReviewerAssignments, enrollments } from './enrollment.schema'
+import {
+  discipleshipAssignments,
+  discipleshipGroups,
+  discipleshipPairs,
+} from './discipleship.schema'
 import { invitations } from './invitation.schema'
 import { mediaLibrary } from './media.schema'
 import { notifications } from './notification.schema'
@@ -47,6 +52,17 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
   postReactions: many(postReactions),
   postCommentReactions: many(postCommentReactions),
   reviewerAssignments: many(enrollmentReviewerAssignments),
+  discipleshipAsStudent: many(discipleshipAssignments, {
+    relationName: 'student',
+  }),
+  discipleshipAsTeacher: many(discipleshipAssignments, {
+    relationName: 'teacher',
+  }),
+  discipleshipPairs: many(discipleshipPairs),
+  discipleshipGroup: one(discipleshipGroups, {
+    fields: [profiles.id],
+    references: [discipleshipGroups.teacherId],
+  }),
 }))
 
 export const accountSecurityRelations = relations(
@@ -200,6 +216,47 @@ export const enrollmentReviewerAssignmentsRelations = relations(
     reviewer: one(profiles, {
       fields: [enrollmentReviewerAssignments.reviewerId],
       references: [profiles.id],
+    }),
+  }),
+)
+
+export const discipleshipGroupsRelations = relations(
+  discipleshipGroups,
+  ({ one }) => ({
+    teacher: one(profiles, {
+      fields: [discipleshipGroups.teacherId],
+      references: [profiles.id],
+    }),
+  }),
+)
+
+export const discipleshipPairsRelations = relations(
+  discipleshipPairs,
+  ({ one, many }) => ({
+    teacher: one(profiles, {
+      fields: [discipleshipPairs.teacherId],
+      references: [profiles.id],
+    }),
+    members: many(discipleshipAssignments),
+  }),
+)
+
+export const discipleshipAssignmentsRelations = relations(
+  discipleshipAssignments,
+  ({ one }) => ({
+    student: one(profiles, {
+      fields: [discipleshipAssignments.studentId],
+      references: [profiles.id],
+      relationName: 'student',
+    }),
+    teacher: one(profiles, {
+      fields: [discipleshipAssignments.teacherId],
+      references: [profiles.id],
+      relationName: 'teacher',
+    }),
+    pair: one(discipleshipPairs, {
+      fields: [discipleshipAssignments.pairId],
+      references: [discipleshipPairs.id],
     }),
   }),
 )
