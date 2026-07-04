@@ -39,6 +39,13 @@ import {
   updatePost,
 } from '@/utils/post/posts'
 import { buildCommentsSectionViewModel } from '@/components/post/post-card/comments-section.domain'
+import {
+  appendToPreview,
+  isEditedTimestamps,
+  removeCommentById,
+  replaceComment,
+  toggleReactionInList,
+} from '@/components/post/post-card/post-card.domain'
 
 type CurrentUser = {
   id: string
@@ -316,6 +323,22 @@ function ReactionsBar({
   )
 }
 
+type CommentsSectionProps = {
+  postId: string
+  currentUser: CurrentUser
+  canModerate: boolean
+  commentCount: number
+  comments: Array<CommentWithAuthor>
+  showAllComments: boolean
+  hasMoreComments: boolean
+  loadingComments: boolean
+  onLoadAllComments: () => void
+  onLoadMoreComments: () => void
+  onCommentCreated: (comment: CommentWithAuthor) => void
+  onCommentDeleted: (id: string) => void
+  onCommentUpdated: (comment: CommentWithAuthor) => void
+}
+
 function CommentsSection({
   postId,
   currentUser,
@@ -330,21 +353,7 @@ function CommentsSection({
   onCommentCreated,
   onCommentDeleted,
   onCommentUpdated,
-}: {
-  postId: string
-  currentUser: CurrentUser
-  canModerate: boolean
-  commentCount: number
-  comments: Array<CommentWithAuthor>
-  showAllComments: boolean
-  hasMoreComments: boolean
-  loadingComments: boolean
-  onLoadAllComments: () => void
-  onLoadMoreComments: () => void
-  onCommentCreated: (comment: CommentWithAuthor) => void
-  onCommentDeleted: (id: string) => void
-  onCommentUpdated: (comment: CommentWithAuthor) => void
-}) {
+}: CommentsSectionProps) {
   const vm = buildCommentsSectionViewModel({
     commentCount,
     commentsLength: comments.length,
@@ -446,28 +455,25 @@ function CommentItemsList({
   )
 }
 
-export function PostCard({
-  post,
-  currentUser,
-  canModerate,
-  onUpdated,
-  onDeleted,
-}: {
-  post: PostWithDetails
-  currentUser: CurrentUser
-  canModerate: boolean
-  onUpdated: (post: PostWithDetails) => void
-  onDeleted: (postId: string) => void
-}) {
-  const isAuthor = post.author.id === currentUser.id
-  const canDelete = isAuthor || canModerate
-  const [isEditing, setIsEditing] = useState(false)
-  const [editContent, setEditContent] = useState(post.content)
-
-  // Local reactions state
+function usePostReactions(post: PostWithDetails, currentUserId: string) {
   const [reactions, setReactions] = useState(post.reactions)
-  const [commentCount, setCommentCount] = useState(post.commentCount)
-  const [previewComments, setPreviewComments] = useState(post.previewComments)
+
+  const reactionMutation = useMutation({
+    fn: toggleReaction,
+  })
+
+  const handleReaction = (emoji: string) => {
+    // Optimistic update
+    setReactions((prev) =>
+      toggleReactionInList(prev, currentUserId, emoji, `temp-${Date.now()}`),
+    )
+    reactionMutation.mutate({ data: { postId: post.id, emoji } })
+  }
+
+  return { reactions, handleReaction }
+}
+
+function useCommentsPagination(postId: string) {
   const [showAllComments, setShowAllComments] = useState(false)
   const [allComments, setAllComments] = useState<Array<CommentWithAuthor>>([])
   const [commentsNextCursor, setCommentsNextCursor] = useState<
@@ -475,9 +481,110 @@ export function PostCard({
   >()
   const [loadingComments, setLoadingComments] = useState(false)
 
-  const isEdited =
-    new Date(post.updatedAt).getTime() - new Date(post.createdAt).getTime() >
-    1000
+  const handleLoadAllComments = async () => {
+    setLoadingComments(true)
+    try {
+      const data = await getComments({
+        data: { postId, limit: 20 },
+      })
+      setAllComments(data.comments)
+      setCommentsNextCursor(data.nextCursor)
+      setShowAllComments(true)
+    } finally {
+      setLoadingComments(false)
+    }
+  }
+
+  const handleLoadMoreComments = async () => {
+    if (!commentsNextCursor) return
+    setLoadingComments(true)
+    try {
+      const data = await getComments({
+        data: { postId, limit: 20, cursor: commentsNextCursor },
+      })
+      setAllComments((prev) => [...prev, ...data.comments])
+      setCommentsNextCursor(data.nextCursor)
+    } finally {
+      setLoadingComments(false)
+    }
+  }
+
+  return {
+    showAllComments,
+    allComments,
+    setAllComments,
+    hasMoreComments: commentsNextCursor !== undefined,
+    loadingComments,
+    handleLoadAllComments,
+    handleLoadMoreComments,
+  }
+}
+
+function usePostComments(post: PostWithDetails) {
+  const [commentCount, setCommentCount] = useState(post.commentCount)
+  const [previewComments, setPreviewComments] = useState(post.previewComments)
+  const pagination = useCommentsPagination(post.id)
+  const { showAllComments, setAllComments } = pagination
+
+  const updateVisible = (
+    fn: (prev: Array<CommentWithAuthor>) => Array<CommentWithAuthor>,
+  ) => (showAllComments ? setAllComments(fn) : setPreviewComments(fn))
+
+  const handleCommentCreated = (comment: CommentWithAuthor) => {
+    setCommentCount((c) => c + 1)
+    if (showAllComments) {
+      setAllComments((prev) => [...prev, comment])
+    } else {
+      setPreviewComments((prev) => appendToPreview(prev, comment))
+    }
+  }
+
+  const handleCommentDeleted = (commentId: string) => {
+    setCommentCount((c) => c - 1)
+    updateVisible((prev) => removeCommentById(prev, commentId))
+  }
+
+  const handleCommentUpdated = (updated: CommentWithAuthor) =>
+    updateVisible((prev) => replaceComment(prev, updated))
+
+  return {
+    showAllComments: pagination.showAllComments,
+    allComments: pagination.allComments,
+    hasMoreComments: pagination.hasMoreComments,
+    loadingComments: pagination.loadingComments,
+    handleLoadAllComments: pagination.handleLoadAllComments,
+    handleLoadMoreComments: pagination.handleLoadMoreComments,
+    commentCount,
+    previewComments,
+    displayedComments: showAllComments
+      ? pagination.allComments
+      : previewComments,
+    handleCommentCreated,
+    handleCommentDeleted,
+    handleCommentUpdated,
+  }
+}
+
+type UsePostEditingArgs = {
+  post: PostWithDetails
+  onUpdated: (post: PostWithDetails) => void
+  onDeleted: (postId: string) => void
+  // Local state carried into the updated post so the parent stays in sync
+  reactions: PostWithDetails['reactions']
+  commentCount: number
+  previewComments: Array<CommentWithAuthor>
+}
+
+function usePostEditing({
+  post,
+  onUpdated,
+  onDeleted,
+  reactions,
+  commentCount,
+  previewComments,
+}: UsePostEditingArgs) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editContent, setEditContent] = useState(post.content)
 
   const updateMutation = useMutation({
     fn: updatePost,
@@ -503,89 +610,51 @@ export function PostCard({
     },
   })
 
-  const reactionMutation = useMutation({
-    fn: toggleReaction,
+  return {
+    isEditing,
+    editContent,
+    setEditContent,
+    isSaving: updateMutation.isPending,
+    startEditing: () => {
+      setEditContent(post.content)
+      setIsEditing(true)
+    },
+    cancelEditing: () => setIsEditing(false),
+    savePost: () =>
+      updateMutation.mutate({
+        data: { postId: post.id, content: editContent.trim() },
+      }),
+    deletePost: () => deleteMutation.mutate({ data: { postId: post.id } }),
+  }
+}
+
+type PostCardProps = {
+  post: PostWithDetails
+  currentUser: CurrentUser
+  canModerate: boolean
+  onUpdated: (post: PostWithDetails) => void
+  onDeleted: (postId: string) => void
+}
+
+export function PostCard({
+  post,
+  currentUser,
+  canModerate,
+  onUpdated,
+  onDeleted,
+}: PostCardProps) {
+  const isAuthor = post.author.id === currentUser.id
+  const canDelete = isAuthor || canModerate
+  const { reactions, handleReaction } = usePostReactions(post, currentUser.id)
+  const comments = usePostComments(post)
+  const editing = usePostEditing({
+    post,
+    onUpdated,
+    onDeleted,
+    reactions,
+    commentCount: comments.commentCount,
+    previewComments: comments.previewComments,
   })
-
-  const handleReaction = (emoji: string) => {
-    const existing = reactions.find((r) => r.userId === currentUser.id)
-
-    // Optimistic update
-    if (existing && existing.emoji === emoji) {
-      setReactions((prev) => prev.filter((r) => r.id !== existing.id))
-    } else if (existing) {
-      setReactions((prev) =>
-        prev.map((r) => (r.id === existing.id ? { ...r, emoji } : r)),
-      )
-    } else {
-      setReactions((prev) => [
-        ...prev,
-        { id: `temp-${Date.now()}`, emoji, userId: currentUser.id },
-      ])
-    }
-
-    reactionMutation.mutate({ data: { postId: post.id, emoji } })
-  }
-
-  const handleLoadAllComments = async () => {
-    setLoadingComments(true)
-    try {
-      const data = await getComments({
-        data: { postId: post.id, limit: 20 },
-      })
-      setAllComments(data.comments)
-      setCommentsNextCursor(data.nextCursor)
-      setShowAllComments(true)
-    } finally {
-      setLoadingComments(false)
-    }
-  }
-
-  const handleLoadMoreComments = async () => {
-    if (!commentsNextCursor) return
-    setLoadingComments(true)
-    try {
-      const data = await getComments({
-        data: { postId: post.id, limit: 20, cursor: commentsNextCursor },
-      })
-      setAllComments((prev) => [...prev, ...data.comments])
-      setCommentsNextCursor(data.nextCursor)
-    } finally {
-      setLoadingComments(false)
-    }
-  }
-
-  const handleCommentCreated = (comment: CommentWithAuthor) => {
-    setCommentCount((c) => c + 1)
-    if (showAllComments) {
-      setAllComments((prev) => [...prev, comment])
-    } else {
-      setPreviewComments((prev) => [...prev.slice(-2), comment])
-    }
-  }
-
-  const handleCommentDeleted = (commentId: string) => {
-    setCommentCount((c) => c - 1)
-    if (showAllComments) {
-      setAllComments((prev) => prev.filter((c) => c.id !== commentId))
-    } else {
-      setPreviewComments((prev) => prev.filter((c) => c.id !== commentId))
-    }
-  }
-
-  const handleCommentUpdated = (updated: CommentWithAuthor) => {
-    if (showAllComments) {
-      setAllComments((prev) =>
-        prev.map((c) => (c.id === updated.id ? updated : c)),
-      )
-    } else {
-      setPreviewComments((prev) =>
-        prev.map((c) => (c.id === updated.id ? updated : c)),
-      )
-    }
-  }
-
-  const displayedComments = showAllComments ? allComments : previewComments
 
   return (
     <div
@@ -594,49 +663,76 @@ export function PostCard({
     >
       <PostHeader
         post={post}
-        isEdited={isEdited}
+        isEdited={isEditedTimestamps(post.createdAt, post.updatedAt)}
         isAuthor={isAuthor}
         canDelete={canDelete}
-        onEdit={() => {
-          setEditContent(post.content)
-          setIsEditing(true)
-        }}
-        onDelete={() => deleteMutation.mutate({ data: { postId: post.id } })}
+        onEdit={editing.startEditing}
+        onDelete={editing.deletePost}
       />
       <PostContent
         content={post.content}
-        editContent={editContent}
-        isEditing={isEditing}
-        isSaving={updateMutation.isPending}
-        onEditContent={setEditContent}
-        onCancel={() => setIsEditing(false)}
-        onSave={() =>
-          updateMutation.mutate({
-            data: { postId: post.id, content: editContent.trim() },
-          })
-        }
+        editContent={editing.editContent}
+        isEditing={editing.isEditing}
+        isSaving={editing.isSaving}
+        onEditContent={editing.setEditContent}
+        onCancel={editing.cancelEditing}
+        onSave={editing.savePost}
       />
       <ReactionsBar
         reactions={reactions}
         currentUserId={currentUser.id}
         onReaction={handleReaction}
       />
-      <CommentsSection
+      <PostCardComments
         postId={post.id}
         currentUser={currentUser}
         canModerate={canModerate}
-        commentCount={commentCount}
-        comments={displayedComments}
-        showAllComments={showAllComments}
-        hasMoreComments={commentsNextCursor !== undefined}
-        loadingComments={loadingComments}
-        onLoadAllComments={handleLoadAllComments}
-        onLoadMoreComments={handleLoadMoreComments}
-        onCommentCreated={handleCommentCreated}
-        onCommentDeleted={handleCommentDeleted}
-        onCommentUpdated={handleCommentUpdated}
+        comments={comments}
       />
     </div>
+  )
+}
+
+type PostCardCommentsProps = {
+  postId: string
+  currentUser: CurrentUser
+  canModerate: boolean
+  comments: {
+    commentCount: number
+    displayedComments: Array<CommentWithAuthor>
+    showAllComments: boolean
+    hasMoreComments: boolean
+    loadingComments: boolean
+    handleLoadAllComments: () => void
+    handleLoadMoreComments: () => void
+    handleCommentCreated: (comment: CommentWithAuthor) => void
+    handleCommentDeleted: (id: string) => void
+    handleCommentUpdated: (comment: CommentWithAuthor) => void
+  }
+}
+
+function PostCardComments({
+  postId,
+  currentUser,
+  canModerate,
+  comments,
+}: PostCardCommentsProps) {
+  return (
+    <CommentsSection
+      postId={postId}
+      currentUser={currentUser}
+      canModerate={canModerate}
+      commentCount={comments.commentCount}
+      comments={comments.displayedComments}
+      showAllComments={comments.showAllComments}
+      hasMoreComments={comments.hasMoreComments}
+      loadingComments={comments.loadingComments}
+      onLoadAllComments={comments.handleLoadAllComments}
+      onLoadMoreComments={comments.handleLoadMoreComments}
+      onCommentCreated={comments.handleCommentCreated}
+      onCommentDeleted={comments.handleCommentDeleted}
+      onCommentUpdated={comments.handleCommentUpdated}
+    />
   )
 }
 
@@ -787,28 +883,13 @@ function CommentReactions({
   )
 }
 
-function CommentItem({
-  comment,
-  currentUser,
-  canModerate,
-  onDeleted,
-  onUpdated,
-}: {
-  comment: CommentWithAuthor
-  currentUser: CurrentUser
-  canModerate: boolean
-  onDeleted: (id: string) => void
-  onUpdated: (comment: CommentWithAuthor) => void
-}) {
-  const isAuthor = comment.author.id === currentUser.id
-  const canDelete = isAuthor || canModerate
+function useCommentEditing(
+  comment: CommentWithAuthor,
+  onUpdated: (comment: CommentWithAuthor) => void,
+  onDeleted: (id: string) => void,
+) {
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(comment.content)
-
-  const isEdited =
-    new Date(comment.updatedAt).getTime() -
-      new Date(comment.createdAt).getTime() >
-    1000
 
   const editMutation = useMutation({
     fn: updateComment,
@@ -827,34 +908,68 @@ function CommentItem({
     },
   })
 
+  return {
+    isEditing,
+    editContent,
+    setEditContent,
+    isSaving: editMutation.isPending,
+    startEditing: () => {
+      setEditContent(comment.content)
+      setIsEditing(true)
+    },
+    cancelEditing: () => setIsEditing(false),
+    saveComment: () =>
+      editMutation.mutate({
+        data: { commentId: comment.id, content: editContent.trim() },
+      }),
+    deleteComment: () =>
+      deleteMutation.mutate({ data: { commentId: comment.id } }),
+  }
+}
+
+function useCommentReactions(
+  comment: CommentWithAuthor,
+  currentUserId: string,
+) {
+  const [commentReactions, setCommentReactions] = useState(comment.reactions)
+
   const commentReactionMutation = useMutation({
     fn: toggleCommentReaction,
   })
 
-  const [commentReactions, setCommentReactions] = useState(comment.reactions)
-
-  const userCommentReactionEmoji = commentReactions.find(
-    (r) => r.userId === currentUser.id,
-  )?.emoji
-
   const handleCommentReaction = (emoji: string) => {
-    const existing = commentReactions.find((r) => r.userId === currentUser.id)
-
-    if (existing && existing.emoji === emoji) {
-      setCommentReactions((prev) => prev.filter((r) => r.id !== existing.id))
-    } else if (existing) {
-      setCommentReactions((prev) =>
-        prev.map((r) => (r.id === existing.id ? { ...r, emoji } : r)),
-      )
-    } else {
-      setCommentReactions((prev) => [
-        ...prev,
-        { id: `temp-${Date.now()}`, emoji, userId: currentUser.id },
-      ])
-    }
-
+    setCommentReactions((prev) =>
+      toggleReactionInList(prev, currentUserId, emoji, `temp-${Date.now()}`),
+    )
     commentReactionMutation.mutate({ data: { commentId: comment.id, emoji } })
   }
+
+  return {
+    commentReactions,
+    userCommentReactionEmoji: commentReactions.find(
+      (r) => r.userId === currentUserId,
+    )?.emoji,
+    handleCommentReaction,
+  }
+}
+
+function CommentItem({
+  comment,
+  currentUser,
+  canModerate,
+  onDeleted,
+  onUpdated,
+}: {
+  comment: CommentWithAuthor
+  currentUser: CurrentUser
+  canModerate: boolean
+  onDeleted: (id: string) => void
+  onUpdated: (comment: CommentWithAuthor) => void
+}) {
+  const isAuthor = comment.author.id === currentUser.id
+  const canDelete = isAuthor || canModerate
+  const editing = useCommentEditing(comment, onUpdated, onDeleted)
+  const reactions = useCommentReactions(comment, currentUser.id)
 
   return (
     <div className="group flex gap-2.5">
@@ -866,57 +981,70 @@ function CommentItem({
       <div className="flex-1">
         <CommentHeader
           comment={comment}
-          isEdited={isEdited}
+          isEdited={isEditedTimestamps(comment.createdAt, comment.updatedAt)}
           isAuthor={isAuthor}
           canDelete={canDelete}
-          onEdit={() => {
-            setEditContent(comment.content)
-            setIsEditing(true)
-          }}
-          onDelete={() =>
-            deleteMutation.mutate({
-              data: { commentId: comment.id },
-            })
-          }
+          onEdit={editing.startEditing}
+          onDelete={editing.deleteComment}
         />
         <CommentContent
           content={comment.content}
-          editContent={editContent}
-          isEditing={isEditing}
-          isSaving={editMutation.isPending}
-          onEditContent={setEditContent}
-          onCancel={() => setIsEditing(false)}
-          onSave={() =>
-            editMutation.mutate({
-              data: {
-                commentId: comment.id,
-                content: editContent.trim(),
-              },
-            })
-          }
+          editContent={editing.editContent}
+          isEditing={editing.isEditing}
+          isSaving={editing.isSaving}
+          onEditContent={editing.setEditContent}
+          onCancel={editing.cancelEditing}
+          onSave={editing.saveComment}
         />
         <CommentReactions
-          reactions={commentReactions}
+          reactions={reactions.commentReactions}
           currentUserId={currentUser.id}
-          selectedEmoji={userCommentReactionEmoji}
-          onReaction={handleCommentReaction}
+          selectedEmoji={reactions.userCommentReactionEmoji}
+          onReaction={reactions.handleCommentReaction}
         />
       </div>
     </div>
   )
 }
 
+function CommentAvatar({
+  avatarUrl,
+  fullName,
+}: {
+  avatarUrl: string | null
+  fullName: string
+}) {
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={fullName}
+        className="size-7 shrink-0 border border-[#1A1A1A]/10 object-cover"
+      />
+    )
+  }
+  return (
+    <div className="flex size-7 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] text-[0.45rem] font-medium text-[#E9D9B4]">
+      {fullName
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()}
+    </div>
+  )
+}
+
 // ── Comment Composer ──────────────────────────────────────────────────────
 
-function CommentComposer({
-  postId,
-  currentUser,
-  onCreated,
-}: {
+type CommentComposerProps = {
   postId: string
   currentUser: CurrentUser
   onCreated: (comment: CommentWithAuthor) => void
-}) {
+}
+
+function CommentComposer(props: CommentComposerProps) {
+  const { postId, currentUser, onCreated } = props
   const [content, setContent] = useState('')
 
   const mutation = useMutation({
@@ -942,22 +1070,10 @@ function CommentComposer({
 
   return (
     <div className="flex gap-2.5">
-      {currentUser.avatarUrl ? (
-        <img
-          src={currentUser.avatarUrl}
-          alt={currentUser.fullName}
-          className="size-7 shrink-0 border border-[#1A1A1A]/10 object-cover"
-        />
-      ) : (
-        <div className="flex size-7 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] text-[0.45rem] font-medium text-[#E9D9B4]">
-          {currentUser.fullName
-            .split(' ')
-            .map((n) => n[0])
-            .join('')
-            .slice(0, 2)
-            .toUpperCase()}
-        </div>
-      )}
+      <CommentAvatar
+        avatarUrl={currentUser.avatarUrl}
+        fullName={currentUser.fullName}
+      />
       <div className="flex flex-1 items-center gap-2">
         <input
           type="text"
