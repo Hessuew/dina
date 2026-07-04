@@ -135,3 +135,45 @@ A teacher who temporarily covers another teacher's (**Absent Teacher's**) Review
 ### Awaiting approval
 
 An `enrollment_status` value meaning the assigned Reviewer scored the applicant 3 or 4 (admit / strong admit) and the enrollment is now waiting on the **Admin's** final decision. Set automatically (see **Enrollment Evaluation**); the Admin resolves it to `approved` or `rejected`. Invitations are still only offered once status is `approved`.
+
+### Exam
+
+A standalone timed assessment authored by a Teacher-user or Admin: a title, a per-exam
+duration (`durationMinutes`, default 30), a start window (`opensAt`–`closesAt`), and an
+ordered list of questions (multiple-choice with exactly one correct option, or open-ended).
+Lifecycle is `draft → published`; questions freeze at publish, and Students only ever see
+published exams. Not attached to a course (course scoping is a deferred extension). See
+ADR 0017.
+
+### Exam Attempt
+
+One Student's single sitting of one Exam — unique per `(exam, student)`, enforced by
+constraint. Starting within the window creates the attempt with a denormalized **Attempt
+Deadline**; returning later resumes the same attempt. States: `in_progress → submitted →
+graded`. Answers are upserted to the server as the student works, so the attempt survives
+tab closes.
+
+### Attempt Deadline
+
+`deadlineAt = startedAt + durationMinutes`, written onto the attempt row at start and never
+moved by later exam edits. All enforcement compares server time against this value; the
+client countdown is display-only. Saves are accepted for a 30-second grace period past the
+deadline. A student who starts late in the window still gets the full duration, even past
+`closesAt`.
+
+### Auto-submission
+
+Lazy finalization of an expired `in_progress` attempt: the next server path that touches it
+(resume, save, submit, grading list) auto-grades the multiple-choice answers and flips it to
+`submitted` with `submittedAt = deadlineAt`, via a conditional update that is safe under
+races. There is no cron; saved answers are already the submission. See ADR 0017.
+
+### Exam Grading
+
+Multiple-choice answers are auto-graded at submission/auto-submission; open-ended answers
+are graded manually by any Teacher-user or Admin (points capped at the question's
+`points`). Once every answered open question has points, the grader finalizes: scores
+aggregate to `autoScore + manualScore = totalScore` and the attempt becomes `graded`. The
+Student sees only a submission confirmation until then — scores and per-answer correctness
+stay hidden, and correct options are never sent to students at any stage (server-side
+projection, RLS as backstop).

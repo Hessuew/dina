@@ -29,6 +29,7 @@ import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedCalendarRouteImport } from './routes/_authed/calendar'
 import { Route as AuthedStudentsIndexRouteImport } from './routes/_authed/students/index'
 import { Route as AuthedLibraryIndexRouteImport } from './routes/_authed/library/index'
+import { Route as AuthedExamsIndexRouteImport } from './routes/_authed/exams/index'
 import { Route as AuthedEnrollmentsIndexRouteImport } from './routes/_authed/enrollments/index'
 import { Route as AuthedCoursesIndexRouteImport } from './routes/_authed/courses/index'
 import { Route as AuthedAssignmentsIndexRouteImport } from './routes/_authed/assignments/index'
@@ -38,6 +39,10 @@ import { Route as AuthedLessonsLessonIdRouteImport } from './routes/_authed/less
 import { Route as AuthedEnrollmentsEnrollmentIdRouteImport } from './routes/_authed/enrollments/$enrollmentId'
 import { Route as AuthedCoursesCourseIdRouteImport } from './routes/_authed/courses/$courseId'
 import { Route as AuthedAssignmentsAssignmentIdRouteImport } from './routes/_authed/assignments/$assignmentId'
+import { Route as AuthedExamsExamIdIndexRouteImport } from './routes/_authed/exams/$examId.index'
+import { Route as AuthedExamsExamIdTakeRouteImport } from './routes/_authed/exams/$examId.take'
+import { Route as AuthedExamsExamIdGradingIndexRouteImport } from './routes/_authed/exams/$examId.grading.index'
+import { Route as AuthedExamsExamIdGradingAttemptIdRouteImport } from './routes/_authed/exams/$examId.grading.$attemptId'
 
 const VerifyEmailChangeRoute = VerifyEmailChangeRouteImport.update({
   id: '/verify-email-change',
@@ -138,6 +143,11 @@ const AuthedLibraryIndexRoute = AuthedLibraryIndexRouteImport.update({
   path: '/library/',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedExamsIndexRoute = AuthedExamsIndexRouteImport.update({
+  id: '/exams/',
+  path: '/exams/',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedEnrollmentsIndexRoute = AuthedEnrollmentsIndexRouteImport.update({
   id: '/enrollments/',
   path: '/enrollments/',
@@ -185,6 +195,28 @@ const AuthedAssignmentsAssignmentIdRoute =
     path: '/assignments/$assignmentId',
     getParentRoute: () => AuthedRoute,
   } as any)
+const AuthedExamsExamIdIndexRoute = AuthedExamsExamIdIndexRouteImport.update({
+  id: '/exams/$examId/',
+  path: '/exams/$examId/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedExamsExamIdTakeRoute = AuthedExamsExamIdTakeRouteImport.update({
+  id: '/exams/$examId/take',
+  path: '/exams/$examId/take',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedExamsExamIdGradingIndexRoute =
+  AuthedExamsExamIdGradingIndexRouteImport.update({
+    id: '/exams/$examId/grading/',
+    path: '/exams/$examId/grading/',
+    getParentRoute: () => AuthedRoute,
+  } as any)
+const AuthedExamsExamIdGradingAttemptIdRoute =
+  AuthedExamsExamIdGradingAttemptIdRouteImport.update({
+    id: '/exams/$examId/grading/$attemptId',
+    path: '/exams/$examId/grading/$attemptId',
+    getParentRoute: () => AuthedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -213,8 +245,13 @@ export interface FileRoutesByFullPath {
   '/assignments/': typeof AuthedAssignmentsIndexRoute
   '/courses/': typeof AuthedCoursesIndexRoute
   '/enrollments/': typeof AuthedEnrollmentsIndexRoute
+  '/exams/': typeof AuthedExamsIndexRoute
   '/library/': typeof AuthedLibraryIndexRoute
   '/students/': typeof AuthedStudentsIndexRoute
+  '/exams/$examId/take': typeof AuthedExamsExamIdTakeRoute
+  '/exams/$examId/': typeof AuthedExamsExamIdIndexRoute
+  '/exams/$examId/grading/$attemptId': typeof AuthedExamsExamIdGradingAttemptIdRoute
+  '/exams/$examId/grading/': typeof AuthedExamsExamIdGradingIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -243,8 +280,13 @@ export interface FileRoutesByTo {
   '/assignments': typeof AuthedAssignmentsIndexRoute
   '/courses': typeof AuthedCoursesIndexRoute
   '/enrollments': typeof AuthedEnrollmentsIndexRoute
+  '/exams': typeof AuthedExamsIndexRoute
   '/library': typeof AuthedLibraryIndexRoute
   '/students': typeof AuthedStudentsIndexRoute
+  '/exams/$examId/take': typeof AuthedExamsExamIdTakeRoute
+  '/exams/$examId': typeof AuthedExamsExamIdIndexRoute
+  '/exams/$examId/grading/$attemptId': typeof AuthedExamsExamIdGradingAttemptIdRoute
+  '/exams/$examId/grading': typeof AuthedExamsExamIdGradingIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -275,8 +317,13 @@ export interface FileRoutesById {
   '/_authed/assignments/': typeof AuthedAssignmentsIndexRoute
   '/_authed/courses/': typeof AuthedCoursesIndexRoute
   '/_authed/enrollments/': typeof AuthedEnrollmentsIndexRoute
+  '/_authed/exams/': typeof AuthedExamsIndexRoute
   '/_authed/library/': typeof AuthedLibraryIndexRoute
   '/_authed/students/': typeof AuthedStudentsIndexRoute
+  '/_authed/exams/$examId/take': typeof AuthedExamsExamIdTakeRoute
+  '/_authed/exams/$examId/': typeof AuthedExamsExamIdIndexRoute
+  '/_authed/exams/$examId/grading/$attemptId': typeof AuthedExamsExamIdGradingAttemptIdRoute
+  '/_authed/exams/$examId/grading/': typeof AuthedExamsExamIdGradingIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -307,8 +354,13 @@ export interface FileRouteTypes {
     | '/assignments/'
     | '/courses/'
     | '/enrollments/'
+    | '/exams/'
     | '/library/'
     | '/students/'
+    | '/exams/$examId/take'
+    | '/exams/$examId/'
+    | '/exams/$examId/grading/$attemptId'
+    | '/exams/$examId/grading/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -337,8 +389,13 @@ export interface FileRouteTypes {
     | '/assignments'
     | '/courses'
     | '/enrollments'
+    | '/exams'
     | '/library'
     | '/students'
+    | '/exams/$examId/take'
+    | '/exams/$examId'
+    | '/exams/$examId/grading/$attemptId'
+    | '/exams/$examId/grading'
   id:
     | '__root__'
     | '/'
@@ -368,8 +425,13 @@ export interface FileRouteTypes {
     | '/_authed/assignments/'
     | '/_authed/courses/'
     | '/_authed/enrollments/'
+    | '/_authed/exams/'
     | '/_authed/library/'
     | '/_authed/students/'
+    | '/_authed/exams/$examId/take'
+    | '/_authed/exams/$examId/'
+    | '/_authed/exams/$examId/grading/$attemptId'
+    | '/_authed/exams/$examId/grading/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -527,6 +589,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedLibraryIndexRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/exams/': {
+      id: '/_authed/exams/'
+      path: '/exams'
+      fullPath: '/exams/'
+      preLoaderRoute: typeof AuthedExamsIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/enrollments/': {
       id: '/_authed/enrollments/'
       path: '/enrollments'
@@ -590,6 +659,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAssignmentsAssignmentIdRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/exams/$examId/': {
+      id: '/_authed/exams/$examId/'
+      path: '/exams/$examId'
+      fullPath: '/exams/$examId/'
+      preLoaderRoute: typeof AuthedExamsExamIdIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/exams/$examId/take': {
+      id: '/_authed/exams/$examId/take'
+      path: '/exams/$examId/take'
+      fullPath: '/exams/$examId/take'
+      preLoaderRoute: typeof AuthedExamsExamIdTakeRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/exams/$examId/grading/': {
+      id: '/_authed/exams/$examId/grading/'
+      path: '/exams/$examId/grading'
+      fullPath: '/exams/$examId/grading/'
+      preLoaderRoute: typeof AuthedExamsExamIdGradingIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/exams/$examId/grading/$attemptId': {
+      id: '/_authed/exams/$examId/grading/$attemptId'
+      path: '/exams/$examId/grading/$attemptId'
+      fullPath: '/exams/$examId/grading/$attemptId'
+      preLoaderRoute: typeof AuthedExamsExamIdGradingAttemptIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
   }
 }
 
@@ -611,8 +708,13 @@ interface AuthedRouteChildren {
   AuthedAssignmentsIndexRoute: typeof AuthedAssignmentsIndexRoute
   AuthedCoursesIndexRoute: typeof AuthedCoursesIndexRoute
   AuthedEnrollmentsIndexRoute: typeof AuthedEnrollmentsIndexRoute
+  AuthedExamsIndexRoute: typeof AuthedExamsIndexRoute
   AuthedLibraryIndexRoute: typeof AuthedLibraryIndexRoute
   AuthedStudentsIndexRoute: typeof AuthedStudentsIndexRoute
+  AuthedExamsExamIdTakeRoute: typeof AuthedExamsExamIdTakeRoute
+  AuthedExamsExamIdIndexRoute: typeof AuthedExamsExamIdIndexRoute
+  AuthedExamsExamIdGradingAttemptIdRoute: typeof AuthedExamsExamIdGradingAttemptIdRoute
+  AuthedExamsExamIdGradingIndexRoute: typeof AuthedExamsExamIdGradingIndexRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
@@ -633,8 +735,14 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAssignmentsIndexRoute: AuthedAssignmentsIndexRoute,
   AuthedCoursesIndexRoute: AuthedCoursesIndexRoute,
   AuthedEnrollmentsIndexRoute: AuthedEnrollmentsIndexRoute,
+  AuthedExamsIndexRoute: AuthedExamsIndexRoute,
   AuthedLibraryIndexRoute: AuthedLibraryIndexRoute,
   AuthedStudentsIndexRoute: AuthedStudentsIndexRoute,
+  AuthedExamsExamIdTakeRoute: AuthedExamsExamIdTakeRoute,
+  AuthedExamsExamIdIndexRoute: AuthedExamsExamIdIndexRoute,
+  AuthedExamsExamIdGradingAttemptIdRoute:
+    AuthedExamsExamIdGradingAttemptIdRoute,
+  AuthedExamsExamIdGradingIndexRoute: AuthedExamsExamIdGradingIndexRoute,
 }
 
 const AuthedRouteWithChildren =
