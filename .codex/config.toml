@@ -1,0 +1,4 @@
+[mcp_servers.sentry]
+url = "https://mcp.sentry.dev/mcp"
+model = "gpt-5.5"
+model_reasoning_effort = "high"

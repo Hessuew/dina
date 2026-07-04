@@ -4,10 +4,13 @@ Binding, always-on engineering rules for this repo. Unlike **skills** (`docs/ski
 on demand), rules apply to every change without being asked for.
 
 Rules live **once** here and are symlinked into each agent's conventional location so local and
-cloud agents read the same source:
+remote agents read the same source:
 
 - `.claude/rules` → `../docs/rules` (Claude Code)
-- `.devin/rules` → `../docs/rules` (Devin / cloud)
+- `.devin/rules` → `../docs/rules` (Devin / remote agents)
+
+Repo-local `.agents/` currently exposes skills and other agent tooling. If a future tool needs
+rules under `.agents/`, add a symlink back to `docs/rules` rather than copying rule files.
 
 Edit rules only in `docs/rules/`, never through a symlink.
 
@@ -17,7 +20,7 @@ Symlinks give co-location, not auto-load. Activation is by reference from the al
 entrypoints:
 
 - **`CLAUDE.md`** → `## Rules` block (Claude Code reads `CLAUDE.md` every session).
-- **`AGENTS.md`** (repo root) → the cross-agent convention (Devin/cloud and other tools).
+- **`AGENTS.md`** (repo root) → the cross-agent convention (Devin, remote agents, and other tools).
 
 Both state the same contract: **before writing or editing a component or endpoint, read the
 applicable `docs/rules/*.md`.** Rules are binding like the Core Priority rules in `CLAUDE.md`.

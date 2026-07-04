@@ -1,4 +1,4 @@
-# AI_GUIDE.md
+# Engineering Guide
 
 Defines eng + repo nav guidance for AI changes.
 
@@ -7,9 +7,10 @@ Defines eng + repo nav guidance for AI changes.
 
 ## Read Order (Required)
 
-1. Read `AI_GUIDE.md` (eng rules + doc contract).
-2. Read `CLAUDE.md` (visual system / UI constraints).
-3. Read nearest dir `README.md` for area you edit.
+1. Read `docs/rules/` for applicable binding project rules.
+2. Read `docs/ENGINEERING_GUIDE.md` (eng rules + doc contract).
+3. Read `CLAUDE.md` (visual system / UI constraints).
+4. Read nearest dir `README.md` for area you edit.
 
 ## Architecture Overview
 
@@ -66,7 +67,7 @@ Update docs in same PR/commit as changes.
 - **Routing**
   - Add/remove route in `src/routes/**` → update `src/routes/README.md`.
   - Add/remove authed route in `src/routes/_authed/**` → update `src/routes/_authed/README.md`.
-  - Change root route context shape (e.g. `context.user` fields) → update `src/routes/README.md` + `AI_GUIDE.md`.
+  - Change root route context shape (e.g. `context.user` fields) → update `src/routes/README.md` + `docs/ENGINEERING_GUIDE.md`.
 
 - **Utilities / server functions**
   - Add/remove major utility or change cross-module patterns → update `src/utils/README.md`.
