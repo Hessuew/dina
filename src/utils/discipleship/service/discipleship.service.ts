@@ -214,24 +214,32 @@ export async function pairStudentsService(
   return withRequestCache(async () => {
     const flags = await requireManage(userId, data.teacherId)
 
-    // Validate both assignments exist and can be paired before mutating.
+    // A may be unassigned (dragged from pool directly onto a paired target).
+    // B must already be assigned since only assigned solo students are drop targets.
     const [a, b] = await Promise.all([
       findAssignmentByStudentId(data.studentIdA),
       findAssignmentByStudentId(data.studentIdB),
     ])
-    if (!a || !b) {
-      throw new NotFoundError('Both students must be assigned to this teacher.')
+    if (!b) {
+      throw new NotFoundError(
+        'Target student must already be assigned to a teacher.',
+      )
     }
 
-    const validation = canPairStudents(toCandidate(a), toCandidate(b))
+    // If A has no assignment yet, treat it as a new student joining data.teacherId.
+    const candidateA = a
+      ? toCandidate(a)
+      : { studentId: data.studentIdA, teacherId: data.teacherId, pairId: null }
+
+    const validation = canPairStudents(candidateA, toCandidate(b))
     if (!validation.ok) throw new ConflictError(PAIR_ERROR[validation.reason])
 
-    // Validation passed — safe to move A to teacherId if needed, then pair.
+    // Assign A (inserts if new, moves if under a different teacher).
     await assignInternal(data.studentIdA, data.teacherId, flags, userId)
 
     const pair = await insertPair(data.teacherId)
     await Promise.all([
-      setAssignmentPair(a.studentId, pair.id),
+      setAssignmentPair(data.studentIdA, pair.id),
       setAssignmentPair(b.studentId, pair.id),
     ])
   })
