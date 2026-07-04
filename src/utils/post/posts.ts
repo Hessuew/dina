@@ -34,7 +34,7 @@ import {
 export const getPostChannels = createServerFn({ method: 'POST' }).handler(
   async () => {
     await getCurrentUser()
-    return getPostChannelsService()
+    return withRequestCache(() => getPostChannelsService())
   },
 )
 
@@ -42,7 +42,7 @@ export const getPosts = createServerFn({ method: 'POST' })
   .inputValidator(getPostsSchema)
   .handler(async ({ data }) => {
     await getCurrentUser()
-    return getPostsService(data)
+    return withRequestCache(() => getPostsService(data))
   })
 
 export const createPost = createServerFn({ method: 'POST' })
@@ -57,7 +57,7 @@ export const getPostById = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     // TODO: is this needed?
     await getCurrentUser()
-    return getPostByIdService(data)
+    return withRequestCache(() => getPostByIdService(data))
   })
 
 export const updatePost = createServerFn({ method: 'POST' })
@@ -78,35 +78,35 @@ export const toggleReaction = createServerFn({ method: 'POST' })
   .inputValidator(toggleReactionSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    return togglePostReactionService(data, user.id)
+    return withRequestCache(() => togglePostReactionService(data, user.id))
   })
 
 export const toggleCommentReaction = createServerFn({ method: 'POST' })
   .inputValidator(toggleCommentReactionSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    return toggleCommentReactionService(data, user.id)
+    return withRequestCache(() => toggleCommentReactionService(data, user.id))
   })
 
 export const getComments = createServerFn({ method: 'POST' })
   .inputValidator(getCommentsSchema)
   .handler(async ({ data }) => {
     await getCurrentUser()
-    return getCommentsService(data)
+    return withRequestCache(() => getCommentsService(data))
   })
 
 export const createComment = createServerFn({ method: 'POST' })
   .inputValidator(createCommentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    return createCommentWithNotification(data, user.id)
+    return withRequestCache(() => createCommentWithNotification(data, user.id))
   })
 
 export const updateComment = createServerFn({ method: 'POST' })
   .inputValidator(updateCommentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    return updateCommentService(data, user.id)
+    return withRequestCache(() => updateCommentService(data, user.id))
   })
 
 export const deleteComment = createServerFn({ method: 'POST' })
