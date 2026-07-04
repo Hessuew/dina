@@ -62,6 +62,13 @@ Defines eng + repo nav guidance for AI changes.
 
 Update docs in same PR/commit as changes.
 
+For engineering-management metadata, also follow
+[`docs/rules/notion-sync.md`](./rules/notion-sync.md). The repo is canonical for ADR bodies,
+rules, code-adjacent docs, schema docs, and implementation invariants. Notion is canonical for
+roadmap, maturity, service ownership, SLO status, dashboards, runbooks, incidents, risks, and
+readiness reviews. Run `bun run docs:notion-check` before final handoff when those areas may have
+changed.
+
 ### What to Update When You Change Things
 
 - **Routing**

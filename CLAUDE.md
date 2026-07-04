@@ -123,6 +123,7 @@ Binding docs: [`docs/rules/complexity.md`](docs/rules/complexity.md), ADR 0010, 
 - Binding, always-on project rules live once in `docs/rules/<name>.md`; `.claude/rules` and `.devin/rules` are adapter symlinks to it. Edit only in `docs/rules/`, never through a symlink.
 - Before writing or editing a component or endpoint, read the applicable `docs/rules/*.md`. They are binding like the Core Priority rules above.
 - First rule: [`docs/rules/complexity.md`](docs/rules/complexity.md) — keep new/changed components and endpoints under the complexity limits (`bun run quality:gate` blocks newly introduced complexity).
+- Notion sync rule: [`docs/rules/notion-sync.md`](docs/rules/notion-sync.md) — run `bun run docs:notion-check` before final handoff when docs, architecture, ADRs, operations, incidents, risks, readiness, or maturity work changes, then update Notion or explain why it was skipped.
 
 ---
 

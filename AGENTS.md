@@ -42,6 +42,8 @@ Tool-neutral entrypoint for agents and contributors working in this repo.
 - Add or update focused tests when behavior changes.
 - Domain logic should be unit-tested where practical; `src/**/domain/**` coverage remains
   strict.
+- Run `bun run docs:notion-check` before final handoff when tracked changes touch docs,
+  architecture, operational metadata, ADRs, incidents, risks, readiness, or maturity work.
 - Run `bun run quality:gate` before submitting tracked changes. It blocks on lint, type, test,
   and newly introduced complexity failures.
 
@@ -56,6 +58,8 @@ Tool-neutral entrypoint for agents and contributors working in this repo.
 ## Agent-Specific Rules
 
 - Rules live once in `docs/rules/*.md`; edit rules only there.
+- Notion sync rules live in `docs/rules/notion-sync.md`; update Notion at the end of the task
+  when that rule reports a target, or explain why the update was skipped.
 - Skills live once in `docs/skills/<name>/SKILL.md`; edit skills only there.
 - `.claude/`, `.devin/`, and `.agents/` are tool-specific adapter surfaces. Their rule and
   skill entries should reference the canonical `docs/` sources rather than fork content.
