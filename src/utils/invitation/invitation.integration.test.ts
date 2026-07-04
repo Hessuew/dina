@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { EmailSender } from '@/utils/email/types'
 import {
   checkInvitationByEmailService,
   createInvitationService,
@@ -15,25 +16,22 @@ import {
   findInvitationById,
 } from '@/utils/invitation/repository/invitations.repository'
 import { seedInvitation, seedProfile } from '@/../test/integration/seed'
+import { setEmailSender } from '@/utils/email'
 
-// Invitation services touch two external boundaries PGlite can't run: Resend
-// email + its React render. We mock ONLY those; the DB stays real via the
-// `@/db` alias, so repository SQL + domain/service orchestration run for real.
-// See docs/TESTING_GUIDE.md / ADR 0009.
 const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
 }))
 
-vi.mock('@react-email/render', () => ({
-  render: vi.fn().mockResolvedValue('<html/>'),
-}))
-
-vi.mock('resend', () => ({
-  Resend: vi.fn(() => ({ emails: { send: mocks.sendEmail } })),
-}))
-
 beforeEach(() => {
   mocks.sendEmail.mockReset().mockResolvedValue({ error: null })
+  const sender: EmailSender = {
+    sendInvitation: async (message) => {
+      const result = await mocks.sendEmail(message)
+      if (result?.error) throw new Error(result.error.message)
+      return { providerMessageId: result?.id ?? 'email.test' }
+    },
+  }
+  setEmailSender(sender)
 })
 
 describe('createInvitationService (integration)', () => {

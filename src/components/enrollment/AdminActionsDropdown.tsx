@@ -1,5 +1,6 @@
 import {
   GraduationCapIcon,
+  MailIcon,
   MessageCircleIcon,
   UserRoundXIcon,
   UsersIcon,
@@ -27,6 +28,7 @@ type AdminActionsDropdownProps = {
   onEndSubstitution: () => void
   onBulkGrade: () => void
   onSendWhatsApp: () => void
+  onSendEmailCampaign: () => void
   isDistributing?: boolean
   disabled?: boolean
 }
@@ -55,6 +57,7 @@ function buildAdminActions({
   onEndSubstitution,
   onBulkGrade,
   onSendWhatsApp,
+  onSendEmailCampaign,
   isDistributing = false,
 }: Omit<AdminActionsDropdownProps, 'disabled'>): Array<AdminAction> {
   return [
@@ -83,6 +86,11 @@ function buildAdminActions({
       icon: MessageCircleIcon,
       label: 'Send WhatsApp',
       onClick: onSendWhatsApp,
+    },
+    {
+      icon: MailIcon,
+      label: 'Send invitation emails',
+      onClick: onSendEmailCampaign,
     },
   ]
 }

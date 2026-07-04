@@ -1,5 +1,3 @@
-import { render } from '@react-email/render'
-import { Resend } from 'resend'
 import type {
   BulkGradeEnrollmentsInput,
   CreateEnrollmentInput,
@@ -25,8 +23,6 @@ import {
   deriveCanEvaluate,
   deriveEnrollmentStatus,
   deriveReviewHeading,
-  generateInvitationExpiry,
-  generateSecureToken,
   isInvitationResendable,
   redactEnrollmentForTeacher,
 } from '@/utils/enrolment/domain/enrolment.domain'
@@ -78,7 +74,11 @@ import {
   ValidationError,
 } from '@/utils/errors'
 import { env } from '@/env'
-import { InvitationEmail } from '@/emails/InvitationEmail'
+import { sendInvitationEmail } from '@/utils/email'
+import {
+  calculateInvitationExpiry,
+  generateSecureToken,
+} from '@/utils/invitation/domain/invitations.domain'
 
 /**
  * Throws if a non-admin user is not authorized to evaluate the given enrollment.
@@ -423,6 +423,104 @@ export async function deleteEnrollmentService(
   })
 }
 
+function buildEmailSendError(error: unknown): AppError {
+  return new AppError({
+    code: 'EMAIL_SEND_FAILED',
+    status: 500,
+    userMessage: 'Failed to send invitation email',
+    internalMessage:
+      error instanceof Error ? error.message : 'Email provider error',
+  })
+}
+
+async function sendStudentInvitationEmail(input: {
+  email: string
+  senderName: string
+  token: string
+  lecturerTitle?: string | null
+}) {
+  try {
+    await sendInvitationEmail({
+      to: input.email,
+      invitedByName: input.senderName,
+      role: 'student',
+      token: input.token,
+      lecturerTitle: input.lecturerTitle || null,
+      appUrl: env.APP_URL || 'http://localhost:3000',
+    })
+  } catch (error) {
+    throw buildEmailSendError(error)
+  }
+}
+
+function resolveEnrollmentInvitationSender(input: {
+  profile: Awaited<ReturnType<typeof findProfileById>>
+  userId: string
+  userEmail: string | undefined
+}): string {
+  const senderName =
+    input.profile?.fullName || input.profile?.email || input.userEmail
+  if (!senderName) {
+    throw new ValidationError('Email not found', {
+      details: { userId: input.userId, profileId: input.profile?.id },
+    })
+  }
+  return senderName
+}
+
+async function sendExistingEnrollmentInvitation(input: {
+  enrollmentId: string
+  email: string
+  invitationId: string
+  token: string
+  expiresAt: Date
+  oldToken: string
+  oldExpiresAt: Date
+  senderName: string
+  lecturerTitle?: string | null
+}) {
+  await updateInvitationToken(input.invitationId, input.token, input.expiresAt)
+  try {
+    await sendStudentInvitationEmail(input)
+  } catch (error) {
+    await updateInvitationToken(
+      input.invitationId,
+      input.oldToken,
+      input.oldExpiresAt,
+    )
+    throw error
+  }
+  await markEnrollmentInvitationSent(input.enrollmentId, input.invitationId)
+  return { invitationId: input.invitationId }
+}
+
+async function sendNewEnrollmentInvitation(input: {
+  enrollmentId: string
+  email: string
+  token: string
+  expiresAt: Date
+  senderName: string
+  userId: string
+  lecturerTitle?: string | null
+}) {
+  const invitation = await insertInvitation({
+    email: input.email,
+    role: 'student',
+    token: input.token,
+    expiresAt: input.expiresAt,
+    status: 'pending',
+    invitedBy: input.userId,
+  })
+  try {
+    await sendStudentInvitationEmail(input)
+  } catch (error) {
+    await deleteInvitationById(invitation.id)
+    throw error
+  }
+  await markEnrollmentInvitationSent(input.enrollmentId, invitation.id)
+  return { invitationId: invitation.id }
+}
+
 export async function sendInvitationForEnrollmentService(
   data: SendInvitationForEnrollmentInput,
   userId: string,
@@ -443,28 +541,14 @@ export async function sendInvitationForEnrollmentService(
     }
 
     const existingInvitation = await findInvitationByEmail(enrollment.email)
-
     const token = generateSecureToken()
-    const expiresAt = generateInvitationExpiry()
-
-    const inviteLink = `${env.APP_URL || 'http://localhost:3000'}/signup?token=${token}`
-    const senderName = profile?.fullName || profile?.email || userEmail
-    if (!senderName) {
-      throw new ValidationError('Email not found', {
-        details: { userId, profileId: profile?.id },
-      })
-    }
-
-    const emailHtml = await render(
-      InvitationEmail({
-        invitedByName: senderName,
-        role: 'student',
-        inviteLink,
-        lecturerTitle: profile?.lecturerTitle || null,
-      }),
-    )
-
-    const resend = new Resend(env.RESEND_API_KEY)
+    const expiresAt = calculateInvitationExpiry(new Date())
+    const senderName = resolveEnrollmentInvitationSender({
+      profile,
+      userId,
+      userEmail,
+    })
+    const lecturerTitle = profile?.lecturerTitle || null
 
     if (existingInvitation) {
       if (!isInvitationResendable(existingInvitation)) {
@@ -477,58 +561,28 @@ export async function sendInvitationForEnrollmentService(
         })
       }
 
-      await updateInvitationToken(existingInvitation.id, token, expiresAt)
-
-      const { error: emailError } = await resend.emails.send({
-        from: env.RESEND_FROM_EMAIL,
-        to: enrollment.email,
-        subject: `You've been invited to join our Learning Platform`,
-        html: emailHtml,
+      return sendExistingEnrollmentInvitation({
+        enrollmentId: enrollment.id,
+        email: enrollment.email,
+        invitationId: existingInvitation.id,
+        token,
+        expiresAt,
+        oldToken: existingInvitation.token,
+        oldExpiresAt: existingInvitation.expiresAt,
+        senderName,
+        lecturerTitle,
       })
-
-      if (emailError) {
-        throw new AppError({
-          code: 'STORAGE_UPLOAD_FAILED',
-          status: 500,
-          userMessage: 'Failed to send invitation email',
-          internalMessage: `Resend API error: ${emailError.message}`,
-        })
-      }
-
-      await markEnrollmentInvitationSent(enrollment.id, existingInvitation.id)
-
-      return { invitationId: existingInvitation.id }
     }
 
-    const invitation = await insertInvitation({
+    return sendNewEnrollmentInvitation({
+      enrollmentId: enrollment.id,
       email: enrollment.email,
-      role: 'student',
       token,
       expiresAt,
-      status: 'pending',
-      invitedBy: userId,
+      senderName,
+      userId,
+      lecturerTitle,
     })
-
-    const { error: emailError } = await resend.emails.send({
-      from: env.RESEND_FROM_EMAIL,
-      to: enrollment.email,
-      subject: `You've been invited to join our Learning Platform`,
-      html: emailHtml,
-    })
-
-    if (emailError) {
-      await deleteInvitationById(invitation.id)
-      throw new AppError({
-        code: 'STORAGE_UPLOAD_FAILED',
-        status: 500,
-        userMessage: 'Failed to send invitation email',
-        internalMessage: `Resend API error: ${emailError.message}`,
-      })
-    }
-
-    await markEnrollmentInvitationSent(enrollment.id, invitation.id)
-
-    return { invitationId: invitation.id }
   })
 }
 

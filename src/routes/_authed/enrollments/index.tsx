@@ -29,6 +29,7 @@ import {
 import { ExportEmailsDialog } from '@/components/enrollment/exports-email-dialog/ExportEmailsDialog'
 import { BulkGradeDialog } from '@/components/enrollment/bulk-grade-dialog/BulkGradeDialog'
 import { WhatsAppCampaignDialog } from '@/components/enrollment/whatsapp-campaign-dialog/WhatsAppCampaignDialog'
+import { EmailCampaignDialog } from '@/components/enrollment/email-campaign-dialog/EmailCampaignDialog'
 
 export const Route = createFileRoute('/_authed/enrollments/')({
   validateSearch: parseEnrollmentsSearch,
@@ -139,6 +140,8 @@ function useEnrollmentsActions(router: AppRouter, params: EnrollmentsSearch) {
     useState(false)
   const [isBulkGradeDialogOpen, setIsBulkGradeDialogOpen] = useState(false)
   const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false)
+  const [isEmailCampaignDialogOpen, setIsEmailCampaignDialogOpen] =
+    useState(false)
 
   const handleRefresh = () => void router.invalidate()
 
@@ -184,6 +187,8 @@ function useEnrollmentsActions(router: AppRouter, params: EnrollmentsSearch) {
     setIsBulkGradeDialogOpen,
     isWhatsAppDialogOpen,
     setIsWhatsAppDialogOpen,
+    isEmailCampaignDialogOpen,
+    setIsEmailCampaignDialogOpen,
     handleRefresh,
     handleToggleViewAll,
     handleDistribute,
@@ -252,6 +257,7 @@ type EnrollmentsPageHeaderProps = {
   onExportEmails: () => void
   onBulkGrade: () => void
   onSendWhatsApp: () => void
+  onSendEmailCampaign: () => void
 }
 
 function EnrollmentsPageHeader({
@@ -266,6 +272,7 @@ function EnrollmentsPageHeader({
   onExportEmails,
   onBulkGrade,
   onSendWhatsApp,
+  onSendEmailCampaign,
 }: EnrollmentsPageHeaderProps) {
   return (
     <div className="mb-10 flex items-end justify-between gap-6">
@@ -300,6 +307,7 @@ function EnrollmentsPageHeader({
             onEndSubstitution={onEndSubstitution}
             onBulkGrade={onBulkGrade}
             onSendWhatsApp={onSendWhatsApp}
+            onSendEmailCampaign={onSendEmailCampaign}
             isDistributing={isDistributing}
           />
         )}
@@ -413,6 +421,10 @@ function EnrollmentAdminDialogs({ c }: { c: EnrollmentsController }) {
         open={c.isWhatsAppDialogOpen}
         onOpenChange={c.setIsWhatsAppDialogOpen}
       />
+      <EmailCampaignDialog
+        open={c.isEmailCampaignDialogOpen}
+        onOpenChange={c.setIsEmailCampaignDialogOpen}
+      />
     </>
   )
 }
@@ -433,6 +445,7 @@ function EnrollmentsPage() {
         onExportEmails={() => c.setIsExportEmailsDialogOpen(true)}
         onBulkGrade={() => c.setIsBulkGradeDialogOpen(true)}
         onSendWhatsApp={() => c.setIsWhatsAppDialogOpen(true)}
+        onSendEmailCampaign={() => c.setIsEmailCampaignDialogOpen(true)}
       />
 
       <EnrollmentsTableSection c={c} />

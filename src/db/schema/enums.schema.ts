@@ -71,6 +71,13 @@ export const whatsappMessageStatusEnum = pgEnum('whatsapp_message_status', [
   'failed',
 ])
 
+export const emailTypeEnum = pgEnum('email_type', ['invitation'])
+
+export const emailMessageStatusEnum = pgEnum('email_message_status', [
+  'sent',
+  'failed',
+])
+
 export const gemstoneEnum = pgEnum('gemstone', [
   'jasper',
   'sapphire',
