@@ -1,5 +1,4 @@
 {
-  "_note": "Provenance only. These skills are vendored in docs/skills/ and edited there via the self-improvement loop (docs/skills/SELF_IMPROVEMENT.md); local copies may diverge from the upstream sources/hashes below.",
   "version": 1,
   "skills": {
     "caveman": {
@@ -18,6 +17,12 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "computedHash": "76d07c4c0bebc162cc76ca7494bfe7a90e279f35832f7ce6dfc4ce16518fd560"
+    },
+    "lavish": {
+      "source": "kunchenguid/lavish-axi",
+      "sourceType": "github",
+      "skillPath": "skills/lavish/SKILL.md",
+      "computedHash": "c3a0299d820bc3b30613d7740718b194511201319047fa9d3075e0ab1e596bde"
     }
   }
 }
