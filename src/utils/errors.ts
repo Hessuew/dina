@@ -138,9 +138,45 @@ export function isAppError(error: unknown): error is AppError {
   return error instanceof AppError
 }
 
-/** Returns true for expected 4xx AppErrors that should not be sent to Sentry. */
+/**
+ * Returns true for raw Error objects thrown by TanStack Start's execValidator
+ * when Zod input validation fails. The message is a JSON-stringified Zod issue
+ * array — a 4xx user-input error, not a real server bug.
+ */
+function isInputValidationError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  if (!error.message.startsWith('[')) return false
+  try {
+    const parsed: unknown = JSON.parse(error.message)
+    if (!Array.isArray(parsed) || parsed.length === 0) return false
+    const first = parsed[0]
+    return (
+      typeof first === 'object' &&
+      first !== null &&
+      'code' in first &&
+      'path' in first &&
+      'message' in first
+    )
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Returns true for Response objects thrown by TanStack Start as control flow
+ * (redirect, notFound). These are not bugs and must not reach Sentry.
+ */
+function isTanStackRedirectResponse(error: unknown): boolean {
+  return typeof Response !== 'undefined' && error instanceof Response
+}
+
+/** Returns true for expected 4xx AppErrors, input validation errors, and TanStack Start redirect responses that should not be sent to Sentry. */
 export function shouldSuppressFromSentry(error: unknown): boolean {
-  return isAppError(error) && error.status < 500
+  return (
+    (isAppError(error) && error.status < 500) ||
+    isInputValidationError(error) ||
+    isTanStackRedirectResponse(error)
+  )
 }
 
 export function toUserError(error: unknown): UserError {
