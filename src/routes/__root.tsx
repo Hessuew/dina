@@ -8,9 +8,11 @@ import {
 
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
+import * as Sentry from '@sentry/tanstackstart-react'
 import * as React from 'react'
 
 import type { User } from '@supabase/supabase-js'
+import type { UserContext } from '@/utils/auth/domain/user-context.domain'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar/Sidebar'
 import { AppSidebar } from '@/components/navigation/AppSidebar'
 import { Toaster } from '@/components/ui/sonner'
@@ -120,9 +122,23 @@ function RootComponent() {
   )
 }
 
+// Browser-only: syncs the route-context user onto the client Sentry scope so
+// browser errors are traceable. `useEffect` never runs during SSR.
+function useSentryUser(user: UserContext | null | undefined) {
+  React.useEffect(() => {
+    if (user) {
+      Sentry.setUser({ id: user.id, email: user.email, role: user.role })
+    } else {
+      Sentry.setUser(null)
+    }
+  }, [user])
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { user } = Route.useRouteContext()
   const role = user?.role || 'student'
+
+  useSentryUser(user)
 
   return (
     <html>
