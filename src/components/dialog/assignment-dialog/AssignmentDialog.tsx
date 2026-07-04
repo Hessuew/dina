@@ -199,6 +199,60 @@ type GradeDialogExtraProps = {
   isSaving: boolean
 }
 
+const GradeFormFields = withForm({
+  defaultValues: getGradingInitialValues(null),
+  props: {} as { maxGrade: number },
+  render: ({ form, maxGrade }) => (
+    <FieldGroup>
+      <form.AppField
+        name="grade"
+        validators={{ onSubmit: gradeSubmissionSchema.shape.grade }}
+      >
+        {(field) => (
+          <field.NumberField
+            id="grade"
+            label={`Grade (max: ${maxGrade})`}
+            min={0}
+            max={maxGrade}
+            placeholder="0"
+          />
+        )}
+      </form.AppField>
+      <form.AppField name="feedback">
+        {(field) => (
+          <field.TextAreaField
+            id="feedback"
+            label="Feedback"
+            placeholder="Provide feedback to the student..."
+            rows={4}
+          />
+        )}
+      </form.AppField>
+    </FieldGroup>
+  ),
+})
+
+function GradeDialogFooter({
+  onOpenChange,
+  onSave,
+  isSaving,
+}: {
+  onOpenChange: (open: boolean) => void
+  onSave: () => void
+  isSaving: boolean
+}) {
+  return (
+    <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
+      <Button variant="outline" theme="dark" onClick={() => onOpenChange(false)}>
+        Cancel
+      </Button>
+      <Button theme="dark" onClick={onSave} disabled={isSaving}>
+        {isSaving ? 'Saving...' : 'Save Grade'}
+      </Button>
+    </DialogFooter>
+  )
+}
+
 const GradeSubmissionDialog = withForm({
   defaultValues: getGradingInitialValues(null),
   props: {} as GradeDialogExtraProps,
@@ -234,83 +288,43 @@ const GradeSubmissionDialog = withForm({
           <DialogBody>
             <div className="mt-4 space-y-4">
               <SubmissionPreview submission={submission} />
-              <FieldGroup>
-                <form.AppField
-                  name="grade"
-                  validators={{ onSubmit: gradeSubmissionSchema.shape.grade }}
-                >
-                  {(field) => (
-                    <field.NumberField
-                      id="grade"
-                      label={`Grade (max: ${maxGrade})`}
-                      min={0}
-                      max={maxGrade}
-                      placeholder="0"
-                    />
-                  )}
-                </form.AppField>
-                <form.AppField name="feedback">
-                  {(field) => (
-                    <field.TextAreaField
-                      id="feedback"
-                      label="Feedback"
-                      placeholder="Provide feedback to the student..."
-                      rows={4}
-                    />
-                  )}
-                </form.AppField>
-              </FieldGroup>
+              <GradeFormFields form={form} maxGrade={maxGrade} />
             </div>
           </DialogBody>
 
-          <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-            <Button
-              variant="outline"
-              theme="dark"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              theme="dark"
-              onClick={() => void form.handleSubmit()}
-              disabled={isSaving}
-            >
-              {isSaving ? 'Saving...' : 'Save Grade'}
-            </Button>
-          </DialogFooter>
+          <GradeDialogFooter
+            onOpenChange={onOpenChange}
+            onSave={() => void form.handleSubmit()}
+            isSaving={isSaving}
+          />
         </div>
       </DialogContent>
     </Dialog>
   ),
 })
 
-export function AssignmentDialog({
-  open,
+function useAssignmentMutations({
   onOpenChange,
-  mode,
-  lessonId,
-  assignment,
-  submission,
-  submissionCount = 0,
   onDeleteSuccess,
-}: AssignmentDialogProps) {
+}: {
+  onOpenChange: (open: boolean) => void
+  onDeleteSuccess?: () => void
+}) {
   const router = useRouter()
-  const { createMutation, updateMutation, deleteMutation, isAnyPending } =
-    useEntityMutation({
-      createFn: createAssignment,
-      updateFn: updateAssignment,
-      deleteFn: deleteAssignment,
-      invalidateRouter: false,
-      onSuccess: async () => {
-        onOpenChange(false)
-        if (onDeleteSuccess) {
-          onDeleteSuccess()
-        } else {
-          await router.invalidate()
-        }
-      },
-    })
+  const entityMutations = useEntityMutation({
+    createFn: createAssignment,
+    updateFn: updateAssignment,
+    deleteFn: deleteAssignment,
+    invalidateRouter: false,
+    onSuccess: async () => {
+      onOpenChange(false)
+      if (onDeleteSuccess) {
+        onDeleteSuccess()
+      } else {
+        await router.invalidate()
+      }
+    },
+  })
 
   const gradeMutation = useMutation({
     fn: gradeSubmission,
@@ -320,6 +334,28 @@ export function AssignmentDialog({
       await router.invalidate()
     },
   })
+
+  return { ...entityMutations, gradeMutation }
+}
+
+type AssignmentMutations = ReturnType<typeof useAssignmentMutations>
+
+function useAssignmentForms({
+  open,
+  mode,
+  lessonId,
+  assignment,
+  submission,
+  mutations,
+}: {
+  open: boolean
+  mode: AssignmentDialogMode
+  lessonId?: string
+  assignment?: AssignmentData
+  submission?: SubmissionData | null
+  mutations: AssignmentMutations
+}) {
+  const { createMutation, updateMutation, gradeMutation } = mutations
 
   const assignmentForm = useAppForm({
     defaultValues: getAssignmentInitialValues(assignment, mode),
@@ -350,6 +386,109 @@ export function AssignmentDialog({
     gradeForm.reset(getGradingInitialValues(submission))
   }, [open, mode, assignment, submission, assignmentForm, gradeForm])
 
+  return { assignmentForm, gradeForm }
+}
+
+function useAssignmentDialog({
+  open,
+  onOpenChange,
+  mode,
+  lessonId,
+  assignment,
+  submission,
+  onDeleteSuccess,
+}: AssignmentDialogProps) {
+  const mutations = useAssignmentMutations({ onOpenChange, onDeleteSuccess })
+  const forms = useAssignmentForms({
+    open,
+    mode,
+    lessonId,
+    assignment,
+    submission,
+    mutations,
+  })
+  return { mutations, ...forms }
+}
+
+const AssignmentCoreFields = withForm({
+  defaultValues: getAssignmentInitialValues(undefined, 'create'),
+  render: ({ form }) => (
+    <>
+      <form.AppField
+        name="title"
+        validators={{ onSubmit: createAssignmentSchema.shape.title }}
+      >
+        {(field) => (
+          <field.TextField
+            id="title"
+            label="Title"
+            required
+            className="sm:col-span-2"
+          />
+        )}
+      </form.AppField>
+      <form.AppField
+        name="dueDate"
+        validators={{ onSubmit: createAssignmentSchema.shape.dueDate }}
+      >
+        {(field) => (
+          <field.TextField
+            id="dueDate"
+            label="Due Date"
+            required
+            type="datetime-local"
+          />
+        )}
+      </form.AppField>
+      <form.AppField name="maxGrade">
+        {(field) => (
+          <field.NumberField
+            id="maxGrade"
+            label="Maximum Grade"
+            min={0}
+            placeholder="100"
+          />
+        )}
+      </form.AppField>
+      <form.AppField name="status">
+        {(field) => (
+          <field.SelectField id="status" label="Status">
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="published">Published</SelectItem>
+            <SelectItem value="closed">Closed</SelectItem>
+          </field.SelectField>
+        )}
+      </form.AppField>
+    </>
+  ),
+})
+
+const AssignmentFormFields = withForm({
+  defaultValues: getAssignmentInitialValues(undefined, 'create'),
+  render: ({ form }) => (
+    <FieldGroup className="mt-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <AssignmentCoreFields form={form} />
+        <form.AppField name="description">
+          {(field) => (
+            <field.TextAreaField
+              id="description"
+              label="Description"
+              className="sm:col-span-2"
+              rows={5}
+            />
+          )}
+        </form.AppField>
+      </div>
+    </FieldGroup>
+  ),
+})
+
+export function AssignmentDialog(props: AssignmentDialogProps) {
+  const { open, onOpenChange, mode, assignment, submission } = props
+  const { submissionCount = 0 } = props
+  const { mutations, assignmentForm, gradeForm } = useAssignmentDialog(props)
+
   if (mode === 'delete') {
     return (
       <DeleteAssignmentFlow
@@ -357,7 +496,7 @@ export function AssignmentDialog({
         onOpenChange={onOpenChange}
         submissionCount={submissionCount}
         assignment={assignment}
-        deleteMutation={deleteMutation}
+        deleteMutation={mutations.deleteMutation}
       />
     )
   }
@@ -371,7 +510,7 @@ export function AssignmentDialog({
         submission={submission}
         studentName={getSubmissionStudentName(submission)}
         maxGrade={resolveMaxGrade(assignment)}
-        isSaving={gradeMutation.isPending}
+        isSaving={mutations.gradeMutation.isPending}
       />
     )
   }
@@ -387,68 +526,10 @@ export function AssignmentDialog({
       subtitle={copy.subtitle}
       maxWidth="3xl"
       onSubmit={() => void assignmentForm.handleSubmit()}
-      isSubmitting={isAnyPending}
+      isSubmitting={mutations.isAnyPending}
       submitLabel={copy.submitLabel}
     >
-      <FieldGroup className="mt-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <assignmentForm.AppField
-            name="title"
-            validators={{ onSubmit: createAssignmentSchema.shape.title }}
-          >
-            {(field) => (
-              <field.TextField
-                id="title"
-                label="Title"
-                required
-                className="sm:col-span-2"
-              />
-            )}
-          </assignmentForm.AppField>
-          <assignmentForm.AppField
-            name="dueDate"
-            validators={{ onSubmit: createAssignmentSchema.shape.dueDate }}
-          >
-            {(field) => (
-              <field.TextField
-                id="dueDate"
-                label="Due Date"
-                required
-                type="datetime-local"
-              />
-            )}
-          </assignmentForm.AppField>
-          <assignmentForm.AppField name="maxGrade">
-            {(field) => (
-              <field.NumberField
-                id="maxGrade"
-                label="Maximum Grade"
-                min={0}
-                placeholder="100"
-              />
-            )}
-          </assignmentForm.AppField>
-          <assignmentForm.AppField name="status">
-            {(field) => (
-              <field.SelectField id="status" label="Status">
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="published">Published</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-              </field.SelectField>
-            )}
-          </assignmentForm.AppField>
-          <assignmentForm.AppField name="description">
-            {(field) => (
-              <field.TextAreaField
-                id="description"
-                label="Description"
-                className="sm:col-span-2"
-                rows={5}
-              />
-            )}
-          </assignmentForm.AppField>
-        </div>
-      </FieldGroup>
+      <AssignmentFormFields form={assignmentForm} />
     </FormDialog>
   )
 }
