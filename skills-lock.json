@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "axi": {
+      "source": "kunchenguid/axi",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/axi/SKILL.md",
+      "computedHash": "07a1364ca8cea05e5d264ee90c669531618e381a82d6976b17108095fcf90366"
+    },
     "caveman": {
       "source": "JuliusBrussee/caveman",
       "sourceType": "github",
@@ -35,6 +41,24 @@
       "sourceType": "github",
       "skillPath": "skills/lavish/SKILL.md",
       "computedHash": "c3a0299d820bc3b30613d7740718b194511201319047fa9d3075e0ab1e596bde"
+    },
+    "linear-comments": {
+      "source": "Finesssee/linear-cli",
+      "sourceType": "github",
+      "skillPath": "skills/linear-comments/SKILL.md",
+      "computedHash": "4b481df0b78f92344afeeb1ce9f465484a4a6d271394306385c933572c71fc1b"
+    },
+    "linear-create": {
+      "source": "Finesssee/linear-cli",
+      "sourceType": "github",
+      "skillPath": "skills/linear-create/SKILL.md",
+      "computedHash": "82a31b1bea122070daa3ad89339805fe84e8c0aef06777d405cb45dd0a650445"
+    },
+    "linear-list": {
+      "source": "Finesssee/linear-cli",
+      "sourceType": "github",
+      "skillPath": "skills/linear-list/SKILL.md",
+      "computedHash": "2a2ac6acfcefe4abbaf6f914ac47ceb22b207feb6266e61f7655c970097147c6"
     }
   }
 }
