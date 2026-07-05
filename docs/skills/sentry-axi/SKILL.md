@@ -27,18 +27,19 @@ node scripts/sentry-axi.mjs <command>
 
 ## Authentication
 
-`SENTRY_AUTH_TOKEN` must be set before any command (except `setup`).
+`SENTRY_AXI_AUTH_TOKEN` must be set before any command (except `setup`).
 
 ```sh
-export SENTRY_AUTH_TOKEN=<your-token>
+export SENTRY_AXI_AUTH_TOKEN=<your-token>
 ```
 
 Get a token at **https://sentry.io/settings/account/api/auth-tokens/**
 
-Required scopes: **`org:read`  `event:read`  `event:admin`**
+Required scopes: **`org:read` `event:read` `event:admin`**
 
 > The `org:ci` scope used by `sentry-cli` for source-map uploads is **not enough**.
 > Create a separate token with the scopes above for sentry-axi.
+> Keep the existing `SENTRY_AUTH_TOKEN` reserved for Sentry build/source-map upload tooling.
 
 **Optional context env vars (set once, apply to all commands):**
 
@@ -48,7 +49,7 @@ export SENTRY_PROJECT=<project-slug>   # optional; scopes issue listing to one p
 export SENTRY_URL=https://...          # only for self-hosted Sentry
 ```
 
-If a command fails with `AUTH_REQUIRED`, set `SENTRY_AUTH_TOKEN`.
+If a command fails with `AUTH_REQUIRED`, set `SENTRY_AXI_AUTH_TOKEN`.
 If it fails with `AUTH_ERROR`, check that the token has the required scopes above.
 
 ## When to use
@@ -64,9 +65,9 @@ Use sentry-axi whenever a task touches Sentry:
 ## Workflow
 
 1. Run with no args for a compact dashboard (top 5 unresolved + latest release).
-2. `issues list` to see all unresolved issues.  Note the `id` column (short ID like `PROJ-123`).
+2. `issues list` to see all unresolved issues. Note the `id` column (short ID like `PROJ-123`).
 3. `issues view <id>` reads full detail + stack trace (~1500 chars by default; add `--full` for all frames).
-4. Fix the code.  Then `issues resolve <id>` to mark it done.
+4. Fix the code. Then `issues resolve <id>` to mark it done.
 5. `releases list` to inspect recent releases; `releases view <version>` for per-release issue counts.
 6. Every response ends with contextual `help:` hints — follow them.
 
@@ -83,12 +84,12 @@ Run `node scripts/sentry-axi.mjs --help` for all flags.
 
 ## Flags reference
 
-| Command          | Flags                                                        |
-| ---------------- | ------------------------------------------------------------ |
-| global           | `--org <slug>`  `--project <slug>`  `--help`  `--version`   |
-| `issues list`    | `--status unresolved\|resolved\|muted`  `--limit <n>`  `--query <sentry-search-query>` |
-| `issues view`    | `--full` (show complete stack trace instead of first 1500 chars) |
-| `releases list`  | `--limit <n>` (default: 10)                                  |
+| Command         | Flags                                                                                |
+| --------------- | ------------------------------------------------------------------------------------ |
+| global          | `--org <slug>` `--project <slug>` `--help` `--version`                               |
+| `issues list`   | `--status unresolved\|resolved\|muted` `--limit <n>` `--query <sentry-search-query>` |
+| `issues view`   | `--full` (show complete stack trace instead of first 1500 chars)                     |
+| `releases list` | `--limit <n>` (default: 10)                                                          |
 
 ## Tips
 

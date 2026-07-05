@@ -3,6 +3,8 @@
 // AXI-compliant: TOON output, structured errors, no interactive prompts
 // Exit codes: 0 success/no-op, 1 error, 2 usage error
 
+import 'dotenv/config'
+
 // ── TOON output helpers ───────────────────────────────────────────────────────
 
 /** Escape a single value for TOON: quote if it contains commas, quotes, or newlines */
@@ -60,7 +62,7 @@ async function run(fn) {
   } catch (err) {
     if (err.httpStatus === 401 || err.httpStatus === 403) {
       die('Authentication failed or insufficient permissions', 'AUTH_ERROR', [
-        'Check that SENTRY_AUTH_TOKEN is valid and has required scopes',
+        'Check that SENTRY_AXI_AUTH_TOKEN is valid and has required scopes',
         'Required scopes: org:read event:read event:admin',
         `API error: ${err.message}`,
       ])
@@ -79,12 +81,13 @@ async function run(fn) {
 // ── Auth & context ────────────────────────────────────────────────────────────
 
 function requireToken() {
-  const token = process.env.SENTRY_AUTH_TOKEN
+  const token = process.env.SENTRY_AXI_AUTH_TOKEN
   if (!token) {
-    die('SENTRY_AUTH_TOKEN is not set', 'AUTH_REQUIRED', [
-      'Export SENTRY_AUTH_TOKEN=<your-token>',
+    die('SENTRY_AXI_AUTH_TOKEN is not set', 'AUTH_REQUIRED', [
+      'Export SENTRY_AXI_AUTH_TOKEN=<your-token>',
       'Get a token: https://sentry.io/settings/account/api/auth-tokens/',
       'Required scopes: org:read event:read event:admin',
+      'SENTRY_AUTH_TOKEN is reserved for Sentry build/source-map uploads',
     ])
   }
   return token
@@ -144,7 +147,13 @@ async function resolveIssueId(token, idOrShort, org) {
     token,
     `/organizations/${org}/shortids/${encodeURIComponent(idOrShort)}/`,
   )
-  return data.issueId
+  const issueId = data.issueId || data.groupId
+  if (!issueId) {
+    die(`Could not resolve issue short ID: ${idOrShort}`, 'NOT_FOUND', [
+      'Run `sentry-axi issues list` to find valid issue IDs',
+    ])
+  }
+  return issueId
 }
 
 // ── Time formatting ───────────────────────────────────────────────────────────
@@ -190,6 +199,42 @@ function parseArgs(args) {
     i++
   }
   return { flags, positional }
+}
+
+function commandName(noun, verb) {
+  if (!noun || noun === 'home') return 'home'
+  if (noun === 'issues') return verb || 'list'
+  if (noun === 'releases') return verb || 'list'
+  return noun
+}
+
+function allowedFlagsFor(noun, verb) {
+  const allowed = new Set(['org', 'project', 'help', 'h', 'version'])
+  if (noun === 'issues' && (!verb || verb === 'list')) {
+    allowed.add('status')
+    allowed.add('limit')
+    allowed.add('query')
+  }
+  if (noun === 'issues' && verb === 'view') allowed.add('full')
+  if (noun === 'releases' && (!verb || verb === 'list')) allowed.add('limit')
+  return allowed
+}
+
+function validateFlags(flags, noun, verb) {
+  const allowed = allowedFlagsFor(noun, verb)
+  const unknown = Object.keys(flags).find((flag) => !allowed.has(flag))
+  if (!unknown) return
+  die(
+    `Unknown flag --${unknown} for ${commandName(noun, verb)}`,
+    'UNKNOWN_FLAG',
+    [
+      'Global flags: --org <slug>, --project <slug>, --help, --version',
+      'issues list flags: --status unresolved|resolved|muted, --limit <n>, --query <q>',
+      'issues view flags: --full',
+      'releases list flags: --limit <n>',
+    ],
+    2,
+  )
 }
 
 // ── Commands: orgs / projects / whoami ────────────────────────────────────────
@@ -526,7 +571,7 @@ function cmdSetup() {
   print('  Add to .claude/settings.json under hooks.SessionStart:\n')
   print(`  { "type": "command", "command": "node ${scriptPath}" }\n\n`)
   print(
-    '  (Ensure SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT are set in the environment)\n\n',
+    '  (Ensure SENTRY_AXI_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT are set in the environment)\n\n',
   )
   print(
     tHelp([
@@ -569,9 +614,10 @@ Per-command flags:
   releases list: --limit <n>
 
 Auth:
-  export SENTRY_AUTH_TOKEN=<token>
+  export SENTRY_AXI_AUTH_TOKEN=<token>
   Required scopes: org:read  event:read  event:admin
   Get a token: https://sentry.io/settings/account/api/auth-tokens/
+  Note: SENTRY_AUTH_TOKEN remains reserved for Sentry build/source-map uploads.
 
 Context (set once, used by all commands):
   export SENTRY_ORG=<your-org-slug>
@@ -602,6 +648,7 @@ async function main(args) {
   const [noun, verb, id] = positional
 
   if (noun === 'setup') {
+    validateFlags(flags, noun, verb)
     cmdSetup()
     return
   }
@@ -628,6 +675,7 @@ async function main(args) {
       2,
     )
   }
+  validateFlags(flags, noun, verb)
 
   const token = requireToken()
 
