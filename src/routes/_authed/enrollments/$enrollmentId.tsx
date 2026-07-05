@@ -59,9 +59,10 @@ export const Route = createFileRoute('/_authed/enrollments/$enrollmentId')({
   component: EnrollmentDetailPage,
 })
 
-function EnrollmentDetailPage() {
+type EnrollmentDetail = ReturnType<typeof Route.useLoaderData>['enrollment']
+
+function useEnrollmentDetailPage() {
   const router = useRouter()
-  const { enrollment } = Route.useLoaderData()
 
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -102,6 +103,184 @@ function EnrollmentDetailPage() {
     invalidateRouter: false,
   })
 
+  return {
+    router,
+    inviteDialogOpen,
+    setInviteDialogOpen,
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    statusMutation,
+    inviteMutation,
+    deleteMutation,
+  }
+}
+
+type EnrollmentPageController = ReturnType<typeof useEnrollmentDetailPage>
+
+function EnrollmentHeaderActions({
+  controller,
+}: {
+  controller: EnrollmentPageController
+}) {
+  return (
+    <>
+      <Button
+        theme="light"
+        variant="outline"
+        onClick={() => controller.setInviteDialogOpen(true)}
+        disabled={controller.inviteMutation.isPending}
+      >
+        <Mail className="size-3.5" />
+        Send invitation
+      </Button>
+      <Button
+        variant="destructive"
+        className="rounded-none"
+        onClick={() => controller.setDeleteDialogOpen(true)}
+      >
+        <Trash2 className="size-3.5" />
+        Delete
+      </Button>
+    </>
+  )
+}
+
+function EnrollmentStatusSelect({
+  enrollment,
+  controller,
+}: {
+  enrollment: EnrollmentDetail
+  controller: EnrollmentPageController
+}) {
+  return (
+    <Select
+      value={enrollment.status}
+      onValueChange={(value) => {
+        if (
+          STATUS_OPTIONS.some((opt) => opt.value === value) &&
+          value !== null
+        ) {
+          controller.statusMutation.mutate({
+            data: { enrollmentId: enrollment.id, status: value },
+          })
+        }
+      }}
+    >
+      <SelectTrigger className="h-9 rounded-none border-white/12 bg-[#1A1716] text-[#F8F4EC]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="rounded-none border-white/10 bg-[#1A1716] text-[#F8F4EC]">
+        {STATUS_OPTIONS.map((s) => (
+          <SelectItem key={s.value} value={s.value}>
+            {s.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+function SendInvitationDialog({
+  enrollment,
+  controller,
+}: {
+  enrollment: EnrollmentDetail
+  controller: EnrollmentPageController
+}) {
+  return (
+    <Dialog
+      open={controller.inviteDialogOpen}
+      onOpenChange={controller.setInviteDialogOpen}
+    >
+      <DialogContent
+        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
+        style={{
+          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+        showCloseButton={false}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
+        <div className="relative">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
+              Send invitation
+            </DialogTitle>
+            <DialogDescription className="text-[#AFA28F]">
+              Send invitation now?
+            </DialogDescription>
+          </DialogHeader>
+          <SendInvitationDialogFooter
+            enrollment={enrollment}
+            controller={controller}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function SendInvitationDialogFooter({
+  enrollment,
+  controller,
+}: {
+  enrollment: EnrollmentDetail
+  controller: EnrollmentPageController
+}) {
+  return (
+    <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
+      <Button
+        variant="outline"
+        theme="dark"
+        onClick={() => controller.setInviteDialogOpen(false)}
+      >
+        Cancel
+      </Button>
+      <Button
+        theme="dark"
+        onClick={() =>
+          controller.inviteMutation.mutate({
+            data: { enrollmentId: enrollment.id },
+          })
+        }
+        disabled={controller.inviteMutation.isPending}
+      >
+        {controller.inviteMutation.isPending ? 'Sending…' : 'Send'}
+      </Button>
+    </DialogFooter>
+  )
+}
+
+function EnrollmentAdminDialogs({
+  enrollment,
+  controller,
+}: {
+  enrollment: EnrollmentDetail
+  controller: EnrollmentPageController
+}) {
+  return (
+    <>
+      <SendInvitationDialog enrollment={enrollment} controller={controller} />
+      <DeleteConfirmDialog
+        open={controller.deleteDialogOpen}
+        onOpenChange={controller.setDeleteDialogOpen}
+        entityName="Enrollment"
+        onConfirm={() =>
+          controller.deleteMutation.mutate({
+            data: { enrollmentId: enrollment.id },
+          })
+        }
+        isDeleting={controller.deleteMutation.isPending}
+      />
+    </>
+  )
+}
+
+function EnrollmentDetailPage() {
+  const { enrollment } = Route.useLoaderData()
+  const controller = useEnrollmentDetailPage()
+
   const { user } = Route.useRouteContext()
   const isAdmin = user?.role === 'admin'
 
@@ -109,7 +288,7 @@ function EnrollmentDetailPage() {
     <PageLayout>
       <PageHeader
         title={enrollment.fullLegalName}
-        onBack={() => router.history.back()}
+        onBack={() => controller.router.history.back()}
         responsiveTitle={false}
         metadata={
           <p className="text-[0.72rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase">
@@ -117,27 +296,7 @@ function EnrollmentDetailPage() {
           </p>
         }
         actions={
-          isAdmin ? (
-            <>
-              <Button
-                theme="light"
-                variant="outline"
-                onClick={() => setInviteDialogOpen(true)}
-                disabled={inviteMutation.isPending}
-              >
-                <Mail className="size-3.5" />
-                Send invitation
-              </Button>
-              <Button
-                variant="destructive"
-                className="rounded-none"
-                onClick={() => setDeleteDialogOpen(true)}
-              >
-                <Trash2 className="size-3.5" />
-                Delete
-              </Button>
-            </>
-          ) : undefined
+          isAdmin ? <EnrollmentHeaderActions controller={controller} /> : undefined
         }
       />
 
@@ -146,92 +305,19 @@ function EnrollmentDetailPage() {
         isAdmin={isAdmin}
         statusAction={
           isAdmin ? (
-            <Select
-              value={enrollment.status}
-              onValueChange={(value) => {
-                if (
-                  STATUS_OPTIONS.some((opt) => opt.value === value) &&
-                  value !== null
-                ) {
-                  statusMutation.mutate({
-                    data: { enrollmentId: enrollment.id, status: value },
-                  })
-                }
-              }}
-            >
-              <SelectTrigger className="h-9 rounded-none border-white/12 bg-[#1A1716] text-[#F8F4EC]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border-white/10 bg-[#1A1716] text-[#F8F4EC]">
-                {STATUS_OPTIONS.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <EnrollmentStatusSelect
+              enrollment={enrollment}
+              controller={controller}
+            />
           ) : undefined
         }
       />
 
       {isAdmin && (
-        <>
-          <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-            <DialogContent
-              className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
-              style={{
-                backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
-              showCloseButton={false}
-            >
-              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-              <div className="relative">
-                <DialogHeader>
-                  <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-                    Send invitation
-                  </DialogTitle>
-                  <DialogDescription className="text-[#AFA28F]">
-                    Send invitation now?
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-                  <Button
-                    variant="outline"
-                    theme="dark"
-                    onClick={() => setInviteDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    theme="dark"
-                    onClick={() =>
-                      inviteMutation.mutate({
-                        data: { enrollmentId: enrollment.id },
-                      })
-                    }
-                    disabled={inviteMutation.isPending}
-                  >
-                    {inviteMutation.isPending ? 'Sending…' : 'Send'}
-                  </Button>
-                </DialogFooter>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          <DeleteConfirmDialog
-            open={deleteDialogOpen}
-            onOpenChange={setDeleteDialogOpen}
-            entityName="Enrollment"
-            onConfirm={() =>
-              deleteMutation.mutate({
-                data: { enrollmentId: enrollment.id },
-              })
-            }
-            isDeleting={deleteMutation.isPending}
-          />
-        </>
+        <EnrollmentAdminDialogs
+          enrollment={enrollment}
+          controller={controller}
+        />
       )}
     </PageLayout>
   )
