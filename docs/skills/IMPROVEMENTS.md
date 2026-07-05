@@ -15,6 +15,8 @@ Source tag: `[auto]` (hook, from a tool error) · `[model]` (agent judgment).
 
 <!-- newest first; remove a line once applied via PR -->
 
+- [2026-07-05] notion-axi · type: fix · observation: `notion-axi page update <id> --prop "Name=value"` fails with "Nothing to update"; the working flag on update is `--set` (create uses `--prop`) · suggestion: document the create/update flag asymmetry in the skill, or accept `--prop` as an alias on update · [model]
+
 - [2026-07-04] notion-knowledge-capture · type: fix · observation: Notion database writes failed on three schema details during import: `parent.data_source_id` needs the raw UUID, select options must match the exact schema (for example Service Catalog does not accept `Storage`), and date properties must use expanded `date:<field>:start` keys · suggestion: add a short "database write gotchas" note to the skill with these validation rules and a parent UUID example · [model]
 
 - [2026-07-04] grill-with-docs · type: better · observation: when a grilling round needed a vendor-fact check (WhatsApp template constraints), WebSearch failed transiently and the skill gives no guidance on whether to block the round or proceed on training knowledge · suggestion: add a note to prefer proceeding on high-confidence knowledge for non-plan-critical facts, flagging them in the plan as "verify during implementation" · [model]

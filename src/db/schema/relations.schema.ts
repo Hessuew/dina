@@ -12,6 +12,13 @@ import {
 } from './course.schema'
 import { enrollmentReviewerAssignments, enrollments } from './enrollment.schema'
 import {
+  examAnswers,
+  examAttempts,
+  examQuestionOptions,
+  examQuestions,
+  exams,
+} from './exam.schema'
+import {
   discipleshipAssignments,
   discipleshipGroups,
   discipleshipPairs,
@@ -313,6 +320,67 @@ export const postCommentReactionsRelations = relations(
     }),
   }),
 )
+
+export const examsRelations = relations(exams, ({ one, many }) => ({
+  creator: one(profiles, {
+    fields: [exams.createdBy],
+    references: [profiles.id],
+  }),
+  questions: many(examQuestions),
+  attempts: many(examAttempts),
+}))
+
+export const examQuestionsRelations = relations(
+  examQuestions,
+  ({ one, many }) => ({
+    exam: one(exams, {
+      fields: [examQuestions.examId],
+      references: [exams.id],
+    }),
+    options: many(examQuestionOptions),
+    answers: many(examAnswers),
+  }),
+)
+
+export const examQuestionOptionsRelations = relations(
+  examQuestionOptions,
+  ({ one }) => ({
+    question: one(examQuestions, {
+      fields: [examQuestionOptions.questionId],
+      references: [examQuestions.id],
+    }),
+  }),
+)
+
+export const examAttemptsRelations = relations(
+  examAttempts,
+  ({ one, many }) => ({
+    exam: one(exams, {
+      fields: [examAttempts.examId],
+      references: [exams.id],
+    }),
+    student: one(profiles, {
+      fields: [examAttempts.studentId],
+      references: [profiles.id],
+    }),
+    answers: many(examAnswers),
+  }),
+)
+
+export const examAnswersRelations = relations(examAnswers, ({ one }) => ({
+  attempt: one(examAttempts, {
+    fields: [examAnswers.attemptId],
+    references: [examAttempts.id],
+  }),
+  question: one(examQuestions, {
+    fields: [examAnswers.questionId],
+    references: [examQuestions.id],
+  }),
+  selectedOption: one(examQuestionOptions, {
+    fields: [examAnswers.selectedOptionId],
+    references: [examQuestionOptions.id],
+  }),
+}))
 
 export const postNotificationsRelations = relations(
   postNotifications,

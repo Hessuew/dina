@@ -78,6 +78,19 @@ export const emailMessageStatusEnum = pgEnum('email_message_status', [
   'failed',
 ])
 
+export const examStatusEnum = pgEnum('exam_status', ['draft', 'published'])
+
+export const examQuestionTypeEnum = pgEnum('exam_question_type', [
+  'multiple_choice',
+  'open_ended',
+])
+
+export const examAttemptStatusEnum = pgEnum('exam_attempt_status', [
+  'in_progress',
+  'submitted',
+  'graded',
+])
+
 export const gemstoneEnum = pgEnum('gemstone', [
   'jasper',
   'sapphire',
