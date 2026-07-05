@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   ChevronsUpDown,
   Loader2,
@@ -30,8 +32,6 @@ import {
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
 } from '@/components/ui/pagination'
 import {
   Select,
@@ -444,18 +444,24 @@ function PaginationNavRow<TData>({
   // React Compiler must not memoize this: it reads live `table` state
   // (getCanPreviousPage/getCanNextPage) off a stable `table` ref.
   'use no memo'
+  const canPrevious = table.getCanPreviousPage()
+  const canNext = table.getCanNextPage()
   return (
     <Pagination className="mx-0 w-auto justify-end">
       <PaginationContent className="gap-1.5">
         <PaginationItem>
-          <PaginationPrevious
+          <button
+            type="button"
             onClick={() => table.previousPage()}
-            aria-disabled={!table.getCanPreviousPage()}
+            disabled={!canPrevious}
+            aria-label="Go to previous page"
             className={cn(
-              'rounded-sm',
-              !table.getCanPreviousPage() && 'pointer-events-none opacity-30',
+              'flex h-8 items-center justify-center rounded-sm border border-white/8 bg-black/10 px-2.5 text-[#8E816D] transition-all duration-200 hover:border-white/15 hover:bg-black/20 hover:text-black disabled:pointer-events-none disabled:opacity-30',
             )}
-          />
+          >
+            <ChevronLeft className="size-4" />
+            <span className="hidden sm:block">Previous</span>
+          </button>
         </PaginationItem>
 
         {pageWindow.map((page, i) =>
@@ -482,14 +488,18 @@ function PaginationNavRow<TData>({
         )}
 
         <PaginationItem>
-          <PaginationNext
+          <button
+            type="button"
             onClick={() => table.nextPage()}
-            aria-disabled={!table.getCanNextPage()}
+            disabled={!canNext}
+            aria-label="Go to next page"
             className={cn(
-              'rounded-sm',
-              !table.getCanNextPage() && 'pointer-events-none opacity-30',
+              'flex h-8 items-center justify-center rounded-sm border border-white/8 bg-black/10 px-2.5 text-[#8E816D] transition-all duration-200 hover:border-white/15 hover:bg-black/20 hover:text-black disabled:pointer-events-none disabled:opacity-30',
             )}
-          />
+          >
+            <span className="hidden sm:block">Next</span>
+            <ChevronRight className="size-4" />
+          </button>
         </PaginationItem>
       </PaginationContent>
     </Pagination>
@@ -829,6 +839,9 @@ export function DataTable<TData>({
   emptyMessage = 'No results found',
   rowClassName,
 }: DataTableProps<TData>) {
+  // React Compiler must not memoize this: it derives pagination display data
+  // from a live `table` instance whose identity stays stable.
+  'use no memo'
   const isServerMode = rowCount !== undefined
   const { tableTopRef, globalFilter, table } = useDataTableState({
     columns,
