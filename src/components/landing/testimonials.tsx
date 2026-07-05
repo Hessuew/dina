@@ -174,6 +174,178 @@ function getCardMotionStyle(offset: number) {
   }
 }
 
+type TestimonialsNavProps = {
+  activeIndex: number
+  goToPrevious: () => void
+  goToNext: () => void
+}
+
+type TestimonialsCarouselProps = {
+  activeIndex: number
+  setActiveIndex: (index: number) => void
+}
+
+function TestimonialsHeader({
+  activeIndex,
+  goToPrevious,
+  goToNext,
+}: TestimonialsNavProps) {
+  return (
+    <div className="mx-auto max-w-3xl space-y-8 text-center">
+      <LandingSectionEyebrowCentered label="Formation of pillars" />
+
+      <h2 className="font-serif text-[clamp(3.2rem,6vw,5.5rem)] leading-[0.9] tracking-[-0.055em] text-white">
+        Experiences
+      </h2>
+
+      <blockquote className="text-[0.6rem] font-medium tracking-[0.3em] text-[#D4B373] italic">
+        "And when James, Cephas, and John, who seemed to be pillars"
+      </blockquote>
+
+      <LandingActiveItemNav
+        label="Testimony"
+        activeValue={`${activeIndex + 1} / ${testimonials.length}`}
+        onPrevious={goToPrevious}
+        onNext={goToNext}
+        borderColor="border-white/10"
+        prevButtonClass="border-white/12 bg-white/6 text-[#F8F4EC] hover:border-[#C5A059]/50 hover:bg-white/10"
+        nextButtonClass="border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E] hover:text-white"
+        labelColor="text-[#9B8A73]"
+        valueColor="text-[#9B8A73]"
+        className="mx-auto max-w-xs"
+      />
+    </div>
+  )
+}
+
+function TestimonialCard({
+  item,
+  offset,
+  onSelect,
+}: {
+  item: TestimonialItem
+  offset: number
+  onSelect: () => void
+}) {
+  const isFocused = offset === 0
+  const isVisible = Math.abs(offset) <= 2
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-hidden={!isVisible}
+      tabIndex={isVisible ? 0 : -1}
+      className={`absolute top-0 left-1/2 flex h-full w-76 flex-col justify-between overflow-hidden border px-4 py-5 text-left shadow-[0_34px_72px_-44px_rgba(0,0,0,0.72)] backdrop-blur-sm transition-[transform,opacity,filter,background-color,border-color] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-92 lg:w-116 lg:px-6 lg:py-7 xl:w-124 ${
+        isFocused
+          ? 'cursor-default border-[#C5A059]/50 bg-[#0F0D0C]/92'
+          : 'cursor-pointer border-[#C5A059]/20 bg-black/60 hover:border-[#C5A059]/35 hover:bg-black/75'
+      }`}
+      style={getCardMotionStyle(offset)}
+    >
+      <div className="relative flex min-h-full flex-col justify-between gap-2 lg:gap-4">
+        <div className="space-y-2 md:space-y-6">
+          <div className="inline-flex items-center gap-3 text-[0.6rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+            <span className="h-px w-6 bg-[#C5A059]/45" />
+            {item.theme}
+          </div>
+
+          <blockquote className="font-serif text-base text-[0.9rem] leading-[1.6] text-white md:text-[1rem] lg:text-[1.1rem] xl:text-[1.2rem]">
+            "{item.quote}"
+          </blockquote>
+        </div>
+
+        <div className="border-t border-white/8 pt-2 lg:pt-6">
+          <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
+            Testimony
+          </div>
+          <div className="pt-2 font-serif text-[1.3rem] text-white">
+            {item.name}
+          </div>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+function TestimonialCardTrack({
+  activeIndex,
+  setActiveIndex,
+}: TestimonialsCarouselProps) {
+  return (
+    <div className="relative h-104 overflow-hidden sm:h-108 lg:h-116">
+      {testimonials.map((item, index) => (
+        <TestimonialCard
+          key={item.id}
+          item={item}
+          offset={getRelativeOffset(activeIndex, index)}
+          onSelect={() => setActiveIndex(index)}
+        />
+      ))}
+    </div>
+  )
+}
+
+function TestimonialIndicatorButton({
+  item,
+  isActive,
+  onSelect,
+}: {
+  item: TestimonialItem
+  isActive: boolean
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-label={`Show testimony from ${item.name}`}
+      className={`border px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.28em] uppercase transition-all duration-500 ease-out ${
+        isActive
+          ? 'border-[#C5A059]/42 bg-white/8 text-[#D4B373] shadow-[0_24px_44px_-34px_rgba(0,0,0,0.6)]'
+          : 'border-white/10 bg-white/3 text-[#8E816D] hover:border-white/18 hover:bg-white/5'
+      }`}
+    >
+      {item.name}
+    </button>
+  )
+}
+
+function TestimonialIndicators({
+  activeIndex,
+  setActiveIndex,
+}: TestimonialsCarouselProps) {
+  const half = Math.ceil(testimonials.length / 2)
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {testimonials.slice(0, half).map((item, index) => (
+          <TestimonialIndicatorButton
+            key={`indicator-${item.id}`}
+            item={item}
+            isActive={index === activeIndex}
+            onSelect={() => setActiveIndex(index)}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {testimonials.slice(half).map((item, index) => {
+          const actualIndex = index + half
+          return (
+            <TestimonialIndicatorButton
+              key={`indicator-${item.id}`}
+              item={item}
+              isActive={actualIndex === activeIndex}
+              onSelect={() => setActiveIndex(actualIndex)}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function LandingTestimonialsSection() {
   const { activeIndex, setActiveIndex, goToPrevious, goToNext } = useCarousel(
     testimonials.length,
@@ -189,122 +361,22 @@ export function LandingTestimonialsSection() {
     >
       <LandingSectionContainer className="py-18 sm:py-22 lg:py-28">
         <div className="space-y-16">
-          <div className="mx-auto max-w-3xl space-y-8 text-center">
-            <LandingSectionEyebrowCentered label="Formation of pillars" />
-
-            <h2 className="font-serif text-[clamp(3.2rem,6vw,5.5rem)] leading-[0.9] tracking-[-0.055em] text-white">
-              Experiences
-            </h2>
-
-            <blockquote className="text-[0.6rem] font-medium tracking-[0.3em] text-[#D4B373] italic">
-              "And when James, Cephas, and John, who seemed to be pillars"
-            </blockquote>
-
-            <LandingActiveItemNav
-              label="Testimony"
-              activeValue={`${activeIndex + 1} / ${testimonials.length}`}
-              onPrevious={goToPrevious}
-              onNext={goToNext}
-              borderColor="border-white/10"
-              prevButtonClass="border-white/12 bg-white/6 text-[#F8F4EC] hover:border-[#C5A059]/50 hover:bg-white/10"
-              nextButtonClass="border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E] hover:text-white"
-              labelColor="text-[#9B8A73]"
-              valueColor="text-[#9B8A73]"
-              className="mx-auto max-w-xs"
-            />
-          </div>
+          <TestimonialsHeader
+            activeIndex={activeIndex}
+            goToPrevious={goToPrevious}
+            goToNext={goToNext}
+          />
 
           <div className="space-y-8">
-            <div className="relative h-104 overflow-hidden sm:h-108 lg:h-116">
-              {testimonials.map((item, index) => {
-                const offset = getRelativeOffset(activeIndex, index)
-                const isFocused = offset === 0
-                const isVisible = Math.abs(offset) <= 2
+            <TestimonialCardTrack
+              activeIndex={activeIndex}
+              setActiveIndex={setActiveIndex}
+            />
 
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setActiveIndex(index)}
-                    aria-hidden={!isVisible}
-                    tabIndex={isVisible ? 0 : -1}
-                    className={`absolute top-0 left-1/2 flex h-full w-76 flex-col justify-between overflow-hidden border px-4 py-5 text-left shadow-[0_34px_72px_-44px_rgba(0,0,0,0.72)] backdrop-blur-sm transition-[transform,opacity,filter,background-color,border-color] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-92 lg:w-116 lg:px-6 lg:py-7 xl:w-124 ${
-                      isFocused
-                        ? 'cursor-default border-[#C5A059]/50 bg-[#0F0D0C]/92'
-                        : 'cursor-pointer border-[#C5A059]/20 bg-black/60 hover:border-[#C5A059]/35 hover:bg-black/75'
-                    }`}
-                    style={getCardMotionStyle(offset)}
-                  >
-                    <div className="relative flex min-h-full flex-col justify-between gap-2 lg:gap-4">
-                      <div className="space-y-2 md:space-y-6">
-                        <div className="inline-flex items-center gap-3 text-[0.6rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
-                          <span className="h-px w-6 bg-[#C5A059]/45" />
-                          {item.theme}
-                        </div>
-
-                        <blockquote className="font-serif text-base text-[0.9rem] leading-[1.6] text-white md:text-[1rem] lg:text-[1.1rem] xl:text-[1.2rem]">
-                          "{item.quote}"
-                        </blockquote>
-                      </div>
-
-                      <div className="border-t border-white/8 pt-2 lg:pt-6">
-                        <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#9B8A73] uppercase">
-                          Testimony
-                        </div>
-                        <div className="pt-2 font-serif text-[1.3rem] text-white">
-                          {item.name}
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-
-            <div className="flex flex-col items-center gap-3">
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                {testimonials
-                  .slice(0, Math.ceil(testimonials.length / 2))
-                  .map((item, index) => (
-                    <button
-                      key={`indicator-${item.id}`}
-                      type="button"
-                      onClick={() => setActiveIndex(index)}
-                      aria-label={`Show testimony from ${item.name}`}
-                      className={`border px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.28em] uppercase transition-all duration-500 ease-out ${
-                        index === activeIndex
-                          ? 'border-[#C5A059]/42 bg-white/8 text-[#D4B373] shadow-[0_24px_44px_-34px_rgba(0,0,0,0.6)]'
-                          : 'border-white/10 bg-white/3 text-[#8E816D] hover:border-white/18 hover:bg-white/5'
-                      }`}
-                    >
-                      {item.name}
-                    </button>
-                  ))}
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                {testimonials
-                  .slice(Math.ceil(testimonials.length / 2))
-                  .map((item, index) => {
-                    const actualIndex =
-                      index + Math.ceil(testimonials.length / 2)
-                    return (
-                      <button
-                        key={`indicator-${item.id}`}
-                        type="button"
-                        onClick={() => setActiveIndex(actualIndex)}
-                        aria-label={`Show testimony from ${item.name}`}
-                        className={`border px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.28em] uppercase transition-all duration-500 ease-out ${
-                          actualIndex === activeIndex
-                            ? 'border-[#C5A059]/42 bg-white/8 text-[#D4B373] shadow-[0_24px_44px_-34px_rgba(0,0,0,0.6)]'
-                            : 'border-white/10 bg-white/3 text-[#8E816D] hover:border-white/18 hover:bg-white/5'
-                        }`}
-                      >
-                        {item.name}
-                      </button>
-                    )
-                  })}
-              </div>
-            </div>
+            <TestimonialIndicators
+              activeIndex={activeIndex}
+              setActiveIndex={setActiveIndex}
+            />
 
             <div className="text-end">
               <blockquote className="text-[0.6rem] font-medium tracking-[0.3em] text-[#D4B373] italic">

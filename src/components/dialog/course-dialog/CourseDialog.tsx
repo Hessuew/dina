@@ -56,19 +56,21 @@ function TeacherSelectItems({
   )
 }
 
+type ThumbnailUploadFieldProps = {
+  fileInputRef: React.RefObject<HTMLInputElement | null>
+  fileData: string | null
+  thumbnailUrl: string | null
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onClear: () => void
+}
+
 function ThumbnailUploadField({
   fileInputRef,
   fileData,
   thumbnailUrl,
   onFileChange,
   onClear,
-}: {
-  fileInputRef: React.RefObject<HTMLInputElement | null>
-  fileData: string | null
-  thumbnailUrl: string | null
-  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  onClear: () => void
-}) {
+}: ThumbnailUploadFieldProps) {
   return (
     <Field>
       <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
@@ -119,9 +121,100 @@ function ThumbnailUploadField({
   )
 }
 
-type CourseFormFieldsExtraProps = {
+type CourseTeacherFieldsExtraProps = {
+  teachers: Array<{ id: string; fullName: string }>
+}
+
+const CourseTeacherFields = withForm({
+  defaultValues: getInitialValues(undefined),
+  props: {} as CourseTeacherFieldsExtraProps,
+  render: ({ form, teachers }) => (
+    <>
+      <form.AppField name="teacher1Id">
+        {(field) => (
+          <field.SelectField
+            id="course-teacher1"
+            label="Teacher 1"
+            placeholder="Select first teacher"
+            renderValue={(value) => getTeacherName(value, teachers)}
+          >
+            <TeacherSelectItems teachers={teachers} />
+          </field.SelectField>
+        )}
+      </form.AppField>
+      <form.AppField
+        name="teacher2Id"
+        validators={{
+          onSubmit: ({ value, fieldApi }) => {
+            const teacher1Id = fieldApi.form.state.values.teacher1Id
+            if (value !== '' && teacher1Id !== '' && value === teacher1Id) {
+              return 'Please select 2 different teachers'
+            }
+            return undefined
+          },
+        }}
+      >
+        {(field) => (
+          <field.SelectField
+            id="course-teacher2"
+            label="Teacher 2"
+            placeholder="Select second teacher"
+            renderValue={(value) => getTeacherName(value, teachers)}
+          >
+            <TeacherSelectItems
+              teachers={teachers.filter(
+                (t) => t.id !== form.getFieldValue('teacher1Id'),
+              )}
+            />
+          </field.SelectField>
+        )}
+      </form.AppField>
+    </>
+  ),
+})
+
+type CourseCoreFieldsExtraProps = {
   teachers: Array<{ id: string; fullName: string }>
   isAdmin: boolean
+}
+
+const CourseCoreFields = withForm({
+  defaultValues: getInitialValues(undefined),
+  props: {} as CourseCoreFieldsExtraProps,
+  render: ({ form, teachers, isAdmin }) => (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <form.AppField
+        name="title"
+        validators={{ onSubmit: createCourseSchema.shape.title }}
+      >
+        {(field) => (
+          <field.TextField
+            id="course-title"
+            label="Title"
+            required
+            className="sm:col-span-2"
+            placeholder="Introduction to Programming"
+          />
+        )}
+      </form.AppField>
+      <div className="sm:col-span-1" />
+      <form.AppField name="orderIndex">
+        {(field) => (
+          <field.NumberField
+            id="course-orderIndex"
+            label="Order Index"
+            min={0}
+            placeholder="0"
+            description="Lower numbers appear first in course list"
+          />
+        )}
+      </form.AppField>
+      {isAdmin && <CourseTeacherFields form={form} teachers={teachers} />}
+    </div>
+  ),
+})
+
+type CourseDetailFieldsExtraProps = {
   fileInputRef: React.RefObject<HTMLInputElement | null>
   fileData: string | null
   thumbnailUrl: string | null
@@ -130,13 +223,11 @@ type CourseFormFieldsExtraProps = {
   mode: 'create' | 'edit'
 }
 
-const CourseFormFieldsContent = withForm({
+const CourseDetailFields = withForm({
   defaultValues: getInitialValues(undefined),
-  props: {} as CourseFormFieldsExtraProps,
+  props: {} as CourseDetailFieldsExtraProps,
   render: ({
     form,
-    teachers,
-    isAdmin,
     fileInputRef,
     fileData,
     thumbnailUrl,
@@ -144,83 +235,7 @@ const CourseFormFieldsContent = withForm({
     onClearThumbnail,
     mode,
   }) => (
-    <FieldGroup className="mt-6 gap-8">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <form.AppField
-          name="title"
-          validators={{ onSubmit: createCourseSchema.shape.title }}
-        >
-          {(field) => (
-            <field.TextField
-              id="course-title"
-              label="Title"
-              required
-              className="sm:col-span-2"
-              placeholder="Introduction to Programming"
-            />
-          )}
-        </form.AppField>
-        <div className="sm:col-span-1" />
-        <form.AppField name="orderIndex">
-          {(field) => (
-            <field.NumberField
-              id="course-orderIndex"
-              label="Order Index"
-              min={0}
-              placeholder="0"
-              description="Lower numbers appear first in course list"
-            />
-          )}
-        </form.AppField>
-        {isAdmin && (
-          <>
-            <form.AppField name="teacher1Id">
-              {(field) => (
-                <field.SelectField
-                  id="course-teacher1"
-                  label="Teacher 1"
-                  placeholder="Select first teacher"
-                  renderValue={(value) => getTeacherName(value, teachers)}
-                >
-                  <TeacherSelectItems teachers={teachers} />
-                </field.SelectField>
-              )}
-            </form.AppField>
-            <form.AppField
-              name="teacher2Id"
-              validators={{
-                onSubmit: ({ value, fieldApi }) => {
-                  const teacher1Id = fieldApi.form.state.values.teacher1Id
-                  if (
-                    value !== '' &&
-                    teacher1Id !== '' &&
-                    value === teacher1Id
-                  ) {
-                    return 'Please select 2 different teachers'
-                  }
-                  return undefined
-                },
-              }}
-            >
-              {(field) => (
-                <field.SelectField
-                  id="course-teacher2"
-                  label="Teacher 2"
-                  placeholder="Select second teacher"
-                  renderValue={(value) => getTeacherName(value, teachers)}
-                >
-                  <TeacherSelectItems
-                    teachers={teachers.filter(
-                      (t) => t.id !== form.getFieldValue('teacher1Id'),
-                    )}
-                  />
-                </field.SelectField>
-              )}
-            </form.AppField>
-          </>
-        )}
-      </div>
-
+    <>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <form.AppField
           name="description"
@@ -251,17 +266,51 @@ const CourseFormFieldsContent = withForm({
           )}
         </form.AppField>
       )}
+    </>
+  ),
+})
+
+type CourseFormFieldsExtraProps = {
+  teachers: Array<{ id: string; fullName: string }>
+  isAdmin: boolean
+  fileInputRef: React.RefObject<HTMLInputElement | null>
+  fileData: string | null
+  thumbnailUrl: string | null
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onClearThumbnail: () => void
+  mode: 'create' | 'edit'
+}
+
+const CourseFormFieldsContent = withForm({
+  defaultValues: getInitialValues(undefined),
+  props: {} as CourseFormFieldsExtraProps,
+  render: ({
+    form,
+    teachers,
+    isAdmin,
+    fileInputRef,
+    fileData,
+    thumbnailUrl,
+    onFileChange,
+    onClearThumbnail,
+    mode,
+  }) => (
+    <FieldGroup className="mt-6 gap-8">
+      <CourseCoreFields form={form} teachers={teachers} isAdmin={isAdmin} />
+      <CourseDetailFields
+        form={form}
+        fileInputRef={fileInputRef}
+        fileData={fileData}
+        thumbnailUrl={thumbnailUrl}
+        onFileChange={onFileChange}
+        onClearThumbnail={onClearThumbnail}
+        mode={mode}
+      />
     </FieldGroup>
   ),
 })
 
-export function CourseDialog({
-  open,
-  onOpenChange,
-  mode,
-  isAdmin,
-  initialData,
-}: CourseDialogProps) {
+function useCourseThumbnail() {
   const {
     fileInputRef,
     isUploading,
@@ -273,14 +322,6 @@ export function CourseDialog({
   } = useFileUpload()
 
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
-
-  const { teachers, error: teachersError } = useAllTeachers(
-    shouldLoadCourseTeachers(open, isAdmin),
-  )
-
-  if (teachersError) {
-    console.error('Failed to load teachers:', teachersError)
-  }
 
   const handleThumbnailUpload = async (courseId: string) => {
     if (!fileObject) return
@@ -302,13 +343,38 @@ export function CourseDialog({
     setUploading(false)
   }
 
-  const { createMutation, updateMutation, isAnyPending } = useEntityMutation({
+  return {
+    fileInputRef,
+    fileData,
+    thumbnailUrl,
+    setThumbnailUrl,
+    handleFileChange,
+    clearFile,
+    isUploading,
+    handleThumbnailUpload,
+  }
+}
+
+type UseCourseMutationsArgs = {
+  onOpenChange: (open: boolean) => void
+  clearFile: () => void
+  setThumbnailUrl: (url: string | null) => void
+  handleThumbnailUpload: (courseId: string) => Promise<void>
+}
+
+function useCourseMutations({
+  onOpenChange,
+  clearFile,
+  setThumbnailUrl,
+  handleThumbnailUpload,
+}: UseCourseMutationsArgs) {
+  return useEntityMutation({
     createFn: createCourse,
     updateFn: updateCourse,
-    onSuccessMessage: (_mode) =>
-      `Course ${_mode === 'create' ? 'created' : 'updated'} successfully!`,
-    onSuccess: async ({ data: _data }) => {
-      const courseId = extractCreatedCourseId(_data)
+    onSuccessMessage: (resultMode) =>
+      `Course ${resultMode === 'create' ? 'created' : 'updated'} successfully!`,
+    onSuccess: async ({ data }) => {
+      const courseId = extractCreatedCourseId(data)
       if (courseId) {
         await handleThumbnailUpload(courseId)
         clearFile()
@@ -317,6 +383,28 @@ export function CourseDialog({
       }
     },
   })
+}
+
+type UseCourseFormArgs = {
+  open: boolean
+  mode: 'create' | 'edit'
+  initialData: CourseInitialData | undefined
+  thumbnailUrl: string | null
+  setThumbnailUrl: (url: string | null) => void
+  clearFile: () => void
+  mutations: ReturnType<typeof useCourseMutations>
+}
+
+function useCourseForm({
+  open,
+  mode,
+  initialData,
+  thumbnailUrl,
+  setThumbnailUrl,
+  clearFile,
+  mutations,
+}: UseCourseFormArgs) {
+  const { createMutation, updateMutation } = mutations
 
   const form = useAppForm({
     defaultValues: getInitialValues(initialData),
@@ -342,9 +430,83 @@ export function CourseDialog({
     setThumbnailUrl(initialData?.thumbnailUrl ?? null)
     if (mode === 'create') clearFile()
     form.reset(getInitialValues(initialData))
-  }, [open, initialData, mode, form, clearFile])
+  }, [open, initialData, mode, form, clearFile, setThumbnailUrl])
 
-  const chrome = getCourseDialogChrome(mode)
+  return form
+}
+
+function useCourseDialog({
+  open,
+  onOpenChange,
+  mode,
+  isAdmin,
+  initialData,
+}: CourseDialogProps) {
+  const {
+    fileInputRef,
+    fileData,
+    thumbnailUrl,
+    setThumbnailUrl,
+    handleFileChange,
+    clearFile,
+    isUploading,
+    handleThumbnailUpload,
+  } = useCourseThumbnail()
+
+  const { teachers, error: teachersError } = useAllTeachers(
+    shouldLoadCourseTeachers(open, isAdmin),
+  )
+  if (teachersError) {
+    console.error('Failed to load teachers:', teachersError)
+  }
+
+  const mutations = useCourseMutations({
+    onOpenChange,
+    clearFile,
+    setThumbnailUrl,
+    handleThumbnailUpload,
+  })
+
+  const form = useCourseForm({
+    open,
+    mode,
+    initialData,
+    thumbnailUrl,
+    setThumbnailUrl,
+    clearFile,
+    mutations,
+  })
+
+  return {
+    form,
+    teachers,
+    fileInputRef,
+    fileData,
+    thumbnailUrl,
+    handleFileChange,
+    clearFile,
+    setThumbnailUrl,
+    isUploading,
+    isAnyPending: mutations.isAnyPending,
+    chrome: getCourseDialogChrome(mode),
+  }
+}
+
+export function CourseDialog(props: CourseDialogProps) {
+  const { open, onOpenChange, mode, isAdmin } = props
+  const {
+    form,
+    teachers,
+    fileInputRef,
+    fileData,
+    thumbnailUrl,
+    handleFileChange,
+    clearFile,
+    setThumbnailUrl,
+    isUploading,
+    isAnyPending,
+    chrome,
+  } = useCourseDialog(props)
 
   return (
     <FormDialog

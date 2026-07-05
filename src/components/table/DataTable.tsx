@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   ChevronsUpDown,
   Loader2,
@@ -22,7 +24,7 @@ import type {
   SortingState,
   Table as TanstackTable,
 } from '@tanstack/react-table'
-import type { ComponentType } from 'react'
+import type { ComponentType, RefObject } from 'react'
 import type { LinkProps } from '@tanstack/react-router'
 import { Input } from '@/components/ui/input'
 import {
@@ -30,8 +32,6 @@ import {
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
 } from '@/components/ui/pagination'
 import {
   Select,
@@ -168,6 +168,29 @@ function emitSorting(
   } else {
     onSortingChange(null, 'desc')
   }
+}
+
+// Derives the pagination display values (counts, page window, size options)
+// from the current table state. Plain data derivation, not a component or
+// hook, so it is not a React Compiler memoization target.
+function derivePaginationInfo<TData>(
+  table: TanstackTable<TData>,
+  rowCount: number | undefined,
+) {
+  const isServerMode = rowCount !== undefined
+  const { pageIndex, pageSize } = table.getState().pagination
+  const pageCount = table.getPageCount()
+  const filteredTotal = isServerMode
+    ? rowCount
+    : table.getFilteredRowModel().rows.length
+  const start =
+    filteredTotal === 0 ? 0 : Math.min(pageIndex * pageSize + 1, filteredTotal)
+  const end = Math.min((pageIndex + 1) * pageSize, filteredTotal)
+  const pageWindow = buildPageWindow(pageIndex + 1, pageCount)
+  const sizeOptions = PAGE_SIZE_OPTIONS.includes(pageSize)
+    ? PAGE_SIZE_OPTIONS
+    : [...PAGE_SIZE_OPTIONS, pageSize].sort((a, b) => a - b)
+  return { pageIndex, pageSize, filteredTotal, start, end, pageWindow, sizeOptions }
 }
 
 function SearchBar({
@@ -355,6 +378,134 @@ function DataTableContent<TData>({
   )
 }
 
+function PaginationSummaryRow<TData>({
+  table,
+  pageSize,
+  sizeOptions,
+  start,
+  end,
+  filteredTotal,
+}: {
+  table: TanstackTable<TData>
+  pageSize: number
+  sizeOptions: Array<number>
+  start: number
+  end: number
+  filteredTotal: number
+}) {
+  // React Compiler must not memoize this: it calls a mutating method
+  // (setPageSize) off a stable `table` ref that never changes identity.
+  'use no memo'
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+        {start}–{end} of {filteredTotal}
+      </span>
+
+      <div className="flex items-center gap-2">
+        <span className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+          Per page
+        </span>
+        <Select
+          value={String(pageSize)}
+          onValueChange={(val) => {
+            table.setPageSize(Number(val))
+          }}
+        >
+          <SelectTrigger className="h-7 w-16 rounded-sm border-white/10 bg-[#1A1716] text-[0.76rem] text-[#D6CCBE] focus:ring-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="rounded-sm border border-white/10 bg-[#1A1716] text-[#F8F4EC]">
+            {sizeOptions.map((size) => (
+              <SelectItem
+                key={size}
+                value={String(size)}
+                className="text-[0.76rem]"
+              >
+                {size}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  )
+}
+
+function PaginationNavRow<TData>({
+  table,
+  pageIndex,
+  pageWindow,
+}: {
+  table: TanstackTable<TData>
+  pageIndex: number
+  pageWindow: Array<number | '…'>
+}) {
+  // React Compiler must not memoize this: it reads live `table` state
+  // (getCanPreviousPage/getCanNextPage) off a stable `table` ref.
+  'use no memo'
+  const canPrevious = table.getCanPreviousPage()
+  const canNext = table.getCanNextPage()
+  return (
+    <Pagination className="mx-0 w-auto justify-end">
+      <PaginationContent className="gap-1.5">
+        <PaginationItem>
+          <button
+            type="button"
+            onClick={() => table.previousPage()}
+            disabled={!canPrevious}
+            aria-label="Go to previous page"
+            className={cn(
+              'flex h-8 items-center justify-center rounded-sm border border-white/8 bg-black/10 px-2.5 text-[#8E816D] transition-all duration-200 hover:border-white/15 hover:bg-black/20 hover:text-black disabled:pointer-events-none disabled:opacity-30',
+            )}
+          >
+            <ChevronLeft className="size-4" />
+            <span className="hidden sm:block">Previous</span>
+          </button>
+        </PaginationItem>
+
+        {pageWindow.map((page, i) =>
+          page === '…' ? (
+            <PaginationItem key={`ellipsis-${i}`}>
+              <PaginationEllipsis className="text-[#8E816D]/60" />
+            </PaginationItem>
+          ) : (
+            <PaginationItem key={page}>
+              <button
+                type="button"
+                onClick={() => table.setPageIndex(Number(page) - 1)}
+                className={cn(
+                  'flex h-8 w-8 items-center justify-center rounded-sm border text-[0.76rem] transition-all duration-200 active:scale-95',
+                  page === pageIndex + 1
+                    ? 'border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_0_12px_-4px_rgba(197,160,89,0.15)]'
+                    : 'border-white/8 bg-black/10 text-[#8E816D] hover:border-white/15 hover:bg-black/20 hover:text-black',
+                )}
+              >
+                {page}
+              </button>
+            </PaginationItem>
+          ),
+        )}
+
+        <PaginationItem>
+          <button
+            type="button"
+            onClick={() => table.nextPage()}
+            disabled={!canNext}
+            aria-label="Go to next page"
+            className={cn(
+              'flex h-8 items-center justify-center rounded-sm border border-white/8 bg-black/10 px-2.5 text-[#8E816D] transition-all duration-200 hover:border-white/15 hover:bg-black/20 hover:text-black disabled:pointer-events-none disabled:opacity-30',
+            )}
+          >
+            <span className="hidden sm:block">Next</span>
+            <ChevronRight className="size-4" />
+          </button>
+        </PaginationItem>
+      </PaginationContent>
+    </Pagination>
+  )
+}
+
 function PaginationFooter<TData>({
   table,
   pageIndex,
@@ -374,117 +525,60 @@ function PaginationFooter<TData>({
   end: number
   filteredTotal: number
 }) {
-  // React Compiler must not memoize this: it reads live `table` state
-  // (getCanPreviousPage/getCanNextPage) off a stable `table` ref.
+  // React Compiler must not memoize this: it forwards a stable `table` ref to
+  // children that read live table state.
   'use no memo'
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-4">
-        <span className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-          {start}–{end} of {filteredTotal}
-        </span>
-
-        <div className="flex items-center gap-2">
-          <span className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
-            Per page
-          </span>
-          <Select
-            value={String(pageSize)}
-            onValueChange={(val) => {
-              table.setPageSize(Number(val))
-            }}
-          >
-            <SelectTrigger className="h-7 w-16 rounded-sm border-white/10 bg-[#1A1716] text-[0.76rem] text-[#D6CCBE] focus:ring-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="rounded-sm border border-white/10 bg-[#1A1716] text-[#F8F4EC]">
-              {sizeOptions.map((size) => (
-                <SelectItem
-                  key={size}
-                  value={String(size)}
-                  className="text-[0.76rem]"
-                >
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <Pagination className="mx-0 w-auto justify-end">
-        <PaginationContent className="gap-1.5">
-          <PaginationItem>
-            <PaginationPrevious
-              onClick={() => table.previousPage()}
-              aria-disabled={!table.getCanPreviousPage()}
-              className={cn(
-                'rounded-sm',
-                !table.getCanPreviousPage() && 'pointer-events-none opacity-30',
-              )}
-            />
-          </PaginationItem>
-
-          {pageWindow.map((page, i) =>
-            page === '…' ? (
-              <PaginationItem key={`ellipsis-${i}`}>
-                <PaginationEllipsis className="text-[#8E816D]/60" />
-              </PaginationItem>
-            ) : (
-              <PaginationItem key={page}>
-                <button
-                  type="button"
-                  onClick={() => table.setPageIndex(Number(page) - 1)}
-                  className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-sm border text-[0.76rem] transition-all duration-200 active:scale-95',
-                    page === pageIndex + 1
-                      ? 'border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_0_12px_-4px_rgba(197,160,89,0.15)]'
-                      : 'border-white/8 bg-black/10 text-[#8E816D] hover:border-white/15 hover:bg-black/20 hover:text-black',
-                  )}
-                >
-                  {page}
-                </button>
-              </PaginationItem>
-            ),
-          )}
-
-          <PaginationItem>
-            <PaginationNext
-              onClick={() => table.nextPage()}
-              aria-disabled={!table.getCanNextPage()}
-              className={cn(
-                'rounded-sm',
-                !table.getCanNextPage() && 'pointer-events-none opacity-30',
-              )}
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
+      <PaginationSummaryRow
+        table={table}
+        pageSize={pageSize}
+        sizeOptions={sizeOptions}
+        start={start}
+        end={end}
+        filteredTotal={filteredTotal}
+      />
+      <PaginationNavRow table={table} pageIndex={pageIndex} pageWindow={pageWindow} />
     </div>
   )
 }
 
-export function DataTable<TData>({
-  columns,
-  data,
-  pageSize: initialPageSize = 10,
+type UseDataTableStateArgs<TData> = {
+  columns: Array<ColumnDef<TData, any>>
+  data: Array<TData>
+  rowCount: number | undefined
+  initialSearch: string
+  initialPage: number | undefined
+  initialPageSize: number
+  initialSortBy: string | undefined
+  initialSortDir: 'asc' | 'desc'
+  isServerMode: boolean
+  onSearchChange?: (search: string) => void
+  onSortingChange?: (sortBy: string | null, sortDir: 'asc' | 'desc') => void
+  onPageChange?: (page: number) => void
+  onPageSizeChange?: (pageSize: number) => void
+}
+
+type UseDataTableSyncedStateArgs = Pick<
+  UseDataTableStateArgs<unknown>,
+  | 'initialSearch'
+  | 'initialPage'
+  | 'initialPageSize'
+  | 'initialSortBy'
+  | 'initialSortDir'
+  | 'onSearchChange'
+>
+
+// Owns the sorting/filter/pagination state itself and the effects that sync
+// it from props (initialPage/initialSearch/initialSortBy changing).
+function useDataTableSyncedState({
+  initialSearch,
   initialPage,
-  maxRows,
-  onPageChange,
-  onPageSizeChange,
-  searchPlaceholder = 'Search…',
-  rowCount,
-  initialSearch = '',
+  initialPageSize,
   initialSortBy,
-  initialSortDir = 'desc',
+  initialSortDir,
   onSearchChange,
-  onSortingChange,
-  isLoading = false,
-  loadingLabel = 'Loading…',
-  emptyMessage = 'No results found',
-  rowClassName,
-}: DataTableProps<TData>) {
-  const isServerMode = rowCount !== undefined
+}: UseDataTableSyncedStateArgs) {
   const tableTopRef = useRef<HTMLDivElement>(null)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onSearchChangeRef = useRef(onSearchChange)
@@ -526,6 +620,44 @@ export function DataTable<TData>({
     }
   }, [])
 
+  return {
+    tableTopRef,
+    searchDebounceRef,
+    onSearchChangeRef,
+    sorting,
+    setSorting,
+    globalFilter,
+    setGlobalFilter,
+    pagination,
+    setPagination,
+  }
+}
+
+type DataTableChangeHandlerArgs = ReturnType<
+  typeof useDataTableSyncedState
+> & {
+  isServerMode: boolean
+  onSortingChange?: (sortBy: string | null, sortDir: 'asc' | 'desc') => void
+  onPageChange?: (page: number) => void
+  onPageSizeChange?: (pageSize: number) => void
+}
+
+// Builds the three change handlers wired into useReactTable, closing over
+// the synced state and its setters.
+function useDataTableChangeHandlers({
+  sorting,
+  setSorting,
+  pagination,
+  setPagination,
+  setGlobalFilter,
+  tableTopRef,
+  searchDebounceRef,
+  onSearchChangeRef,
+  isServerMode,
+  onSortingChange,
+  onPageChange,
+  onPageSizeChange,
+}: DataTableChangeHandlerArgs) {
   const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
     const next = typeof updater === 'function' ? updater(sorting) : updater
     setSorting(next)
@@ -546,6 +678,56 @@ export function DataTable<TData>({
     }
   }
 
+  const handleGlobalFilterChange = (value: string) => {
+    setGlobalFilter(value)
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = setTimeout(() => {
+      onSearchChangeRef.current?.(value)
+    }, 300)
+  }
+
+  return {
+    handleSortingChange,
+    handlePaginationChange,
+    handleGlobalFilterChange,
+  }
+}
+
+// Owns DataTable's sorting/filter/pagination state, the prop-sync effects,
+// and builds the live useReactTable instance wired to their change handlers.
+function useDataTableState<TData>({
+  columns,
+  data,
+  rowCount,
+  initialSearch,
+  initialPage,
+  initialPageSize,
+  initialSortBy,
+  initialSortDir,
+  isServerMode,
+  onSearchChange,
+  onSortingChange,
+  onPageChange,
+  onPageSizeChange,
+}: UseDataTableStateArgs<TData>) {
+  const syncedState = useDataTableSyncedState({
+    initialSearch,
+    initialPage,
+    initialPageSize,
+    initialSortBy,
+    initialSortDir,
+    onSearchChange,
+  })
+
+  const { handleSortingChange, handlePaginationChange, handleGlobalFilterChange } =
+    useDataTableChangeHandlers({
+      ...syncedState,
+      isServerMode,
+      onSortingChange,
+      onPageChange,
+      onPageSizeChange,
+    })
+
   const table = useReactTable({
     columns,
     data,
@@ -553,31 +735,59 @@ export function DataTable<TData>({
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     globalFilterFn: 'includesString',
-    onGlobalFilterChange: (value) => {
-      setGlobalFilter(value)
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
-      searchDebounceRef.current = setTimeout(() => {
-        onSearchChangeRef.current?.(value)
-      }, 300)
-    },
+    onGlobalFilterChange: handleGlobalFilterChange,
     onPaginationChange: handlePaginationChange,
     onSortingChange: handleSortingChange,
-    state: { globalFilter, pagination, sorting },
+    state: {
+      globalFilter: syncedState.globalFilter,
+      pagination: syncedState.pagination,
+      sorting: syncedState.sorting,
+    },
   })
 
-  const { pageIndex, pageSize } = table.getState().pagination
-  const pageCount = table.getPageCount()
-  const filteredTotal = isServerMode
-    ? rowCount
-    : table.getFilteredRowModel().rows.length
-  const start =
-    filteredTotal === 0 ? 0 : Math.min(pageIndex * pageSize + 1, filteredTotal)
-  const end = Math.min((pageIndex + 1) * pageSize, filteredTotal)
-  const pageWindow = buildPageWindow(pageIndex + 1, pageCount)
-  const sizeOptions = PAGE_SIZE_OPTIONS.includes(pageSize)
-    ? PAGE_SIZE_OPTIONS
-    : [...PAGE_SIZE_OPTIONS, pageSize].sort((a, b) => a - b)
+  return {
+    tableTopRef: syncedState.tableTopRef,
+    globalFilter: syncedState.globalFilter,
+    table,
+  }
+}
 
+type PaginationDisplayInfo = ReturnType<typeof derivePaginationInfo>
+
+type DataTableFrameProps<TData> = {
+  tableTopRef: RefObject<HTMLDivElement | null>
+  isLoading: boolean
+  globalFilter: string
+  isServerMode: boolean
+  searchPlaceholder: string
+  table: TanstackTable<TData>
+  columns: Array<ColumnDef<TData, any>>
+  maxRows: number | undefined
+  loadingLabel: string
+  emptyMessage: string
+  rowClassName?: (row: TData) => string
+  pagination: PaginationDisplayInfo
+}
+
+// Renders the search bar, table content, and pagination footer around the
+// live table instance. Split out so DataTable's own body stays orchestration.
+function DataTableFrame<TData>({
+  tableTopRef,
+  isLoading,
+  globalFilter,
+  isServerMode,
+  searchPlaceholder,
+  table,
+  columns,
+  maxRows,
+  loadingLabel,
+  emptyMessage,
+  rowClassName,
+  pagination,
+}: DataTableFrameProps<TData>) {
+  // React Compiler must not memoize this: it forwards a stable `table` ref to
+  // children that read live table state.
+  'use no memo'
   return (
     <div
       ref={tableTopRef}
@@ -604,16 +814,67 @@ export function DataTable<TData>({
         rowClassName={rowClassName}
       />
 
-      <PaginationFooter
-        table={table}
-        pageIndex={pageIndex}
-        pageSize={pageSize}
-        sizeOptions={sizeOptions}
-        pageWindow={pageWindow}
-        start={start}
-        end={end}
-        filteredTotal={filteredTotal}
-      />
+      <PaginationFooter table={table} {...pagination} />
     </div>
+  )
+}
+
+export function DataTable<TData>({
+  columns,
+  data,
+  pageSize: initialPageSize = 10,
+  initialPage,
+  maxRows,
+  onPageChange,
+  onPageSizeChange,
+  searchPlaceholder = 'Search…',
+  rowCount,
+  initialSearch = '',
+  initialSortBy,
+  initialSortDir = 'desc',
+  onSearchChange,
+  onSortingChange,
+  isLoading = false,
+  loadingLabel = 'Loading…',
+  emptyMessage = 'No results found',
+  rowClassName,
+}: DataTableProps<TData>) {
+  // React Compiler must not memoize this: it derives pagination display data
+  // from a live `table` instance whose identity stays stable.
+  'use no memo'
+  const isServerMode = rowCount !== undefined
+  const { tableTopRef, globalFilter, table } = useDataTableState({
+    columns,
+    data,
+    rowCount,
+    initialSearch,
+    initialPage,
+    initialPageSize,
+    initialSortBy,
+    initialSortDir,
+    isServerMode,
+    onSearchChange,
+    onSortingChange,
+    onPageChange,
+    onPageSizeChange,
+  })
+
+  const paginationInfo = derivePaginationInfo(table, rowCount)
+
+  return (
+    <DataTableFrame
+      tableTopRef={tableTopRef}
+      isLoading={isLoading}
+      globalFilter={globalFilter}
+      isServerMode={isServerMode}
+      searchPlaceholder={searchPlaceholder}
+      table={table}
+      columns={columns}
+      maxRows={maxRows}
+      loadingLabel={loadingLabel}
+      emptyMessage={emptyMessage}
+      rowClassName={rowClassName}
+      pagination={paginationInfo}
+    />
   )
 }
