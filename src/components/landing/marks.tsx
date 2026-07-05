@@ -197,6 +197,128 @@ function YouTubeFacade({
   )
 }
 
+type MarksSidebarProps = {
+  activeMark: MarkItem
+  goToPrevious: () => void
+  goToNext: () => void
+}
+
+function MarksSidebar({
+  activeMark,
+  goToPrevious,
+  goToNext,
+}: MarksSidebarProps) {
+  return (
+    <div className="space-y-10 px-5 sm:px-0">
+      <LandingScriptureSectionHeader
+        eyebrowLabel="Presence of God"
+        eyebrowTopLineCount={2}
+        headline="Apostolic confirmations"
+        headlineMaxW="max-w-[14ch]"
+        headlineColor="#F8F4EC"
+        textColor="#D3CAC0"
+        scriptures={[
+          {
+            quote:
+              'Ye men of Israel, hear these words; Jesus of Nazareth, a man approved of God among you by miracles and wonders and signs, which God did by him in the midst of you, as ye yourselves also know',
+            reference: 'Acts 2:22',
+          },
+        ]}
+      />
+
+      <LandingActiveItemNav
+        label="Active mark"
+        activeValue={activeMark.title}
+        onPrevious={goToPrevious}
+        onNext={goToNext}
+        borderColor="border-white/10"
+        prevButtonClass="border-white/12 bg-white/6 text-[#F8F4EC] hover:border-[#C5A059]/50 hover:bg-white/10"
+        nextButtonClass="border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E] hover:text-white"
+        labelColor="text-[#9B8A73]"
+      />
+    </div>
+  )
+}
+
+type MarksPanelHeaderProps = {
+  activeMark: MarkItem
+  activeIndex: number
+}
+
+function MarksPanelHeader({ activeMark, activeIndex }: MarksPanelHeaderProps) {
+  return (
+    <LandingFeaturePanelHeader backgroundImageUrl={marksBackground}>
+      <div className="relative h-104 space-y-8 overflow-hidden p-4 sm:h-96 sm:p-8 lg:h-100">
+        <div>
+          <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+            Mark {activeIndex + 1} of {marks.length}
+          </div>
+          <div
+            className="animate-[fadeInSlideRight_0.7s_ease-out_forwards] opacity-0"
+            style={{ animationDelay: '0.1s' }}
+          >
+            <h3 className="mt-3 max-w-[12ch] font-serif text-[clamp(2.4rem,4vw,4rem)] leading-[0.94] tracking-[-0.045em] text-white">
+              {activeMark.title}
+            </h3>
+          </div>
+        </div>
+
+        <p
+          className="mt-4 max-w-2xl animate-[fadeInSlideRight_0.7s_ease-out_forwards] text-base leading-8 text-[#D6CCBE] opacity-0 sm:text-lg"
+          style={{ animationDelay: '0.3s' }}
+        >
+          {activeMark.quote}
+        </p>
+        {activeMark.quote2 && (
+          <p
+            className="mt-4 max-w-2xl animate-[fadeInSlideRight_0.7s_ease-out_forwards] text-base leading-8 text-[#D6CCBE] opacity-0 sm:text-lg"
+            style={{ animationDelay: '0.3s' }}
+          >
+            {activeMark.quote2}
+          </p>
+        )}
+
+        <p
+          className="mt-4 max-w-2xl animate-[fadeInSlideRight_0.7s_ease-out_forwards] text-base leading-8 text-[#D6CCBE] opacity-0 sm:text-lg"
+          style={{ animationDelay: '0.3s' }}
+        >
+          {activeMark.description}
+        </p>
+      </div>
+    </LandingFeaturePanelHeader>
+  )
+}
+
+function MarksPanelBody({ activeMark }: { activeMark: MarkItem }) {
+  return (
+    <LandingFeaturePanelBody className="h-88 px-4 py-5 sm:px-8 sm:py-8 lg:h-88">
+      {activeMark.videoUrl ? (
+        <div
+          className="animate-[fadeInSlideRight_0.7s_ease-out_forwards] opacity-0"
+          style={{ animationDelay: '0.5s' }}
+        >
+          <YouTubeFacade
+            embedUrl={activeMark.videoUrl}
+            title={activeMark.title}
+          />
+        </div>
+      ) : activeMark.example ? (
+        <div
+          className="animate-[fadeInSlideRight_0.7s_ease-out_forwards] opacity-0"
+          style={{ animationDelay: '0.5s' }}
+        >
+          <div className="mt-6 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+            Testimony
+          </div>
+          <p className="mt-4 max-w-2xl text-base leading-8 text-[#D6CCBE] italic sm:text-lg">
+            {activeMark.example}
+          </p>
+        </div>
+      ) : null}
+    </LandingFeaturePanelBody>
+  )
+}
+
 export function LandingMarksSection() {
   const { activeIndex, goToPrevious, goToNext } = useCarousel(marks.length)
   const activeMark = marks[activeIndex]
@@ -216,101 +338,15 @@ export function LandingMarksSection() {
 
       <LandingSectionContainer className="px-0 py-18 sm:py-22 lg:py-24">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.88fr)_minmax(24rem,1.12fr)] lg:gap-20">
-          <div className="space-y-10 px-5 sm:px-0">
-            <LandingScriptureSectionHeader
-              eyebrowLabel="Presence of God"
-              eyebrowTopLineCount={2}
-              headline="Apostolic confirmations"
-              headlineMaxW="max-w-[14ch]"
-              headlineColor="#F8F4EC"
-              textColor="#D3CAC0"
-              scriptures={[
-                {
-                  quote:
-                    'Ye men of Israel, hear these words; Jesus of Nazareth, a man approved of God among you by miracles and wonders and signs, which God did by him in the midst of you, as ye yourselves also know',
-                  reference: 'Acts 2:22',
-                },
-              ]}
-            />
-
-            <LandingActiveItemNav
-              label="Active mark"
-              activeValue={activeMark.title}
-              onPrevious={goToPrevious}
-              onNext={goToNext}
-              borderColor="border-white/10"
-              prevButtonClass="border-white/12 bg-white/6 text-[#F8F4EC] hover:border-[#C5A059]/50 hover:bg-white/10"
-              nextButtonClass="border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E] hover:text-white"
-              labelColor="text-[#9B8A73]"
-            />
-          </div>
+          <MarksSidebar
+            activeMark={activeMark}
+            goToPrevious={goToPrevious}
+            goToNext={goToNext}
+          />
 
           <LandingFeaturePanel key={activeMark.id}>
-            <LandingFeaturePanelHeader backgroundImageUrl={marksBackground}>
-              <div className="relative h-104 space-y-8 overflow-hidden p-4 sm:h-96 sm:p-8 lg:h-100">
-                <div>
-                  <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
-                    Mark {activeIndex + 1} of {marks.length}
-                  </div>
-                  <div
-                    className="animate-[fadeInSlideRight_0.7s_ease-out_forwards] opacity-0"
-                    style={{ animationDelay: '0.1s' }}
-                  >
-                    <h3 className="mt-3 max-w-[12ch] font-serif text-[clamp(2.4rem,4vw,4rem)] leading-[0.94] tracking-[-0.045em] text-white">
-                      {activeMark.title}
-                    </h3>
-                  </div>
-                </div>
-
-                <p
-                  className="mt-4 max-w-2xl animate-[fadeInSlideRight_0.7s_ease-out_forwards] text-base leading-8 text-[#D6CCBE] opacity-0 sm:text-lg"
-                  style={{ animationDelay: '0.3s' }}
-                >
-                  {activeMark.quote}
-                </p>
-                {activeMark.quote2 && (
-                  <p
-                    className="mt-4 max-w-2xl animate-[fadeInSlideRight_0.7s_ease-out_forwards] text-base leading-8 text-[#D6CCBE] opacity-0 sm:text-lg"
-                    style={{ animationDelay: '0.3s' }}
-                  >
-                    {activeMark.quote2}
-                  </p>
-                )}
-
-                <p
-                  className="mt-4 max-w-2xl animate-[fadeInSlideRight_0.7s_ease-out_forwards] text-base leading-8 text-[#D6CCBE] opacity-0 sm:text-lg"
-                  style={{ animationDelay: '0.3s' }}
-                >
-                  {activeMark.description}
-                </p>
-              </div>
-            </LandingFeaturePanelHeader>
-
-            <LandingFeaturePanelBody className="h-88 px-4 py-5 sm:px-8 sm:py-8 lg:h-88">
-              {activeMark.videoUrl ? (
-                <div
-                  className="animate-[fadeInSlideRight_0.7s_ease-out_forwards] opacity-0"
-                  style={{ animationDelay: '0.5s' }}
-                >
-                  <YouTubeFacade
-                    embedUrl={activeMark.videoUrl}
-                    title={activeMark.title}
-                  />
-                </div>
-              ) : activeMark.example ? (
-                <div
-                  className="animate-[fadeInSlideRight_0.7s_ease-out_forwards] opacity-0"
-                  style={{ animationDelay: '0.5s' }}
-                >
-                  <div className="mt-6 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                    Testimony
-                  </div>
-                  <p className="mt-4 max-w-2xl text-base leading-8 text-[#D6CCBE] italic sm:text-lg">
-                    {activeMark.example}
-                  </p>
-                </div>
-              ) : null}
-            </LandingFeaturePanelBody>
+            <MarksPanelHeader activeMark={activeMark} activeIndex={activeIndex} />
+            <MarksPanelBody activeMark={activeMark} />
           </LandingFeaturePanel>
         </div>
       </LandingSectionContainer>

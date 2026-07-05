@@ -126,15 +126,13 @@ function EventDetailRowItem({ row }: { row: EventDetailRow }) {
   )
 }
 
-function EventViewMode({
-  event,
-  open,
-  onOpenChange,
-}: {
+type EventViewModeProps = {
   event: CalendarEventRow
   open: boolean
   onOpenChange: (open: boolean) => void
-}) {
+}
+
+function EventViewMode({ event, open, onOpenChange }: EventViewModeProps) {
   const vm = buildEventViewModel(event)
 
   return (
