@@ -24,6 +24,7 @@
     "format": "prettier",
     "format:check": "prettier --check .",
     "format:write": "prettier --write .",
+    "docs:notion-check": "node scripts/notion-check.mjs",
     "quality:fix": "node scripts/quality-fix.mjs",
     "quality:gate": "node scripts/quality-gate.mjs",
     "check": "prettier --write . && eslint --fix"
