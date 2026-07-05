@@ -7,13 +7,7 @@ type Props = {
   originalUrl: string
 }
 
-function YouTubeBlockedFallback({
-  videoId,
-  originalUrl,
-}: {
-  videoId: string
-  originalUrl: string
-}) {
+function YouTubeBlockedFallback({ videoId, originalUrl }: Props) {
   const thumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
 
   return (

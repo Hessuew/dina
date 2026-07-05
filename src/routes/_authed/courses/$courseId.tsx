@@ -52,18 +52,21 @@ type CourseEditData = {
   orderIndex: number
 }
 
+type CourseDetailData = Awaited<ReturnType<typeof getCourse>>
+type Course = CourseDetailData['course']
+type CoursePermissions = CourseDetailData['permissions']
+type CourseDialogState = ReturnType<typeof useDialogState<CourseEditData>>
+type LessonDialogState = ReturnType<typeof useDialogState<Lesson>>
+type MaterialDialogState = ReturnType<typeof useDialogState<MediaLibraryRow>>
+
 function CourseDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
-  const { course, role, completedLessonIds, assignmentData, permissions } =
-    loaderData
+  const { course, permissions } = loaderData
 
   const courseDialog = useDialogState<CourseEditData>()
   const lessonDialog = useDialogState<Lesson>()
   const materialDialog = useDialogState<MediaLibraryRow>()
-
-  const courseTeachersData = course.courseTeachers
-  const materials = course.mediaFiles
 
   const deleteCourseMutation = useMutation({
     fn: deleteCourse,
@@ -72,69 +75,140 @@ function CourseDetailComponent() {
     },
   })
 
-  const showMaterials = shouldShowMaterials(permissions.canEdit, materials)
-
   return (
     <PageLayout>
-      <PageHeader
-        title={course.title}
-        onBack={() => router.navigate({ to: '/dashboard' })}
-        metadata={
-          course.courseTeachers.length > 0 && (
-            <>
-              <span className="text-[0.65rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
-                Teachers
-              </span>
-              <TeacherAvatars
-                teachers={course.courseTeachers.map((ct) => ct.teacher)}
-                size="sm"
-                showTooltip={true}
-              />
-            </>
-          )
-        }
-        actions={
-          <EntityHeaderActions
-            status={getCourseStatus(course.isPublished)}
-            canEdit={permissions.canEdit}
-            isCourseTeacher={permissions.isCourseTeacher}
-            onEdit={() => {
-              courseDialog.openDialog(
-                'edit',
-                buildCourseEditData(course, courseTeachersData),
-              )
-            }}
-            onDelete={() => courseDialog.openDialog('delete')}
-          />
-        }
-      />
-
-      <CourseDetailSections
+      <CourseDetailHeader
         course={course}
-        role={role}
         permissions={permissions}
-        completedLessonIds={completedLessonIds}
-        assignmentData={assignmentData}
-        materials={materials}
-        showMaterials={showMaterials}
-        onCreateMaterial={() => materialDialog.openDialog('create')}
-        onEditMaterial={(material) =>
-          materialDialog.openDialog('edit', material)
-        }
-        onDeleteMaterial={(material) =>
-          materialDialog.openDialog('delete', material)
-        }
-        onCreateLesson={() => lessonDialog.openDialog('create')}
-        onEditLesson={(lesson) => lessonDialog.openDialog('edit', lesson)}
-        onDeleteLesson={(lesson) => lessonDialog.openDialog('delete', lesson)}
+        courseDialog={courseDialog}
+        onBack={() => router.navigate({ to: '/dashboard' })}
+      />
+      <CourseSections
+        data={loaderData}
+        lessonDialog={lessonDialog}
+        materialDialog={materialDialog}
         onOpenLesson={(lessonId) =>
-          router.navigate({
-            to: '/lessons/$lessonId',
-            params: { lessonId },
-          })
+          router.navigate({ to: '/lessons/$lessonId', params: { lessonId } })
         }
       />
+      <CourseEditDeleteDialogs
+        course={course}
+        isAdmin={permissions.isAdmin}
+        courseDialog={courseDialog}
+        onConfirmDelete={() =>
+          deleteCourseMutation.mutate({ data: { courseId: course.id } })
+        }
+        isDeleting={deleteCourseMutation.isPending}
+      />
+      <LessonMaterialDialogs
+        course={course}
+        lessonDialog={lessonDialog}
+        materialDialog={materialDialog}
+        onMaterialSuccess={() => router.invalidate()}
+      />
+    </PageLayout>
+  )
+}
 
+function CourseDetailHeader({
+  course,
+  permissions,
+  courseDialog,
+  onBack,
+}: {
+  course: Course
+  permissions: CoursePermissions
+  courseDialog: CourseDialogState
+  onBack: () => void
+}) {
+  return (
+    <PageHeader
+      title={course.title}
+      onBack={onBack}
+      metadata={
+        course.courseTeachers.length > 0 && (
+          <>
+            <span className="text-[0.65rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
+              Teachers
+            </span>
+            <TeacherAvatars
+              teachers={course.courseTeachers.map((ct) => ct.teacher)}
+              size="sm"
+              showTooltip={true}
+            />
+          </>
+        )
+      }
+      actions={
+        <EntityHeaderActions
+          status={getCourseStatus(course.isPublished)}
+          canEdit={permissions.canEdit}
+          isCourseTeacher={permissions.isCourseTeacher}
+          onEdit={() => {
+            courseDialog.openDialog(
+              'edit',
+              buildCourseEditData(course, course.courseTeachers),
+            )
+          }}
+          onDelete={() => courseDialog.openDialog('delete')}
+        />
+      }
+    />
+  )
+}
+
+function CourseSections({
+  data,
+  lessonDialog,
+  materialDialog,
+  onOpenLesson,
+}: {
+  data: CourseDetailData
+  lessonDialog: LessonDialogState
+  materialDialog: MaterialDialogState
+  onOpenLesson: (lessonId: string) => void
+}) {
+  const { course, role, completedLessonIds, assignmentData, permissions } =
+    data
+  const materials = course.mediaFiles
+
+  return (
+    <CourseDetailSections
+      course={course}
+      role={role}
+      permissions={permissions}
+      completedLessonIds={completedLessonIds}
+      assignmentData={assignmentData}
+      materials={materials}
+      showMaterials={shouldShowMaterials(permissions.canEdit, materials)}
+      onCreateMaterial={() => materialDialog.openDialog('create')}
+      onEditMaterial={(material) => materialDialog.openDialog('edit', material)}
+      onDeleteMaterial={(material) =>
+        materialDialog.openDialog('delete', material)
+      }
+      onCreateLesson={() => lessonDialog.openDialog('create')}
+      onEditLesson={(lesson) => lessonDialog.openDialog('edit', lesson)}
+      onDeleteLesson={(lesson) => lessonDialog.openDialog('delete', lesson)}
+      onOpenLesson={onOpenLesson}
+    />
+  )
+}
+
+function CourseEditDeleteDialogs({
+  course,
+  isAdmin,
+  courseDialog,
+  onConfirmDelete,
+  isDeleting,
+}: {
+  course: Course
+  isAdmin: boolean
+  courseDialog: CourseDialogState
+  onConfirmDelete: () => void
+  isDeleting: boolean
+}) {
+  return (
+    <>
       {/* Edit Course Dialog */}
       <CourseDialog
         open={isDialogModeActive(
@@ -146,7 +220,7 @@ function CourseDetailComponent() {
           handleDialogDismiss(open, courseDialog.closeDialog)
         }
         mode="edit"
-        isAdmin={permissions.isAdmin}
+        isAdmin={isAdmin}
         initialData={courseDialog.dialogItem}
       />
 
@@ -161,15 +235,27 @@ function CourseDetailComponent() {
           handleDialogDismiss(open, courseDialog.closeDialog)
         }
         entityName="Course"
-        onConfirm={() =>
-          deleteCourseMutation.mutate({
-            data: { courseId: course.id },
-          })
-        }
-        isDeleting={deleteCourseMutation.isPending}
+        onConfirm={onConfirmDelete}
+        isDeleting={isDeleting}
         navigateTo="/dashboard"
       />
+    </>
+  )
+}
 
+function LessonMaterialDialogs({
+  course,
+  lessonDialog,
+  materialDialog,
+  onMaterialSuccess,
+}: {
+  course: Course
+  lessonDialog: LessonDialogState
+  materialDialog: MaterialDialogState
+  onMaterialSuccess: () => void
+}) {
+  return (
+    <>
       {/* Lesson Dialog (create / edit / delete) */}
       {lessonDialog.isOpen && (
         <LessonDialog
@@ -198,9 +284,9 @@ function CourseDetailComponent() {
           mode={materialDialog.dialogMode as 'create' | 'edit' | 'delete'}
           media={materialDialog.dialogItem}
           courseId={course.id}
-          onSuccess={() => router.invalidate()}
+          onSuccess={onMaterialSuccess}
         />
       )}
-    </PageLayout>
+    </>
   )
 }
