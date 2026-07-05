@@ -1,3 +1,4 @@
+status_line = ["model-with-reasoning", "context-remaining", "current-dir"]
 [mcp_servers.sentry]
 url = "https://mcp.sentry.dev/mcp"
 model = "gpt-5.5"

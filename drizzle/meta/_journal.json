@@ -218,6 +218,13 @@
       "when": 1783155255097,
       "tag": "0033_smart_iron_monger",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1783160102220,
+      "tag": "0034_mysterious_peter_parker",
+      "breakpoints": true
     }
   ]
 }
