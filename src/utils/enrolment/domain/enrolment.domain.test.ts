@@ -4,8 +4,6 @@ import {
   deriveCanEvaluate,
   deriveEnrollmentStatus,
   deriveReviewHeading,
-  generateInvitationExpiry,
-  generateSecureToken,
   isInvitationResendable,
   redactEnrollmentForTeacher,
 } from './enrolment.domain'
@@ -29,33 +27,6 @@ const makeInvitation = (
     createdAt: new Date(),
     updatedAt: new Date(),
   }) as const
-
-describe('generateSecureToken', () => {
-  it('returns a 64-character hex string', () => {
-    const token = generateSecureToken()
-    expect(token).toHaveLength(64)
-    expect(/^[0-9a-f]{64}$/.test(token)).toBe(true)
-  })
-
-  it('produces a different value on each call', () => {
-    expect(generateSecureToken()).not.toBe(generateSecureToken())
-  })
-})
-
-describe('generateInvitationExpiry', () => {
-  it('returns a Date instance', () => {
-    expect(generateInvitationExpiry()).toBeInstanceOf(Date)
-  })
-
-  it('returns a date 7 days from now', () => {
-    const before = Date.now()
-    const expiry = generateInvitationExpiry()
-    const after = Date.now()
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
-    expect(expiry.getTime()).toBeGreaterThanOrEqual(before + sevenDaysMs)
-    expect(expiry.getTime()).toBeLessThanOrEqual(after + sevenDaysMs)
-  })
-})
 
 describe('isInvitationResendable', () => {
   it('returns true for a pending invitation', () => {

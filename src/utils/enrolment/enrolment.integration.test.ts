@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
+import { getDb } from 'test/integration/db'
+import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
 import {
   getEnrollmentsService,
+  sendInvitationForEnrollmentService,
   setEvaluationScoreService,
   substituteTeacherService,
 } from '@/utils/enrolment/service/enrolment.service'
 import {
   findEnrollmentById,
   findEnrollmentEmailsByGroup,
+  findInvitationByEmail,
 } from '@/utils/enrolment/repository/enrolment.repository'
 import { AuthorizationError } from '@/utils/errors'
 import {
@@ -17,6 +21,8 @@ import {
   seedProfile,
   seedReviewerAssignment,
 } from '@/../test/integration/seed'
+import { setEmailSender } from '@/utils/email'
+import { emailMessages } from '@/db/schema'
 
 // Seeds a pending enrollment with an assigned reviewer plus a peer evaluator.
 // Both teachers share the same course, making peerId a valid peer evaluator.
@@ -29,6 +35,19 @@ async function seedPeerReviewScenario() {
   const enrollmentId = await seedEnrollment({ status: 'pending' })
   await seedReviewerAssignment(enrollmentId, reviewerId, courseId)
   return { reviewerId, peerId, courseId, enrollmentId }
+}
+
+function installFakeEmailSender() {
+  const calls: Array<InvitationEmailMessage> = []
+  const sender: EmailSender = {
+    sendInvitation: async (message) => {
+      await Promise.resolve()
+      calls.push(message)
+      return { providerMessageId: `email.${calls.length}` }
+    },
+  }
+  setEmailSender(sender)
+  return calls
 }
 
 describe('setEvaluationScoreService (integration)', () => {
@@ -287,22 +306,53 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
     },
     {
       group: 'approved',
-      expected: [
-        'registered@test.dev',
-        'notreg@test.dev',
-        'noinvite@test.dev',
-      ],
+      expected: ['registered@test.dev', 'notreg@test.dev', 'noinvite@test.dev'],
     },
     { group: 'registered', expected: ['registered@test.dev'] },
     { group: 'not_registered', expected: ['notreg@test.dev'] },
   ]
 
-  it.each(cases)('$group cohort returns the right emails', async ({
-    group,
-    expected,
-  }) => {
-    await seedExportCohorts()
-    const emails = await findEnrollmentEmailsByGroup(group)
-    expect([...emails].sort()).toEqual([...expected].sort())
+  it.each(cases)(
+    '$group cohort returns the right emails',
+    async ({ group, expected }) => {
+      await seedExportCohorts()
+      const emails = await findEnrollmentEmailsByGroup(group)
+      expect([...emails].sort()).toEqual([...expected].sort())
+    },
+  )
+})
+
+describe('sendInvitationForEnrollmentService (integration)', () => {
+  it('uses the shared sender seam without writing bulk campaign logs', async () => {
+    const adminId = await seedProfile({
+      role: 'admin',
+      email: 'admin@test.dev',
+      fullName: 'Admin User',
+    })
+    const calls = installFakeEmailSender()
+    const enrollmentId = await seedEnrollment({
+      status: 'approved',
+      email: 'approved@test.dev',
+    })
+
+    const result = await sendInvitationForEnrollmentService(
+      { enrollmentId },
+      adminId,
+      'admin@test.dev',
+    )
+
+    expect(result.invitationId).toBeDefined()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({
+      to: 'approved@test.dev',
+      invitedByName: 'Admin User',
+      role: 'student',
+    })
+    expect(await findInvitationByEmail('approved@test.dev')).toMatchObject({
+      id: result.invitationId,
+      status: 'pending',
+    })
+    const db = await getDb()
+    expect(await db.select().from(emailMessages)).toEqual([])
   })
 })

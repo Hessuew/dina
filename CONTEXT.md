@@ -70,6 +70,20 @@ An admin-triggered bulk WhatsApp send to a fixed enrollment cohort, launched fro
 
 A run is planned by `planBulkSend`: recipients already logged as `sent` for the campaign's template are skipped (dedupe — re-running is safe), free-text `phone_whatsapp` values that cannot be normalized to E.164 (explicit `+CC` required, `libphonenumber-js`) are skipped, and a run is capped at 100 sends (re-run for the remainder). Submitting the enrollment form's WhatsApp number is treated as messaging consent; STOP/opt-out handling is deferred (ADR 0014).
 
+### Email Campaign
+
+An admin-triggered bulk email send to a fixed enrollment cohort, launched from the enrollments page (`EmailCampaignDialog`, Admin-only). The first campaign is **Invitation emails** (`invitation`): it sends the canonical `InvitationEmail` to approved applicants whose invitation state is not `accepted`.
+
+The invitation campaign reads invitation state by `invitations.email = enrollments.email` rather than by `enrollments.invitation_id`, because invitation email is unique and one-off invitation sends already treat email as the source of truth. Eligible recipients include never-invited approved applicants and invited-but-unregistered applicants with expired pending links. Pending links that have not expired are skipped as `link_still_valid`; revoked invitations are skipped as `revoked` and are never undone by bulk send. A run is capped at 100 sends; overflow is reported as `over_cap`.
+
+### Email Sender (port)
+
+The `EmailSender` interface (`src/utils/email/types.ts`) behind which the Resend adapter (`ResendEmailSender`) sits. Swapped via `get/setEmailSender` so integration tests and one-off invitation flows share the same rendering/sending seam. The shared `sendInvitationEmail` primitive renders `InvitationEmail`, builds `/signup?token=...`, and returns the provider message id when available.
+
+### Email Message log
+
+The `email_messages` table: one row per bulk email campaign attempt (`sent` or `failed`), carrying the recipient email, email type (`invitation`), provider message id, error message, and the sending admin. It is an audit/failure visibility log for bulk campaigns only; existing one-off invitation sends do not write rows and historical sends are not backfilled. Invitation `expires_at`, not this log, remains the source of truth for re-send eligibility.
+
 ### Message Template
 
 A Meta-approved WhatsApp template (Utility category, English) — the only way to send business-initiated WhatsApp messages; free-form bodies are impossible. Canonical bodies live in-repo in `WHATSAPP_TEMPLATES` (`src/utils/whatsapp/domain/templates.domain.ts`) and are submitted to Meta once; the single `{{1}}` variable is the recipient's name (preferred name, else first token of the full legal name).
@@ -84,7 +98,7 @@ The `whatsapp_messages` table: one row per send attempt (`sent` or `failed`), ca
 
 ### Campaign Lock
 
-A per-campaign mutex that prevents two admins from running the same WhatsApp campaign concurrently. Stored in `whatsapp_campaign_locks` (one row per `CampaignType`). Acquired when an admin clicks a campaign button in the `WhatsAppCampaignDialog` (alongside the preview request); released on send completion, dialog close, or campaign switch. A 5-minute TTL acts as the fallback if the browser closes without releasing. A locked campaign button shows "In use · try again shortly". See ADR 0015.
+A per-campaign mutex that prevents two admins from running the same channel campaign concurrently. WhatsApp locks live in `whatsapp_campaign_locks` (one row per `CampaignType`); email locks live in `email_campaign_locks` (one row per `EmailCampaignType`). A lock is acquired when an admin clicks a campaign button in the channel dialog (alongside preview), verified at send, and released on send completion, dialog close, or campaign switch. A 5-minute TTL acts as the fallback if the browser closes without releasing. A locked campaign button shows "In use · try again shortly". See ADR 0015 and ADR 0016.
 
 ### Affiliated Ministry
 

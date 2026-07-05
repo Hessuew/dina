@@ -40,6 +40,11 @@ Database access layer and schema definitions.
     - `post_notifications`
       - Stores post-related notifications (new teacher/admin posts, comments on your posts).
       - Used to power the in-app notifications dropdown and unread badge.
+    - `whatsapp_messages` / `whatsapp_campaign_locks`
+      - Audit/logging and per-campaign locking for admin WhatsApp campaigns.
+    - `email_messages` / `email_campaign_locks`
+      - Audit/failure logging and per-campaign locking for admin bulk email campaigns.
+      - `email_messages` logs bulk campaign attempts only; one-off invitation emails are not backfilled.
 
 ## Key Invariants / Assumptions
 

@@ -1,5 +1,3 @@
-import { render } from '@react-email/render'
-import { Resend } from 'resend'
 import type {
   CheckInvitationByEmailInput,
   CreateInvitationInput,
@@ -32,26 +30,29 @@ import {
   NotFoundError,
 } from '@/utils/errors'
 import { env } from '@/env'
-import { InvitationEmail } from '@/emails/InvitationEmail'
+import { sendInvitationEmail } from '@/utils/email'
 
-async function sendInvitationEmail(
-  to: string,
-  invitedByName: string,
-  role: 'student' | 'teacher',
-  token: string,
-  lecturerTitle?: string | null,
-) {
-  const inviteLink = `${env.APP_URL}/signup?token=${token}`
-  const emailHtml = await render(
-    InvitationEmail({ invitedByName, role, inviteLink, lecturerTitle }),
-  )
-  const resend = new Resend(env.RESEND_API_KEY)
-  return resend.emails.send({
-    from: env.RESEND_FROM_EMAIL,
-    to,
-    subject: `You've been invited to join our Learning Platform`,
-    html: emailHtml,
-  })
+async function sendInvitationEmailOrThrow(input: {
+  to: string
+  invitedByName: string
+  role: 'student' | 'teacher'
+  token: string
+  lecturerTitle?: string | null
+}) {
+  try {
+    await sendInvitationEmail({
+      ...input,
+      appUrl: env.APP_URL || 'http://localhost:3000',
+    })
+  } catch (error) {
+    throw new AppError({
+      code: 'EMAIL_SEND_FAILED',
+      status: 500,
+      userMessage: 'Failed to send invitation email',
+      internalMessage:
+        error instanceof Error ? error.message : 'Email provider error',
+    })
+  }
 }
 
 export async function createInvitationService(
@@ -96,22 +97,17 @@ export async function createInvitationService(
     invitedBy: userId,
   })
 
-  const { error: emailError } = await sendInvitationEmail(
-    data.email,
-    profile.fullName || profile.email,
-    data.role,
-    token,
-    profile.lecturerTitle,
-  )
-
-  if (emailError) {
-    await deleteInvitationById(invitation.id)
-    throw new AppError({
-      code: 'EMAIL_SEND_FAILED',
-      status: 500,
-      userMessage: 'Failed to send invitation email',
-      internalMessage: `Resend API error: ${emailError.message}`,
+  try {
+    await sendInvitationEmailOrThrow({
+      to: data.email,
+      invitedByName: profile.fullName || profile.email,
+      role: data.role,
+      token,
+      lecturerTitle: profile.lecturerTitle,
     })
+  } catch (error) {
+    await deleteInvitationById(invitation.id)
+    throw error
   }
 
   return { invitation }
@@ -255,26 +251,21 @@ export async function resendInvitationService(
     updatedAt: new Date(),
   })
 
-  const { error: emailError } = await sendInvitationEmail(
-    emailToUse,
-    profile.fullName || profile.email,
-    invitation.role as 'student' | 'teacher',
-    token,
-    profile.lecturerTitle,
-  )
-
-  if (emailError) {
+  try {
+    await sendInvitationEmailOrThrow({
+      to: emailToUse,
+      invitedByName: profile.fullName || profile.email,
+      role: invitation.role as 'student' | 'teacher',
+      token,
+      lecturerTitle: profile.lecturerTitle,
+    })
+  } catch (error) {
     await updateInvitationById(data.id, {
       email: invitation.email,
       token: oldToken,
       expiresAt: oldExpiresAt,
       updatedAt: new Date(),
     })
-    throw new AppError({
-      code: 'EMAIL_SEND_FAILED',
-      status: 500,
-      userMessage: 'Failed to send invitation email',
-      internalMessage: `Resend API error: ${emailError.message}`,
-    })
+    throw error
   }
 }

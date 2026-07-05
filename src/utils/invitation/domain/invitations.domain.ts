@@ -3,13 +3,15 @@ import { ConflictError, ValidationError } from '@/utils/errors'
 
 type InvitationLike = { status: string; expiresAt: Date }
 
+export const INVITATION_EXPIRY_DAYS = 7
+
 export function generateSecureToken(): string {
   return crypto.randomBytes(32).toString('hex')
 }
 
 export function calculateInvitationExpiry(now: Date): Date {
   const expiresAt = new Date(now)
-  expiresAt.setDate(expiresAt.getDate() + 7)
+  expiresAt.setDate(expiresAt.getDate() + INVITATION_EXPIRY_DAYS)
   return expiresAt
 }
 

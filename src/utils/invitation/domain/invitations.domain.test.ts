@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  INVITATION_EXPIRY_DAYS,
   calculateInvitationExpiry,
   generateSecureToken,
   validateInvitationActive,
@@ -19,6 +20,10 @@ describe('generateSecureToken', () => {
 })
 
 describe('calculateInvitationExpiry', () => {
+  it('exports the canonical expiry day count', () => {
+    expect(INVITATION_EXPIRY_DAYS).toBe(7)
+  })
+
   it('returns a date exactly 7 days from the input', () => {
     const now = new Date('2025-01-01T12:00:00Z')
     const expiry = calculateInvitationExpiry(now)
