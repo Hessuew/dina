@@ -45,12 +45,12 @@ Run minimal bash calls to verify the changes:
 
 For component and utils lookup use Haiku 4.5 subagent to summarize the needed context.
 
-### Workflow — work locally, never in a separate worktree
+### Workflow — use the normal coordination flow
 
-Make paydown changes **directly in the local working tree on the current branch**. Do **not**
-create or switch into a separate git worktree for this work. The developer reviews the local
-changes via code review and puts them forward (commits/PRs) themselves. Run the fast verification
-loop locally, update this ledger, and stop.
+Firstmate/crew agents should use the normal firstmate isolated worktree flow. Direct
+human/local sessions may still work in their current checkout when appropriate. The ADR11
+claim ledger remains the coordination source of truth: branch or worktree location does not
+confer row ownership.
 
 ## Decision
 
@@ -263,7 +263,7 @@ On completion: flip to `✅ done`, replace `Claimed at` with the completion date
 sub-components extracted, and decrement **Current open** below. Release an abandoned claim by
 flipping back to `⬜ todo` and clearing `Claimed at` to `—`.
 
-**Current open:** 37 (0 very-high / 12 high / 6 med / 19 low)
+**Current open:** 36 (0 very-high / 11 high / 6 med / 19 low)
 
 > Note: claiming a row (todo → in progress) leaves it "open"; only completion decrements the
 > count. Reconciled 2026-07-05 to the actual `⬜ todo` row count (the header had drifted from
@@ -308,7 +308,7 @@ you work. `LOC` and `Tier` are the snapshot line count and size band. `File / si
 | ✅ done | 120 | very-high | `render`                        | `src/components/dialog/course-dialog/CourseDialog.tsx:137`                              | `CourseTeacherFields` (teacher1/teacher2 `withForm` section), `CourseCoreFields` (title/orderIndex + teacher dispatch, `withForm` section), `CourseDetailFields` (description + thumbnail + isPublished, `withForm` section); `CourseFormFieldsContent` now a thin composer dispatching the three sections                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 2026-07-05 |
 | ✅ done | 120 | very-high | `LandingMarksSection`           | `src/components/landing/marks.tsx:200`                                                  |  `MarksSidebar` (left column: scripture header + active-mark nav), `MarksPanelHeader` (right panel title/quote/quote2/description), `MarksPanelBody` (video vs. testimony dispatch) — pure-JSX mechanical cut, no new logic                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 2026-07-05          |
 | ✅ done | 118 | high      | `CommentItem`                   | `src/components/post/post-card/PostCard.tsx:788`                                        | `useCommentEditing` + `useCommentReactions` hooks (reaction toggling via shared `toggleReactionInList` domain helper); shell is pure JSX orchestration                                                                                                                                                                                                                                                                                                                          | 2026-07-04 |
-| ⬜ todo | 114 | high      | `LessonDetailComponent`         | `src/routes/_authed/lessons/$lessonId.tsx:87`                                           | —                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | —          |
+| ✅ done | 114 | high      | `LessonDetailComponent`         | `src/routes/_authed/lessons/$lessonId.tsx:87`                                           | `LessonDetailHeader`, `LessonSections`, `LessonAssignmentDialog`, `LessonEditDeleteDialog` JSX sub-components; `useLessonNavigation` and `useAssignmentDeleteDialog` hooks; pure same-file decomposition, no new domain logic                                                                                                                                                                                                                                                | 2026-07-05 |
 | ⬜ todo | 113 | high      | `NotificationsMenu`             | `src/components/navigation/notifications-menu/NotificationsMenu.tsx:223`                | —                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | —          |
 | ⬜ todo | 111 | high      | `LandingOfficialInfo`           | `src/components/landing/official-info.tsx:10`                                           | —                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | —          |
 | ⬜ todo | 109 | high      | `EventsComponent`               | `src/routes/_authed/events.tsx:66`                                                      | —                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | —          |
