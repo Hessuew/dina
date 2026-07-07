@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { FileTextIcon, PlusIcon } from 'lucide-react'
 import { createColumnHelper } from '@tanstack/react-table'
@@ -94,6 +95,96 @@ function PublishedCell({
   )
 }
 
+type OpenLibraryDialog = (
+  mode: 'create' | 'edit' | 'delete' | 'view',
+  item?: MediaLibraryRow,
+) => void
+
+type LibraryShelvesProps = {
+  canCreate: boolean
+  shelves: ReturnType<typeof getVisibleShelfTopics>['shelves']
+  shelfTopics: ReturnType<typeof getVisibleShelfTopics>['shelfTopics']
+  viewerRole: Role
+  openDialog: OpenLibraryDialog
+}
+
+function LibraryShelves({
+  canCreate,
+  shelves,
+  shelfTopics,
+  viewerRole,
+  openDialog,
+}: LibraryShelvesProps) {
+  if (shelfTopics.length === 0) {
+    return (
+      <p className="text-sm text-[#8E816D]">
+        No content has been organized into shelves yet.
+      </p>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-12">
+      {shelfTopics.map((topic) => {
+        const shelf = shelves.get(topic)
+        if (!shelf) return null
+        return (
+          <LibraryShelf
+            key={topic}
+            topic={topic}
+            ebooks={shelf.ebooks}
+            audioVisual={shelf.audioVisual}
+            viewerRole={viewerRole}
+            permissions={{
+              canEdit: canCreate,
+              isCourseTeacher: canCreate,
+            }}
+            onEditMedia={(item) => openDialog('edit', item)}
+            onDeleteMedia={(item) => openDialog('delete', item)}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+type LibraryManageSectionProps = {
+  columns: Array<ColumnDef<MediaLibraryRow, any>>
+  media: Array<MediaLibraryRow>
+}
+
+function LibraryManageSection({ columns, media }: LibraryManageSectionProps) {
+  return (
+    <div className="mt-16">
+      <div className="mb-6">
+        <div className="h-px w-8 bg-[#9B7A41]/50" />
+        <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+          Manage
+        </div>
+        <h2 className="mt-1 font-serif text-xl tracking-[-0.02em] text-[#1C1815]">
+          All Media
+        </h2>
+      </div>
+      <DataTable
+        columns={columns}
+        data={media}
+        pageSize={15}
+        searchPlaceholder="Search library…"
+      />
+    </div>
+  )
+}
+
+type LibraryBodyProps = {
+  media: Array<MediaLibraryRow>
+  canCreate: boolean
+  columns: Array<ColumnDef<MediaLibraryRow, any>>
+  shelves: ReturnType<typeof getVisibleShelfTopics>['shelves']
+  shelfTopics: ReturnType<typeof getVisibleShelfTopics>['shelfTopics']
+  viewerRole: Role
+  openDialog: OpenLibraryDialog
+}
+
 function LibraryBody({
   media,
   canCreate,
@@ -102,18 +193,7 @@ function LibraryBody({
   shelfTopics,
   viewerRole,
   openDialog,
-}: {
-  media: Array<MediaLibraryRow>
-  canCreate: boolean
-  columns: Array<ColumnDef<MediaLibraryRow, any>>
-  shelves: ReturnType<typeof getVisibleShelfTopics>['shelves']
-  shelfTopics: ReturnType<typeof getVisibleShelfTopics>['shelfTopics']
-  viewerRole: Role
-  openDialog: (
-    mode: 'create' | 'edit' | 'delete' | 'view',
-    item?: MediaLibraryRow,
-  ) => void
-}) {
+}: LibraryBodyProps) {
   if (media.length === 0) {
     return (
       <EmptyState
@@ -130,75 +210,26 @@ function LibraryBody({
 
   return (
     <>
-      {shelfTopics.length === 0 ? (
-        <p className="text-sm text-[#8E816D]">
-          No content has been organized into shelves yet.
-        </p>
-      ) : (
-        <div className="flex flex-col gap-12">
-          {shelfTopics.map((topic) => {
-            const shelf = shelves.get(topic)
-            if (!shelf) return null
-            return (
-              <LibraryShelf
-                key={topic}
-                topic={topic}
-                ebooks={shelf.ebooks}
-                audioVisual={shelf.audioVisual}
-                viewerRole={viewerRole}
-                permissions={{
-                  canEdit: canCreate,
-                  isCourseTeacher: canCreate,
-                }}
-                onEditMedia={(item) => openDialog('edit', item)}
-                onDeleteMedia={(item) => openDialog('delete', item)}
-              />
-            )
-          })}
-        </div>
-      )}
+      <LibraryShelves
+        canCreate={canCreate}
+        shelves={shelves}
+        shelfTopics={shelfTopics}
+        viewerRole={viewerRole}
+        openDialog={openDialog}
+      />
 
-      {canCreate && (
-        <div className="mt-16">
-          <div className="mb-6">
-            <div className="h-px w-8 bg-[#9B7A41]/50" />
-            <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-              Manage
-            </div>
-            <h2 className="mt-1 font-serif text-xl tracking-[-0.02em] text-[#1C1815]">
-              All Media
-            </h2>
-          </div>
-          <DataTable
-            columns={columns}
-            data={media}
-            pageSize={15}
-            searchPlaceholder="Search library…"
-          />
-        </div>
-      )}
+      {canCreate && <LibraryManageSection columns={columns} media={media} />}
     </>
   )
 }
 
-function LibraryComponent() {
-  const loaderData = Route.useLoaderData()
-  const { media, viewer } = loaderData
-  const {
-    isOpen,
-    dialogMode,
-    dialogItem: dialogMedia,
-    openDialog,
-    closeDialog,
-  } = useDialogState<MediaLibraryRow>()
-
-  const canCreate = canCreateMedia(viewer.role)
-
-  const { shelves, shelfTopics } = getVisibleShelfTopics(media)
-
+function buildLibraryColumns(
+  viewer: { id: string; role: Role },
+  openDialog: OpenLibraryDialog,
+): Array<ColumnDef<MediaLibraryRow, any>> {
   const canManageRow = (row: MediaLibraryRow) => canManageMediaRow(viewer, row)
 
-  const columns: Array<ColumnDef<MediaLibraryRow, any>> = [
+  return [
     columnHelper.display({
       id: 'thumb',
       header: '',
@@ -235,30 +266,61 @@ function LibraryComponent() {
       }),
     ]),
   ]
+}
+
+function LibraryHeader({
+  canCreate,
+  openDialog,
+}: {
+  canCreate: boolean
+  openDialog: OpenLibraryDialog
+}) {
+  return (
+    <div className="mb-8 flex items-start justify-between gap-4">
+      <div>
+        <div className="h-px w-8 bg-[#9B7A41]/50" />
+        <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+          Resources
+        </div>
+        <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
+          Library
+        </h1>
+        <p className="mt-2 text-sm text-[#5E5549]">
+          Browse videos and documents shared by teachers
+        </p>
+      </div>
+
+      {canCreate && (
+        <Button theme="light" onClick={() => openDialog('create')}>
+          <PlusIcon className="size-4" />
+          Add Media
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function LibraryComponent() {
+  const loaderData = Route.useLoaderData()
+  const { media, viewer } = loaderData
+  const {
+    isOpen,
+    dialogMode,
+    dialogItem: dialogMedia,
+    openDialog,
+    closeDialog,
+  } = useDialogState<MediaLibraryRow>()
+
+  const canCreate = canCreateMedia(viewer.role)
+  const { shelves, shelfTopics } = getVisibleShelfTopics(media)
+  const columns = useMemo(
+    () => buildLibraryColumns(viewer, openDialog),
+    [viewer, openDialog],
+  )
 
   return (
     <PageLayout>
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <div className="h-px w-8 bg-[#9B7A41]/50" />
-          <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-            Resources
-          </div>
-          <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
-            Library
-          </h1>
-          <p className="mt-2 text-sm text-[#5E5549]">
-            Browse videos and documents shared by teachers
-          </p>
-        </div>
-
-        {canCreate && (
-          <Button theme="light" onClick={() => openDialog('create')}>
-            <PlusIcon className="size-4" />
-            Add Media
-          </Button>
-        )}
-      </div>
+      <LibraryHeader canCreate={canCreate} openDialog={openDialog} />
 
       <LibraryBody
         media={media}

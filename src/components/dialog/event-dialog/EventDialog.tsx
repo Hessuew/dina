@@ -192,103 +192,121 @@ function EventViewMode({ event, open, onOpenChange }: EventViewModeProps) {
   )
 }
 
+const EventScheduleFields = withForm({
+  defaultValues: getEventDefaultValues('create'),
+  render: ({ form }) => (
+    <>
+      <form.AppField
+        name="title"
+        validators={{ onSubmit: createEventSchema.shape.title }}
+      >
+        {(field) => (
+          <field.TextField
+            id="event-title"
+            label="Title"
+            required
+            className="sm:col-span-2"
+            placeholder="Event title"
+          />
+        )}
+      </form.AppField>
+      <form.AppField
+        name="startTime"
+        validators={{ onSubmit: requiredDateTimeString }}
+      >
+        {(field) => (
+          <field.TextField
+            id="event-start"
+            label="Start Time"
+            required
+            type="datetime-local"
+          />
+        )}
+      </form.AppField>
+      <form.AppField
+        name="endTime"
+        validators={{
+          onSubmit: ({ value, fieldApi }) => {
+            if (!value) return 'End time is required'
+            const startTime = fieldApi.form.state.values.startTime
+            if (startTime && new Date(value) <= new Date(startTime)) {
+              return 'End time must be after start time'
+            }
+            return undefined
+          },
+        }}
+      >
+        {(field) => (
+          <field.TextField
+            id="event-end"
+            label="End Time"
+            required
+            type="datetime-local"
+          />
+        )}
+      </form.AppField>
+    </>
+  ),
+})
+
+const EventDetailFields = withForm({
+  defaultValues: getEventDefaultValues('create'),
+  render: ({ form }) => (
+    <>
+      <form.AppField name="category">
+        {(field) => (
+          <field.SelectField
+            id="event-category"
+            label="Category"
+            placeholder="Select category"
+          >
+            <SelectItem value="chapel">Chapel</SelectItem>
+            <SelectItem value="exam">Exam</SelectItem>
+            <SelectItem value="personal">Personal</SelectItem>
+          </field.SelectField>
+        )}
+      </form.AppField>
+      <form.AppField name="location">
+        {(field) => (
+          <field.TextField
+            id="event-location"
+            label="Location"
+            placeholder="Room or address"
+          />
+        )}
+      </form.AppField>
+      <form.AppField name="zoomLink">
+        {(field) => (
+          <field.TextField
+            id="event-zoom"
+            label="Zoom Link"
+            className="sm:col-span-2"
+            placeholder="https://zoom.us/j/..."
+          />
+        )}
+      </form.AppField>
+      <form.AppField name="description">
+        {(field) => (
+          <field.TextAreaField
+            id="event-description"
+            label="Description"
+            className="sm:col-span-2"
+            placeholder="Event description"
+            rows={5}
+          />
+        )}
+      </form.AppField>
+    </>
+  ),
+})
+
 const EventFormFieldsContent = withForm({
   defaultValues: getEventDefaultValues('create'),
   render: ({ form }) => (
     <FieldGroup className="mt-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <form.AppField
-          name="title"
-          validators={{ onSubmit: createEventSchema.shape.title }}
-        >
-          {(field) => (
-            <field.TextField
-              id="event-title"
-              label="Title"
-              required
-              className="sm:col-span-2"
-              placeholder="Event title"
-            />
-          )}
-        </form.AppField>
-        <form.AppField
-          name="startTime"
-          validators={{ onSubmit: requiredDateTimeString }}
-        >
-          {(field) => (
-            <field.TextField
-              id="event-start"
-              label="Start Time"
-              required
-              type="datetime-local"
-            />
-          )}
-        </form.AppField>
-        <form.AppField
-          name="endTime"
-          validators={{
-            onSubmit: ({ value, fieldApi }) => {
-              if (!value) return 'End time is required'
-              const startTime = fieldApi.form.state.values.startTime
-              if (startTime && new Date(value) <= new Date(startTime)) {
-                return 'End time must be after start time'
-              }
-              return undefined
-            },
-          }}
-        >
-          {(field) => (
-            <field.TextField
-              id="event-end"
-              label="End Time"
-              required
-              type="datetime-local"
-            />
-          )}
-        </form.AppField>
-        <form.AppField name="category">
-          {(field) => (
-            <field.SelectField
-              id="event-category"
-              label="Category"
-              placeholder="Select category"
-            >
-              <SelectItem value="chapel">Chapel</SelectItem>
-              <SelectItem value="exam">Exam</SelectItem>
-              <SelectItem value="personal">Personal</SelectItem>
-            </field.SelectField>
-          )}
-        </form.AppField>
-        <form.AppField name="location">
-          {(field) => (
-            <field.TextField
-              id="event-location"
-              label="Location"
-              placeholder="Room or address"
-            />
-          )}
-        </form.AppField>
-        <form.AppField name="zoomLink">
-          {(field) => (
-            <field.TextField
-              id="event-zoom"
-              label="Zoom Link"
-              className="sm:col-span-2"
-              placeholder="https://zoom.us/j/..."
-            />
-          )}
-        </form.AppField>
-        <form.AppField name="description">
-          {(field) => (
-            <field.TextAreaField
-              id="event-description"
-              label="Description"
-              className="sm:col-span-2"
-              placeholder="Event description"
-              rows={5}
-            />
-          )}
-        </form.AppField>
+        <EventScheduleFields form={form} />
+        <EventDetailFields form={form} />
       </div>
     </FieldGroup>
   ),

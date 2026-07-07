@@ -187,6 +187,96 @@ function SubmissionStatusCard({
   )
 }
 
+function SubmissionContentField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string
+  onChange: (content: string) => void
+  disabled: boolean
+}) {
+  return (
+    <Field>
+      <FieldLabel
+        htmlFor="content"
+        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+      >
+        Your Answer
+      </FieldLabel>
+      <Textarea
+        id="content"
+        rows={8}
+        placeholder="Enter your answer here..."
+        value={value}
+        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+      />
+    </Field>
+  )
+}
+
+function SubmissionFileUrlField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string
+  onChange: (fileUrl: string) => void
+  disabled: boolean
+}) {
+  return (
+    <Field>
+      <FieldLabel
+        htmlFor="fileUrl"
+        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
+      >
+        File URL (Optional)
+      </FieldLabel>
+      <Input
+        id="fileUrl"
+        type="url"
+        placeholder="https://..."
+        value={value}
+        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+      />
+    </Field>
+  )
+}
+
+function SubmissionFormActions({
+  isSavingSubmission,
+  onSaveSubmission,
+}: {
+  isSavingSubmission: boolean
+  onSaveSubmission: (submit: boolean) => void
+}) {
+  return (
+    <div className="flex gap-3">
+      <Button
+        variant="outline"
+        theme="dark"
+        onClick={() => onSaveSubmission(false)}
+        disabled={isSavingSubmission}
+      >
+        <SaveIcon className="size-3.5" />
+        Save Draft
+      </Button>
+      <Button
+        theme="dark"
+        onClick={() => onSaveSubmission(true)}
+        disabled={isSavingSubmission}
+      >
+        <SendIcon className="size-3.5" />
+        Submit
+      </Button>
+    </div>
+  )
+}
+
 function StudentSubmissionForm({
   assignment,
   submission,
@@ -214,50 +304,20 @@ function StudentSubmissionForm({
 
   return (
     <div className="space-y-5">
-      <Field>
-        <FieldLabel
-          htmlFor="content"
-          className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-        >
-          Your Answer
-        </FieldLabel>
-        <Textarea
-          id="content"
-          rows={8}
-          placeholder="Enter your answer here..."
-          value={formData.content}
-          className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-          onChange={(e) =>
-            onChangeSubmissionFormData({
-              ...formData,
-              content: e.target.value,
-            })
-          }
-          disabled={!canSubmit}
-        />
-      </Field>
-      <Field>
-        <FieldLabel
-          htmlFor="fileUrl"
-          className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-        >
-          File URL (Optional)
-        </FieldLabel>
-        <Input
-          id="fileUrl"
-          type="url"
-          placeholder="https://..."
-          value={formData.fileUrl}
-          className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-          onChange={(e) =>
-            onChangeSubmissionFormData({
-              ...formData,
-              fileUrl: e.target.value,
-            })
-          }
-          disabled={!canSubmit}
-        />
-      </Field>
+      <SubmissionContentField
+        value={formData.content}
+        onChange={(content) =>
+          onChangeSubmissionFormData({ ...formData, content })
+        }
+        disabled={!canSubmit}
+      />
+      <SubmissionFileUrlField
+        value={formData.fileUrl}
+        onChange={(fileUrl) =>
+          onChangeSubmissionFormData({ ...formData, fileUrl })
+        }
+        disabled={!canSubmit}
+      />
 
       {submission && (
         <SubmissionStatusCard
@@ -267,25 +327,10 @@ function StudentSubmissionForm({
       )}
 
       {canSubmit && (
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            theme="dark"
-            onClick={() => onSaveSubmission(false)}
-            disabled={isSavingSubmission}
-          >
-            <SaveIcon className="size-3.5" />
-            Save Draft
-          </Button>
-          <Button
-            theme="dark"
-            onClick={() => onSaveSubmission(true)}
-            disabled={isSavingSubmission}
-          >
-            <SendIcon className="size-3.5" />
-            Submit
-          </Button>
-        </div>
+        <SubmissionFormActions
+          isSavingSubmission={isSavingSubmission}
+          onSaveSubmission={onSaveSubmission}
+        />
       )}
     </div>
   )

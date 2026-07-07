@@ -220,44 +220,15 @@ function NotificationsList({
   )
 }
 
-export function NotificationsMenu() {
-  const { isMobile, setOpen, state } = useSidebar()
-  const [open, setOpenDropdown] = useState(false)
-  const [groups, setGroups] = useState<Array<PostNotificationGroup>>([])
-  const [unreadGroupCount, setUnreadGroupCount] = useState(0)
-  const pollRef = useRef<number | null>(null)
-
-  const shouldAnimate = unreadGroupCount > 0
-  const isCollapsed = state === 'collapsed'
-
-  const load = async () => {
-    const data = await getPostNotificationsSummary({ data: { limit: 25 } })
-    setGroups(data.groups)
-    setUnreadGroupCount(data.unreadGroupCount)
-  }
-
-  useEffect(() => {
-    load().catch(() => {})
-
-    pollRef.current = window.setInterval(() => {
-      load().catch(() => {})
-    }, POLL_MS)
-
-    return () => {
-      if (pollRef.current) window.clearInterval(pollRef.current)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
-    load().catch(() => {})
-  }, [open])
-
-  const displayUnreadCount = useMemo(() => {
-    if (unreadGroupCount > 99) return '99+'
-    return String(unreadGroupCount)
-  }, [unreadGroupCount])
-
+function useMarkNotificationsRead({
+  setGroups,
+  setUnreadGroupCount,
+  load,
+}: {
+  setGroups: React.Dispatch<React.SetStateAction<Array<PostNotificationGroup>>>
+  setUnreadGroupCount: React.Dispatch<React.SetStateAction<number>>
+  load: () => Promise<void>
+}) {
   const handleMarkAllRead = async () => {
     setUnreadGroupCount(0)
     setGroups((prev) => prev.map((g) => ({ ...g, unreadCount: 0 })))
@@ -289,6 +260,73 @@ export function NotificationsMenu() {
       await load()
     }
   }
+
+  return { handleMarkAllRead, handleMarkGroupRead }
+}
+
+function useNotificationGroups(open: boolean) {
+  const [groups, setGroups] = useState<Array<PostNotificationGroup>>([])
+  const [unreadGroupCount, setUnreadGroupCount] = useState(0)
+  const pollRef = useRef<number | null>(null)
+
+  const shouldAnimate = unreadGroupCount > 0
+
+  const load = async () => {
+    const data = await getPostNotificationsSummary({ data: { limit: 25 } })
+    setGroups(data.groups)
+    setUnreadGroupCount(data.unreadGroupCount)
+  }
+
+  useEffect(() => {
+    load().catch(() => {})
+
+    pollRef.current = window.setInterval(() => {
+      load().catch(() => {})
+    }, POLL_MS)
+
+    return () => {
+      if (pollRef.current) window.clearInterval(pollRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    load().catch(() => {})
+  }, [open])
+
+  const displayUnreadCount = useMemo(() => {
+    if (unreadGroupCount > 99) return '99+'
+    return String(unreadGroupCount)
+  }, [unreadGroupCount])
+
+  const { handleMarkAllRead, handleMarkGroupRead } = useMarkNotificationsRead({
+    setGroups,
+    setUnreadGroupCount,
+    load,
+  })
+
+  return {
+    groups,
+    unreadGroupCount,
+    displayUnreadCount,
+    shouldAnimate,
+    handleMarkAllRead,
+    handleMarkGroupRead,
+  }
+}
+
+export function NotificationsMenu() {
+  const { isMobile, setOpen, state } = useSidebar()
+  const [open, setOpenDropdown] = useState(false)
+  const isCollapsed = state === 'collapsed'
+  const {
+    groups,
+    unreadGroupCount,
+    displayUnreadCount,
+    shouldAnimate,
+    handleMarkAllRead,
+    handleMarkGroupRead,
+  } = useNotificationGroups(open)
 
   return (
     <SidebarMenu>

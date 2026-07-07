@@ -92,7 +92,6 @@ function CourseDetailComponent() {
         }
       />
       <CourseEditDeleteDialogs
-        course={course}
         isAdmin={permissions.isAdmin}
         courseDialog={courseDialog}
         onConfirmDelete={() =>
@@ -168,8 +167,7 @@ function CourseSections({
   materialDialog: MaterialDialogState
   onOpenLesson: (lessonId: string) => void
 }) {
-  const { course, role, completedLessonIds, assignmentData, permissions } =
-    data
+  const { course, role, completedLessonIds, assignmentData, permissions } = data
   const materials = course.mediaFiles
 
   return (
@@ -195,13 +193,11 @@ function CourseSections({
 }
 
 function CourseEditDeleteDialogs({
-  course,
   isAdmin,
   courseDialog,
   onConfirmDelete,
   isDeleting,
 }: {
-  course: Course
   isAdmin: boolean
   courseDialog: CourseDialogState
   onConfirmDelete: () => void
