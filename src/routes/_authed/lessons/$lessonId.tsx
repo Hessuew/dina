@@ -84,6 +84,218 @@ function LessonHeaderMetadata({
   )
 }
 
+type LessonEditDialogLesson = {
+  id: string
+  title: string
+  content: string | null
+  scheduledTime: Date | string | null
+  duration: number | null
+  isPublished: boolean | null
+  orderIndex: number
+  course: { id: string }
+}
+
+function LessonPageHeader({
+  title,
+  onBack,
+  scheduleLabel,
+  duration,
+  status,
+  canEdit,
+  isCourseTeacher,
+  onEdit,
+  onDelete,
+}: {
+  title: string
+  onBack: () => void
+  scheduleLabel: string | null
+  duration: number | null
+  status: 'published' | 'draft'
+  canEdit: boolean
+  isCourseTeacher: boolean
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  return (
+    <PageHeader
+      title={title}
+      onBack={onBack}
+      metadata={
+        <LessonHeaderMetadata scheduleLabel={scheduleLabel} duration={duration} />
+      }
+      actions={
+        <EntityHeaderActions
+          status={status}
+          canEdit={canEdit}
+          isCourseTeacher={isCourseTeacher}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      }
+    />
+  )
+}
+
+type LessonDetailSectionsProps = Parameters<typeof LessonDetailSections>[0]
+
+function LessonAssignmentsPanel({
+  lesson,
+  role,
+  permissions,
+  showContent,
+  assignmentDialog,
+  onDeleteAssignment,
+  router,
+}: {
+  lesson: LessonDetailSectionsProps['lesson']
+  role: LessonDetailSectionsProps['role']
+  permissions: LessonDetailSectionsProps['permissions']
+  showContent: boolean
+  assignmentDialog: ReturnType<typeof useDialogState<Assignment>>
+  onDeleteAssignment: (assignment: Assignment) => void
+  router: ReturnType<typeof useRouter>
+}) {
+  return (
+    <LessonDetailSections
+      lesson={lesson}
+      role={role}
+      permissions={permissions}
+      showContent={showContent}
+      onCreateAssignment={() => assignmentDialog.openDialog('create')}
+      onEditAssignment={(assignment) =>
+        assignmentDialog.openDialog('edit', assignment)
+      }
+      onDeleteAssignment={onDeleteAssignment}
+      onOpenAssignment={(assignmentId) =>
+        router.navigate({
+          to: '/assignments/$assignmentId',
+          params: { assignmentId },
+          search: {
+            calendarMonth: undefined,
+            fromCalendar: false,
+            fromDashboard: false,
+          },
+        })
+      }
+    />
+  )
+}
+
+function LessonAssignmentDialog({
+  assignmentDialog,
+  lessonId,
+  submissionCount,
+  onClose,
+}: {
+  assignmentDialog: ReturnType<typeof useDialogState<Assignment>>
+  lessonId: string
+  submissionCount: number
+  onClose: () => void
+}) {
+  if (!assignmentDialog.isOpen) return null
+  return (
+    <AssignmentDialog
+      open={true}
+      onOpenChange={(open) =>
+        handleDialogDismiss(open, () => {
+          assignmentDialog.closeDialog()
+          onClose()
+        })
+      }
+      mode={assignmentDialog.dialogMode as 'create' | 'edit' | 'delete'}
+      lessonId={lessonId}
+      assignment={assignmentDialog.dialogItem}
+      submissionCount={submissionCount}
+    />
+  )
+}
+
+function LessonEditDialog({
+  lessonDialog,
+  lesson,
+}: {
+  lessonDialog: ReturnType<typeof useDialogState>
+  lesson: LessonEditDialogLesson
+}) {
+  if (!lessonDialog.isOpen) return null
+  return (
+    <LessonDialog
+      open={true}
+      onOpenChange={(open) => handleDialogDismiss(open, lessonDialog.closeDialog)}
+      mode={lessonDialog.dialogMode as 'edit' | 'delete'}
+      courseId={lesson.course.id}
+      initialData={buildLessonDialogInitialData(lesson)}
+    />
+  )
+}
+
+type LessonDetailViewProps = {
+  lesson: LessonDetailSectionsProps['lesson'] & LessonEditDialogLesson
+  role: LessonDetailSectionsProps['role']
+  permissions: LessonDetailSectionsProps['permissions']
+  showContent: boolean
+  isPublished: boolean
+  scheduleLabel: string | null
+  goBack: () => void
+  lessonDialog: ReturnType<typeof useDialogState>
+  assignmentDialog: ReturnType<typeof useDialogState<Assignment>>
+  submissionCount: number
+  onCloseAssignmentDialog: () => void
+  onDeleteAssignment: (assignment: Assignment) => void
+  router: ReturnType<typeof useRouter>
+}
+
+function LessonDetailView({
+  lesson,
+  role,
+  permissions,
+  showContent,
+  isPublished,
+  scheduleLabel,
+  goBack,
+  lessonDialog,
+  assignmentDialog,
+  submissionCount,
+  onCloseAssignmentDialog,
+  onDeleteAssignment,
+  router,
+}: LessonDetailViewProps) {
+  return (
+    <PageLayout>
+      <LessonPageHeader
+        title={lesson.title}
+        onBack={goBack}
+        scheduleLabel={scheduleLabel}
+        duration={lesson.duration}
+        status={getLessonStatus(isPublished)}
+        canEdit={permissions.canEdit}
+        isCourseTeacher={permissions.isCourseTeacher}
+        onEdit={() => lessonDialog.openDialog('edit')}
+        onDelete={() => lessonDialog.openDialog('delete')}
+      />
+
+      <LessonAssignmentsPanel
+        lesson={lesson}
+        role={role}
+        permissions={permissions}
+        showContent={showContent}
+        assignmentDialog={assignmentDialog}
+        onDeleteAssignment={onDeleteAssignment}
+        router={router}
+      />
+
+      <LessonAssignmentDialog
+        assignmentDialog={assignmentDialog}
+        lessonId={lesson.id}
+        submissionCount={submissionCount}
+        onClose={onCloseAssignmentDialog}
+      />
+
+      <LessonEditDialog lessonDialog={lessonDialog} lesson={lesson} />
+    </PageLayout>
+  )
+}
+
 function LessonDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
@@ -122,79 +334,20 @@ function LessonDetailComponent() {
   const scheduleLabel = formatLessonSchedule(lesson.scheduledTime)
 
   return (
-    <PageLayout>
-      <PageHeader
-        title={lesson.title}
-        onBack={goBack}
-        metadata={
-          <LessonHeaderMetadata
-            scheduleLabel={scheduleLabel}
-            duration={lesson.duration}
-          />
-        }
-        actions={
-          <EntityHeaderActions
-            status={getLessonStatus(isPublished)}
-            canEdit={permissions.canEdit}
-            isCourseTeacher={permissions.isCourseTeacher}
-            onEdit={() => lessonDialog.openDialog('edit')}
-            onDelete={() => lessonDialog.openDialog('delete')}
-          />
-        }
-      />
-
-      <LessonDetailSections
-        lesson={lesson}
-        role={role}
-        permissions={permissions}
-        showContent={showContent}
-        onCreateAssignment={() => assignmentDialog.openDialog('create')}
-        onEditAssignment={(assignment) =>
-          assignmentDialog.openDialog('edit', assignment)
-        }
-        onDeleteAssignment={handleDeleteAssignmentClick}
-        onOpenAssignment={(assignmentId) =>
-          router.navigate({
-            to: '/assignments/$assignmentId',
-            params: { assignmentId },
-            search: {
-              calendarMonth: undefined,
-              fromCalendar: false,
-              fromDashboard: false,
-            },
-          })
-        }
-      />
-
-      {/* Assignment Dialog (create / edit / delete) */}
-      {assignmentDialog.isOpen && (
-        <AssignmentDialog
-          open={true}
-          onOpenChange={(open) =>
-            handleDialogDismiss(open, () => {
-              assignmentDialog.closeDialog()
-              setSubmissionCount(0)
-            })
-          }
-          mode={assignmentDialog.dialogMode as 'create' | 'edit' | 'delete'}
-          lessonId={lesson.id}
-          assignment={assignmentDialog.dialogItem}
-          submissionCount={submissionCount}
-        />
-      )}
-
-      {/* Lesson Dialog (edit / delete) */}
-      {lessonDialog.isOpen && (
-        <LessonDialog
-          open={true}
-          onOpenChange={(open) =>
-            handleDialogDismiss(open, lessonDialog.closeDialog)
-          }
-          mode={lessonDialog.dialogMode as 'edit' | 'delete'}
-          courseId={lesson.course.id}
-          initialData={buildLessonDialogInitialData(lesson)}
-        />
-      )}
-    </PageLayout>
+    <LessonDetailView
+      lesson={lesson}
+      role={role}
+      permissions={permissions}
+      showContent={showContent}
+      isPublished={isPublished}
+      scheduleLabel={scheduleLabel}
+      goBack={goBack}
+      lessonDialog={lessonDialog}
+      assignmentDialog={assignmentDialog}
+      submissionCount={submissionCount}
+      onCloseAssignmentDialog={() => setSubmissionCount(0)}
+      onDeleteAssignment={handleDeleteAssignmentClick}
+      router={router}
+    />
   )
 }

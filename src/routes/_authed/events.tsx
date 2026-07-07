@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import {
   AlertTriangleIcon,
@@ -63,6 +64,123 @@ const CATEGORY_CHIP: Record<string, string> = {
 
 const columnHelper = createColumnHelper<CalendarEventRow>()
 
+type OpenEventDialog = ReturnType<
+  typeof useDialogState<CalendarEventRow>
+>['openDialog']
+
+function EventCategoryCell({ category }: { category: string | null }) {
+  if (!category) return <span className="text-xs text-[#8E816D]">—</span>
+  const CategoryIcon = CATEGORY_ICON[category]
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 border px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.12em] uppercase',
+        CATEGORY_CHIP[category],
+      )}
+    >
+      <CategoryIcon className="size-2.5" />
+      {CATEGORY_LABEL[category]}
+    </span>
+  )
+}
+
+function useEventColumns(
+  openDialog: OpenEventDialog,
+): Array<ColumnDef<CalendarEventRow, any>> {
+  return useMemo(
+    () => [
+      columnHelper.accessor('title', {
+        cell: (info) => (
+          <span className="font-medium text-[#F8F4EC]">{info.getValue()}</span>
+        ),
+        header: 'Title',
+      }),
+      columnHelper.accessor('category', {
+        cell: (info) => <EventCategoryCell category={info.getValue()} />,
+        header: 'Category',
+      }),
+      columnHelper.accessor('startTime', {
+        cell: (info) => format(new Date(info.getValue()), 'PPp'),
+        header: 'Start',
+      }),
+      columnHelper.accessor('endTime', {
+        cell: (info) => format(new Date(info.getValue()), 'PPp'),
+        header: 'End',
+      }),
+      columnHelper.accessor('location', {
+        cell: (info) => {
+          const location = info.getValue()
+          return location ? location : '—'
+        },
+        header: 'Location',
+      }),
+      createButtonColumn(
+        createCrudActions<CalendarEventRow>({
+          onView: (event) => openDialog('view', event),
+          onEdit: (event) => openDialog('edit', event),
+          onDelete: (event) => openDialog('delete', event),
+        }),
+      ),
+    ],
+    [openDialog],
+  )
+}
+
+function EventsPageHeader({ onCreate }: { onCreate: () => void }) {
+  return (
+    <div className="mb-8 flex items-start justify-between gap-4">
+      <div>
+        <div className="h-px w-8 bg-[#9B7A41]/50" />
+        <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
+          School Calendar
+        </div>
+        <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
+          Events
+        </h1>
+        <p className="mt-2 text-sm text-[#5E5549]">
+          Manage chapel services, exams, and school-wide occasions
+        </p>
+      </div>
+      <Button theme="light" onClick={onCreate}>
+        <PlusIcon className="size-4" />
+        Create Event
+      </Button>
+    </div>
+  )
+}
+
+function EventsTableSection({
+  events,
+  columns,
+  onCreate,
+}: {
+  events: Array<CalendarEventRow>
+  columns: Array<ColumnDef<CalendarEventRow, any>>
+  onCreate: () => void
+}) {
+  if (events.length === 0) {
+    return (
+      <EmptyState
+        icon={CalendarDaysIcon}
+        heading="No events yet"
+        description="Create the first school event to get started"
+        actionLabel="Create Event"
+        onAction={onCreate}
+        variant="light"
+      />
+    )
+  }
+
+  return (
+    <DataTable
+      columns={columns}
+      data={events}
+      pageSize={15}
+      searchPlaceholder="Search events…"
+    />
+  )
+}
+
 function EventsComponent() {
   const { events } = Route.useLoaderData()
   const {
@@ -73,94 +191,17 @@ function EventsComponent() {
     closeDialog,
   } = useDialogState<CalendarEventRow>()
 
-  const columns: Array<ColumnDef<CalendarEventRow, any>> = [
-    columnHelper.accessor('title', {
-      cell: (info) => (
-        <span className="font-medium text-[#F8F4EC]">{info.getValue()}</span>
-      ),
-      header: 'Title',
-    }),
-    columnHelper.accessor('category', {
-      cell: (info) => {
-        const category = info.getValue()
-        if (!category) return <span className="text-xs text-[#8E816D]">—</span>
-        const CategoryIcon = CATEGORY_ICON[category]
-        return (
-          <span
-            className={cn(
-              'inline-flex items-center gap-1.5 border px-2 py-0.5 text-[0.62rem] font-medium tracking-[0.12em] uppercase',
-              CATEGORY_CHIP[category],
-            )}
-          >
-            <CategoryIcon className="size-2.5" />
-            {CATEGORY_LABEL[category]}
-          </span>
-        )
-      },
-      header: 'Category',
-    }),
-    columnHelper.accessor('startTime', {
-      cell: (info) => format(new Date(info.getValue()), 'PPp'),
-      header: 'Start',
-    }),
-    columnHelper.accessor('endTime', {
-      cell: (info) => format(new Date(info.getValue()), 'PPp'),
-      header: 'End',
-    }),
-    columnHelper.accessor('location', {
-      cell: (info) => {
-        const location = info.getValue()
-        return location ? location : '—'
-      },
-      header: 'Location',
-    }),
-    createButtonColumn(
-      createCrudActions<CalendarEventRow>({
-        onView: (event) => openDialog('view', event),
-        onEdit: (event) => openDialog('edit', event),
-        onDelete: (event) => openDialog('delete', event),
-      }),
-    ),
-  ]
+  const columns = useEventColumns(openDialog)
 
   return (
     <PageLayout>
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <div className="h-px w-8 bg-[#9B7A41]/50" />
-          <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
-            School Calendar
-          </div>
-          <h1 className="mt-1 font-serif text-3xl tracking-[-0.02em] text-[#1C1815] sm:text-4xl">
-            Events
-          </h1>
-          <p className="mt-2 text-sm text-[#5E5549]">
-            Manage chapel services, exams, and school-wide occasions
-          </p>
-        </div>
-        <Button theme="light" onClick={() => openDialog('create')}>
-          <PlusIcon className="size-4" />
-          Create Event
-        </Button>
-      </div>
+      <EventsPageHeader onCreate={() => openDialog('create')} />
 
-      {events.length === 0 ? (
-        <EmptyState
-          icon={CalendarDaysIcon}
-          heading="No events yet"
-          description="Create the first school event to get started"
-          actionLabel="Create Event"
-          onAction={() => openDialog('create')}
-          variant="light"
-        />
-      ) : (
-        <DataTable
-          columns={columns}
-          data={events}
-          pageSize={15}
-          searchPlaceholder="Search events…"
-        />
-      )}
+      <EventsTableSection
+        events={events}
+        columns={columns}
+        onCreate={() => openDialog('create')}
+      />
 
       <EventDialog
         key={`${dialogMode}-${dialogEvent?.id}`}
