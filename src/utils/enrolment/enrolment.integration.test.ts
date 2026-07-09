@@ -3,12 +3,14 @@ import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
 import {
   getEnrollmentsService,
+  searchEnrollmentEmailsByNamesService,
   sendInvitationForEnrollmentService,
   setEvaluationScoreService,
   substituteTeacherService,
 } from '@/utils/enrolment/service/enrolment.service'
 import {
   findEnrollmentById,
+  findEnrollmentEmailLookupCandidates,
   findEnrollmentEmailsByGroup,
   findInvitationByEmail,
 } from '@/utils/enrolment/repository/enrolment.repository'
@@ -320,6 +322,71 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
       expect([...emails].sort()).toEqual([...expected].sort())
     },
   )
+})
+
+describe('enrollment email lookup by name (integration)', () => {
+  async function seedLookupEnrollments() {
+    await seedEnrollment({
+      fullLegalName: 'Maria Santos',
+      preferredName: 'Mia',
+      email: 'maria@test.dev',
+      status: 'approved',
+    })
+    await seedEnrollment({
+      fullLegalName: 'John Smith',
+      email: 'john@test.dev',
+      status: 'pending',
+    })
+    await seedEnrollment({
+      fullLegalName: 'Jane Smith',
+      email: 'jane@test.dev',
+      status: 'approved',
+    })
+  }
+
+  it('finds candidates by full legal name and preferred name', async () => {
+    await seedLookupEnrollments()
+
+    const rows = await findEnrollmentEmailLookupCandidates([
+      'Maria Santos',
+      'Mia',
+    ])
+
+    expect(rows.map((row) => row.email).sort()).toEqual(['maria@test.dev'])
+  })
+
+  it('lets admins search pasted names and receives grouped email matches', async () => {
+    const adminId = await seedProfile({ role: 'admin' })
+    await seedLookupEnrollments()
+
+    const result = await searchEnrollmentEmailsByNamesService(
+      { names: 'Mia\nSmith\nUnknown Person' },
+      adminId,
+    )
+
+    expect(result.groups).toHaveLength(3)
+    expect(result.groups[0].matches[0]).toMatchObject({
+      email: 'maria@test.dev',
+      matchedName: 'Mia',
+    })
+    expect(result.groups[1].matches.map((match) => match.email).sort()).toEqual(
+      ['jane@test.dev', 'john@test.dev'],
+    )
+    expect(result.groups[2]).toMatchObject({
+      query: 'Unknown Person',
+      matches: [],
+      suggestions: [],
+    })
+  })
+
+  it('rejects teacher access for manual email lookup', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    await seedLookupEnrollments()
+
+    await expect(
+      searchEnrollmentEmailsByNamesService({ names: 'Mia' }, teacherId),
+    ).rejects.toBeInstanceOf(AuthorizationError)
+  })
 })
 
 describe('sendInvitationForEnrollmentService (integration)', () => {

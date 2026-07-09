@@ -153,6 +153,14 @@ export const getEnrollmentEmailsSchema = z.object({
 
 export type GetEnrollmentEmailsInput = z.infer<typeof getEnrollmentEmailsSchema>
 
+export const searchEnrollmentEmailsByNamesSchema = z.object({
+  names: z.string().trim().min(1, 'Enter at least one name'),
+})
+
+export type SearchEnrollmentEmailsByNamesInput = z.infer<
+  typeof searchEnrollmentEmailsByNamesSchema
+>
+
 /** Max possible evaluation sum (two reviewers × max score 4). */
 const BULK_GRADE_SUM_MAX = 8
 

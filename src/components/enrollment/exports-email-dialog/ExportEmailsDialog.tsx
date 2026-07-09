@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Check, Copy } from 'lucide-react'
+import { Check, Copy, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
 import {
@@ -7,7 +7,16 @@ import {
   formatEmailsForExport,
   resolveEmailCountLabel,
 } from './export-emails-dialog.domain'
+import type { RefObject } from 'react'
 import type { EmailGroup } from './export-emails-dialog.domain'
+import type {
+  EnrollmentEmailLookupGroup,
+  EnrollmentEmailLookupMatch,
+} from '@/utils/enrolment/domain/email-lookup.domain'
+import {
+  addEnrollmentEmailLookupSelection,
+  removeEnrollmentEmailLookupSelection,
+} from '@/utils/enrolment/domain/email-lookup.domain'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -17,22 +26,53 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { getEnrollmentEmails } from '@/utils/enrolment/enrollments'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  getEnrollmentEmails,
+  searchEnrollmentEmailsByNames,
+} from '@/utils/enrolment/enrollments'
 import { toUserError } from '@/utils/errors'
 
 type ExportEmailsDialogProps = {
   open: boolean
+  isAdmin: boolean
   onOpenChange: (open: boolean) => void
 }
 
-// --- hook ---
+type ExportMode = 'cohort' | 'lookup'
+type CopyEmailSource = Array<string> | Array<EnrollmentEmailLookupMatch> | null
+type GenerationRef = RefObject<number>
 
-function useExportEmailsDialog(onOpenChange: (open: boolean) => void) {
+function isLatestGeneration(
+  generationRef: GenerationRef,
+  gen: number,
+): boolean {
+  return gen === generationRef.current
+}
+
+function showLatestError(
+  generationRef: GenerationRef,
+  gen: number,
+  error: unknown,
+) {
+  if (isLatestGeneration(generationRef, gen)) {
+    toast.error(toUserError(error).message)
+  }
+}
+
+function finishLatestLoading(
+  generationRef: GenerationRef,
+  gen: number,
+  setIsLoading: (loading: boolean) => void,
+) {
+  if (isLatestGeneration(generationRef, gen)) setIsLoading(false)
+}
+
+function useCohortEmailExport() {
   const [selectedGroup, setSelectedGroup] = useState<EmailGroup | null>(null)
   const [emails, setEmails] = useState<Array<string> | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [copied, setCopied] = useState(false)
-
   const getEmailsFn = useServerFn(getEnrollmentEmails)
   const generationRef = useRef(0)
 
@@ -46,31 +86,16 @@ function useExportEmailsDialog(onOpenChange: (open: boolean) => void) {
       const result = await getEmailsFn({ data: { group } })
       if (gen === generationRef.current) setEmails(result.emails)
     } catch (error) {
-      if (gen === generationRef.current) toast.error(toUserError(error).message)
+      showLatestError(generationRef, gen, error)
     } finally {
-      if (gen === generationRef.current) setIsLoading(false)
+      finishLatestLoading(generationRef, gen, setIsLoading)
     }
   }
 
-  async function handleCopy() {
-    if (!emails) return
-    try {
-      await navigator.clipboard.writeText(formatEmailsForExport(emails))
-      setCopied(true)
-      toast.success('Emails copied to clipboard')
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      toast.error('Could not copy to clipboard')
-    }
-  }
-
-  function handleOpenChange(next: boolean) {
-    if (!next) {
-      setSelectedGroup(null)
-      setEmails(null)
-      setCopied(false)
-    }
-    onOpenChange(next)
+  function reset() {
+    setSelectedGroup(null)
+    setEmails(null)
+    setCopied(false)
   }
 
   return {
@@ -78,13 +103,90 @@ function useExportEmailsDialog(onOpenChange: (open: boolean) => void) {
     emails,
     isLoading,
     copied,
+    setCopied,
     handleGroupSelect,
-    handleCopy,
-    handleOpenChange,
+    reset,
   }
 }
 
-// --- sub-components ---
+function useNameEmailLookup() {
+  const [names, setNames] = useState('')
+  const [groups, setGroups] = useState<Array<EnrollmentEmailLookupGroup>>([])
+  const [selected, setSelected] = useState<Array<EnrollmentEmailLookupMatch>>(
+    [],
+  )
+  const [isLoading, setIsLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const searchFn = useServerFn(searchEnrollmentEmailsByNames)
+  const generationRef = useRef(0)
+
+  async function handleSearch() {
+    const gen = ++generationRef.current
+    setIsLoading(true)
+    setCopied(false)
+    try {
+      const result = await searchFn({ data: { names } })
+      if (isLatestGeneration(generationRef, gen)) setGroups(result.groups)
+    } catch (error) {
+      showLatestError(generationRef, gen, error)
+    } finally {
+      finishLatestLoading(generationRef, gen, setIsLoading)
+    }
+  }
+
+  function reset() {
+    setNames('')
+    setGroups([])
+    setSelected([])
+    setCopied(false)
+  }
+
+  return {
+    names,
+    setNames,
+    groups,
+    selected,
+    isLoading,
+    copied,
+    setCopied,
+    handleSearch,
+    selectMatch: (match: EnrollmentEmailLookupMatch) =>
+      setSelected((prev) => addEnrollmentEmailLookupSelection(prev, match)),
+    removeMatch: (id: string) =>
+      setSelected((prev) => removeEnrollmentEmailLookupSelection(prev, id)),
+    reset,
+  }
+}
+
+type ModeTabsProps = {
+  mode: ExportMode
+  isAdmin: boolean
+  onModeChange: (mode: ExportMode) => void
+}
+
+function ModeTabs({ mode, isAdmin, onModeChange }: ModeTabsProps) {
+  if (!isAdmin) return null
+  return (
+    <div className="mb-5 flex gap-2">
+      <Button
+        type="button"
+        theme="dark"
+        variant={mode === 'cohort' ? 'default' : 'outline'}
+        onClick={() => onModeChange('cohort')}
+      >
+        Cohorts
+      </Button>
+      <Button
+        type="button"
+        theme="dark"
+        variant={mode === 'lookup' ? 'default' : 'outline'}
+        onClick={() => onModeChange('lookup')}
+      >
+        Name lookup
+      </Button>
+    </div>
+  )
+}
 
 type GroupSelectorProps = {
   selectedGroup: EmailGroup | null
@@ -98,7 +200,7 @@ function GroupSelector({
   onSelect,
 }: GroupSelectorProps) {
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       {GROUP_OPTIONS.map(({ value, label }) => (
         <Button
           key={value}
@@ -115,9 +217,7 @@ function GroupSelector({
   )
 }
 
-type EmailListPreviewProps = { emails: Array<string> }
-
-function EmailListPreview({ emails }: EmailListPreviewProps) {
+function EmailListPreview({ emails }: { emails: Array<string> }) {
   return (
     <div className="mt-4 flex flex-col gap-2">
       <p className="text-[0.72rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase">
@@ -134,8 +234,244 @@ function EmailListPreview({ emails }: EmailListPreviewProps) {
   )
 }
 
+type CohortPanelProps = ReturnType<typeof useCohortEmailExport>
+
+function CohortPanel({
+  selectedGroup,
+  emails,
+  isLoading,
+  handleGroupSelect,
+}: CohortPanelProps) {
+  return (
+    <>
+      <p className="mb-4 text-[0.78rem] text-[#8E816D]">
+        Choose a group to export their email addresses.
+      </p>
+      <GroupSelector
+        selectedGroup={selectedGroup}
+        isLoading={isLoading}
+        onSelect={(g) => void handleGroupSelect(g)}
+      />
+      {isLoading && (
+        <p className="mt-4 text-[0.78rem] text-[#8E816D]">Loading...</p>
+      )}
+      {emails && !isLoading && <EmailListPreview emails={emails} />}
+    </>
+  )
+}
+
+type LookupPanelProps = ReturnType<typeof useNameEmailLookup>
+
+function LookupPanel({
+  names,
+  setNames,
+  groups,
+  selected,
+  isLoading,
+  handleSearch,
+  selectMatch,
+  removeMatch,
+}: LookupPanelProps) {
+  return (
+    <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.72fr)]">
+      <div className="min-w-0">
+        <LookupSearchForm
+          names={names}
+          setNames={setNames}
+          isLoading={isLoading}
+          onSearch={() => void handleSearch()}
+        />
+        <LookupResults
+          groups={groups}
+          selected={selected}
+          onSelect={selectMatch}
+        />
+      </div>
+      <SelectedLookupEmails selected={selected} onRemove={removeMatch} />
+    </div>
+  )
+}
+
+type LookupSearchFormProps = {
+  names: string
+  setNames: (names: string) => void
+  isLoading: boolean
+  onSearch: () => void
+}
+
+function LookupSearchForm({
+  names,
+  setNames,
+  isLoading,
+  onSearch,
+}: LookupSearchFormProps) {
+  return (
+    <div className="flex flex-col gap-3">
+      <Textarea
+        value={names}
+        rows={4}
+        onChange={(event) => setNames(event.target.value)}
+        placeholder="Maria Santos, John Smith"
+        className="rounded-none border-white/10 bg-white/5 text-[#F8F4EC] placeholder:text-[#8E816D] focus-visible:border-[#C5A059]/60 focus-visible:ring-[#C5A059]/20"
+      />
+      <Button
+        type="button"
+        theme="dark"
+        disabled={isLoading || names.trim().length === 0}
+        onClick={onSearch}
+      >
+        <Search className="size-3.5" />
+        {isLoading ? 'Searching...' : 'Search names'}
+      </Button>
+    </div>
+  )
+}
+
+type LookupResultsProps = {
+  groups: Array<EnrollmentEmailLookupGroup>
+  selected: Array<EnrollmentEmailLookupMatch>
+  onSelect: (match: EnrollmentEmailLookupMatch) => void
+}
+
+function LookupResults({ groups, selected, onSelect }: LookupResultsProps) {
+  const selectedIds = new Set(selected.map((item) => item.enrollmentId))
+  if (groups.length === 0) return null
+  return (
+    <div className="mt-5 flex max-h-72 flex-col gap-3 overflow-y-auto pr-1">
+      {groups.map((group) => (
+        <LookupResultGroup
+          key={group.query}
+          group={group}
+          selectedIds={selectedIds}
+          onSelect={onSelect}
+        />
+      ))}
+    </div>
+  )
+}
+
+type LookupResultGroupProps = {
+  group: EnrollmentEmailLookupGroup
+  selectedIds: Set<string>
+  onSelect: (match: EnrollmentEmailLookupMatch) => void
+}
+
+function LookupResultGroup({
+  group,
+  selectedIds,
+  onSelect,
+}: LookupResultGroupProps) {
+  const rows = group.matches.length > 0 ? group.matches : group.suggestions
+  return (
+    <section className="border border-white/10 bg-white/4 p-3">
+      <p className="mb-2 text-[0.72rem] font-medium tracking-[0.16em] text-[#9B7A41] uppercase">
+        {group.query}
+      </p>
+      {rows.length === 0 ? (
+        <p className="text-[0.78rem] text-[#8E816D]">No enrollment found</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {rows.map((match) => (
+            <LookupCandidateButton
+              key={match.enrollmentId}
+              match={match}
+              selected={selectedIds.has(match.enrollmentId)}
+              onSelect={onSelect}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+type LookupCandidateButtonProps = {
+  match: EnrollmentEmailLookupMatch
+  selected: boolean
+  onSelect: (match: EnrollmentEmailLookupMatch) => void
+}
+
+function LookupCandidateButton({
+  match,
+  selected,
+  onSelect,
+}: LookupCandidateButtonProps) {
+  return (
+    <button
+      type="button"
+      disabled={selected}
+      onClick={() => onSelect(match)}
+      className="min-w-0 border border-white/10 bg-black/20 px-3 py-2 text-left transition hover:border-[#C5A059]/60 hover:bg-white/8 disabled:opacity-55"
+    >
+      <span className="block truncate text-[0.84rem] text-[#F8F4EC]">
+        {match.fullLegalName}
+      </span>
+      <span className="mt-1 block truncate text-[0.75rem] text-[#8E816D]">
+        {match.email} · {formatStatus(match.status)}
+      </span>
+    </button>
+  )
+}
+
+type SelectedLookupEmailsProps = {
+  selected: Array<EnrollmentEmailLookupMatch>
+  onRemove: (enrollmentId: string) => void
+}
+
+function SelectedLookupEmails({
+  selected,
+  onRemove,
+}: SelectedLookupEmailsProps) {
+  return (
+    <aside className="min-w-0 border border-white/10 bg-black/20 p-3">
+      <p className="mb-3 text-[0.72rem] font-medium tracking-[0.16em] text-[#9B7A41] uppercase">
+        {resolveEmailCountLabel(selected.length)}
+      </p>
+      {selected.length === 0 ? (
+        <p className="text-[0.78rem] text-[#8E816D]">No emails selected</p>
+      ) : (
+        <div className="flex max-h-72 flex-col gap-2 overflow-y-auto pr-1">
+          {selected.map((match) => (
+            <SelectedLookupEmail
+              key={match.enrollmentId}
+              match={match}
+              onRemove={onRemove}
+            />
+          ))}
+        </div>
+      )}
+    </aside>
+  )
+}
+
+type SelectedLookupEmailProps = {
+  match: EnrollmentEmailLookupMatch
+  onRemove: (enrollmentId: string) => void
+}
+
+function SelectedLookupEmail({ match, onRemove }: SelectedLookupEmailProps) {
+  return (
+    <div className="flex min-w-0 items-start justify-between gap-2 border border-white/10 bg-white/5 px-3 py-2">
+      <div className="min-w-0">
+        <p className="truncate text-[0.82rem] text-[#F8F4EC]">
+          {match.fullLegalName}
+        </p>
+        <p className="truncate text-[0.74rem] text-[#8E816D]">{match.email}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => onRemove(match.enrollmentId)}
+        className="shrink-0 text-[#8E816D] transition hover:text-[#F8F4EC]"
+        aria-label={`Remove ${match.fullLegalName}`}
+      >
+        <X className="size-4" />
+      </button>
+    </div>
+  )
+}
+
 type ExportEmailsFooterProps = {
-  emails: Array<string> | null
+  canCopy: boolean
   isLoading: boolean
   copied: boolean
   onCopy: () => void
@@ -143,7 +479,7 @@ type ExportEmailsFooterProps = {
 }
 
 function ExportEmailsFooter({
-  emails,
+  canCopy,
   isLoading,
   copied,
   onCopy,
@@ -157,7 +493,7 @@ function ExportEmailsFooter({
       <Button
         type="button"
         theme="dark"
-        disabled={!emails || isLoading}
+        disabled={!canCopy || isLoading}
         onClick={onCopy}
       >
         {copied ? (
@@ -176,26 +512,66 @@ function ExportEmailsFooter({
   )
 }
 
-// --- shell ---
+function useExportEmailsDialogController(
+  onOpenChange: (open: boolean) => void,
+) {
+  const [mode, setMode] = useState<ExportMode>('cohort')
+  const cohort = useCohortEmailExport()
+  const lookup = useNameEmailLookup()
+  const copyEmails: CopyEmailSource =
+    mode === 'lookup' ? lookup.selected : cohort.emails
+
+  async function handleCopy() {
+    if (!copyEmails) return
+    try {
+      await navigator.clipboard.writeText(
+        formatEmailsForExport(getCopyEmailValues(copyEmails)),
+      )
+      if (mode === 'lookup') lookup.setCopied(true)
+      else cohort.setCopied(true)
+      toast.success('Emails copied to clipboard')
+      setTimeout(() => {
+        lookup.setCopied(false)
+        cohort.setCopied(false)
+      }, 2000)
+    } catch {
+      toast.error('Could not copy to clipboard')
+    }
+  }
+
+  function handleOpenChange(next: boolean) {
+    if (!next) {
+      cohort.reset()
+      lookup.reset()
+      setMode('cohort')
+    }
+    onOpenChange(next)
+  }
+
+  return {
+    mode,
+    setMode,
+    cohort,
+    lookup,
+    copyEmails,
+    copied: mode === 'lookup' ? lookup.copied : cohort.copied,
+    isLoading: mode === 'lookup' ? lookup.isLoading : cohort.isLoading,
+    handleCopy,
+    handleOpenChange,
+  }
+}
 
 export function ExportEmailsDialog({
   open,
+  isAdmin,
   onOpenChange,
 }: ExportEmailsDialogProps) {
-  const {
-    selectedGroup,
-    emails,
-    isLoading,
-    copied,
-    handleGroupSelect,
-    handleCopy,
-    handleOpenChange,
-  } = useExportEmailsDialog(onOpenChange)
+  const c = useExportEmailsDialogController(onOpenChange)
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={c.handleOpenChange}>
       <DialogContent
-        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-lg"
+        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
         style={{ backgroundColor: '#111110' }}
         showCloseButton={false}
       >
@@ -207,28 +583,36 @@ export function ExportEmailsDialog({
             </DialogTitle>
           </DialogHeader>
           <DialogBody className="pt-4">
-            <p className="mb-4 text-[0.78rem] text-[#8E816D]">
-              Choose a group to export their email addresses.
-            </p>
-            <GroupSelector
-              selectedGroup={selectedGroup}
-              isLoading={isLoading}
-              onSelect={(g) => void handleGroupSelect(g)}
+            <ModeTabs
+              mode={c.mode}
+              isAdmin={isAdmin}
+              onModeChange={c.setMode}
             />
-            {isLoading && (
-              <p className="mt-4 text-[0.78rem] text-[#8E816D]">Loading…</p>
+            {c.mode === 'lookup' && isAdmin ? (
+              <LookupPanel {...c.lookup} />
+            ) : (
+              <CohortPanel {...c.cohort} />
             )}
-            {emails && !isLoading && <EmailListPreview emails={emails} />}
           </DialogBody>
           <ExportEmailsFooter
-            emails={emails}
-            isLoading={isLoading}
-            copied={copied}
-            onCopy={() => void handleCopy()}
-            onClose={() => handleOpenChange(false)}
+            canCopy={c.copyEmails !== null && c.copyEmails.length > 0}
+            isLoading={c.isLoading}
+            copied={c.copied}
+            onCopy={() => void c.handleCopy()}
+            onClose={() => c.handleOpenChange(false)}
           />
         </div>
       </DialogContent>
     </Dialog>
   )
+}
+
+function formatStatus(status: string): string {
+  return status.replaceAll('_', ' ')
+}
+
+function getCopyEmailValues(
+  emails: Exclude<CopyEmailSource, null>,
+): Array<string> {
+  return emails.map((item) => (typeof item === 'string' ? item : item.email))
 }

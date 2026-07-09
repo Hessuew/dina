@@ -463,6 +463,7 @@ function EnrollmentsPage() {
       {c.canExportEmails && (
         <ExportEmailsDialog
           open={c.isExportEmailsDialogOpen}
+          isAdmin={c.isAdmin}
           onOpenChange={c.setIsExportEmailsDialogOpen}
         />
       )}
