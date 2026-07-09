@@ -32,6 +32,11 @@ This folder defines:
 - **API-style routes**
   - Some files may implement server-side endpoints using route files (e.g. upload routes).
 
+- **Operational endpoints**
+  - `/healthz` and `/readyz` are handled at the Worker server entry (`src/server.ts`) before
+    TanStack route rendering.
+  - Keep these endpoints unauthenticated, JSON-only, no-store, and free of sensitive details.
+
 ## Key Invariants / Assumptions
 
 - **Root context**

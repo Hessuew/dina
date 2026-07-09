@@ -16,4 +16,11 @@ export default [
       ],
     },
   },
+  {
+    files: ['src/**/*.test.{ts,tsx}', 'src/**/*.integration.test.{ts,tsx}'],
+    rules: {
+      complexity: 'off',
+      'max-lines-per-function': 'off',
+    },
+  },
 ]

@@ -34,7 +34,7 @@ type LessonSearch = {
   calendarMonth?: string
 }
 
-export const Route = createFileRoute('/_authed/lessons/$lessonId')({
+export const Route = createFileRoute('/_authed/lessons/copy')({
   validateSearch: (search: Record<string, unknown>): LessonSearch => {
     return {
       fromCalendar: search.fromCalendar as boolean | undefined,
@@ -42,7 +42,9 @@ export const Route = createFileRoute('/_authed/lessons/$lessonId')({
     }
   },
   loader: async ({ params }) => {
-    const data = await getLessonData({ data: { lessonId: params.lessonId } })
+    const data = await getLessonData({
+      data: { lessonId: (params as { lessonId: string }).lessonId },
+    })
     return data
   },
   component: LessonDetailComponent,

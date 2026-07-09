@@ -30,6 +30,12 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Exports `AuthenticationError`, `AuthorizationError`, `ValidationError`, `NotFoundError`, `ConflictError`, `toUserError()`, and `logServerError()`.
   - Server functions should throw typed errors for expected failures and translate them at UI boundaries with `toUserError()`.
 
+- **Health utilities**
+  - `health/`: Worker-level `/healthz` and `/readyz` response helpers.
+  - `/healthz` confirms the Worker/app process is alive without dependency checks.
+  - `/readyz` checks database connectivity through `getDb()` and `withDbConnection()`.
+  - Responses and logs use redacted, structured operational fields only.
+
 - **Supabase utilities**
   - `supabase.ts`: server client (`@supabase/ssr`) and admin client.
 
