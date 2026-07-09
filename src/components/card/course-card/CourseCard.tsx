@@ -263,6 +263,25 @@ function CourseCardFooter({
   )
 }
 
+function CourseDescription({
+  description,
+  theme,
+}: {
+  description: CourseCardCourse['description']
+  theme: CourseCardTheme
+}) {
+  return (
+    <p
+      className={cn(
+        'mt-2 line-clamp-2 text-sm leading-6 whitespace-pre-wrap',
+        theme.description,
+      )}
+    >
+      {description}
+    </p>
+  )
+}
+
 export function CourseCard({
   course,
   role,
@@ -304,14 +323,7 @@ export function CourseCard({
         </h3>
 
         {hasDescription && (
-          <p
-            className={cn(
-              'mt-2 line-clamp-2 text-sm leading-6 whitespace-pre-wrap',
-              theme.description,
-            )}
-          >
-            {course.description}
-          </p>
+          <CourseDescription description={course.description} theme={theme} />
         )}
 
         {showProgress && (

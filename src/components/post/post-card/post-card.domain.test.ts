@@ -38,6 +38,14 @@ describe('toggleReactionInList', () => {
     ])
   })
 
+  it('leaves other users’ reactions untouched when replacing an emoji', () => {
+    const list = [reaction('r1', 'u1', '👍'), reaction('r2', 'u2', '🔥')]
+    expect(toggleReactionInList(list, 'u1', '🔥', 'temp')).toEqual([
+      reaction('r1', 'u1', '🔥'),
+      reaction('r2', 'u2', '🔥'),
+    ])
+  })
+
   it('appends a temp reaction when the user has none', () => {
     const list = [reaction('r1', 'u2', '👍')]
     expect(toggleReactionInList(list, 'u1', '🔥', 'temp-1')).toEqual([

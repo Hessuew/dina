@@ -1,5 +1,6 @@
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import { buildScriptureSectionHeaderViewModel } from './landing-scripture-section-header.domain'
+import type { ScriptureLine } from './landing-scripture-section-header.domain'
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -289,6 +290,49 @@ export function LandingFeaturePanelBody({
   )
 }
 
+type LandingScriptureSectionHeaderBodyProps = {
+  introText?: ReactNode
+  textColor: string
+  showIntroScriptureSeparator: boolean
+  scriptureLines: Array<ScriptureLine>
+}
+
+function LandingScriptureSectionHeaderBody({
+  introText,
+  textColor,
+  showIntroScriptureSeparator,
+  scriptureLines,
+}: LandingScriptureSectionHeaderBodyProps) {
+  return (
+    <p
+      className="max-w-xl text-base leading-8 font-light tracking-[0.04em] sm:text-lg"
+      style={{ color: textColor }}
+    >
+      {introText}
+      {showIntroScriptureSeparator && (
+        <>
+          <br />
+          <br />
+        </>
+      )}
+      {scriptureLines.map((line, index) => (
+        <span key={index}>
+          {line.showLeadingSeparator && (
+            <>
+              <br />
+              <br />
+            </>
+          )}
+          "{line.quote}"
+          <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
+            &nbsp;{line.reference}
+          </span>
+        </span>
+      ))}
+    </p>
+  )
+}
+
 export function LandingScriptureSectionHeader({
   eyebrowLabel,
   eyebrowTone = 'gold',
@@ -329,34 +373,42 @@ export function LandingScriptureSectionHeader({
       </h2>
 
       {showBody && (
-        <p
-          className="max-w-xl text-base leading-8 font-light tracking-[0.04em] sm:text-lg"
-          style={{ color: textColor }}
-        >
-          {introText}
-          {showIntroScriptureSeparator && (
-            <>
-              <br />
-              <br />
-            </>
-          )}
-          {scriptureLines.map((line, index) => (
-            <span key={index}>
-              {line.showLeadingSeparator && (
-                <>
-                  <br />
-                  <br />
-                </>
-              )}
-              "{line.quote}"
-              <span className="text-[0.72rem] font-medium tracking-[0.2em] text-[#9B7A41] uppercase">
-                &nbsp;{line.reference}
-              </span>
-            </span>
-          ))}
-        </p>
+        <LandingScriptureSectionHeaderBody
+          introText={introText}
+          textColor={textColor}
+          showIntroScriptureSeparator={showIntroScriptureSeparator}
+          scriptureLines={scriptureLines}
+        />
       )}
     </div>
+  )
+}
+
+type LandingActiveItemNavButtonProps = {
+  onClick: () => void
+  buttonClass?: string
+  ariaLabel: string
+  children: ReactNode
+}
+
+function LandingActiveItemNavButton({
+  onClick,
+  buttonClass,
+  ariaLabel,
+  children,
+}: LandingActiveItemNavButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex h-12 w-12 items-center justify-center border transition-all hover:-translate-y-0.5',
+        buttonClass,
+      )}
+      aria-label={ariaLabel}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -372,17 +424,8 @@ export function LandingActiveItemNav({
   valueColor = 'text-[#F8F4EC]',
   className,
 }: LandingActiveItemNavProps) {
-  const handlePrevious = () => {
-    if (onPrevious) {
-      onPrevious()
-    }
-  }
-
-  const handleNext = () => {
-    if (onNext) {
-      onNext()
-    }
-  }
+  const handlePrevious = () => onPrevious?.()
+  const handleNext = () => onNext?.()
 
   return (
     <div
@@ -407,28 +450,20 @@ export function LandingActiveItemNav({
       </div>
 
       <div className="flex items-center gap-3">
-        <button
-          type="button"
+        <LandingActiveItemNavButton
           onClick={handlePrevious}
-          className={cn(
-            'inline-flex h-12 w-12 items-center justify-center border transition-all hover:-translate-y-0.5',
-            prevButtonClass,
-          )}
-          aria-label="Show previous item"
+          buttonClass={prevButtonClass}
+          ariaLabel="Show previous item"
         >
           <ChevronLeft className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
+        </LandingActiveItemNavButton>
+        <LandingActiveItemNavButton
           onClick={handleNext}
-          className={cn(
-            'inline-flex h-12 w-12 items-center justify-center border transition-all hover:-translate-y-0.5',
-            nextButtonClass,
-          )}
-          aria-label="Show next item"
+          buttonClass={nextButtonClass}
+          ariaLabel="Show next item"
         >
           <ChevronRight className="h-4 w-4" />
-        </button>
+        </LandingActiveItemNavButton>
       </div>
     </div>
   )

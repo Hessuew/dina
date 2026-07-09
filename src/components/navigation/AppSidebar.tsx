@@ -199,6 +199,39 @@ function AdminContent({
   )
 }
 
+function BrandHeader() {
+  return (
+    <SidebarHeader>
+      <SidebarMenu>
+        <SidebarMenuItem className="pl-0.5">
+          <SidebarMenuButton
+            size="lg"
+            render={
+              <Link to="/" className="mt-2 flex items-center gap-3">
+                <div className="flex size-8 shrink-0 items-center justify-center">
+                  <img
+                    src={heroEmblem}
+                    alt="DINA emblem"
+                    className="relative w-full object-contain drop-shadow-[0_46px_54px_rgba(0,0,0,0.62)]"
+                  />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate text-[0.72rem] font-medium tracking-[0.3em] text-[#C5A059] uppercase sm:text-[0.78rem]">
+                    DINA
+                  </span>
+                  <span className="truncate text-xs font-medium text-[#8E816D]">
+                    Discipleship Training School
+                  </span>
+                </div>
+              </Link>
+            }
+          />
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </SidebarHeader>
+  )
+}
+
 export function AppSidebar({
   user,
   role,
@@ -216,34 +249,7 @@ export function AppSidebar({
       className={'dina-dark py-0 pl-0'}
       {...props}
     >
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem className="pl-0.5">
-            <SidebarMenuButton
-              size="lg"
-              render={
-                <Link to="/" className="mt-2 flex items-center gap-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center">
-                    <img
-                      src={heroEmblem}
-                      alt="DINA emblem"
-                      className="relative w-full object-contain drop-shadow-[0_46px_54px_rgba(0,0,0,0.62)]"
-                    />
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate text-[0.72rem] font-medium tracking-[0.3em] text-[#C5A059] uppercase sm:text-[0.78rem]">
-                      DINA
-                    </span>
-                    <span className="truncate text-xs font-medium text-[#8E816D]">
-                      Discipleship Training School
-                    </span>
-                  </div>
-                </Link>
-              }
-            />
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
+      <BrandHeader />
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Platform</SidebarGroupLabel>

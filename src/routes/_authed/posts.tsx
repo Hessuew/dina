@@ -509,6 +509,29 @@ type CurrentUser = {
   role: 'student' | 'teacher' | 'admin'
 }
 
+function ComposerAvatar({ currentUser }: { currentUser: CurrentUser }) {
+  if (currentUser.avatarUrl) {
+    return (
+      <img
+        src={currentUser.avatarUrl}
+        alt={currentUser.fullName}
+        className="size-9 shrink-0 border border-[#1A1A1A]/10 object-cover"
+      />
+    )
+  }
+  const initials = currentUser.fullName
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+  return (
+    <div className="flex size-9 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] text-[0.55rem] font-medium text-[#E9D9B4]">
+      {initials}
+    </div>
+  )
+}
+
 function PostComposer({
   currentUser,
   courseId,
@@ -535,27 +558,10 @@ function PostComposer({
     mutation.mutate({ data: { content: trimmed, courseId } })
   }
 
-  const initials = currentUser.fullName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-
   return (
     <div className="border border-[#1A1A1A]/10 bg-white/60 p-5 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.08)]">
       <div className="flex gap-3">
-        {currentUser.avatarUrl ? (
-          <img
-            src={currentUser.avatarUrl}
-            alt={currentUser.fullName}
-            className="size-9 shrink-0 border border-[#1A1A1A]/10 object-cover"
-          />
-        ) : (
-          <div className="flex size-9 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] text-[0.55rem] font-medium text-[#E9D9B4]">
-            {initials}
-          </div>
-        )}
+        <ComposerAvatar currentUser={currentUser} />
         <div className="flex-1">
           <Textarea
             value={content}

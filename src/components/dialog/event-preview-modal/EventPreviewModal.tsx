@@ -132,6 +132,56 @@ function EventDetailsSection({
   )
 }
 
+function EventPreviewHeader({ event }: { event: CalendarEvent }) {
+  return (
+    <DialogHeader>
+      <div className="mb-1 flex items-center justify-between">
+        <div>
+          <div className="h-px w-8 bg-[#C5A059]/40" />
+          <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+            Event details
+          </div>
+        </div>
+        <EventTypeChip event={event} />
+      </div>
+      <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
+        {event.title}
+      </DialogTitle>
+      {event.courseName && (
+        <p className="text-[0.78rem] text-[#AFA28F]">{event.courseName}</p>
+      )}
+    </DialogHeader>
+  )
+}
+
+function EventPreviewFooter({
+  canNavigate,
+  onClose,
+  onViewDetails,
+}: {
+  canNavigate: boolean
+  onClose: () => void
+  onViewDetails: () => void
+}) {
+  return (
+    <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
+      <Button variant="outline" theme="dark" onClick={onClose}>
+        Close
+      </Button>
+      {canNavigate && (
+        <Button
+          variant="default"
+          theme="dark"
+          className="rounded-none"
+          onClick={onViewDetails}
+        >
+          View Details
+        </Button>
+      )}
+    </DialogFooter>
+  )
+}
+
 export function EventPreviewModal({
   event,
   open,
@@ -161,49 +211,17 @@ export function EventPreviewModal({
       >
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
         <div className="relative flex min-h-0 flex-1 flex-col">
-          <DialogHeader>
-            <div className="mb-1 flex items-center justify-between">
-              <div>
-                <div className="h-px w-8 bg-[#C5A059]/40" />
-                <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Event details
-                </div>
-              </div>
-              <EventTypeChip event={event} />
-            </div>
-            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-              {event.title}
-            </DialogTitle>
-            {event.courseName && (
-              <p className="text-[0.78rem] text-[#AFA28F]">
-                {event.courseName}
-              </p>
-            )}
-          </DialogHeader>
+          <EventPreviewHeader event={event} />
 
           <DialogBody>
             <EventDetailsSection event={event} isOverdue={isOverdue} />
           </DialogBody>
 
-          <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-            <Button
-              variant="outline"
-              theme="dark"
-              onClick={() => onOpenChange(false)}
-            >
-              Close
-            </Button>
-            {canNavigate && (
-              <Button
-                variant="default"
-                theme="dark"
-                className="rounded-none"
-                onClick={handleViewDetails}
-              >
-                View Details
-              </Button>
-            )}
-          </DialogFooter>
+          <EventPreviewFooter
+            canNavigate={canNavigate}
+            onClose={() => onOpenChange(false)}
+            onViewDetails={handleViewDetails}
+          />
         </div>
       </DialogContent>
     </Dialog>
