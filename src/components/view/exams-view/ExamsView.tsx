@@ -14,7 +14,7 @@ import {
 import { CreateExamForm } from '@/components/view/exams-view/CreateExamForm'
 import { Button } from '@/components/ui/button'
 
-export type TeacherExamListItem = {
+type TeacherExamListItem = {
   id: string
   title: string
   status: ExamStatus
@@ -40,7 +40,11 @@ type ExamsViewProps = {
   studentItems: Array<StudentExamItem>
 }
 
-export function ExamsView({ role, teacherExams, studentItems }: ExamsViewProps) {
+export function ExamsView({
+  role,
+  teacherExams,
+  studentItems,
+}: ExamsViewProps) {
   return (
     <div className="space-y-10">
       <div>
@@ -142,7 +146,9 @@ function StudentExamCard({ item }: { item: StudentExamItem }) {
       {action !== null && (
         <Button
           size="sm"
-          render={<Link to="/exams/$examId" params={{ examId: item.exam.id }} />}
+          render={
+            <Link to="/exams/$examId" params={{ examId: item.exam.id }} />
+          }
         >
           {STUDENT_EXAM_ACTION_LABELS[action]}
         </Button>

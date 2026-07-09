@@ -3,7 +3,7 @@ import type {
   UpdateZoomLinkInput,
 } from '@/schemas/zoomLink.schema'
 
-export type ZoomLinkSection = 'general_class_lecture' | 'discipleship_group'
+export type ZoomLinkSection = CreateZoomLinkInput['section']
 
 export type ZoomLinkRow = {
   id: string

@@ -23,10 +23,6 @@ export const updateExamSchema = z.object({
   closesAt: z.string().min(1).optional(),
 })
 
-export const deleteExamSchema = z.object({
-  examId: z.uuid('Invalid exam ID'),
-})
-
 export const getExamSchema = z.object({
   examId: z.uuid('Invalid exam ID'),
 })
@@ -82,13 +78,6 @@ export const deleteQuestionSchema = z.object({
   questionId: z.uuid('Invalid question ID'),
 })
 
-export const reorderQuestionsSchema = z.object({
-  examId: z.uuid('Invalid exam ID'),
-  orderedQuestionIds: z
-    .array(z.uuid('Invalid question ID'))
-    .min(1, 'At least one question is required'),
-})
-
 export const startAttemptSchema = z.object({
   examId: z.uuid('Invalid exam ID'),
 })
@@ -134,12 +123,10 @@ export const finalizeGradingSchema = z.object({
 
 export type CreateExamInput = z.infer<typeof createExamSchema>
 export type UpdateExamInput = z.infer<typeof updateExamSchema>
-export type DeleteExamInput = z.infer<typeof deleteExamSchema>
 export type GetExamInput = z.infer<typeof getExamSchema>
 export type PublishExamInput = z.infer<typeof publishExamSchema>
 export type UpsertQuestionInput = z.infer<typeof upsertQuestionSchema>
 export type DeleteQuestionInput = z.infer<typeof deleteQuestionSchema>
-export type ReorderQuestionsInput = z.infer<typeof reorderQuestionsSchema>
 export type StartAttemptInput = z.infer<typeof startAttemptSchema>
 export type GetAttemptForTakingInput = z.infer<typeof getAttemptForTakingSchema>
 export type SaveAnswerInput = z.infer<typeof saveAnswerSchema>

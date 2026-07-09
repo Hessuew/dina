@@ -3,7 +3,8 @@ import type { EmailSender } from './types'
 
 let senderInstance: EmailSender | null = null
 
-// fallow-ignore-next-line unused-export -- public composition root for provider overrides outside direct imports.
+// Public composition root for provider overrides outside direct imports.
+// fallow-ignore-next-line unused-export
 export function getEmailSender(): EmailSender {
   if (!senderInstance) senderInstance = new ResendEmailSender()
   return senderInstance

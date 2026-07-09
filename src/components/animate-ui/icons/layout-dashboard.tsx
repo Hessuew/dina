@@ -5,6 +5,7 @@ import type { Variants } from 'motion/react'
 
 import type { IconProps } from '@/components/animate-ui/icons/icon'
 import {
+  AnimatedIconSvg,
   IconWrapper,
   getVariants,
   useAnimateIconContext,
@@ -108,18 +109,7 @@ function IconComponent({ size, ...props }: LayoutDashboardProps) {
   const variants = getVariants(animations)
 
   return (
-    <motion.svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
+    <AnimatedIconSvg size={size} {...props}>
       <motion.rect
         width={7}
         height={9}
@@ -164,7 +154,7 @@ function IconComponent({ size, ...props }: LayoutDashboardProps) {
         initial="initial"
         animate={controls}
       />
-    </motion.svg>
+    </AnimatedIconSvg>
   )
 }
 
@@ -172,10 +162,4 @@ function LayoutDashboard(props: LayoutDashboardProps) {
   return <IconWrapper icon={IconComponent} {...props} />
 }
 
-export {
-  animations,
-  LayoutDashboard,
-  LayoutDashboard as LayoutDashboardIcon,
-  type LayoutDashboardProps,
-  type LayoutDashboardProps as LayoutDashboardIconProps,
-}
+export { LayoutDashboard, type LayoutDashboardProps }

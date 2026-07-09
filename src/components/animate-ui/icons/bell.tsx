@@ -5,6 +5,7 @@ import type { Variants } from 'motion/react'
 
 import type { IconProps } from '@/components/animate-ui/icons/icon'
 import {
+  AnimatedIconSvg,
   IconWrapper,
   getVariants,
   useAnimateIconContext,
@@ -42,16 +43,8 @@ function IconComponent({ size, ...props }: BellProps) {
   const variants = getVariants(animations)
 
   return (
-    <motion.svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
+    <AnimatedIconSvg
+      size={size}
       variants={variants.group}
       initial="initial"
       animate={controls}
@@ -69,7 +62,7 @@ function IconComponent({ size, ...props }: BellProps) {
         initial="initial"
         animate={controls}
       />
-    </motion.svg>
+    </AnimatedIconSvg>
   )
 }
 
@@ -77,10 +70,4 @@ function Bell(props: BellProps) {
   return <IconWrapper icon={IconComponent} {...props} />
 }
 
-export {
-  animations,
-  Bell,
-  Bell as BellIcon,
-  type BellProps,
-  type BellProps as BellIconProps,
-}
+export { Bell, type BellProps }

@@ -80,10 +80,4 @@ function CalendarDays(props: CalendarDaysProps) {
   return <IconWrapper icon={IconComponent} {...props} />
 }
 
-export {
-  animations,
-  CalendarDays,
-  CalendarDays as CalendarDaysIcon,
-  type CalendarDaysProps,
-  type CalendarDaysProps as CalendarDaysIconProps,
-}
+export { CalendarDays as CalendarDaysIcon, type CalendarDaysProps }
