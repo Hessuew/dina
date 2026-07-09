@@ -14,10 +14,12 @@ import {
   or,
   sql,
 } from 'drizzle-orm'
+import type { SQL } from 'drizzle-orm'
 import type {
   ENROLLMENT_SORT_KEYS,
   GetEnrollmentEmailsInput,
 } from '@/schemas/enrollment.schema'
+import type { EnrollmentEmailLookupCandidate } from '@/utils/enrolment/domain/email-lookup.domain'
 import { getDb } from '@/db'
 import {
   courseSubstitutes,
@@ -744,6 +746,52 @@ export async function findEnrollmentEmailsByGroup(
     .where(emailGroupWhere(group))
     .orderBy(asc(enrollments.createdAt))
   return rows.map((r) => r.email)
+}
+
+function buildNameLookupPatterns(queries: Array<string>): Array<string> {
+  const patterns = new Set<string>()
+
+  for (const query of queries) {
+    const trimmed = query.trim().replace(/\s+/g, ' ')
+    if (trimmed.length >= 2) patterns.add(trimmed)
+    for (const token of trimmed.split(' ')) {
+      if (token.length >= 2) patterns.add(token)
+    }
+  }
+
+  return [...patterns]
+}
+
+/**
+ * Fetches a bounded candidate set for admin name-to-email lookup.
+ * Ranking and ambiguity handling live in the pure email-lookup domain module.
+ */
+export async function findEnrollmentEmailLookupCandidates(
+  queries: Array<string>,
+): Promise<Array<EnrollmentEmailLookupCandidate>> {
+  const patterns = buildNameLookupPatterns(queries)
+  if (patterns.length === 0) return []
+
+  const conditions: Array<SQL> = patterns.flatMap((pattern) => [
+    ilike(enrollments.fullLegalName, `%${pattern}%`),
+    ilike(enrollments.preferredName, `%${pattern}%`),
+  ])
+
+  const db = await getDb()
+  const rows = await db
+    .select({
+      enrollmentId: enrollments.id,
+      fullLegalName: enrollments.fullLegalName,
+      preferredName: enrollments.preferredName,
+      email: enrollments.email,
+      status: enrollments.status,
+    })
+    .from(enrollments)
+    .where(or(...conditions))
+    .orderBy(desc(enrollments.createdAt))
+    .limit(300)
+
+  return rows
 }
 
 /**

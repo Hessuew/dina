@@ -61,6 +61,10 @@ The four groups selectable in the export-emails dialog (`ExportEmailsDialog`), r
 
 All four are currently offered to both Admins and Teacher-users (email redaction is bypassed for export). This exposes invitation/registration tracking that the **Redacted Enrollment View** otherwise hides from Teacher-users; that carve-out is a known, temporary state to be tightened later.
 
+### Enrollment Email Lookup
+
+An Admin-only manual lookup mode in `ExportEmailsDialog` that maps pasted applicant names to enrollment email addresses. Admins enter one or more names separated by commas or newlines; the system searches enrollment `full_legal_name` and `preferred_name`, shows matching or suggested enrollment rows, and only copies emails after the Admin selects rows into the selected list. This is separate from **Email Export Cohorts**: lookup is name-driven and selection-based, not status/cohort-driven, and it is not exposed to Teacher-users.
+
 ### WhatsApp Campaign
 
 An admin-triggered bulk WhatsApp send to a fixed enrollment cohort, launched from the enrollments page (`WhatsAppCampaignDialog`, Admin-only — stricter than email export). Two campaigns exist, each hard-paired to a **Message Template** and a cohort (`resolveCampaign`):

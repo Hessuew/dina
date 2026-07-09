@@ -6,6 +6,7 @@ import type {
   GetEnrollmentByIdInput,
   GetEnrollmentEmailsInput,
   GetEnrollmentsInput,
+  SearchEnrollmentEmailsByNamesInput,
   SendInvitationForEnrollmentInput,
   SetEnrollmentSpecialCaseInput,
   SetEvaluationAdmissionCategoryInput,
@@ -43,6 +44,7 @@ import {
   findCourseIdsForViewer,
   findCourseTeamIds,
   findEnrollmentById,
+  findEnrollmentEmailLookupCandidates,
   findEnrollmentEmailsByGroup,
   findEnrollmentsPage,
   findEvaluationsForEnrollments,
@@ -73,6 +75,10 @@ import {
   NotFoundError,
   ValidationError,
 } from '@/utils/errors'
+import {
+  buildEnrollmentEmailLookupGroups,
+  parseEnrollmentEmailLookupNames,
+} from '@/utils/enrolment/domain/email-lookup.domain'
 import { env } from '@/env'
 import { sendInvitationEmail } from '@/utils/email'
 import {
@@ -736,6 +742,29 @@ export async function getEnrollmentEmailsService(
     }
     const emails = await findEnrollmentEmailsByGroup(data.group)
     return { emails }
+  })
+}
+
+/**
+ * Admin-only manual lookup that maps pasted applicant names to enrollment
+ * emails. Separate from status-based export cohorts.
+ */
+export async function searchEnrollmentEmailsByNamesService(
+  data: SearchEnrollmentEmailsByNamesInput,
+  userId: string,
+) {
+  return withRequestCache(async () => {
+    await authz(userId).hasRole('admin')
+
+    const queries = parseEnrollmentEmailLookupNames(data.names)
+    if (queries.length === 0) {
+      throw new ValidationError('Enter at least one name')
+    }
+
+    const candidates = await findEnrollmentEmailLookupCandidates(queries)
+    return {
+      groups: buildEnrollmentEmailLookupGroups(queries, candidates),
+    }
   })
 }
 
