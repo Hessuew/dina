@@ -15,6 +15,12 @@ Source tag: `[auto]` (hook, from a tool error) · `[model]` (agent judgment).
 
 <!-- newest first; remove a line once applied via PR -->
 
+- [2026-07-07] coordinate-adr-ledger · type: better · observation: in a 4-wave run clearing all 26 open ADR-11 rows, 10 targets were stale (already ≤ 60 from prior merged work), so workers spent their runs verifying no-ops; the skill trusts the ledger snapshot as-is · suggestion: add an optional pre-wave step for the main agent to bulk-verify claimed rows with a single `npx eslint` pass over the target files and close stale rows without spawning workers for them · [model]
+
+- [2026-07-07] coordinate-adr-ledger · type: better · observation: one worker died mid-wave on a transient server error after making partial edits; the skill has no guidance on recovery · suggestion: document that the main agent should resume the failed worker with a "check current file state first, then continue" message rather than respawning fresh or reverting · [model]
+
+- [2026-07-07] skill-creator · type: fix · observation: `quick_validate.py` fails with `ModuleNotFoundError: No module named 'yaml'` when the active Python lacks PyYAML, but the skill does not mention using a temp venv or installing the dependency · suggestion: document the PyYAML prerequisite or make the validator self-bootstrapping/fallback to stdlib frontmatter checks · [model]
+
 - [2026-07-05] notion-axi · type: fix · observation: `notion-axi page update <id> --prop "Name=value"` fails with "Nothing to update"; the working flag on update is `--set` (create uses `--prop`) · suggestion: document the create/update flag asymmetry in the skill, or accept `--prop` as an alias on update · [model]
 
 - [2026-07-04] notion-knowledge-capture · type: fix · observation: Notion database writes failed on three schema details during import: `parent.data_source_id` needs the raw UUID, select options must match the exact schema (for example Service Catalog does not accept `Storage`), and date properties must use expanded `date:<field>:start` keys · suggestion: add a short "database write gotchas" note to the skill with these validation rules and a parent UUID example · [model]

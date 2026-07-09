@@ -33,6 +33,73 @@ interface FormDialogProps {
   loadingLabel?: string
 }
 
+const FORM_DIALOG_BACKGROUND_STYLE = {
+  backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+} as const
+
+function FormDialogHeader({
+  modeLabel,
+  title,
+  subtitle,
+}: {
+  modeLabel: string
+  title: string
+  subtitle?: string
+}) {
+  return (
+    <DialogHeader>
+      <div className="mb-1">
+        <div className="h-px w-8 bg-[#C5A059]/40" />
+        <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+          {modeLabel}
+        </div>
+      </div>
+      <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
+        {title}
+      </DialogTitle>
+      {subtitle && (
+        <DialogDescription className="text-[#AFA28F]">
+          {subtitle}
+        </DialogDescription>
+      )}
+    </DialogHeader>
+  )
+}
+
+function FormDialogDefaultFooter({
+  onOpenChange,
+  onSubmit,
+  isSubmitting,
+  showSubmitButton,
+  submitButtonLabel,
+}: {
+  onOpenChange: (open: boolean) => void
+  onSubmit?: () => void
+  isSubmitting: boolean
+  showSubmitButton: boolean
+  submitButtonLabel: string
+}) {
+  return (
+    <>
+      <Button
+        variant="outline"
+        theme="dark"
+        onClick={() => onOpenChange(false)}
+        disabled={isSubmitting}
+      >
+        Cancel
+      </Button>
+      {showSubmitButton && (
+        <Button theme="dark" onClick={onSubmit} disabled={isSubmitting}>
+          {submitButtonLabel}
+        </Button>
+      )}
+    </>
+  )
+}
+
 export function FormDialog({
   open,
   onOpenChange,
@@ -66,56 +133,29 @@ export function FormDialog({
           viewModel.maxWidthClass,
           className,
         )}
-        style={{
-          backgroundImage: `linear-gradient(180deg, rgba(10,10,11,0.9), rgba(16,16,17,0.95)), url(${facultyBackground})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
+        style={FORM_DIALOG_BACKGROUND_STYLE}
         showCloseButton={showCloseButton}
       >
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
 
         <div className="relative flex min-h-0 flex-1 flex-col">
-          <DialogHeader>
-            <div className="mb-1">
-              <div className="h-px w-8 bg-[#C5A059]/40" />
-              <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                {viewModel.modeLabel}
-              </div>
-            </div>
-            <DialogTitle className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
-              {title}
-            </DialogTitle>
-            {subtitle && (
-              <DialogDescription className="text-[#AFA28F]">
-                {subtitle}
-              </DialogDescription>
-            )}
-          </DialogHeader>
+          <FormDialogHeader
+            modeLabel={viewModel.modeLabel}
+            title={title}
+            subtitle={subtitle}
+          />
 
           <DialogBody>{children}</DialogBody>
 
           <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
             {footer || (
-              <>
-                <Button
-                  variant="outline"
-                  theme="dark"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
-                {viewModel.showSubmitButton && (
-                  <Button
-                    theme="dark"
-                    onClick={onSubmit}
-                    disabled={isSubmitting}
-                  >
-                    {viewModel.submitButtonLabel}
-                  </Button>
-                )}
-              </>
+              <FormDialogDefaultFooter
+                onOpenChange={onOpenChange}
+                onSubmit={onSubmit}
+                isSubmitting={isSubmitting}
+                showSubmitButton={viewModel.showSubmitButton}
+                submitButtonLabel={viewModel.submitButtonLabel}
+              />
             )}
           </DialogFooter>
         </div>

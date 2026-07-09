@@ -129,6 +129,30 @@ function MemberCard({ member }: { member: LeadershipMember }) {
   )
 }
 
+function LeadershipGroup({
+  label,
+  members,
+}: {
+  label: string
+  members: Array<LeadershipMember>
+}) {
+  return (
+    <div>
+      <div className="mb-7 flex items-center gap-5">
+        <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+          {label}
+        </div>
+        <div className="h-px flex-1 bg-white/8" />
+      </div>
+      <div className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-5">
+        {members.map((member) => (
+          <MemberCard key={member.name} member={member} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function LandingLeadershipSection() {
   return (
     <LandingImageSection
@@ -162,33 +186,8 @@ export function LandingLeadershipSection() {
           />
 
           <div className="space-y-14">
-            <div>
-              <div className="mb-7 flex items-center gap-5">
-                <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Presidents & Officers
-                </div>
-                <div className="h-px flex-1 bg-white/8" />
-              </div>
-              <div className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-5">
-                {executives.map((member) => (
-                  <MemberCard key={member.name} member={member} />
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-7 flex items-center gap-5">
-                <div className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-                  Directors
-                </div>
-                <div className="h-px flex-1 bg-white/8" />
-              </div>
-              <div className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-5">
-                {directors.map((member) => (
-                  <MemberCard key={member.name} member={member} />
-                ))}
-              </div>
-            </div>
+            <LeadershipGroup label="Presidents & Officers" members={executives} />
+            <LeadershipGroup label="Directors" members={directors} />
           </div>
         </div>
       </LandingSectionContainer>

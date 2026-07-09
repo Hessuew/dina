@@ -15,6 +15,36 @@ export const Route = createFileRoute('/_authed/library/$mediaId')({
   component: MediaDetailComponent,
 })
 
+function MediaDetailMetadata({
+  category,
+  isPublished,
+  showStatus,
+}: {
+  category: string
+  isPublished: boolean
+  showStatus: boolean
+}) {
+  return (
+    <>
+      <span className="border border-[#1A1A1A]/10 bg-white/50 px-3 py-1 text-[0.68rem] font-medium tracking-[0.22em] text-[#4E463D] uppercase">
+        {category}
+      </span>
+      {showStatus && (
+        <span
+          className={cn(
+            'border px-3 py-1 text-[0.68rem] font-medium tracking-[0.22em] uppercase',
+            isPublished
+              ? 'border-[#C5A059]/35 bg-white/50 text-[#9B7A41]'
+              : 'border-[#1A1A1A]/10 bg-white/40 text-[#5E5549]',
+          )}
+        >
+          {isPublished ? 'Published' : 'Draft'}
+        </span>
+      )}
+    </>
+  )
+}
+
 function MediaDetailComponent() {
   const loaderData = Route.useLoaderData()
   const router = useRouter()
@@ -33,23 +63,11 @@ function MediaDetailComponent() {
         title={media.title}
         onBack={() => router.history.back()}
         metadata={
-          <>
-            <span className="border border-[#1A1A1A]/10 bg-white/50 px-3 py-1 text-[0.68rem] font-medium tracking-[0.22em] text-[#4E463D] uppercase">
-              {media.category}
-            </span>
-            {viewer.role !== 'student' && (
-              <span
-                className={cn(
-                  'border px-3 py-1 text-[0.68rem] font-medium tracking-[0.22em] uppercase',
-                  media.isPublished
-                    ? 'border-[#C5A059]/35 bg-white/50 text-[#9B7A41]'
-                    : 'border-[#1A1A1A]/10 bg-white/40 text-[#5E5549]',
-                )}
-              >
-                {media.isPublished ? 'Published' : 'Draft'}
-              </span>
-            )}
-          </>
+          <MediaDetailMetadata
+            category={media.category}
+            isPublished={media.isPublished}
+            showStatus={viewer.role !== 'student'}
+          />
         }
         actions={
           <EntityHeaderActions

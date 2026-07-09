@@ -36,6 +36,34 @@ export const Route = createFileRoute('/_authed/zoom')({
   component: ZoomComponent,
 })
 
+function ZoomPageHeader({
+  canEdit,
+  onAdd,
+}: {
+  canEdit: boolean
+  onAdd: () => void
+}) {
+  return (
+    <div className="mb-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+      <div>
+        <div className="h-px w-10 bg-[#C5A059]/50" />
+        <h1 className="mt-3 font-serif text-4xl tracking-[-0.04em] text-[#F8F4EC] sm:text-5xl">
+          Zoom
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-7 tracking-[0.04em] text-[#CFC6B7]">
+          Live class and discipleship meeting details for the academy.
+        </p>
+      </div>
+      {canEdit && (
+        <Button theme="dark" size="lg" onClick={onAdd}>
+          <PlusIcon className="size-4" />
+          Add Link
+        </Button>
+      )}
+    </div>
+  )
+}
+
 function ZoomComponent() {
   const { links, courses, role } = Route.useLoaderData()
   const [dialogState, setDialogState] = useState<ZoomLinkDialogState>(null)
@@ -64,27 +92,10 @@ function ZoomComponent() {
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.14),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.06),transparent_22%)]" />
       <main className="relative mx-auto max-w-7xl px-6 py-10 sm:px-8 sm:py-12">
-        <div className="mb-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-          <div>
-            <div className="h-px w-10 bg-[#C5A059]/50" />
-            <h1 className="mt-3 font-serif text-4xl tracking-[-0.04em] text-[#F8F4EC] sm:text-5xl">
-              Zoom
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 tracking-[0.04em] text-[#CFC6B7]">
-              Live class and discipleship meeting details for the academy.
-            </p>
-          </div>
-          {canEdit && (
-            <Button
-              theme="dark"
-              size="lg"
-              onClick={() => setDialogState({ mode: 'create' })}
-            >
-              <PlusIcon className="size-4" />
-              Add Link
-            </Button>
-          )}
-        </div>
+        <ZoomPageHeader
+          canEdit={canEdit}
+          onAdd={() => setDialogState({ mode: 'create' })}
+        />
 
         <div className="grid gap-8">
           <ZoomSection

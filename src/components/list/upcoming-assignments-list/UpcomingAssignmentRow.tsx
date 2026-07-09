@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { CalendarIcon } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { Assignment } from '@/components/view/assignments-view/AssignmentsView'
 import type { UpcomingAssignmentsRole } from '@/components/list/upcoming-assignments-list/upcoming-assignments-list.domain'
 import { buildUpcomingAssignmentRow } from '@/components/list/upcoming-assignments-list/upcoming-assignments-list.domain'
@@ -10,6 +11,55 @@ type UpcomingAssignmentRowProps = {
   idx: number
   role: UpcomingAssignmentsRole
   now: Date
+}
+
+function AssignmentStatusBadge({
+  badgeClassName,
+  statusIcon: StatusIcon,
+  submissionStatus,
+}: {
+  badgeClassName: string
+  statusIcon: LucideIcon
+  submissionStatus: string
+}) {
+  return (
+    <div
+      className={cn(
+        'shrink-0 border px-2 py-1 text-[0.58rem] font-medium tracking-[0.18em] uppercase',
+        badgeClassName,
+      )}
+    >
+      <span className="flex items-center gap-1">
+        <StatusIcon className="size-2.5" />
+        {submissionStatus}
+      </span>
+    </div>
+  )
+}
+
+function AssignmentRowMeta({
+  dueDateClassName,
+  formattedDueDate,
+  overdue,
+  teacherStatsText,
+}: {
+  dueDateClassName: string
+  formattedDueDate: string
+  overdue: boolean
+  teacherStatsText: string | null
+}) {
+  return (
+    <div className="mt-1.5 flex items-center justify-between text-xs">
+      <div className={cn('flex items-center gap-1', dueDateClassName)}>
+        <CalendarIcon className="size-3" />
+        <span>Due {formattedDueDate}</span>
+        {overdue && <span className="ml-1 text-[#C5A059]">(Overdue)</span>}
+      </div>
+      {teacherStatsText && (
+        <div className="text-[#8E816D]">{teacherStatsText}</div>
+      )}
+    </div>
+  )
 }
 
 export function UpcomingAssignmentRow({
@@ -55,31 +105,19 @@ export function UpcomingAssignmentRow({
               </div>
             </div>
             {showStudentBadge && (
-              <div
-                className={cn(
-                  'shrink-0 border px-2 py-1 text-[0.58rem] font-medium tracking-[0.18em] uppercase',
-                  badgeClassName,
-                )}
-              >
-                <span className="flex items-center gap-1">
-                  <StatusIcon className="size-2.5" />
-                  {submissionStatus}
-                </span>
-              </div>
+              <AssignmentStatusBadge
+                badgeClassName={badgeClassName}
+                statusIcon={StatusIcon}
+                submissionStatus={submissionStatus}
+              />
             )}
           </div>
-          <div className="mt-1.5 flex items-center justify-between text-xs">
-            <div className={cn('flex items-center gap-1', dueDateClassName)}>
-              <CalendarIcon className="size-3" />
-              <span>Due {formattedDueDate}</span>
-              {overdue && (
-                <span className="ml-1 text-[#C5A059]">(Overdue)</span>
-              )}
-            </div>
-            {teacherStatsText && (
-              <div className="text-[#8E816D]">{teacherStatsText}</div>
-            )}
-          </div>
+          <AssignmentRowMeta
+            dueDateClassName={dueDateClassName}
+            formattedDueDate={formattedDueDate}
+            overdue={overdue}
+            teacherStatsText={teacherStatsText}
+          />
         </div>
       </div>
     </Link>

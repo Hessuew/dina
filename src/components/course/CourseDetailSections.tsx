@@ -179,14 +179,7 @@ function SectionHeader({
   )
 }
 
-function MaterialsSection({
-  materials,
-  role,
-  permissions,
-  onCreateMaterial,
-  onEditMaterial,
-  onDeleteMaterial,
-}: Pick<
+type MaterialsSectionProps = Pick<
   CourseDetailSectionsProps,
   | 'materials'
   | 'role'
@@ -194,7 +187,54 @@ function MaterialsSection({
   | 'onCreateMaterial'
   | 'onEditMaterial'
   | 'onDeleteMaterial'
->) {
+>
+
+function MaterialCardItem({
+  material,
+  role,
+  permissions,
+  canManage,
+  onEditMaterial,
+  onDeleteMaterial,
+}: Pick<
+  MaterialsSectionProps,
+  'role' | 'permissions' | 'onEditMaterial' | 'onDeleteMaterial'
+> & {
+  material: MediaLibraryRow
+  canManage: boolean
+}) {
+  return (
+    <div className="group relative w-60 shrink-0">
+      <MediaCard item={material} viewerRole={role} size="panel" />
+      {canManage && (
+        <div
+          className="absolute top-1 left-1 hidden group-hover:flex"
+          onClick={(e) => e.preventDefault()}
+        >
+          <EntityHeaderActions
+            status="published"
+            canEdit={permissions.canEdit}
+            isCourseTeacher={permissions.isCourseTeacher}
+            showStatus={false}
+            theme="dark"
+            size="sm"
+            onEdit={() => onEditMaterial(material)}
+            onDelete={() => onDeleteMaterial(material)}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MaterialsSection({
+  materials,
+  role,
+  permissions,
+  onCreateMaterial,
+  onEditMaterial,
+  onDeleteMaterial,
+}: MaterialsSectionProps) {
   const canManage = permissions.canEdit && permissions.isCourseTeacher
 
   return (
@@ -226,31 +266,60 @@ function MaterialsSection({
         <div className="px-6 py-5">
           <div className="flex gap-4 overflow-x-auto pb-2">
             {materials.map((material) => (
-              <div key={material.id} className="group relative w-60 shrink-0">
-                <MediaCard item={material} viewerRole={role} size="panel" />
-                {canManage && (
-                  <div
-                    className="absolute top-1 left-1 hidden group-hover:flex"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    <EntityHeaderActions
-                      status="published"
-                      canEdit={permissions.canEdit}
-                      isCourseTeacher={permissions.isCourseTeacher}
-                      showStatus={false}
-                      theme="dark"
-                      size="sm"
-                      onEdit={() => onEditMaterial(material)}
-                      onDelete={() => onDeleteMaterial(material)}
-                    />
-                  </div>
-                )}
-              </div>
+              <MaterialCardItem
+                key={material.id}
+                material={material}
+                role={role}
+                permissions={permissions}
+                canManage={canManage}
+                onEditMaterial={onEditMaterial}
+                onDeleteMaterial={onDeleteMaterial}
+              />
             ))}
           </div>
         </div>
       )}
     </div>
+  )
+}
+
+type LessonActionsProps = {
+  lesson: Lesson
+  role: CourseDetailSectionsProps['role']
+  isPublished: boolean
+  isCompleted: boolean
+  permissions: CoursePermissions
+  onOpenLesson: (lessonId: string) => void
+  onEditLesson: (lesson: Lesson) => void
+  onDeleteLesson: (lesson: Lesson) => void
+}
+
+function LessonManageButtons({
+  lesson,
+  onEditLesson,
+  onDeleteLesson,
+}: Pick<LessonActionsProps, 'lesson' | 'onEditLesson' | 'onDeleteLesson'>) {
+  return (
+    <>
+      <Button
+        variant="ghost"
+        theme="dark"
+        size="icon"
+        className="size-7 border border-white/10 text-[#8E816D] hover:border-[#C5A059]/40 hover:text-[#D4B373]"
+        onClick={() => onEditLesson(lesson)}
+      >
+        <PencilIcon className="size-3" />
+      </Button>
+      <Button
+        variant="ghost"
+        theme="dark"
+        size="icon"
+        className="size-7 border border-white/10 text-[#8E816D] hover:border-red-400/50 hover:text-red-400"
+        onClick={() => onDeleteLesson(lesson)}
+      >
+        <TrashIcon className="size-3" />
+      </Button>
+    </>
   )
 }
 
@@ -263,16 +332,7 @@ function LessonActions({
   onOpenLesson,
   onEditLesson,
   onDeleteLesson,
-}: {
-  lesson: Lesson
-  role: CourseDetailSectionsProps['role']
-  isPublished: boolean
-  isCompleted: boolean
-  permissions: CoursePermissions
-  onOpenLesson: (lessonId: string) => void
-  onEditLesson: (lesson: Lesson) => void
-  onDeleteLesson: (lesson: Lesson) => void
-}) {
+}: LessonActionsProps) {
   const view = resolveLessonActionsView({
     role,
     isPublished,
@@ -302,26 +362,11 @@ function LessonActions({
         </Button>
       )}
       {view.canManage && (
-        <>
-          <Button
-            variant="ghost"
-            theme="dark"
-            size="icon"
-            className="size-7 border border-white/10 text-[#8E816D] hover:border-[#C5A059]/40 hover:text-[#D4B373]"
-            onClick={() => onEditLesson(lesson)}
-          >
-            <PencilIcon className="size-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            theme="dark"
-            size="icon"
-            className="size-7 border border-white/10 text-[#8E816D] hover:border-red-400/50 hover:text-red-400"
-            onClick={() => onDeleteLesson(lesson)}
-          >
-            <TrashIcon className="size-3" />
-          </Button>
-        </>
+        <LessonManageButtons
+          lesson={lesson}
+          onEditLesson={onEditLesson}
+          onDeleteLesson={onDeleteLesson}
+        />
       )}
     </div>
   )
@@ -426,16 +471,7 @@ function LessonRowMeta({ lesson }: { lesson: Lesson }) {
   )
 }
 
-function LessonsSection({
-  lessons,
-  role,
-  permissions,
-  completedLessonIds,
-  onCreateLesson,
-  onEditLesson,
-  onDeleteLesson,
-  onOpenLesson,
-}: Pick<
+type LessonsSectionProps = Pick<
   CourseDetailSectionsProps,
   | 'role'
   | 'permissions'
@@ -446,7 +482,18 @@ function LessonsSection({
   | 'onOpenLesson'
 > & {
   lessons: Array<Lesson>
-}) {
+}
+
+function LessonsSection({
+  lessons,
+  role,
+  permissions,
+  completedLessonIds,
+  onCreateLesson,
+  onEditLesson,
+  onDeleteLesson,
+  onOpenLesson,
+}: LessonsSectionProps) {
   const canManage = permissions.canEdit && permissions.isCourseTeacher
 
   return (
