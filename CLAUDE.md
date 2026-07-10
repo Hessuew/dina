@@ -130,7 +130,10 @@ Binding docs: [`docs/rules/complexity.md`](docs/rules/complexity.md), ADR 0010, 
 ## Skills
 
 - Skills live once in `docs/skills/<name>/SKILL.md`; `.claude/skills/<name>`, `.devin/skills/<name>`, and repo-local `.agents/skills/<name>` may expose them as tool adapters. Edit skills only in `docs/skills/`, never through a symlink.
-- After using any skill, follow `docs/skills/SELF_IMPROVEMENT.md`: log friction (errors/non-functioning tool calls, things that could be done better, missing features or a needed new skill) to `docs/skills/IMPROVEMENTS.md` as a proposal. Do not edit the skill file in-session.
+- When you discover an improvement to an unrelated skill, binding rule, agent entrypoint, or code,
+  immediately append a proposal to the matching `docs/improvements/IMPROVEMENTS_*.md` queue, then
+  resume the assigned task. Follow `docs/improvements/IMPROVEMENTS_PROTOCOL.md`; do not expand the
+  current diff to implement queued work.
 
 ---
 

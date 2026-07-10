@@ -65,3 +65,7 @@ Tool-neutral entrypoint for agents and contributors working in this repo.
   skill entries should reference the canonical `docs/` sources rather than fork content.
 - Invoke reusable workflows from `docs/skills/<name>/SKILL.md` or the tool adapter that points
   to it. Devin also exposes `.devin/workflows/invoke_skills.md`.
+- When you discover an improvement to an unrelated skill, binding rule, agent entrypoint, or code,
+  immediately append a proposal to the matching `docs/improvements/IMPROVEMENTS_*.md` queue, then
+  resume the assigned task. Follow `docs/improvements/IMPROVEMENTS_PROTOCOL.md`; do not expand the
+  current diff to implement queued work.

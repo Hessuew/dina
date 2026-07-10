@@ -5,7 +5,7 @@ Reads a hook JSON payload on stdin. argv[1] is the path to IMPROVEMENTS.md.
 When a skill/tool call reports an error, appends an [auto] "fix" proposal.
 When a skill was invoked, prints a one-line reminder so the agent logs any
 qualitative improvement ([model]) it noticed. Qualitative judgment is never
-auto-written. See docs/skills/SELF_IMPROVEMENT.md.
+auto-written. See docs/improvements/IMPROVEMENTS_PROTOCOL.md.
 """
 import sys
 import json
@@ -51,9 +51,9 @@ def main():
 
     # Nudge only when a skill actually ran (keeps it from firing on every turn).
     if skill:
-        print(f"[skill: {skill}] Per docs/skills/SELF_IMPROVEMENT.md, if you hit an error, "
+        print(f"[skill: {skill}] Per docs/improvements/IMPROVEMENTS_PROTOCOL.md, if you hit an error, "
               f"a better approach, or a missing feature/new skill, append a proposal to "
-              f"docs/skills/IMPROVEMENTS.md (do not edit the skill in-session).")
+              f"docs/improvements/IMPROVEMENTS_SKILLS.md (do not edit the skill in-session).")
 
 
 if __name__ == "__main__":
