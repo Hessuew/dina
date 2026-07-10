@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import { render } from '@react-email/render'
 import { Resend } from 'resend'
 import { PasswordResetEmail } from '@/emails/PasswordResetEmail'
-import { env } from '@/env'
+import { EMAIL_FROM, env } from '@/env'
 import { getSupabaseAdminClient } from '@/utils/supabase'
 import {
   calculatePasswordResetExpiry,
@@ -61,7 +61,7 @@ export async function requestPasswordResetService(
 
   const resend = new Resend(env.RESEND_API_KEY)
   const { error: emailError } = await resend.emails.send({
-    from: env.RESEND_FROM_EMAIL,
+    from: EMAIL_FROM,
     to: email,
     subject: 'Reset your password',
     html: emailHtml,

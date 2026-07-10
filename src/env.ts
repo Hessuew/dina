@@ -10,7 +10,7 @@ export const env = createEnv({
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
     APP_URL: z.url(),
     RESEND_API_KEY: z.string().min(1),
-    RESEND_FROM_EMAIL: z.email(),
+    RESEND_FROM: z.string().trim().min(1),
     WHATSAPP_ACCESS_TOKEN: z.string().min(1),
     WHATSAPP_PHONE_NUMBER_ID: z.string().min(1),
     WHATSAPP_API_VERSION: z.string().default('v21.0'),
@@ -38,7 +38,7 @@ export const env = createEnv({
     SUPABASE_SERVICE_ROLE_KEY: cfEnv.SUPABASE_SERVICE_ROLE_KEY,
     APP_URL: cfEnv.APP_URL,
     RESEND_API_KEY: cfEnv.RESEND_API_KEY,
-    RESEND_FROM_EMAIL: cfEnv.RESEND_FROM_EMAIL,
+    RESEND_FROM: cfEnv.RESEND_FROM,
     WHATSAPP_ACCESS_TOKEN: cfEnv.WHATSAPP_ACCESS_TOKEN,
     WHATSAPP_PHONE_NUMBER_ID: cfEnv.WHATSAPP_PHONE_NUMBER_ID,
     WHATSAPP_API_VERSION: cfEnv.WHATSAPP_API_VERSION,
@@ -64,3 +64,5 @@ export const env = createEnv({
    */
   emptyStringAsUndefined: true,
 })
+
+export const EMAIL_FROM = env.RESEND_FROM

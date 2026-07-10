@@ -9,7 +9,7 @@ export const env = {
   SUPABASE_SERVICE_ROLE_KEY: 'test',
   APP_URL: 'http://localhost',
   RESEND_API_KEY: 'test',
-  RESEND_FROM_EMAIL: 'test@test.dev',
+  RESEND_FROM: 'DINA <test@test.dev>',
   WHATSAPP_ACCESS_TOKEN: 'test',
   WHATSAPP_PHONE_NUMBER_ID: 'test',
   WHATSAPP_API_VERSION: 'v21.0',

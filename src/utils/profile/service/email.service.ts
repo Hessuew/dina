@@ -1,6 +1,6 @@
 import { render } from '@react-email/render'
 import { Resend } from 'resend'
-import { env } from '@/env'
+import { EMAIL_FROM, env } from '@/env'
 import { EmailChangeVerificationEmail } from '@/emails/EmailChangeVerificationEmail'
 import { AppError } from '@/utils/errors'
 
@@ -26,7 +26,7 @@ export async function sendEmailChangeVerification(
 
   const resend = new Resend(env.RESEND_API_KEY)
   const { error: emailError } = await resend.emails.send({
-    from: env.RESEND_FROM_EMAIL,
+    from: EMAIL_FROM,
     to: newEmail,
     subject: 'Verify your new email address',
     html: emailHtml,

@@ -6,8 +6,8 @@ vi.mock('@/env', () => ({
   env: {
     APP_URL: 'https://example.test',
     RESEND_API_KEY: 'test',
-    RESEND_FROM_EMAIL: 'noreply@test.dev',
   },
+  EMAIL_FROM: 'DINA <noreply@test.dev>',
 }))
 
 describe('sendInvitationEmail', () => {
