@@ -1,8 +1,6 @@
 import crypto from 'node:crypto'
-import { render } from '@react-email/render'
-import { Resend } from 'resend'
-import { PasswordResetEmail } from '@/emails/PasswordResetEmail'
-import { EMAIL_FROM, env } from '@/env'
+import { env } from '@/env'
+import { sendTransactionalEmail } from '@/utils/email'
 import { getSupabaseAdminClient } from '@/utils/supabase'
 import {
   calculatePasswordResetExpiry,
@@ -55,20 +53,15 @@ export async function requestPasswordResetService(
 
   const resetLink = buildPasswordResetLink(env.APP_URL, token)
 
-  const emailHtml = await render(
-    PasswordResetEmail({ resetLink, expiryMinutes: 10 }),
-  )
-
-  const resend = new Resend(env.RESEND_API_KEY)
-  const { error: emailError } = await resend.emails.send({
-    from: EMAIL_FROM,
-    to: email,
-    subject: 'Reset your password',
-    html: emailHtml,
-  })
-
-  if (emailError) {
-    console.error('Failed to send password reset email:', emailError)
+  try {
+    await sendTransactionalEmail({
+      type: 'passwordReset',
+      to: email,
+      resetLink,
+      expiryMinutes: 10,
+    })
+  } catch (error) {
+    console.error('Failed to send password reset email:', error)
     await clearProfileResetToken(user.id)
     return {
       success: false,

@@ -42,8 +42,10 @@ async function seedPeerReviewScenario() {
 function installFakeEmailSender() {
   const calls: Array<InvitationEmailMessage> = []
   const sender: EmailSender = {
-    sendInvitation: async (message) => {
+    send: async (message) => {
       await Promise.resolve()
+      if (message.type !== 'invitation')
+        throw new Error('Unexpected email type')
       calls.push(message)
       return { providerMessageId: `email.${calls.length}` }
     },

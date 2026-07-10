@@ -1,7 +1,5 @@
-import { render } from '@react-email/render'
-import { Resend } from 'resend'
-import { EMAIL_FROM, env } from '@/env'
-import { EmailChangeVerificationEmail } from '@/emails/EmailChangeVerificationEmail'
+import { env } from '@/env'
+import { sendTransactionalEmail } from '@/utils/email'
 import { AppError } from '@/utils/errors'
 
 /**
@@ -20,24 +18,18 @@ export async function sendEmailChangeVerification(
   newEmail: string,
   verifyLink: string,
 ): Promise<void> {
-  const emailHtml = await render(
-    EmailChangeVerificationEmail({ verifyLink, newEmail }),
-  )
-
-  const resend = new Resend(env.RESEND_API_KEY)
-  const { error: emailError } = await resend.emails.send({
-    from: EMAIL_FROM,
-    to: newEmail,
-    subject: 'Verify your new email address',
-    html: emailHtml,
-  })
-
-  if (emailError) {
+  try {
+    await sendTransactionalEmail({
+      type: 'emailChangeVerification',
+      to: newEmail,
+      verifyLink,
+    })
+  } catch (error) {
     throw new AppError({
       code: 'EMAIL_SEND_FAILED',
       status: 500,
       userMessage: 'Failed to send verification email. Please try again.',
-      internalMessage: `Resend error: ${emailError.message}`,
+      internalMessage: `Email delivery error: ${error instanceof Error ? error.message : String(error)}`,
     })
   }
 }

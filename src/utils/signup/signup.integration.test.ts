@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { EmailSender } from '@/utils/email/types'
+import { setEmailSender } from '@/utils/email'
 import {
   resendOtpService,
   signupService,
@@ -22,14 +24,6 @@ const mocks = vi.hoisted(() => ({
   updateUserById: vi.fn(),
   signInWithPassword: vi.fn(),
   sendEmail: vi.fn(),
-}))
-
-vi.mock('@react-email/render', () => ({
-  render: vi.fn().mockResolvedValue('<html/>'),
-}))
-
-vi.mock('resend', () => ({
-  Resend: vi.fn(() => ({ emails: { send: mocks.sendEmail } })),
 }))
 
 vi.mock('@/utils/supabase', () => ({
@@ -55,6 +49,14 @@ beforeEach(() => {
     .mockResolvedValue({ data: null, error: null })
   mocks.signInWithPassword.mockReset().mockResolvedValue({ error: null })
   mocks.sendEmail.mockReset().mockResolvedValue({ error: null })
+  const sender: EmailSender = {
+    send: async (message) => {
+      const result = await mocks.sendEmail(message)
+      if (result?.error) throw new Error(result.error.message)
+      return { providerMessageId: result?.data?.id ?? null }
+    },
+  }
+  setEmailSender(sender)
 })
 
 describe('signupService (integration)', () => {

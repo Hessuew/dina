@@ -1,5 +1,5 @@
 import { ResendEmailSender } from './sender/resend-email-sender'
-import type { EmailSender } from './types'
+import type { EmailSender, TransactionalEmailMessage } from './types'
 
 let senderInstance: EmailSender | null = null
 
@@ -14,6 +14,10 @@ export function setEmailSender(sender: EmailSender): void {
   senderInstance = sender
 }
 
+export function sendTransactionalEmail(message: TransactionalEmailMessage) {
+  return getEmailSender().send(message)
+}
+
 export async function sendInvitationEmail(input: {
   to: string
   invitedByName: string
@@ -23,7 +27,8 @@ export async function sendInvitationEmail(input: {
   appUrl: string
 }): Promise<string | null> {
   const inviteLink = `${input.appUrl}/signup?token=${input.token}`
-  const result = await getEmailSender().sendInvitation({
+  const result = await sendTransactionalEmail({
+    type: 'invitation',
     to: input.to,
     invitedByName: input.invitedByName,
     role: input.role,

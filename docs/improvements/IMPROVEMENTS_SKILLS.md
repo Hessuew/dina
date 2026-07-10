@@ -16,6 +16,8 @@ Source tag: `[auto]` (hook, from a tool error) · `[model]` (agent judgment).
 
 <!-- newest first; remove a line only when a focused improvement task handles it -->
 
+- [2026-07-10] improve-codebase-architecture · type: fix · observation: the skill requires reading `LANGUAGE.md` and links to it repeatedly, but that file does not exist beside the canonical `SKILL.md` · suggestion: restore the referenced glossary or inline the complete required language so the exploration workflow has no broken dependency · [model]
+
 - [2026-07-10] notion-axi · type: better · observation: Markdown backticks inside a shell-quoted `page update --append` value were evaluated by zsh before `notion-axi` received them, corrupting the Notion update · suggestion: warn that append content passed through the shell must avoid backticks or use single-quoted arguments · [model]
 
 - [2026-07-07] coordinate-adr-ledger · type: better · observation: in a 4-wave run clearing all 26 open ADR-11 rows, 10 targets were stale (already ≤ 60 from prior merged work), so workers spent their runs verifying no-ops; the skill trusts the ledger snapshot as-is · suggestion: add an optional pre-wave step for the main agent to bulk-verify claimed rows with a single `npx eslint` pass over the target files and close stale rows without spawning workers for them · [model]

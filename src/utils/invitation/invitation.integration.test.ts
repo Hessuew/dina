@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
 beforeEach(() => {
   mocks.sendEmail.mockReset().mockResolvedValue({ error: null })
   const sender: EmailSender = {
-    sendInvitation: async (message) => {
+    send: async (message) => {
       const result = await mocks.sendEmail(message)
       if (result?.error) throw new Error(result.error.message)
       return { providerMessageId: result?.id ?? 'email.test' }
