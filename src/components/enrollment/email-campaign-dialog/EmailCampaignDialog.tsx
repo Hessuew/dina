@@ -16,6 +16,7 @@ import type {
   EmailCampaignSendSummary,
 } from '@/utils/email/service/email-campaign.service'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogBody,
@@ -35,6 +36,11 @@ import { toUserError } from '@/utils/errors'
 type EmailCampaignDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+}
+
+type CampaignSelection = {
+  campaign: EmailCampaignType
+  includeValidLinks: boolean
 }
 
 function settle<T>(
@@ -69,19 +75,20 @@ function useEmailCampaignPreview() {
     if (failure.kind === 'locked') {
       setLockedCampaigns((prev) => new Set(prev).add(campaign))
       setSelectedCampaign(null)
-    } else {
-      toast.error(failure.message)
-    }
+    } else toast.error(failure.message)
   }
 
-  async function select(campaign: EmailCampaignType) {
+  async function select(selection: CampaignSelection) {
+    const { campaign, includeValidLinks } = selection
     const gen = ++generationRef.current
     const toRelease = campaignToRelease(selectedCampaign, campaign)
     if (toRelease) void releaseFn({ data: { campaign: toRelease } })
     setSelectedCampaign(campaign)
     setPreview(null)
     setIsLoading(true)
-    const result = await settle(previewFn({ data: { campaign } }))
+    const result = await settle(
+      previewFn({ data: { campaign, includeValidLinks } }),
+    )
     if (gen !== generationRef.current) return
     setIsLoading(false)
     if (result.ok) setPreview(result.value)
@@ -108,7 +115,10 @@ function useEmailCampaignPreview() {
   }
 }
 
-function useEmailCampaignSend(selectedCampaign: EmailCampaignType | null) {
+function useEmailCampaignSend(
+  selectedCampaign: EmailCampaignType | null,
+  includeValidLinks: boolean,
+) {
   const [summary, setSummary] = useState<EmailCampaignSendSummary | null>(null)
   const [isSending, setIsSending] = useState(false)
   const sendFn = useServerFn(sendEmailCampaign)
@@ -117,7 +127,7 @@ function useEmailCampaignSend(selectedCampaign: EmailCampaignType | null) {
     if (!selectedCampaign) return
     setIsSending(true)
     const result = await settle(
-      sendFn({ data: { campaign: selectedCampaign } }),
+      sendFn({ data: { campaign: selectedCampaign, includeValidLinks } }),
     )
     setIsSending(false)
     if (result.ok) {
@@ -141,7 +151,11 @@ function useEmailCampaignDialog(
   onOpenChange: (open: boolean) => void,
 ) {
   const previewState = useEmailCampaignPreview()
-  const sendState = useEmailCampaignSend(previewState.selectedCampaign)
+  const [includeValidLinks, setIncludeValidLinks] = useState(false)
+  const sendState = useEmailCampaignSend(
+    previewState.selectedCampaign,
+    includeValidLinks,
+  )
 
   useEffect(() => {
     if (open) void previewState.initLocks()
@@ -149,18 +163,37 @@ function useEmailCampaignDialog(
 
   function handleCampaignSelect(campaign: EmailCampaignType) {
     sendState.resetSummary()
-    void previewState.select(campaign)
+    void previewState.select({ campaign, includeValidLinks })
+  }
+
+  function handleIncludeValidLinksChange(checked: boolean) {
+    setIncludeValidLinks(checked)
+    if (previewState.selectedCampaign) {
+      sendState.resetSummary()
+      void previewState.select({
+        campaign: previewState.selectedCampaign,
+        includeValidLinks: checked,
+      })
+    }
   }
 
   function handleOpenChange(next: boolean) {
     if (!next) {
       previewState.reset()
       sendState.resetSummary()
+      setIncludeValidLinks(false)
     }
     onOpenChange(next)
   }
 
-  return { previewState, sendState, handleCampaignSelect, handleOpenChange }
+  return {
+    previewState,
+    sendState,
+    includeValidLinks,
+    handleCampaignSelect,
+    handleIncludeValidLinksChange,
+    handleOpenChange,
+  }
 }
 
 type CampaignSelectorProps = {
@@ -193,6 +226,30 @@ function CampaignSelector(props: CampaignSelectorProps) {
         )
       })}
     </div>
+  )
+}
+
+function ValidLinkResendControl(props: {
+  checked: boolean
+  disabled: boolean
+  onCheckedChange: (checked: boolean) => void
+}) {
+  return (
+    <label className="mt-4 flex items-center justify-between gap-4 border border-white/10 px-3 py-2.5">
+      <span>
+        <span className="block text-[0.78rem] text-[#D6CCBE]">
+          Include valid invitation links
+        </span>
+        <span className="block text-[0.72rem] text-[#8E816D]">
+          Resends same signup link without extending its 7-day expiry.
+        </span>
+      </span>
+      <Switch
+        checked={props.checked}
+        disabled={props.disabled}
+        onCheckedChange={props.onCheckedChange}
+      />
+    </label>
   )
 }
 
@@ -251,14 +308,13 @@ export function EmailCampaignDialog({
   open,
   onOpenChange,
 }: EmailCampaignDialogProps) {
-  const { previewState, sendState, handleCampaignSelect, handleOpenChange } =
-    useEmailCampaignDialog(open, onOpenChange)
-  const { preview, isLoading } = previewState
-  const { summary, isSending } = sendState
+  const dialog = useEmailCampaignDialog(open, onOpenChange)
+  const { preview, isLoading } = dialog.previewState
+  const { summary, isSending } = dialog.sendState
   const canSend = resolveCanSend({ preview, summary, isLoading, isSending })
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={dialog.handleOpenChange}>
       <DialogContent
         className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-lg"
         style={{ backgroundColor: '#111110' }}
@@ -276,10 +332,15 @@ export function EmailCampaignDialog({
               Choose a campaign, review the recipient count, then confirm.
             </p>
             <CampaignSelector
-              selectedCampaign={previewState.selectedCampaign}
+              selectedCampaign={dialog.previewState.selectedCampaign}
               disabled={isLoading || isSending}
-              lockedCampaigns={previewState.lockedCampaigns}
-              onSelect={handleCampaignSelect}
+              lockedCampaigns={dialog.previewState.lockedCampaigns}
+              onSelect={dialog.handleCampaignSelect}
+            />
+            <ValidLinkResendControl
+              checked={dialog.includeValidLinks}
+              disabled={isLoading || isSending}
+              onCheckedChange={dialog.handleIncludeValidLinksChange}
             />
             <CampaignStatusSection
               preview={preview}
@@ -290,8 +351,8 @@ export function EmailCampaignDialog({
           <EmailCampaignFooter
             canSend={canSend}
             isSending={isSending}
-            onSend={() => void sendState.handleSend()}
-            onClose={() => handleOpenChange(false)}
+            onSend={() => void dialog.sendState.handleSend()}
+            onClose={() => dialog.handleOpenChange(false)}
           />
         </div>
       </DialogContent>

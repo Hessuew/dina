@@ -163,6 +163,36 @@ describe('sendEmailCampaignService (integration)', () => {
     })
   })
 
+  it('resends a valid pending invitation without rotating its token or expiry', async () => {
+    const adminId = await seedProfile({ role: 'admin' })
+    const calls = installFakeSender()
+    const expiresAt = new Date(Date.now() + 60_000)
+    const invitation = await seedInvitation({
+      email: 'resend-valid@test.dev',
+      status: 'pending',
+      token: 'existing-token',
+      expiresAt,
+    })
+    const enrollmentId = await seedEnrollment({
+      status: 'approved',
+      email: invitation.email,
+      invitationSent: true,
+      invitationId: invitation.id,
+    })
+
+    const input = { campaign: 'invitation' as const, includeValidLinks: true }
+    const preview = await previewEmailCampaignService(input, adminId)
+    const summary = await sendEmailCampaignService(input, adminId)
+
+    expect(preview.toSend).toBe(1)
+    expect(summary).toMatchObject({ sent: 1, failed: 0 })
+    expect(calls[0].inviteLink).toContain('token=existing-token')
+    const row = await findInvitationByEmail(invitation.email)
+    expect(row?.token).toBe('existing-token')
+    expect(row?.expiresAt).toEqual(expiresAt)
+    expect((await findLogRows(enrollmentId))[0].status).toBe('sent')
+  })
+
   it('rotates expired pending invitations and sends', async () => {
     const adminId = await seedProfile({ role: 'admin' })
     const invitation = await seedInvitation({
