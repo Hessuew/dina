@@ -17,8 +17,9 @@
 
 - Purpose: confirms the app can reach the database through the same `getDb()` and Hyperdrive path used by server code.
 - Dependency checks: database `select 1`.
+- Timeout: dependency check fails closed after 2s (configurable in `handleReadinessRequest` via `checkTimeoutMs`).
 - Success: `200` when the dependency check succeeds.
-- Failure: `503` when the database check fails.
+- Failure: `503` when the database check fails or times out.
 
 ## Response Contract
 

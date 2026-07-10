@@ -59,11 +59,11 @@ The four groups selectable in the export-emails dialog (`ExportEmailsDialog`), r
 - **Registered** — the enrollment's linked invitation is `accepted` (see **Registered**).
 - **Not yet registered** — **invited but not signed up**: `invitation_sent = true` **and** the linked invitation is not `accepted`. Deliberately anchored on _invited_, **not** on `status = 'approved'` — the cohort is the people who were emailed an invite and haven't finished creating their account, so they are the actionable "nudge to finish signup" list.
 
-All four are currently offered to both Admins and Teacher-users (email redaction is bypassed for export). This exposes invitation/registration tracking that the **Redacted Enrollment View** otherwise hides from Teacher-users; that carve-out is a known, temporary state to be tightened later.
+All four are Admin-only. This keeps email addresses and invitation/registration tracking within the Admin-owned outreach workflow and consistent with the **Redacted Enrollment View**.
 
-### Enrollment Email Lookup
+### Enrollment Contact Lookup
 
-An Admin-only manual lookup mode in `ExportEmailsDialog` that maps pasted applicant names to enrollment email addresses. Admins enter one or more names separated by commas or newlines; the system searches enrollment `full_legal_name` and `preferred_name`, shows matching or suggested enrollment rows, and only copies emails after the Admin selects rows into the selected list. This is separate from **Email Export Cohorts**: lookup is name-driven and selection-based, not status/cohort-driven, and it is not exposed to Teacher-users.
+An Admin-only manual lookup mode in `ExportContactsDialog` that maps pasted applicant names to enrollment contacts. Admins enter one or more names separated by commas or newlines; the system searches enrollment `full_legal_name` and `preferred_name`, shows matching or suggested enrollment rows, and selects rows before copying. Admins can copy email, normalized E.164 phone, or both, with an optional full legal name prefix. Email-only output stays semicolon-separated for Outlook; all other output uses one person per line with comma-separated fields. Phone values use the shared `normalizeToE164` rule, so invalid selected phones block phone-based copying until removed or Email is chosen. This is separate from **Email Export Cohorts**: lookup is name-driven and selection-based, not status/cohort-driven, and it is not exposed to Teacher-users.
 
 ### WhatsApp Campaign
 

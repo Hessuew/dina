@@ -1,23 +1,24 @@
-export type EnrollmentEmailLookupCandidate = {
+export type EnrollmentContactLookupCandidate = {
   enrollmentId: string
   fullLegalName: string
   preferredName: string | null
   email: string
+  phoneWhatsApp: string
   status: string
 }
 
-export type EnrollmentEmailLookupMatch = EnrollmentEmailLookupCandidate & {
+export type EnrollmentContactLookupMatch = EnrollmentContactLookupCandidate & {
   score: number
   matchedName: string
 }
 
-export type EnrollmentEmailLookupGroup = {
+export type EnrollmentContactLookupGroup = {
   query: string
-  matches: Array<EnrollmentEmailLookupMatch>
-  suggestions: Array<EnrollmentEmailLookupMatch>
+  matches: Array<EnrollmentContactLookupMatch>
+  suggestions: Array<EnrollmentContactLookupMatch>
 }
 
-export type EnrollmentEmailLookupSelection = {
+export type EnrollmentContactLookupSelection = {
   enrollmentId: string
   email: string
 }
@@ -26,7 +27,7 @@ const STRONG_MATCH_SCORE = 80
 const SUGGESTION_SCORE = 45
 const MAX_SUGGESTIONS = 3
 
-export function parseEnrollmentEmailLookupNames(raw: string): Array<string> {
+export function parseEnrollmentContactLookupNames(raw: string): Array<string> {
   const seen = new Set<string>()
   const names: Array<string> = []
 
@@ -51,15 +52,15 @@ export function normalizeName(value: string): string {
     .replace(/\s+/g, ' ')
 }
 
-export function buildEnrollmentEmailLookupGroups(
+export function buildEnrollmentContactLookupGroups(
   queries: Array<string>,
-  candidates: Array<EnrollmentEmailLookupCandidate>,
-): Array<EnrollmentEmailLookupGroup> {
+  candidates: Array<EnrollmentContactLookupCandidate>,
+): Array<EnrollmentContactLookupGroup> {
   return queries.map((query) => buildLookupGroup(query, candidates))
 }
 
-export function addEnrollmentEmailLookupSelection<
-  T extends EnrollmentEmailLookupSelection,
+export function addEnrollmentContactLookupSelection<
+  T extends EnrollmentContactLookupSelection,
 >(selected: Array<T>, next: T): Array<T> {
   if (selected.some((item) => item.enrollmentId === next.enrollmentId)) {
     return selected
@@ -67,16 +68,16 @@ export function addEnrollmentEmailLookupSelection<
   return [...selected, next]
 }
 
-export function removeEnrollmentEmailLookupSelection<
-  T extends EnrollmentEmailLookupSelection,
+export function removeEnrollmentContactLookupSelection<
+  T extends EnrollmentContactLookupSelection,
 >(selected: Array<T>, enrollmentId: string): Array<T> {
   return selected.filter((item) => item.enrollmentId !== enrollmentId)
 }
 
 function buildLookupGroup(
   query: string,
-  candidates: Array<EnrollmentEmailLookupCandidate>,
-): EnrollmentEmailLookupGroup {
+  candidates: Array<EnrollmentContactLookupCandidate>,
+): EnrollmentContactLookupGroup {
   const ranked = candidates
     .map((candidate) => rankCandidate(query, candidate))
     .filter((match) => match.score >= SUGGESTION_SCORE)
@@ -97,8 +98,8 @@ function buildLookupGroup(
 
 function rankCandidate(
   query: string,
-  candidate: EnrollmentEmailLookupCandidate,
-): EnrollmentEmailLookupMatch {
+  candidate: EnrollmentContactLookupCandidate,
+): EnrollmentContactLookupMatch {
   const fullScore = scoreName(query, candidate.fullLegalName)
   const preferredScore = candidate.preferredName
     ? scoreName(query, candidate.preferredName)
@@ -116,8 +117,8 @@ function rankCandidate(
 }
 
 function sortMatches(
-  a: EnrollmentEmailLookupMatch,
-  b: EnrollmentEmailLookupMatch,
+  a: EnrollmentContactLookupMatch,
+  b: EnrollmentContactLookupMatch,
 ): number {
   if (b.score !== a.score) return b.score - a.score
   return a.fullLegalName.localeCompare(b.fullLegalName)

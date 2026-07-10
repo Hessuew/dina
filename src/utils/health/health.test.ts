@@ -92,6 +92,30 @@ describe('operational health endpoints', () => {
       errorCategory: 'database_unavailable',
     })
   })
+
+  it('returns not-ready when the database check exceeds the timeout', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const response = await handleReadinessRequest(request('/readyz'), {
+      checkDatabase: () => new Promise(() => {}),
+      checkTimeoutMs: 20,
+      environment: 'test',
+      requestId: 'req-4',
+    })
+    const body = await readJson<ReadinessPayload>(response)
+
+    expect(response.status).toBe(503)
+    expect(body.status).toBe('error')
+    expect(body.dependencies.database.error).toEqual({
+      category: 'database_unavailable',
+      message: 'Database readiness check failed',
+    })
+    expect(JSON.parse(warn.mock.calls[0][0])).toMatchObject({
+      level: 'warn',
+      event: 'readiness_check',
+      errorCategory: 'database_unavailable',
+    })
+  })
 })
 
 function request(pathname: string): Request {

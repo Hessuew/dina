@@ -9,7 +9,7 @@ import {
   getEnrollmentByIdSchema,
   getEnrollmentEmailsSchema,
   getEnrollmentsSchema,
-  searchEnrollmentEmailsByNamesSchema,
+  searchEnrollmentContactsByNamesSchema,
   sendInvitationForEnrollmentSchema,
   setEnrollmentSpecialCaseSchema,
   setEvaluationAdmissionCategorySchema,
@@ -27,7 +27,7 @@ import {
   getEnrollmentByIdService,
   getEnrollmentEmailsService,
   getEnrollmentsService,
-  searchEnrollmentEmailsByNamesService,
+  searchEnrollmentContactsByNamesService,
   sendInvitationForEnrollmentService,
   setEnrollmentSpecialCaseService,
   setEvaluationAdmissionCategoryService,
@@ -145,11 +145,13 @@ export const getEnrollmentEmails = createServerFn({ method: 'POST' })
     return getEnrollmentEmailsService(data, user.id)
   })
 
-export const searchEnrollmentEmailsByNames = createServerFn({ method: 'POST' })
-  .inputValidator(searchEnrollmentEmailsByNamesSchema)
+export const searchEnrollmentContactsByNames = createServerFn({
+  method: 'POST',
+})
+  .inputValidator(searchEnrollmentContactsByNamesSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    return searchEnrollmentEmailsByNamesService(data, user.id)
+    return searchEnrollmentContactsByNamesService(data, user.id)
   })
 
 export const bulkGradeEnrollments = createServerFn({ method: 'POST' })
