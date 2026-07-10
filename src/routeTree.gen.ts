@@ -35,7 +35,6 @@ import { Route as AuthedCoursesIndexRouteImport } from './routes/_authed/courses
 import { Route as AuthedAssignmentsIndexRouteImport } from './routes/_authed/assignments/index'
 import { Route as AuthedStudentsStudentIdRouteImport } from './routes/_authed/students/$studentId'
 import { Route as AuthedLibraryMediaIdRouteImport } from './routes/_authed/library/$mediaId'
-import { Route as AuthedLessonsCopyRouteImport } from './routes/_authed/lessons/copy'
 import { Route as AuthedLessonsLessonIdRouteImport } from './routes/_authed/lessons/$lessonId'
 import { Route as AuthedEnrollmentsEnrollmentIdRouteImport } from './routes/_authed/enrollments/$enrollmentId'
 import { Route as AuthedCoursesCourseIdRouteImport } from './routes/_authed/courses/$courseId'
@@ -174,11 +173,6 @@ const AuthedLibraryMediaIdRoute = AuthedLibraryMediaIdRouteImport.update({
   path: '/library/$mediaId',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedLessonsCopyRoute = AuthedLessonsCopyRouteImport.update({
-  id: '/lessons/copy',
-  path: '/lessons/copy',
-  getParentRoute: () => AuthedRoute,
-} as any)
 const AuthedLessonsLessonIdRoute = AuthedLessonsLessonIdRouteImport.update({
   id: '/lessons/$lessonId',
   path: '/lessons/$lessonId',
@@ -246,7 +240,6 @@ export interface FileRoutesByFullPath {
   '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/enrollments/$enrollmentId': typeof AuthedEnrollmentsEnrollmentIdRoute
   '/lessons/$lessonId': typeof AuthedLessonsLessonIdRoute
-  '/lessons/copy': typeof AuthedLessonsCopyRoute
   '/library/$mediaId': typeof AuthedLibraryMediaIdRoute
   '/students/$studentId': typeof AuthedStudentsStudentIdRoute
   '/assignments/': typeof AuthedAssignmentsIndexRoute
@@ -282,7 +275,6 @@ export interface FileRoutesByTo {
   '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/enrollments/$enrollmentId': typeof AuthedEnrollmentsEnrollmentIdRoute
   '/lessons/$lessonId': typeof AuthedLessonsLessonIdRoute
-  '/lessons/copy': typeof AuthedLessonsCopyRoute
   '/library/$mediaId': typeof AuthedLibraryMediaIdRoute
   '/students/$studentId': typeof AuthedStudentsStudentIdRoute
   '/assignments': typeof AuthedAssignmentsIndexRoute
@@ -320,7 +312,6 @@ export interface FileRoutesById {
   '/_authed/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/_authed/enrollments/$enrollmentId': typeof AuthedEnrollmentsEnrollmentIdRoute
   '/_authed/lessons/$lessonId': typeof AuthedLessonsLessonIdRoute
-  '/_authed/lessons/copy': typeof AuthedLessonsCopyRoute
   '/_authed/library/$mediaId': typeof AuthedLibraryMediaIdRoute
   '/_authed/students/$studentId': typeof AuthedStudentsStudentIdRoute
   '/_authed/assignments/': typeof AuthedAssignmentsIndexRoute
@@ -358,7 +349,6 @@ export interface FileRouteTypes {
     | '/courses/$courseId'
     | '/enrollments/$enrollmentId'
     | '/lessons/$lessonId'
-    | '/lessons/copy'
     | '/library/$mediaId'
     | '/students/$studentId'
     | '/assignments/'
@@ -394,7 +384,6 @@ export interface FileRouteTypes {
     | '/courses/$courseId'
     | '/enrollments/$enrollmentId'
     | '/lessons/$lessonId'
-    | '/lessons/copy'
     | '/library/$mediaId'
     | '/students/$studentId'
     | '/assignments'
@@ -431,7 +420,6 @@ export interface FileRouteTypes {
     | '/_authed/courses/$courseId'
     | '/_authed/enrollments/$enrollmentId'
     | '/_authed/lessons/$lessonId'
-    | '/_authed/lessons/copy'
     | '/_authed/library/$mediaId'
     | '/_authed/students/$studentId'
     | '/_authed/assignments/'
@@ -643,13 +631,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedLibraryMediaIdRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/lessons/copy': {
-      id: '/_authed/lessons/copy'
-      path: '/lessons/copy'
-      fullPath: '/lessons/copy'
-      preLoaderRoute: typeof AuthedLessonsCopyRouteImport
-      parentRoute: typeof AuthedRoute
-    }
     '/_authed/lessons/$lessonId': {
       id: '/_authed/lessons/$lessonId'
       path: '/lessons/$lessonId'
@@ -722,7 +703,6 @@ interface AuthedRouteChildren {
   AuthedCoursesCourseIdRoute: typeof AuthedCoursesCourseIdRoute
   AuthedEnrollmentsEnrollmentIdRoute: typeof AuthedEnrollmentsEnrollmentIdRoute
   AuthedLessonsLessonIdRoute: typeof AuthedLessonsLessonIdRoute
-  AuthedLessonsCopyRoute: typeof AuthedLessonsCopyRoute
   AuthedLibraryMediaIdRoute: typeof AuthedLibraryMediaIdRoute
   AuthedStudentsStudentIdRoute: typeof AuthedStudentsStudentIdRoute
   AuthedAssignmentsIndexRoute: typeof AuthedAssignmentsIndexRoute
@@ -750,7 +730,6 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedCoursesCourseIdRoute: AuthedCoursesCourseIdRoute,
   AuthedEnrollmentsEnrollmentIdRoute: AuthedEnrollmentsEnrollmentIdRoute,
   AuthedLessonsLessonIdRoute: AuthedLessonsLessonIdRoute,
-  AuthedLessonsCopyRoute: AuthedLessonsCopyRoute,
   AuthedLibraryMediaIdRoute: AuthedLibraryMediaIdRoute,
   AuthedStudentsStudentIdRoute: AuthedStudentsStudentIdRoute,
   AuthedAssignmentsIndexRoute: AuthedAssignmentsIndexRoute,

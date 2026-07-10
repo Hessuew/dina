@@ -34,6 +34,7 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `health/`: Worker-level `/healthz` and `/readyz` response helpers.
   - `/healthz` confirms the Worker/app process is alive without dependency checks.
   - `/readyz` checks database connectivity through `getDb()` and `withDbConnection()`.
+  - Dependency checks fail closed after a short timeout (default 2s) so hung Hyperdrive/pg does not hang the probe.
   - Responses and logs use redacted, structured operational fields only.
 
 - **Supabase utilities**
