@@ -21,68 +21,41 @@ approved.
 
 The skill:
 
-- Lists unresolved Sentry issues for the project, ranked by frequency/recency.
-- Fetches full detail (stack trace, breadcrumbs) for manual root-cause analysis.
+- Lists unresolved Sentry issues for the **dina** project, ranked by frequency/recency.
+- Fetches full detail (stack trace) for manual root-cause analysis.
 - Maps the culprit frame to a repo file/line.
 - Presents a diagnosis + fix plan, and implements the fix **only after approval**.
 - Marks the Sentry issue resolved automatically once verification (typecheck + scoped tests)
-  passes — posts a short comment explaining what was changed.
+  passes.
 
-## Requirements
+## Preferred tool: sentry-axi (not MCP)
 
-The hosted Sentry MCP (`https://mcp.sentry.dev/mcp`) must be registered and authenticated:
+**Always prefer `node scripts/sentry-axi.mjs` over the hosted Sentry MCP.**
 
-- **Claude Code**: `claude mcp add --transport http sentry https://mcp.sentry.dev/mcp`, then
-  authenticate via `/mcp` → `sentry` (browser OAuth).
-- **Windsurf / Devin**: `sentry` entry in `~/.codeium/windsurf/mcp_config.json` (Windsurf) or
-  `~/.config/devin/mcp_config.json` (Devin) using
-  `npx -y mcp-remote https://mcp.sentry.dev/mcp`; OAuth opens on first connect.
+Reason: AXI CLI is stable, TOON-compact, no OAuth-in-session, no tool-name churn. MCP is
+fallback only when axi is broken (missing binary, AUTH that cannot be fixed from `.env`).
 
-If the server shows "Needs authentication", stop and ask the user to complete the OAuth login
-before continuing — the skill cannot authenticate headlessly.
+Full CLI reference: [`docs/skills/sentry-axi/SKILL.md`](../sentry-axi/SKILL.md).
 
-## MCP Invocation — read this first
+### Fixed DINA context (do not re-discover)
 
-This skill is shared across editors, so the call style differs by host:
+| Setting  | Value         |
+| -------- | ------------- |
+| Org      | `cherubim-it` |
+| Project  | `dina`        |
 
-- **Windsurf / Devin** uses `mcp_call_tool`. **NEVER batch multiple `mcp_call_tool` calls in a
-  single tool invocation** — each call must be made separately with the full
-  `server_name: 'sentry'` parameter. Batching or omitting `server_name` causes a
-  "missing field `server_name`" parse error.
+Always pass both flags (or export them for the shell session). Do **not** call `orgs` /
+`projects` discovery unless the user overrides `--project` or listing fails with a clear
+"org/project not found" error.
 
-  ```javascript
-  mcp_call_tool({
-    server_name: 'sentry',
-    tool_name: 'get_sentry_resource',
-    arguments: {
-      url: 'https://my-org.sentry.io/issues/PROJECT-123',
-    },
-  })
-  ```
+```sh
+export SENTRY_ORG=cherubim-it
+export SENTRY_PROJECT=dina
+```
 
-- **Claude Code** calls the native `mcp__sentry__<tool>` tools directly.
-
-**Discover the exact tool names from the connected server** at runtime using `search_sentry_tools`
-before assuming a tool exists. Tool names on the hosted Sentry MCP have changed over time.
-If a call fails with "tool not found", call `search_sentry_tools(query='...')` immediately to
-find the correct name — never guess.
-
-## Sentry MCP Tools Used
-
-| Purpose                          | Verified tool (as of 2026-07)                                                                           |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Discover available catalog tools | `search_sentry_tools` — **call this if any tool is missing**                                            |
-| Resolve org / project context    | `find_organizations`, `find_projects`                                                                   |
-| List unresolved issues           | `search_issues` — use `is:unresolved` syntax or natural language with `projectSlugOrId`                 |
-| Full detail + stack trace        | `get_sentry_resource` with `url` **only** (no other params)                                             |
-| Breadcrumbs for an issue         | `get_sentry_resource` with `organizationSlug` + `resourceType: 'breadcrumbs'` + `resourceId` (no `url`) |
-| Event stats / aggregations       | `search_events`                                                                                         |
-| Mark resolved after fix ships    | `update_issue` (status → resolved)                                                                      |
-
-**Critical name corrections vs old skill versions:**
-
-- `get_issue_details` → does NOT exist; use `get_sentry_resource` instead
-- `find_issues` → may not exist; use `search_issues` instead
+`scripts/sentry-axi.mjs` loads `.env` via `dotenv/config` from the repo root. Put
+`SENTRY_AXI_AUTH_TOKEN` there (required scopes: `org:read` `event:read` `event:admin`).
+Do **not** use `SENTRY_AUTH_TOKEN` (reserved for source-map upload).
 
 ## Invocation Modes
 
@@ -90,8 +63,8 @@ find the correct name — never guess.
 | ----------------------------- | ----------------------------------------------------------------------------- |
 | `fix sentry`                  | List unresolved issues, pick/triage, propose a fix, implement after approval. |
 | `fix sentry --dry-run`        | Fetch + triage + diagnosis only; never edit code or mutate Sentry.            |
-| `fix sentry <ISSUE-ID/URL>`   | Go straight to one issue by Sentry short-ID or URL.                           |
-| `fix sentry --project <slug>` | Scope the listing to a single Sentry project.                                 |
+| `fix sentry <ISSUE-ID/URL>`   | Go straight to one issue by Sentry short-ID (e.g. `DINA-S`) or URL.           |
+| `fix sentry --project <slug>` | Override project (default `dina`).                                            |
 
 Default behavior is safe: no code edit and no Sentry mutation without explicit approval.
 
@@ -99,64 +72,95 @@ Default behavior is safe: no code edit and no Sentry mutation without explicit a
 
 ## Execution Steps
 
-### 1. Resolve Org + Project
+### 0. Auth smoke (once per session)
 
-Resolve the Sentry organization and project once and cache it for the session. Use
-`find_organizations` / `find_projects` if not obvious. Honor `--project <slug>` when passed.
-If ambiguous, ask the user which project — do not guess.
+From repo root:
 
-### 2. List Unresolved Issues
-
-Unless a specific issue ID/URL was passed, list unresolved issues ranked by frequency/recency
-and present a short table for the user to pick from:
-
-```text
-Unresolved Sentry issues — <project>:
-- ABC-123  TypeError: Cannot read 'SENTRY_DSN'   142 events   last 2h    src/server.ts
-- ABC-456  Unhandled rejection in enrollment fn    31 events   last 1d    createServerFn
+```sh
+node scripts/sentry-axi.mjs --org cherubim-it
 ```
 
-Include short-ID, title, event count, last-seen, and culprit. Let the user pick one (or more,
-one at a time). Do not begin fixing until an issue is selected.
+Expect `top_issues[…]` for the org. If you get `AUTH_REQUIRED` / `AUTH_ERROR`:
 
-**Query guidance for `search_issues`:**
+1. Confirm `.env` has `SENTRY_AXI_AUTH_TOKEN` (not only `SENTRY_AUTH_TOKEN`).
+2. Token needs scopes `org:read` `event:read` `event:admin` — `org:ci` alone is not enough.
+3. Stop and ask the user to fix the token. Do not fall through to MCP unless axi is
+   unavailable for a non-auth reason and the user asks.
 
-- Do NOT pass the issue short-ID (e.g. `DINA-D`) as the query — it will return nothing.
-  Use `get_sentry_resource` with `resourceType: 'issue'` + `resourceId` for direct ID lookups.
-- To list all unresolved issues in a project, pass `query: 'is:unresolved'` with
-  `projectSlugOrId: '<slug>'`.
-- Natural language that works: `"is:unresolved"`, `"level:error firstSeen:-7d"`.
-- Natural language that reliably fails: `"unresolved issues in <project> sorted by frequency"`.
+### 1. Resolve context
 
-### 3. Triage the Chosen Issue
+Defaults are fixed: org `cherubim-it`, project `dina`.
 
-For the selected issue, make these calls **sequentially** (never batched):
+Honor `--project <slug>` when the user passes it. Otherwise always use `dina`.
 
-1. `get_sentry_resource(url: '<issue_url>')` — full detail, stack trace, tags, latest event.
-   Pass **only** `url`; do not mix with `resourceType` or `resourceId`.
-2. `get_sentry_resource(organizationSlug: '<org_slug>', resourceType: 'breadcrumbs', resourceId: '<issue_id>')` — event trail
-   leading up to the error. Pass `organizationSlug` + `resourceType` + `resourceId`; do not
-   pass `url` alongside these params — the tool requires one form or the other, never both.
-   `organizationSlug` is always required when not using `url`.
+Optional confirmation (usually skip):
+
+```sh
+node scripts/sentry-axi.mjs projects --org cherubim-it
+```
+
+### 2. List unresolved issues
+
+Unless a specific issue ID/URL was passed:
+
+```sh
+node scripts/sentry-axi.mjs issues list \
+  --org cherubim-it \
+  --project dina \
+  --status unresolved \
+  --limit 20
+```
+
+Present a short table for the user to pick from:
+
+```text
+Unresolved Sentry issues — dina:
+- DINA-S  Error: Not authorized to editLesson…   2 events   2d ago
+- DINA-X  Error: Server function info not found… 10 events   2d ago
+```
+
+Include short-ID, title, event count, last-seen. Let the user pick one (or more, one at a
+time). **Do not begin fixing until an issue is selected.**
+
+Quick dashboard (top 5 only):
+
+```sh
+node scripts/sentry-axi.mjs --org cherubim-it --project dina
+```
+
+**Do not** pass the short-ID as a list `--query` — use `issues view <id>` for direct lookup.
+
+### 3. Triage the chosen issue
+
+```sh
+# Summary + stack preview (~1500 chars)
+node scripts/sentry-axi.mjs issues view DINA-S --org cherubim-it
+
+# Full stack when preview is truncated or frames look minified
+node scripts/sentry-axi.mjs issues view DINA-S --org cherubim-it --full
+```
 
 Map the top in-app culprit frame to the actual repo file and line. Read that code.
 Prefer frames inside this repo's `src/**` over framework/vendor frames.
 
-**If the stack trace shows only minified frames with `<unknown module>`**, source maps may not
-be uploaded. Note this to the user. Still attempt to diagnose from:
+**If the stack shows only `at (anonymous) (?)` / minified frames**, source maps may not be
+uploaded. Note that. Still diagnose from:
 
-- The breadcrumbs (often reveal the triggering sequence)
-- The error message itself
-- Searching the codebase for the error pattern
+- Error message + tags on the issue
+- Culprit string / transaction
+- Codebase search for the error pattern or server-fn name
+
+(Breadcrumbs: axi may not expose them yet; if needed for a tough case, fall back to MCP
+`get_sentry_resource` breadcrumbs — see Fallback section.)
 
 ### 4. Present Diagnosis + Fix Plan
 
 Show, before editing anything:
 
-- **Root cause** — what actually throws, and why (from stack trace + breadcrumbs + read code).
-- **Source map status** — note if the trace is minified/unresolvable; this limits confidence.
-- **Fix status** — is the fix already present in the local codebase? (Check git log, read the
-  affected files, compare with the Sentry event timestamp vs the fix commit date.)
+- **Root cause** — what actually throws, and why (stack + code).
+- **Source map status** — note if the trace is minified/unresolvable.
+- **Fix status** — is the fix already present in the local codebase? (git log, read
+  affected files, compare Sentry last-seen vs fix commit date.)
 - **Files to change** (or already changed) — repo-relative paths and the intended change.
 - **Approach** — the minimal fix, and any test to add that reproduces the error.
 
@@ -195,20 +199,64 @@ Follow repo rules exactly:
 
 ### 7. Resolve in Sentry — auto after verification passes
 
-Once verification in Step 6 reports clean (no typecheck errors, no failing scoped tests), call
-`update_issue` (status → `resolved`) immediately. Include a `reason` comment that names the
-root cause and the files changed, so the Sentry activity feed is self-explanatory.
+Once verification in Step 6 reports clean (no typecheck errors, no failing scoped tests):
 
+```sh
+node scripts/sentry-axi.mjs issues resolve DINA-S --org cherubim-it
 ```
-update_issue(
-  issueUrl: '<issue_url>',
-  status: 'resolved',
-  reason: 'Fixed <root cause>. Changed <file1>, <file2>. Typecheck passes.'
-)
-```
+
+Idempotent: already-resolved returns no-op exit 0.
+
+Mention root cause + files changed in your user-facing summary (axi resolve has no comment
+field; put the narrative in the agent reply / PR, not in a fake CLI flag).
 
 If verification reveals errors, keep the issue unresolved, report the failure, and continue
 debugging before resolving.
+
+---
+
+## Canonical command cheatsheet
+
+```sh
+# Auth smoke + top issues
+node scripts/sentry-axi.mjs --org cherubim-it --project dina
+
+# Full unresolved list
+node scripts/sentry-axi.mjs issues list \
+  --org cherubim-it --project dina --status unresolved --limit 20
+
+# Detail
+node scripts/sentry-axi.mjs issues view <ID> --org cherubim-it
+node scripts/sentry-axi.mjs issues view <ID> --org cherubim-it --full
+
+# After fix + verify
+node scripts/sentry-axi.mjs issues resolve <ID> --org cherubim-it
+
+# Releases (optional context)
+node scripts/sentry-axi.mjs releases list --org cherubim-it --project dina
+```
+
+Run from the **repo root** so `dotenv/config` picks up `.env`.
+
+---
+
+## Fallback: Sentry MCP (only if axi cannot run)
+
+Use the hosted Sentry MCP only when `scripts/sentry-axi.mjs` is unavailable or the user
+explicitly asks for MCP.
+
+- **Windsurf / Devin**: `mcp_call_tool` with `server_name: 'sentry'`. **Never batch** multiple
+  MCP calls in one turn; each needs its own call with `server_name`.
+- **Claude Code**: native `mcp__sentry__*` tools.
+- Discover tools with `search_sentry_tools` if a name is missing — never guess.
+- Verified names (as of 2026-07): `search_issues`, `get_sentry_resource`, `update_issue`,
+  `find_organizations`, `find_projects`, `search_events`.
+- `get_issue_details` / `find_issues` do **not** exist.
+- Breadcrumbs: `get_sentry_resource` with `organizationSlug` + `resourceType: 'breadcrumbs'` +
+  `resourceId` (no `url` in the same call). Issue detail by URL: pass **only** `url`.
+
+If MCP shows "Needs authentication", stop and ask the user to complete OAuth — cannot auth
+headlessly.
 
 ---
 
@@ -217,11 +265,13 @@ debugging before resolving.
 - Read-only fetch/triage first; no code edits or Sentry mutations without approval.
 - `--dry-run` never mutates code or Sentry.
 - Surgical diffs only — no unrelated cleanup or refactors.
-- Auto-resolve only after verification passes (typecheck + scoped tests clean); never resolve when verification fails or was skipped.
-- If fix is already in the codebase (pre-dates the Sentry event or addresses the root cause), skip Step 5 and go straight to Step 6 — no approval needed since no code is being changed.
-- Never batch `mcp_call_tool` calls (Windsurf/Devin); always include `server_name: 'sentry'`.
-- If a tool call fails with "tool not found", call `search_sentry_tools` to discover the
-  correct name — never retry with a guess.
+- Auto-resolve only after verification passes (typecheck + scoped tests clean); never resolve
+  when verification fails or was skipped.
+- If fix is already in the codebase, skip Step 5 and go straight to Step 6 — no approval needed
+  since no code is being changed.
+- Prefer sentry-axi; do not open MCP first.
+- Default org/project are fixed for this repo (`cherubim-it` / `dina`) — do not guess other
+  projects for this codebase.
 - If the culprit frame can't be mapped to repo code with confidence, report that and ask —
   do not guess a fix location.
 
@@ -230,5 +280,6 @@ debugging before resolving.
 ## Self-improvement
 
 After using this skill, follow `docs/improvements/IMPROVEMENTS_PROTOCOL.md`: log any friction
-(tool-name mismatches, missing Sentry MCP capabilities, workflow gaps) to
-`docs/improvements/IMPROVEMENTS_SKILLS.md` as a proposal. Do not edit this skill file in-session.
+(auth, missing axi features, wrong defaults, workflow gaps) to
+`docs/improvements/IMPROVEMENTS_SKILLS.md` as a proposal. Do not edit this skill file in-session
+unless the user asked to improve the skill itself (this invocation).

@@ -44,10 +44,13 @@ Required scopes: **`org:read` `event:read` `event:admin`**
 **Optional context env vars (set once, apply to all commands):**
 
 ```sh
-export SENTRY_ORG=<your-org-slug>      # required by issues, releases, releases view
-export SENTRY_PROJECT=<project-slug>   # optional; scopes issue listing to one project
+export SENTRY_ORG=cherubim-it          # DINA default org
+export SENTRY_PROJECT=dina             # DINA default project (web app)
 export SENTRY_URL=https://...          # only for self-hosted Sentry
 ```
+
+DINA agents: always use `cherubim-it` / `dina` unless the user overrides `--project`
+(e.g. `react-native`). The `fix-sentry` skill hardcodes these defaults.
 
 If a command fails with `AUTH_REQUIRED`, set `SENTRY_AXI_AUTH_TOKEN`.
 If it fails with `AUTH_ERROR`, check that the token has the required scopes above.
