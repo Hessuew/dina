@@ -196,6 +196,30 @@ describe('shouldSuppressFromSentry', () => {
     ).toBe(true)
   })
 
+  it('suppresses Chromium Failed to fetch TypeError', () => {
+    expect(shouldSuppressFromSentry(new TypeError('Failed to fetch'))).toBe(
+      true,
+    )
+  })
+
+  it('suppresses Safari Load failed TypeError', () => {
+    expect(shouldSuppressFromSentry(new TypeError('Load failed'))).toBe(true)
+  })
+
+  it('suppresses dynamic import load TypeErrors', () => {
+    expect(
+      shouldSuppressFromSentry(
+        new TypeError(
+          'error loading dynamically imported module: http://localhost:3000/node_modules/@tanstack/router-devtools-core/dist/FloatingTanStackRouterDevtools-B7vy70jP.js?v=5032f306',
+        ),
+      ),
+    ).toBe(true)
+  })
+
+  it('does not suppress Failed to fetch on non-TypeError', () => {
+    expect(shouldSuppressFromSentry(new Error('Failed to fetch'))).toBe(false)
+  })
+
   it('suppresses stale TanStack Start server-fn ID misses', () => {
     expect(
       shouldSuppressFromSentry(
