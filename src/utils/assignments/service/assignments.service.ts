@@ -14,6 +14,7 @@ import {
   canDeleteAssignment,
   validateSubmissionWindow,
 } from '@/domain/assignment.service'
+import { canOpenUnpublishedAssignment } from '@/utils/assignments/domain/assignment-detail.domain'
 import {
   deleteAssignmentById,
   findAssignmentById,
@@ -21,6 +22,7 @@ import {
   findAssignmentWithFullDetail,
   findAssignmentWithLesson,
   findAssignmentWithLessonAndSubmissions,
+  findAssignmentsForTeacherCatalog,
   findAssignmentsForTeacherLessons,
   findCourseIdsByTeacher,
   findPublishedAssignmentsForStudent,
@@ -62,6 +64,9 @@ export async function getLessonService(data: GetLessonInput, userId: string) {
 
   const courseWithTeachers = {
     id: lesson.course.id,
+    teacherIds: (lesson.course.courseTeachers ?? []).map(
+      (teacher) => teacher.teacherId,
+    ),
     teacher1Id: lesson.course.courseTeachers[0]?.teacherId ?? null,
     teacher2Id: lesson.course.courseTeachers[1]?.teacherId ?? null,
   }
@@ -94,9 +99,31 @@ export async function getAssignmentService(
 
   const profile = await getUserProfile(userId)
 
-  if (profile.role === 'student' && assignment.status !== 'published') {
+  const courseWithTeachers = {
+    id: assignment.lesson.course.id,
+    title: assignment.lesson.course.title,
+    teacherIds: (assignment.lesson.course.courseTeachers ?? []).map(
+      (teacher) => teacher.teacherId,
+    ),
+    teacher1Id: assignment.lesson.course.courseTeachers[0]?.teacherId ?? null,
+    teacher2Id: assignment.lesson.course.courseTeachers[1]?.teacherId ?? null,
+  }
+
+  const permissions = calculateEntityPermissions(
+    profile.role,
+    courseWithTeachers,
+    userId,
+  )
+
+  if (
+    assignment.status !== 'published' &&
+    !canOpenUnpublishedAssignment({
+      role: profile.role,
+      canManage: permissions.canManage,
+    })
+  ) {
     throw new AuthorizationError('Assignment not available', {
-      internalMessage: `Student attempted to access unpublished assignment: ${data.assignmentId}`,
+      internalMessage: `Non-manager attempted to access unpublished assignment: ${data.assignmentId}`,
       details: { assignmentId: data.assignmentId, status: assignment.status },
     })
   }
@@ -109,19 +136,6 @@ export async function getAssignmentService(
     )
   }
 
-  const courseWithTeachers = {
-    id: assignment.lesson.course.id,
-    title: assignment.lesson.course.title,
-    teacher1Id: assignment.lesson.course.courseTeachers[0]?.teacherId ?? null,
-    teacher2Id: assignment.lesson.course.courseTeachers[1]?.teacherId ?? null,
-  }
-
-  const permissions = calculateEntityPermissions(
-    profile.role,
-    courseWithTeachers,
-    userId,
-  )
-
   return {
     assignment: {
       ...assignment,
@@ -130,6 +144,51 @@ export async function getAssignmentService(
     submission,
     role: profile.role,
     permissions,
+  }
+}
+
+export type TeacherAssignmentListScope = 'owned' | 'catalog'
+
+type TeacherListAssignment =
+  | Awaited<ReturnType<typeof findAssignmentsForTeacherLessons>>[number]
+  | Awaited<ReturnType<typeof findAssignmentsForTeacherCatalog>>[number]
+
+function mapTeacherAssignmentRow(
+  assignment: TeacherListAssignment,
+  canManage: boolean,
+) {
+  const course = assignment.lesson.course
+  const submissions =
+    'submissions' in assignment && Array.isArray(assignment.submissions)
+      ? assignment.submissions
+      : null
+  return {
+    ...assignment,
+    lesson: {
+      ...assignment.lesson,
+      course: {
+        id: course.id,
+        title: course.title,
+        startDate: assignment.lesson.scheduledTime || null,
+      },
+    },
+    // Catalog rows omit submissions; only owned lists include stats.
+    submissionStats:
+      canManage && submissions
+        ? calculateAssignmentStats(submissions)
+        : undefined,
+    submissions: undefined,
+  }
+}
+
+function courseTeachersFromRow(assignment: TeacherListAssignment): {
+  teacherIds: Array<string>
+} {
+  const teachers = assignment.lesson.course.courseTeachers ?? []
+  return {
+    teacherIds: teachers
+      .map((teacher) => teacher.teacherId)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0),
   }
 }
 
@@ -320,7 +379,10 @@ export async function getAllAssignmentsForStudentService(userId: string) {
   return { assignments: assignmentsWithSubmission }
 }
 
-export async function getAllAssignmentsForTeacherService(userId: string) {
+export async function getAllAssignmentsForTeacherService(
+  userId: string,
+  scope: TeacherAssignmentListScope = 'owned',
+) {
   const profile = await getUserProfile(userId)
 
   if (profile.role !== 'teacher' && profile.role !== 'admin') {
@@ -335,6 +397,17 @@ export async function getAllAssignmentsForTeacherService(userId: string) {
     )
   }
 
+  if (scope === 'catalog') {
+    return getTeacherCatalogAssignments(userId, profile.role)
+  }
+
+  return getTeacherOwnedAssignments(userId, profile.role)
+}
+
+async function getTeacherOwnedAssignments(
+  userId: string,
+  role: 'teacher' | 'admin' | 'student',
+) {
   const courseIds = await findCourseIdsByTeacher(userId)
   if (courseIds.length === 0) return { assignments: [] }
 
@@ -343,19 +416,36 @@ export async function getAllAssignmentsForTeacherService(userId: string) {
 
   const allAssignments = await findAssignmentsForTeacherLessons(lessonIds)
 
-  const assignmentsWithStats = allAssignments.map((assignment) => ({
-    ...assignment,
-    lesson: {
-      ...assignment.lesson,
-      course: {
-        ...assignment.lesson.course,
-        startDate: assignment.lesson.scheduledTime || null,
-      },
-    },
-    submissionStats: calculateAssignmentStats(assignment.submissions),
-  }))
+  return {
+    assignments: allAssignments.map((assignment) => {
+      const teachers = courseTeachersFromRow(assignment)
+      const permissions = calculateEntityPermissions(role, teachers, userId)
+      return mapTeacherAssignmentRow(assignment, permissions.canManage)
+    }),
+  }
+}
 
-  return { assignments: assignmentsWithStats }
+async function getTeacherCatalogAssignments(
+  userId: string,
+  role: 'teacher' | 'admin' | 'student',
+) {
+  const managedCourseIds = await findCourseIdsByTeacher(userId)
+  const managedLessonIds =
+    managedCourseIds.length > 0
+      ? await findLessonIdsByCourseIds(managedCourseIds)
+      : []
+  // SQL already scopes: published campus-wide + drafts/closed on managed lessons.
+  // No submission rows loaded for catalog.
+  const allAssignments =
+    await findAssignmentsForTeacherCatalog(managedLessonIds)
+
+  return {
+    assignments: allAssignments.map((assignment) => {
+      const teachers = courseTeachersFromRow(assignment)
+      const permissions = calculateEntityPermissions(role, teachers, userId)
+      return mapTeacherAssignmentRow(assignment, permissions.canManage)
+    }),
+  }
 }
 
 export async function getAssignmentSubmissionsService(

@@ -14,7 +14,11 @@ Spelling note: the user-facing route and utils dir use British "enrolment" (`/en
 
 ### Teacher-user
 
-An authenticated platform user with `profiles.role = 'teacher'`. Can manage courses, view students, and view enrollments in read-only (redacted) mode. Distinct from the static landing-page Lecturer array.
+An authenticated platform user with `profiles.role = 'teacher'`. Can view the faculty **catalog** of published courses, lessons, and assignments across the academy; **manage** (edit/delete, drafts, student submissions/grades, submission stats) only on courses where they are a **Course Teacher**. Also view students and enrollments in read-only (redacted) mode. Distinct from the static landing-page Lecturer array.
+
+### Course Teacher
+
+A Teacher-user (or Admin, who always qualifies) assigned to a course via `course_teachers`. `EntityPermissions.canManage` is true only for Course Teachers on that course (and for Admins everywhere). Catalog viewers who are not Course Teachers may open published assignment **shells** (title, description, due date, course) but must not load student submissions or mutation UI.
 
 ### Lecturer (landing)
 

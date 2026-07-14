@@ -167,6 +167,37 @@ describe('getAssignmentService (integration)', () => {
     ).rejects.toMatchObject({ code: 'AUTHORIZATION_FAILED', status: 403 })
   })
 
+  it('lets an outsider teacher open a published assignment shell', async () => {
+    const { assignmentId } = await seedPublishedAssignmentWithSubmission()
+    const outsiderId = await seedProfile({ role: 'teacher' })
+
+    const result = await getAssignmentService({ assignmentId }, outsiderId)
+
+    expect(result.role).toBe('teacher')
+    expect(result.assignment.id).toBe(assignmentId)
+    expect(result.permissions.canManage).toBe(false)
+  })
+
+  it('hides an unpublished assignment from a non-course teacher', async () => {
+    const { lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({ lessonId, status: 'draft' })
+    const outsiderId = await seedProfile({ role: 'teacher' })
+
+    await expect(
+      getAssignmentService({ assignmentId }, outsiderId),
+    ).rejects.toMatchObject({ code: 'AUTHORIZATION_FAILED', status: 403 })
+  })
+
+  it('lets the course teacher open a draft assignment', async () => {
+    const { teacherId, lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({ lessonId, status: 'draft' })
+
+    const result = await getAssignmentService({ assignmentId }, teacherId)
+
+    expect(result.assignment.status).toBe('draft')
+    expect(result.permissions.canManage).toBe(true)
+  })
+
   it('throws when the assignment does not exist', async () => {
     const studentId = await seedProfile({ role: 'student' })
 
@@ -281,10 +312,13 @@ describe('getAllAssignmentsForStudentService (integration)', () => {
 })
 
 describe('getAllAssignmentsForTeacherService (integration)', () => {
-  it('returns the teacher’s assignments with submission stats', async () => {
+  it('returns the teacher’s owned assignments with submission stats', async () => {
     const { teacherId } = await seedPublishedAssignmentWithSubmission()
 
-    const { assignments } = await getAllAssignmentsForTeacherService(teacherId)
+    const { assignments } = await getAllAssignmentsForTeacherService(
+      teacherId,
+      'owned',
+    )
 
     expect(assignments.length).toBeGreaterThanOrEqual(1)
     expect(assignments[0].submissionStats).toMatchObject({
@@ -294,12 +328,42 @@ describe('getAllAssignmentsForTeacherService (integration)', () => {
     })
   })
 
-  it('returns an empty list for a teacher with no courses', async () => {
+  it('returns an empty owned list for a teacher with no courses', async () => {
     const teacherId = await seedProfile({ role: 'teacher' })
 
-    const { assignments } = await getAllAssignmentsForTeacherService(teacherId)
+    const { assignments } = await getAllAssignmentsForTeacherService(
+      teacherId,
+      'owned',
+    )
 
     expect(assignments).toEqual([])
+  })
+
+  it('catalog includes other courses’ published assignments without stats', async () => {
+    const { assignmentId } = await seedPublishedAssignmentWithSubmission()
+    const outsiderId = await seedProfile({ role: 'teacher' })
+
+    const { assignments } = await getAllAssignmentsForTeacherService(
+      outsiderId,
+      'catalog',
+    )
+
+    const row = assignments.find((a) => a.id === assignmentId)
+    expect(row).toBeDefined()
+    expect(row?.submissionStats).toBeUndefined()
+  })
+
+  it('catalog hides other courses’ draft assignments', async () => {
+    const { lessonId } = await seedCourseWithTeacher()
+    const draftId = await seedAssignment({ lessonId, status: 'draft' })
+    const outsiderId = await seedProfile({ role: 'teacher' })
+
+    const { assignments } = await getAllAssignmentsForTeacherService(
+      outsiderId,
+      'catalog',
+    )
+
+    expect(assignments.some((a) => a.id === draftId)).toBe(false)
   })
 
   it('rejects a student caller', async () => {

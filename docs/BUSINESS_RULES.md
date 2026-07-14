@@ -170,23 +170,27 @@ export function StudentCard({ student, onSelect }: StudentCardProps) {
 
 1. **Visitor** - Unauthenticated (public only)
 2. **Student** - Authenticated (course access, inquiries)
-3. **Teacher** - Authenticated (course mgmt, student mgmt, enrollment review read-only)
+3. **Teacher** - Authenticated (faculty catalog of published content; manage only own courses as Course Teacher; student mgmt; enrollment review redacted)
 4. **Admin** - Full access (user mgmt, system settings)
 
 ### Permission Matrix
 
-| Feature            | Visitor | Student | Teacher | Admin |
-| ------------------ | ------- | ------- | ------- | ----- |
-| Landing Page       | ✓       | ✓       | ✓       | ✓     |
-| View Courses       | ✗       | ✓       | ✓       | ✓     |
-| Submit Inquiries   | ✗       | ✓       | ✗       | ✓     |
-| Manage Courses     | ✗       | ✗       | ✓       | ✓     |
-| View All Students  | ✗       | ✗       | ✓       | ✓     |
-| View Enrollments¹  | ✗       | ✗       | ✓       | ✓     |
-| User Management    | ✗       | ✗       | ✗       | ✓     |
-| Manage Enrollments | ✗       | ✗       | ✗       | ✓     |
+| Feature                                                        | Visitor | Student | Teacher | Admin |
+| -------------------------------------------------------------- | ------- | ------- | ------- | ----- |
+| Landing Page                                                   | ✓       | ✓       | ✓       | ✓     |
+| View Courses                                                   | ✗       | ✓       | ✓       | ✓     |
+| View published lessons/assignments (catalog)                   | ✗       | ✓²      | ✓       | ✓     |
+| Manage course content (edit/delete, drafts, grade submissions) | ✗       | ✗       | ✓³      | ✓     |
+| Submit Inquiries                                               | ✗       | ✓       | ✗       | ✓     |
+| Manage Courses                                                 | ✗       | ✗       | ✓³      | ✓     |
+| View All Students                                              | ✗       | ✗       | ✓       | ✓     |
+| View Enrollments¹                                              | ✗       | ✗       | ✓       | ✓     |
+| User Management                                                | ✗       | ✗       | ✗       | ✓     |
+| Manage Enrollments                                             | ✗       | ✗       | ✗       | ✓     |
 
-¹ Teacher view is read-only; email, phone/WhatsApp, and invitation tracking fields are redacted (stripped server-side).
+¹ Teacher view is read-only; email, phone/WhatsApp, and invitation tracking fields are redacted (stripped server-side).  
+² Students see published content for their learning surfaces (not the staff catalog).  
+³ Only as **Course Teacher** of that course (`course_teachers`); outsider Teacher-users get catalog/shell only.
 
 ---
 

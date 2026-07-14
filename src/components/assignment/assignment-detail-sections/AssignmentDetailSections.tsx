@@ -59,6 +59,8 @@ type AssignmentDetailSectionsProps = {
   isStudent: boolean
   isPastDue: boolean
   canSubmit: boolean
+  /** False for outsider teachers: shell only, no submissions panel. */
+  showSubmissionsPanel: boolean
   submissionFormData: SubmissionFormData
   isSavingSubmission: boolean
   onChangeSubmissionFormData: (data: SubmissionFormData) => void
@@ -412,7 +414,7 @@ export function AssignmentDetailSections(props: AssignmentDetailSectionsProps) {
         assignment={props.assignment}
         isPastDue={props.isPastDue}
       />
-      <SubmissionPanel {...props} />
+      {props.showSubmissionsPanel && <SubmissionPanel {...props} />}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { StatusChip } from '@/components/ui/status-chip'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { DarkCard } from '@/components/ui/dark-card'
 import { EmptyState } from '@/components/ui/empty-state/EmptyState'
+import { isAssignmentVisibleToViewer } from '@/utils/assignments/domain/assignment-detail.domain'
 
 type Assignment = {
   id: string
@@ -172,18 +173,22 @@ function AssignmentsSection({
 }) {
   const canManage = permissions.canEdit && permissions.isCourseTeacher
   const visibleAssignments = assignments.filter((assignment) =>
-    role === 'student' ? assignment.status === 'published' : true,
+    isAssignmentVisibleToViewer({
+      role,
+      canManage,
+      status: assignment.status,
+    }),
   )
 
   return (
     <div className="border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
       <AssignmentsHeader
-        count={assignments.length}
+        count={visibleAssignments.length}
         canManage={canManage}
         onCreateAssignment={onCreateAssignment}
       />
 
-      {assignments.length === 0 ? (
+      {visibleAssignments.length === 0 ? (
         <EmptyState
           message="No assignments yet"
           actionLabel="Create First Assignment"

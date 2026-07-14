@@ -20,7 +20,9 @@ export const Route = createFileRoute('/_authed/dashboard')({
     if (coursesData.role === 'student') {
       assignmentsData = await getAllAssignmentsForStudent()
     } else {
-      assignmentsData = await getAllAssignmentsForTeacher()
+      assignmentsData = await getAllAssignmentsForTeacher({
+        data: { scope: 'owned' },
+      })
     }
 
     const upcomingLessonsData = await getUpcomingLessons()

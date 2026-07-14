@@ -23,6 +23,7 @@ import {
   navigateBack,
   resolveEditDialogMode,
   resolveSubmissionStatusVariant,
+  shouldLoadAssignmentSubmissions,
 } from '@/utils/assignments/domain/assignment-detail.domain'
 import { AssignmentDialog } from '@/components/dialog/assignment-dialog/AssignmentDialog'
 import { PageLayout } from '@/components/layout/page-layout'
@@ -65,7 +66,7 @@ export const Route = createFileRoute('/_authed/assignments/$assignmentId')({
       data: { assignmentId: params.assignmentId },
     })
 
-    if (assignmentData.role === 'teacher' || assignmentData.role === 'admin') {
+    if (shouldLoadAssignmentSubmissions(assignmentData.permissions.canManage)) {
       const submissionsData = await getSubmissionsData({
         data: { assignmentId: params.assignmentId },
       })
@@ -76,12 +77,11 @@ export const Route = createFileRoute('/_authed/assignments/$assignmentId')({
       }
     }
 
-    const submissionsData = { submissions: [] } as Awaited<
-      ReturnType<typeof getSubmissionsData>
-    >
     return {
       ...assignmentData,
-      allSubmissions: submissionsData.submissions,
+      allSubmissions: [] as Awaited<
+        ReturnType<typeof getSubmissionsData>
+      >['submissions'],
     }
   },
   component: AssignmentDetailComponent,
@@ -241,6 +241,8 @@ function useAssignmentDetail() {
     status: assignment.status,
     dueDate: assignment.dueDate,
   })
+  const showSubmissionsPanel =
+    isStudent || shouldLoadAssignmentSubmissions(permissions.canManage)
 
   const editDialogMode = resolveEditDialogMode({
     mode: assignmentDialog.dialogMode,
@@ -262,6 +264,7 @@ function useAssignmentDetail() {
     isStudent,
     isPastDue,
     canSubmit,
+    showSubmissionsPanel,
     editDialogMode,
     submissionsColumns,
     submissionForm,
@@ -397,6 +400,7 @@ function AssignmentDetailComponent() {
     isStudent,
     isPastDue,
     canSubmit,
+    showSubmissionsPanel,
     editDialogMode,
     submissionsColumns,
     submissionForm,
@@ -422,6 +426,7 @@ function AssignmentDetailComponent() {
         isStudent={isStudent}
         isPastDue={isPastDue}
         canSubmit={canSubmit}
+        showSubmissionsPanel={showSubmissionsPanel}
         submissionFormData={submissionForm.submissionFormData}
         isSavingSubmission={submissionForm.submissionMutation.isPending}
         onChangeSubmissionFormData={submissionForm.setSubmissionFormData}

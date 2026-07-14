@@ -47,6 +47,10 @@ export const getAssignmentSubmissionsSchema = z.object({
   assignmentId: z.uuid('Invalid assignment ID'),
 })
 
+export const getAllAssignmentsForTeacherSchema = z.object({
+  scope: z.enum(['owned', 'catalog']).default('owned'),
+})
+
 export type CreateAssignmentInput = z.infer<typeof createAssignmentSchema>
 export type UpdateAssignmentInput = z.infer<typeof updateAssignmentSchema>
 export type DeleteAssignmentInput = z.infer<typeof deleteAssignmentSchema>
@@ -60,4 +64,7 @@ export type CreateOrUpdateSubmissionInput = z.infer<
 export type GradeSubmissionInput = z.infer<typeof gradeSubmissionSchema>
 export type GetAssignmentSubmissionsInput = z.infer<
   typeof getAssignmentSubmissionsSchema
+>
+export type GetAllAssignmentsForTeacherInput = z.infer<
+  typeof getAllAssignmentsForTeacherSchema
 >

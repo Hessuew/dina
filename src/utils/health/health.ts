@@ -34,8 +34,10 @@ type RequestContext = {
   pathname: string
 }
 
+type DatabaseCheck = (signal?: AbortSignal) => Promise<void>
+
 type HealthOptions = {
-  checkDatabase?: () => Promise<void>
+  checkDatabase?: DatabaseCheck
   /** Max wait for dependency checks. Default 2000ms. */
   checkTimeoutMs?: number
   environment?: string
@@ -128,13 +130,14 @@ function buildHealthPayload(
 }
 
 async function checkDependency(
-  check: () => Promise<void>,
+  check: DatabaseCheck,
   timeoutMs: number,
 ): Promise<DependencyResult> {
   const startedAt = performance.now()
+  const controller = new AbortController()
 
   try {
-    await withTimeout(check(), timeoutMs)
+    await withTimeout(check(controller.signal), timeoutMs, controller)
     return { status: 'ok', durationMs: elapsedMs(startedAt) }
   } catch {
     return {
@@ -148,9 +151,14 @@ async function checkDependency(
   }
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  controller: AbortController,
+): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
+      controller.abort()
       reject(new Error('Readiness check timed out'))
     }, timeoutMs)
 
@@ -225,4 +233,4 @@ function elapsedMs(startedAt: number): number {
   return Math.max(0, Math.round(performance.now() - startedAt))
 }
 
-async function noopCheck(): Promise<void> {}
+async function noopCheck(_signal?: AbortSignal): Promise<void> {}
