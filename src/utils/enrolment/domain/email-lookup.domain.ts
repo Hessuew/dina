@@ -74,6 +74,35 @@ export function removeEnrollmentContactLookupSelection<
   return selected.filter((item) => item.enrollmentId !== enrollmentId)
 }
 
+/**
+ * Merge-add auto-picks from lookup groups:
+ * - unique strong match, or
+ * - unique exact match (score 100) among strong matches when more than one strong hit.
+ * Suggestions never auto-pick.
+ */
+export function mergeUniqueStrongEnrollmentContactMatches(
+  selected: Array<EnrollmentContactLookupMatch>,
+  groups: Array<EnrollmentContactLookupGroup>,
+): Array<EnrollmentContactLookupMatch> {
+  let next = selected
+  for (const group of groups) {
+    const autoPick = resolveAutoPickMatch(group)
+    if (!autoPick) continue
+    next = addEnrollmentContactLookupSelection(next, autoPick)
+  }
+  return next
+}
+
+function resolveAutoPickMatch(
+  group: EnrollmentContactLookupGroup,
+): EnrollmentContactLookupMatch | null {
+  if (group.matches.length === 1) return group.matches[0]
+  if (group.matches.length < 2) return null
+
+  const exact = group.matches.filter((match) => match.score === 100)
+  return exact.length === 1 ? exact[0] : null
+}
+
 function buildLookupGroup(
   query: string,
   candidates: Array<EnrollmentContactLookupCandidate>,

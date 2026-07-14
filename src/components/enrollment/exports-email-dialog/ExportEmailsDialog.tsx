@@ -4,9 +4,12 @@ import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
 import {
   GROUP_OPTIONS,
+  contactHasInvalidPhone,
   countInvalidContactPhones,
+  countInvalidContactPhonesAlways,
   formatContactsForExport,
   formatEmailsForExport,
+  removeInvalidPhoneContacts,
   resolveEmailCountLabel,
 } from './export-emails-dialog.domain'
 import type { RefObject } from 'react'
@@ -20,6 +23,7 @@ import type {
 } from '@/utils/enrolment/domain/email-lookup.domain'
 import {
   addEnrollmentContactLookupSelection,
+  mergeUniqueStrongEnrollmentContactMatches,
   removeEnrollmentContactLookupSelection,
 } from '@/utils/enrolment/domain/email-lookup.domain'
 import { Button } from '@/components/ui/button'
@@ -134,7 +138,11 @@ function useNameContactLookup() {
     setCopied(false)
     try {
       const result = await searchFn({ data: { names } })
-      if (isLatestGeneration(generationRef, gen)) setGroups(result.groups)
+      if (!isLatestGeneration(generationRef, gen)) return
+      setGroups(result.groups)
+      setSelected((prev) =>
+        mergeUniqueStrongEnrollmentContactMatches(prev, result.groups),
+      )
     } catch (error) {
       showLatestError(generationRef, gen, error)
     } finally {
@@ -162,6 +170,8 @@ function useNameContactLookup() {
       setSelected((prev) => addEnrollmentContactLookupSelection(prev, match)),
     removeMatch: (id: string) =>
       setSelected((prev) => removeEnrollmentContactLookupSelection(prev, id)),
+    removeInvalidPhones: () =>
+      setSelected((prev) => removeInvalidPhoneContacts(prev)),
     reset,
   }
 }
@@ -300,6 +310,7 @@ function LookupPanel({
   handleSearch,
   selectMatch,
   removeMatch,
+  removeInvalidPhones,
   field,
   setField,
   includeName,
@@ -327,6 +338,7 @@ function LookupPanel({
         onFieldChange={setField}
         onIncludeNameChange={setIncludeName}
         onRemove={removeMatch}
+        onRemoveInvalidPhones={removeInvalidPhones}
       />
     </div>
   )
@@ -463,6 +475,7 @@ type SelectedLookupEmailsProps = {
   onFieldChange: (field: ContactExportField) => void
   onIncludeNameChange: (includeName: boolean) => void
   onRemove: (enrollmentId: string) => void
+  onRemoveInvalidPhones: () => void
 }
 
 function SelectedLookupEmails({
@@ -472,16 +485,20 @@ function SelectedLookupEmails({
   onFieldChange,
   onIncludeNameChange,
   onRemove,
+  onRemoveInvalidPhones,
 }: SelectedLookupEmailsProps) {
   const invalidPhoneCount = countInvalidContactPhones(selected, field)
+  const invalidPhoneTotal = countInvalidContactPhonesAlways(selected)
   return (
     <aside className="flex min-h-0 min-w-0 flex-col border border-white/10 bg-black/20 p-3">
       <ContactExportControls
         field={field}
         includeName={includeName}
         invalidPhoneCount={invalidPhoneCount}
+        invalidPhoneTotal={invalidPhoneTotal}
         onFieldChange={onFieldChange}
         onIncludeNameChange={onIncludeNameChange}
+        onRemoveInvalidPhones={onRemoveInvalidPhones}
       />
       <p className="mb-3 text-[0.72rem] font-medium tracking-[0.16em] text-[#9B7A41] uppercase">
         {selected.length} selected
@@ -509,14 +526,27 @@ type SelectedLookupEmailProps = {
 }
 
 function SelectedLookupEmail({ match, onRemove }: SelectedLookupEmailProps) {
+  const invalidPhone = contactHasInvalidPhone(match.phoneWhatsApp)
   return (
-    <div className="flex min-w-0 items-start justify-between gap-2 border border-white/10 bg-white/5 px-3 py-2">
+    <div
+      className={
+        invalidPhone
+          ? 'border-destructive/40 flex min-w-0 items-start justify-between gap-2 border bg-white/5 px-3 py-2'
+          : 'flex min-w-0 items-start justify-between gap-2 border border-white/10 bg-white/5 px-3 py-2'
+      }
+    >
       <div className="min-w-0">
         <p className="truncate text-[0.82rem] text-[#F8F4EC]">
           {match.fullLegalName}
         </p>
         <p className="truncate text-[0.74rem] text-[#8E816D]">{match.email}</p>
-        <p className="truncate text-[0.74rem] text-[#8E816D]">
+        <p
+          className={
+            invalidPhone
+              ? 'text-destructive truncate text-[0.74rem]'
+              : 'truncate text-[0.74rem] text-[#8E816D]'
+          }
+        >
           {formatContactPhone(match.phoneWhatsApp)}
         </p>
       </div>
@@ -536,16 +566,20 @@ type ContactExportControlsProps = {
   field: ContactExportField
   includeName: boolean
   invalidPhoneCount: number
+  invalidPhoneTotal: number
   onFieldChange: (field: ContactExportField) => void
   onIncludeNameChange: (includeName: boolean) => void
+  onRemoveInvalidPhones: () => void
 }
 
 function ContactExportControls({
   field,
   includeName,
   invalidPhoneCount,
+  invalidPhoneTotal,
   onFieldChange,
   onIncludeNameChange,
+  onRemoveInvalidPhones,
 }: ContactExportControlsProps) {
   return (
     <fieldset className="mb-4 flex flex-wrap gap-x-3 gap-y-2 border-b border-white/10 pb-4">
@@ -578,10 +612,20 @@ function ContactExportControls({
         Include name
       </label>
       {invalidPhoneCount > 0 && (
-        <p className="w-full text-[0.74rem] text-[#E6B870]" role="alert">
+        <p className="text-destructive w-full text-[0.74rem]" role="alert">
           Remove {invalidPhoneCount} invalid phone
           {invalidPhoneCount === 1 ? '' : 's'} or choose Email.
         </p>
+      )}
+      {invalidPhoneTotal > 0 && (
+        <button
+          type="button"
+          onClick={onRemoveInvalidPhones}
+          className="border-destructive/50 text-destructive hover:border-destructive hover:bg-destructive/10 w-full border px-2 py-1.5 text-left text-[0.74rem] transition"
+        >
+          Remove {invalidPhoneTotal} invalid phone
+          {invalidPhoneTotal === 1 ? '' : 's'}
+        </button>
       )}
     </fieldset>
   )
