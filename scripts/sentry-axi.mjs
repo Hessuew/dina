@@ -62,8 +62,9 @@ async function run(fn) {
   } catch (err) {
     if (err.httpStatus === 401 || err.httpStatus === 403) {
       die('Authentication failed or insufficient permissions', 'AUTH_ERROR', [
-        'Check that SENTRY_AXI_AUTH_TOKEN is valid and has required scopes',
-        'Required scopes: org:read event:read event:admin',
+        'Confirm .env has SENTRY_AXI_AUTH_TOKEN (not only SENTRY_AUTH_TOKEN)',
+        'Required scopes: org:read event:read event:write',
+        'event:admin also works; org:ci (source-map upload) is not enough',
         `API error: ${err.message}`,
       ])
     }
@@ -84,10 +85,10 @@ function requireToken() {
   const token = process.env.SENTRY_AXI_AUTH_TOKEN
   if (!token) {
     die('SENTRY_AXI_AUTH_TOKEN is not set', 'AUTH_REQUIRED', [
-      'Export SENTRY_AXI_AUTH_TOKEN=<your-token>',
+      'Export SENTRY_AXI_AUTH_TOKEN=<your-token> (or put it in repo-root .env)',
       'Get a token: https://sentry.io/settings/account/api/auth-tokens/',
-      'Required scopes: org:read event:read event:admin',
-      'SENTRY_AUTH_TOKEN is reserved for Sentry build/source-map uploads',
+      'Required scopes: org:read event:read event:write',
+      'SENTRY_AUTH_TOKEN is reserved for Sentry build/source-map uploads — do not reuse it',
     ])
   }
   return token
@@ -128,8 +129,8 @@ async function apiFetch(token, path, opts = {}) {
 }
 
 const apiGet = (token, path) => apiFetch(token, path)
-const apiPatch = (token, path, body) =>
-  apiFetch(token, path, { method: 'PATCH', body: JSON.stringify(body) })
+const apiPut = (token, path, body) =>
+  apiFetch(token, path, { method: 'PUT', body: JSON.stringify(body) })
 
 async function resolveIssueId(token, idOrShort, org) {
   if (/^\d+$/.test(idOrShort)) return idOrShort
@@ -418,7 +419,7 @@ async function cmdIssuesMutate(token, idOrShort, verb, flags) {
     unresolve: 'unresolved',
   }
   const newStatus = statusMap[verb]
-  const { org } = resolveContext(flags)
+  const { org, project: projectFlag } = resolveContext(flags)
   const issueId = await resolveIssueId(token, idOrShort, org)
   const issue = await apiGet(token, `/issues/${issueId}/`)
   const cur = issue.status
@@ -430,7 +431,29 @@ async function cmdIssuesMutate(token, idOrShort, verb, flags) {
     print(`issue: ${idOrShort} already ${newStatus} (no-op)\n`)
     return
   }
-  await apiPatch(token, `/issues/${issueId}/`, { status: newStatus })
+  // Prefer project bulk PUT: works with event:write. Single-issue PATCH/PUT
+  // under /issues/{id}/ often returns 403 for the same token (event:admin).
+  // See https://docs.sentry.io/api/events/bulk-mutate-a-list-of-issues/
+  const projectSlug = issue.project?.slug || projectFlag
+  if (!org) {
+    die(
+      '--org is required to mutate issues (or set SENTRY_ORG)',
+      'MISSING_REQUIRED_ARG',
+      ['Pass --org <slug> or set SENTRY_ORG'],
+    )
+  }
+  if (!projectSlug) {
+    die(
+      'Could not determine project slug for issue mutation',
+      'MISSING_REQUIRED_ARG',
+      ['Pass --project <slug> or set SENTRY_PROJECT'],
+    )
+  }
+  await apiPut(
+    token,
+    `/projects/${org}/${projectSlug}/issues/?id=${encodeURIComponent(issueId)}`,
+    { status: newStatus },
+  )
   print(`issue: ${idOrShort} → ${newStatus}\n`)
 }
 
@@ -614,10 +637,11 @@ Per-command flags:
   releases list: --limit <n>
 
 Auth:
-  export SENTRY_AXI_AUTH_TOKEN=<token>
-  Required scopes: org:read  event:read  event:admin
+  export SENTRY_AXI_AUTH_TOKEN=<token>   # or set in repo-root .env (dotenv/config)
+  Required scopes: org:read  event:read  event:write
   Get a token: https://sentry.io/settings/account/api/auth-tokens/
   Note: SENTRY_AUTH_TOKEN remains reserved for Sentry build/source-map uploads.
+  Issue mutations use project bulk PUT (event:write), not single-issue PATCH.
 
 Context (set once, used by all commands):
   export SENTRY_ORG=<your-org-slug>

@@ -39,10 +39,10 @@ Full CLI reference: [`docs/skills/sentry-axi/SKILL.md`](../sentry-axi/SKILL.md).
 
 ### Fixed DINA context (do not re-discover)
 
-| Setting  | Value         |
-| -------- | ------------- |
-| Org      | `cherubim-it` |
-| Project  | `dina`        |
+| Setting | Value         |
+| ------- | ------------- |
+| Org     | `cherubim-it` |
+| Project | `dina`        |
 
 Always pass both flags (or export them for the shell session). Do **not** call `orgs` /
 `projects` discovery unless the user overrides `--project` or listing fails with a clear
@@ -54,8 +54,10 @@ export SENTRY_PROJECT=dina
 ```
 
 `scripts/sentry-axi.mjs` loads `.env` via `dotenv/config` from the repo root. Put
-`SENTRY_AXI_AUTH_TOKEN` there (required scopes: `org:read` `event:read` `event:admin`).
-Do **not** use `SENTRY_AUTH_TOKEN` (reserved for source-map upload).
+`SENTRY_AXI_AUTH_TOKEN` there (required scopes: `org:read` `event:read` `event:write`).
+Do **not** use or fall back to `SENTRY_AUTH_TOKEN` (reserved for source-map upload /
+`org:ci`). Issue resolve uses project bulk PUT, so `event:write` is enough — no
+`event:admin` required.
 
 ## Invocation Modes
 
@@ -74,18 +76,25 @@ Default behavior is safe: no code edit and no Sentry mutation without explicit a
 
 ### 0. Auth smoke (once per session)
 
-From repo root:
+From repo root (`.env` must define `SENTRY_AXI_AUTH_TOKEN`):
 
 ```sh
-node scripts/sentry-axi.mjs --org cherubim-it
+node scripts/sentry-axi.mjs --org cherubim-it --project dina
 ```
 
-Expect `top_issues[…]` for the org. If you get `AUTH_REQUIRED` / `AUTH_ERROR`:
+Expect `top_issues[…]`. If you get `AUTH_REQUIRED` / `AUTH_ERROR`:
 
-1. Confirm `.env` has `SENTRY_AXI_AUTH_TOKEN` (not only `SENTRY_AUTH_TOKEN`).
-2. Token needs scopes `org:read` `event:read` `event:admin` — `org:ci` alone is not enough.
-3. Stop and ask the user to fix the token. Do not fall through to MCP unless axi is
-   unavailable for a non-auth reason and the user asks.
+1. Confirm `.env` has **`SENTRY_AXI_AUTH_TOKEN`** — axi never reads `SENTRY_AUTH_TOKEN`.
+2. Token scopes: `org:read` `event:read` `event:write` (`event:admin` also ok;
+   `org:ci` alone is not enough).
+3. Stop and ask the user to fix the **axi** token. Do not fall through to MCP unless
+   axi is unavailable for a non-auth reason and the user asks.
+
+Optional mid-session check that mutations work (skip unless resolve will be needed):
+
+```sh
+node scripts/sentry-axi.mjs whoami --org cherubim-it
+```
 
 ### 1. Resolve context
 
@@ -202,16 +211,26 @@ Follow repo rules exactly:
 Once verification in Step 6 reports clean (no typecheck errors, no failing scoped tests):
 
 ```sh
-node scripts/sentry-axi.mjs issues resolve DINA-S --org cherubim-it
+node scripts/sentry-axi.mjs issues resolve DINA-S --org cherubim-it --project dina
 ```
 
 Idempotent: already-resolved returns no-op exit 0.
+
+CLI mutates via project bulk PUT (`event:write`). Prefer running from repo root so
+`dotenv/config` loads `SENTRY_AXI_AUTH_TOKEN` from `.env`.
 
 Mention root cause + files changed in your user-facing summary (axi resolve has no comment
 field; put the narrative in the agent reply / PR, not in a fake CLI flag).
 
 If verification reveals errors, keep the issue unresolved, report the failure, and continue
 debugging before resolving.
+
+If `issues resolve` returns `AUTH_ERROR` after list/view worked:
+
+1. Confirm the CLI path is the repo script (bulk-PUT mutate) — not an old copy.
+2. Confirm `.env` `SENTRY_AXI_AUTH_TOKEN` has `event:write` (or `event:admin`).
+3. Do **not** silently skip resolve. Report: verify passed; Sentry still unresolved;
+   paste the exact failing command + AUTH_ERROR so the user can fix the axi token.
 
 ---
 

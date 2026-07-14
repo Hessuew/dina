@@ -140,7 +140,8 @@ export class CampaignLockedError extends AppError {
     super({
       code: 'CAMPAIGN_LOCKED',
       status: 409,
-      userMessage: 'This campaign is currently in use. Please try again shortly.',
+      userMessage:
+        'This campaign is currently in use. Please try again shortly.',
     })
     this.name = 'CampaignLockedError'
   }
@@ -195,13 +196,27 @@ function isFirefoxNetworkError(error: unknown): boolean {
   )
 }
 
-/** Returns true for expected 4xx AppErrors, input validation errors, TanStack Start redirect responses, and Firefox fetch-abort errors that should not be sent to Sentry. */
+/**
+ * Returns true when a client (or bot) calls a TanStack Start server function
+ * hash that is no longer in this build — typical after a deploy when a stale
+ * tab, cached asset, or crawler still hits `/_serverFn/<old-id>`. Framework
+ * currently throws a 500 (see TanStack/router#7363); not an app bug.
+ */
+function isStaleServerFnError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.startsWith('Server function info not found for ')
+  )
+}
+
+/** Returns true for expected 4xx AppErrors, input validation errors, TanStack Start redirect responses, Firefox fetch-abort errors, and stale server-fn ID misses that should not be sent to Sentry. */
 export function shouldSuppressFromSentry(error: unknown): boolean {
   return (
     (isAppError(error) && error.status < 500) ||
     isInputValidationError(error) ||
     isTanStackRedirectResponse(error) ||
-    isFirefoxNetworkError(error)
+    isFirefoxNetworkError(error) ||
+    isStaleServerFnError(error)
   )
 }
 

@@ -27,33 +27,59 @@ node scripts/sentry-axi.mjs <command>
 
 ## Authentication
 
-`SENTRY_AXI_AUTH_TOKEN` must be set before any command (except `setup`).
+`scripts/sentry-axi.mjs` loads repo-root `.env` via `dotenv/config`. Prefer putting the
+token there so every agent shell works without manual `export`.
+
+```sh
+# .env (repo root) — required for axi
+SENTRY_AXI_AUTH_TOKEN=<your-token>
+SENTRY_ORG=cherubim-it
+SENTRY_PROJECT=dina
+```
+
+Or export for the session:
 
 ```sh
 export SENTRY_AXI_AUTH_TOKEN=<your-token>
+export SENTRY_ORG=cherubim-it
+export SENTRY_PROJECT=dina
 ```
 
 Get a token at **https://sentry.io/settings/account/api/auth-tokens/**
 
-Required scopes: **`org:read` `event:read` `event:admin`**
+**Required scopes (minimum):** **`org:read` `event:read` `event:write`**
 
-> The `org:ci` scope used by `sentry-cli` for source-map uploads is **not enough**.
-> Create a separate token with the scopes above for sentry-axi.
-> Keep the existing `SENTRY_AUTH_TOKEN` reserved for Sentry build/source-map upload tooling.
+| Scope         | Why                                                           |
+| ------------- | ------------------------------------------------------------- |
+| `org:read`    | Orgs, projects, short-ID resolve                              |
+| `event:read`  | List/view issues, events, stack traces                        |
+| `event:write` | Resolve / mute / unresolve via project bulk-mutate PUT        |
+| `event:admin` | Also works; not required once axi uses bulk PUT for mutations |
 
-**Optional context env vars (set once, apply to all commands):**
-
-```sh
-export SENTRY_ORG=cherubim-it          # DINA default org
-export SENTRY_PROJECT=dina             # DINA default project (web app)
-export SENTRY_URL=https://...          # only for self-hosted Sentry
-```
+> **Do not use `SENTRY_AUTH_TOKEN` for axi.** That env is reserved for Sentry
+> build / source-map upload tooling (`org:ci` etc.). It cannot drive issue mutations
+> and axi never falls back to it. Create a separate user auth token with the scopes
+> above and store it only as `SENTRY_AXI_AUTH_TOKEN`.
 
 DINA agents: always use `cherubim-it` / `dina` unless the user overrides `--project`
 (e.g. `react-native`). The `fix-sentry` skill hardcodes these defaults.
 
-If a command fails with `AUTH_REQUIRED`, set `SENTRY_AXI_AUTH_TOKEN`.
-If it fails with `AUTH_ERROR`, check that the token has the required scopes above.
+### Auth failure playbook
+
+| Code            | Meaning                                   | Agent action                                                                 |
+| --------------- | ----------------------------------------- | ---------------------------------------------------------------------------- |
+| `AUTH_REQUIRED` | `SENTRY_AXI_AUTH_TOKEN` missing           | Stop. Ask user to set it in `.env`. Do not fall through to MCP unless asked. |
+| `AUTH_ERROR`    | Token invalid, expired, or missing scopes | Stop. Ask user to rotate/expand scopes on the **axi** token.                 |
+
+**Known API quirk (handled by CLI):** single-issue `PATCH/PUT /api/0/issues/{id}/`
+can 403 with an `event:write` token. Axi mutates via
+`PUT /api/0/projects/{org}/{project}/issues/?id={id}` (bulk mutate), which accepts
+`event:write`. If you still see AUTH_ERROR on resolve after a token that can
+`issues list`/`view`, the CLI is outdated — pull latest `scripts/sentry-axi.mjs`.
+
+**Releases:** listing releases often needs broader org/project scopes than issue
+read/write. Treat releases as optional context; a 403 there must not block
+list/view/resolve of issues.
 
 ## When to use
 
