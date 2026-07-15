@@ -1,80 +1,115 @@
 ---
 name: notion-sync
-description: Keep Notion engineering databases aligned with local repo changes using the repo's Notion sync rule and docs:notion-check helper.
+description: Keep Notion engineering databases aligned with local repo changes using the repo Notion inventory, hard object IDs, and per-trigger update recipes.
 ---
 
 # Notion Sync
 
-Use this skill whenever a task changes engineering documentation, ADRs, architecture boundaries,
-operational metadata, incidents, risks, maturity work, or launch readiness.
+Use this skill whenever a task changes engineering documentation, ADRs,
+architecture boundaries, operational metadata, incidents, risks, maturity work,
+or launch readiness.
+
+**Primary map (source of IDs + recipes):** [`docs/notion/README.md`](../../notion/README.md)  
+**Binding rule:** [`docs/rules/notion-sync.md`](../../rules/notion-sync.md)  
+**CLI:** `notion-axi` — see [`docs/skills/notion-axi/SKILL.md`](../notion-axi/SKILL.md)
+
+Do **not** rediscover the workspace by free-form search on every run. The map
+lists every hub page and database the agent is allowed to update, with stable
+UUIDs, property schemas, select option labels, and copy-paste recipes.
 
 ## Inputs
 
-- Local git diff
-- `docs/rules/notion-sync.md`
-- `docs/notion/README.md`
-- notion-axi CLI (see `docs/skills/notion-axi/SKILL.md`)
+- Local git diff / changed paths
+- `bun run docs:notion-check` output (rule ids, target names, **UUIDs**, recipe anchors)
+- `docs/notion/README.md` inventory + recipe sections
+- notion-axi CLI
 
 ## Workflow
 
 1. Finish local implementation and verification first.
-2. Run `bun run docs:notion-check`.
-3. Read each reported target and decide whether the change materially affects that Notion record.
-4. **Search before creating** — run `npx -y notion-axi search "<target name>"` for each reported
-   target. Note the `id` of any matching page or database row.
-5. Update existing rows/pages via `npx -y notion-axi page update <id>` with:
-   - `--set` for typed properties (Status, Owner, Date, etc.)
-   - `--append` to add a markdown summary of what changed
-   - repo path, PR link, Linear link, review date, and evidence as available
-6. Create a new row only when search finds no match:
-   `npx -y notion-axi page create --parent <db_id> --db --title "<name>" --set Status=... --content "..."`
-7. Final response must name updated Notion targets, or name skipped targets with the reason.
+2. Run:
+   ```bash
+   bun run docs:notion-check
+   # or machine-readable:
+   bun run docs:notion-check --json
+   ```
+3. For **each** reported rule `id`, open the matching recipe in
+   `docs/notion/README.md` (anchors `recipe-<id>` with underscores matching rule
+   ids such as `recipe-adr-register`).
+4. Execute that recipe using the **hardcoded UUIDs** from the check report / map.
+   - Find rows with `db query <DB_ID> --where …`, not workspace search.
+   - Update with `page update <ROW_OR_PAGE_ID> --set …` and/or `--append`.
+   - Create with `page create --parent <DB_ID> --db …` **only** when query finds
+     no match (and recipe allows create).
+5. Use **exact** select option labels from the map. Never invent Status/Area/
+   Type values.
+6. Skip a target when the change is not material for that record; keep the
+   reason for the final response.
+7. Final response must name updated Notion targets (with ids or titles), or
+   name skipped targets with reasons.
 
-## Useful notion-axi commands
+## Decision rules (no guessing)
 
-```
-# Find a database or page
-npx -y notion-axi search "<target name>"
+| Question                     | Answer                                                                                               |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Where is object X?           | UUID in `docs/notion/README.md` / check report                                                       |
+| Which properties exist?      | Schema tables in that map                                                                            |
+| Which select values allowed? | Exact labels listed in map                                                                           |
+| Create or update?            | Query DB by title property first; create only if no match                                            |
+| Hub page body?               | `--append` dated section; `--replace` only for full ADR Index rebuilds                               |
+| People fields?               | Skip unless you have a Notion user UUID                                                              |
+| Template rows?               | Never overwrite `Template - production incident review` or `Template - significant launch readiness` |
+| When write?                  | End of task after local verification                                                                 |
 
-# Read a page or database schema
-npx -y notion-axi page view <id>
-npx -y notion-axi db view <id>
+## Useful commands (always `npx -y notion-axi`)
 
-# Query database rows
-npx -y notion-axi db query <id> --where Name="<value>"
-
-# Update a page's properties and body
-npx -y notion-axi page update <id> --set Status="Done" --set "Repo Path"="docs/adr/0012.md" --append
-
-# Create a new database row
-npx -y notion-axi page create --parent <db_id> --db --title "<name>" --set Status="Active" --content "<markdown>"
-
-# Verify identity / workspace
+```bash
 npx -y notion-axi whoami
+
+# Schema + options (data source id from inventory)
+npx -y notion-axi db view 38ded322-783b-425d-9be1-d4ba48f79c08
+
+# Find a row inside a known DB (prefer this over search)
+npx -y notion-axi db query 38ded322-783b-425d-9be1-d4ba48f79c08 \
+  --where "Number=0017" --full --limit 5
+
+# Update properties / append body
+npx -y notion-axi page update <id> \
+  --set Status=Accepted \
+  --set "GitHub ADR=https://github.com/Hessuew/dina/blob/main/docs/adr/….md" \
+  --append "## 2026-07-15 Title\n- bullet\n"
+
+# Create a DB row only when missing
+npx -y notion-axi page create \
+  --parent 38ded322-783b-425d-9be1-d4ba48f79c08 --db \
+  --title "Title" --set Status=Proposed --content "…"
 ```
+
+Workspace-wide `search` is a **fallback** when inventory is stale or an ID
+fails with `OBJECT_NOT_FOUND`. If search finds a renamed/moved object, update
+`docs/notion/README.md` and `scripts/notion-check.domain.mjs` in the same
+change when practical; otherwise report the drift.
 
 ## Defaults
 
-- Repo canonical: ADR bodies, binding rules, code-adjacent docs, schemas, route docs, and tested
-  behavior.
-- Notion canonical: roadmap, maturity, service ownership, risks, readiness, incidents, dashboards,
-  and operational status.
-- Write timing: end of task after local verification.
+- **Repo canonical:** ADR bodies, binding rules, code-adjacent docs, schemas,
+  route docs, tested behavior.
+- **Notion canonical:** roadmap, maturity, service ownership, risks, readiness,
+  incidents, dashboards, operational status.
+- **Write timing:** end of task after local verification.
 
-## If notion-axi Is Unavailable
+## If notion-axi is unavailable
 
-Check whether `ntn` is installed and logged in:
-
-```
-curl -fsSL https://ntn.dev | bash   # install ntn
-ntn login                            # authenticate (opens browser)
+```bash
+curl -fsSL https://ntn.dev | bash   # install ntn if needed
+ntn login                            # authenticate
 ```
 
-If the tool cannot be set up, do not block the local code change. Report:
+Do not block the local code change. Report:
 
-- `bun run docs:notion-check` output
-- target Notion databases/pages
+- full `bun run docs:notion-check` output
+- target names + UUIDs from the inventory
 - exact repo paths changed
-- why notion-axi could not be used
+- why Notion could not be written
 
-The user or a later agent can apply the Notion updates manually.
+The user or a later agent applies the recipes manually.
