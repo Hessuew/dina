@@ -85,6 +85,11 @@ const navItems: Array<NavItem> = [
     icon: LayersIcon,
   },
   {
+    title: 'Discipleship',
+    url: '/discipleship',
+    icon: BrushIcon,
+  },
+  {
     title: 'Teachers',
     url: '/teachers',
     icon: Users,
@@ -96,11 +101,6 @@ const teacherNavItems: Array<NavItem> = [
     title: 'Students',
     url: '/students',
     icon: BookText,
-  },
-  {
-    title: 'Discipleship',
-    url: '/discipleship',
-    icon: BrushIcon,
   },
   {
     title: 'Events',

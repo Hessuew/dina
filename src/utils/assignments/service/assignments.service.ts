@@ -64,7 +64,7 @@ export async function getLessonService(data: GetLessonInput, userId: string) {
 
   const courseWithTeachers = {
     id: lesson.course.id,
-    teacherIds: (lesson.course.courseTeachers ?? []).map(
+    teacherIds: lesson.course.courseTeachers.map(
       (teacher) => teacher.teacherId,
     ),
     teacher1Id: lesson.course.courseTeachers[0]?.teacherId ?? null,
@@ -102,7 +102,7 @@ export async function getAssignmentService(
   const courseWithTeachers = {
     id: assignment.lesson.course.id,
     title: assignment.lesson.course.title,
-    teacherIds: (assignment.lesson.course.courseTeachers ?? []).map(
+    teacherIds: assignment.lesson.course.courseTeachers.map(
       (teacher) => teacher.teacherId,
     ),
     teacher1Id: assignment.lesson.course.courseTeachers[0]?.teacherId ?? null,
@@ -184,7 +184,7 @@ function mapTeacherAssignmentRow(
 function courseTeachersFromRow(assignment: TeacherListAssignment): {
   teacherIds: Array<string>
 } {
-  const teachers = assignment.lesson.course.courseTeachers ?? []
+  const teachers = assignment.lesson.course.courseTeachers
   return {
     teacherIds: teachers
       .map((teacher) => teacher.teacherId)

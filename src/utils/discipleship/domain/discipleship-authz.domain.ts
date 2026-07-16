@@ -18,3 +18,11 @@ export function canManageDiscipleship({
   if (isTeacher) return actorId === targetTeacherId
   return false
 }
+
+// Student view is only for the viewing student themselves (never staff proxy).
+export function canViewStudentDiscipleship(
+  actorId: string,
+  viewerStudentId: string,
+): boolean {
+  return actorId === viewerStudentId
+}

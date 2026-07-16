@@ -185,3 +185,19 @@ aggregate to `autoScore + manualScore = totalScore` and the attempt becomes `gra
 Student sees only a submission confirmation until then — scores and per-answer correctness
 stay hidden, and correct options are never sent to students at any stage (server-side
 projection, RLS as backstop).
+
+### Discipleship Assignment
+
+A row in `discipleship_assignments` linking exactly one **Student** to exactly one discipling **Teacher-user**. Carries the Student's **individual** monthly meeting anchor (`anchorAt`). A Student has at most one assignment. The discipler is always a Teacher-user (or Admin acting as staff on the board), never a landing-page Lecturer.
+
+### Peer Pair
+
+Two Students under the same Teacher-user linked via `discipleship_pairs` and both assignments' `pairId`. Carries the pair's shared monthly meeting anchor. Pairing requires the same teacher; leaving a pair can dissolve it when fewer than two members remain.
+
+### Group discipleship meeting
+
+The monthly all-disciples meeting for everyone under one Teacher-user, stored on `discipleship_groups` (one row per teacher, `anchorAt`). Membership is implicit: every Discipleship Assignment that points at that teacher.
+
+### Student Discipleship View
+
+Read-only surface for `profiles.role = 'student'` on `/discipleship`. When the Student has a Discipleship Assignment they see: their Teacher-user (name, avatar), their own individual / pair / group anchors (or "not scheduled"), their peer partner when paired, and a same-teacher roster of classmate names+avatars grouped by Peer Pair (with solos). Other students' individual and pair times never leave the server; emails are never included. Unassigned Students see an empty state. Staff keep the manage board (see ADR 0018).
