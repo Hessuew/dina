@@ -1,5 +1,18 @@
 import type { SubmissionStatus } from './database.types'
 
+export type CourseAttendanceScore = {
+  courseId: string
+  courseTitle: string
+  present: number
+  totalLessons: number
+  lessons: Array<{
+    lessonId: string
+    lessonTitle: string
+    orderIndex: number
+    present: boolean
+  }>
+}
+
 export type StudentWithStats = {
   id: string
   fullName: string
@@ -17,6 +30,7 @@ export type StudentWithStats = {
       maxGrade: number
     }>
   }
+  attendanceByCourse: Array<CourseAttendanceScore>
 }
 
 export type StudentDetailWithAssignments = {
@@ -50,4 +64,5 @@ export type StudentDetailWithAssignments = {
       feedback: string | null
     } | null
   }>
+  attendanceByCourse: Array<CourseAttendanceScore>
 }

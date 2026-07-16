@@ -25,7 +25,7 @@ type MarkItem = LandingItemBase & {
 const marks: Array<MarkItem> = [
   {
     id: 'miracle-1-stammering',
-    title: 'Miracles (1)',
+    title: 'Miracles Ⅰ',
     quote:
       '"Now we know that God heareth not sinners: but if any man be a worshipper of God, and doeth his will, him he heareth. Since the world began was it not heard that any man opened the eyes of one that was born blind." Joh 9:31, 32',
     description: '',
@@ -34,7 +34,7 @@ const marks: Array<MarkItem> = [
   },
   {
     id: 'miracle-2-lung',
-    title: 'Miracles (2)',
+    title: 'Miracles Ⅱ',
     quote:
       '"(As it is written, I have made thee a father of many nations,) before him whom he believed, even God, who quickeneth the dead, and calleth those things which be not as though they were." Rom 4:17',
     description: '',
@@ -345,7 +345,10 @@ export function LandingMarksSection() {
           />
 
           <LandingFeaturePanel key={activeMark.id}>
-            <MarksPanelHeader activeMark={activeMark} activeIndex={activeIndex} />
+            <MarksPanelHeader
+              activeMark={activeMark}
+              activeIndex={activeIndex}
+            />
             <MarksPanelBody activeMark={activeMark} />
           </LandingFeaturePanel>
         </div>

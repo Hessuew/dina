@@ -19,6 +19,7 @@ import { MediaCard } from '@/components/library/media-card/MediaCard'
 import { cn } from '@/lib/utils'
 import { resolveLessonRowView } from '@/components/course/lesson-row.domain'
 import { resolveLessonActionsView } from '@/components/course/lesson-actions.domain'
+import { CourseAttendancePanel } from '@/components/course/course-attendance/CourseAttendancePanel'
 
 type Lesson = {
   id: string
@@ -33,10 +34,12 @@ type Lesson = {
 type CoursePermissions = {
   canEdit: boolean
   isCourseTeacher: boolean
+  canManage?: boolean
 }
 
 type CourseDetailSectionsProps = {
   course: {
+    id: string
     thumbnailUrl: string | null
     description: string | null
     lessons: Array<Lesson>
@@ -543,12 +546,43 @@ function LessonsSection({
   )
 }
 
-export function CourseDetailSections({
+function CourseMainColumn({
   course,
   role,
   permissions,
-  completedLessonIds,
   assignmentData,
+}: {
+  course: CourseDetailSectionsProps['course']
+  role: CourseDetailSectionsProps['role']
+  permissions: CoursePermissions
+  assignmentData: CourseDetailSectionsProps['assignmentData']
+}) {
+  return (
+    <div className="min-w-0 space-y-6">
+      {role === 'student' && (
+        <CourseAttendancePanel
+          courseId={course.id}
+          canManage={false}
+          role={role}
+        />
+      )}
+      <CourseAboutCard
+        thumbnailUrl={course.thumbnailUrl}
+        description={course.description}
+      />
+      {!permissions.canEdit && (
+        <CourseProgressCard assignmentData={assignmentData} />
+      )}
+    </div>
+  )
+}
+
+function CourseSideColumn({
+  course,
+  role,
+  permissions,
+  canManage,
+  completedLessonIds,
   materials,
   showMaterials,
   onCreateMaterial,
@@ -558,41 +592,54 @@ export function CourseDetailSections({
   onEditLesson,
   onDeleteLesson,
   onOpenLesson,
-}: CourseDetailSectionsProps) {
+}: CourseDetailSectionsProps & { canManage: boolean }) {
   return (
-    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-      <div className="min-w-0 space-y-6">
-        <CourseAboutCard
-          thumbnailUrl={course.thumbnailUrl}
-          description={course.description}
+    <div className="flex min-w-0 flex-col gap-6">
+      {canManage && (
+        <CourseAttendancePanel
+          courseId={course.id}
+          canManage={canManage}
+          role={role}
         />
-        {!permissions.canEdit && (
-          <CourseProgressCard assignmentData={assignmentData} />
-        )}
-      </div>
-
-      <div className="flex min-w-0 flex-col gap-6">
-        {showMaterials && (
-          <MaterialsSection
-            materials={materials}
-            role={role}
-            permissions={permissions}
-            onCreateMaterial={onCreateMaterial}
-            onEditMaterial={onEditMaterial}
-            onDeleteMaterial={onDeleteMaterial}
-          />
-        )}
-        <LessonsSection
-          lessons={course.lessons}
+      )}
+      {showMaterials && (
+        <MaterialsSection
+          materials={materials}
           role={role}
           permissions={permissions}
-          completedLessonIds={completedLessonIds}
-          onCreateLesson={onCreateLesson}
-          onEditLesson={onEditLesson}
-          onDeleteLesson={onDeleteLesson}
-          onOpenLesson={onOpenLesson}
+          onCreateMaterial={onCreateMaterial}
+          onEditMaterial={onEditMaterial}
+          onDeleteMaterial={onDeleteMaterial}
         />
-      </div>
+      )}
+      <LessonsSection
+        lessons={course.lessons}
+        role={role}
+        permissions={permissions}
+        completedLessonIds={completedLessonIds}
+        onCreateLesson={onCreateLesson}
+        onEditLesson={onEditLesson}
+        onDeleteLesson={onDeleteLesson}
+        onOpenLesson={onOpenLesson}
+      />
+    </div>
+  )
+}
+
+export function CourseDetailSections(props: CourseDetailSectionsProps) {
+  const canManage =
+    props.permissions.canManage ??
+    (props.permissions.canEdit && props.permissions.isCourseTeacher)
+
+  return (
+    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <CourseMainColumn
+        course={props.course}
+        role={props.role}
+        permissions={props.permissions}
+        assignmentData={props.assignmentData}
+      />
+      <CourseSideColumn {...props} canManage={canManage} />
     </div>
   )
 }

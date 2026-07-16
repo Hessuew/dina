@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { CourseList } from '@/components/list/CourseList'
+import { OpenAttendanceBanner } from '@/components/dashboard/OpenAttendanceBanner'
 import { PageLayout } from '@/components/layout/page-layout'
 import {
   getAllAssignmentsForStudent,
@@ -53,6 +54,8 @@ function DashboardComponent() {
             : 'View your courses and assignments'}
         </p>
       </div>
+
+      {role === 'student' && <OpenAttendanceBanner />}
 
       <CourseList
         courses={courses}

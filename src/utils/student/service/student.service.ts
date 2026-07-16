@@ -18,16 +18,26 @@ import type {
 } from '@/types/student'
 import type { GetStudentDetailInput } from '@/schemas/student.schema'
 import { NotFoundError } from '@/utils/errors'
+import { buildCourseAttendanceScores } from '@/utils/attendance/domain/attendance-score.domain'
+import {
+  findAllLessonsForAttendance,
+  findPresentsForStudent,
+  findPresentsForStudents,
+} from '@/utils/attendance/repository/attendance.repository'
 
 export async function getStudentsService() {
-  const [allStudents, courses, allAssignments] = await Promise.all([
+  const [allStudents, courses, allAssignments, allLessons] = await Promise.all([
     findAllStudents(),
     findAllCourses(),
     findAllAssignments(),
+    findAllLessonsForAttendance(),
   ])
 
   const studentIds = allStudents.map((s) => s.id)
-  const allSubmissions = await findSubmissionsForStudents(studentIds)
+  const [allSubmissions, allPresents] = await Promise.all([
+    findSubmissionsForStudents(studentIds),
+    findPresentsForStudents(studentIds),
+  ])
 
   const submissionsByStudent = new Map<string, typeof allSubmissions>()
   for (const s of allSubmissions) {
@@ -43,6 +53,12 @@ export async function getStudentsService() {
         courses,
         submissionsByStudent.get(student.id) ?? [],
         allAssignments.length,
+        buildCourseAttendanceScores(
+          courses,
+          allLessons,
+          allPresents,
+          student.id,
+        ),
       ),
   )
 
@@ -58,10 +74,14 @@ export async function getStudentDetailService(data: GetStudentDetailInput) {
     })
   }
 
-  const [enrollments, allAssignments] = await Promise.all([
-    findAllCoursesDesc(),
-    findAssignmentsWithDetails(),
-  ])
+  const [enrollments, allAssignments, allLessons, presents] = await Promise.all(
+    [
+      findAllCoursesDesc(),
+      findAssignmentsWithDetails(),
+      findAllLessonsForAttendance(),
+      findPresentsForStudent(student.id),
+    ],
+  )
 
   const assignmentIds = allAssignments.map((a) => a.assignmentId)
   const studentSubmissions = await findSubmittedSubmissionsForStudent(
@@ -85,6 +105,12 @@ export async function getStudentDetailService(data: GetStudentDetailInput) {
     assignments: buildAssignmentsWithSubmissions(
       allAssignments,
       studentSubmissions,
+    ),
+    attendanceByCourse: buildCourseAttendanceScores(
+      enrollments.map((e) => ({ id: e.id, title: e.title })),
+      allLessons,
+      presents,
+      student.id,
     ),
   }
 

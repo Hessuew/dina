@@ -3,6 +3,7 @@ import { accountSecurity } from './account-security.schema'
 import { announcements } from './announcement.schema'
 import { assignments, submissions } from './assignment.schema'
 import { calendarEvents } from './calendar.schema'
+import { attendancePresents, attendanceSessions } from './attendance.schema'
 import {
   courseSubstitutes,
   courseTeachers,
@@ -86,6 +87,7 @@ export const coursesRelations = relations(courses, ({ many }) => ({
   courseTeachers: many(courseTeachers),
   courseSubstitutes: many(courseSubstitutes),
   lessons: many(lessons),
+  attendanceSessions: many(attendanceSessions),
   announcements: many(announcements),
   mediaFiles: many(mediaLibrary),
   calendarEvents: many(calendarEvents),
@@ -131,7 +133,44 @@ export const lessonsRelations = relations(lessons, ({ one, many }) => ({
   }),
   progress: many(lessonProgress),
   assignments: many(assignments),
+  attendanceSession: one(attendanceSessions, {
+    fields: [lessons.id],
+    references: [attendanceSessions.lessonId],
+  }),
 }))
+
+export const attendanceSessionsRelations = relations(
+  attendanceSessions,
+  ({ one, many }) => ({
+    course: one(courses, {
+      fields: [attendanceSessions.courseId],
+      references: [courses.id],
+    }),
+    lesson: one(lessons, {
+      fields: [attendanceSessions.lessonId],
+      references: [lessons.id],
+    }),
+    openedByProfile: one(profiles, {
+      fields: [attendanceSessions.openedBy],
+      references: [profiles.id],
+    }),
+    presents: many(attendancePresents),
+  }),
+)
+
+export const attendancePresentsRelations = relations(
+  attendancePresents,
+  ({ one }) => ({
+    session: one(attendanceSessions, {
+      fields: [attendancePresents.sessionId],
+      references: [attendanceSessions.id],
+    }),
+    student: one(profiles, {
+      fields: [attendancePresents.studentId],
+      references: [profiles.id],
+    }),
+  }),
+)
 
 export const lessonProgressRelations = relations(lessonProgress, ({ one }) => ({
   student: one(profiles, {

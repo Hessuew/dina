@@ -1,7 +1,10 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { CalendarIcon } from 'lucide-react'
+import { CalendarIcon, Check, X } from 'lucide-react'
 import type { CourseAssignmentGroup } from '@/utils/student/domain/student-detail-view.domain'
-import type { StudentDetailWithAssignments } from '@/types/student'
+import type {
+  CourseAttendanceScore,
+  StudentDetailWithAssignments,
+} from '@/types/student'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { getStudentDetail } from '@/utils/student'
@@ -15,6 +18,7 @@ import {
   groupAssignmentsByCourse,
   shouldShowOverdueBadge,
 } from '@/utils/student/domain/student-detail-view.domain'
+import { formatAttendanceScore } from '@/utils/attendance/domain/attendance-score.domain'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/_authed/students/$studentId')({
@@ -203,6 +207,54 @@ function EmptyAssignmentsState() {
   )
 }
 
+function AttendanceDetailSection({
+  scores,
+}: {
+  scores: Array<CourseAttendanceScore>
+}) {
+  if (scores.length === 0) return null
+  return (
+    <div className="mb-8 space-y-4">
+      <div className="h-px w-8 bg-[#C5A059]/40" />
+      <h3 className="text-[0.68rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+        Attendance
+      </h3>
+      <div className="grid gap-4 md:grid-cols-2">
+        {scores.map((score) => (
+          <div
+            key={score.courseId}
+            className="border border-white/10 bg-[#151515]/88 p-5"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-serif text-lg text-[#F8F4EC]">
+                {score.courseTitle}
+              </p>
+              <span className="border border-[#C5A059]/35 px-2 py-0.5 text-[0.72rem] text-[#D4B373]">
+                {formatAttendanceScore(score.present, score.totalLessons)}
+              </span>
+            </div>
+            <ul className="mt-3 space-y-1.5">
+              {score.lessons.map((lesson) => (
+                <li
+                  key={lesson.lessonId}
+                  className="flex items-center gap-2 text-sm text-[#CFC6B7]"
+                >
+                  {lesson.present ? (
+                    <Check className="size-3.5 text-[#C5A059]" />
+                  ) : (
+                    <X className="size-3.5 text-[#8E816D]" />
+                  )}
+                  <span>{lesson.lessonTitle}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function StudentDetailComponent() {
   const { student } = Route.useLoaderData()
   const router = useRouter()
@@ -238,6 +290,8 @@ function StudentDetailComponent() {
       />
 
       <StudentInfoCard student={student} />
+
+      <AttendanceDetailSection scores={student.attendanceByCourse} />
 
       {/* Assignments by course */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
