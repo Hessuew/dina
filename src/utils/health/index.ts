@@ -4,9 +4,3 @@ export {
   handleReadinessRequest,
   isOperationalPath,
 } from './health'
-export type {
-  DependencyResult,
-  HealthPayload,
-  HealthStatus,
-  ReadinessPayload,
-} from './health'

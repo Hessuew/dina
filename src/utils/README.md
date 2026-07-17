@@ -58,9 +58,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     - `index.ts` - Main exports: emit(event) for sending notifications
     - Usage: `await emit(createPostCreatedEvent(actorId, postId, courseId, canModerate))`
   - `email/` - Shared outbound email utilities:
-    - `types.ts`: `EmailSender` port and invitation email message shape.
-    - `sender/resend-email-sender.ts`: Resend adapter and canonical invitation email rendering.
-    - `index.ts`: `getEmailSender` / `setEmailSender` seam and shared `sendInvitationEmail` primitive.
+    - `types.ts`: `EmailSender` port and typed transactional email message shapes.
+    - `sender/resend-email-sender.ts`: Resend adapter, template rendering, subjects, and provider error normalization.
+    - `index.ts`: `getEmailSender` / `setEmailSender` seam plus shared transactional and invitation sending primitives.
     - `domain/`: pure campaign resolver and bulk invitation planner.
     - `email-campaign.ts`, `service/`, `repository/`: admin-only bulk invitation email campaign server functions, lock handling, and logging.
 

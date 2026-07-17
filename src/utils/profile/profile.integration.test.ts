@@ -5,22 +5,17 @@ import { seedProfile } from '../../../test/integration/seed'
 import { getDb } from '../../../test/integration/db'
 import type { User } from '@supabase/supabase-js'
 import type { UpdateProfileInput } from '@/schemas/profile.schema'
+import type { EmailSender } from '@/utils/email/types'
+import { setEmailSender } from '@/utils/email'
 import {
   updateProfileBasicService,
   updateProfileWithEmailChangeService,
   verifyEmailChangeService,
 } from '@/utils/profile/service/profile.service'
-import { AppError } from '@/utils/errors'
 import { accountSecurity, profiles } from '@/db/schema'
 
-const sendEmailChangeVerification = vi.hoisted(() => vi.fn())
+const sendEmail = vi.hoisted(() => vi.fn())
 const updateUserById = vi.hoisted(() => vi.fn())
-
-vi.mock('@/utils/profile/service/email.service', () => ({
-  buildVerifyLink: (token: string) =>
-    `http://localhost/verify-email-change?token=${token}`,
-  sendEmailChangeVerification,
-}))
 
 vi.mock('@/utils/supabase', () => ({
   getSupabaseAdminClient: () => ({
@@ -52,7 +47,9 @@ const findSecurity = async (id: string) => {
 }
 
 beforeEach(() => {
-  sendEmailChangeVerification.mockReset().mockResolvedValue(undefined)
+  sendEmail.mockReset().mockResolvedValue({ providerMessageId: 'email.test' })
+  const sender: EmailSender = { send: sendEmail }
+  setEmailSender(sender)
   updateUserById.mockReset().mockResolvedValue({ error: null })
 })
 
@@ -98,11 +95,12 @@ describe('updateProfileWithEmailChangeService (integration)', () => {
       emailChangePending: true,
       pendingEmail: 'pending@test.dev',
     })
-    expect(sendEmailChangeVerification).toHaveBeenCalledTimes(1)
-    expect(sendEmailChangeVerification).toHaveBeenCalledWith(
-      'pending@test.dev',
-      expect.stringContaining('/verify-email-change?token='),
-    )
+    expect(sendEmail).toHaveBeenCalledOnce()
+    expect(sendEmail).toHaveBeenCalledWith({
+      type: 'emailChangeVerification',
+      to: 'pending@test.dev',
+      verifyLink: expect.stringContaining('/verify-email-change?token='),
+    })
 
     const row = await findProfile(id)
     expect(row?.fullName).toBe('Renamed')
@@ -131,21 +129,14 @@ describe('updateProfileWithEmailChangeService (integration)', () => {
       ),
     ).rejects.toMatchObject({ code: 'EMAIL_CHANGE_RATE_LIMITED', status: 429 })
 
-    expect(sendEmailChangeVerification).not.toHaveBeenCalled()
+    expect(sendEmail).not.toHaveBeenCalled()
     const security = await findSecurity(id)
     expect(security?.pendingEmail).toBeNull()
   })
 
   it('clears tokens when sending the verification email fails', async () => {
     const id = await seedProfile({ email: 'old@test.dev' })
-    sendEmailChangeVerification.mockRejectedValue(
-      new AppError({
-        code: 'EMAIL_SEND_FAILED',
-        status: 500,
-        userMessage: 'fail',
-        internalMessage: 'fail',
-      }),
-    )
+    sendEmail.mockRejectedValue(new Error('provider unavailable'))
 
     await expect(
       updateProfileWithEmailChangeService(

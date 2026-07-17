@@ -23,8 +23,10 @@ import { AuthorizationError } from '@/utils/errors'
 function installFakeSender(failFor: Array<string> = []) {
   const calls: Array<InvitationEmailMessage> = []
   const sender: EmailSender = {
-    sendInvitation: async (message) => {
+    send: async (message) => {
       await Promise.resolve()
+      if (message.type !== 'invitation')
+        throw new Error('Unexpected email type')
       calls.push(message)
       if (failFor.includes(message.to)) {
         throw new Error('provider rejected email')
