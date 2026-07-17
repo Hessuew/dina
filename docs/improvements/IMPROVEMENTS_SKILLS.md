@@ -16,6 +16,8 @@ Source tag: `[auto]` (hook, from a tool error) · `[model]` (agent judgment).
 
 <!-- newest first; remove a line only when a focused improvement task handles it -->
 
+- [2026-07-14] fix-sentry · type: better · observation: after rewrite to sentry-axi-first, axi has no breadcrumbs subcommand; tough minified-stack cases still need MCP breadcrumbs fallback · suggestion: add `issues breadcrumbs <id>` (or bake into `issues view`) so fix-sentry never needs MCP · [model]
+
 - [2026-07-10] improve-codebase-architecture · type: fix · observation: the skill requires reading `LANGUAGE.md` and links to it repeatedly, but that file does not exist beside the canonical `SKILL.md` · suggestion: restore the referenced glossary or inline the complete required language so the exploration workflow has no broken dependency · [model]
 
 - [2026-07-10] notion-axi · type: better · observation: Markdown backticks inside a shell-quoted `page update --append` value were evaluated by zsh before `notion-axi` received them, corrupting the Notion update · suggestion: warn that append content passed through the shell must avoid backticks or use single-quoted arguments · [model]
@@ -31,7 +33,5 @@ Source tag: `[auto]` (hook, from a tool error) · `[model]` (agent judgment).
 - [2026-07-04] notion-knowledge-capture · type: fix · observation: Notion database writes failed on three schema details during import: `parent.data_source_id` needs the raw UUID, select options must match the exact schema (for example Service Catalog does not accept `Storage`), and date properties must use expanded `date:<field>:start` keys · suggestion: add a short "database write gotchas" note to the skill with these validation rules and a parent UUID example · [model]
 
 - [2026-07-04] grill-with-docs · type: better · observation: when a grilling round needed a vendor-fact check (WhatsApp template constraints), WebSearch failed transiently and the skill gives no guidance on whether to block the round or proceed on training knowledge · suggestion: add a note to prefer proceeding on high-confidence knowledge for non-plan-critical facts, flagging them in the plan as "verify during implementation" · [model]
-
-- [2026-07-04] fix-sentry · type: fix · observation: `get_sentry_resource` with `resourceType: 'breadcrumbs'` + `resourceId` also requires `organizationSlug` when not using `url`; the skill table says "Pass only resourceType + resourceId; do not pass url" but omits that organizationSlug is mandatory, causing a tool call failure · suggestion: update the skill table row for breadcrumbs to note `organizationSlug` is required alongside `resourceType` + `resourceId` · [model]
 
 - [2026-06-23] reviewing-code · type: better · observation: staged-only review scope was requested but the skill does not say how to proceed when the staged diff cannot be read directly · suggestion: add a fallback step to request a pasted staged diff or explicitly downgrade scope before reporting findings · [model]
