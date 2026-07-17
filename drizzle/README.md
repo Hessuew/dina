@@ -70,32 +70,22 @@ touch drizzle/0001_custom_functions.sql
 bun db:migrate
 ```
 
-## Testing Migrations
+## Testing and promoting migrations
 
-### Local Testing
-
-```bash
-# Reset database
-bun db:push --force
-
-# Apply migrations
-bun db:migrate
-
-# Verify with Drizzle Studio
-bun db:studio
-```
-
-### Production
+### Local validation (no Docker)
 
 ```bash
-# Backup database first!
-
-# Apply migrations
-bun db:migrate
-
-# Verify policies work
-# Test with different user roles
+bun run test:integration
 ```
+
+The integration setup replays every SQL file listed in `drizzle/meta/_journal.json` against
+PGlite. DINA does not run a local Supabase instance.
+
+### Hosted environments
+
+Merge the migration to GitHub `main` to apply it to the hosted Supabase `development` branch.
+After testing the localhost app against that branch, promote the same commit to the protected
+GitHub `production` branch. See [`../docs/SUPABASE_ENVIRONMENTS.md`](../docs/SUPABASE_ENVIRONMENTS.md).
 
 ## Rollback
 

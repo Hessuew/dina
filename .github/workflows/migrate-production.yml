@@ -1,0 +1,33 @@
+name: Migrate Supabase production
+
+on:
+  push:
+    branches: [production]
+    paths:
+      - 'drizzle/**'
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-production-migrations
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Validate and migrate
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+      - run: bun install --frozen-lockfile
+      - name: Validate the Drizzle migration chain
+        run: bun run test:integration
+      - name: Apply pending migrations to production
+        run: bun run db:migrate

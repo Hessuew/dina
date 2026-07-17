@@ -322,7 +322,8 @@ const updateCourse = createServerFn({ method: 'POST' }).handler(
 - Vitest for unit tests
 - React Testing Library for component tests
 - Playwright for E2E
-- Supabase local dev for DB tests
+- PGlite replays the real Drizzle migration chain for local DB tests; the localhost app connects
+  to the hosted Supabase `development` branch (ADR 0009 and `docs/SUPABASE_ENVIRONMENTS.md`)
 
 ---
 

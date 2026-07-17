@@ -1,0 +1,41 @@
+name: Migrate Supabase development
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'drizzle/**'
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-development-migrations
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Validate, migrate, and seed
+    runs-on: ubuntu-latest
+    environment: development
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SUPABASE_ENVIRONMENT: development
+      SUPABASE_PRODUCTION_PROJECT_REF: ${{ vars.SUPABASE_PRODUCTION_PROJECT_REF }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      DEVELOPMENT_SEED_EMAIL: ${{ vars.DEVELOPMENT_SEED_EMAIL }}
+      DEVELOPMENT_SEED_PASSWORD: ${{ secrets.DEVELOPMENT_SEED_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+      - run: bun install --frozen-lockfile
+      - name: Validate the Drizzle migration chain
+        run: bun run test:integration
+      - name: Apply pending migrations to development
+        run: bun run db:migrate
+      - name: Apply idempotent synthetic development seed
+        run: bun run db:seed:development

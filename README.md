@@ -15,18 +15,25 @@ npx gitpick TanStack/router/tree/main/examples/react/start-supabase-basic start-
 
 ## Setup
 
-This example requires Supabase configuration. The `.env` file contains the necessary environment variables:
+This app requires Supabase configuration. Local development connects to the hosted persistent
+Supabase `development` branch; it never connects to production and does not run a local Supabase
+or Docker stack. See [`docs/SUPABASE_ENVIRONMENTS.md`](docs/SUPABASE_ENVIRONMENTS.md).
+
+The ignored `.env` contains the branch-specific variables:
 
 ```env
-SUPABASE_URL=your-project-url
-SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_URL=https://your-development-branch-ref.supabase.co
+VITE_SUPABASE_URL=https://your-development-branch-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-development-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-development-service-role-key
+DATABASE_URL=your-development-database-url
 ```
 
 You'll need to:
 
-1. Create a Supabase project at [supabase.com](https://supabase.com)
-2. Get your project URL and anon key from the project settings
-3. Update the `.env` file with your credentials
+1. Create the persistent `development` branch from the existing production project.
+2. Configure its GitHub environment and run the development migration workflow once.
+3. Copy `.env.example` to `.env` and fill it only with development branch credentials.
 
 ## Getting Started
 
