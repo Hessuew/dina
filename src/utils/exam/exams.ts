@@ -2,7 +2,6 @@ import { createServerFn } from '@tanstack/react-start'
 import { getCurrentUser } from '@/utils/auth/auth'
 import {
   createExamSchema,
-  deleteExamSchema,
   deleteQuestionSchema,
   finalizeGradingSchema,
   getAttemptForGradingSchema,
@@ -11,7 +10,6 @@ import {
   gradeOpenAnswerSchema,
   listAttemptsForGradingSchema,
   publishExamSchema,
-  reorderQuestionsSchema,
   saveAnswerSchema,
   startAttemptSchema,
   submitAttemptSchema,
@@ -20,7 +18,6 @@ import {
 } from '@/schemas/exam.schema'
 import {
   createExamService,
-  deleteExamService,
   deleteQuestionService,
   finalizeGradingService,
   getAttemptForGradingService,
@@ -31,7 +28,6 @@ import {
   gradeOpenAnswerService,
   listAttemptsForGradingService,
   publishExamService,
-  reorderQuestionsService,
   saveAnswerService,
   startAttemptService,
   submitAttemptService,
@@ -53,13 +49,6 @@ export const updateExam = createServerFn({ method: 'POST' })
     return updateExamService(data, user.id)
   })
 
-export const deleteExam = createServerFn({ method: 'POST' })
-  .inputValidator(deleteExamSchema)
-  .handler(async ({ data }) => {
-    const user = await getCurrentUser()
-    return deleteExamService(data, user.id)
-  })
-
 export const upsertExamQuestion = createServerFn({ method: 'POST' })
   .inputValidator(upsertQuestionSchema)
   .handler(async ({ data }) => {
@@ -72,13 +61,6 @@ export const deleteExamQuestion = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return deleteQuestionService(data, user.id)
-  })
-
-export const reorderExamQuestions = createServerFn({ method: 'POST' })
-  .inputValidator(reorderQuestionsSchema)
-  .handler(async ({ data }) => {
-    const user = await getCurrentUser()
-    return reorderQuestionsService(data, user.id)
   })
 
 export const publishExam = createServerFn({ method: 'POST' })

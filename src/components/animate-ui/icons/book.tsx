@@ -64,10 +64,4 @@ function BookText(props: BookTextProps) {
   return <IconWrapper icon={IconComponent} {...props} />
 }
 
-export {
-  animations,
-  BookText,
-  BookText as BookTextIcon,
-  type BookTextProps,
-  type BookTextProps as BookTextIconProps,
-}
+export { BookText, type BookTextProps }

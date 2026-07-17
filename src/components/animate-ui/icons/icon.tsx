@@ -93,9 +93,36 @@ type IconWrapperProps<T> = IconProps<T> & {
   icon: React.ComponentType<IconProps<T>>
 }
 
+type AnimatedIconSvgProps = Omit<
+  SVGMotionProps<SVGSVGElement>,
+  'children' | 'height' | 'width'
+> & {
+  children: React.ReactNode
+  size?: number
+}
+
 const AnimateIconContext = React.createContext<AnimateIconContextValue | null>(
   null,
 )
+
+function AnimatedIconSvg({ size, children, ...props }: AnimatedIconSvgProps) {
+  return (
+    <motion.svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      {children}
+    </motion.svg>
+  )
+}
 
 function useAnimateIconContext() {
   const context = React.useContext(AnimateIconContext)
@@ -852,6 +879,7 @@ function getVariants<
 
 export {
   AnimateIcon,
+  AnimatedIconSvg,
   IconWrapper,
   useAnimateIconContext,
   getVariants,

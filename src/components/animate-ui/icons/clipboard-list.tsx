@@ -152,10 +152,4 @@ function ClipboardList(props: ClipboardListProps) {
   return <IconWrapper icon={IconComponent} {...props} />
 }
 
-export {
-  animations,
-  ClipboardList,
-  ClipboardList as ClipboardListIcon,
-  type ClipboardListProps,
-  type ClipboardListProps as ClipboardListIconProps,
-}
+export { ClipboardList, type ClipboardListProps }

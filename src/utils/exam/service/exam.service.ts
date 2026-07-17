@@ -1,6 +1,5 @@
 import type {
   CreateExamInput,
-  DeleteExamInput,
   DeleteQuestionInput,
   FinalizeGradingInput,
   GetAttemptForGradingInput,
@@ -9,7 +8,6 @@ import type {
   GradeOpenAnswerInput,
   ListAttemptsForGradingInput,
   PublishExamInput,
-  ReorderQuestionsInput,
   SaveAnswerInput,
   StartAttemptInput,
   SubmitAttemptInput,
@@ -25,7 +23,6 @@ import type { StudentAttempt } from '@/utils/exam/domain/exam-redaction.domain'
 import {
   applyAutoGradeResults,
   countAttemptsByExam,
-  deleteExamById,
   deleteQuestionById,
   findAllExams,
   findAnswerById,
@@ -42,7 +39,6 @@ import {
   insertQuestionWithOptions,
   markAttemptGraded,
   markAttemptSubmittedIfInProgress,
-  reorderQuestionsTx,
   setExamStatus,
   updateAnswerGrade,
   updateExamById,
@@ -164,14 +160,6 @@ export async function updateExamService(
   return updated
 }
 
-export async function deleteExamService(
-  data: DeleteExamInput,
-  userId: string,
-): Promise<void> {
-  await loadEditableExam(data.examId, userId)
-  await deleteExamById(data.examId)
-}
-
 export async function upsertQuestionService(
   data: UpsertQuestionInput,
   userId: string,
@@ -215,14 +203,6 @@ export async function deleteQuestionService(
 ): Promise<void> {
   await loadEditableExam(data.examId, userId)
   await deleteQuestionById(data.examId, data.questionId)
-}
-
-export async function reorderQuestionsService(
-  data: ReorderQuestionsInput,
-  userId: string,
-): Promise<void> {
-  await loadEditableExam(data.examId, userId)
-  await reorderQuestionsTx(data.examId, data.orderedQuestionIds)
 }
 
 export async function publishExamService(

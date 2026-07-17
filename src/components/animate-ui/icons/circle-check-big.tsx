@@ -71,10 +71,4 @@ function CircleCheckBig(props: CircleCheckBigProps) {
   return <IconWrapper icon={IconComponent} {...props} />
 }
 
-export {
-  animations,
-  CircleCheckBig,
-  CircleCheckBig as CircleCheckBigIcon,
-  type CircleCheckBigProps,
-  type CircleCheckBigProps as CircleCheckBigIconProps,
-}
+export { CircleCheckBig, type CircleCheckBigProps }

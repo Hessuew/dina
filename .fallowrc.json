@@ -1,5 +1,4 @@
-{
-  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+{ "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
   "entry": ["src/index.{ts,tsx,js,jsx}", "src/main.{ts,tsx,js,jsx}"],
   "duplicates": {
     // Hide pair-only clones; focus on widespread copy-paste
@@ -32,8 +31,17 @@
     "unused-dependencies": "warn",
     "unused-class-members": "off"
   },
-  "ignoreDependencies": ["@electric-sql/pglite", "test"],
-  "ignorePatterns": ["test/integration/**"],
+  "ignoreDependencies": [
+    "@electric-sql/pglite",
+    "babel-plugin-react-compiler",
+    "test"
+  ],
+  "ignorePatterns": [
+    "test/integration/**",
+    "scripts/linear-axi.mjs",
+    "scripts/sentry-axi.mjs",
+    "scripts/unstick-stranded-signups.mjs"
+  ],
   "ignoreExports": [
     {
       "file": "test/integration/env.ts",
@@ -54,10 +62,6 @@
       "exports": ["*"]
     },
     {
-      "file": "src/components/view/AssignmentsView.tsx",
-      "exports": ["*"]
-    },
-    {
       "file": "src/utils/authz/index.ts",
       "exports": ["setAuthorizationService", "DefaultAuthorizationService"]
     },
@@ -67,82 +71,6 @@
     },
     {
       "file": "src/types/database.types.ts",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/schemas/zoomLink.schema.ts",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/utils/zoomLink/domain/zoomLink.domain.ts",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/badge-check.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/bell-ring.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/bell.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/book.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/calendar-check.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/calendar-days.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/circle-check-big.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/circle-check.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/clapperboard.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/clipboard-list.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/cooking-pot.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/layers.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/layout-dashboard.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/list.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/log-out.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/message-square.tsx",
-      "exports": ["*"]
-    },
-    {
-      "file": "src/components/animate-ui/icons/users.tsx",
       "exports": ["*"]
     }
   ]

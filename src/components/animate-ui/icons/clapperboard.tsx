@@ -107,10 +107,4 @@ function Clapperboard(props: ClapperboardProps) {
   return <IconWrapper icon={IconComponent} {...props} />
 }
 
-export {
-  animations,
-  Clapperboard,
-  Clapperboard as ClapperboardIcon,
-  type ClapperboardProps,
-  type ClapperboardProps as ClapperboardIconProps,
-}
+export { Clapperboard, type ClapperboardProps }

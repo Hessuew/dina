@@ -66,10 +66,4 @@ function CalendarCheck(props: CalendarCheckProps) {
   return <IconWrapper icon={IconComponent} {...props} />
 }
 
-export {
-  animations,
-  CalendarCheck,
-  CalendarCheck as CalendarCheckIcon,
-  type CalendarCheckProps,
-  type CalendarCheckProps as CalendarCheckIconProps,
-}
+export { CalendarCheck as CalendarCheckIcon, type CalendarCheckProps }

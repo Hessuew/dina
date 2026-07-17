@@ -29,7 +29,7 @@ export const deleteZoomLinkSchema = z.object({
   zoomLinkId: z.uuid('Invalid Zoom link ID'),
 })
 
-export type ZoomLinkSection = z.infer<typeof zoomLinkSectionEnum>
+type ZoomLinkSection = z.infer<typeof zoomLinkSectionEnum>
 export type CreateZoomLinkInput = z.infer<typeof createZoomLinkSchema>
 export type UpdateZoomLinkInput = z.infer<typeof updateZoomLinkSchema>
 export type DeleteZoomLinkInput = z.infer<typeof deleteZoomLinkSchema>

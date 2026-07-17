@@ -47,11 +47,6 @@ export async function updateExamById(
   return exam
 }
 
-export async function deleteExamById(examId: string): Promise<void> {
-  const db = await getDb()
-  await db.delete(exams).where(eq(exams.id, examId))
-}
-
 export async function findExamById(
   examId: string,
 ): Promise<ExamRow | undefined> {
@@ -176,42 +171,6 @@ export async function deleteQuestionById(
     .where(
       and(eq(examQuestions.id, questionId), eq(examQuestions.examId, examId)),
     )
-}
-
-/**
- * Reorders questions in two phases (negative offsets, then final indexes)
- * inside one transaction so the (exam_id, order_index) unique constraint
- * never collides mid-update.
- */
-export async function reorderQuestionsTx(
-  examId: string,
-  orderedQuestionIds: Array<string>,
-): Promise<void> {
-  const db = await getDb()
-  await db.transaction(async (tx) => {
-    for (const [index, questionId] of orderedQuestionIds.entries()) {
-      await tx
-        .update(examQuestions)
-        .set({ orderIndex: -(index + 1) })
-        .where(
-          and(
-            eq(examQuestions.id, questionId),
-            eq(examQuestions.examId, examId),
-          ),
-        )
-    }
-    for (const [index, questionId] of orderedQuestionIds.entries()) {
-      await tx
-        .update(examQuestions)
-        .set({ orderIndex: index, updatedAt: new Date() })
-        .where(
-          and(
-            eq(examQuestions.id, questionId),
-            eq(examQuestions.examId, examId),
-          ),
-        )
-    }
-  })
 }
 
 /**

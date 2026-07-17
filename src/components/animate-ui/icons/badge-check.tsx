@@ -89,10 +89,4 @@ function BadgeCheck(props: BadgeCheckProps) {
   return <IconWrapper icon={IconComponent} {...props} />
 }
 
-export {
-  animations,
-  BadgeCheck,
-  BadgeCheck as BadgeCheckIcon,
-  type BadgeCheckProps,
-  type BadgeCheckProps as BadgeCheckIconProps,
-}
+export { BadgeCheck, type BadgeCheckProps }
