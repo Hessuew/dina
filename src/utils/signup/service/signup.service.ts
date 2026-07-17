@@ -7,7 +7,7 @@ import type {
   verifyOtpSchema,
 } from '@/schemas/auth.schema'
 import { OTPVerificationEmail } from '@/emails/OTPVerificationEmail'
-import { env } from '@/env'
+import { EMAIL_FROM, env } from '@/env'
 import {
   getSupabaseAdminClient,
   getSupabaseServerClient,
@@ -40,7 +40,7 @@ async function sendOtpEmail(
   )
   const resend = new Resend(env.RESEND_API_KEY)
   return resend.emails.send({
-    from: env.RESEND_FROM_EMAIL,
+    from: EMAIL_FROM,
     to: email,
     subject: 'Your verification code',
     html: emailHtml,
