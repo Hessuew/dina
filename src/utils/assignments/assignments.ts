@@ -17,6 +17,7 @@ import {
   createAssignmentSchema,
   createOrUpdateSubmissionSchema,
   deleteAssignmentSchema,
+  getAllAssignmentsForTeacherSchema,
   getAssignmentSchema,
   getAssignmentSubmissionCountSchema,
   getAssignmentSubmissionsSchema,
@@ -85,10 +86,12 @@ export const getAllAssignmentsForStudent = createServerFn({
 
 export const getAllAssignmentsForTeacher = createServerFn({
   method: 'POST',
-}).handler(async () => {
-  const user = await getCurrentUser()
-  return getAllAssignmentsForTeacherService(user.id)
 })
+  .inputValidator(getAllAssignmentsForTeacherSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    return getAllAssignmentsForTeacherService(user.id, data.scope)
+  })
 
 export const getAssignmentSubmissions = createServerFn({ method: 'POST' })
   .inputValidator(getAssignmentSubmissionsSchema)

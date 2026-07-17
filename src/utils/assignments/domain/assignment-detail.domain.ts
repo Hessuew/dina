@@ -101,3 +101,31 @@ export function navigateAfterDelete(
   }
   actions.toLesson()
 }
+
+/**
+ * Whether an assignment status is visible to a viewer.
+ * Students and non-managing staff only see published; managers (Course Teacher
+ * + Admin) see drafts/closed too.
+ */
+export function isAssignmentVisibleToViewer(input: {
+  role: string
+  canManage: boolean
+  status: string
+}): boolean {
+  if (input.canManage) return true
+  return input.status === 'published'
+}
+
+/** Staff may load the full submissions list only when they manage the course. */
+export function shouldLoadAssignmentSubmissions(canManage: boolean): boolean {
+  return canManage
+}
+
+/** Staff may open a non-published assignment only when they manage the course. */
+export function canOpenUnpublishedAssignment(input: {
+  role: string
+  canManage: boolean
+}): boolean {
+  if (input.role === 'student') return false
+  return input.canManage
+}

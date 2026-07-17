@@ -116,6 +116,28 @@ describe('operational health endpoints', () => {
       errorCategory: 'database_unavailable',
     })
   })
+
+  it('aborts the in-flight database check when the timeout fires', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let aborted = false
+
+    const response = await handleReadinessRequest(request('/readyz'), {
+      checkDatabase: (signal) =>
+        new Promise((_resolve, reject) => {
+          signal?.addEventListener('abort', () => {
+            aborted = true
+            reject(new Error('aborted'))
+          })
+        }),
+      checkTimeoutMs: 20,
+      environment: 'test',
+      requestId: 'req-5',
+    })
+
+    expect(response.status).toBe(503)
+    expect(aborted).toBe(true)
+    expect(warn).toHaveBeenCalledOnce()
+  })
 })
 
 function request(pathname: string): Request {

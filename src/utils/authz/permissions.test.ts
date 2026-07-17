@@ -71,4 +71,24 @@ describe('calculateEntityPermissions', () => {
       canManage: false,
     })
   })
+
+  it('matches any entry in teacherIds, not only the first two slots', () => {
+    expect(
+      calculateEntityPermissions(
+        'teacher',
+        { teacherIds: ['other-a', 'other-b', 'u-1'] },
+        'u-1',
+      ),
+    ).toMatchObject({ isCourseTeacher: true, canManage: true })
+  })
+
+  it('ignores nullish teacherIds entries', () => {
+    expect(
+      calculateEntityPermissions(
+        'teacher',
+        { teacherIds: [null, undefined, 'u-1'] },
+        'u-1',
+      ),
+    ).toMatchObject({ isCourseTeacher: true, canManage: true })
+  })
 })

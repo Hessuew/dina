@@ -1,13 +1,16 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   buildInitialSubmissionFormData,
+  canOpenUnpublishedAssignment,
   deriveSubmissionPermissions,
   formatSubmissionGrade,
   formatSubmittedDate,
+  isAssignmentVisibleToViewer,
   navigateAfterDelete,
   navigateBack,
   resolveEditDialogMode,
   resolveSubmissionStatusVariant,
+  shouldLoadAssignmentSubmissions,
 } from './assignment-detail.domain'
 
 describe('resolveSubmissionStatusVariant', () => {
@@ -233,5 +236,75 @@ describe('navigateAfterDelete', () => {
     navigateAfterDelete({ fromDashboard: false }, actions)
     expect(actions.toLesson).toHaveBeenCalledTimes(1)
     expect(actions.toAssignments).not.toHaveBeenCalled()
+  })
+})
+
+describe('isAssignmentVisibleToViewer', () => {
+  it('shows every status to managers', () => {
+    expect(
+      isAssignmentVisibleToViewer({
+        role: 'teacher',
+        canManage: true,
+        status: 'draft',
+      }),
+    ).toBe(true)
+    expect(
+      isAssignmentVisibleToViewer({
+        role: 'admin',
+        canManage: true,
+        status: 'closed',
+      }),
+    ).toBe(true)
+  })
+
+  it('shows only published to non-managers', () => {
+    expect(
+      isAssignmentVisibleToViewer({
+        role: 'teacher',
+        canManage: false,
+        status: 'published',
+      }),
+    ).toBe(true)
+    expect(
+      isAssignmentVisibleToViewer({
+        role: 'teacher',
+        canManage: false,
+        status: 'draft',
+      }),
+    ).toBe(false)
+    expect(
+      isAssignmentVisibleToViewer({
+        role: 'student',
+        canManage: false,
+        status: 'draft',
+      }),
+    ).toBe(false)
+  })
+})
+
+describe('shouldLoadAssignmentSubmissions', () => {
+  it('is true only for managers', () => {
+    expect(shouldLoadAssignmentSubmissions(true)).toBe(true)
+    expect(shouldLoadAssignmentSubmissions(false)).toBe(false)
+  })
+})
+
+describe('canOpenUnpublishedAssignment', () => {
+  it('denies students always', () => {
+    expect(
+      canOpenUnpublishedAssignment({ role: 'student', canManage: true }),
+    ).toBe(false)
+  })
+
+  it('allows staff only when they manage the course', () => {
+    expect(
+      canOpenUnpublishedAssignment({ role: 'teacher', canManage: true }),
+    ).toBe(true)
+    expect(
+      canOpenUnpublishedAssignment({ role: 'teacher', canManage: false }),
+    ).toBe(false)
+    expect(
+      canOpenUnpublishedAssignment({ role: 'admin', canManage: true }),
+    ).toBe(true)
   })
 })
