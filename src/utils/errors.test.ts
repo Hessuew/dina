@@ -196,6 +196,24 @@ describe('shouldSuppressFromSentry', () => {
     ).toBe(true)
   })
 
+  it('suppresses stale TanStack Start server-fn ID misses', () => {
+    expect(
+      shouldSuppressFromSentry(
+        new Error(
+          'Server function info not found for bc31f997993d2f8109e3aecce7c7db6fb1705dc57f89408cad200a5176db5006',
+        ),
+      ),
+    ).toBe(true)
+  })
+
+  it('does not suppress Errors that only partially match the server-fn miss message', () => {
+    expect(
+      shouldSuppressFromSentry(
+        new Error('Server function info missing for bc31f997'),
+      ),
+    ).toBe(false)
+  })
+
   it('does not suppress TypeErrors with different messages', () => {
     expect(
       shouldSuppressFromSentry(new TypeError('Cannot read properties of null')),
