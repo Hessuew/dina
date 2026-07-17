@@ -65,6 +65,3 @@ export type GradeSubmissionInput = z.infer<typeof gradeSubmissionSchema>
 export type GetAssignmentSubmissionsInput = z.infer<
   typeof getAssignmentSubmissionsSchema
 >
-export type GetAllAssignmentsForTeacherInput = z.infer<
-  typeof getAllAssignmentsForTeacherSchema
->

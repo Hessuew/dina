@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
   GROUP_OPTIONS,
+  buildContactsCopyText,
+  canCopyContactsExport,
   contactHasInvalidPhone,
   countInvalidContactPhones,
   countInvalidContactPhonesAlways,
   formatContactsForExport,
   formatEmailsForExport,
+  pluralizeCount,
   removeInvalidPhoneContacts,
+  resolveCopyLabel,
+  resolveCopySuccessMessage,
   resolveEmailCountLabel,
 } from './export-emails-dialog.domain'
 
@@ -141,5 +146,107 @@ describe('removeInvalidPhoneContacts', () => {
       { ...contacts[1], phoneWhatsApp: 'not-a-phone' },
     ]
     expect(removeInvalidPhoneContacts(mixed)).toEqual([contacts[0]])
+  })
+})
+
+describe('canCopyContactsExport', () => {
+  it('blocks empty or null sources', () => {
+    expect(
+      canCopyContactsExport({
+        mode: 'cohort',
+        copySourceLength: null,
+        invalidPhoneCount: 0,
+      }),
+    ).toBe(false)
+    expect(
+      canCopyContactsExport({
+        mode: 'cohort',
+        copySourceLength: 0,
+        invalidPhoneCount: 0,
+      }),
+    ).toBe(false)
+  })
+
+  it('blocks lookup when selected phones are invalid', () => {
+    expect(
+      canCopyContactsExport({
+        mode: 'lookup',
+        copySourceLength: 2,
+        invalidPhoneCount: 1,
+      }),
+    ).toBe(false)
+  })
+
+  it('allows valid cohort and lookup copies', () => {
+    expect(
+      canCopyContactsExport({
+        mode: 'cohort',
+        copySourceLength: 2,
+        invalidPhoneCount: 5,
+      }),
+    ).toBe(true)
+    expect(
+      canCopyContactsExport({
+        mode: 'lookup',
+        copySourceLength: 2,
+        invalidPhoneCount: 0,
+      }),
+    ).toBe(true)
+  })
+})
+
+describe('resolveCopyLabel', () => {
+  it('labels cohort and email exports as emails', () => {
+    expect(resolveCopyLabel('cohort', 'both')).toBe('Copy emails')
+    expect(resolveCopyLabel('lookup', 'email')).toBe('Copy emails')
+  })
+
+  it('labels phone and both lookup exports', () => {
+    expect(resolveCopyLabel('lookup', 'phone')).toBe('Copy phone numbers')
+    expect(resolveCopyLabel('lookup', 'both')).toBe('Copy contacts')
+  })
+})
+
+describe('resolveCopySuccessMessage', () => {
+  it('distinguishes lookup from cohort toast copy', () => {
+    expect(resolveCopySuccessMessage('lookup')).toBe(
+      'Contacts copied to clipboard',
+    )
+    expect(resolveCopySuccessMessage('cohort')).toBe(
+      'Emails copied to clipboard',
+    )
+  })
+})
+
+describe('buildContactsCopyText', () => {
+  it('formats cohort as semicolon emails', () => {
+    expect(
+      buildContactsCopyText({
+        mode: 'cohort',
+        cohortEmails: ['a@x.com', 'b@x.com'],
+        contacts: [],
+        field: 'email',
+        includeName: false,
+      }),
+    ).toBe('a@x.com; b@x.com')
+  })
+
+  it('formats lookup via contact export rules', () => {
+    expect(
+      buildContactsCopyText({
+        mode: 'lookup',
+        cohortEmails: [],
+        contacts,
+        field: 'phone',
+        includeName: false,
+      }),
+    ).toBe('+358401234567\n+14155552671')
+  })
+})
+
+describe('pluralizeCount', () => {
+  it('pluralizes count labels', () => {
+    expect(pluralizeCount(1, 'invalid phone')).toBe('1 invalid phone')
+    expect(pluralizeCount(2, 'invalid phone')).toBe('2 invalid phones')
   })
 })

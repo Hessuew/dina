@@ -4,17 +4,22 @@ import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
 import {
   GROUP_OPTIONS,
+  buildContactsCopyText,
+  canCopyContactsExport,
   contactHasInvalidPhone,
   countInvalidContactPhones,
   countInvalidContactPhonesAlways,
-  formatContactsForExport,
   formatEmailsForExport,
+  pluralizeCount,
   removeInvalidPhoneContacts,
+  resolveCopyLabel,
+  resolveCopySuccessMessage,
   resolveEmailCountLabel,
 } from './export-emails-dialog.domain'
 import type { RefObject } from 'react'
 import type {
   ContactExportField,
+  ContactExportMode,
   EmailGroup,
 } from './export-emails-dialog.domain'
 import type {
@@ -48,7 +53,7 @@ type ExportContactsDialogProps = {
   onOpenChange: (open: boolean) => void
 }
 
-type ExportMode = 'cohort' | 'lookup'
+type ExportMode = ContactExportMode
 type CopyEmailSource =
   | Array<string>
   | Array<EnrollmentContactLookupMatch>
@@ -572,6 +577,34 @@ type ContactExportControlsProps = {
   onRemoveInvalidPhones: () => void
 }
 
+function InvalidPhoneNotice({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <p className="text-destructive w-full text-[0.74rem]" role="alert">
+      Remove {pluralizeCount(count, 'invalid phone')} or choose Email.
+    </p>
+  )
+}
+
+function RemoveInvalidPhonesButton({
+  count,
+  onRemove,
+}: {
+  count: number
+  onRemove: () => void
+}) {
+  if (count <= 0) return null
+  return (
+    <button
+      type="button"
+      onClick={onRemove}
+      className="border-destructive/50 text-destructive hover:border-destructive hover:bg-destructive/10 w-full border px-2 py-1.5 text-left text-[0.74rem] transition"
+    >
+      Remove {pluralizeCount(count, 'invalid phone')}
+    </button>
+  )
+}
+
 function ContactExportControls({
   field,
   includeName,
@@ -611,22 +644,11 @@ function ContactExportControls({
         />
         Include name
       </label>
-      {invalidPhoneCount > 0 && (
-        <p className="text-destructive w-full text-[0.74rem]" role="alert">
-          Remove {invalidPhoneCount} invalid phone
-          {invalidPhoneCount === 1 ? '' : 's'} or choose Email.
-        </p>
-      )}
-      {invalidPhoneTotal > 0 && (
-        <button
-          type="button"
-          onClick={onRemoveInvalidPhones}
-          className="border-destructive/50 text-destructive hover:border-destructive hover:bg-destructive/10 w-full border px-2 py-1.5 text-left text-[0.74rem] transition"
-        >
-          Remove {invalidPhoneTotal} invalid phone
-          {invalidPhoneTotal === 1 ? '' : 's'}
-        </button>
-      )}
+      <InvalidPhoneNotice count={invalidPhoneCount} />
+      <RemoveInvalidPhonesButton
+        count={invalidPhoneTotal}
+        onRemove={onRemoveInvalidPhones}
+      />
     </fieldset>
   )
 }
@@ -703,6 +725,41 @@ function ExportEmailsFooter({
   )
 }
 
+async function copyExportToClipboard(input: {
+  mode: ExportMode
+  copySourceLength: number | null
+  invalidPhoneCount: number
+  cohortEmails: Array<string>
+  contacts: Array<EnrollmentContactLookupMatch>
+  field: ContactExportField
+  includeName: boolean
+  markCopied: () => void
+}): Promise<void> {
+  if (
+    !canCopyContactsExport({
+      mode: input.mode,
+      copySourceLength: input.copySourceLength,
+      invalidPhoneCount: input.invalidPhoneCount,
+    })
+  ) {
+    return
+  }
+  try {
+    const copyText = buildContactsCopyText({
+      mode: input.mode,
+      cohortEmails: input.cohortEmails,
+      contacts: input.contacts,
+      field: input.field,
+      includeName: input.includeName,
+    })
+    await navigator.clipboard.writeText(copyText)
+    input.markCopied()
+    toast.success(resolveCopySuccessMessage(input.mode))
+  } catch {
+    toast.error('Could not copy to clipboard')
+  }
+}
+
 function useExportContactsDialogController(
   onOpenChange: (open: boolean) => void,
 ) {
@@ -714,32 +771,23 @@ function useExportContactsDialogController(
     mode === 'lookup' ? lookup.selected : cohort.emails
 
   async function handleCopy() {
-    if (
-      !copyEmails ||
-      (mode === 'lookup' && contactOptions.invalidPhoneCount > 0)
-    ) {
-      return
-    }
-    try {
-      const copyText =
-        mode === 'lookup'
-          ? formatContactsForExport(
-              lookup.selected,
-              contactOptions.field,
-              contactOptions.includeName,
-            )
-          : formatEmailsForExport(cohort.emails ?? [])
-      await navigator.clipboard.writeText(copyText)
-      if (mode === 'lookup') lookup.setCopied(true)
-      else cohort.setCopied(true)
-      toast.success(resolveCopySuccessMessage(mode))
-      setTimeout(() => {
-        lookup.setCopied(false)
-        cohort.setCopied(false)
-      }, 2000)
-    } catch {
-      toast.error('Could not copy to clipboard')
-    }
+    await copyExportToClipboard({
+      mode,
+      copySourceLength: copyEmails?.length ?? null,
+      invalidPhoneCount: contactOptions.invalidPhoneCount,
+      cohortEmails: cohort.emails ?? [],
+      contacts: lookup.selected,
+      field: contactOptions.field,
+      includeName: contactOptions.includeName,
+      markCopied: () => {
+        if (mode === 'lookup') lookup.setCopied(true)
+        else cohort.setCopied(true)
+        setTimeout(() => {
+          lookup.setCopied(false)
+          cohort.setCopied(false)
+        }, 2000)
+      },
+    })
   }
 
   function handleOpenChange(next: boolean) {
@@ -767,6 +815,31 @@ function useExportContactsDialogController(
   }
 }
 
+function ExportDialogBody({
+  mode,
+  setMode,
+  cohort,
+  lookup,
+  contactOptions,
+}: {
+  mode: ExportMode
+  setMode: (mode: ExportMode) => void
+  cohort: ReturnType<typeof useCohortEmailExport>
+  lookup: ReturnType<typeof useNameContactLookup>
+  contactOptions: ReturnType<typeof useContactExportOptions>
+}) {
+  return (
+    <DialogBody className="flex min-h-0 flex-col pt-4 md:overflow-hidden">
+      <ModeTabs mode={mode} onModeChange={setMode} />
+      {mode === 'lookup' ? (
+        <LookupPanel {...lookup} {...contactOptions} />
+      ) : (
+        <CohortPanel {...cohort} />
+      )}
+    </DialogBody>
+  )
+}
+
 export function ExportContactsDialog({
   open,
   onOpenChange,
@@ -787,20 +860,19 @@ export function ExportContactsDialog({
               Export contacts
             </DialogTitle>
           </DialogHeader>
-          <DialogBody className="flex min-h-0 flex-col pt-4 md:overflow-hidden">
-            <ModeTabs mode={c.mode} onModeChange={c.setMode} />
-            {c.mode === 'lookup' ? (
-              <LookupPanel {...c.lookup} {...c.contactOptions} />
-            ) : (
-              <CohortPanel {...c.cohort} />
-            )}
-          </DialogBody>
+          <ExportDialogBody
+            mode={c.mode}
+            setMode={c.setMode}
+            cohort={c.cohort}
+            lookup={c.lookup}
+            contactOptions={c.contactOptions}
+          />
           <ExportEmailsFooter
-            canCopy={
-              c.copyEmails !== null &&
-              c.copyEmails.length > 0 &&
-              (c.mode === 'cohort' || c.invalidPhoneCount === 0)
-            }
+            canCopy={canCopyContactsExport({
+              mode: c.mode,
+              copySourceLength: c.copyEmails?.length ?? null,
+              invalidPhoneCount: c.invalidPhoneCount,
+            })}
             isLoading={c.isLoading}
             copied={c.copied}
             copyLabel={resolveCopyLabel(c.mode, c.contactOptions.field)}
@@ -820,16 +892,4 @@ function formatStatus(status: string): string {
 function formatContactPhone(phone: string): string {
   const normalized = normalizeToE164(phone)
   return normalized.ok ? normalized.e164 : `Invalid phone: ${phone}`
-}
-
-function resolveCopyLabel(mode: ExportMode, field: ContactExportField): string {
-  if (mode === 'cohort' || field === 'email') return 'Copy emails'
-  if (field === 'phone') return 'Copy phone numbers'
-  return 'Copy contacts'
-}
-
-function resolveCopySuccessMessage(mode: ExportMode): string {
-  return mode === 'lookup'
-    ? 'Contacts copied to clipboard'
-    : 'Emails copied to clipboard'
 }

@@ -1,4 +1,21 @@
+import type { PairValidation } from '@/utils/discipleship/domain/discipleship-pairing.domain'
+import type {
+  BoardAssignment,
+  BoardGroup,
+  BoardPair,
+} from '@/utils/discipleship/domain/discipleship-board.domain'
+import type { StudentDiscipleshipView } from '@/utils/discipleship/domain/discipleship-student-view.domain'
+import type {
+  AssignStudentToTeacherInput,
+  PairStudentsInput,
+  SetGroupScheduleInput,
+  SetIndividualScheduleInput,
+  SetPairScheduleInput,
+  UnassignStudentInput,
+  UnpairStudentInput,
+} from '@/schemas/discipleship.schema'
 import { resolveAdminOrTeacherAccess, withRequestCache } from '@/utils/authz'
+import { getAuthorizationService } from '@/utils/authz/service'
 import {
   AuthorizationError,
   ConflictError,
@@ -9,12 +26,7 @@ import {
   canPairStudents,
   shouldDissolvePair,
 } from '@/utils/discipleship/domain/discipleship-pairing.domain'
-import type { PairValidation } from '@/utils/discipleship/domain/discipleship-pairing.domain'
-import type {
-  BoardAssignment,
-  BoardGroup,
-  BoardPair,
-} from '@/utils/discipleship/domain/discipleship-board.domain'
+import { buildStudentDiscipleshipView } from '@/utils/discipleship/domain/discipleship-student-view.domain'
 import {
   clearAssignmentPair,
   deleteAssignmentByStudentId,
@@ -30,6 +42,8 @@ import {
   findGroupsByTeacher,
   findPairById,
   findPairsByTeacher,
+  findPublicPersonById,
+  findPublicPersonsByIds,
   insertAssignment,
   insertPair,
   setAssignmentAnchor,
@@ -38,15 +52,6 @@ import {
   updateAssignmentTeacher,
   upsertGroupAnchor,
 } from '@/utils/discipleship/repository'
-import type {
-  AssignStudentToTeacherInput,
-  PairStudentsInput,
-  SetGroupScheduleInput,
-  SetIndividualScheduleInput,
-  SetPairScheduleInput,
-  UnassignStudentInput,
-  UnpairStudentInput,
-} from '@/schemas/discipleship.schema'
 
 type ManageFlags = { isAdmin: boolean; isTeacher: boolean }
 type AssignmentRow = Awaited<ReturnType<typeof findAssignmentByStudentId>>
@@ -173,6 +178,104 @@ export async function getDiscipleshipBoardService(userId: string) {
       pairs: pairs.map(toPairDTO),
       groups: groups.map(toGroupDTO),
     }
+  })
+}
+
+function isoOrNull(value: Date | null | undefined): string | null {
+  return value?.toISOString() ?? null
+}
+
+type StudentAssignmentRow = NonNullable<AssignmentRow>
+type PairRow = Awaited<ReturnType<typeof findPairsByTeacher>>[number]
+type GroupRow = Awaited<ReturnType<typeof findGroupsByTeacher>>[number]
+type PublicPerson = NonNullable<
+  Awaited<ReturnType<typeof findPublicPersonById>>
+>
+
+// Privacy: only the viewer's individual / pair / group times enter the builder.
+// Classmate assignment rows carry pair structure only (no times).
+function toStudentViewBuilderInput(args: {
+  viewerId: string
+  assignment: StudentAssignmentRow
+  teacher: PublicPerson | null | undefined
+  classmates: Array<PublicPerson>
+  teacherAssignments: Array<StudentAssignmentRow>
+  pairs: Array<PairRow>
+  groups: Array<GroupRow>
+}) {
+  const { assignment, viewerId } = args
+  const viewerPairId = assignment.pairId
+  return {
+    viewerId,
+    assignment: {
+      studentId: assignment.studentId,
+      teacherId: assignment.teacherId,
+      pairId: assignment.pairId,
+      anchorAt: isoOrNull(assignment.anchorAt),
+    },
+    teacher: args.teacher
+      ? {
+          id: args.teacher.id,
+          fullName: args.teacher.fullName,
+          avatarUrl: args.teacher.avatarUrl,
+        }
+      : null,
+    classmates: args.classmates.map((c) => ({
+      id: c.id,
+      fullName: c.fullName,
+      avatarUrl: c.avatarUrl,
+    })),
+    teacherAssignments: args.teacherAssignments.map((a) => ({
+      studentId: a.studentId,
+      teacherId: a.teacherId,
+      pairId: a.pairId,
+      anchorAt: null,
+    })),
+    pairs: args.pairs.map((p) => ({
+      id: p.id,
+      teacherId: p.teacherId,
+      anchorAt: p.id === viewerPairId ? isoOrNull(p.anchorAt) : null,
+    })),
+    groups: args.groups.map((g) => ({
+      teacherId: g.teacherId,
+      anchorAt: isoOrNull(g.anchorAt),
+    })),
+  }
+}
+
+export async function getStudentDiscipleshipViewService(
+  userId: string,
+): Promise<StudentDiscipleshipView> {
+  return withRequestCache(async () => {
+    const role = await getAuthorizationService().getRole(userId)
+    if (role !== 'student') throw new AuthorizationError()
+
+    const assignment = await findAssignmentByStudentId(userId)
+    if (!assignment) return { kind: 'unassigned' }
+
+    const [teacher, teacherAssignments, pairs, groups] = await Promise.all([
+      findPublicPersonById(assignment.teacherId),
+      findAssignmentsByTeacher(assignment.teacherId),
+      findPairsByTeacher(assignment.teacherId),
+      findGroupsByTeacher(assignment.teacherId),
+    ])
+
+    const classmateIds = teacherAssignments
+      .map((a) => a.studentId)
+      .filter((id) => id !== userId)
+    const classmates = await findPublicPersonsByIds(classmateIds)
+
+    return buildStudentDiscipleshipView(
+      toStudentViewBuilderInput({
+        viewerId: userId,
+        assignment,
+        teacher,
+        classmates,
+        teacherAssignments,
+        pairs,
+        groups,
+      }),
+    )
   })
 }
 

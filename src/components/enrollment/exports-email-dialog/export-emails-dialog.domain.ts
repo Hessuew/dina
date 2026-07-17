@@ -2,6 +2,7 @@ import { normalizeToE164 } from '@/utils/whatsapp/domain/phone.domain'
 
 export type EmailGroup = 'approved' | 'all' | 'registered' | 'not_registered'
 export type ContactExportField = 'email' | 'phone' | 'both'
+export type ContactExportMode = 'cohort' | 'lookup'
 
 export type ContactExportRecord = {
   fullLegalName: string
@@ -83,4 +84,52 @@ function formatContactRow(
     if (phone.ok) fields.push(phone.e164)
   }
   return fields.join(', ')
+}
+
+export function canCopyContactsExport(input: {
+  mode: ContactExportMode
+  copySourceLength: number | null
+  invalidPhoneCount: number
+}): boolean {
+  if (input.copySourceLength === null || input.copySourceLength === 0) {
+    return false
+  }
+  if (input.mode === 'lookup' && input.invalidPhoneCount > 0) return false
+  return true
+}
+
+export function resolveCopyLabel(
+  mode: ContactExportMode,
+  field: ContactExportField,
+): string {
+  if (mode === 'cohort' || field === 'email') return 'Copy emails'
+  if (field === 'phone') return 'Copy phone numbers'
+  return 'Copy contacts'
+}
+
+export function resolveCopySuccessMessage(mode: ContactExportMode): string {
+  return mode === 'lookup'
+    ? 'Contacts copied to clipboard'
+    : 'Emails copied to clipboard'
+}
+
+export function buildContactsCopyText(input: {
+  mode: ContactExportMode
+  cohortEmails: Array<string>
+  contacts: Array<ContactExportRecord>
+  field: ContactExportField
+  includeName: boolean
+}): string {
+  if (input.mode === 'lookup') {
+    return formatContactsForExport(
+      input.contacts,
+      input.field,
+      input.includeName,
+    )
+  }
+  return formatEmailsForExport(input.cohortEmails)
+}
+
+export function pluralizeCount(count: number, singular: string): string {
+  return `${count} ${singular}${count === 1 ? '' : 's'}`
 }

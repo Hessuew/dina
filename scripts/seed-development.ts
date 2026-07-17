@@ -1,5 +1,13 @@
 import { config } from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
+import {
+  DEVELOPMENT_STORAGE_BUCKETS,
+  MAX_USER_LIST_PAGES,
+  USERS_PER_PAGE,
+  bucketsToEnsure,
+  isUserListPageExhausted,
+  resolveUserPageScan,
+} from './seed-development.domain'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 
 config({ path: ['.env.local', '.env'] })
@@ -69,18 +77,29 @@ function loadDevelopmentConfig() {
   }
 }
 
+async function listAuthUsersPage(
+  supabase: AdminClient,
+  page: number,
+): Promise<Array<User>> {
+  const { data, error } = await supabase.auth.admin.listUsers({
+    page,
+    perPage: USERS_PER_PAGE,
+  })
+  if (error) throw error
+  return data.users
+}
+
 async function findUserByEmail(supabase: AdminClient, email: string) {
-  for (let page = 1; page <= 20; page += 1) {
-    const { data, error } = await supabase.auth.admin.listUsers({
-      page,
-      perPage: 1000,
-    })
-    if (error) throw error
-    const users: Array<User> = data.users
-    const user = users.find((candidate) => candidate.email === email)
-    if (user || data.users.length < 1000) return user
+  for (let page = 1; !isUserListPageExhausted(page); page += 1) {
+    const scan = resolveUserPageScan(
+      await listAuthUsersPage(supabase, page),
+      email,
+    )
+    if (scan.done) return scan.user
   }
-  throw new Error('Development user lookup exceeded 20,000 users')
+  throw new Error(
+    `Development user lookup exceeded ${MAX_USER_LIST_PAGES * USERS_PER_PAGE} users`,
+  )
 }
 
 async function ensureDevelopmentAdmin(
@@ -109,25 +128,29 @@ async function ensureDevelopmentAdmin(
   if (error) throw error
 }
 
+async function upsertStorageBucket(
+  supabase: AdminClient,
+  bucket: { id: string; public: boolean },
+  exists: boolean,
+) {
+  const result = exists
+    ? await supabase.storage.updateBucket(bucket.id, { public: bucket.public })
+    : await supabase.storage.createBucket(bucket.id, { public: bucket.public })
+  if (result.error) throw result.error
+}
+
 async function ensureStorageBuckets(supabase: AdminClient) {
-  const buckets = [
-    { id: 'avatars', public: true },
-    { id: 'course-thumbnails', public: true },
-    { id: 'media-library', public: false },
-  ] as const
   const { data: existing, error } = await supabase.storage.listBuckets()
   if (error) throw error
-  const existingIds = new Set(existing.map((bucket) => bucket.id))
-
-  for (const bucket of buckets) {
-    const result = existingIds.has(bucket.id)
-      ? await supabase.storage.updateBucket(bucket.id, {
-          public: bucket.public,
-        })
-      : await supabase.storage.createBucket(bucket.id, {
-          public: bucket.public,
-        })
-    if (result.error) throw result.error
+  const plan = bucketsToEnsure(
+    existing.map((bucket) => bucket.id),
+    DEVELOPMENT_STORAGE_BUCKETS,
+  )
+  for (const bucket of plan.update) {
+    await upsertStorageBucket(supabase, bucket, true)
+  }
+  for (const bucket of plan.create) {
+    await upsertStorageBucket(supabase, bucket, false)
   }
 }
 

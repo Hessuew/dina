@@ -12,6 +12,7 @@ import {
 import {
   assignStudentToTeacherService,
   getDiscipleshipBoardService,
+  getStudentDiscipleshipViewService,
   pairStudentsService,
   setGroupScheduleService,
   setIndividualScheduleService,
@@ -26,6 +27,13 @@ export const getDiscipleshipBoard = createServerFn({ method: 'POST' }).handler(
     return getDiscipleshipBoardService(user.id)
   },
 )
+
+export const getStudentDiscipleshipView = createServerFn({
+  method: 'POST',
+}).handler(async () => {
+  const user = await getCurrentUser()
+  return getStudentDiscipleshipViewService(user.id)
+})
 
 export const assignStudentToTeacher = createServerFn({ method: 'POST' })
   .inputValidator(assignStudentToTeacherSchema)

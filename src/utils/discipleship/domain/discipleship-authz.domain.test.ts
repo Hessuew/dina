@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { canManageDiscipleship } from './discipleship-authz.domain'
+import {
+  canManageDiscipleship,
+  canViewStudentDiscipleship,
+} from './discipleship-authz.domain'
 
 describe('canManageDiscipleship', () => {
   it('allows admins to manage any column', () => {
@@ -44,5 +47,12 @@ describe('canManageDiscipleship', () => {
         targetTeacherId: 't1',
       }),
     ).toBe(false)
+  })
+})
+
+describe('canViewStudentDiscipleship', () => {
+  it('allows only the student themselves', () => {
+    expect(canViewStudentDiscipleship('s1', 's1')).toBe(true)
+    expect(canViewStudentDiscipleship('s1', 's2')).toBe(false)
   })
 })
