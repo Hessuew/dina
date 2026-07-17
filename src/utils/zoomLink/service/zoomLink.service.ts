@@ -10,14 +10,16 @@ import {
 } from '@/utils/zoomLink/domain/zoomLink.domain'
 import {
   deleteZoomLinkById,
-  findCoursesForZoomLinks,
+  findDiscipleshipTeacherId,
   findViewerRole,
-  findZoomLinksWithCourses,
+  findZoomLinkOwner,
+  findZoomLinksWithTeachers,
   insertZoomLink,
   updateZoomLinkById,
 } from '@/utils/zoomLink/repository'
 import { authz, withRequestCache } from '@/utils/authz'
-import { NotFoundError } from '@/utils/errors'
+import { NotFoundError, ValidationError } from '@/utils/errors'
+import { getTeachersService } from '@/utils/teachers/service/teachers.service'
 
 export async function getZoomLinksService(userId: string) {
   const profile = await findViewerRole(userId)
@@ -27,10 +29,32 @@ export async function getZoomLinksService(userId: string) {
     })
   }
 
-  const rows = await findZoomLinksWithCourses()
-  const courseRows = await findCoursesForZoomLinks()
+  const rows = await findZoomLinksWithTeachers()
+  const assignment =
+    profile.role === 'student' ? await findDiscipleshipTeacherId(userId) : null
+  const teacherOrder =
+    profile.role === 'student'
+      ? []
+      : (await getTeachersService()).teachers.map(({ id, fullName }) => ({
+          id,
+          fullName,
+        }))
 
-  return buildZoomLinksPayload(rows, courseRows, profile.role)
+  return buildZoomLinksPayload(
+    rows,
+    teacherOrder,
+    profile.role,
+    assignment?.teacherId ?? null,
+  )
+}
+
+async function validateTeacherOwner(
+  data: CreateZoomLinkInput | UpdateZoomLinkInput,
+) {
+  if (data.section !== 'teacher') return
+  const owner = await findZoomLinkOwner(data.teacherId)
+  if (owner?.role === 'teacher' || owner?.role === 'admin') return
+  throw new ValidationError('Zoom link owner must be a teacher or admin')
 }
 
 export async function createZoomLinkService(
@@ -39,6 +63,7 @@ export async function createZoomLinkService(
 ) {
   return withRequestCache(async () => {
     await authz(userId).hasRole('admin')
+    await validateTeacherOwner(data)
     return insertZoomLink(buildCreateZoomLinkValues(data))
   })
 }
@@ -49,6 +74,7 @@ export async function updateZoomLinkService(
 ) {
   return withRequestCache(async () => {
     await authz(userId).hasRole('admin')
+    await validateTeacherOwner(data)
     return updateZoomLinkById(
       data.zoomLinkId,
       buildUpdateZoomLinkValues(data, new Date()),

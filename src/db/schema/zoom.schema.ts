@@ -1,4 +1,6 @@
 import {
+  check,
+  index,
   integer,
   pgPolicy,
   pgTable,
@@ -9,7 +11,7 @@ import {
 import { sql } from 'drizzle-orm'
 import { authenticatedRole } from 'drizzle-orm/supabase'
 import { zoomLinkSectionEnum } from './enums.schema'
-import { courses } from './course.schema'
+import { profiles } from './profile.schema'
 
 export const zoomLinks = pgTable(
   'zoom_links',
@@ -18,8 +20,8 @@ export const zoomLinks = pgTable(
     title: text('title').notNull(),
     description: text('description'),
     section: zoomLinkSectionEnum('section').notNull(),
-    courseId: uuid('course_id').references(() => courses.id, {
-      onDelete: 'set null',
+    teacherId: uuid('teacher_id').references(() => profiles.id, {
+      onDelete: 'cascade',
     }),
     zoomUrl: text('zoom_url').notNull(),
     meetingId: text('meeting_id').notNull(),
@@ -28,11 +30,20 @@ export const zoomLinks = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (_table) => [
-    pgPolicy('authenticated_view_zoom_links', {
+  (table) => [
+    index('zoom_links_teacher_id_idx').on(table.teacherId),
+    check(
+      'zoom_links_section_owner_check',
+      sql`(section = 'general_class_lecture' AND teacher_id IS NULL) OR (section = 'teacher' AND teacher_id IS NOT NULL)`,
+    ),
+    pgPolicy('authenticated_view_visible_zoom_links', {
       for: 'select',
       to: authenticatedRole,
-      using: sql`true`,
+      using: sql`
+        section = 'general_class_lecture'
+        OR (SELECT role FROM profiles WHERE id = auth.uid()) IN ('teacher', 'admin')
+        OR teacher_id = public.current_discipleship_teacher_id()
+      `,
     }),
     pgPolicy('admins_insert_zoom_links', {
       for: 'insert',

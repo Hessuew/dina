@@ -202,6 +202,14 @@ Two Students under the same Teacher-user linked via `discipleship_pairs` and bot
 
 The monthly all-disciples meeting for everyone under one Teacher-user, stored on `discipleship_groups` (one row per teacher, `anchorAt`). Membership is implicit: every Discipleship Assignment that points at that teacher.
 
+### General Zoom Link
+
+An academy-wide meeting credential on `/zoom` with `zoom_links.section = 'general_class_lecture'` and no owner. Every authenticated user can view it. General Zoom Links are not attached to a Course.
+
+### Teacher Zoom Link
+
+A meeting credential on `/zoom` owned by exactly one Teacher-user or Admin profile through `zoom_links.teacher_id`. Teacher-users and Admins see every Teacher Zoom Link. A Student sees only links owned by the Teacher-user in their current Discipleship Assignment; an unassigned Student sees none. Multiple links per owner are allowed. This is separate from the Group discipleship meeting schedule: `/discipleship` supplies placement, while credentials stay on `/zoom` (ADR 0019).
+
 ### Student Discipleship View
 
 Read-only surface for `profiles.role = 'student'` on `/discipleship`. When the Student has a Discipleship Assignment they see: their Teacher-user (name, avatar), their own individual / pair / group anchors (or "not scheduled"), their peer partner when paired, and a same-teacher roster of classmate names+avatars grouped by Peer Pair (with solos). Other students' individual and pair times never leave the server; emails are never included. Unassigned Students see an empty state. Staff keep the manage board (see ADR 0018).

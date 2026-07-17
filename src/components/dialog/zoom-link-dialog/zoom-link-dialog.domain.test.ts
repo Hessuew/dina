@@ -5,16 +5,17 @@ import {
   getZoomLinkDialogConfig,
   getZoomLinkInitialValues,
   resolveZoomLink,
-} from '../zoom-link-dialog/zoom-link-dialog.domain'
+} from './zoom-link-dialog.domain'
 import type { ZoomLinkRow } from '@/utils/zoomLink'
 
+const teacherId = '11111111-1111-4111-8111-111111111111'
 const baseLink: ZoomLinkRow = {
   id: 'link-1',
-  title: 'Ground Course Lecture',
+  title: 'Teacher Session',
   description: 'Weekly zoom',
-  section: 'general_class_lecture',
-  courseId: 'course-1',
-  courseTitle: 'Ground Course',
+  section: 'teacher',
+  teacherId,
+  teacherName: 'Teacher One',
   zoomUrl: 'https://zoom.us/j/123',
   meetingId: '123 456 7890',
   passcode: 'secret',
@@ -24,82 +25,60 @@ const baseLink: ZoomLinkRow = {
 }
 
 describe('resolveZoomLink', () => {
-  it('returns null when dialogState is null', () => {
+  it('returns null without an edit link', () => {
     expect(resolveZoomLink(null)).toBeNull()
-  })
-
-  it('returns null when mode is create', () => {
     expect(resolveZoomLink({ mode: 'create' })).toBeNull()
   })
 
-  it('returns the link when mode is edit', () => {
+  it('returns the edit link', () => {
     expect(resolveZoomLink({ mode: 'edit', link: baseLink })).toBe(baseLink)
   })
 })
 
 describe('getZoomLinkDialogConfig', () => {
-  it('returns edit labels when isEdit is true', () => {
-    const config = getZoomLinkDialogConfig(true)
-    expect(config.subtitle).toBe('Edit meeting details')
-    expect(config.title).toBe('Edit Zoom Link')
+  it('returns edit labels', () => {
+    expect(getZoomLinkDialogConfig(true)).toEqual({
+      subtitle: 'Edit meeting details',
+      title: 'Edit Zoom Link',
+    })
   })
 
-  it('returns create labels when isEdit is false', () => {
-    const config = getZoomLinkDialogConfig(false)
-    expect(config.subtitle).toBe('New meeting details')
-    expect(config.title).toBe('Add Zoom Link')
+  it('returns create labels', () => {
+    expect(getZoomLinkDialogConfig(false)).toEqual({
+      subtitle: 'New meeting details',
+      title: 'Add Zoom Link',
+    })
   })
 })
 
 describe('getZoomLinkInitialValues', () => {
-  it('returns empty form when dialogState is null', () => {
-    expect(getZoomLinkInitialValues(null)).toEqual(emptyZoomForm)
-  })
-
-  it('returns empty form when mode is create', () => {
+  it('returns fresh empty forms for create states', () => {
+    const first = getZoomLinkInitialValues(null)
+    expect(first).toEqual(emptyZoomForm)
     expect(getZoomLinkInitialValues({ mode: 'create' })).toEqual(emptyZoomForm)
+    expect(first).not.toBe(getZoomLinkInitialValues(null))
   })
 
-  it('maps link fields when mode is edit', () => {
-    const result = getZoomLinkInitialValues({ mode: 'edit', link: baseLink })
-    expect(result.title).toBe('Ground Course Lecture')
-    expect(result.zoomUrl).toBe('https://zoom.us/j/123')
-    expect(result.meetingId).toBe('123 456 7890')
-    expect(result.passcode).toBe('secret')
-    expect(result.orderIndex).toBe(1)
-    expect(result.section).toBe('general_class_lecture')
-  })
-
-  it('maps courseId from link', () => {
-    const result = getZoomLinkInitialValues({ mode: 'edit', link: baseLink })
-    expect(result.courseId).toBe('course-1')
-  })
-
-  it('falls back to "none" when courseId is null', () => {
-    const result = getZoomLinkInitialValues({
-      mode: 'edit',
-      link: { ...baseLink, courseId: null },
+  it('maps an owned link', () => {
+    expect(getZoomLinkInitialValues({ mode: 'edit', link: baseLink })).toEqual({
+      title: 'Teacher Session',
+      description: 'Weekly zoom',
+      section: 'teacher',
+      teacherId,
+      zoomUrl: 'https://zoom.us/j/123',
+      meetingId: '123 456 7890',
+      passcode: 'secret',
+      orderIndex: 1,
     })
-    expect(result.courseId).toBe('none')
   })
 
-  it('maps description from link', () => {
-    const result = getZoomLinkInitialValues({ mode: 'edit', link: baseLink })
-    expect(result.description).toBe('Weekly zoom')
-  })
-
-  it('falls back to empty string when description is null', () => {
-    const result = getZoomLinkInitialValues({
+  it('uses empty display defaults for nullable values', () => {
+    const values = getZoomLinkInitialValues({
       mode: 'edit',
-      link: { ...baseLink, description: null },
+      link: { ...baseLink, teacherId: null, description: null },
     })
-    expect(result.description).toBe('')
-  })
-
-  it('returns a new object (not a reference to emptyZoomForm)', () => {
-    const a = getZoomLinkInitialValues(null)
-    const b = getZoomLinkInitialValues(null)
-    expect(a).not.toBe(b)
+    expect(values.teacherId).toBe('none')
+    expect(values.description).toBe('')
   })
 })
 
@@ -107,7 +86,7 @@ const baseFormData = {
   title: 'Ground Lecture',
   description: 'Weekly session',
   section: 'general_class_lecture',
-  courseId: 'course-1',
+  teacherId: 'none',
   zoomUrl: 'https://zoom.us/j/456',
   meetingId: '456 789 0123',
   passcode: 'pass',
@@ -115,46 +94,35 @@ const baseFormData = {
 }
 
 describe('buildZoomLinkPayload', () => {
-  it('passes title, zoomUrl, meetingId, passcode through', () => {
-    const payload = buildZoomLinkPayload(baseFormData)
-    expect(payload.title).toBe('Ground Lecture')
-    expect(payload.zoomUrl).toBe('https://zoom.us/j/456')
-    expect(payload.meetingId).toBe('456 789 0123')
-    expect(payload.passcode).toBe('pass')
+  it('builds a general payload without teacher ownership', () => {
+    expect(buildZoomLinkPayload(baseFormData)).toEqual({
+      title: 'Ground Lecture',
+      description: 'Weekly session',
+      section: 'general_class_lecture',
+      zoomUrl: 'https://zoom.us/j/456',
+      meetingId: '456 789 0123',
+      passcode: 'pass',
+      orderIndex: 2,
+    })
   })
 
-  it('passes non-empty description through', () => {
-    const payload = buildZoomLinkPayload(baseFormData)
-    expect(payload.description).toBe('Weekly session')
+  it('builds a teacher-owned payload', () => {
+    expect(
+      buildZoomLinkPayload({
+        ...baseFormData,
+        section: 'teacher',
+        teacherId,
+      }),
+    ).toMatchObject({ section: 'teacher', teacherId })
   })
 
-  it('sets description to undefined when empty', () => {
-    const payload = buildZoomLinkPayload({ ...baseFormData, description: '' })
+  it('normalizes empty optional values', () => {
+    const payload = buildZoomLinkPayload({
+      ...baseFormData,
+      description: '',
+      orderIndex: Number.NaN,
+    })
     expect(payload.description).toBeUndefined()
-  })
-
-  it('passes courseId through when not "none"', () => {
-    const payload = buildZoomLinkPayload(baseFormData)
-    expect(payload.courseId).toBe('course-1')
-  })
-
-  it('sets courseId to undefined when "none"', () => {
-    const payload = buildZoomLinkPayload({ ...baseFormData, courseId: 'none' })
-    expect(payload.courseId).toBeUndefined()
-  })
-
-  it('passes finite orderIndex through', () => {
-    const payload = buildZoomLinkPayload(baseFormData)
-    expect(payload.orderIndex).toBe(2)
-  })
-
-  it('sets orderIndex to undefined when NaN', () => {
-    const payload = buildZoomLinkPayload({ ...baseFormData, orderIndex: NaN })
     expect(payload.orderIndex).toBeUndefined()
-  })
-
-  it('casts section to ZoomLinkSection', () => {
-    const payload = buildZoomLinkPayload(baseFormData)
-    expect(payload.section).toBe('general_class_lecture')
   })
 })

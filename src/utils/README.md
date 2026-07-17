@@ -51,6 +51,10 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Server functions are thin adapters that validate input, call domain services from `src/domain/`, and return responses.
   - `postNotifications.ts`.
     - Post notification inbox logic (aggregation + mark read).
+  - `zoomLink/` - Zoom credential management:
+    - Domain filtering ensures Students receive General links plus only their assigned Teacher-user's links before a loader payload is built.
+    - Service owner validation permits only Teacher-user or Admin profiles; Admin-only mutations remain enforced through `authz`.
+    - Admin payloads include Teachers-page-ordered owner options for editing; other roles do not receive them.
   - `notifications/` - Notification event system:
     - `types.ts` - Core types (NotificationEvent, DeliveryAdapter, Handler)
     - `events.ts` - Event factories (createPostCreatedEvent, createCommentCreatedEvent)

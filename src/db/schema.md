@@ -16,6 +16,11 @@ Defines the database schema used by Drizzle:
 Those modules are the schema source of truth for type-safe queries via Drizzle; importers
 continue to use `@/db/schema`.
 
+`zoom.schema.ts` models General Zoom Links without an owner and Teacher Zoom Links with a
+required `profiles` owner. Its section/owner check is the integrity boundary. Its SELECT
+policy uses the caller-scoped `current_discipleship_teacher_id()` migration helper so
+Student visibility can follow placement while discipleship tables remain staff-select-only.
+
 ## Responsibilities
 
 - Provide the exported table objects used across the app (queries and mutations).

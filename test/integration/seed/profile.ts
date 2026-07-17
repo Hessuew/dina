@@ -10,6 +10,7 @@ export async function seedProfile(
     fullName?: string
     role?: Role
     bio?: string
+    createdAt?: Date
     resetTokenHash?: string
     resetTokenExpiresAt?: Date
     resetTokenAttempts?: number
@@ -29,6 +30,9 @@ export async function seedProfile(
     fullName: overrides.fullName ?? 'Test User',
     role: overrides.role ?? 'student',
     ...(overrides.bio !== undefined ? { bio: overrides.bio } : {}),
+    ...(overrides.createdAt !== undefined
+      ? { createdAt: overrides.createdAt }
+      : {}),
   })
 
   const security = {

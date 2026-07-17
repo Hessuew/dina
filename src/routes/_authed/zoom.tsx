@@ -24,10 +24,10 @@ const sectionCopy: Record<
     eyebrow: 'Main class lectures',
     empty: 'No general class lecture links have been added yet.',
   },
-  discipleship_group: {
-    title: 'Discipleship Groups',
-    eyebrow: 'Lecturer pair sessions',
-    empty: 'No discipleship group links have been added yet.',
+  teacher: {
+    title: 'Teacher Zoom Links',
+    eyebrow: 'Discipleship teacher sessions',
+    empty: 'No teacher Zoom links have been added yet.',
   },
 }
 
@@ -65,7 +65,7 @@ function ZoomPageHeader({
 }
 
 function ZoomComponent() {
-  const { links, courses, role } = Route.useLoaderData()
+  const { links, teachers, role } = Route.useLoaderData()
   const [dialogState, setDialogState] = useState<ZoomLinkDialogState>(null)
   const canEdit = role === 'admin'
 
@@ -74,9 +74,7 @@ function ZoomComponent() {
       general_class_lecture: links.filter(
         (link) => link.section === 'general_class_lecture',
       ),
-      discipleship_group: links.filter(
-        (link) => link.section === 'discipleship_group',
-      ),
+      teacher: links.filter((link) => link.section === 'teacher'),
     }),
     [links],
   )
@@ -106,18 +104,69 @@ function ZoomComponent() {
           />
           <ZoomSection
             canEdit={canEdit}
-            links={groupedLinks.discipleship_group}
-            section="discipleship_group"
+            links={groupedLinks.teacher}
+            section="teacher"
             onEdit={(link) => setDialogState({ mode: 'edit', link })}
           />
         </div>
       </main>
 
       <ZoomLinkDialog
-        courses={courses}
+        teachers={teachers}
         dialogState={dialogState}
         onOpenChange={(open) => !open && setDialogState(null)}
       />
+    </div>
+  )
+}
+
+function ZoomSectionHeader({
+  links,
+  section,
+}: {
+  links: Array<ZoomLinkRow>
+  section: ZoomLinkSection
+}) {
+  const copy = sectionCopy[section]
+  return (
+    <div className="mb-6 flex flex-col justify-between gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-end">
+      <div>
+        <p className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
+          {copy.eyebrow}
+        </p>
+        <h2 className="mt-2 font-serif text-2xl tracking-[-0.03em] text-[#F8F4EC]">
+          {copy.title}
+        </h2>
+      </div>
+      <p className="text-xs tracking-[0.2em] text-[#8E816D] uppercase">
+        {links.length} {links.length === 1 ? 'session' : 'sessions'}
+      </p>
+    </div>
+  )
+}
+
+function ZoomEmptyState({ section }: { section: ZoomLinkSection }) {
+  return (
+    <div className="border border-white/8 bg-white/4 px-5 py-8 text-sm text-[#AFA28F]">
+      {sectionCopy[section].empty}
+    </div>
+  )
+}
+
+function ZoomLinksGrid({
+  canEdit,
+  links,
+  onEdit,
+}: {
+  canEdit: boolean
+  links: Array<ZoomLinkRow>
+  onEdit: (link: ZoomLinkRow) => void
+}) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      {links.map((link) => (
+        <ZoomCard key={link.id} canEdit={canEdit} link={link} onEdit={onEdit} />
+      ))}
     </div>
   )
 }
@@ -133,39 +182,14 @@ function ZoomSection({
   section: ZoomLinkSection
   onEdit: (link: ZoomLinkRow) => void
 }) {
-  const copy = sectionCopy[section]
-
   return (
     <section className="border border-white/10 bg-[#171717]/72 p-5 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] backdrop-blur-sm sm:p-6">
-      <div className="mb-6 flex flex-col justify-between gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-[0.68rem] font-medium tracking-[0.3em] text-[#D4B373] uppercase">
-            {copy.eyebrow}
-          </p>
-          <h2 className="mt-2 font-serif text-2xl tracking-[-0.03em] text-[#F8F4EC]">
-            {copy.title}
-          </h2>
-        </div>
-        <p className="text-xs tracking-[0.2em] text-[#8E816D] uppercase">
-          {links.length} {links.length === 1 ? 'session' : 'sessions'}
-        </p>
-      </div>
+      <ZoomSectionHeader links={links} section={section} />
 
       {links.length === 0 ? (
-        <div className="border border-white/8 bg-white/4 px-5 py-8 text-sm text-[#AFA28F]">
-          {copy.empty}
-        </div>
+        <ZoomEmptyState section={section} />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {links.map((link) => (
-            <ZoomCard
-              key={link.id}
-              canEdit={canEdit}
-              link={link}
-              onEdit={onEdit}
-            />
-          ))}
-        </div>
+        <ZoomLinksGrid canEdit={canEdit} links={links} onEdit={onEdit} />
       )}
     </section>
   )
@@ -185,7 +209,7 @@ function ZoomCard({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[0.64rem] font-medium tracking-[0.28em] text-[#8E816D] uppercase">
-            {link.courseTitle ?? sectionCopy[link.section].eyebrow}
+            {link.teacherName ?? sectionCopy[link.section].eyebrow}
           </p>
           <h3 className="mt-2 font-serif text-xl leading-tight text-[#F8F4EC]">
             {link.title}

@@ -40,6 +40,10 @@ Database access layer and schema definitions.
     - `post_notifications`
       - Stores post-related notifications (new teacher/admin posts, comments on your posts).
       - Used to power the in-app notifications dropdown and unread badge.
+    - `zoom_links`
+      - Stores academy-wide General Zoom Links and links owned by a Teacher-user or Admin.
+      - General rows have no `teacher_id`; teacher rows require one and cascade on owner deletion.
+      - Student visibility follows `discipleship_assignments` without granting Student SELECT on that table (ADR 0019).
     - `whatsapp_messages` / `whatsapp_campaign_locks`
       - Audit/logging and per-campaign locking for admin WhatsApp campaigns.
     - `email_messages` / `email_campaign_locks`

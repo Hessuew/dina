@@ -1,10 +1,11 @@
 import type { ZoomLinkRow, ZoomLinkSection } from '@/utils/zoomLink'
+import type { CreateZoomLinkInput } from '@/schemas/zoomLink.schema'
 
 export type ZoomFormData = {
   title: string
   description: string
   section: string
-  courseId: string
+  teacherId: string
   zoomUrl: string
   meetingId: string
   passcode: string
@@ -20,7 +21,7 @@ export const emptyZoomForm: ZoomFormData = {
   title: '',
   description: '',
   section: 'general_class_lecture',
-  courseId: 'none',
+  teacherId: 'none',
   zoomUrl: '',
   meetingId: '',
   passcode: '',
@@ -52,7 +53,7 @@ export function getZoomLinkInitialValues(
       title: link.title,
       description: link.description ?? '',
       section: link.section,
-      courseId: link.courseId ?? 'none',
+      teacherId: link.teacherId ?? 'none',
       zoomUrl: link.zoomUrl,
       meetingId: link.meetingId,
       passcode: link.passcode,
@@ -62,23 +63,12 @@ export function getZoomLinkInitialValues(
   return { ...emptyZoomForm }
 }
 
-export type ZoomLinkPayload = {
-  title: string
-  description: string | undefined
-  section: ZoomLinkSection
-  courseId: string | undefined
-  zoomUrl: string
-  meetingId: string
-  passcode: string
-  orderIndex: number | undefined
-}
+export type ZoomLinkPayload = CreateZoomLinkInput
 
 export function buildZoomLinkPayload(value: ZoomFormData): ZoomLinkPayload {
-  return {
+  const common = {
     title: value.title,
     description: value.description || undefined,
-    section: value.section as ZoomLinkSection,
-    courseId: value.courseId === 'none' ? undefined : value.courseId,
     zoomUrl: value.zoomUrl,
     meetingId: value.meetingId,
     passcode: value.passcode,
@@ -86,4 +76,8 @@ export function buildZoomLinkPayload(value: ZoomFormData): ZoomLinkPayload {
       ? value.orderIndex
       : undefined,
   }
+  if ((value.section as ZoomLinkSection) === 'teacher') {
+    return { ...common, section: 'teacher', teacherId: value.teacherId }
+  }
+  return { ...common, section: 'general_class_lecture' }
 }

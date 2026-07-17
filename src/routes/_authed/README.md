@@ -22,6 +22,8 @@ This folder contains feature areas implemented as route files:
 - **Posts**: `posts.tsx`
 - **Library**: `library/index.tsx`, `library/$mediaId.tsx`
 - **Enrollments**: `enrollments.tsx`, `enrollments/$enrollmentId.tsx`
+- **Discipleship**: `discipleship.tsx` supplies Student-to-Teacher placement and schedules.
+- **Zoom**: `zoom.tsx` shows academy-wide General links plus role-visible Teacher-owned links; Admins manage ownership there.
 
 ## Key Invariants / Assumptions
 
