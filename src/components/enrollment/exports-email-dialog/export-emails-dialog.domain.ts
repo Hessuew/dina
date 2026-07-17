@@ -26,14 +26,35 @@ export function resolveEmailCountLabel(count: number): string {
   return `${count} email${count === 1 ? '' : 's'} — semicolon-separated for Outlook`
 }
 
+export function contactHasInvalidPhone(phoneWhatsApp: string): boolean {
+  return !normalizeToE164(phoneWhatsApp).ok
+}
+
 export function countInvalidContactPhones(
   contacts: Array<ContactExportRecord>,
   field: ContactExportField,
 ): number {
   if (field === 'email') return 0
-  return contacts.filter(
-    (contact) => !normalizeToE164(contact.phoneWhatsApp).ok,
+  return contacts.filter((contact) =>
+    contactHasInvalidPhone(contact.phoneWhatsApp),
   ).length
+}
+
+/** Count invalid phones regardless of export field (for UI flags). */
+export function countInvalidContactPhonesAlways(
+  contacts: Array<ContactExportRecord>,
+): number {
+  return contacts.filter((contact) =>
+    contactHasInvalidPhone(contact.phoneWhatsApp),
+  ).length
+}
+
+export function removeInvalidPhoneContacts<T extends ContactExportRecord>(
+  contacts: Array<T>,
+): Array<T> {
+  return contacts.filter(
+    (contact) => !contactHasInvalidPhone(contact.phoneWhatsApp),
+  )
 }
 
 export function formatContactsForExport(

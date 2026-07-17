@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   GROUP_OPTIONS,
+  contactHasInvalidPhone,
   countInvalidContactPhones,
+  countInvalidContactPhonesAlways,
   formatContactsForExport,
   formatEmailsForExport,
+  removeInvalidPhoneContacts,
   resolveEmailCountLabel,
 } from './export-emails-dialog.domain'
 
@@ -110,5 +113,33 @@ describe('countInvalidContactPhones', () => {
         'both',
       ),
     ).toBe(1)
+  })
+})
+
+describe('contactHasInvalidPhone', () => {
+  it('flags numbers that cannot normalize to E.164', () => {
+    expect(contactHasInvalidPhone('0401234567')).toBe(true)
+    expect(contactHasInvalidPhone('+358401234567')).toBe(false)
+  })
+})
+
+describe('countInvalidContactPhonesAlways', () => {
+  it('counts invalid phones even for email-only context', () => {
+    expect(
+      countInvalidContactPhonesAlways([
+        ...contacts,
+        { ...contacts[0], phoneWhatsApp: '0401234567' },
+      ]),
+    ).toBe(1)
+  })
+})
+
+describe('removeInvalidPhoneContacts', () => {
+  it('keeps only contacts with valid phones', () => {
+    const mixed = [
+      contacts[0],
+      { ...contacts[1], phoneWhatsApp: 'not-a-phone' },
+    ]
+    expect(removeInvalidPhoneContacts(mixed)).toEqual([contacts[0]])
   })
 })
