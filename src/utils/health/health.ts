@@ -36,6 +36,8 @@ type RequestContext = {
 
 type HealthOptions = {
   checkDatabase?: () => Promise<void>
+  /** Max wait for dependency checks. Default 2000ms. */
+  checkTimeoutMs?: number
   environment?: string
   now?: () => Date
   release?: string | null
@@ -53,6 +55,7 @@ type LogEntry = {
 }
 
 const SERVICE_NAME = 'christ-dina'
+const DEFAULT_CHECK_TIMEOUT_MS = 2000
 
 export function isOperationalPath(pathname: string): boolean {
   return pathname === '/healthz' || pathname === '/readyz'
@@ -75,7 +78,10 @@ export async function handleReadinessRequest(
   options: HealthOptions = {},
 ): Promise<Response> {
   const context = buildRequestContext(request, options)
-  const database = await checkDependency(options.checkDatabase ?? noopCheck)
+  const database = await checkDependency(
+    options.checkDatabase ?? noopCheck,
+    options.checkTimeoutMs ?? DEFAULT_CHECK_TIMEOUT_MS,
+  )
   const status = database.status
   const body = {
     ...buildHealthPayload(context, status),
@@ -123,11 +129,12 @@ function buildHealthPayload(
 
 async function checkDependency(
   check: () => Promise<void>,
+  timeoutMs: number,
 ): Promise<DependencyResult> {
   const startedAt = performance.now()
 
   try {
-    await check()
+    await withTimeout(check(), timeoutMs)
     return { status: 'ok', durationMs: elapsedMs(startedAt) }
   } catch {
     return {
@@ -139,6 +146,25 @@ async function checkDependency(
       },
     }
   }
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Readiness check timed out'))
+    }, timeoutMs)
+
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error: unknown) => {
+        clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
 }
 
 function buildLogEntry(

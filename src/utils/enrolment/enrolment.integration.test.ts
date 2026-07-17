@@ -2,15 +2,16 @@ import { describe, expect, it } from 'vitest'
 import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
 import {
+  getEnrollmentEmailsService,
   getEnrollmentsService,
-  searchEnrollmentEmailsByNamesService,
+  searchEnrollmentContactsByNamesService,
   sendInvitationForEnrollmentService,
   setEvaluationScoreService,
   substituteTeacherService,
 } from '@/utils/enrolment/service/enrolment.service'
 import {
   findEnrollmentById,
-  findEnrollmentEmailLookupCandidates,
+  findEnrollmentContactLookupCandidates,
   findEnrollmentEmailsByGroup,
   findInvitationByEmail,
 } from '@/utils/enrolment/repository/enrolment.repository'
@@ -324,14 +325,23 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
       expect([...emails].sort()).toEqual([...expected].sort())
     },
   )
+
+  it('rejects teacher access to contact export cohorts', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+
+    await expect(
+      getEnrollmentEmailsService({ group: 'all' }, teacherId),
+    ).rejects.toBeInstanceOf(AuthorizationError)
+  })
 })
 
-describe('enrollment email lookup by name (integration)', () => {
+describe('enrollment contact lookup by name (integration)', () => {
   async function seedLookupEnrollments() {
     await seedEnrollment({
       fullLegalName: 'Maria Santos',
       preferredName: 'Mia',
       email: 'maria@test.dev',
+      phoneWhatsApp: '+358 40 1234567',
       status: 'approved',
     })
     await seedEnrollment({
@@ -349,19 +359,20 @@ describe('enrollment email lookup by name (integration)', () => {
   it('finds candidates by full legal name and preferred name', async () => {
     await seedLookupEnrollments()
 
-    const rows = await findEnrollmentEmailLookupCandidates([
+    const rows = await findEnrollmentContactLookupCandidates([
       'Maria Santos',
       'Mia',
     ])
 
     expect(rows.map((row) => row.email).sort()).toEqual(['maria@test.dev'])
+    expect(rows[0]?.phoneWhatsApp).toBe('+358 40 1234567')
   })
 
-  it('lets admins search pasted names and receives grouped email matches', async () => {
+  it('lets admins search pasted names and receives grouped contact matches', async () => {
     const adminId = await seedProfile({ role: 'admin' })
     await seedLookupEnrollments()
 
-    const result = await searchEnrollmentEmailsByNamesService(
+    const result = await searchEnrollmentContactsByNamesService(
       { names: 'Mia\nSmith\nUnknown Person' },
       adminId,
     )
@@ -369,6 +380,7 @@ describe('enrollment email lookup by name (integration)', () => {
     expect(result.groups).toHaveLength(3)
     expect(result.groups[0].matches[0]).toMatchObject({
       email: 'maria@test.dev',
+      phoneWhatsApp: '+358 40 1234567',
       matchedName: 'Mia',
     })
     expect(result.groups[1].matches.map((match) => match.email).sort()).toEqual(
@@ -381,12 +393,12 @@ describe('enrollment email lookup by name (integration)', () => {
     })
   })
 
-  it('rejects teacher access for manual email lookup', async () => {
+  it('rejects teacher access for manual contact lookup', async () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     await seedLookupEnrollments()
 
     await expect(
-      searchEnrollmentEmailsByNamesService({ names: 'Mia' }, teacherId),
+      searchEnrollmentContactsByNamesService({ names: 'Mia' }, teacherId),
     ).rejects.toBeInstanceOf(AuthorizationError)
   })
 })

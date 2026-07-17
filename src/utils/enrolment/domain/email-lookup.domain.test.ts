@@ -1,19 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import {
-  addEnrollmentEmailLookupSelection,
-  buildEnrollmentEmailLookupGroups,
+  addEnrollmentContactLookupSelection,
+  buildEnrollmentContactLookupGroups,
   normalizeName,
-  parseEnrollmentEmailLookupNames,
-  removeEnrollmentEmailLookupSelection,
+  parseEnrollmentContactLookupNames,
+  removeEnrollmentContactLookupSelection,
 } from './email-lookup.domain'
-import type { EnrollmentEmailLookupCandidate } from './email-lookup.domain'
+import type { EnrollmentContactLookupCandidate } from './email-lookup.domain'
 
-const candidates: Array<EnrollmentEmailLookupCandidate> = [
+const candidates: Array<EnrollmentContactLookupCandidate> = [
   {
     enrollmentId: 'enrollment-1',
     fullLegalName: 'Maria Santos',
     preferredName: 'Mia',
     email: 'maria@test.dev',
+    phoneWhatsApp: '+358401234567',
     status: 'approved',
   },
   {
@@ -21,6 +22,7 @@ const candidates: Array<EnrollmentEmailLookupCandidate> = [
     fullLegalName: 'John Smith',
     preferredName: null,
     email: 'john@test.dev',
+    phoneWhatsApp: '+14155552671',
     status: 'pending',
   },
   {
@@ -28,20 +30,21 @@ const candidates: Array<EnrollmentEmailLookupCandidate> = [
     fullLegalName: 'Jane Smith',
     preferredName: null,
     email: 'jane@test.dev',
+    phoneWhatsApp: '+358401234568',
     status: 'approved',
   },
 ]
 
-describe('parseEnrollmentEmailLookupNames', () => {
+describe('parseEnrollmentContactLookupNames', () => {
   it('parses comma and newline separated names', () => {
     expect(
-      parseEnrollmentEmailLookupNames('Maria Santos, John Smith\nMia'),
+      parseEnrollmentContactLookupNames('Maria Santos, John Smith\nMia'),
     ).toEqual(['Maria Santos', 'John Smith', 'Mia'])
   })
 
   it('trims, collapses whitespace, and dedupes by normalized name', () => {
     expect(
-      parseEnrollmentEmailLookupNames(' Maria   Santos , maria santos\nJOHN'),
+      parseEnrollmentContactLookupNames(' Maria   Santos , maria santos\nJOHN'),
     ).toEqual(['Maria Santos', 'JOHN'])
   })
 })
@@ -52,9 +55,9 @@ describe('normalizeName', () => {
   })
 })
 
-describe('buildEnrollmentEmailLookupGroups', () => {
+describe('buildEnrollmentContactLookupGroups', () => {
   it('matches full legal names strongly', () => {
-    const [group] = buildEnrollmentEmailLookupGroups(
+    const [group] = buildEnrollmentContactLookupGroups(
       ['Maria Santos'],
       candidates,
     )
@@ -69,7 +72,7 @@ describe('buildEnrollmentEmailLookupGroups', () => {
   })
 
   it('matches preferred names strongly', () => {
-    const [group] = buildEnrollmentEmailLookupGroups(['Mia'], candidates)
+    const [group] = buildEnrollmentContactLookupGroups(['Mia'], candidates)
 
     expect(group.matches[0]).toMatchObject({
       enrollmentId: 'enrollment-1',
@@ -78,7 +81,7 @@ describe('buildEnrollmentEmailLookupGroups', () => {
   })
 
   it('returns multiple matches for ambiguous names', () => {
-    const [group] = buildEnrollmentEmailLookupGroups(['Smith'], candidates)
+    const [group] = buildEnrollmentContactLookupGroups(['Smith'], candidates)
 
     expect(group.matches.map((match) => match.email).sort()).toEqual([
       'jane@test.dev',
@@ -87,7 +90,10 @@ describe('buildEnrollmentEmailLookupGroups', () => {
   })
 
   it('returns suggestions for unmatched fuzzy names', () => {
-    const [group] = buildEnrollmentEmailLookupGroups(['Jon Smith'], candidates)
+    const [group] = buildEnrollmentContactLookupGroups(
+      ['Jon Smith'],
+      candidates,
+    )
 
     expect(group.matches).toEqual([])
     expect(group.suggestions[0]).toMatchObject({
@@ -97,7 +103,10 @@ describe('buildEnrollmentEmailLookupGroups', () => {
   })
 
   it('returns no matches or suggestions when nothing is close', () => {
-    const [group] = buildEnrollmentEmailLookupGroups(['Zed Alpha'], candidates)
+    const [group] = buildEnrollmentContactLookupGroups(
+      ['Zed Alpha'],
+      candidates,
+    )
 
     expect(group).toMatchObject({
       query: 'Zed Alpha',
@@ -109,7 +118,7 @@ describe('buildEnrollmentEmailLookupGroups', () => {
 
 describe('email lookup selection helpers', () => {
   it('adds selections once by enrollment ID', () => {
-    const selected = addEnrollmentEmailLookupSelection(
+    const selected = addEnrollmentContactLookupSelection(
       [{ enrollmentId: 'enrollment-1', email: 'maria@test.dev' }],
       { enrollmentId: 'enrollment-1', email: 'maria@test.dev' },
     )
@@ -120,7 +129,7 @@ describe('email lookup selection helpers', () => {
   })
 
   it('removes a selected enrollment by ID', () => {
-    const selected = removeEnrollmentEmailLookupSelection(
+    const selected = removeEnrollmentContactLookupSelection(
       [
         { enrollmentId: 'enrollment-1', email: 'maria@test.dev' },
         { enrollmentId: 'enrollment-2', email: 'john@test.dev' },

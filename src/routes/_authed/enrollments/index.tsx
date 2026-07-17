@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { EyeIcon, MailIcon } from 'lucide-react'
+import { EyeIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { EnrollmentsNavRequest } from '@/utils/enrolment/domain/enrollments-navigation.domain'
 import { Button } from '@/components/ui/button'
@@ -26,7 +26,7 @@ import {
   EndSubstitutionDialog,
   StartSubstitutionDialog,
 } from '@/components/dialog/SubstituteTeacherDialog'
-import { ExportEmailsDialog } from '@/components/enrollment/exports-email-dialog/ExportEmailsDialog'
+import { ExportContactsDialog } from '@/components/enrollment/exports-email-dialog/ExportEmailsDialog'
 import { BulkGradeDialog } from '@/components/enrollment/bulk-grade-dialog/BulkGradeDialog'
 import { WhatsAppCampaignDialog } from '@/components/enrollment/whatsapp-campaign-dialog/WhatsAppCampaignDialog'
 import { EmailCampaignDialog } from '@/components/enrollment/email-campaign-dialog/EmailCampaignDialog'
@@ -136,7 +136,7 @@ function useEnrollmentsActions(router: AppRouter, params: EnrollmentsSearch) {
   const [isDistributing, setIsDistributing] = useState(false)
   const [isStartSubDialogOpen, setIsStartSubDialogOpen] = useState(false)
   const [isEndSubDialogOpen, setIsEndSubDialogOpen] = useState(false)
-  const [isExportEmailsDialogOpen, setIsExportEmailsDialogOpen] =
+  const [isExportContactsDialogOpen, setIsExportContactsDialogOpen] =
     useState(false)
   const [isBulkGradeDialogOpen, setIsBulkGradeDialogOpen] = useState(false)
   const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false)
@@ -181,8 +181,8 @@ function useEnrollmentsActions(router: AppRouter, params: EnrollmentsSearch) {
     setIsStartSubDialogOpen,
     isEndSubDialogOpen,
     setIsEndSubDialogOpen,
-    isExportEmailsDialogOpen,
-    setIsExportEmailsDialogOpen,
+    isExportContactsDialogOpen,
+    setIsExportContactsDialogOpen,
     isBulkGradeDialogOpen,
     setIsBulkGradeDialogOpen,
     isWhatsAppDialogOpen,
@@ -203,7 +203,6 @@ function useEnrollmentsPageController() {
   const params = Route.useSearch()
   const { page, pageSize, search, sortBy, sortDir, review, viewAll } = params
   const isAdmin = resolveIsAdmin(user)
-  const canExportEmails = isAdmin || user?.role === 'teacher'
 
   const reviewState = useEnrollmentReview({
     initialEnrollments: enrollments,
@@ -235,7 +234,6 @@ function useEnrollmentsPageController() {
     sortBy,
     sortDir,
     isAdmin,
-    canExportEmails,
     router,
     reviewState,
     reviewOverlay,
@@ -248,13 +246,12 @@ function useEnrollmentsPageController() {
 type EnrollmentsPageHeaderProps = {
   viewAllButton: ReturnType<typeof getViewAllButtonProps>
   isAdmin: boolean
-  canExportEmails: boolean
   isDistributing: boolean
   onToggleViewAll: () => void
   onDistribute: () => void
   onStartSubstitution: () => void
   onEndSubstitution: () => void
-  onExportEmails: () => void
+  onExportContacts: () => void
   onBulkGrade: () => void
   onSendWhatsApp: () => void
   onSendEmailCampaign: () => void
@@ -263,13 +260,12 @@ type EnrollmentsPageHeaderProps = {
 function EnrollmentsPageHeader({
   viewAllButton,
   isAdmin,
-  canExportEmails,
   isDistributing,
   onToggleViewAll,
   onDistribute,
   onStartSubstitution,
   onEndSubstitution,
-  onExportEmails,
+  onExportContacts,
   onBulkGrade,
   onSendWhatsApp,
   onSendEmailCampaign,
@@ -294,17 +290,12 @@ function EnrollmentsPageHeader({
           <EyeIcon className="size-3.5" />
           {viewAllButton.label}
         </Button>
-        {canExportEmails && (
-          <Button theme="light" variant="outline" onClick={onExportEmails}>
-            <MailIcon className="size-3.5" />
-            Export emails
-          </Button>
-        )}
         {isAdmin && (
           <AdminActionsDropdown
             onDistribute={onDistribute}
             onStartSubstitution={onStartSubstitution}
             onEndSubstitution={onEndSubstitution}
+            onExportContacts={onExportContacts}
             onBulkGrade={onBulkGrade}
             onSendWhatsApp={onSendWhatsApp}
             onSendEmailCampaign={onSendEmailCampaign}
@@ -436,13 +427,12 @@ function EnrollmentsPage() {
       <EnrollmentsPageHeader
         viewAllButton={c.viewAllButton}
         isAdmin={c.isAdmin}
-        canExportEmails={c.canExportEmails}
         isDistributing={c.isDistributing}
         onToggleViewAll={c.handleToggleViewAll}
         onDistribute={() => void c.handleDistribute()}
         onStartSubstitution={() => c.setIsStartSubDialogOpen(true)}
         onEndSubstitution={() => c.setIsEndSubDialogOpen(true)}
-        onExportEmails={() => c.setIsExportEmailsDialogOpen(true)}
+        onExportContacts={() => c.setIsExportContactsDialogOpen(true)}
         onBulkGrade={() => c.setIsBulkGradeDialogOpen(true)}
         onSendWhatsApp={() => c.setIsWhatsAppDialogOpen(true)}
         onSendEmailCampaign={() => c.setIsEmailCampaignDialogOpen(true)}
@@ -460,11 +450,10 @@ function EnrollmentsPage() {
         />
       )}
 
-      {c.canExportEmails && (
-        <ExportEmailsDialog
-          open={c.isExportEmailsDialogOpen}
-          isAdmin={c.isAdmin}
-          onOpenChange={c.setIsExportEmailsDialogOpen}
+      {c.isAdmin && (
+        <ExportContactsDialog
+          open={c.isExportContactsDialogOpen}
+          onOpenChange={c.setIsExportContactsDialogOpen}
         />
       )}
 

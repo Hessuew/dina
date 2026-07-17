@@ -6,7 +6,7 @@ import type {
   GetEnrollmentByIdInput,
   GetEnrollmentEmailsInput,
   GetEnrollmentsInput,
-  SearchEnrollmentEmailsByNamesInput,
+  SearchEnrollmentContactsByNamesInput,
   SendInvitationForEnrollmentInput,
   SetEnrollmentSpecialCaseInput,
   SetEvaluationAdmissionCategoryInput,
@@ -44,7 +44,7 @@ import {
   findCourseIdsForViewer,
   findCourseTeamIds,
   findEnrollmentById,
-  findEnrollmentEmailLookupCandidates,
+  findEnrollmentContactLookupCandidates,
   findEnrollmentEmailsByGroup,
   findEnrollmentsPage,
   findEvaluationsForEnrollments,
@@ -76,8 +76,8 @@ import {
   ValidationError,
 } from '@/utils/errors'
 import {
-  buildEnrollmentEmailLookupGroups,
-  parseEnrollmentEmailLookupNames,
+  buildEnrollmentContactLookupGroups,
+  parseEnrollmentContactLookupNames,
 } from '@/utils/enrolment/domain/email-lookup.domain'
 import { env } from '@/env'
 import { sendInvitationEmail } from '@/utils/email'
@@ -725,21 +725,14 @@ export async function endSubstitutionService(
 
 /**
  * Returns all enrollment emails for the requested group.
- * Accessible to both admins and teachers — email redaction is intentionally
- * bypassed for this export use-case.
+ * Admin-only because it exposes enrollment contact details.
  */
 export async function getEnrollmentEmailsService(
   data: GetEnrollmentEmailsInput,
   userId: string,
 ): Promise<{ emails: Array<string> }> {
   return withRequestCache(async () => {
-    const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-    if (!isAdmin && !isTeacher) {
-      throw new AuthorizationError('admin or teacher access required', {
-        code: 'ROLE_REQUIRED',
-        details: {},
-      })
-    }
+    await authz(userId).hasRole('admin')
     const emails = await findEnrollmentEmailsByGroup(data.group)
     return { emails }
   })
@@ -747,23 +740,23 @@ export async function getEnrollmentEmailsService(
 
 /**
  * Admin-only manual lookup that maps pasted applicant names to enrollment
- * emails. Separate from status-based export cohorts.
+ * contacts. Separate from status-based export cohorts.
  */
-export async function searchEnrollmentEmailsByNamesService(
-  data: SearchEnrollmentEmailsByNamesInput,
+export async function searchEnrollmentContactsByNamesService(
+  data: SearchEnrollmentContactsByNamesInput,
   userId: string,
 ) {
   return withRequestCache(async () => {
     await authz(userId).hasRole('admin')
 
-    const queries = parseEnrollmentEmailLookupNames(data.names)
+    const queries = parseEnrollmentContactLookupNames(data.names)
     if (queries.length === 0) {
       throw new ValidationError('Enter at least one name')
     }
 
-    const candidates = await findEnrollmentEmailLookupCandidates(queries)
+    const candidates = await findEnrollmentContactLookupCandidates(queries)
     return {
-      groups: buildEnrollmentEmailLookupGroups(queries, candidates),
+      groups: buildEnrollmentContactLookupGroups(queries, candidates),
     }
   })
 }

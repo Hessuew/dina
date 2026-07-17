@@ -4,18 +4,23 @@ import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
 import {
   GROUP_OPTIONS,
+  countInvalidContactPhones,
+  formatContactsForExport,
   formatEmailsForExport,
   resolveEmailCountLabel,
 } from './export-emails-dialog.domain'
 import type { RefObject } from 'react'
-import type { EmailGroup } from './export-emails-dialog.domain'
 import type {
-  EnrollmentEmailLookupGroup,
-  EnrollmentEmailLookupMatch,
+  ContactExportField,
+  EmailGroup,
+} from './export-emails-dialog.domain'
+import type {
+  EnrollmentContactLookupGroup,
+  EnrollmentContactLookupMatch,
 } from '@/utils/enrolment/domain/email-lookup.domain'
 import {
-  addEnrollmentEmailLookupSelection,
-  removeEnrollmentEmailLookupSelection,
+  addEnrollmentContactLookupSelection,
+  removeEnrollmentContactLookupSelection,
 } from '@/utils/enrolment/domain/email-lookup.domain'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,18 +34,21 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import {
   getEnrollmentEmails,
-  searchEnrollmentEmailsByNames,
+  searchEnrollmentContactsByNames,
 } from '@/utils/enrolment/enrollments'
+import { normalizeToE164 } from '@/utils/whatsapp/domain/phone.domain'
 import { toUserError } from '@/utils/errors'
 
-type ExportEmailsDialogProps = {
+type ExportContactsDialogProps = {
   open: boolean
-  isAdmin: boolean
   onOpenChange: (open: boolean) => void
 }
 
 type ExportMode = 'cohort' | 'lookup'
-type CopyEmailSource = Array<string> | Array<EnrollmentEmailLookupMatch> | null
+type CopyEmailSource =
+  | Array<string>
+  | Array<EnrollmentContactLookupMatch>
+  | null
 type GenerationRef = RefObject<number>
 
 function isLatestGeneration(
@@ -109,15 +117,15 @@ function useCohortEmailExport() {
   }
 }
 
-function useNameEmailLookup() {
+function useNameContactLookup() {
   const [names, setNames] = useState('')
-  const [groups, setGroups] = useState<Array<EnrollmentEmailLookupGroup>>([])
-  const [selected, setSelected] = useState<Array<EnrollmentEmailLookupMatch>>(
+  const [groups, setGroups] = useState<Array<EnrollmentContactLookupGroup>>([])
+  const [selected, setSelected] = useState<Array<EnrollmentContactLookupMatch>>(
     [],
   )
   const [isLoading, setIsLoading] = useState(false)
   const [copied, setCopied] = useState(false)
-  const searchFn = useServerFn(searchEnrollmentEmailsByNames)
+  const searchFn = useServerFn(searchEnrollmentContactsByNames)
   const generationRef = useRef(0)
 
   async function handleSearch() {
@@ -150,22 +158,42 @@ function useNameEmailLookup() {
     copied,
     setCopied,
     handleSearch,
-    selectMatch: (match: EnrollmentEmailLookupMatch) =>
-      setSelected((prev) => addEnrollmentEmailLookupSelection(prev, match)),
+    selectMatch: (match: EnrollmentContactLookupMatch) =>
+      setSelected((prev) => addEnrollmentContactLookupSelection(prev, match)),
     removeMatch: (id: string) =>
-      setSelected((prev) => removeEnrollmentEmailLookupSelection(prev, id)),
+      setSelected((prev) => removeEnrollmentContactLookupSelection(prev, id)),
+    reset,
+  }
+}
+
+function useContactExportOptions(
+  selected: Array<EnrollmentContactLookupMatch>,
+) {
+  const [field, setField] = useState<ContactExportField>('email')
+  const [includeName, setIncludeName] = useState(false)
+  const invalidPhoneCount = countInvalidContactPhones(selected, field)
+
+  function reset() {
+    setField('email')
+    setIncludeName(false)
+  }
+
+  return {
+    field,
+    setField,
+    includeName,
+    setIncludeName,
+    invalidPhoneCount,
     reset,
   }
 }
 
 type ModeTabsProps = {
   mode: ExportMode
-  isAdmin: boolean
   onModeChange: (mode: ExportMode) => void
 }
 
-function ModeTabs({ mode, isAdmin, onModeChange }: ModeTabsProps) {
-  if (!isAdmin) return null
+function ModeTabs({ mode, onModeChange }: ModeTabsProps) {
   return (
     <div className="mb-5 flex gap-2">
       <Button
@@ -260,7 +288,8 @@ function CohortPanel({
   )
 }
 
-type LookupPanelProps = ReturnType<typeof useNameEmailLookup>
+type LookupPanelProps = ReturnType<typeof useNameContactLookup> &
+  ReturnType<typeof useContactExportOptions>
 
 function LookupPanel({
   names,
@@ -271,10 +300,14 @@ function LookupPanel({
   handleSearch,
   selectMatch,
   removeMatch,
+  field,
+  setField,
+  includeName,
+  setIncludeName,
 }: LookupPanelProps) {
   return (
-    <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.72fr)]">
-      <div className="min-w-0">
+    <div className="grid min-h-0 flex-1 gap-5 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.72fr)]">
+      <div className="flex min-h-0 min-w-0 flex-col">
         <LookupSearchForm
           names={names}
           setNames={setNames}
@@ -287,7 +320,14 @@ function LookupPanel({
           onSelect={selectMatch}
         />
       </div>
-      <SelectedLookupEmails selected={selected} onRemove={removeMatch} />
+      <SelectedLookupEmails
+        selected={selected}
+        field={field}
+        includeName={includeName}
+        onFieldChange={setField}
+        onIncludeNameChange={setIncludeName}
+        onRemove={removeMatch}
+      />
     </div>
   )
 }
@@ -328,16 +368,16 @@ function LookupSearchForm({
 }
 
 type LookupResultsProps = {
-  groups: Array<EnrollmentEmailLookupGroup>
-  selected: Array<EnrollmentEmailLookupMatch>
-  onSelect: (match: EnrollmentEmailLookupMatch) => void
+  groups: Array<EnrollmentContactLookupGroup>
+  selected: Array<EnrollmentContactLookupMatch>
+  onSelect: (match: EnrollmentContactLookupMatch) => void
 }
 
 function LookupResults({ groups, selected, onSelect }: LookupResultsProps) {
   const selectedIds = new Set(selected.map((item) => item.enrollmentId))
   if (groups.length === 0) return null
   return (
-    <div className="mt-5 flex max-h-72 flex-col gap-3 overflow-y-auto pr-1">
+    <div className="mt-5 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
       {groups.map((group) => (
         <LookupResultGroup
           key={group.query}
@@ -351,9 +391,9 @@ function LookupResults({ groups, selected, onSelect }: LookupResultsProps) {
 }
 
 type LookupResultGroupProps = {
-  group: EnrollmentEmailLookupGroup
+  group: EnrollmentContactLookupGroup
   selectedIds: Set<string>
-  onSelect: (match: EnrollmentEmailLookupMatch) => void
+  onSelect: (match: EnrollmentContactLookupMatch) => void
 }
 
 function LookupResultGroup({
@@ -386,9 +426,9 @@ function LookupResultGroup({
 }
 
 type LookupCandidateButtonProps = {
-  match: EnrollmentEmailLookupMatch
+  match: EnrollmentContactLookupMatch
   selected: boolean
-  onSelect: (match: EnrollmentEmailLookupMatch) => void
+  onSelect: (match: EnrollmentContactLookupMatch) => void
 }
 
 function LookupCandidateButton({
@@ -407,30 +447,49 @@ function LookupCandidateButton({
         {match.fullLegalName}
       </span>
       <span className="mt-1 block truncate text-[0.75rem] text-[#8E816D]">
-        {match.email} · {formatStatus(match.status)}
+        {match.email} · {match.phoneWhatsApp}
+      </span>
+      <span className="mt-1 block text-[0.72rem] text-[#8E816D]">
+        {formatStatus(match.status)}
       </span>
     </button>
   )
 }
 
 type SelectedLookupEmailsProps = {
-  selected: Array<EnrollmentEmailLookupMatch>
+  selected: Array<EnrollmentContactLookupMatch>
+  field: ContactExportField
+  includeName: boolean
+  onFieldChange: (field: ContactExportField) => void
+  onIncludeNameChange: (includeName: boolean) => void
   onRemove: (enrollmentId: string) => void
 }
 
 function SelectedLookupEmails({
   selected,
+  field,
+  includeName,
+  onFieldChange,
+  onIncludeNameChange,
   onRemove,
 }: SelectedLookupEmailsProps) {
+  const invalidPhoneCount = countInvalidContactPhones(selected, field)
   return (
-    <aside className="min-w-0 border border-white/10 bg-black/20 p-3">
+    <aside className="flex min-h-0 min-w-0 flex-col border border-white/10 bg-black/20 p-3">
+      <ContactExportControls
+        field={field}
+        includeName={includeName}
+        invalidPhoneCount={invalidPhoneCount}
+        onFieldChange={onFieldChange}
+        onIncludeNameChange={onIncludeNameChange}
+      />
       <p className="mb-3 text-[0.72rem] font-medium tracking-[0.16em] text-[#9B7A41] uppercase">
-        {resolveEmailCountLabel(selected.length)}
+        {selected.length} selected
       </p>
       {selected.length === 0 ? (
-        <p className="text-[0.78rem] text-[#8E816D]">No emails selected</p>
+        <p className="text-[0.78rem] text-[#8E816D]">No contacts selected</p>
       ) : (
-        <div className="flex max-h-72 flex-col gap-2 overflow-y-auto pr-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
           {selected.map((match) => (
             <SelectedLookupEmail
               key={match.enrollmentId}
@@ -445,7 +504,7 @@ function SelectedLookupEmails({
 }
 
 type SelectedLookupEmailProps = {
-  match: EnrollmentEmailLookupMatch
+  match: EnrollmentContactLookupMatch
   onRemove: (enrollmentId: string) => void
 }
 
@@ -457,6 +516,9 @@ function SelectedLookupEmail({ match, onRemove }: SelectedLookupEmailProps) {
           {match.fullLegalName}
         </p>
         <p className="truncate text-[0.74rem] text-[#8E816D]">{match.email}</p>
+        <p className="truncate text-[0.74rem] text-[#8E816D]">
+          {formatContactPhone(match.phoneWhatsApp)}
+        </p>
       </div>
       <button
         type="button"
@@ -470,10 +532,94 @@ function SelectedLookupEmail({ match, onRemove }: SelectedLookupEmailProps) {
   )
 }
 
+type ContactExportControlsProps = {
+  field: ContactExportField
+  includeName: boolean
+  invalidPhoneCount: number
+  onFieldChange: (field: ContactExportField) => void
+  onIncludeNameChange: (includeName: boolean) => void
+}
+
+function ContactExportControls({
+  field,
+  includeName,
+  invalidPhoneCount,
+  onFieldChange,
+  onIncludeNameChange,
+}: ContactExportControlsProps) {
+  return (
+    <fieldset className="mb-4 flex flex-wrap gap-x-3 gap-y-2 border-b border-white/10 pb-4">
+      <legend className="sr-only">Contact details to copy</legend>
+      <ContactExportRadio
+        field={field}
+        value="email"
+        label="Email"
+        onChange={onFieldChange}
+      />
+      <ContactExportRadio
+        field={field}
+        value="phone"
+        label="Phone"
+        onChange={onFieldChange}
+      />
+      <ContactExportRadio
+        field={field}
+        value="both"
+        label="Both"
+        onChange={onFieldChange}
+      />
+      <label className="flex items-center gap-2 text-[0.75rem] text-[#D6CCBE]">
+        <input
+          type="checkbox"
+          checked={includeName}
+          onChange={(event) => onIncludeNameChange(event.target.checked)}
+          className="size-3.5 accent-[#C5A059]"
+        />
+        Include name
+      </label>
+      {invalidPhoneCount > 0 && (
+        <p className="w-full text-[0.74rem] text-[#E6B870]" role="alert">
+          Remove {invalidPhoneCount} invalid phone
+          {invalidPhoneCount === 1 ? '' : 's'} or choose Email.
+        </p>
+      )}
+    </fieldset>
+  )
+}
+
+type ContactExportRadioProps = {
+  field: ContactExportField
+  value: ContactExportField
+  label: string
+  onChange: (field: ContactExportField) => void
+}
+
+function ContactExportRadio({
+  field,
+  value,
+  label,
+  onChange,
+}: ContactExportRadioProps) {
+  return (
+    <label className="flex items-center gap-1.5 text-[0.75rem] text-[#D6CCBE]">
+      <input
+        type="radio"
+        name="contact-export-field"
+        value={value}
+        checked={field === value}
+        onChange={() => onChange(value)}
+        className="size-3.5 accent-[#C5A059]"
+      />
+      {label}
+    </label>
+  )
+}
+
 type ExportEmailsFooterProps = {
   canCopy: boolean
   isLoading: boolean
   copied: boolean
+  copyLabel: string
   onCopy: () => void
   onClose: () => void
 }
@@ -482,6 +628,7 @@ function ExportEmailsFooter({
   canCopy,
   isLoading,
   copied,
+  copyLabel,
   onCopy,
   onClose,
 }: ExportEmailsFooterProps) {
@@ -504,7 +651,7 @@ function ExportEmailsFooter({
         ) : (
           <>
             <Copy className="size-3.5" />
-            Copy emails
+            {copyLabel}
           </>
         )}
       </Button>
@@ -512,24 +659,36 @@ function ExportEmailsFooter({
   )
 }
 
-function useExportEmailsDialogController(
+function useExportContactsDialogController(
   onOpenChange: (open: boolean) => void,
 ) {
   const [mode, setMode] = useState<ExportMode>('cohort')
   const cohort = useCohortEmailExport()
-  const lookup = useNameEmailLookup()
+  const lookup = useNameContactLookup()
+  const contactOptions = useContactExportOptions(lookup.selected)
   const copyEmails: CopyEmailSource =
     mode === 'lookup' ? lookup.selected : cohort.emails
 
   async function handleCopy() {
-    if (!copyEmails) return
+    if (
+      !copyEmails ||
+      (mode === 'lookup' && contactOptions.invalidPhoneCount > 0)
+    ) {
+      return
+    }
     try {
-      await navigator.clipboard.writeText(
-        formatEmailsForExport(getCopyEmailValues(copyEmails)),
-      )
+      const copyText =
+        mode === 'lookup'
+          ? formatContactsForExport(
+              lookup.selected,
+              contactOptions.field,
+              contactOptions.includeName,
+            )
+          : formatEmailsForExport(cohort.emails ?? [])
+      await navigator.clipboard.writeText(copyText)
       if (mode === 'lookup') lookup.setCopied(true)
       else cohort.setCopied(true)
-      toast.success('Emails copied to clipboard')
+      toast.success(resolveCopySuccessMessage(mode))
       setTimeout(() => {
         lookup.setCopied(false)
         cohort.setCopied(false)
@@ -543,6 +702,7 @@ function useExportEmailsDialogController(
     if (!next) {
       cohort.reset()
       lookup.reset()
+      contactOptions.reset()
       setMode('cohort')
     }
     onOpenChange(next)
@@ -553,7 +713,9 @@ function useExportEmailsDialogController(
     setMode,
     cohort,
     lookup,
+    contactOptions,
     copyEmails,
+    invalidPhoneCount: contactOptions.invalidPhoneCount,
     copied: mode === 'lookup' ? lookup.copied : cohort.copied,
     isLoading: mode === 'lookup' ? lookup.isLoading : cohort.isLoading,
     handleCopy,
@@ -561,43 +723,43 @@ function useExportEmailsDialogController(
   }
 }
 
-export function ExportEmailsDialog({
+export function ExportContactsDialog({
   open,
-  isAdmin,
   onOpenChange,
-}: ExportEmailsDialogProps) {
-  const c = useExportEmailsDialogController(onOpenChange)
+}: ExportContactsDialogProps) {
+  const c = useExportContactsDialogController(onOpenChange)
 
   return (
     <Dialog open={open} onOpenChange={c.handleOpenChange}>
       <DialogContent
-        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
+        className="h-[calc(100svh-2rem)] rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:h-[min(44rem,calc(100svh-2rem))] sm:max-w-3xl"
         style={{ backgroundColor: '#111110' }}
         showCloseButton={false}
       >
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_38%,rgba(197,160,89,0.08)_100%)]" />
-        <div className="relative">
+        <div className="relative flex min-h-0 flex-1 flex-col">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl tracking-[-0.01em]">
-              Export emails
+              Export contacts
             </DialogTitle>
           </DialogHeader>
-          <DialogBody className="pt-4">
-            <ModeTabs
-              mode={c.mode}
-              isAdmin={isAdmin}
-              onModeChange={c.setMode}
-            />
-            {c.mode === 'lookup' && isAdmin ? (
-              <LookupPanel {...c.lookup} />
+          <DialogBody className="flex min-h-0 flex-col pt-4 md:overflow-hidden">
+            <ModeTabs mode={c.mode} onModeChange={c.setMode} />
+            {c.mode === 'lookup' ? (
+              <LookupPanel {...c.lookup} {...c.contactOptions} />
             ) : (
               <CohortPanel {...c.cohort} />
             )}
           </DialogBody>
           <ExportEmailsFooter
-            canCopy={c.copyEmails !== null && c.copyEmails.length > 0}
+            canCopy={
+              c.copyEmails !== null &&
+              c.copyEmails.length > 0 &&
+              (c.mode === 'cohort' || c.invalidPhoneCount === 0)
+            }
             isLoading={c.isLoading}
             copied={c.copied}
+            copyLabel={resolveCopyLabel(c.mode, c.contactOptions.field)}
             onCopy={() => void c.handleCopy()}
             onClose={() => c.handleOpenChange(false)}
           />
@@ -611,8 +773,19 @@ function formatStatus(status: string): string {
   return status.replaceAll('_', ' ')
 }
 
-function getCopyEmailValues(
-  emails: Exclude<CopyEmailSource, null>,
-): Array<string> {
-  return emails.map((item) => (typeof item === 'string' ? item : item.email))
+function formatContactPhone(phone: string): string {
+  const normalized = normalizeToE164(phone)
+  return normalized.ok ? normalized.e164 : `Invalid phone: ${phone}`
+}
+
+function resolveCopyLabel(mode: ExportMode, field: ContactExportField): string {
+  if (mode === 'cohort' || field === 'email') return 'Copy emails'
+  if (field === 'phone') return 'Copy phone numbers'
+  return 'Copy contacts'
+}
+
+function resolveCopySuccessMessage(mode: ExportMode): string {
+  return mode === 'lookup'
+    ? 'Contacts copied to clipboard'
+    : 'Emails copied to clipboard'
 }

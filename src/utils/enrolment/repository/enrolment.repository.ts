@@ -19,7 +19,7 @@ import type {
   ENROLLMENT_SORT_KEYS,
   GetEnrollmentEmailsInput,
 } from '@/schemas/enrollment.schema'
-import type { EnrollmentEmailLookupCandidate } from '@/utils/enrolment/domain/email-lookup.domain'
+import type { EnrollmentContactLookupCandidate } from '@/utils/enrolment/domain/email-lookup.domain'
 import { getDb } from '@/db'
 import {
   courseSubstitutes,
@@ -763,12 +763,12 @@ function buildNameLookupPatterns(queries: Array<string>): Array<string> {
 }
 
 /**
- * Fetches a bounded candidate set for admin name-to-email lookup.
- * Ranking and ambiguity handling live in the pure email-lookup domain module.
+ * Fetches a bounded candidate set for admin name-to-contact lookup.
+ * Ranking and ambiguity handling live in the pure contact-lookup domain module.
  */
-export async function findEnrollmentEmailLookupCandidates(
+export async function findEnrollmentContactLookupCandidates(
   queries: Array<string>,
-): Promise<Array<EnrollmentEmailLookupCandidate>> {
+): Promise<Array<EnrollmentContactLookupCandidate>> {
   const patterns = buildNameLookupPatterns(queries)
   if (patterns.length === 0) return []
 
@@ -784,6 +784,7 @@ export async function findEnrollmentEmailLookupCandidates(
       fullLegalName: enrollments.fullLegalName,
       preferredName: enrollments.preferredName,
       email: enrollments.email,
+      phoneWhatsApp: enrollments.phoneWhatsApp,
       status: enrollments.status,
     })
     .from(enrollments)

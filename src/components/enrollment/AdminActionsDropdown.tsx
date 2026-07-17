@@ -26,6 +26,7 @@ type AdminActionsDropdownProps = {
   onDistribute: () => void
   onStartSubstitution: () => void
   onEndSubstitution: () => void
+  onExportContacts: () => void
   onBulkGrade: () => void
   onSendWhatsApp: () => void
   onSendEmailCampaign: () => void
@@ -55,6 +56,7 @@ function buildAdminActions({
   onDistribute,
   onStartSubstitution,
   onEndSubstitution,
+  onExportContacts,
   onBulkGrade,
   onSendWhatsApp,
   onSendEmailCampaign,
@@ -76,6 +78,11 @@ function buildAdminActions({
       icon: UserRoundXIcon,
       label: 'End substitution',
       onClick: onEndSubstitution,
+    },
+    {
+      icon: MailIcon,
+      label: 'Export contacts',
+      onClick: onExportContacts,
     },
     {
       icon: GraduationCapIcon,
