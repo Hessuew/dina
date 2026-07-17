@@ -6,7 +6,7 @@
 
 - Worker-side Sentry is initialized in `src/server.ts`.
 - Client-side Sentry is initialized in `src/router.tsx`.
-- Expected 4xx and router-control-flow errors are suppressed by `shouldSuppressFromSentry()`.
+- Expected 4xx, router-control-flow, benign browser network TypeErrors (`Failed to fetch` / `Load failed` / Firefox NetworkError), dynamic-import load noise, and stale server-fn ID misses are suppressed by `shouldSuppressFromSentry()`.
 - User identity attachment is documented in ADR 0013.
 
 ## Hardening Work

@@ -184,15 +184,31 @@ function isTanStackRedirectResponse(error: unknown): boolean {
 }
 
 /**
- * Returns true for Firefox's representation of an aborted fetch.
- * Firefox reports aborted fetch() calls (e.g. on navigation) as
- * `TypeError: NetworkError when attempting to fetch resource.` instead of
- * `AbortError`. These are not application bugs and are not actionable.
+ * Browser-native TypeError messages for failed / aborted fetch (offline, tab
+ * kill mid-nav, server blip). Not application bugs; not actionable in Sentry.
+ * Chromium: "Failed to fetch"; Safari: "Load failed"; Firefox: NetworkError…
  */
-function isFirefoxNetworkError(error: unknown): boolean {
+const BENIGN_NETWORK_TYPEERROR_MESSAGES = new Set([
+  'Failed to fetch',
+  'Load failed',
+  'NetworkError when attempting to fetch resource.',
+])
+
+function isBenignNetworkTypeError(error: unknown): boolean {
   return (
     error instanceof TypeError &&
-    error.message === 'NetworkError when attempting to fetch resource.'
+    BENIGN_NETWORK_TYPEERROR_MESSAGES.has(error.message)
+  )
+}
+
+/**
+ * Dynamic import failures (stale chunk after deploy, local Vite module churn,
+ * offline mid-load). Message is browser-prefixed; treat any match as noise.
+ */
+function isDynamicImportError(error: unknown): boolean {
+  return (
+    error instanceof TypeError &&
+    error.message.includes('error loading dynamically imported module')
   )
 }
 
@@ -209,13 +225,14 @@ function isStaleServerFnError(error: unknown): boolean {
   )
 }
 
-/** Returns true for expected 4xx AppErrors, input validation errors, TanStack Start redirect responses, Firefox fetch-abort errors, and stale server-fn ID misses that should not be sent to Sentry. */
+/** Returns true for expected 4xx AppErrors, input validation errors, TanStack Start redirect responses, benign browser network TypeErrors, dynamic-import load noise, and stale server-fn ID misses that should not be sent to Sentry. */
 export function shouldSuppressFromSentry(error: unknown): boolean {
   return (
     (isAppError(error) && error.status < 500) ||
     isInputValidationError(error) ||
     isTanStackRedirectResponse(error) ||
-    isFirefoxNetworkError(error) ||
+    isBenignNetworkTypeError(error) ||
+    isDynamicImportError(error) ||
     isStaleServerFnError(error)
   )
 }
