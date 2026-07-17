@@ -18,7 +18,7 @@ export type PlannedInvitationEmail = {
   email: string
   invitationId: string | null
   invitation: InvitationState
-  action: 'create' | 'rotate'
+  action: 'create' | 'reuse' | 'rotate'
 }
 
 export type SkipReason = 'link_still_valid' | 'revoked' | 'over_cap'
@@ -54,11 +54,12 @@ export function summarizeInviteSkips(
 function resolvePlannedAction(
   invitation: InvitationState,
   now: Date,
-): 'create' | 'rotate' | Exclude<SkipReason, 'over_cap'> {
+  includeValidLinks: boolean,
+): PlannedInvitationEmail['action'] | Exclude<SkipReason, 'over_cap'> {
   if (!invitation) return 'create'
   if (invitation.status === 'revoked') return 'revoked'
   if (invitation.status === 'pending' && invitation.expiresAt >= now) {
-    return 'link_still_valid'
+    return includeValidLinks ? 'reuse' : 'link_still_valid'
   }
   return 'rotate'
 }
@@ -67,13 +68,18 @@ export function planBulkInvites(input: {
   recipients: Array<InvitationCampaignRecipient>
   now: Date
   cap?: number
+  includeValidLinks?: boolean
 }): BulkInvitePlan {
   const cap = input.cap ?? MAX_PER_RUN
   const toSend: Array<PlannedInvitationEmail> = []
   const skipped: Array<SkippedInvitationEmail> = []
 
   for (const recipient of input.recipients) {
-    const action = resolvePlannedAction(recipient.invitation, input.now)
+    const action = resolvePlannedAction(
+      recipient.invitation,
+      input.now,
+      input.includeValidLinks ?? false,
+    )
     if (action === 'link_still_valid' || action === 'revoked') {
       skipped.push({ enrollmentId: recipient.enrollmentId, reason: action })
       continue

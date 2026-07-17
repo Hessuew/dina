@@ -72,6 +72,26 @@ describe('planBulkInvites', () => {
     ])
   })
 
+  it('plans valid pending invitations for same-link resend when requested', () => {
+    const active = invitation()
+    const plan = planBulkInvites({
+      recipients: [recipient({ invitation: active })],
+      now,
+      includeValidLinks: true,
+    })
+
+    expect(plan.toSend).toEqual([
+      {
+        enrollmentId: 'e-1',
+        email: 'applicant@test.dev',
+        invitationId: 'i-1',
+        invitation: active,
+        action: 'reuse',
+      },
+    ])
+    expect(plan.skipped).toEqual([])
+  })
+
   it('skips revoked invitations', () => {
     const plan = planBulkInvites({
       recipients: [

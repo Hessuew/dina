@@ -50,7 +50,11 @@ async function planCampaign(
 ): Promise<{ emailType: EmailType; plan: BulkInvitePlan }> {
   const { emailType, cohort } = resolveEmailCampaign(data.campaign)
   const recipients = await findEmailCampaignRecipients(cohort)
-  const plan = planBulkInvites({ recipients, now: new Date() })
+  const plan = planBulkInvites({
+    recipients,
+    now: new Date(),
+    includeValidLinks: data.includeValidLinks,
+  })
   return { emailType, plan }
 }
 
@@ -80,6 +84,17 @@ async function createInvitationForSend(
   planned: PlannedInvitationEmail,
   userId: string,
 ) {
+  if (
+    planned.action === 'reuse' &&
+    planned.invitationId &&
+    planned.invitation
+  ) {
+    return {
+      id: planned.invitationId,
+      token: planned.invitation.token,
+      created: false,
+    }
+  }
   const token = generateSecureToken()
   const expiresAt = calculateInvitationExpiry(new Date())
   if (planned.action === 'rotate' && planned.invitationId) {

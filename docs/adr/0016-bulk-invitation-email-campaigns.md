@@ -24,7 +24,9 @@ Implement a channel-specific email campaign system mirroring the WhatsApp campai
   `invitations.email = enrollments.email` is not `accepted`.
 - Re-send eligibility is anchored on invitation `expires_at`:
   - no invitation row → create a pending student invitation and send;
-  - pending, unexpired invitation → skip as `link_still_valid`;
+  - pending, unexpired invitation → skip as `link_still_valid` by default; an explicit
+    Admin-controlled bulk-send override may resend the existing token without changing its
+    expiry;
   - pending, expired invitation → rotate token/expiry and send;
   - revoked invitation → skip as `revoked`.
 - Bulk send never changes a revoked invitation back to pending.
