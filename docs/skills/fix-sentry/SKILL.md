@@ -229,6 +229,6 @@ debugging before resolving.
 
 ## Self-improvement
 
-After using this skill, follow `docs/skills/SELF_IMPROVEMENT.md`: log any friction (tool-name
-mismatches, missing Sentry MCP capabilities, workflow gaps) to `docs/skills/IMPROVEMENTS.md`
-as a proposal. Do not edit this skill file in-session.
+After using this skill, follow `docs/improvements/IMPROVEMENTS_PROTOCOL.md`: log any friction
+(tool-name mismatches, missing Sentry MCP capabilities, workflow gaps) to
+`docs/improvements/IMPROVEMENTS_SKILLS.md` as a proposal. Do not edit this skill file in-session.
