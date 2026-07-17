@@ -5,7 +5,7 @@ import {
 } from './service/student.service'
 import { getStudentDetailSchema } from '@/schemas/student.schema'
 import { getCurrentUser } from '@/utils/auth/auth'
-import { resolveAdminOrTeacherAccess } from '@/utils/authz'
+import { resolveAdminOrTeacherAccess, withRequestCache } from '@/utils/authz'
 import { AuthorizationError } from '@/utils/errors'
 
 async function assertTeacherOrAdminAccess(): Promise<void> {
@@ -17,16 +17,18 @@ async function assertTeacherOrAdminAccess(): Promise<void> {
   }
 }
 
-export const getStudents = createServerFn({ method: 'POST' }).handler(
-  async () => {
+export const getStudents = createServerFn({ method: 'POST' }).handler(() =>
+  withRequestCache(async () => {
     await assertTeacherOrAdminAccess()
     return getStudentsService()
-  },
+  }),
 )
 
 export const getStudentDetail = createServerFn({ method: 'POST' })
   .inputValidator(getStudentDetailSchema)
-  .handler(async ({ data }) => {
-    await assertTeacherOrAdminAccess()
-    return getStudentDetailService(data)
-  })
+  .handler(({ data }) =>
+    withRequestCache(async () => {
+      await assertTeacherOrAdminAccess()
+      return getStudentDetailService(data)
+    }),
+  )

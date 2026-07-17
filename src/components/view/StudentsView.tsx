@@ -1,9 +1,9 @@
-import { format } from 'date-fns'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { StudentWithStats } from '@/types/student'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
+import { AttendanceScoreCell } from '@/components/view/students-view/AttendanceScoreCell'
 
 type StudentsViewProps = {
   students: Array<StudentWithStats>
@@ -28,61 +28,47 @@ function getAverageGrade(student: StudentWithStats): number | null {
 
 const columnHelper = createColumnHelper<StudentWithStats>()
 
-export function StudentsView({ students }: StudentsViewProps) {
-  const columns: Array<ColumnDef<StudentWithStats, any>> = [
-    columnHelper.accessor('fullName', {
-      cell: (info) => {
-        const student = info.row.original
-        const initials = getInitials(student.fullName)
-        return (
-          <div className="flex items-center gap-3">
-            {student.avatarUrl ? (
-              <img
-                src={student.avatarUrl}
-                alt={student.fullName}
-                className="size-8 shrink-0 border border-white/10 object-cover"
-              />
-            ) : (
-              <div className="flex size-8 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] text-[0.6rem] font-medium text-[#E9D9B4]">
-                {initials}
-              </div>
-            )}
-            <span className="font-medium text-[#F8F4EC]">
-              {student.fullName}
-            </span>
-          </div>
-        )
-      },
-      header: 'Name',
-    }),
+function nameColumn() {
+  return columnHelper.accessor('fullName', {
+    cell: (info) => {
+      const student = info.row.original
+      const initials = getInitials(student.fullName)
+      return (
+        <div className="flex items-center gap-3">
+          {student.avatarUrl ? (
+            <img
+              src={student.avatarUrl}
+              alt={student.fullName}
+              className="size-8 shrink-0 border border-white/10 object-cover"
+            />
+          ) : (
+            <div className="flex size-8 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] text-[0.6rem] font-medium text-[#E9D9B4]">
+              {initials}
+            </div>
+          )}
+          <span className="font-medium text-[#F8F4EC]">{student.fullName}</span>
+        </div>
+      )
+    },
+    header: 'Name',
+  })
+}
+
+function statsColumns(): Array<ColumnDef<StudentWithStats, any>> {
+  return [
     columnHelper.accessor('email', {
       cell: (info) => (
         <span className="text-[0.82rem] text-[#AFA28F]">{info.getValue()}</span>
       ),
       header: 'Email',
     }),
-    columnHelper.accessor('createdAt', {
-      cell: (info) => (
-        <span className="text-[0.82rem] text-[#AFA28F]">
-          {format(new Date(info.getValue()), 'MMM d, yyyy')}
-        </span>
-      ),
-      header: 'Joined',
-    }),
     columnHelper.display({
-      cell: (info) => {
-        const { submittedAssignments, totalAssignments } =
-          info.row.original.assignmentStats
-        return (
-          <>
-            {submittedAssignments}
-            <span className="text-[#8E816D]">/{totalAssignments}</span>
-          </>
-        )
-      },
+      cell: (info) => (
+        <AttendanceScoreCell scores={info.row.original.attendanceByCourse} />
+      ),
       enableSorting: false,
-      header: 'Submitted',
-      id: 'submitted',
+      header: 'Attendance',
+      id: 'attendance',
     }),
     columnHelper.display({
       cell: (info) => {
@@ -107,6 +93,13 @@ export function StudentsView({ students }: StudentsViewProps) {
         }),
       }),
     ),
+  ]
+}
+
+export function StudentsView({ students }: StudentsViewProps) {
+  const columns: Array<ColumnDef<StudentWithStats, any>> = [
+    nameColumn(),
+    ...statsColumns(),
   ]
 
   return (

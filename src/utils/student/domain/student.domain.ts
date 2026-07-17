@@ -73,6 +73,7 @@ export function buildStudentWithStats(
   courseList: Array<CourseBasic>,
   submissions: Array<SubmissionWithCourse>,
   totalAssignmentCount: number,
+  attendanceByCourse: StudentWithStats['attendanceByCourse'] = [],
 ): StudentWithStats {
   return {
     id: student.id,
@@ -87,6 +88,7 @@ export function buildStudentWithStats(
         .length,
       averageGradeByCourse: buildAverageGradeByCourse(courseList, submissions),
     },
+    attendanceByCourse,
   }
 }
 

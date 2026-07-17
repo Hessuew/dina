@@ -140,6 +140,10 @@ A **derived**, per-viewer label shown on the enrollments list (never stored, nev
 
 A teacher who temporarily covers another teacher's (**Absent Teacher's**) Reviewer role and Peer Review responsibilities for a specific course. Recorded in `course_substitutes` by an Admin (`substituteTeacherService`). The Substitute appears as a full member of the course's review team — for the peer queue, peer-review state derivation, and evaluation authorization — without being added to `course_teachers` (which would corrupt the "one course per teacher" invariant and peer-review pairing). All unscored assignments belonging to the Absent Teacher are atomically reassigned to the Substitute on activation. The substitution ends via `endSubstitutionService`, which removes the `course_substitutes` row. See ADR 0007 rev 2.
 
+### Attendance Session
+
+Exactly one **Attendance Session** per **Lesson** (unique `lesson_id`) under a **Course**. A Course Teacher or Admin opens a fixed **10-minute** check-in window from the Course screen by choosing which Lesson the live class covers. At most one open window exists per Course at a time. Re-open reuses the same session row (new window; prior **Present** marks kept). Absent is not stored — only Present rows exist. All academy Students may mark Present during the open window (auth identity only). Score display on `/students` is present / all lessons (including drafts) per course.
+
 ### Awaiting approval
 
 An `enrollment_status` value meaning the assigned Reviewer scored the applicant 3 or 4 (admit / strong admit) and the enrollment is now waiting on the **Admin's** final decision. Set automatically (see **Enrollment Evaluation**); the Admin resolves it to `approved` or `rejected`. Invitations are still only offered once status is `approved`.
