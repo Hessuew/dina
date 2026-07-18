@@ -16,6 +16,7 @@ const POLL_MS = 20_000
 
 type AttendanceState = {
   role: string
+  serverNow: Date | string
   openSession: OpenSessionView | null
   lessons: Array<LessonOption>
 }

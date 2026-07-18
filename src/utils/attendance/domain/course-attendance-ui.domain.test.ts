@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildAttendancePanelSlots,
+  lessonPickerLabel,
   pickDefaultLessonId,
   shouldRenderAttendancePanels,
   startButtonLabel,
@@ -24,6 +25,16 @@ const lessons = [
     isOpen: false,
   },
 ]
+
+describe('lessonPickerLabel', () => {
+  it('returns the selected lesson title instead of its id', () => {
+    expect(lessonPickerLabel(lessons, 'l2')).toBe('Two · has session')
+  })
+
+  it('returns undefined without a matching lesson', () => {
+    expect(lessonPickerLabel(lessons, 'missing')).toBeUndefined()
+  })
+})
 
 describe('pickDefaultLessonId', () => {
   it('prefers open lesson id', () => {
@@ -49,6 +60,7 @@ describe('teacherPanelMode', () => {
           lessonId: 'l1',
           lessonTitle: null,
           isOpen: true,
+          closesAt: new Date('2026-01-01T00:10:00.000Z'),
           remainingLabel: '9:00',
           remainingMs: 1,
           alreadyPresent: false,
@@ -66,6 +78,7 @@ describe('teacherPanelMode', () => {
           lessonId: 'l1',
           lessonTitle: 'L',
           isOpen: true,
+          closesAt: new Date('2026-01-01T00:10:00.000Z'),
           remainingLabel: '9:00',
           remainingMs: 1,
           alreadyPresent: false,
@@ -87,6 +100,7 @@ describe('studentPanelMode', () => {
     lessonId: 'l1',
     lessonTitle: 'L',
     isOpen: true,
+    closesAt: new Date('2026-01-01T00:10:00.000Z'),
     remainingLabel: '9:00',
     remainingMs: 1,
     alreadyPresent: false,
@@ -142,6 +156,7 @@ describe('buildAttendancePanelSlots', () => {
     lessonId: 'l1',
     lessonTitle: 'L',
     isOpen: true,
+    closesAt: new Date('2026-01-01T00:10:00.000Z'),
     remainingLabel: '9:00',
     remainingMs: 1,
     alreadyPresent: false,

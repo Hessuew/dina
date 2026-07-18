@@ -559,13 +559,6 @@ function CourseMainColumn({
 }) {
   return (
     <div className="min-w-0 space-y-6">
-      {role === 'student' && (
-        <CourseAttendancePanel
-          courseId={course.id}
-          canManage={false}
-          role={role}
-        />
-      )}
       <CourseAboutCard
         thumbnailUrl={course.thumbnailUrl}
         description={course.description}
@@ -595,13 +588,11 @@ function CourseSideColumn({
 }: CourseDetailSectionsProps & { canManage: boolean }) {
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      {canManage && (
-        <CourseAttendancePanel
-          courseId={course.id}
-          canManage={canManage}
-          role={role}
-        />
-      )}
+      <CourseAttendancePanel
+        courseId={course.id}
+        canManage={canManage}
+        role={role}
+      />
       {showMaterials && (
         <MaterialsSection
           materials={materials}
