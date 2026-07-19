@@ -340,10 +340,13 @@ Verification checklist
 
 
 bash
-bun run quality:gate        # must pass clean
+bun run verify:focused:static
+bun run verify:focused:test
 bun test src/utils/whatsapp # integration suite including new lock tests
 bun test src/utils/errors   # CampaignLockedError added to error tests
 Manual smoke test (two browser tabs, two admin accounts):
+
+The full `quality:gate` runs once in pull-request CI; do not repeat it locally.
 
 Tab A opens WhatsApp dialog, clicks "Congratulations" → preview loads.
 Tab B opens WhatsApp dialog, clicks "Congratulations" → button shows "In use · try again shortly", disabled.

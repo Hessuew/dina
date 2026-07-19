@@ -28,6 +28,8 @@
     "docs:notion-check": "node scripts/notion-check.mjs",
     "quality:fix": "node scripts/quality-fix.mjs",
     "quality:gate": "node scripts/quality-gate.mjs",
+    "verify:focused:static": "node scripts/focused-verification.mjs static",
+    "verify:focused:test": "node scripts/focused-verification.mjs test",
     "check": "prettier --write . && eslint --fix"
   },
   "dependencies": {

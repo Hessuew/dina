@@ -8,7 +8,7 @@ as the worked example. Read this before adding tests for a new endpoint.
 - **Pure business logic lives in a `domain/` layer and is unit-tested to 100%.**
 - IO (DB, auth) is pushed out to `repository/` and `service/` layers that are
   **deliberately excluded** from the coverage gate.
-- Run `bun run test` (or `bun run test:coverage`) — both must stay green.
+- Run direct related tests while developing, then the focused verifier lanes once before handoff.
 - Integration tests (against a real DB) are **not built yet**; the planned
   approach is documented at the end.
 
@@ -106,6 +106,49 @@ bun run test:all           # unit suite + integration suite (the full signal)
 
 `bun run test` / `test:coverage` stay unit-only: the unit config excludes
 `src/**/*.integration.test.ts`, so the 100% domain coverage gate is unaffected.
+
+## Focused feature verification
+
+Use direct Vitest targets while implementing. Before handoff, run both deterministic lanes once:
+
+```bash
+bun run verify:focused:static
+bun run verify:focused:test
+```
+
+Both compare committed, staged, unstaged, and untracked changes against `QUALITY_BASE`. The safe
+default is `origin/main`, which is available in Firstmate and no-mistakes worktrees; set an exact
+commit only when the task has a narrower known base. The static lane checks Prettier and ESLint
+only for applicable changed files and runs the changed-diff Fallow audit when its governed paths
+changed. The test lane runs TypeScript once, related unit tests, and related integration tests.
+It escalates to the full integration suite only for migrations, `src/db/**`, integration harness
+or config changes, package manifests, or lockfiles. It never runs the full unit suite.
+
+Do not run `bun run quality:gate` locally. Pull-request CI fetches full history and runs that full
+gate exactly once with `QUALITY_BASE=origin/main`.
+
+## Authenticated browser verification
+
+The Firstmate implementation worker owns browser checks before no-mistakes whenever the change
+can affect UI behavior. Use `chrome-devtools-axi`, sign in at `/login`, take a fresh accessibility
+snapshot after every navigation or state change, and inspect both console and network results.
+Test only impacted roles. Test both admin and student for authentication, sidebar, permission, or
+shared-page changes.
+
+Credentials stay only in the ignored root `.env`: admin uses `DEVELOPMENT_SEED_EMAIL` and
+`DEVELOPMENT_SEED_PASSWORD`; student uses `DEVELOPMENT_SEED_EMAIL_USER` and
+`DEVELOPMENT_SEED_PASSWORD_USER`. Never print their values, copy them into tracked files, or
+modify `.env`. The isolated no-mistakes evidence agent must not search for or depend on these
+clone-local credentials.
+
+Authenticated pages live under `src/routes/_authed/**` and are protected by
+`src/routes/_authed.tsx`. Verify these sidebar destinations as applicable:
+
+- Common Platform: Dashboard `/dashboard`, Assignments `/assignments`, Calendar `/calendar`,
+  Posts `/posts`, Zoom `/zoom`, Library `/library`, Discipleship `/discipleship`, Teachers
+  `/teachers`.
+- Teacher/admin: Students `/students`, Events `/events`, Enrollments `/enrollments`.
+- Admin: User Management `/invitations`.
 
 ### How the harness works (`test/integration/`)
 

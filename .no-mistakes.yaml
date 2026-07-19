@@ -1,0 +1,7 @@
+# Executing repository commands remain trusted from the default branch only.
+# These fields become authoritative after this bootstrap config lands on main.
+allow_repo_commands: false
+
+commands:
+  test: 'bun run verify:focused:test'
+  lint: 'bun run verify:focused:static'

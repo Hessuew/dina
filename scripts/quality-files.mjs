@@ -39,6 +39,19 @@ export function getRepoRoot() {
   return result.stdout.trim()
 }
 
+export function validateGitRef(ref, { repoRoot = getRepoRoot() } = {}) {
+  const result = runGit(['rev-parse', '--verify', ref], {
+    repoRoot,
+    allowFailure: true,
+  })
+
+  if (result.status !== 0) {
+    throw new Error(
+      `QUALITY_BASE ref '${ref}' does not exist or is not a valid git ref`,
+    )
+  }
+}
+
 function addFilesFromGit(files, args, repoRoot) {
   const result = runGit(args, { repoRoot })
 
