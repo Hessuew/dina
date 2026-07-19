@@ -19,5 +19,6 @@ jobs:
         with:
           bun-version: 1.3.10
       - run: bun install --frozen-lockfile
+      - run: bun run cf-typegen
       - name: Run full quality gate once
         run: QUALITY_BASE=origin/main bun run quality:gate
