@@ -10,8 +10,8 @@
 already passes those gates; the problem is **untested complexity**: branchy functions with
 `coverage_tier: "none"`, so `CRAP = CC² · (1 − cov)³ + CC` stays high.
 
-The quality gate (`bun run quality:gate` → `fallow audit --base main`) already blocks _newly
-introduced_ CRAP via fallow's `introduced` flag, so the pile cannot regrow. What is missing is
+The pull-request quality gate (`QUALITY_BASE=origin/main bun run quality:gate`) blocks _newly
+introduced_ CRAP via Fallow's `introduced` flag, so the pile cannot regrow. What is missing is
 a single, durable method for **paying down the existing 138** that every contributor (and every
 cloud agent) follows the same way. This ADR is that playbook; it is binding like the rules in
 `docs/rules/complexity.md`, which it operationalizes.
@@ -172,16 +172,13 @@ Note any deliberate broadening in the commit message so it is not mistaken for a
 
 - The function no longer appears in `bunx fallow health --format json --quiet`.
 - `bun run test:coverage` green at 100% for the new domain file.
-- `bun run quality:gate` and `bun run typecheck` clean.
+- Direct target tests and both focused verification lanes clean.
 - **No behavior change** (tests bound to the public interface stay green across the swap), or a
   deliberate **broadening** noted per "Reconciling divergent near-duplicates".
 
 ### Verification — the fast loop (don't run the full gate every cycle)
 
-The full `bun run quality:gate` re-runs the entire unit + integration suites **and**
-`fallow audit --base main`, which lists every _pre-existing_ branch-vs-`main` finding. That
-noise is irrelevant to a paydown target and the suites are slow, so don't use it as the inner
-loop. Instead:
+The full `bun run quality:gate` belongs only to pull-request CI. During implementation:
 
 1. **Progress metric (cheap, no test run):** `bunx fallow health --format json --quiet` — the
    target finding is gone and the total dropped. This _is_ the burndown number. The count is
@@ -192,13 +189,12 @@ loop. Instead:
    both CRAP and unit-size.
 2. **Coverage of the new domain file:** `bun run test:coverage` (or a scoped `vitest run` on the
    `*.domain.test.ts` during red→green).
-3. **Isolate _introduced_ complexity, not the whole branch:** the gate only blocks on fallow's
-   `introduced` flag, but `--base main` computes that against the whole branch diff. Scope it to
-   _your_ change by pointing the base at the commit immediately before the target —
-   `QUALITY_BASE=<pre-change-ref> bun run quality:gate` (e.g. `QUALITY_BASE=HEAD` to check
-   working-tree changes before committing). The verdict then reflects only what this target
-   introduced, not unrelated pre-existing findings.
-4. **Full `bun run quality:gate` once** before the commit, as the final pre-flight.
+3. **Before handoff, once:** run `QUALITY_BASE=<pre-change-ref> bun run verify:focused:static`
+   and `QUALITY_BASE=<pre-change-ref> bun run verify:focused:test`. The static lane isolates
+   introduced complexity for this target; the test lane avoids the full unit suite and escalates
+   integration only when the changed paths require it.
+4. **PR CI:** let the pull-request workflow run `QUALITY_BASE=origin/main bun run quality:gate`
+   exactly once. Do not repeat it locally.
 
 ### Worked example (first target)
 

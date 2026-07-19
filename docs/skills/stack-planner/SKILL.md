@@ -2,7 +2,7 @@
 name: stack-planner
 description: >
   Converts git working directory changes into bounded intent-based Graphite stacks,
-  runs a hard quality gate, submits them as ready PRs, links them to Linear
+  runs focused verification, submits them as ready PRs, links them to Linear
   issues, and generates AI descriptions for each PR. Full pipeline runs uninterrupted after a single approval gate.
   Uses non-interactive Graphite CLI only. Max 5 stacks per run.
 
@@ -19,12 +19,12 @@ description: >
     - "stack these changes"
 ---
 
-# Graphite Stack Planner — v7.0 (Quality-gated full pipeline)
+# Graphite Stack Planner — v7.1 (Focused local verification)
 
 ## 0. Core intent
 
 Convert:
-`git diff` → intent clusters → stacks → hard quality gate → submit as ready PRs → link Linear → generate PR descriptions
+`git diff` → intent clusters → stacks → focused verification → submit as ready PRs → link Linear → generate PR descriptions
 
 **Key constraint:**
 Stacks are ALWAYS created on top of the current active branch context in Graphite.
@@ -39,10 +39,10 @@ Stacks are ALWAYS created on top of the current active branch context in Graphit
 - Never reconstruct stacks from main
 - Max 5 stacks per run
 - Always use non-interactive Graphite commands only
-- Never submit if the quality gate fails
+- Never submit if focused verification fails
 - Never mutate files after Graphite stack commits are created
 
-**One approval gate:** show the plan → user approves → full pipeline runs without further stops unless the quality gate blocks submission.
+**One approval gate:** show the plan → user approves → full pipeline runs without further stops unless focused verification blocks submission.
 
 After the approval gate the full pipeline runs uninterrupted. graphite-linear-connector (Phase 5) resolves every PR automatically in pipeline mode — it never pauses, and auto-creates a Linear issue on low confidence. See the pipeline mode contract in the connector skill.
 
@@ -59,11 +59,14 @@ After the approval gate the full pipeline runs uninterrupted. graphite-linear-co
 gt c --ai --no-interactive
 ```
 
-**Deterministic quality gate:**
+**Deterministic focused verification:**
 
 ```bash
-QUALITY_BASE=<base-ref> bun run quality:gate
+QUALITY_BASE=<base-ref> bun run verify:focused:static
+QUALITY_BASE=<base-ref> bun run verify:focused:test
 ```
+
+The full `quality:gate` is reserved for pull-request CI and must not run locally.
 
 **Pre-stack safe fixer:**
 
@@ -213,25 +216,28 @@ For each cluster (bottom → top):
 
 ---
 
-### Phase 3 — Hard Quality Gate
+### Phase 3 — Focused Verification
 
 After all stacks are created and before `gt submit`, run read-only checks only. Do not run formatters, fixers, codemods, or any other file-mutating command in this phase.
 
-1. Run the deterministic gate:
+1. Run each deterministic focused lane exactly once:
 
    ```bash
-   QUALITY_BASE=<QUALITY_BASE_COMMIT> bun run quality:gate
+   QUALITY_BASE=<QUALITY_BASE_COMMIT> bun run verify:focused:static
+   QUALITY_BASE=<QUALITY_BASE_COMMIT> bun run verify:focused:test
    ```
 
    Blocks submit on:
    - changed-file format check failure
    - changed-file lint failure
    - TypeScript failure
-   - unit test failure
-   - integration test failure
+   - related unit or integration test failure
+   - escalated full integration failure when required by the changed files
    - Fallow `verdict: "fail"`
 
-   `QUALITY_BASE=<QUALITY_BASE_COMMIT> bun run quality:gate` checks Prettier and ESLint only for files changed since the recorded base, then runs TypeScript, tests, and Fallow for full-stack signal. Fallow `verdict: "warn"` does not block, but summarize the warnings in the final output.
+   The focused scripts inspect the exact stack diff without running the full unit suite. Fallow
+   `verdict: "warn"` does not block, but summarize the warnings in the final output. Do not run
+   `quality:gate`; pull-request CI owns its single full run against `origin/main`.
 
 2. Invoke the **reviewing-code** skill against the exact newly-created stack diff
 
@@ -357,7 +363,7 @@ Depends on:
 After plan, show pipeline summary:
 
 ```
-Pipeline: quality fix → stack (N) → hard quality gate → submit as ready PRs → link Linear → generate descriptions
+Pipeline: quality fix → stack (N) → focused verification → submit as ready PRs → link Linear → generate descriptions
 ```
 
 ---

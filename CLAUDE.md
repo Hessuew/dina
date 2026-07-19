@@ -81,6 +81,17 @@ Do not finish without basic correctness check.
 - Avoid speculative edge-case handling unless required
 - Confirm no unintended side effects introduced
 
+### Repository verification workflow
+
+- During implementation, run direct tests for the behavior being changed.
+- Before handoff, run `bun run verify:focused:static` and
+  `bun run verify:focused:test` once each. They compare against `QUALITY_BASE`,
+  defaulting safely to `origin/main` for Firstmate/no-mistakes worktrees.
+- Do not run `bun run quality:gate` locally. Pull-request CI owns exactly one
+  full gate run with `QUALITY_BASE=origin/main`.
+- For impacted authenticated UI flows, complete the role-scoped browser checks
+  in `docs/TESTING_GUIDE.md` before no-mistakes.
+
 ---
 
 ## Multi-Agent Safety Rules

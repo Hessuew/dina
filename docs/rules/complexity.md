@@ -1,7 +1,7 @@
 ---
 name: complexity
 scope: src/components/**, src/routes/**, src/utils/** (server functions)
-enforced-by: bun run quality:gate (fallow `introduced` cyclomatic/cognitive/CRAP) + ESLint (warn)
+enforced-by: focused static verification locally + PR CI quality gate
 ---
 
 # Keep new components and endpoints under the complexity limits
@@ -67,8 +67,9 @@ next to the component only for glue that genuinely doesn't belong in the shared 
 
 ## Enforcement
 
-`bun run quality:gate` runs `fallow audit` against the base branch and **fails** if your
-change introduces any complexity finding — cyclomatic, cognitive, or CRAP — via fallow's
+`bun run verify:focused:static` runs the changed-diff Fallow audit locally when applicable.
+Pull-request CI runs `bun run quality:gate` exactly once against `origin/main`. Both fail if a
+change introduces any complexity finding — cyclomatic, cognitive, or CRAP — via Fallow's
 `introduced: true` flag. Pre-existing complexity in files you don't touch does not block.
 
 ESLint (`complexity`, `max-lines-per-function`) emits **warnings** on changed files for fast

@@ -26,7 +26,9 @@ Tool-neutral entrypoint for agents and contributors working in this repo.
 - `bun dev` — start the development server.
 - `bun run test` — run unit tests.
 - `bun run test:integration` — run integration tests.
-- `bun run quality:gate` — run lint, type, test, and newly introduced complexity checks.
+- `bun run verify:focused:static` — changed-file format, lint, and applicable Fallow checks.
+- `bun run verify:focused:test` — typecheck plus related tests, escalating integration only when required.
+- `bun run quality:gate` — full PR-CI gate; do not run it locally during feature work.
 
 ## Style
 
@@ -44,8 +46,10 @@ Tool-neutral entrypoint for agents and contributors working in this repo.
   strict.
 - Run `bun run docs:notion-check` before final handoff when tracked changes touch docs,
   architecture, operational metadata, ADRs, incidents, risks, readiness, or maturity work.
-- Run `bun run quality:gate` before submitting tracked changes. It blocks on lint, type, test,
-  and newly introduced complexity failures.
+- During development, run the directly affected tests. Before handoff, run each focused verifier
+  lane once. Pull-request CI owns the single full `quality:gate` run.
+- When an impacted UI flow needs authenticated verification, follow the browser contract in
+  `docs/TESTING_GUIDE.md` before invoking no-mistakes.
 
 ## Commits And PRs
 
