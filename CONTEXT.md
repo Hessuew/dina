@@ -144,6 +144,8 @@ A teacher who temporarily covers another teacher's (**Absent Teacher's**) Review
 
 Exactly one **Attendance Session** per **Lesson** (unique `lesson_id`) under a **Course**. A Course Teacher or Admin opens a fixed **10-minute** check-in window from the Course screen by choosing which Lesson the live class covers. At most one open window exists per Course at a time. Re-open reuses the same session row (new window; prior **Present** marks kept). Absent is not stored — only Present rows exist. All academy Students may mark Present during the open window (auth identity only). Score display on `/students` is present / all lessons (including drafts) per course.
 
+A **Course Teacher** (on that course) or **Admin** may also **override** Present from the student detail page (`/students/$studentId`) at any time: set Present or clear it (toggle). Override does not require a live open window. If the Lesson has no session yet, override creates a **closed** session (`openedAt = closesAt = now`, `openedBy` = actor) so Present can attach; existing session timestamps are never rewritten. Clear Present deletes the Present row only. List popover on `/students` stays read-only.
+
 ### Awaiting approval
 
 An `enrollment_status` value meaning the assigned Reviewer scored the applicant 3 or 4 (admit / strong admit) and the enrollment is now waiting on the **Admin's** final decision. Set automatically (see **Enrollment Evaluation**); the Admin resolves it to `approved` or `rejected`. Invitations are still only offered once status is `approved`.

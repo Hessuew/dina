@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   assertCanMarkPresent,
   assertCanOpenSession,
+  buildClosedOverrideSession,
   buildManualClose,
   buildOpenWindow,
 } from './attendance-session.domain'
@@ -94,5 +95,14 @@ describe('buildOpenWindow / buildManualClose', () => {
 
   it('manual close sets closesAt to now', () => {
     expect(buildManualClose(T0)).toEqual({ closesAt: T0 })
+  })
+})
+
+describe('buildClosedOverrideSession', () => {
+  it('stamps openedAt and closesAt to now (closed, no live window)', () => {
+    expect(buildClosedOverrideSession(T0)).toEqual({
+      openedAt: T0,
+      closesAt: T0,
+    })
   })
 })

@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
-import {
-  parseDatetimeLocalValue,
-  toDatetimeLocalValue,
-} from './schedule-dialog.domain'
+import { parseDatetimeLocalValue, toDatetimeLocalValue } from '@/utils/datetime'
 import { computeUpcomingOccurrences } from '@/utils/discipleship/domain/discipleship-schedule.domain'
 import { FormDialog } from '@/components/ui/form-dialog/FormDialog'
 import { Button } from '@/components/ui/button'
@@ -56,7 +53,11 @@ export function ScheduleDialog({
 
   const footer = (
     <>
-      <Button variant="outline" theme="dark" onClick={() => onOpenChange(false)}>
+      <Button
+        variant="outline"
+        theme="dark"
+        onClick={() => onOpenChange(false)}
+      >
         Cancel
       </Button>
       <Button

@@ -12,8 +12,9 @@ function makeEvent(
     id: 'e1',
     title: 'Chapel Service',
     description: 'Weekly chapel',
-    startTime: new Date('2026-06-19T10:00:00Z'),
-    endTime: new Date('2026-06-19T11:00:00Z'),
+    // Local wall-clock ctors so form values are stable across host timezones.
+    startTime: new Date(2026, 5, 19, 10, 0),
+    endTime: new Date(2026, 5, 19, 11, 0),
     location: 'Main Hall',
     zoomLink: 'https://zoom.us/j/123',
     category: 'chapel',

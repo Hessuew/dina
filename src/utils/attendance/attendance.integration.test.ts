@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { eq } from 'drizzle-orm'
 import {
   seedCourse,
   seedCourseTeacher,
@@ -9,8 +10,12 @@ import {
   closeAttendanceService,
   getCourseAttendanceStateService,
   markPresentService,
+  setStudentPresentService,
   startOrReopenAttendanceService,
 } from '@/utils/attendance/service/attendance.service'
+import { findPresentsForStudent } from '@/utils/attendance/repository/attendance.repository'
+import { getDb } from '@/db'
+import { attendanceSessions } from '@/db/schema'
 import {
   AuthorizationError,
   ConflictError,
@@ -178,5 +183,146 @@ describe('attendance mark present (integration)', () => {
     await markPresentService({ courseId }, studentId)
     const state = await getCourseAttendanceStateService({ courseId }, studentId)
     expect(state.openSession?.alreadyPresent).toBe(true)
+  })
+})
+
+describe('setStudentPresentService override (integration)', () => {
+  it('course teacher marks present without prior session (closed session)', async () => {
+    const { teacherId, studentId, courseId, lesson1 } =
+      await seedManagedCourse()
+    const result = await setStudentPresentService(
+      {
+        studentId,
+        courseId,
+        lessonId: lesson1,
+        present: true,
+      },
+      teacherId,
+    )
+    expect(result.present).toBe(true)
+    expect(result.created).toBe(true)
+
+    const presents = await findPresentsForStudent(studentId)
+    expect(presents.some((p) => p.lessonId === lesson1)).toBe(true)
+
+    const db = await getDb()
+    const [session] = await db
+      .select()
+      .from(attendanceSessions)
+      .where(eq(attendanceSessions.lessonId, lesson1))
+      .limit(1)
+    expect(session).toBeTruthy()
+    expect(session.openedAt?.getTime()).toBe(session.closesAt?.getTime())
+    expect(session.openedBy).toBe(teacherId)
+  })
+
+  it('clears present on override unmark', async () => {
+    const { teacherId, studentId, courseId, lesson1 } =
+      await seedManagedCourse()
+    await setStudentPresentService(
+      { studentId, courseId, lessonId: lesson1, present: true },
+      teacherId,
+    )
+    const cleared = await setStudentPresentService(
+      { studentId, courseId, lessonId: lesson1, present: false },
+      teacherId,
+    )
+    expect(cleared.present).toBe(false)
+    expect(cleared.cleared).toBe(true)
+    const presents = await findPresentsForStudent(studentId)
+    expect(presents.some((p) => p.lessonId === lesson1)).toBe(false)
+  })
+
+  it('admin can override; outsider teacher cannot', async () => {
+    const { outsiderId, adminId, studentId, courseId, lesson1 } =
+      await seedManagedCourse()
+    await expect(
+      setStudentPresentService(
+        { studentId, courseId, lessonId: lesson1, present: true },
+        outsiderId,
+      ),
+    ).rejects.toBeInstanceOf(AuthorizationError)
+
+    const result = await setStudentPresentService(
+      { studentId, courseId, lessonId: lesson1, present: true },
+      adminId,
+    )
+    expect(result.present).toBe(true)
+  })
+
+  it('rejects non-student target and student actor', async () => {
+    const { teacherId, studentId, courseId, lesson1 } =
+      await seedManagedCourse()
+    await expect(
+      setStudentPresentService(
+        {
+          studentId: teacherId,
+          courseId,
+          lessonId: lesson1,
+          present: true,
+        },
+        teacherId,
+      ),
+    ).rejects.toBeInstanceOf(ValidationError)
+
+    await expect(
+      setStudentPresentService(
+        { studentId, courseId, lessonId: lesson1, present: true },
+        studentId,
+      ),
+    ).rejects.toBeInstanceOf(AuthorizationError)
+  })
+
+  it('does not rewrite timestamps on existing open session', async () => {
+    const { teacherId, studentId, courseId, lesson1 } =
+      await seedManagedCourse()
+    const { session: open } = await startOrReopenAttendanceService(
+      { courseId, lessonId: lesson1 },
+      teacherId,
+    )
+    const openedAt = open.openedAt
+    const closesAt = open.closesAt
+
+    await setStudentPresentService(
+      { studentId, courseId, lessonId: lesson1, present: true },
+      teacherId,
+    )
+
+    const db = await getDb()
+    const [session] = await db
+      .select()
+      .from(attendanceSessions)
+      .where(eq(attendanceSessions.lessonId, lesson1))
+      .limit(1)
+    expect(session.openedAt?.getTime()).toBe(
+      openedAt instanceof Date
+        ? openedAt.getTime()
+        : new Date(openedAt!).getTime(),
+    )
+    expect(session.closesAt?.getTime()).toBe(
+      closesAt instanceof Date
+        ? closesAt.getTime()
+        : new Date(closesAt!).getTime(),
+    )
+
+    const state = await getCourseAttendanceStateService({ courseId }, studentId)
+    expect(state.openSession?.isOpen).toBe(true)
+    expect(state.openSession?.alreadyPresent).toBe(true)
+  })
+
+  it('idempotent set present true twice', async () => {
+    const { teacherId, studentId, courseId, lesson1 } =
+      await seedManagedCourse()
+    const a = await setStudentPresentService(
+      { studentId, courseId, lessonId: lesson1, present: true },
+      teacherId,
+    )
+    const b = await setStudentPresentService(
+      { studentId, courseId, lessonId: lesson1, present: true },
+      teacherId,
+    )
+    expect(a.created).toBe(true)
+    expect(b.created).toBe(false)
+    expect(b.checkedInAt).toEqual(a.checkedInAt)
   })
 })

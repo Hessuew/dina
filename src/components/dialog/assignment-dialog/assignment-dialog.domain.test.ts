@@ -24,7 +24,8 @@ function makeAssignment(
     id: 'a1',
     title: 'Essay',
     description: 'Write an essay',
-    dueDate: new Date('2026-06-19T10:00:00.000Z'),
+    // Local wall-clock ctor so form value is stable across host timezones.
+    dueDate: new Date(2026, 5, 19, 10, 0),
     maxGrade: 80,
     status: 'published',
     ...overrides,

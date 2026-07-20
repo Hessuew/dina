@@ -65,10 +65,14 @@ describe('getStudentsService (integration)', () => {
 
 describe('getStudentDetailService (integration)', () => {
   it('throws NotFoundError for an unknown id', async () => {
+    const viewerId = await seedProfile({ role: 'admin' })
     await expect(
-      getStudentDetailService({
-        studentId: '00000000-0000-0000-0000-000000000000',
-      }),
+      getStudentDetailService(
+        {
+          studentId: '00000000-0000-0000-0000-000000000000',
+        },
+        viewerId,
+      ),
     ).rejects.toBeInstanceOf(NotFoundError)
   })
 
@@ -76,11 +80,12 @@ describe('getStudentDetailService (integration)', () => {
     const adminId = await seedProfile({ role: 'admin' })
 
     await expect(
-      getStudentDetailService({ studentId: adminId }),
+      getStudentDetailService({ studentId: adminId }, adminId),
     ).rejects.toBeInstanceOf(NotFoundError)
   })
 
   it('returns identity fields and only assignments with a submitted submission', async () => {
+    const viewerId = await seedProfile({ role: 'admin' })
     const studentId = await seedProfile({
       role: 'student',
       fullName: 'Sara Student',
@@ -105,7 +110,7 @@ describe('getStudentDetailService (integration)', () => {
       status: 'draft',
     })
 
-    const { student } = await getStudentDetailService({ studentId })
+    const { student } = await getStudentDetailService({ studentId }, viewerId)
 
     expect(student).toMatchObject({
       id: studentId,
@@ -122,5 +127,9 @@ describe('getStudentDetailService (integration)', () => {
     expect(student.enrollments).toEqual([
       { id: courseId, status: 'active', courseId, courseTitle: 'Foundations' },
     ])
+    expect(
+      student.attendanceByCourse.find((s) => s.courseId === courseId)
+        ?.canManageAttendance,
+    ).toBe(true)
   })
 })

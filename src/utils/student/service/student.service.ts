@@ -18,12 +18,17 @@ import type {
 } from '@/types/student'
 import type { GetStudentDetailInput } from '@/schemas/student.schema'
 import { NotFoundError } from '@/utils/errors'
-import { buildCourseAttendanceScores } from '@/utils/attendance/domain/attendance-score.domain'
+import {
+  buildCourseAttendanceScores,
+  withAttendanceManageFlags,
+} from '@/utils/attendance/domain/attendance-score.domain'
 import {
   findAllLessonsForAttendance,
   findPresentsForStudent,
   findPresentsForStudents,
 } from '@/utils/attendance/repository/attendance.repository'
+import { getUserProfile } from '@/utils/auth/auth'
+import { findCourseAssignmentsForTeachers } from '@/utils/teachers/repository/course-teachers.repository'
 
 export async function getStudentsService() {
   const [allStudents, courses, allAssignments, allLessons] = await Promise.all([
@@ -65,7 +70,23 @@ export async function getStudentsService() {
   return { students: studentsWithStats }
 }
 
-export async function getStudentDetailService(data: GetStudentDetailInput) {
+async function resolveManageableCourseIds(
+  actorId: string,
+  courseIds: Array<string>,
+): Promise<Set<string>> {
+  if (courseIds.length === 0) return new Set()
+  const profile = await getUserProfile(actorId)
+  if (profile.role === 'admin') return new Set(courseIds)
+  if (profile.role !== 'teacher') return new Set()
+  const assignments = await findCourseAssignmentsForTeachers([actorId])
+  const managed = new Set(assignments.map((a) => a.courseId))
+  return new Set(courseIds.filter((id) => managed.has(id)))
+}
+
+export async function getStudentDetailService(
+  data: GetStudentDetailInput,
+  actorId: string,
+) {
   const student = await findStudentById(data.studentId)
 
   if (!student) {
@@ -89,6 +110,18 @@ export async function getStudentDetailService(data: GetStudentDetailInput) {
     assignmentIds,
   )
 
+  const courseRefs = enrollments.map((e) => ({ id: e.id, title: e.title }))
+  const scores = buildCourseAttendanceScores(
+    courseRefs,
+    allLessons,
+    presents,
+    student.id,
+  )
+  const manageable = await resolveManageableCourseIds(
+    actorId,
+    courseRefs.map((c) => c.id),
+  )
+
   const studentDetail: StudentDetailWithAssignments = {
     id: student.id,
     fullName: student.fullName,
@@ -106,12 +139,7 @@ export async function getStudentDetailService(data: GetStudentDetailInput) {
       allAssignments,
       studentSubmissions,
     ),
-    attendanceByCourse: buildCourseAttendanceScores(
-      enrollments.map((e) => ({ id: e.id, title: e.title })),
-      allLessons,
-      presents,
-      student.id,
-    ),
+    attendanceByCourse: withAttendanceManageFlags(scores, manageable),
   }
 
   return { student: studentDetail }

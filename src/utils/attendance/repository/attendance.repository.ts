@@ -271,4 +271,111 @@ export async function findPresentsForStudents(studentIds: Array<string>) {
 export async function findPresentsForStudent(studentId: string) {
   return findPresentsForStudents([studentId])
 }
+
+/**
+ * Teacher/admin override: ensure session for lesson (create closed if missing;
+ * never rewrite existing timestamps), then insert Present idempotently.
+ */
+export async function setPresentOverrideAtomically(values: {
+  courseId: string
+  lessonId: string
+  studentId: string
+  openedBy: string
+}) {
+  const db = await getDb()
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${values.courseId}))`,
+    )
+    const now = new Date()
+
+    const existingRows = await tx
+      .select()
+      .from(attendanceSessions)
+      .where(eq(attendanceSessions.lessonId, values.lessonId))
+      .limit(1)
+    let session = firstOrNull(existingRows)
+
+    if (!session) {
+      const inserted = await tx
+        .insert(attendanceSessions)
+        .values({
+          courseId: values.courseId,
+          lessonId: values.lessonId,
+          openedAt: now,
+          closesAt: now,
+          openedBy: values.openedBy,
+          updatedAt: now,
+        })
+        .returning()
+      session = firstOrNull(inserted)
+      if (!session) throw new Error('Failed to create override session')
+    }
+
+    const insertedPresent = await tx
+      .insert(attendancePresents)
+      .values({ sessionId: session.id, studentId: values.studentId })
+      .onConflictDoNothing({
+        target: [attendancePresents.sessionId, attendancePresents.studentId],
+      })
+      .returning()
+    const created = firstOrNull(insertedPresent)
+    if (created) {
+      return { session, present: created, created: true as const }
+    }
+
+    const existingPresent = await tx
+      .select()
+      .from(attendancePresents)
+      .where(
+        and(
+          eq(attendancePresents.sessionId, session.id),
+          eq(attendancePresents.studentId, values.studentId),
+        ),
+      )
+      .limit(1)
+    const present = firstOrNull(existingPresent)
+    if (!present) throw new Error('Present missing after conflict')
+    return { session, present, created: false as const }
+  })
+}
+
+/** Clear Present for student on lesson session; no-op if session or row missing. */
+export async function clearPresentOverrideAtomically(values: {
+  courseId: string
+  lessonId: string
+  studentId: string
+}) {
+  const db = await getDb()
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${values.courseId}))`,
+    )
+
+    const sessionRows = await tx
+      .select()
+      .from(attendanceSessions)
+      .where(eq(attendanceSessions.lessonId, values.lessonId))
+      .limit(1)
+    const session = firstOrNull(sessionRows)
+    if (!session) {
+      return { session: null, cleared: false as const }
+    }
+
+    const deleted = await tx
+      .delete(attendancePresents)
+      .where(
+        and(
+          eq(attendancePresents.sessionId, session.id),
+          eq(attendancePresents.studentId, values.studentId),
+        ),
+      )
+      .returning({ id: attendancePresents.id })
+
+    return {
+      session,
+      cleared: deleted.length > 0,
+    }
+  })
+}
 /* v8 ignore end */

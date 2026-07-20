@@ -28,7 +28,11 @@ export const getStudentDetail = createServerFn({ method: 'POST' })
   .inputValidator(getStudentDetailSchema)
   .handler(({ data }) =>
     withRequestCache(async () => {
-      await assertTeacherOrAdminAccess()
-      return getStudentDetailService(data)
+      const user = await getCurrentUser()
+      const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(user.id)
+      if (!isAdmin && !isTeacher) {
+        throw new AuthorizationError()
+      }
+      return getStudentDetailService(data, user.id)
     }),
   )

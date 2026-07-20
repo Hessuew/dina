@@ -2,6 +2,7 @@ import type {
   CreateLessonInput,
   UpdateLessonInput,
 } from '@/schemas/lesson.schema'
+import { toDatetimeLocalValue } from '@/utils/datetime'
 
 export const MAX_LESSONS_PER_COURSE = 3
 
@@ -78,9 +79,7 @@ export function getLessonInitialValues(
   return {
     title: initialData.title,
     content: initialData.content ?? '',
-    scheduledTime: initialData.scheduledTime
-      ? new Date(initialData.scheduledTime).toISOString().slice(0, 16)
-      : '',
+    scheduledTime: toDatetimeLocalValue(initialData.scheduledTime),
     duration: initialData.duration ?? 0,
     isPublished: initialData.isPublished ?? false,
   }

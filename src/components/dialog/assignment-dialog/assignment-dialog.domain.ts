@@ -4,6 +4,7 @@ import type {
   GradeSubmissionInput,
   UpdateAssignmentInput,
 } from '@/schemas/assignment.schema'
+import { toDatetimeLocalValue } from '@/utils/datetime'
 
 export type AssignmentDialogMode = 'create' | 'edit' | 'delete' | 'grade'
 export type AssignmentFormMode = 'create' | 'edit'
@@ -61,7 +62,7 @@ export function getAssignmentInitialValues(
   return {
     title: assignment.title,
     description: assignment.description ?? '',
-    dueDate: new Date(assignment.dueDate).toISOString().slice(0, 16),
+    dueDate: toDatetimeLocalValue(assignment.dueDate),
     maxGrade: assignment.maxGrade ?? 100,
     status: assignment.status,
   }

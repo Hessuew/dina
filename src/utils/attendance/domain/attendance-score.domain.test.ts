@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   buildCourseAttendanceScores,
   formatAttendanceScore,
+  setLessonPresentOnScores,
+  withAttendanceManageFlags,
 } from './attendance-score.domain'
 
 const courses = [
@@ -53,5 +55,44 @@ describe('formatAttendanceScore', () => {
   it('formats present/total', () => {
     expect(formatAttendanceScore(2, 3)).toBe('2/3')
     expect(formatAttendanceScore(0, 0)).toBe('0/0')
+  })
+})
+
+describe('withAttendanceManageFlags', () => {
+  it('sets canManageAttendance from manageable course ids', () => {
+    const scores = buildCourseAttendanceScores(courses, lessons, [], 's1')
+    const flagged = withAttendanceManageFlags(scores, new Set(['c-romans']))
+    expect(
+      flagged.find((s) => s.courseId === 'c-romans')?.canManageAttendance,
+    ).toBe(true)
+    expect(
+      flagged.find((s) => s.courseId === 'c-acts')?.canManageAttendance,
+    ).toBe(false)
+  })
+})
+
+describe('setLessonPresentOnScores', () => {
+  it('flips one lesson and recounts present numerator', () => {
+    const scores = buildCourseAttendanceScores(courses, lessons, [], 's1')
+    const next = setLessonPresentOnScores(scores, 'c-romans', 'l2', true)
+    const romans = next.find((s) => s.courseId === 'c-romans')!
+    expect(romans.present).toBe(1)
+    expect(romans.lessons.map((l) => l.present)).toEqual([false, true, false])
+    expect(next.find((s) => s.courseId === 'c-acts')?.present).toBe(0)
+  })
+
+  it('clears present without touching other courses', () => {
+    const scores = buildCourseAttendanceScores(
+      courses,
+      lessons,
+      [
+        { lessonId: 'l1', studentId: 's1' },
+        { lessonId: 'la', studentId: 's1' },
+      ],
+      's1',
+    )
+    const next = setLessonPresentOnScores(scores, 'c-romans', 'l1', false)
+    expect(next.find((s) => s.courseId === 'c-romans')?.present).toBe(0)
+    expect(next.find((s) => s.courseId === 'c-acts')?.present).toBe(1)
   })
 })

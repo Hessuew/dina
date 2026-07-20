@@ -5,6 +5,8 @@ export type CourseAttendanceScore = {
   courseTitle: string
   present: number
   totalLessons: number
+  /** Detail loader only: actor may toggle Present on this course. */
+  canManageAttendance?: boolean
   lessons: Array<{
     lessonId: string
     lessonTitle: string
