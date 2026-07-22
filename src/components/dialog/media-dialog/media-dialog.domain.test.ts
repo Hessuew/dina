@@ -15,6 +15,7 @@ import {
   preflightDocumentUrl,
   preflightVideoUrl,
   resolveDocumentUploadResult,
+  validateYoutubeUrl,
 } from './media-dialog.domain'
 import type { MediaLibraryRow } from '@/utils/library/library'
 
@@ -303,6 +304,20 @@ describe('isMediaDialogSubmitting', () => {
         isThumbUploading: false,
       }),
     ).toBe(false)
+  })
+})
+
+describe('validateYoutubeUrl', () => {
+  it('requires a URL only for YouTube media', () => {
+    expect(validateYoutubeUrl('', 'youtube')).toBe('URL is required')
+    expect(validateYoutubeUrl('', 'video-file')).toBeUndefined()
+    expect(validateYoutubeUrl('', 'document')).toBeUndefined()
+  })
+
+  it('accepts a populated YouTube URL', () => {
+    expect(
+      validateYoutubeUrl('https://www.youtube.com/watch?v=abc', 'youtube'),
+    ).toBeUndefined()
   })
 })
 

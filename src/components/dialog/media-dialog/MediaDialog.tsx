@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { useVideoFilePick } from './media-dialog.hooks'
 import {
   uploadThumbnailIfPresent,
   uploadVideoFileDirect,
 } from './media-dialog.logic'
+import type { VideoFilePick } from './media-dialog.hooks'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import type {
   FileResolution,
@@ -47,6 +49,7 @@ import {
   preflightDocumentUrl,
   preflightVideoUrl,
   resolveDocumentUploadResult,
+  validateYoutubeUrl,
 } from '@/components/dialog/media-dialog/media-dialog.domain'
 
 const DOCUMENT_ACCEPT = [
@@ -64,36 +67,6 @@ type MediaDialogProps = {
   media?: MediaLibraryRow
   courseId?: string
   onSuccess?: () => void
-}
-
-type VideoFilePick = {
-  file: File | null
-  fileInputRef: React.RefObject<HTMLInputElement | null>
-  isUploading: boolean
-  setUploading: (v: boolean) => void
-  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  clearFile: () => void
-}
-
-function useVideoFilePick(): VideoFilePick {
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const [file, setFile] = useState<File | null>(null)
-  const [isUploading, setUploading] = useState(false)
-
-  return {
-    file,
-    fileInputRef,
-    isUploading,
-    setUploading,
-    handleFileChange: (e) => {
-      const next = e.target.files?.[0]
-      if (next) setFile(next)
-    },
-    clearFile: () => {
-      setFile(null)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    },
-  }
 }
 
 async function resolveDocumentUrl(params: {
@@ -672,10 +645,8 @@ const MediaYoutubeUrlField = withForm({
           <form.AppField
             name="url"
             validators={{
-              onSubmit: ({ value }) => {
-                if (!value) return 'URL is required'
-                return undefined
-              },
+              onSubmit: ({ value, fieldApi }) =>
+                validateYoutubeUrl(value, fieldApi.form.state.values.kind),
             }}
           >
             {(field) => (
@@ -1089,7 +1060,7 @@ export function MediaDialog(props: MediaDialogProps) {
       title={chrome.title}
       subtitle={chrome.subtitle}
       maxWidth="3xl"
-      onSubmit={() => void form.handleSubmit()}
+      onSubmit={() => form.handleSubmit()}
       isSubmitting={isMediaDialogSubmitting({
         isAnyPending,
         isDocUploading: uploads.docUpload.isUploading,
