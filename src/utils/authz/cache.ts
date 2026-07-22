@@ -1,5 +1,4 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { withDbConnection } from '@/db'
 
 interface CacheEntry<T> {
   value: T
@@ -15,12 +14,14 @@ interface RequestCache {
 
 const requestStorage = new AsyncLocalStorage<RequestCache>()
 
-export function withRequestCache<T>(fn: () => Promise<T>): Promise<T> {
+export function withAuthzCache<T>(fn: () => Promise<T>): Promise<T> {
+  if (requestStorage.getStore()) return fn()
+
   const cache: RequestCache = {
     roleChecks: new Map(),
     resourceChecks: new Map(),
   }
-  return requestStorage.run(cache, () => withDbConnection(fn))
+  return requestStorage.run(cache, fn)
 }
 
 function getCache(): RequestCache | undefined {

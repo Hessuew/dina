@@ -22,6 +22,11 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Usage: `authz(userId).perform('gradeAssignment').on(assignmentId)` (throws if not allowed)
   - Usage: `isAllowed(userId).perform('gradeAssignment').on(assignmentId)` (returns boolean)
 
+- **Unified request scope**
+  - `request-scope.ts`: composes re-entrant authz cache maps with `withDbConnection`.
+  - `request-scope-middleware.ts`: enters that scope for every TanStack Start request
+    and server function.
+
 - **Auth utilities**
   - `auth.ts`: current user lookup and role/access helpers (legacy, migrate to authz).
 
@@ -92,7 +97,8 @@ This folder is primarily where TanStack Start server functions live (via `create
 
 - **Authorization**
   - Use `authz` module for all authorization checks (preferred over legacy `auth.ts`).
-  - Wrap server functions with `withRequestCache()` for per-request caching.
+  - Per-request caching is automatic inside global Start request-scope middleware;
+    handlers and services must not add manual cache wrappers.
   - Route protection: use `protectRoute({ require: 'admin' })` in route loaders.
 
 - **Server functions and auth**

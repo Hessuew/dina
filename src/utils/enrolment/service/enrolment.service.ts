@@ -63,11 +63,7 @@ import {
   updateInvitationToken,
   upsertEvaluation,
 } from '@/utils/enrolment/repository/enrolment.repository'
-import {
-  authz,
-  resolveAdminOrTeacherAccess,
-  withRequestCache,
-} from '@/utils/authz'
+import { authz, resolveAdminOrTeacherAccess } from '@/utils/authz'
 import {
   AppError,
   AuthorizationError,
@@ -222,7 +218,7 @@ export async function setEvaluationScoreService(
   data: SetEvaluationScoreInput,
   userId: string,
 ) {
-  return withRequestCache(() => setEvaluationScoreWithAccess(data, userId))
+  return setEvaluationScoreWithAccess(data, userId)
 }
 
 export async function createEnrollmentService(data: CreateEnrollmentInput) {
@@ -248,185 +244,174 @@ export async function getEnrollmentsService(
   data: GetEnrollmentsInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-    if (!isAdmin && !isTeacher) {
-      throw new AuthorizationError('admin or teacher access required', {
-        code: 'ROLE_REQUIRED',
-        details: {},
-      })
-    }
-
-    const reviewerFilter = data.viewAll ? undefined : userId
-    const requireReviewerAdmitted = !isAdmin && data.viewAll
-
-    // Course IDs the viewer is on (as teacher or active substitute).
-    const viewerCourseIds =
-      reviewerFilter !== undefined ? await findCourseIdsForViewer(userId) : []
-
-    const { rows, total } = await findEnrollmentsPage({
-      limit: data.pageSize,
-      offset: (data.page - 1) * data.pageSize,
-      search: data.search,
-      sortBy: data.sortBy,
-      sortDir: data.sortDir,
-      includeEmail: isAdmin,
-      reviewerFilter,
-      viewerCourseIds,
-      requireReviewerAdmitted,
+  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+  if (!isAdmin && !isTeacher) {
+    throw new AuthorizationError('admin or teacher access required', {
+      code: 'ROLE_REQUIRED',
+      details: {},
     })
+  }
 
-    const enrollmentIds = rows.map((row) => row.id)
+  const reviewerFilter = data.viewAll ? undefined : userId
+  const requireReviewerAdmitted = !isAdmin && data.viewAll
 
-    // Fetch evaluations and reviewer assignments in parallel.
-    const [evaluations, rawAssignments] = await Promise.all([
-      findEvaluationsForEnrollments(enrollmentIds),
-      findReviewerAssignmentsForEnrollments(enrollmentIds),
-    ])
+  // Course IDs the viewer is on (as teacher or active substitute).
+  const viewerCourseIds =
+    reviewerFilter !== undefined ? await findCourseIdsForViewer(userId) : []
 
-    // Legacy rows may have courseId = null (created before ADR 0007 rev 2).
-    // Enrich them by falling back to the reviewer's course in course_teachers.
-    const nullReviewerIds = [
-      ...new Set(
-        rawAssignments
-          .filter((a) => a.courseId === null)
-          .map((a) => a.reviewerId),
-      ),
-    ]
-    const fallbackCourseByReviewer =
-      nullReviewerIds.length > 0
-        ? await findCourseIdsByTeacherIds(nullReviewerIds)
-        : new Map<string, string | null>()
-    const reviewerAssignments = rawAssignments.map((a) => ({
-      ...a,
-      courseId:
-        a.courseId ?? fallbackCourseByReviewer.get(a.reviewerId) ?? null,
-    }))
-
-    // Batch-fetch team members for all distinct course IDs on this page.
-    const uniqueCourseIds = [
-      ...new Set(
-        reviewerAssignments
-          .map((a) => a.courseId)
-          .filter((id): id is string => id !== null),
-      ),
-    ]
-    const peersForReviewers = await findPeersForReviewers(uniqueCourseIds)
-
-    const enrollmentsOut: Array<EnrollmentWithEvaluation> = rows.map((row) => {
-      const { evaluationSum, evaluationCount, ...enrollment } = row
-      const base = isAdmin
-        ? (enrollment as MaybeRedactedEnrollment)
-        : redactEnrollmentForTeacher(enrollment)
-      const reviewHeading = deriveReviewHeading(
-        row.id,
-        reviewerAssignments,
-        evaluations,
-        peersForReviewers,
-        !isAdmin,
-      )
-      const assignment = reviewerAssignments.find(
-        (a) => a.enrollmentId === row.id,
-      )
-      const reviewerEval = assignment
-        ? evaluations.find(
-            (e) =>
-              e.enrollmentId === row.id &&
-              e.evaluatorId === assignment.reviewerId,
-          )
-        : undefined
-      const reviewerAdmissionCategory = reviewerEval?.admissionCategory ?? null
-      const canEvaluate = deriveCanEvaluate(
-        userId,
-        isAdmin,
-        assignment ?? null,
-        peersForReviewers,
-      )
-      return {
-        ...base,
-        evaluationSum,
-        evaluationCount,
-        reviewHeading,
-        reviewerAdmissionCategory,
-        canEvaluate,
-      }
-    })
-
-    return { enrollments: enrollmentsOut, total, evaluations }
+  const { rows, total } = await findEnrollmentsPage({
+    limit: data.pageSize,
+    offset: (data.page - 1) * data.pageSize,
+    search: data.search,
+    sortBy: data.sortBy,
+    sortDir: data.sortDir,
+    includeEmail: isAdmin,
+    reviewerFilter,
+    viewerCourseIds,
+    requireReviewerAdmitted,
   })
+
+  const enrollmentIds = rows.map((row) => row.id)
+
+  // Fetch evaluations and reviewer assignments in parallel.
+  const [evaluations, rawAssignments] = await Promise.all([
+    findEvaluationsForEnrollments(enrollmentIds),
+    findReviewerAssignmentsForEnrollments(enrollmentIds),
+  ])
+
+  // Legacy rows may have courseId = null (created before ADR 0007 rev 2).
+  // Enrich them by falling back to the reviewer's course in course_teachers.
+  const nullReviewerIds = [
+    ...new Set(
+      rawAssignments
+        .filter((a) => a.courseId === null)
+        .map((a) => a.reviewerId),
+    ),
+  ]
+  const fallbackCourseByReviewer =
+    nullReviewerIds.length > 0
+      ? await findCourseIdsByTeacherIds(nullReviewerIds)
+      : new Map<string, string | null>()
+  const reviewerAssignments = rawAssignments.map((a) => ({
+    ...a,
+    courseId: a.courseId ?? fallbackCourseByReviewer.get(a.reviewerId) ?? null,
+  }))
+
+  // Batch-fetch team members for all distinct course IDs on this page.
+  const uniqueCourseIds = [
+    ...new Set(
+      reviewerAssignments
+        .map((a) => a.courseId)
+        .filter((id): id is string => id !== null),
+    ),
+  ]
+  const peersForReviewers = await findPeersForReviewers(uniqueCourseIds)
+
+  const enrollmentsOut: Array<EnrollmentWithEvaluation> = rows.map((row) => {
+    const { evaluationSum, evaluationCount, ...enrollment } = row
+    const base = isAdmin
+      ? (enrollment as MaybeRedactedEnrollment)
+      : redactEnrollmentForTeacher(enrollment)
+    const reviewHeading = deriveReviewHeading(
+      row.id,
+      reviewerAssignments,
+      evaluations,
+      peersForReviewers,
+      !isAdmin,
+    )
+    const assignment = reviewerAssignments.find(
+      (a) => a.enrollmentId === row.id,
+    )
+    const reviewerEval = assignment
+      ? evaluations.find(
+          (e) =>
+            e.enrollmentId === row.id &&
+            e.evaluatorId === assignment.reviewerId,
+        )
+      : undefined
+    const reviewerAdmissionCategory = reviewerEval?.admissionCategory ?? null
+    const canEvaluate = deriveCanEvaluate(
+      userId,
+      isAdmin,
+      assignment ?? null,
+      peersForReviewers,
+    )
+    return {
+      ...base,
+      evaluationSum,
+      evaluationCount,
+      reviewHeading,
+      reviewerAdmissionCategory,
+      canEvaluate,
+    }
+  })
+
+  return { enrollments: enrollmentsOut, total, evaluations }
 }
 
 export async function getEnrollmentByIdService(
   data: GetEnrollmentByIdInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-    if (!isAdmin && !isTeacher) {
-      throw new AuthorizationError('admin or teacher access required', {
-        code: 'ROLE_REQUIRED',
-        details: {},
-      })
+  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+  if (!isAdmin && !isTeacher) {
+    throw new AuthorizationError('admin or teacher access required', {
+      code: 'ROLE_REQUIRED',
+      details: {},
+    })
+  }
+
+  const enrollment = await findEnrollmentById(data.enrollmentId)
+
+  if (!enrollment) {
+    throw new NotFoundError('Enrollment not found', {
+      code: 'ENROLLMENT_NOT_FOUND',
+      details: { enrollmentId: data.enrollmentId },
+    })
+  }
+
+  if (!isAdmin) {
+    return {
+      enrollment: redactEnrollmentForTeacher(
+        enrollment,
+      ) as MaybeRedactedEnrollment,
     }
+  }
 
-    const enrollment = await findEnrollmentById(data.enrollmentId)
-
-    if (!enrollment) {
-      throw new NotFoundError('Enrollment not found', {
-        code: 'ENROLLMENT_NOT_FOUND',
-        details: { enrollmentId: data.enrollmentId },
-      })
-    }
-
-    if (!isAdmin) {
-      return {
-        enrollment: redactEnrollmentForTeacher(
-          enrollment,
-        ) as MaybeRedactedEnrollment,
-      }
-    }
-
-    return { enrollment: enrollment as MaybeRedactedEnrollment }
-  })
+  return { enrollment: enrollment as MaybeRedactedEnrollment }
 }
 
 export async function updateEnrollmentStatusService(
   data: UpdateEnrollmentStatusInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
+  await authz(userId).hasRole('admin')
 
-    await updateEnrollmentStatusById(data.enrollmentId, data.status)
+  await updateEnrollmentStatusById(data.enrollmentId, data.status)
 
-    return
-  })
+  return
 }
 
 export async function setEnrollmentSpecialCaseService(
   data: SetEnrollmentSpecialCaseInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
+  await authz(userId).hasRole('admin')
 
-    await updateEnrollmentSpecialCaseById(data.enrollmentId, data.specialCase)
+  await updateEnrollmentSpecialCaseById(data.enrollmentId, data.specialCase)
 
-    return
-  })
+  return
 }
 
 export async function deleteEnrollmentService(
   data: DeleteEnrollmentInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
+  await authz(userId).hasRole('admin')
 
-    await deleteEnrollmentById(data.enrollmentId)
+  await deleteEnrollmentById(data.enrollmentId)
 
-    return
-  })
+  return
 }
 
 function buildEmailSendError(error: unknown): AppError {
@@ -532,63 +517,61 @@ export async function sendInvitationForEnrollmentService(
   userId: string,
   userEmail: string | undefined,
 ) {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
+  await authz(userId).hasRole('admin')
 
-    const profile = await findProfileById(userId)
+  const profile = await findProfileById(userId)
 
-    const enrollment = await findEnrollmentById(data.enrollmentId)
+  const enrollment = await findEnrollmentById(data.enrollmentId)
 
-    if (!enrollment) {
-      throw new NotFoundError('Enrollment not found', {
-        code: 'ENROLLMENT_NOT_FOUND',
-        details: { enrollmentId: data.enrollmentId },
-      })
-    }
-
-    const existingInvitation = await findInvitationByEmail(enrollment.email)
-    const token = generateSecureToken()
-    const expiresAt = calculateInvitationExpiry(new Date())
-    const senderName = resolveEnrollmentInvitationSender({
-      profile,
-      userId,
-      userEmail,
+  if (!enrollment) {
+    throw new NotFoundError('Enrollment not found', {
+      code: 'ENROLLMENT_NOT_FOUND',
+      details: { enrollmentId: data.enrollmentId },
     })
-    const lecturerTitle = profile?.lecturerTitle || null
+  }
 
-    if (existingInvitation) {
-      if (!isInvitationResendable(existingInvitation)) {
-        throw new ConflictError('An invitation already exists for this email', {
-          code: 'INVITATION_EXISTS',
-          details: {
-            email: enrollment.email,
-            status: existingInvitation.status,
-          },
-        })
-      }
+  const existingInvitation = await findInvitationByEmail(enrollment.email)
+  const token = generateSecureToken()
+  const expiresAt = calculateInvitationExpiry(new Date())
+  const senderName = resolveEnrollmentInvitationSender({
+    profile,
+    userId,
+    userEmail,
+  })
+  const lecturerTitle = profile?.lecturerTitle || null
 
-      return sendExistingEnrollmentInvitation({
-        enrollmentId: enrollment.id,
-        email: enrollment.email,
-        invitationId: existingInvitation.id,
-        token,
-        expiresAt,
-        oldToken: existingInvitation.token,
-        oldExpiresAt: existingInvitation.expiresAt,
-        senderName,
-        lecturerTitle,
+  if (existingInvitation) {
+    if (!isInvitationResendable(existingInvitation)) {
+      throw new ConflictError('An invitation already exists for this email', {
+        code: 'INVITATION_EXISTS',
+        details: {
+          email: enrollment.email,
+          status: existingInvitation.status,
+        },
       })
     }
 
-    return sendNewEnrollmentInvitation({
+    return sendExistingEnrollmentInvitation({
       enrollmentId: enrollment.id,
       email: enrollment.email,
+      invitationId: existingInvitation.id,
       token,
       expiresAt,
+      oldToken: existingInvitation.token,
+      oldExpiresAt: existingInvitation.expiresAt,
       senderName,
-      userId,
       lecturerTitle,
     })
+  }
+
+  return sendNewEnrollmentInvitation({
+    enrollmentId: enrollment.id,
+    email: enrollment.email,
+    token,
+    expiresAt,
+    senderName,
+    userId,
+    lecturerTitle,
   })
 }
 
@@ -596,83 +579,75 @@ export async function setEvaluationAdmissionCategoryService(
   data: SetEvaluationAdmissionCategoryInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-    if (!isAdmin && !isTeacher) {
-      throw new AuthorizationError('admin or teacher access required', {
-        code: 'ROLE_REQUIRED',
-        details: {},
-      })
-    }
-
-    await assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin)
-
-    await upsertEvaluation(data.enrollmentId, userId, {
-      admissionCategory: data.admissionCategory,
+  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+  if (!isAdmin && !isTeacher) {
+    throw new AuthorizationError('admin or teacher access required', {
+      code: 'ROLE_REQUIRED',
+      details: {},
     })
+  }
 
-    return
+  await assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin)
+
+  await upsertEvaluation(data.enrollmentId, userId, {
+    admissionCategory: data.admissionCategory,
   })
+
+  return
 }
 
 export async function setEvaluationNoteService(
   data: SetEvaluationNoteInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-    if (!isAdmin && !isTeacher) {
-      throw new AuthorizationError('admin or teacher access required', {
-        code: 'ROLE_REQUIRED',
-        details: {},
-      })
-    }
+  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+  if (!isAdmin && !isTeacher) {
+    throw new AuthorizationError('admin or teacher access required', {
+      code: 'ROLE_REQUIRED',
+      details: {},
+    })
+  }
 
-    await assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin)
+  await assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin)
 
-    await upsertEvaluation(data.enrollmentId, userId, { note: data.note })
+  await upsertEvaluation(data.enrollmentId, userId, { note: data.note })
 
-    return
-  })
+  return
 }
 
 export async function distributeEnrollmentsService(userId: string) {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
-    const [unassignedIds, teacherIds] = await Promise.all([
-      findUnassignedEnrollmentIds(),
-      findAllTeacherIds(),
-    ])
-    if (teacherIds.length === 0 || unassignedIds.length === 0) {
-      return { assigned: 0 }
-    }
-    const assignments = buildEnrollmentAssignments(unassignedIds, teacherIds)
+  await authz(userId).hasRole('admin')
+  const [unassignedIds, teacherIds] = await Promise.all([
+    findUnassignedEnrollmentIds(),
+    findAllTeacherIds(),
+  ])
+  if (teacherIds.length === 0 || unassignedIds.length === 0) {
+    return { assigned: 0 }
+  }
+  const assignments = buildEnrollmentAssignments(unassignedIds, teacherIds)
 
-    // Enrich each assignment with the reviewer's course_id so the course namespace
-    // is recorded on the assignment row (used for peer-review scoping, ADR 0007 rev 2).
-    const uniqueReviewerIds = [...new Set(assignments.map((a) => a.reviewerId))]
-    const courseByReviewer = await findCourseIdsByTeacherIds(uniqueReviewerIds)
-    const enriched = assignments.map((a) => ({
-      ...a,
-      courseId: courseByReviewer.get(a.reviewerId) ?? null,
-    }))
+  // Enrich each assignment with the reviewer's course_id so the course namespace
+  // is recorded on the assignment row (used for peer-review scoping, ADR 0007 rev 2).
+  const uniqueReviewerIds = [...new Set(assignments.map((a) => a.reviewerId))]
+  const courseByReviewer = await findCourseIdsByTeacherIds(uniqueReviewerIds)
+  const enriched = assignments.map((a) => ({
+    ...a,
+    courseId: courseByReviewer.get(a.reviewerId) ?? null,
+  }))
 
-    try {
-      await bulkAssignEnrollments(enriched)
-    } catch (error) {
-      throw new AppError({
-        code: 'DISTRIBUTION_FAILED',
-        status: 500,
-        userMessage:
-          'Failed to distribute enrollments. Please refresh and try again.',
-        internalMessage:
-          error instanceof Error
-            ? error.message
-            : 'bulkAssignEnrollments failed',
-      })
-    }
-    return { assigned: assignments.length }
-  })
+  try {
+    await bulkAssignEnrollments(enriched)
+  } catch (error) {
+    throw new AppError({
+      code: 'DISTRIBUTION_FAILED',
+      status: 500,
+      userMessage:
+        'Failed to distribute enrollments. Please refresh and try again.',
+      internalMessage:
+        error instanceof Error ? error.message : 'bulkAssignEnrollments failed',
+    })
+  }
+  return { assigned: assignments.length }
 }
 
 /**
@@ -684,23 +659,21 @@ export async function substituteTeacherService(
   data: SubstituteTeacherInput,
   adminUserId: string,
 ): Promise<{ reassigned: number }> {
-  return withRequestCache(async () => {
-    await authz(adminUserId).hasRole('admin')
+  await authz(adminUserId).hasRole('admin')
 
-    const courseId = await findCourseIdByTeacherId(data.absentTeacherId)
-    if (!courseId) {
-      throw new NotFoundError('Absent teacher has no course assignment', {
-        code: 'NOT_FOUND',
-        details: { absentTeacherId: data.absentTeacherId },
-      })
-    }
+  const courseId = await findCourseIdByTeacherId(data.absentTeacherId)
+  if (!courseId) {
+    throw new NotFoundError('Absent teacher has no course assignment', {
+      code: 'NOT_FOUND',
+      details: { absentTeacherId: data.absentTeacherId },
+    })
+  }
 
-    return insertSubstituteWithReassignment(
-      courseId,
-      data.substituteTeacherId,
-      data.absentTeacherId,
-    )
-  })
+  return insertSubstituteWithReassignment(
+    courseId,
+    data.substituteTeacherId,
+    data.absentTeacherId,
+  )
 }
 
 /**
@@ -711,16 +684,14 @@ export async function endSubstitutionService(
   data: EndSubstitutionInput,
   adminUserId: string,
 ): Promise<void> {
-  return withRequestCache(async () => {
-    await authz(adminUserId).hasRole('admin')
-    const deleted = await deleteCourseSubstituteByAbsent(data.absentTeacherId)
-    if (deleted === 0) {
-      throw new NotFoundError('No active substitution found for this teacher', {
-        code: 'NOT_FOUND',
-        details: { absentTeacherId: data.absentTeacherId },
-      })
-    }
-  })
+  await authz(adminUserId).hasRole('admin')
+  const deleted = await deleteCourseSubstituteByAbsent(data.absentTeacherId)
+  if (deleted === 0) {
+    throw new NotFoundError('No active substitution found for this teacher', {
+      code: 'NOT_FOUND',
+      details: { absentTeacherId: data.absentTeacherId },
+    })
+  }
 }
 
 /**
@@ -731,11 +702,9 @@ export async function getEnrollmentEmailsService(
   data: GetEnrollmentEmailsInput,
   userId: string,
 ): Promise<{ emails: Array<string> }> {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
-    const emails = await findEnrollmentEmailsByGroup(data.group)
-    return { emails }
-  })
+  await authz(userId).hasRole('admin')
+  const emails = await findEnrollmentEmailsByGroup(data.group)
+  return { emails }
 }
 
 /**
@@ -746,19 +715,17 @@ export async function searchEnrollmentContactsByNamesService(
   data: SearchEnrollmentContactsByNamesInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
+  await authz(userId).hasRole('admin')
 
-    const queries = parseEnrollmentContactLookupNames(data.names)
-    if (queries.length === 0) {
-      throw new ValidationError('Enter at least one name')
-    }
+  const queries = parseEnrollmentContactLookupNames(data.names)
+  if (queries.length === 0) {
+    throw new ValidationError('Enter at least one name')
+  }
 
-    const candidates = await findEnrollmentContactLookupCandidates(queries)
-    return {
-      groups: buildEnrollmentContactLookupGroups(queries, candidates),
-    }
-  })
+  const candidates = await findEnrollmentContactLookupCandidates(queries)
+  return {
+    groups: buildEnrollmentContactLookupGroups(queries, candidates),
+  }
 }
 
 /**
@@ -778,52 +745,51 @@ export async function bulkGradeEnrollmentsService(
   rejected: number
   total: number
 }> {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
+  await authz(userId).hasRole('admin')
 
-    const thresholds = {
-      approveMin: data.approveMin,
-      waitlistMin: data.waitlistMin ?? undefined,
-    }
+  const thresholds = {
+    approveMin: data.approveMin,
+    waitlistMin: data.waitlistMin ?? undefined,
+  }
 
-    const rows = await findAwaitingApprovalIdsWithSum()
+  const rows = await findAwaitingApprovalIdsWithSum()
 
-    const specialCaseCount = rows.filter((r) => r.specialCase).length
-    const regularRows = rows.filter((r) => !r.specialCase)
+  const specialCaseCount = rows.filter((r) => r.specialCase).length
+  const regularRows = rows.filter((r) => !r.specialCase)
 
-    const countsBySum = regularRows.reduce<
-      Array<{ sum: number; count: number }>
-    >((acc, row) => {
+  const countsBySum = regularRows.reduce<Array<{ sum: number; count: number }>>(
+    (acc, row) => {
       const entry = acc.find((e) => e.sum === row.sum)
       if (entry) entry.count++
       else acc.push({ sum: row.sum, count: 1 })
       return acc
-    }, [])
+    },
+    [],
+  )
 
-    const preview = computeBulkGradePreview(countsBySum, thresholds)
+  const preview = computeBulkGradePreview(countsBySum, thresholds)
 
-    // Add specialCase enrollments to approved count
-    const finalPreview = {
-      approved: preview.approved + specialCaseCount,
-      waitlisted: preview.waitlisted,
-      rejected: preview.rejected,
-      total: preview.total + specialCaseCount,
-    }
+  // Add specialCase enrollments to approved count
+  const finalPreview = {
+    approved: preview.approved + specialCaseCount,
+    waitlisted: preview.waitlisted,
+    rejected: preview.rejected,
+    total: preview.total + specialCaseCount,
+  }
 
-    if (data.dryRun) return finalPreview
+  if (data.dryRun) return finalPreview
 
-    const updates = rows.map((row) => ({
-      id: row.id,
-      status: row.specialCase
-        ? 'approved'
-        : (assignBulkGradeStatus(row.sum, thresholds) as
-            | 'approved'
-            | 'waitlisted'
-            | 'rejected'),
-    }))
+  const updates = rows.map((row) => ({
+    id: row.id,
+    status: row.specialCase
+      ? 'approved'
+      : (assignBulkGradeStatus(row.sum, thresholds) as
+          | 'approved'
+          | 'waitlisted'
+          | 'rejected'),
+  }))
 
-    await bulkUpdateEnrollmentStatuses(updates)
+  await bulkUpdateEnrollmentStatuses(updates)
 
-    return finalPreview
-  })
+  return finalPreview
 }

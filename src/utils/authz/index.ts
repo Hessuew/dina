@@ -1,5 +1,4 @@
 import { createAuthorizationBuilder } from './builder'
-import { withRequestCache } from './cache'
 import { getAuthorizationService } from './service'
 
 export function authz(userId: string) {
@@ -14,7 +13,6 @@ export async function resolveAdminOrTeacherAccess(
   return { isAdmin: role === 'admin', isTeacher: role === 'teacher' }
 }
 
-export { withRequestCache }
 export { setAuthorizationService } from './service'
 export type { Role } from './types'
 export { DefaultAuthorizationService } from './default-adapter'

@@ -28,7 +28,7 @@ import {
   generateSecureToken,
 } from '@/utils/invitation/domain/invitations.domain'
 import { findProfileById } from '@/utils/enrolment/repository/enrolment.repository'
-import { authz, withRequestCache } from '@/utils/authz'
+import { authz } from '@/utils/authz'
 import { CampaignLockedError, ValidationError } from '@/utils/errors'
 import { env } from '@/env'
 
@@ -180,37 +180,30 @@ export async function previewEmailCampaignService(
   data: SendEmailCampaignInput,
   userId: string,
 ): Promise<EmailCampaignPreview> {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
-    const acquired = await acquireEmailCampaignLock(data.campaign, userId)
-    if (!acquired) throw new CampaignLockedError()
-    const { plan } = await planCampaign(data)
-    return {
-      toSend: plan.toSend.length,
-      skipped: summarizeInviteSkips(plan.skipped),
-    }
-  })
+  await authz(userId).hasRole('admin')
+  const acquired = await acquireEmailCampaignLock(data.campaign, userId)
+  if (!acquired) throw new CampaignLockedError()
+  const { plan } = await planCampaign(data)
+  return {
+    toSend: plan.toSend.length,
+    skipped: summarizeInviteSkips(plan.skipped),
+  }
 }
 
 export async function sendEmailCampaignService(
   data: SendEmailCampaignInput,
   userId: string,
 ): Promise<EmailCampaignSendSummary> {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
-    const holdsLock = await checkEmailCampaignLockHeldBy(data.campaign, userId)
-    if (!holdsLock) throw new CampaignLockedError()
-    try {
-      return await sendLockedEmailCampaign(data, userId)
-    } finally {
-      await releaseEmailCampaignLock(data.campaign, userId).catch((error) => {
-        console.error(
-          'Failed to release email campaign lock after send:',
-          error,
-        )
-      })
-    }
-  })
+  await authz(userId).hasRole('admin')
+  const holdsLock = await checkEmailCampaignLockHeldBy(data.campaign, userId)
+  if (!holdsLock) throw new CampaignLockedError()
+  try {
+    return await sendLockedEmailCampaign(data, userId)
+  } finally {
+    await releaseEmailCampaignLock(data.campaign, userId).catch((error) => {
+      console.error('Failed to release email campaign lock after send:', error)
+    })
+  }
 }
 
 async function sendLockedEmailCampaign(

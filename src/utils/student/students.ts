@@ -5,7 +5,7 @@ import {
 } from './service/student.service'
 import { getStudentDetailSchema } from '@/schemas/student.schema'
 import { getCurrentUser } from '@/utils/auth/auth'
-import { resolveAdminOrTeacherAccess, withRequestCache } from '@/utils/authz'
+import { resolveAdminOrTeacherAccess } from '@/utils/authz'
 import { AuthorizationError } from '@/utils/errors'
 
 async function assertTeacherOrAdminAccess(): Promise<void> {
@@ -17,22 +17,20 @@ async function assertTeacherOrAdminAccess(): Promise<void> {
   }
 }
 
-export const getStudents = createServerFn({ method: 'POST' }).handler(() =>
-  withRequestCache(async () => {
+export const getStudents = createServerFn({ method: 'POST' }).handler(
+  async () => {
     await assertTeacherOrAdminAccess()
     return getStudentsService()
-  }),
+  },
 )
 
 export const getStudentDetail = createServerFn({ method: 'POST' })
   .inputValidator(getStudentDetailSchema)
-  .handler(({ data }) =>
-    withRequestCache(async () => {
-      const user = await getCurrentUser()
-      const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(user.id)
-      if (!isAdmin && !isTeacher) {
-        throw new AuthorizationError()
-      }
-      return getStudentDetailService(data, user.id)
-    }),
-  )
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(user.id)
+    if (!isAdmin && !isTeacher) {
+      throw new AuthorizationError()
+    }
+    return getStudentDetailService(data, user.id)
+  })

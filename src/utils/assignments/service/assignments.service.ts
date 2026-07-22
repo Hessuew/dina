@@ -42,7 +42,7 @@ import {
   updateSubmissionGrade,
 } from '@/utils/assignments/repository/submissions.repository'
 import { getUserProfile } from '@/utils/auth/auth'
-import { authz, withRequestCache } from '@/utils/authz'
+import { authz } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
 import {
   AuthorizationError,
@@ -196,116 +196,108 @@ export async function createAssignmentService(
   data: CreateAssignmentInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const lesson = await findLessonById(data.lessonId)
-    if (!lesson) {
-      throw new NotFoundError('Lesson not found', {
-        code: 'LESSON_NOT_FOUND',
-        details: { lessonId: data.lessonId },
-      })
-    }
-
-    await authz(userId).perform('createLesson').on('course', lesson.courseId)
-
-    const assignment = await insertAssignment({
-      lessonId: data.lessonId,
-      title: data.title,
-      description: data.description || null,
-      dueDate: new Date(data.dueDate),
-      maxGrade: data.maxGrade || 100,
-      status: 'draft',
+  const lesson = await findLessonById(data.lessonId)
+  if (!lesson) {
+    throw new NotFoundError('Lesson not found', {
+      code: 'LESSON_NOT_FOUND',
+      details: { lessonId: data.lessonId },
     })
+  }
 
-    return { assignment }
+  await authz(userId).perform('createLesson').on('course', lesson.courseId)
+
+  const assignment = await insertAssignment({
+    lessonId: data.lessonId,
+    title: data.title,
+    description: data.description || null,
+    dueDate: new Date(data.dueDate),
+    maxGrade: data.maxGrade || 100,
+    status: 'draft',
   })
+
+  return { assignment }
 }
 
 export async function updateAssignmentService(
   data: UpdateAssignmentInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const assignment = await findAssignmentWithLesson(data.assignmentId)
-    if (!assignment) {
-      throw new NotFoundError('Assignment not found', {
-        code: 'ASSIGNMENT_NOT_FOUND',
-        details: { assignmentId: data.assignmentId },
-      })
-    }
-
-    await authz(userId)
-      .perform('editLesson')
-      .on('course', assignment.lesson.courseId)
-
-    const updated = await updateAssignmentById(data.assignmentId, {
-      title: data.title,
-      description: data.description || null,
-      dueDate: new Date(data.dueDate),
-      maxGrade: data.maxGrade || 100,
-      status: data.status,
-      updatedAt: new Date(),
+  const assignment = await findAssignmentWithLesson(data.assignmentId)
+  if (!assignment) {
+    throw new NotFoundError('Assignment not found', {
+      code: 'ASSIGNMENT_NOT_FOUND',
+      details: { assignmentId: data.assignmentId },
     })
+  }
 
-    return { assignment: updated }
+  await authz(userId)
+    .perform('editLesson')
+    .on('course', assignment.lesson.courseId)
+
+  const updated = await updateAssignmentById(data.assignmentId, {
+    title: data.title,
+    description: data.description || null,
+    dueDate: new Date(data.dueDate),
+    maxGrade: data.maxGrade || 100,
+    status: data.status,
+    updatedAt: new Date(),
   })
+
+  return { assignment: updated }
 }
 
 export async function getAssignmentSubmissionCountService(
   data: GetAssignmentSubmissionCountInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const assignment = await findAssignmentWithLessonAndSubmissions(
-      data.assignmentId,
-    )
-    if (!assignment) {
-      throw new NotFoundError('Assignment not found', {
-        code: 'ASSIGNMENT_NOT_FOUND',
-        details: { assignmentId: data.assignmentId },
-      })
-    }
+  const assignment = await findAssignmentWithLessonAndSubmissions(
+    data.assignmentId,
+  )
+  if (!assignment) {
+    throw new NotFoundError('Assignment not found', {
+      code: 'ASSIGNMENT_NOT_FOUND',
+      details: { assignmentId: data.assignmentId },
+    })
+  }
 
-    await authz(userId)
-      .perform('editLesson')
-      .on('course', assignment.lesson.courseId)
+  await authz(userId)
+    .perform('editLesson')
+    .on('course', assignment.lesson.courseId)
 
-    return { count: assignment.submissions.length }
-  })
+  return { count: assignment.submissions.length }
 }
 
 export async function deleteAssignmentService(
   data: DeleteAssignmentInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const assignment = await findAssignmentWithLessonAndSubmissions(
-      data.assignmentId,
-    )
-    if (!assignment) {
-      throw new NotFoundError('Assignment not found', {
-        code: 'ASSIGNMENT_NOT_FOUND',
-        details: { assignmentId: data.assignmentId },
-      })
-    }
+  const assignment = await findAssignmentWithLessonAndSubmissions(
+    data.assignmentId,
+  )
+  if (!assignment) {
+    throw new NotFoundError('Assignment not found', {
+      code: 'ASSIGNMENT_NOT_FOUND',
+      details: { assignmentId: data.assignmentId },
+    })
+  }
 
-    await authz(userId)
-      .perform('editLesson')
-      .on('course', assignment.lesson.courseId)
+  await authz(userId)
+    .perform('editLesson')
+    .on('course', assignment.lesson.courseId)
 
-    if (!canDeleteAssignment(assignment, assignment.submissions)) {
-      throw new ValidationError(
-        `Cannot delete assignment with ${assignment.submissions.length} submission${assignment.submissions.length !== 1 ? 's' : ''}`,
-        {
-          details: {
-            assignmentId: data.assignmentId,
-            submissionCount: assignment.submissions.length,
-          },
+  if (!canDeleteAssignment(assignment, assignment.submissions)) {
+    throw new ValidationError(
+      `Cannot delete assignment with ${assignment.submissions.length} submission${assignment.submissions.length !== 1 ? 's' : ''}`,
+      {
+        details: {
+          assignmentId: data.assignmentId,
+          submissionCount: assignment.submissions.length,
         },
-      )
-    }
+      },
+    )
+  }
 
-    await deleteAssignmentById(data.assignmentId)
-  })
+  await deleteAssignmentById(data.assignmentId)
 }
 
 export async function createOrUpdateSubmissionService(
@@ -474,45 +466,40 @@ export async function gradeSubmissionService(
   data: GradeSubmissionInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const assignment = await findAssignmentWithLesson(data.assignmentId)
-    if (!assignment) {
-      throw new NotFoundError('Assignment not found', {
-        code: 'ASSIGNMENT_NOT_FOUND',
-        details: { assignmentId: data.assignmentId },
-      })
-    }
-
-    await authz(userId)
-      .perform('gradeAssignment')
-      .on('course', assignment.lesson.courseId)
-
-    const submission = await findSubmissionById(data.submissionId)
-    if (!submission) {
-      throw new NotFoundError('Submission not found', {
-        code: 'NOT_FOUND',
-        details: { submissionId: data.submissionId },
-      })
-    }
-    if (submission.assignmentId !== data.assignmentId) {
-      throw new ValidationError(
-        'Submission does not belong to this assignment',
-        {
-          details: {
-            submissionId: data.submissionId,
-            assignmentId: data.assignmentId,
-          },
-        },
-      )
-    }
-
-    const gradedSubmission = await updateSubmissionGrade(data.submissionId, {
-      grade: data.grade,
-      feedback: data.feedback || null,
-      gradedAt: new Date(),
-      updatedAt: new Date(),
+  const assignment = await findAssignmentWithLesson(data.assignmentId)
+  if (!assignment) {
+    throw new NotFoundError('Assignment not found', {
+      code: 'ASSIGNMENT_NOT_FOUND',
+      details: { assignmentId: data.assignmentId },
     })
+  }
 
-    return { submission: gradedSubmission }
+  await authz(userId)
+    .perform('gradeAssignment')
+    .on('course', assignment.lesson.courseId)
+
+  const submission = await findSubmissionById(data.submissionId)
+  if (!submission) {
+    throw new NotFoundError('Submission not found', {
+      code: 'NOT_FOUND',
+      details: { submissionId: data.submissionId },
+    })
+  }
+  if (submission.assignmentId !== data.assignmentId) {
+    throw new ValidationError('Submission does not belong to this assignment', {
+      details: {
+        submissionId: data.submissionId,
+        assignmentId: data.assignmentId,
+      },
+    })
+  }
+
+  const gradedSubmission = await updateSubmissionGrade(data.submissionId, {
+    grade: data.grade,
+    feedback: data.feedback || null,
+    gradedAt: new Date(),
+    updatedAt: new Date(),
   })
+
+  return { submission: gradedSubmission }
 }

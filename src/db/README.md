@@ -6,24 +6,30 @@ Database access layer and schema definitions.
 
 - `schema.ts` is a barrel re-exporting the per-domain modules in `src/db/schema/` (tables/enums/relations and policy helpers) used by Drizzle.
 - `index.ts` defines how the app connects to Postgres and creates the Drizzle client.
+- `connection-scope.ts` owns the request-scoped connect/reuse/`end` lifecycle (testable pure helper).
+- `src/utils/request-scope.ts` composes the DB lifecycle with authz cache maps.
+- `src/utils/request-scope-middleware.ts` installs that unified scope globally.
 
 ## Key Entry Points
 
 - **`index.ts`**
-  - `getConnectionString()`
-    - Uses Cloudflare Workers env bindings when available.
-    - Supports Hyperdrive via `HYPERDRIVE.connectionString`.
-    - Falls back to `DATABASE_URL`.
   - `getDb()`
-    - Returns a Drizzle instance. Inside a request scope (see `withDbConnection`)
-      the first call opens one `pg` `Client` and connects; every later call in the
-      same request reuses that connection. Outside a request scope (loaders,
-      scripts) it opens a one-off connection.
+    - Returns a Drizzle instance. Inside a request scope the first call opens one
+      `pg` `Client` and connects; every later call in the same request reuses that
+      connection. Parallel first-touch callers share a single in-flight connect
+      (no double Hyperdrive open). Outside a request scope (scripts) it opens a
+      one-off connection. Connection string comes from Hyperdrive
+      (`HYPERDRIVE.connectionString`) or `DATABASE_URL` (internal helper only).
   - `withDbConnection(fn)`
     - Runs `fn` within a request scope that shares a single connection across all
-      `getDb()` calls, then closes that connection when `fn` finishes. Opens
-      nothing if `fn` never calls `getDb()`. `withRequestCache()` composes this,
-      so any server function wrapped in it already gets request-scoped reuse.
+      `getDb()` calls, then closes that connection when `fn` finishes. Nested calls
+      re-enter the outer scope (outer owns `end()`). Opens nothing if `fn` never
+      calls `getDb()`. Start handlers should rely on global request-scope middleware.
+
+- **Unified request-scope middleware**
+  - `requestScopeMiddleware` / `requestScopeFunctionMiddleware` are registered in
+    `src/start.tsx`, so every HTTP request and server function automatically runs
+    under authz caching and `withDbConnection`.
 
 - **`schema.ts`**
   - Barrel that re-exports the per-domain modules in `src/db/schema/`.
@@ -52,11 +58,16 @@ Database access layer and schema definitions.
 
 ## Key Invariants / Assumptions
 
-- **Request-scoped connection**
+- **Request-scoped connection (enforced)**
   - Application code should use `getDb()` rather than creating its own connections.
-  - One connection is opened per request, reused across all `getDb()` calls within
-    that request, and closed when the request finishes. The request scope comes
-    from `withDbConnection`, which `withRequestCache()` composes.
+  - Global Start middleware (`src/start.tsx` → `src/utils/request-scope-middleware.ts`)
+    enters `withRequestScope` for every request and server function. One connection
+    is opened per outermost DB scope, reused across all `getDb()` calls (including
+    parallel first-touch), and closed when that scope finishes.
+  - Prefer single `pg.Client` per request under Hyperdrive (Hyperdrive is the
+    real pool). Do not reintroduce a module-scoped `Pool` on Workers.
+  - Nested request scopes and `withDbConnection` calls are re-entrant; outer scopes
+    own lifecycle cleanup.
 
 - **Schema changes require doc updates**
   - If you modify the schema modules in `src/db/schema/`, update this README and any related deep dives.
@@ -69,7 +80,9 @@ Database access layer and schema definitions.
   - Update this README at minimum.
 
 - **Change DB connection behavior**
-  - Edit `index.ts`.
+  - Lifecycle logic: `connection-scope.ts` (+ unit tests).
+  - Wire-up / Hyperdrive string: `index.ts`.
+  - Global enforcement: `src/utils/request-scope-middleware.ts` + `src/start.tsx`.
   - Be mindful of Cloudflare vs local runtime env.
 
 ## Related Docs

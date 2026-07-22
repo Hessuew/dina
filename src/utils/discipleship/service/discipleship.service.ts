@@ -14,7 +14,7 @@ import type {
   UnassignStudentInput,
   UnpairStudentInput,
 } from '@/schemas/discipleship.schema'
-import { resolveAdminOrTeacherAccess, withRequestCache } from '@/utils/authz'
+import { resolveAdminOrTeacherAccess } from '@/utils/authz'
 import { getAuthorizationService } from '@/utils/authz/service'
 import {
   AuthorizationError,
@@ -157,28 +157,26 @@ function toGroupDTO(row: {
 }
 
 export async function getDiscipleshipBoardService(userId: string) {
-  return withRequestCache(async () => {
-    const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-    if (!isAdmin && !isTeacher) throw new AuthorizationError()
+  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+  if (!isAdmin && !isTeacher) throw new AuthorizationError()
 
-    const [teachers, students, assignments, pairs, groups] = await Promise.all([
-      findDiscipleshipTeachers(),
-      findDiscipleshipStudents(),
-      isAdmin ? findAllAssignments() : findAssignmentsByTeacher(userId),
-      isAdmin ? findAllPairs() : findPairsByTeacher(userId),
-      isAdmin ? findAllGroups() : findGroupsByTeacher(userId),
-    ])
+  const [teachers, students, assignments, pairs, groups] = await Promise.all([
+    findDiscipleshipTeachers(),
+    findDiscipleshipStudents(),
+    isAdmin ? findAllAssignments() : findAssignmentsByTeacher(userId),
+    isAdmin ? findAllPairs() : findPairsByTeacher(userId),
+    isAdmin ? findAllGroups() : findGroupsByTeacher(userId),
+  ])
 
-    return {
-      isAdmin,
-      currentUserId: userId,
-      teachers: isAdmin ? teachers : teachers.filter((t) => t.id === userId),
-      students,
-      assignments: assignments.map(toAssignmentDTO),
-      pairs: pairs.map(toPairDTO),
-      groups: groups.map(toGroupDTO),
-    }
-  })
+  return {
+    isAdmin,
+    currentUserId: userId,
+    teachers: isAdmin ? teachers : teachers.filter((t) => t.id === userId),
+    students,
+    assignments: assignments.map(toAssignmentDTO),
+    pairs: pairs.map(toPairDTO),
+    groups: groups.map(toGroupDTO),
+  }
 }
 
 function isoOrNull(value: Date | null | undefined): string | null {
@@ -246,60 +244,54 @@ function toStudentViewBuilderInput(args: {
 export async function getStudentDiscipleshipViewService(
   userId: string,
 ): Promise<StudentDiscipleshipView> {
-  return withRequestCache(async () => {
-    const role = await getAuthorizationService().getRole(userId)
-    if (role !== 'student') throw new AuthorizationError()
+  const role = await getAuthorizationService().getRole(userId)
+  if (role !== 'student') throw new AuthorizationError()
 
-    const assignment = await findAssignmentByStudentId(userId)
-    if (!assignment) return { kind: 'unassigned' }
+  const assignment = await findAssignmentByStudentId(userId)
+  if (!assignment) return { kind: 'unassigned' }
 
-    const [teacher, teacherAssignments, pairs, groups] = await Promise.all([
-      findPublicPersonById(assignment.teacherId),
-      findAssignmentsByTeacher(assignment.teacherId),
-      findPairsByTeacher(assignment.teacherId),
-      findGroupsByTeacher(assignment.teacherId),
-    ])
+  const [teacher, teacherAssignments, pairs, groups] = await Promise.all([
+    findPublicPersonById(assignment.teacherId),
+    findAssignmentsByTeacher(assignment.teacherId),
+    findPairsByTeacher(assignment.teacherId),
+    findGroupsByTeacher(assignment.teacherId),
+  ])
 
-    const classmateIds = teacherAssignments
-      .map((a) => a.studentId)
-      .filter((id) => id !== userId)
-    const classmates = await findPublicPersonsByIds(classmateIds)
+  const classmateIds = teacherAssignments
+    .map((a) => a.studentId)
+    .filter((id) => id !== userId)
+  const classmates = await findPublicPersonsByIds(classmateIds)
 
-    return buildStudentDiscipleshipView(
-      toStudentViewBuilderInput({
-        viewerId: userId,
-        assignment,
-        teacher,
-        classmates,
-        teacherAssignments,
-        pairs,
-        groups,
-      }),
-    )
-  })
+  return buildStudentDiscipleshipView(
+    toStudentViewBuilderInput({
+      viewerId: userId,
+      assignment,
+      teacher,
+      classmates,
+      teacherAssignments,
+      pairs,
+      groups,
+    }),
+  )
 }
 
 export async function assignStudentToTeacherService(
   data: AssignStudentToTeacherInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const flags = await requireManage(userId, data.teacherId)
-    await assignInternal(data.studentId, data.teacherId, flags, userId)
-  })
+  const flags = await requireManage(userId, data.teacherId)
+  await assignInternal(data.studentId, data.teacherId, flags, userId)
 }
 
 export async function unassignStudentService(
   data: UnassignStudentInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const existing = await findAssignmentByStudentId(data.studentId)
-    if (!existing) return
-    await requireManage(userId, existing.teacherId)
-    await dissolvePairIfNeeded(existing.pairId, data.studentId)
-    await deleteAssignmentByStudentId(data.studentId)
-  })
+  const existing = await findAssignmentByStudentId(data.studentId)
+  if (!existing) return
+  await requireManage(userId, existing.teacherId)
+  await dissolvePairIfNeeded(existing.pairId, data.studentId)
+  await deleteAssignmentByStudentId(data.studentId)
 }
 
 function toCandidate(row: NonNullable<AssignmentRow>) {
@@ -314,82 +306,72 @@ export async function pairStudentsService(
   data: PairStudentsInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const flags = await requireManage(userId, data.teacherId)
+  const flags = await requireManage(userId, data.teacherId)
 
-    // A may be unassigned (dragged from pool directly onto a paired target).
-    // B must already be assigned since only assigned solo students are drop targets.
-    const [a, b] = await Promise.all([
-      findAssignmentByStudentId(data.studentIdA),
-      findAssignmentByStudentId(data.studentIdB),
-    ])
-    if (!b) {
-      throw new NotFoundError(
-        'Target student must already be assigned to a teacher.',
-      )
-    }
+  // A may be unassigned (dragged from pool directly onto a paired target).
+  // B must already be assigned since only assigned solo students are drop targets.
+  const [a, b] = await Promise.all([
+    findAssignmentByStudentId(data.studentIdA),
+    findAssignmentByStudentId(data.studentIdB),
+  ])
+  if (!b) {
+    throw new NotFoundError(
+      'Target student must already be assigned to a teacher.',
+    )
+  }
 
-    // If A has no assignment yet, treat it as a new student joining data.teacherId.
-    const candidateA = a
-      ? toCandidate(a)
-      : { studentId: data.studentIdA, teacherId: data.teacherId, pairId: null }
+  // If A has no assignment yet, treat it as a new student joining data.teacherId.
+  const candidateA = a
+    ? toCandidate(a)
+    : { studentId: data.studentIdA, teacherId: data.teacherId, pairId: null }
 
-    const validation = canPairStudents(candidateA, toCandidate(b))
-    if (!validation.ok) throw new ConflictError(PAIR_ERROR[validation.reason])
+  const validation = canPairStudents(candidateA, toCandidate(b))
+  if (!validation.ok) throw new ConflictError(PAIR_ERROR[validation.reason])
 
-    // Assign A (inserts if new, moves if under a different teacher).
-    await assignInternal(data.studentIdA, data.teacherId, flags, userId)
+  // Assign A (inserts if new, moves if under a different teacher).
+  await assignInternal(data.studentIdA, data.teacherId, flags, userId)
 
-    const pair = await insertPair(data.teacherId)
-    await Promise.all([
-      setAssignmentPair(data.studentIdA, pair.id),
-      setAssignmentPair(b.studentId, pair.id),
-    ])
-  })
+  const pair = await insertPair(data.teacherId)
+  await Promise.all([
+    setAssignmentPair(data.studentIdA, pair.id),
+    setAssignmentPair(b.studentId, pair.id),
+  ])
 }
 
 export async function unpairStudentService(
   data: UnpairStudentInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const existing = await findAssignmentByStudentId(data.studentId)
-    if (!existing || !existing.pairId) return
-    await requireManage(userId, existing.teacherId)
-    await dissolvePairIfNeeded(existing.pairId, data.studentId)
-  })
+  const existing = await findAssignmentByStudentId(data.studentId)
+  if (!existing || !existing.pairId) return
+  await requireManage(userId, existing.teacherId)
+  await dissolvePairIfNeeded(existing.pairId, data.studentId)
 }
 
 export async function setIndividualScheduleService(
   data: SetIndividualScheduleInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const existing = await findAssignmentByStudentId(data.studentId)
-    if (!existing) throw new NotFoundError('Discipleship assignment not found.')
-    await requireManage(userId, existing.teacherId)
-    await setAssignmentAnchor(data.studentId, data.anchorAt)
-  })
+  const existing = await findAssignmentByStudentId(data.studentId)
+  if (!existing) throw new NotFoundError('Discipleship assignment not found.')
+  await requireManage(userId, existing.teacherId)
+  await setAssignmentAnchor(data.studentId, data.anchorAt)
 }
 
 export async function setPairScheduleService(
   data: SetPairScheduleInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const pair = await findPairById(data.pairId)
-    if (!pair) throw new NotFoundError('Discipleship pair not found.')
-    await requireManage(userId, pair.teacherId)
-    await setPairAnchor(data.pairId, data.anchorAt)
-  })
+  const pair = await findPairById(data.pairId)
+  if (!pair) throw new NotFoundError('Discipleship pair not found.')
+  await requireManage(userId, pair.teacherId)
+  await setPairAnchor(data.pairId, data.anchorAt)
 }
 
 export async function setGroupScheduleService(
   data: SetGroupScheduleInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    await requireManage(userId, data.teacherId)
-    await upsertGroupAnchor(data.teacherId, data.anchorAt)
-  })
+  await requireManage(userId, data.teacherId)
+  await upsertGroupAnchor(data.teacherId, data.anchorAt)
 }

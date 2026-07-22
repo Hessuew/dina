@@ -16,12 +16,12 @@ as the worked example. Read this before adding tests for a new endpoint.
 Each `src/utils/<feature>/` module is split into four layers (reference:
 `src/utils/courses/`, `src/utils/zoomLink/`):
 
-| Layer      | File                                | Responsibility                                                            | Tested?        |
-| ---------- | ----------------------------------- | ------------------------------------------------------------------------- | -------------- |
-| Server fn  | `zoomLink.ts`                       | `createServerFn` → `getCurrentUser()` → service. Thin.                    | No (excluded)  |
-| Service    | `service/zoomLink.service.ts`       | Auth (`authz`/`hasRole`/`withRequestCache`), orchestration, typed errors. | No (excluded)  |
-| Repository | `repository/zoomLink.repository.ts` | DB access via `getDb()`. Wrapped in `/* v8 ignore */`.                    | No (excluded)  |
-| Domain     | `domain/zoomLink.domain.ts`         | Pure functions — mapping, normalization, rules. No IO.                    | **Yes — 100%** |
+| Layer      | File                                | Responsibility                                         | Tested?        |
+| ---------- | ----------------------------------- | ------------------------------------------------------ | -------------- |
+| Server fn  | `zoomLink.ts`                       | `createServerFn` → `getCurrentUser()` → service. Thin. | No (excluded)  |
+| Service    | `service/zoomLink.service.ts`       | Auth (`authz`/`hasRole`), orchestration, typed errors. | No (excluded)  |
+| Repository | `repository/zoomLink.repository.ts` | DB access via `getDb()`. Wrapped in `/* v8 ignore */`. | No (excluded)  |
+| Domain     | `domain/zoomLink.domain.ts`         | Pure functions — mapping, normalization, rules. No IO. | **Yes — 100%** |
 
 Because the `domain/` layer has no database or network calls, its functions are
 deterministic and can be unit-tested with plain inputs and outputs — no mocks,

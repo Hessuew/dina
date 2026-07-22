@@ -13,7 +13,7 @@ import {
   replaceTeacherAssignments,
 } from '@/utils/courses/repository'
 import { getUserProfile } from '@/utils/auth/auth'
-import { authz, withRequestCache } from '@/utils/authz'
+import { authz } from '@/utils/authz'
 import { NotFoundError } from '@/utils/errors'
 
 export async function validateTeacherPair(
@@ -49,23 +49,17 @@ export async function updateCourseTeachersService(
   data: UpdateCourseTeachersInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
+  await authz(userId).hasRole('admin')
 
-    const course = await findCourseById(data.courseId)
-    if (!course) {
-      throw new NotFoundError('Course not found', {
-        code: 'COURSE_NOT_FOUND',
-        details: { courseId: data.courseId },
-      })
-    }
+  const course = await findCourseById(data.courseId)
+  if (!course) {
+    throw new NotFoundError('Course not found', {
+      code: 'COURSE_NOT_FOUND',
+      details: { courseId: data.courseId },
+    })
+  }
 
-    await assignTeachersToCourse(
-      data.courseId,
-      data.teacher1Id,
-      data.teacher2Id,
-    )
+  await assignTeachersToCourse(data.courseId, data.teacher1Id, data.teacher2Id)
 
-    return { success: true }
-  })
+  return { success: true }
 }

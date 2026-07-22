@@ -9,8 +9,9 @@ A campaign send dedupes at query time, not lock time: `planCampaign` reads the s
 already-`sent` enrollment ids once, before any message goes out. Two admins triggering the
 same campaign concurrently both read an identical (empty or partial) dedupe set, both plan
 the same cohort, and both send — recipients get duplicate WhatsApp messages.
-`withRequestCache` is an AsyncLocalStorage scope guard for the role-check cache only; it
-does not deduplicate across concurrent HTTP requests.
+The global request-scope AsyncLocalStorage caches authz checks only within one request; it
+does not deduplicate across concurrent HTTP requests. Its historical name was
+`withRequestCache`.
 
 ## Decision
 
@@ -25,7 +26,7 @@ does not deduplicate across concurrent HTTP requests.
   batch plus deliberation time. A heartbeat adds disproportionate complexity for the team
   size.
 - **Acquisition — atomic `INSERT … ON CONFLICT DO UPDATE WHERE (expired OR same user)
-  RETURNING`.** An empty `RETURNING` means the conflict row was left untouched (held by
+RETURNING`.** An empty `RETURNING` means the conflict row was left untouched (held by
   another admin) → `CampaignLockedError` (`CAMPAIGN_LOCKED`, 409).
 - **Verify at send.** `sendWhatsAppCampaignService` rejects with `CAMPAIGN_LOCKED` unless
   the caller holds an unexpired lock; the send loop runs in `try/finally` and releases the
