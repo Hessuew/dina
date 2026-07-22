@@ -13,6 +13,7 @@ import {
   getThumbnailPreviewSrc,
   isMediaDialogSubmitting,
   preflightDocumentUrl,
+  preflightVideoUrl,
   resolveDocumentUploadResult,
 } from './media-dialog.domain'
 import type { MediaLibraryRow } from '@/utils/library/library'
@@ -46,6 +47,10 @@ describe('fromFileType', () => {
 
   it('maps video to youtube', () => {
     expect(fromFileType('video')).toBe('youtube')
+  })
+
+  it('maps video_file to video-file', () => {
+    expect(fromFileType('video_file')).toBe('video-file')
   })
 
   it('maps audio to youtube', () => {
@@ -170,6 +175,7 @@ describe('computeOpenResetState', () => {
   it('exposes the existing doc url when editing a document', () => {
     expect(computeOpenResetState({ mode: 'edit', media: docMedia })).toEqual({
       existingDocUrl: 'https://cdn/docs/lesson.pdf',
+      existingVideoUrl: null,
       thumbnailUrl: 'https://cdn/thumbs/lesson.png',
     })
   })
@@ -177,13 +183,31 @@ describe('computeOpenResetState', () => {
   it('omits the existing doc url for a non-document edit', () => {
     expect(computeOpenResetState({ mode: 'edit', media: videoMedia })).toEqual({
       existingDocUrl: null,
+      existingVideoUrl: null,
       thumbnailUrl: null,
+    })
+  })
+
+  it('exposes existing video url when editing a video_file', () => {
+    const videoFileMedia = {
+      ...videoMedia,
+      fileType: 'video_file',
+      fileUrl: 'https://cdn/media/u-1.mp4',
+      thumbnailUrl: 'https://cdn/thumbs/v.png',
+    } as unknown as MediaLibraryRow
+    expect(
+      computeOpenResetState({ mode: 'edit', media: videoFileMedia }),
+    ).toEqual({
+      existingDocUrl: null,
+      existingVideoUrl: 'https://cdn/media/u-1.mp4',
+      thumbnailUrl: 'https://cdn/thumbs/v.png',
     })
   })
 
   it('omits the existing doc url in create mode even for a document', () => {
     expect(computeOpenResetState({ mode: 'create', media: docMedia })).toEqual({
       existingDocUrl: null,
+      existingVideoUrl: null,
       thumbnailUrl: 'https://cdn/thumbs/lesson.png',
     })
   })
@@ -191,6 +215,7 @@ describe('computeOpenResetState', () => {
   it('handles a missing media row', () => {
     expect(computeOpenResetState({ mode: 'edit', media: undefined })).toEqual({
       existingDocUrl: null,
+      existingVideoUrl: null,
       thumbnailUrl: null,
     })
   })
@@ -230,6 +255,7 @@ describe('isMediaDialogSubmitting', () => {
       isMediaDialogSubmitting({
         isAnyPending: true,
         isDocUploading: false,
+        isVideoUploading: false,
         isThumbUploading: false,
       }),
     ).toBe(true)
@@ -240,6 +266,18 @@ describe('isMediaDialogSubmitting', () => {
       isMediaDialogSubmitting({
         isAnyPending: false,
         isDocUploading: true,
+        isVideoUploading: false,
+        isThumbUploading: false,
+      }),
+    ).toBe(true)
+  })
+
+  it('is true while a video upload is in flight', () => {
+    expect(
+      isMediaDialogSubmitting({
+        isAnyPending: false,
+        isDocUploading: false,
+        isVideoUploading: true,
         isThumbUploading: false,
       }),
     ).toBe(true)
@@ -250,6 +288,7 @@ describe('isMediaDialogSubmitting', () => {
       isMediaDialogSubmitting({
         isAnyPending: false,
         isDocUploading: false,
+        isVideoUploading: false,
         isThumbUploading: true,
       }),
     ).toBe(true)
@@ -260,6 +299,7 @@ describe('isMediaDialogSubmitting', () => {
       isMediaDialogSubmitting({
         isAnyPending: false,
         isDocUploading: false,
+        isVideoUploading: false,
         isThumbUploading: false,
       }),
     ).toBe(false)
@@ -295,6 +335,29 @@ describe('preflightDocumentUrl', () => {
     expect(
       preflightDocumentUrl({ hasFile: false, existingDocUrl: null }),
     ).toEqual({ ok: false, message: 'Please upload a document file' })
+  })
+})
+
+describe('preflightVideoUrl', () => {
+  it('returns null when a file is picked', () => {
+    expect(
+      preflightVideoUrl({ hasFile: true, existingVideoUrl: null }),
+    ).toBeNull()
+  })
+
+  it('returns existing url when no file but existing video present', () => {
+    expect(
+      preflightVideoUrl({
+        hasFile: false,
+        existingVideoUrl: 'https://cdn/old.mp4',
+      }),
+    ).toEqual({ ok: true, url: 'https://cdn/old.mp4' })
+  })
+
+  it('returns error when no file and no existing video', () => {
+    expect(
+      preflightVideoUrl({ hasFile: false, existingVideoUrl: null }),
+    ).toEqual({ ok: false, message: 'Please upload a video file' })
   })
 })
 

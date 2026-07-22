@@ -31,7 +31,11 @@ export function buildShelves<T extends GroupableMedia>(
     const shelf = shelves.get(item.category)!
     if (item.fileType === 'document') {
       shelf.ebooks.push(item)
-    } else if (item.fileType === 'video' || item.fileType === 'audio') {
+    } else if (
+      item.fileType === 'video' ||
+      item.fileType === 'video_file' ||
+      item.fileType === 'audio'
+    ) {
       shelf.audioVisual.push(item)
     }
   }

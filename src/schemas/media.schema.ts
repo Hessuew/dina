@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { LIBRARY_TOPICS } from '@/lib/library-topics'
 
-const mediaKindEnum = z.enum(['youtube', 'document'])
+const mediaKindEnum = z.enum(['youtube', 'document', 'video-file'])
 
 export const createMediaSchema = z.object({
   title: z.string().min(1, 'Name is required'),
@@ -42,6 +42,12 @@ export const uploadMediaThumbnailSchema = z.object({
   fileSize: z.number().int().nonnegative(),
 })
 
+export const requestMediaVideoUploadSchema = z.object({
+  fileName: z.string().min(1),
+  fileType: z.string().min(1),
+  fileSize: z.number().int().nonnegative(),
+})
+
 export type CreateMediaInput = z.infer<typeof createMediaSchema>
 export type UpdateMediaInput = z.infer<typeof updateMediaSchema>
 export type DeleteMediaInput = z.infer<typeof deleteMediaSchema>
@@ -49,4 +55,7 @@ export type GetMediaInput = z.infer<typeof getMediaSchema>
 export type UploadMediaPdfInput = z.infer<typeof uploadMediaPdfSchema>
 export type UploadMediaThumbnailInput = z.infer<
   typeof uploadMediaThumbnailSchema
+>
+export type RequestMediaVideoUploadInput = z.infer<
+  typeof requestMediaVideoUploadSchema
 >

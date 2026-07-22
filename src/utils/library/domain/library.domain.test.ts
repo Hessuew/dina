@@ -3,11 +3,21 @@ import type { MediaLibraryRow } from '@/utils/library/library'
 import { ValidationError } from '@/utils/errors'
 import {
   DOCUMENT_MIME_TYPES,
+  VIDEO_MAX_SIZE,
+  VIDEO_MIME_TYPES,
   buildMediaListItems,
+  buildVideoObjectName,
   canManageMedia,
+  extractMediaLibraryFilePath,
   extractPdfFilePath,
+  isOwnedMediaLibraryObjectUrl,
+  needsSignedViewerUrl,
+  resolveVideoFileExtension,
+  resolveVideoMimeType,
+  shouldRemoveMediaLibraryObject,
   toFileType,
   validatePdfUpload,
+  validateVideoUpload,
 } from '@/utils/library/domain/library.domain'
 
 const makeRow = (
@@ -43,6 +53,10 @@ describe('toFileType', () => {
 
   it("maps 'document' to 'document'", () => {
     expect(toFileType('document')).toBe('document')
+  })
+
+  it("maps 'video-file' to 'video_file'", () => {
+    expect(toFileType('video-file')).toBe('video_file')
   })
 })
 
@@ -188,11 +202,12 @@ describe('validatePdfUpload', () => {
   })
 })
 
-describe('extractPdfFilePath', () => {
+describe('extractPdfFilePath / extractMediaLibraryFilePath', () => {
   it('extracts path from /object/public/ URL', () => {
     const url =
       'https://project.supabase.co/storage/v1/object/public/media-library/some/path.pdf'
     expect(extractPdfFilePath(url)).toBe('some/path.pdf')
+    expect(extractMediaLibraryFilePath(url)).toBe('some/path.pdf')
   })
 
   it('extracts path from /object/sign/ URL', () => {
@@ -213,5 +228,163 @@ describe('extractPdfFilePath', () => {
 
   it('returns null for empty string', () => {
     expect(extractPdfFilePath('')).toBeNull()
+  })
+})
+
+describe('resolveVideoMimeType', () => {
+  it('keeps an allowed MIME', () => {
+    expect(resolveVideoMimeType('video/mp4', 'x.bin')).toBe('video/mp4')
+  })
+
+  it('infers mp4 from filename when MIME is empty', () => {
+    expect(resolveVideoMimeType('', 'talk.mp4')).toBe('video/mp4')
+  })
+
+  it('infers webm from filename when MIME is octet-stream', () => {
+    expect(resolveVideoMimeType('application/octet-stream', 'a.webm')).toBe(
+      'video/webm',
+    )
+  })
+
+  it('returns null for unsupported type without a known extension', () => {
+    expect(resolveVideoMimeType('video/quicktime', 'clip.mov')).toBeNull()
+  })
+})
+
+describe('validateVideoUpload', () => {
+  it('accepts mp4 under the limit', () => {
+    expect(() => validateVideoUpload(0, 'video/mp4', 'a.mp4')).not.toThrow()
+  })
+
+  it('accepts webm at exactly 100MB', () => {
+    expect(() =>
+      validateVideoUpload(VIDEO_MAX_SIZE, 'video/webm', 'a.webm'),
+    ).not.toThrow()
+  })
+
+  it('accepts empty MIME when filename is .mp4', () => {
+    expect(() => validateVideoUpload(1024, '', 'lecture.mp4')).not.toThrow()
+  })
+
+  it('rejects over 100MB', () => {
+    expect(() =>
+      validateVideoUpload(VIDEO_MAX_SIZE + 1, 'video/mp4', 'a.mp4'),
+    ).toThrow('File size must be less than 100MB')
+  })
+
+  it('rejects unsupported MIME without a known extension', () => {
+    expect(() => validateVideoUpload(0, 'video/quicktime', 'a.mov')).toThrow(
+      'Only MP4 and WebM videos are allowed',
+    )
+  })
+
+  it('lists exactly two allowed MIME types', () => {
+    expect(VIDEO_MIME_TYPES).toHaveLength(2)
+  })
+})
+
+describe('shouldRemoveMediaLibraryObject', () => {
+  it('is false when youtube stays youtube', () => {
+    expect(
+      shouldRemoveMediaLibraryObject({
+        previousFileType: 'video',
+        previousFileUrl: 'https://youtube.com/x',
+        nextFileType: 'video',
+        nextFileUrl: 'https://youtube.com/y',
+      }),
+    ).toBe(false)
+  })
+
+  it('is true when video_file URL is replaced', () => {
+    expect(
+      shouldRemoveMediaLibraryObject({
+        previousFileType: 'video_file',
+        previousFileUrl: 'https://cdn/old.mp4',
+        nextFileType: 'video_file',
+        nextFileUrl: 'https://cdn/new.mp4',
+      }),
+    ).toBe(true)
+  })
+
+  it('is true when leaving video_file for youtube', () => {
+    expect(
+      shouldRemoveMediaLibraryObject({
+        previousFileType: 'video_file',
+        previousFileUrl: 'https://cdn/old.mp4',
+        nextFileType: 'video',
+        nextFileUrl: 'https://youtube.com/x',
+      }),
+    ).toBe(true)
+  })
+
+  it('is false for video_file metadata-only edit', () => {
+    expect(
+      shouldRemoveMediaLibraryObject({
+        previousFileType: 'video_file',
+        previousFileUrl: 'https://cdn/same.mp4',
+        nextFileType: 'video_file',
+        nextFileUrl: 'https://cdn/same.mp4',
+      }),
+    ).toBe(false)
+  })
+})
+
+describe('resolveVideoFileExtension', () => {
+  it('prefers MIME over name for webm', () => {
+    expect(resolveVideoFileExtension('video/webm', 'x.mp4')).toBe('webm')
+  })
+
+  it('prefers MIME over name for mp4', () => {
+    expect(resolveVideoFileExtension('video/mp4', 'x.webm')).toBe('mp4')
+  })
+
+  it('falls back to filename extension', () => {
+    expect(
+      resolveVideoFileExtension('application/octet-stream', 'a.webm'),
+    ).toBe('webm')
+  })
+
+  it('defaults to mp4', () => {
+    expect(resolveVideoFileExtension('application/octet-stream', 'a')).toBe(
+      'mp4',
+    )
+  })
+})
+
+describe('buildVideoObjectName', () => {
+  it('builds userId-timestamp.ext', () => {
+    expect(buildVideoObjectName('u1', 'mp4', 1000)).toBe('u1-1000.mp4')
+  })
+})
+
+describe('isOwnedMediaLibraryObjectUrl', () => {
+  it('accepts object named with user prefix', () => {
+    const url =
+      'https://x.supabase.co/storage/v1/object/public/media-library/user-1-9.mp4'
+    expect(isOwnedMediaLibraryObjectUrl(url, 'user-1')).toBe(true)
+  })
+
+  it('rejects other user prefix', () => {
+    const url =
+      'https://x.supabase.co/storage/v1/object/public/media-library/other-9.mp4'
+    expect(isOwnedMediaLibraryObjectUrl(url, 'user-1')).toBe(false)
+  })
+
+  it('rejects non-library URLs', () => {
+    expect(isOwnedMediaLibraryObjectUrl('https://youtube.com/x', 'u')).toBe(
+      false,
+    )
+  })
+})
+
+describe('needsSignedViewerUrl', () => {
+  it('is true for document and video_file', () => {
+    expect(needsSignedViewerUrl('document')).toBe(true)
+    expect(needsSignedViewerUrl('video_file')).toBe(true)
+  })
+
+  it('is false for youtube video and other types', () => {
+    expect(needsSignedViewerUrl('video')).toBe(false)
+    expect(needsSignedViewerUrl('audio')).toBe(false)
   })
 })

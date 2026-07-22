@@ -9,6 +9,7 @@ export const submissionStatusEnum = pgEnum('submission_status', [
 ])
 export const mediaTypeEnum = pgEnum('media_type', [
   'video',
+  'video_file',
   'audio',
   'document',
   'image',

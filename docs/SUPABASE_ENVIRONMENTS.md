@@ -24,6 +24,8 @@ copy production rows or Storage objects into `development`.
 5. Copy the production Storage access policies into the development branch without copying
    objects. The seed workflow creates the required bucket structure: public `avatars`, public
    `course-thumbnails`, and private `media-library`.
+6. Ensure the private `media-library` bucket `file_size_limit` is at least **100MB** (library
+   video file uploads; see ADR 0020). Confirm in both development and production dashboards.
 
 ## Connect a local app safely
 

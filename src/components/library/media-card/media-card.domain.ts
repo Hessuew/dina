@@ -18,6 +18,13 @@ export const MEDIA_TYPE_CONFIG = {
     badgeBg: '#FF0000',
     badgeText: '#FFFFFF',
   } satisfies MediaTypeConfig,
+  video_file: {
+    icon: PlayIcon,
+    label: 'Video',
+    badgeBg: '#1A1716',
+    badgeText: '#E9D9B4',
+    badgeBorder: 'rgba(197,160,89,0.40)',
+  } satisfies MediaTypeConfig,
   audio: {
     icon: Music2Icon,
     label: 'Audio',
@@ -53,7 +60,11 @@ export const MEDIA_TYPE_CONFIG = {
 } as const
 
 export function resolveMediaTypeConfig(item: MediaLibraryRow): MediaTypeConfig {
-  if (item.fileType === 'video' || item.fileType === 'audio') {
+  if (
+    item.fileType === 'video' ||
+    item.fileType === 'video_file' ||
+    item.fileType === 'audio'
+  ) {
     return MEDIA_TYPE_CONFIG[item.fileType]
   }
   if (item.fileType === 'document') {
@@ -84,6 +95,7 @@ const WIDTH_CLASSES: Record<MediaCardSize, string> = {
 }
 
 function resolveThumbnailUrl(item: MediaLibraryRow): string | null {
+  if (item.fileType === 'video_file') return item.thumbnailUrl
   const videoId =
     item.fileType === 'video' || item.fileType === 'audio'
       ? getYoutubeVideoId(item.fileUrl)

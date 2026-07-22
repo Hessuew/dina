@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import type { Role } from '@/utils/authz/types'
 import {
+  buildLibraryThumbModel,
   canCreateMedia,
   canManageMediaRow,
   getLibraryEmptyStateDescription,
@@ -83,6 +84,45 @@ describe('getYoutubeThumbnail', () => {
 
   it('returns null when no video id can be parsed', () => {
     expect(getYoutubeThumbnail('https://example.com/not-a-video')).toBeNull()
+  })
+})
+
+describe('buildLibraryThumbModel', () => {
+  it('builds youtube model for video fileType', () => {
+    expect(
+      buildLibraryThumbModel({
+        fileType: 'video',
+        fileUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        thumbnailUrl: null,
+      }),
+    ).toEqual({
+      kind: 'youtube',
+      thumbUrl: 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+    })
+  })
+
+  it('uses video icon for video_file without custom thumb', () => {
+    expect(
+      buildLibraryThumbModel({
+        fileType: 'video_file',
+        fileUrl: 'https://cdn/v.mp4',
+        thumbnailUrl: null,
+      }),
+    ).toEqual({ kind: 'image-or-icon', thumbUrl: null, icon: 'video' })
+  })
+
+  it('uses file icon for documents', () => {
+    expect(
+      buildLibraryThumbModel({
+        fileType: 'document',
+        fileUrl: 'https://cdn/d.pdf',
+        thumbnailUrl: 'https://cdn/t.png',
+      }),
+    ).toEqual({
+      kind: 'image-or-icon',
+      thumbUrl: 'https://cdn/t.png',
+      icon: 'file',
+    })
   })
 })
 
