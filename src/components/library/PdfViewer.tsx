@@ -1,7 +1,8 @@
-import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import * as pdfjsLib from 'pdfjs-dist'
+// Legacy build polyfills Promise.withResolvers for older browsers (DINA-Z).
+import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
+import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 import { Button } from '@/components/ui/button'
 
@@ -26,7 +27,17 @@ function usePdfDocument(url: string) {
     setLoading(true)
     setError(false)
     setPageNum(1)
-    const task = pdfjsLib.getDocument({ url })
+    setPdf(null)
+
+    let task: ReturnType<typeof pdfjsLib.getDocument> | null = null
+    try {
+      task = pdfjsLib.getDocument({ url })
+    } catch {
+      setLoading(false)
+      setError(true)
+      return
+    }
+
     task.promise
       .then((doc) => {
         setPdf(doc)
