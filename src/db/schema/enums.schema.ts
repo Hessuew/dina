@@ -41,7 +41,7 @@ export const calendarEventCategoryEnum = pgEnum('calendar_event_category', [
 ])
 export const zoomLinkSectionEnum = pgEnum('zoom_link_section', [
   'general_class_lecture',
-  'discipleship_group',
+  'teacher',
 ])
 
 export const enrollmentStatusEnum = pgEnum('enrollment_status', [

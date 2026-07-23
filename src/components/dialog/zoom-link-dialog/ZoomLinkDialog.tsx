@@ -9,7 +9,7 @@ import {
 } from './zoom-link-dialog.domain'
 import type { ZoomLinkDialogState } from './zoom-link-dialog.domain'
 import type { ZoomLinkRow, ZoomLinkSection } from '@/utils/zoomLink'
-import { createZoomLinkSchema } from '@/schemas/zoomLink.schema'
+import { zoomLinkFieldSchemas } from '@/schemas/zoomLink.schema'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
@@ -39,22 +39,25 @@ import {
 
 export type { ZoomLinkDialogState } from './zoom-link-dialog.domain'
 
-type ZoomCourse = { id: string; title: string }
+type ZoomTeacher = { id: string; fullName: string }
 
 type ZoomLinkDialogProps = {
-  courses: Array<ZoomCourse>
+  teachers: Array<ZoomTeacher>
   dialogState: ZoomLinkDialogState
   onOpenChange: (open: boolean) => void
 }
 
 const sectionTitle: Record<ZoomLinkSection, string> = {
   general_class_lecture: 'General Class Lectures',
-  discipleship_group: 'Discipleship Groups',
+  teacher: 'Teacher Zoom Links',
 }
 
-function courseLabel(courses: Array<ZoomCourse>, courseId: string): string {
-  if (courseId === 'none') return 'No course'
-  return courses.find((course) => course.id === courseId)?.title ?? 'No course'
+function teacherLabel(teachers: Array<ZoomTeacher>, teacherId: string): string {
+  if (teacherId === 'none') return 'Select teacher'
+  return (
+    teachers.find((teacher) => teacher.id === teacherId)?.fullName ??
+    'Select teacher'
+  )
 }
 
 const ZoomSectionField = withForm({
@@ -83,9 +86,7 @@ const ZoomSectionField = withForm({
               <SelectItem value="general_class_lecture">
                 General Class Lectures
               </SelectItem>
-              <SelectItem value="discipleship_group">
-                Discipleship Groups
-              </SelectItem>
+              <SelectItem value="teacher">Teacher Zoom Links</SelectItem>
             </SelectContent>
           </Select>
         </Field>
@@ -94,15 +95,15 @@ const ZoomSectionField = withForm({
   ),
 })
 
-const ZoomCourseField = withForm({
+const ZoomTeacherField = withForm({
   defaultValues: emptyZoomForm,
-  props: { courses: [] as Array<ZoomCourse> },
-  render: ({ form, courses }) => (
-    <form.AppField name="courseId">
+  props: { teachers: [] as Array<ZoomTeacher> },
+  render: ({ form, teachers }) => (
+    <form.AppField name="teacherId">
       {(field) => (
         <Field>
-          <FieldLabel className="text-[#9B7A41]" htmlFor="zoom-course">
-            Course
+          <FieldLabel className="text-[#9B7A41]" htmlFor="zoom-teacher">
+            Teacher
           </FieldLabel>
           <Select
             value={field.state.value}
@@ -110,14 +111,14 @@ const ZoomCourseField = withForm({
           >
             <SelectTrigger className="w-full rounded-none border-white/12 bg-white/6 text-[#F8F4EC]">
               <SelectValue>
-                {courseLabel(courses, field.state.value)}
+                {teacherLabel(teachers, field.state.value)}
               </SelectValue>
             </SelectTrigger>
             <SelectContent className="rounded-none border-white/12">
-              <SelectItem value="none">No course</SelectItem>
-              {courses.map((course) => (
-                <SelectItem key={course.id} value={course.id}>
-                  {course.title}
+              <SelectItem value="none">Select teacher</SelectItem>
+              {teachers.map((teacher) => (
+                <SelectItem key={teacher.id} value={teacher.id}>
+                  {teacher.fullName}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -134,13 +135,13 @@ const ZoomMeetingFields = withForm({
     <>
       <form.AppField
         name="title"
-        validators={{ onSubmit: createZoomLinkSchema.shape.title }}
+        validators={{ onSubmit: zoomLinkFieldSchemas.title }}
       >
         {(field) => (
           <field.TextField
             id="zoom-title"
             label="Title"
-            placeholder="Ground course discipleship group"
+            placeholder="Weekly teacher session"
             required
             className="sm:col-span-2"
           />
@@ -148,7 +149,7 @@ const ZoomMeetingFields = withForm({
       </form.AppField>
       <form.AppField
         name="zoomUrl"
-        validators={{ onSubmit: createZoomLinkSchema.shape.zoomUrl }}
+        validators={{ onSubmit: zoomLinkFieldSchemas.zoomUrl }}
       >
         {(field) => (
           <field.TextField
@@ -170,7 +171,7 @@ const ZoomAccessFields = withForm({
     <>
       <form.AppField
         name="meetingId"
-        validators={{ onSubmit: createZoomLinkSchema.shape.meetingId }}
+        validators={{ onSubmit: zoomLinkFieldSchemas.meetingId }}
       >
         {(field) => (
           <field.TextField
@@ -183,7 +184,7 @@ const ZoomAccessFields = withForm({
       </form.AppField>
       <form.AppField
         name="passcode"
-        validators={{ onSubmit: createZoomLinkSchema.shape.passcode }}
+        validators={{ onSubmit: zoomLinkFieldSchemas.passcode }}
       >
         {(field) => (
           <field.TextField
@@ -222,12 +223,18 @@ const ZoomNoteFields = withForm({
 
 const ZoomLinkFields = withForm({
   defaultValues: emptyZoomForm,
-  props: { courses: [] as Array<ZoomCourse> },
-  render: ({ form, courses }) => (
+  props: { teachers: [] as Array<ZoomTeacher> },
+  render: ({ form, teachers }) => (
     <FieldGroup className="mt-6">
       <div className="grid gap-4 sm:grid-cols-2">
         <ZoomSectionField form={form} />
-        <ZoomCourseField form={form} courses={courses} />
+        <form.Subscribe selector={(state) => state.values.section}>
+          {(section) =>
+            section === 'teacher' ? (
+              <ZoomTeacherField form={form} teachers={teachers} />
+            ) : null
+          }
+        </form.Subscribe>
         <ZoomMeetingFields form={form} />
         <ZoomAccessFields form={form} />
         <ZoomNoteFields form={form} />
@@ -341,7 +348,7 @@ function useZoomLinkDialog(
 }
 
 export function ZoomLinkDialog({
-  courses,
+  teachers,
   dialogState,
   onOpenChange,
 }: ZoomLinkDialogProps) {
@@ -363,7 +370,7 @@ export function ZoomLinkDialog({
         <div className="relative flex min-h-0 flex-1 flex-col">
           <ZoomLinkHeader config={config} />
           <DialogBody>
-            <ZoomLinkFields form={zoomForm} courses={courses} />
+            <ZoomLinkFields form={zoomForm} teachers={teachers} />
           </DialogBody>
           <ZoomLinkFooter
             link={link}

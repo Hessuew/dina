@@ -9,8 +9,7 @@ as the worked example. Read this before adding tests for a new endpoint.
 - IO (DB, auth) is pushed out to `repository/` and `service/` layers that are
   **deliberately excluded** from the coverage gate.
 - Run `bun run test` (or `bun run test:coverage`) — both must stay green.
-- Integration tests (against a real DB) are **not built yet**; the planned
-  approach is documented at the end.
+- Integration tests use PGlite and replay the real migration journal.
 
 ## Why the layering makes testing easy
 
@@ -53,8 +52,9 @@ Tests live next to the code they cover:
   exact `updatedAt`. (Compare `AssignmentService.validateSubmissionWindow(assignment, now)`.)
 - **Cover every branch.** The coverage gate is 100%, so each `||`, `??`, and
   conditional needs a test on both sides. For `zoomLink` that means: empty vs.
-  provided `description`/`courseId`, missing vs. explicit `orderIndex` (including
-  `0`), and null vs. non-null `courseTitle`.
+  provided `description`, missing vs. explicit `orderIndex` (including
+  `0`), General vs. Teacher ownership, assigned vs. unassigned Student visibility,
+  owner ordering, and per-owner link ordering.
 
 ### The coverage gate
 

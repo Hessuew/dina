@@ -4,7 +4,7 @@ import type {
   buildUpdateZoomLinkValues,
 } from '@/utils/zoomLink/domain/zoomLink.domain'
 import { getDb } from '@/db'
-import { courses, profiles, zoomLinks } from '@/db/schema'
+import { discipleshipAssignments, profiles, zoomLinks } from '@/db/schema'
 
 /* v8 ignore start */
 export async function findViewerRole(userId: string) {
@@ -15,7 +15,23 @@ export async function findViewerRole(userId: string) {
   })
 }
 
-export async function findZoomLinksWithCourses() {
+export async function findDiscipleshipTeacherId(userId: string) {
+  const db = await getDb()
+  return db.query.discipleshipAssignments.findFirst({
+    where: eq(discipleshipAssignments.studentId, userId),
+    columns: { teacherId: true },
+  })
+}
+
+export async function findZoomLinkOwner(teacherId: string) {
+  const db = await getDb()
+  return db.query.profiles.findFirst({
+    where: eq(profiles.id, teacherId),
+    columns: { role: true },
+  })
+}
+
+export async function findZoomLinksWithTeachers() {
   const db = await getDb()
   return db
     .select({
@@ -23,8 +39,8 @@ export async function findZoomLinksWithCourses() {
       title: zoomLinks.title,
       description: zoomLinks.description,
       section: zoomLinks.section,
-      courseId: zoomLinks.courseId,
-      courseTitle: courses.title,
+      teacherId: zoomLinks.teacherId,
+      teacherName: profiles.fullName,
       zoomUrl: zoomLinks.zoomUrl,
       meetingId: zoomLinks.meetingId,
       passcode: zoomLinks.passcode,
@@ -33,23 +49,12 @@ export async function findZoomLinksWithCourses() {
       updatedAt: zoomLinks.updatedAt,
     })
     .from(zoomLinks)
-    .leftJoin(courses, eq(zoomLinks.courseId, courses.id))
+    .leftJoin(profiles, eq(zoomLinks.teacherId, profiles.id))
     .orderBy(
       asc(zoomLinks.section),
       asc(zoomLinks.orderIndex),
       asc(zoomLinks.title),
     )
-}
-
-export async function findCoursesForZoomLinks() {
-  const db = await getDb()
-  return db.query.courses.findMany({
-    columns: { id: true, title: true },
-    orderBy: (course, order) => [
-      order.asc(course.orderIndex),
-      order.asc(course.title),
-    ],
-  })
 }
 
 export async function insertZoomLink(

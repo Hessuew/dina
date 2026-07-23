@@ -3,7 +3,12 @@ import { getDb } from 'test/integration/db'
 import { courses } from '@/db/schema'
 
 export async function seedCourse(
-  overrides: { id?: string; title?: string; thumbnailUrl?: string } = {},
+  overrides: {
+    id?: string
+    title?: string
+    thumbnailUrl?: string
+    orderIndex?: number
+  } = {},
 ): Promise<string> {
   const id = overrides.id ?? randomUUID()
   const db = await getDb()
@@ -12,6 +17,9 @@ export async function seedCourse(
     title: overrides.title ?? 'Test Course',
     ...(overrides.thumbnailUrl !== undefined
       ? { thumbnailUrl: overrides.thumbnailUrl }
+      : {}),
+    ...(overrides.orderIndex !== undefined
+      ? { orderIndex: overrides.orderIndex }
       : {}),
   })
   return id

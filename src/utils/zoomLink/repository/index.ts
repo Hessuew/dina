@@ -1,8 +1,9 @@
 export {
   deleteZoomLinkById,
-  findCoursesForZoomLinks,
+  findDiscipleshipTeacherId,
+  findZoomLinkOwner,
   findViewerRole,
-  findZoomLinksWithCourses,
+  findZoomLinksWithTeachers,
   insertZoomLink,
   updateZoomLinkById,
 } from './zoomLink.repository'

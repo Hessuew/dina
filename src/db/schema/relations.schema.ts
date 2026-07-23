@@ -71,6 +71,7 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
     fields: [profiles.id],
     references: [discipleshipGroups.teacherId],
   }),
+  zoomLinks: many(zoomLinks),
 }))
 
 export const accountSecurityRelations = relations(
@@ -91,7 +92,6 @@ export const coursesRelations = relations(courses, ({ many }) => ({
   announcements: many(announcements),
   mediaFiles: many(mediaLibrary),
   calendarEvents: many(calendarEvents),
-  zoomLinks: many(zoomLinks),
   posts: many(posts),
 }))
 
@@ -232,9 +232,9 @@ export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
 }))
 
 export const zoomLinksRelations = relations(zoomLinks, ({ one }) => ({
-  course: one(courses, {
-    fields: [zoomLinks.courseId],
-    references: [courses.id],
+  teacher: one(profiles, {
+    fields: [zoomLinks.teacherId],
+    references: [profiles.id],
   }),
 }))
 
