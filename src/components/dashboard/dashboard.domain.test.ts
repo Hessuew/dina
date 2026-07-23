@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getDashboardAssignmentScope } from './dashboard.domain'
+import { getDashboardAssignmentScope } from '@/components/dashboard/dashboard.domain'
 
 describe('getDashboardAssignmentScope', () => {
   it('uses the catalog for admins so published assignments are visible', () => {

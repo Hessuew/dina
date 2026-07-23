@@ -300,7 +300,7 @@ export function CourseCard({
   const theme = getCourseCardTheme(isDark)
 
   return (
-    <div className={cn('border', theme.card)}>
+    <div className={cn('min-w-0 border', theme.card)}>
       <div
         className={cn('relative overflow-hidden border-b', theme.imageBorder)}
       >

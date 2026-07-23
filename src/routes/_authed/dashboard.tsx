@@ -7,7 +7,7 @@ import {
   getAllAssignmentsForTeacher,
 } from '@/utils/assignments/assignments'
 import { getCourses, getUpcomingLessons } from '@/utils/courses'
-import { getDashboardAssignmentScope } from '@/routes/_authed/dashboard.domain'
+import { getDashboardAssignmentScope } from '@/components/dashboard/dashboard.domain'
 
 export const Route = createFileRoute('/_authed/dashboard')({
   loader: async () => {
