@@ -9,19 +9,8 @@ import {
 } from '@/schemas/event.schema'
 import { buildEventValues } from '@/utils/event/domain/event-input.domain'
 
-export type CalendarEventRow = {
-  id: string
-  title: string
-  description: string | null
-  startTime: Date
-  endTime: Date
-  location: string | null
-  zoomLink: string | null
-  category: 'exam' | 'chapel' | 'personal' | null
-  courseId: string | null
+export type CalendarEventRow = typeof calendarEvents.$inferSelect & {
   courseName: string | null
-  createdAt: Date
-  updatedAt: Date
 }
 
 export const getEvents = createServerFn({ method: 'POST' }).handler(

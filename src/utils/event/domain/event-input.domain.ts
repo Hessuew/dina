@@ -1,11 +1,15 @@
-export type EventCategory = 'exam' | 'chapel' | 'personal'
+import type { calendarEvents } from '@/db/schema'
+
+export type EventCategory = NonNullable<
+  (typeof calendarEvents.$inferSelect)['category']
+>
 
 /** Validated event form fields shared by create and update (optionals may be omitted or null). */
 export type EventValuesInput = {
   title: string
   description?: string | null
   startTime: Date
-  endTime: Date
+  endTime?: Date | null
   location?: string | null
   zoomLink?: string | null
   category?: EventCategory | null
@@ -17,7 +21,7 @@ export type EventValues = {
   title: string
   description: string | null
   startTime: Date
-  endTime: Date
+  endTime: Date | null
   location: string | null
   zoomLink: string | null
   category: EventCategory | null
@@ -34,7 +38,7 @@ export function buildEventValues(data: EventValuesInput): EventValues {
     title: data.title,
     description: data.description ?? null,
     startTime: data.startTime,
-    endTime: data.endTime,
+    endTime: data.endTime ?? null,
     location: data.location ?? null,
     zoomLink: data.zoomLink ?? null,
     category: data.category ?? null,

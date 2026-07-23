@@ -66,16 +66,22 @@ const makeSpecialEvent = (
     id: string
     title: string
     startTime: Date
+    endTime: Date | null
     courseId: string | null
     description: string | null
-    category: 'exam' | 'chapel' | 'personal' | null
+    location: string | null
+    zoomLink: string | null
+    category: 'exam' | 'chapel' | 'lesson' | 'personal' | null
   }> = {},
 ) => ({
   id: 'e-1',
   title: 'Special Event',
   startTime: new Date('2024-06-03T10:00:00Z'),
+  endTime: null,
   courseId: null,
   description: null,
+  location: null,
+  zoomLink: null,
   category: null,
   ...overrides,
 })
@@ -125,6 +131,26 @@ describe('buildCalendarEvents', () => {
     expect(result.courseId).toBe('')
     expect(result.courseName).toBe('')
     expect(result.specialCategory).toBe('exam')
+  })
+
+  it('maps optional event details into the calendar event', () => {
+    const endTime = new Date('2024-06-03T11:00:00Z')
+    const [result] = buildCalendarEvents(
+      [],
+      [],
+      [
+        makeSpecialEvent({
+          category: 'lesson',
+          endTime,
+          location: 'Room 4',
+          zoomLink: 'https://zoom.test/lesson',
+        }),
+      ],
+    )
+    expect(result.specialCategory).toBe('lesson')
+    expect(result.endDate).toBe(endTime)
+    expect(result.location).toBe('Room 4')
+    expect(result.zoomLink).toBe('https://zoom.test/lesson')
   })
 
   it('sets specialCategory to undefined when category is null', () => {
@@ -201,6 +227,20 @@ describe('filterCalendarEvents', () => {
     expect(result.map((e) => e.id)).toEqual(['b'])
   })
 
+  it('includes scheduled lesson events in the lesson filter', () => {
+    const scheduledLesson = makeEvent({
+      id: 'scheduled',
+      type: 'special',
+      specialCategory: 'lesson',
+    })
+    const result = filterCalendarEvents(
+      [...events, scheduledLesson],
+      'all',
+      'lesson',
+    )
+    expect(result.map((e) => e.id)).toEqual(['a', 'scheduled'])
+  })
+
   it('excludes events failing either filter', () => {
     expect(filterCalendarEvents(events, 'c-1', 'assignment')).toEqual([])
   })
@@ -219,6 +259,17 @@ describe('deriveUpcomingSpecials', () => {
       makeEvent({ type: 'special', date: new Date('2024-06-14T00:00:00Z') }),
     ]
     expect(deriveUpcomingSpecials(events, now)).toHaveLength(3)
+  })
+
+  it('excludes scheduled lesson events from the special-events list', () => {
+    const events = [
+      makeEvent({
+        type: 'special',
+        specialCategory: 'lesson',
+        date: new Date('2024-06-11T00:00:00Z'),
+      }),
+    ]
+    expect(deriveUpcomingSpecials(events, now)).toEqual([])
   })
 })
 

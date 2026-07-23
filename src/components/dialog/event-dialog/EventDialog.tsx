@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import {
   AlertTriangleIcon,
+  BookOpenIcon,
   CalendarIcon,
   ClockIcon,
   HeartHandshakeIcon,
@@ -56,6 +57,7 @@ type EventFormFieldsProps = Omit<EventDialogProps, 'mode'> & {
 const CATEGORY_ICON: Record<EventCategory, React.ElementType> = {
   chapel: HeartHandshakeIcon,
   exam: AlertTriangleIcon,
+  lesson: BookOpenIcon,
   personal: UserIcon,
 }
 
@@ -79,14 +81,10 @@ function buildEventInput(value: EventFormValues) {
     title: value.title,
     description: value.description || undefined,
     startTime: new Date(value.startTime),
-    endTime: new Date(value.endTime),
+    endTime: value.endTime ? new Date(value.endTime) : undefined,
     location: value.location || undefined,
     zoomLink: value.zoomLink || undefined,
-    category: (value.category || undefined) as
-      | 'exam'
-      | 'chapel'
-      | 'personal'
-      | undefined,
+    category: (value.category || undefined) as EventCategory | undefined,
   }
 }
 
@@ -227,7 +225,7 @@ const EventScheduleFields = withForm({
         name="endTime"
         validators={{
           onSubmit: ({ value, fieldApi }) => {
-            if (!value) return 'End time is required'
+            if (!value) return undefined
             const startTime = fieldApi.form.state.values.startTime
             if (startTime && new Date(value) <= new Date(startTime)) {
               return 'End time must be after start time'
@@ -240,7 +238,6 @@ const EventScheduleFields = withForm({
           <field.TextField
             id="event-end"
             label="End Time"
-            required
             type="datetime-local"
           />
         )}
@@ -262,6 +259,7 @@ const EventDetailFields = withForm({
           >
             <SelectItem value="chapel">Chapel</SelectItem>
             <SelectItem value="exam">Exam</SelectItem>
+            <SelectItem value="lesson">Lesson</SelectItem>
             <SelectItem value="personal">Personal</SelectItem>
           </field.SelectField>
         )}

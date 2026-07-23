@@ -20,13 +20,12 @@ describe('buildEventValues', () => {
     const values = buildEventValues({
       title: 'Exam',
       startTime: start,
-      endTime: end,
     })
     expect(values).toEqual({
       title: 'Exam',
       description: null,
       startTime: start,
-      endTime: end,
+      endTime: null,
       location: null,
       zoomLink: null,
       category: null,
@@ -62,13 +61,14 @@ describe('buildEventValues', () => {
       title: 'Personal',
       description: null,
       startTime: start,
-      endTime: end,
+      endTime: null,
       location: null,
       zoomLink: null,
       category: null,
       courseId: null,
     })
     expect(values.description).toBeNull()
+    expect(values.endTime).toBeNull()
     expect(values.location).toBeNull()
     expect(values.zoomLink).toBeNull()
     expect(values.category).toBeNull()

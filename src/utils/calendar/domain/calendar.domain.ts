@@ -1,6 +1,10 @@
 import { isAfter } from 'date-fns'
+import type { calendarEventCategoryEnum } from '@/db/schema'
 
-export type SpecialEventCategory = 'exam' | 'chapel' | 'personal' | 'other'
+type CalendarEventCategory =
+  (typeof calendarEventCategoryEnum.enumValues)[number]
+
+export type SpecialEventCategory = CalendarEventCategory | 'other'
 
 export type CalendarEvent = {
   id: string
@@ -10,6 +14,9 @@ export type CalendarEvent = {
   courseId: string
   courseName: string
   description?: string | null
+  endDate?: Date | null
+  location?: string | null
+  zoomLink?: string | null
   duration?: number | null
   maxGrade?: number | null
   specialCategory?: SpecialEventCategory
@@ -39,9 +46,12 @@ type SpecialEventRow = {
   id: string
   title: string
   startTime: Date
+  endTime: Date | null
   courseId: string | null
   description: string | null
-  category: 'exam' | 'chapel' | 'personal' | null
+  location: string | null
+  zoomLink: string | null
+  category: CalendarEventCategory | null
 }
 
 export function buildCalendarEvents(
@@ -88,6 +98,9 @@ export function buildCalendarEvents(
       courseId: e.courseId ?? '',
       courseName: '',
       description: e.description,
+      endDate: e.endTime,
+      location: e.location,
+      zoomLink: e.zoomLink,
       specialCategory: e.category ?? undefined,
     }),
   )
@@ -128,7 +141,10 @@ export function filterCalendarEvents(
   return events.filter((event) => {
     const courseMatch =
       selectedCourse === 'all' || event.courseId === selectedCourse
-    const typeMatch = selectedType === 'all' || event.type === selectedType
+    const typeMatch =
+      selectedType === 'all' ||
+      event.type === selectedType ||
+      (selectedType === 'lesson' && event.specialCategory === 'lesson')
     return courseMatch && typeMatch
   })
 }
@@ -138,7 +154,12 @@ export function deriveUpcomingSpecials(
   now: Date = new Date(),
 ): Array<CalendarEvent> {
   return events
-    .filter((e) => e.type === 'special' && isAfter(new Date(e.date), now))
+    .filter(
+      (e) =>
+        e.type === 'special' &&
+        e.specialCategory !== 'lesson' &&
+        isAfter(new Date(e.date), now),
+    )
     .slice(0, 3)
 }
 

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import {
   AlertTriangleIcon,
+  BookOpenIcon,
   CalendarDaysIcon,
   HeartHandshakeIcon,
   PlusIcon,
@@ -44,6 +45,7 @@ export const Route = createFileRoute('/_authed/events')({
 const CATEGORY_LABEL: Record<string, string> = {
   chapel: 'Chapel',
   exam: 'Exam',
+  lesson: 'Lesson',
   personal: 'Personal',
   other: 'Other',
 }
@@ -51,6 +53,7 @@ const CATEGORY_LABEL: Record<string, string> = {
 const CATEGORY_ICON: Record<string, React.ElementType> = {
   chapel: HeartHandshakeIcon,
   exam: AlertTriangleIcon,
+  lesson: BookOpenIcon,
   personal: UserIcon,
   other: CalendarDaysIcon,
 }
@@ -58,6 +61,7 @@ const CATEGORY_ICON: Record<string, React.ElementType> = {
 const CATEGORY_CHIP: Record<string, string> = {
   chapel: 'border-violet-500/30 bg-violet-950/40 text-violet-300',
   exam: 'border-red-500/30 bg-red-950/40 text-red-300',
+  lesson: 'border-emerald-500/30 bg-emerald-950/40 text-emerald-300',
   personal: 'border-sky-500/30 bg-sky-950/40 text-sky-300',
   other: 'border-gray-500/30 bg-gray-950/40 text-gray-300',
 }
@@ -106,9 +110,14 @@ function useEventColumns(
         header: 'Start',
       }),
       columnHelper.accessor('endTime', {
-        cell: (info) => (
-          <ViewerDateTime value={info.getValue()} pattern="PPp" />
-        ),
+        cell: (info) => {
+          const endTime = info.getValue()
+          return endTime ? (
+            <ViewerDateTime value={endTime} pattern="PPp" />
+          ) : (
+            '—'
+          )
+        },
         header: 'End',
       }),
       columnHelper.accessor('location', {
@@ -142,7 +151,7 @@ function EventsPageHeader({ onCreate }: { onCreate: () => void }) {
           Events
         </h1>
         <p className="mt-2 text-sm text-[#5E5549]">
-          Manage chapel services, exams, and school-wide occasions
+          Manage lessons, chapel services, exams, and school-wide occasions
         </p>
       </div>
       <Button theme="light" onClick={onCreate}>

@@ -26,6 +26,14 @@ describe('getEventStyle', () => {
     expect(getEventStyle(event)).toBe(EVENT_STYLES.exam)
   })
 
+  it('uses lesson styling for a scheduled lesson event', () => {
+    const event = makeEvent({
+      type: 'special',
+      specialCategory: 'lesson',
+    })
+    expect(getEventStyle(event)).toBe(EVENT_STYLES.lesson)
+  })
+
   it('falls back to the "other" style for an uncategorised special event', () => {
     const event = makeEvent({ type: 'special' })
     expect(getEventStyle(event)).toBe(EVENT_STYLES.other)

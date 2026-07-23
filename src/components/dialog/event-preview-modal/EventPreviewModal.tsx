@@ -6,7 +6,9 @@ import {
   ClockIcon,
   GraduationCapIcon,
   HeartHandshakeIcon,
+  MapPinIcon,
   UserIcon,
+  VideoIcon,
 } from 'lucide-react'
 import {
   buildEventDetailsViewModel,
@@ -42,6 +44,7 @@ type EventPreviewModalProps = {
 const SPECIAL_ICONS: Record<SpecialEventCategory, React.ElementType> = {
   chapel: HeartHandshakeIcon,
   exam: AlertTriangleIcon,
+  lesson: BookOpenIcon,
   personal: UserIcon,
   other: CalendarIcon,
 }
@@ -50,6 +53,8 @@ const ROW_ICONS: Record<EventDetailIconKey, React.ElementType> = {
   clock: ClockIcon,
   book: BookOpenIcon,
   graduation: GraduationCapIcon,
+  mappin: MapPinIcon,
+  video: VideoIcon,
 }
 
 function useEventNavigation(
@@ -116,7 +121,18 @@ function EventDetailsSection({
         return (
           <div key={row.iconKey} className="flex items-center gap-2.5 text-sm">
             <Icon className="size-3.5 shrink-0 text-[#8E816D]" />
-            <span className="text-[#D6CCBE]">{row.text}</span>
+            {row.href ? (
+              <a
+                href={row.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="truncate text-[#9B7A41] hover:underline"
+              >
+                {row.text}
+              </a>
+            ) : (
+              <span className="text-[#D6CCBE]">{row.text}</span>
+            )}
           </div>
         )
       })}

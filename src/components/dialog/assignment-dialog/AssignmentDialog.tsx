@@ -254,7 +254,7 @@ const GradeSubmissionDialog = withForm({
   }) => (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]"
+        className="rounded-none border border-white/10 text-[#F8F4EC] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] sm:max-w-3xl"
         style={dialogStyle}
         showCloseButton={false}
       >

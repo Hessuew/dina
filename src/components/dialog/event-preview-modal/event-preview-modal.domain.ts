@@ -1,4 +1,4 @@
-import { format } from 'date-fns'
+import { format, isSameDay } from 'date-fns'
 import type { CalendarEvent } from '@/utils/calendar/calendar'
 
 const TYPE_CHIP: Record<string, { label: string; classes: string }> = {
@@ -80,11 +80,17 @@ export function buildEventNavigation(
   }
 }
 
-export type EventDetailIconKey = 'clock' | 'book' | 'graduation'
+export type EventDetailIconKey =
+  | 'clock'
+  | 'book'
+  | 'graduation'
+  | 'mappin'
+  | 'video'
 
 export type EventDetailRow = {
   iconKey: EventDetailIconKey
   text: string
+  href?: string
 }
 
 export type EventDetailsViewModel = {
@@ -99,6 +105,21 @@ export function buildEventDetailsViewModel(
   isOverdue: boolean,
 ): EventDetailsViewModel {
   const rows: Array<EventDetailRow> = []
+  if (event.type === 'special') {
+    const start = format(new Date(event.date), 'p')
+    const end = event.endDate
+      ? format(
+          new Date(event.endDate),
+          isSameDay(new Date(event.date), new Date(event.endDate))
+            ? 'p'
+            : 'PPp',
+        )
+      : null
+    rows.push({
+      iconKey: 'clock',
+      text: end ? `${start} – ${end}` : start,
+    })
+  }
   if (event.type === 'lesson' && event.duration) {
     rows.push({
       iconKey: 'clock',
@@ -112,6 +133,16 @@ export function buildEventDetailsViewModel(
     rows.push({
       iconKey: 'graduation',
       text: `Max grade: ${event.maxGrade} pts`,
+    })
+  }
+  if (event.location) {
+    rows.push({ iconKey: 'mappin', text: event.location })
+  }
+  if (event.zoomLink) {
+    rows.push({
+      iconKey: 'video',
+      text: event.zoomLink,
+      href: event.zoomLink,
     })
   }
   return {
