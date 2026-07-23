@@ -16,6 +16,8 @@ Source tag: `[auto]` (hook, from a tool error) · `[model]` (agent judgment).
 
 <!-- newest first; remove a line only when a focused improvement task handles it -->
 
+- [2026-07-22] chrome-devtools-axi · type: better · observation: browser reproduction of an authenticated library upload flow opened an isolated unauthenticated profile and redirected to login, with no documented session handoff from the user's active browser · suggestion: document a safe authenticated-session attachment or profile handoff workflow for local app debugging · [model]
+
 - [2026-07-14] fix-sentry · type: better · observation: after rewrite to sentry-axi-first, axi has no breadcrumbs subcommand; tough minified-stack cases still need MCP breadcrumbs fallback · suggestion: add `issues breadcrumbs <id>` (or bake into `issues view`) so fix-sentry never needs MCP · [model]
 
 - [2026-07-10] improve-codebase-architecture · type: fix · observation: the skill requires reading `LANGUAGE.md` and links to it repeatedly, but that file does not exist beside the canonical `SKILL.md` · suggestion: restore the referenced glossary or inline the complete required language so the exploration workflow has no broken dependency · [model]

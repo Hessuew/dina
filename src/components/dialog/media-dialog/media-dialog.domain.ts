@@ -22,6 +22,13 @@ export const emptyFormData: MediaFormData = {
   isPublished: false,
 }
 
+export function validateYoutubeUrl(
+  url: string,
+  kind: MediaKind,
+): string | undefined {
+  return kind === 'youtube' && !url ? 'URL is required' : undefined
+}
+
 export function fromFileType(fileType: MediaLibraryRow['fileType']): MediaKind {
   if (fileType === 'document') return 'document'
   if (fileType === 'video_file') return 'video-file'
