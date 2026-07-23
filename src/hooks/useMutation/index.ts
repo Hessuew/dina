@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { toastErrorHandler } from '../errorHandler'
+import { reportMutationError, toastErrorHandler } from '../errorHandler'
 import { dispatchMutationError } from './domain/mutation-error.domain'
 
 export function useMutation<TVariables, TData, TError = Error>(opts: {
@@ -39,6 +39,7 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
         const tError = err as TError
         setStatus('error')
         setError(tError)
+        reportMutationError(tError)
 
         await dispatchMutationError(tError, {
           onError: optsRef.current.onError,

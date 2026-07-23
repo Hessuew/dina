@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto'
+import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
+import { getDb } from '@/db'
+import { submissions as submissionsTable } from '@/db/schema'
+import { upsertSubmission } from '@/utils/assignments/repository/submissions.repository'
 import {
   createAssignmentService,
   createOrUpdateSubmissionService,
@@ -242,6 +246,129 @@ describe('createOrUpdateSubmissionService (integration)', () => {
 
     expect(submission.status).toBe('draft')
     expect(submission.submittedAt).toBeNull()
+  })
+
+  it('keeps one row when two first saves race', async () => {
+    const { lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({
+      lessonId,
+      status: 'published',
+      dueDate: future(),
+    })
+    const studentId = await seedProfile({ role: 'student' })
+
+    await Promise.all([
+      createOrUpdateSubmissionService(
+        { assignmentId, content: 'first', submit: false },
+        studentId,
+      ),
+      createOrUpdateSubmissionService(
+        { assignmentId, content: 'second', submit: false },
+        studentId,
+      ),
+    ])
+
+    const db = await getDb()
+    const rows = await db
+      .select()
+      .from(submissionsTable)
+      .where(
+        and(
+          eq(submissionsTable.assignmentId, assignmentId),
+          eq(submissionsTable.studentId, studentId),
+        ),
+      )
+    expect(rows).toHaveLength(1)
+  })
+
+  it('does not let a racing draft downgrade a submitted first save', async () => {
+    const { lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({
+      lessonId,
+      status: 'published',
+      dueDate: future(),
+    })
+    const studentId = await seedProfile({ role: 'student' })
+
+    const submittedAt = new Date()
+    await upsertSubmission({
+      assignmentId,
+      studentId,
+      content: 'submitted answer',
+      status: 'submitted',
+      submittedAt,
+    })
+    const result = await upsertSubmission({
+      assignmentId,
+      studentId,
+      content: 'racing draft',
+      status: 'draft',
+      submittedAt: null,
+    })
+
+    expect(result.status).toBe('submitted')
+    expect(result.submittedAt).toEqual(submittedAt)
+  })
+
+  it('promotes a racing draft when the submitted first save arrives last', async () => {
+    const { lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({
+      lessonId,
+      status: 'published',
+      dueDate: future(),
+    })
+    const studentId = await seedProfile({ role: 'student' })
+
+    await upsertSubmission({
+      assignmentId,
+      studentId,
+      content: 'draft answer',
+      status: 'draft',
+      submittedAt: null,
+    })
+    const submittedAt = new Date()
+    const result = await upsertSubmission({
+      assignmentId,
+      studentId,
+      content: 'submitted answer',
+      status: 'submitted',
+      submittedAt,
+    })
+
+    expect(result.status).toBe('submitted')
+    expect(result.submittedAt).toEqual(submittedAt)
+  })
+
+  it('rejects a non-student caller', async () => {
+    const { teacherId, lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({
+      lessonId,
+      status: 'published',
+      dueDate: future(),
+    })
+
+    await expect(
+      createOrUpdateSubmissionService(
+        { assignmentId, submit: true },
+        teacherId,
+      ),
+    ).rejects.toMatchObject({ code: 'ROLE_REQUIRED', status: 403 })
+  })
+
+  it('rejects an authenticated user without a profile before insert', async () => {
+    const { lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({
+      lessonId,
+      status: 'published',
+      dueDate: future(),
+    })
+
+    await expect(
+      createOrUpdateSubmissionService(
+        { assignmentId, submit: true },
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 })
   })
 
   it('rejects a submission after the due date', async () => {

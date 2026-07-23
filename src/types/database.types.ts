@@ -86,7 +86,6 @@ export interface Submission {
   assignment_id: string
   student_id: string
   content?: string
-  file_url?: string
   status: SubmissionStatus
   submitted_at?: string
   grade?: number

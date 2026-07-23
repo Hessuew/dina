@@ -37,16 +37,18 @@ import {
 import {
   findSubmissionByAssignmentAndStudent,
   findSubmissionById,
-  insertSubmission,
   updateSubmission,
   updateSubmissionGrade,
+  upsertSubmission,
 } from '@/utils/assignments/repository/submissions.repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
 import {
+  AppError,
   AuthorizationError,
   NotFoundError,
+  UNEXPECTED_ERROR_MESSAGE,
   ValidationError,
 } from '@/utils/errors'
 
@@ -300,10 +302,78 @@ export async function deleteAssignmentService(
   await deleteAssignmentById(data.assignmentId)
 }
 
+async function persistSubmission(
+  data: CreateOrUpdateSubmissionInput,
+  userId: string,
+  existingSubmission: Awaited<
+    ReturnType<typeof findSubmissionByAssignmentAndStudent>
+  >,
+) {
+  if (existingSubmission) {
+    return updateSubmission(existingSubmission.id, {
+      content: data.content || null,
+      status: data.submit ? 'submitted' : 'draft',
+      submittedAt: data.submit ? new Date() : existingSubmission.submittedAt,
+      updatedAt: new Date(),
+    })
+  }
+  return upsertSubmission({
+    assignmentId: data.assignmentId,
+    studentId: userId,
+    content: data.content || null,
+    status: data.submit ? 'submitted' : 'draft',
+    submittedAt: data.submit ? new Date() : null,
+  })
+}
+
+function mapSubmissionPersistenceError(
+  error: unknown,
+  assignmentId: string,
+  userId: string,
+): AppError {
+  console.error('Submission persistence failed', {
+    assignmentId,
+    userId,
+    error,
+    cause: error instanceof Error ? error.cause : undefined,
+  })
+  return new AppError({
+    code: 'SUBMISSION_SAVE_FAILED',
+    status: 500,
+    userMessage: UNEXPECTED_ERROR_MESSAGE,
+    internalMessage: `Failed to save submission for assignment ${assignmentId}`,
+    details: { assignmentId, userId },
+    cause: error,
+  })
+}
+
+async function saveSubmission(
+  data: CreateOrUpdateSubmissionInput,
+  userId: string,
+  existingSubmission: Awaited<
+    ReturnType<typeof findSubmissionByAssignmentAndStudent>
+  >,
+) {
+  try {
+    return await persistSubmission(data, userId, existingSubmission)
+  } catch (error) {
+    throw mapSubmissionPersistenceError(error, data.assignmentId, userId)
+  }
+}
+
 export async function createOrUpdateSubmissionService(
   data: CreateOrUpdateSubmissionInput,
   userId: string,
 ) {
+  const profile = await getUserProfile(userId)
+  if (profile.role !== 'student') {
+    throw new AuthorizationError('Only students can submit assignments', {
+      code: 'ROLE_REQUIRED',
+      internalMessage: 'Non-student attempted to submit an assignment',
+      details: { assignmentId: data.assignmentId, role: profile.role },
+    })
+  }
+
   const assignment = await findAssignmentById(data.assignmentId)
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
@@ -318,27 +388,7 @@ export async function createOrUpdateSubmissionService(
     data.assignmentId,
     userId,
   )
-
-  let submission
-  if (existingSubmission) {
-    submission = await updateSubmission(existingSubmission.id, {
-      content: data.content || null,
-      fileUrl: data.fileUrl || null,
-      status: data.submit ? 'submitted' : 'draft',
-      submittedAt: data.submit ? new Date() : existingSubmission.submittedAt,
-      updatedAt: new Date(),
-    })
-  } else {
-    submission = await insertSubmission({
-      assignmentId: data.assignmentId,
-      studentId: userId,
-      content: data.content || null,
-      fileUrl: data.fileUrl || null,
-      status: data.submit ? 'submitted' : 'draft',
-      submittedAt: data.submit ? new Date() : null,
-    })
-  }
-
+  const submission = await saveSubmission(data, userId, existingSubmission)
   return { submission }
 }
 

@@ -9,7 +9,7 @@ import {
   resolveSkipDetail,
   resolveStatusLines,
 } from './email-campaign-dialog.domain'
-import { CampaignLockedError } from '@/utils/errors'
+import { CampaignLockedError, UNEXPECTED_ERROR_MESSAGE } from '@/utils/errors'
 
 const noSkips = { linkStillValid: 0, revoked: 0, overCap: 0 }
 
@@ -137,10 +137,10 @@ describe('resolvePreviewFailure', () => {
     })
   })
 
-  it('classifies other errors with a user message', () => {
+  it('classifies other errors with a safe user message', () => {
     expect(resolvePreviewFailure(new Error('boom'))).toEqual({
       kind: 'error',
-      message: 'boom',
+      message: UNEXPECTED_ERROR_MESSAGE,
     })
   })
 })

@@ -5,6 +5,7 @@ import {
   CampaignLockedError,
   ConflictError,
   NotFoundError,
+  UNEXPECTED_ERROR_MESSAGE,
   ValidationError,
   isAppError,
   shouldSuppressFromSentry,
@@ -111,10 +112,24 @@ describe('toUserError', () => {
     })
   })
 
+  it('hides serialized 5xx Error messages', () => {
+    expect(
+      toUserError({
+        code: 'SUBMISSION_SAVE_FAILED',
+        message: 'Failed query: insert into submissions',
+        status: 500,
+      }),
+    ).toEqual({
+      code: 'UNEXPECTED_ERROR',
+      message: UNEXPECTED_ERROR_MESSAGE,
+      status: 500,
+    })
+  })
+
   it('returns UNEXPECTED_ERROR for plain Error instances', () => {
     const result = toUserError(new Error('boom'))
     expect(result.code).toBe('UNEXPECTED_ERROR')
-    expect(result.message).toBe('boom')
+    expect(result.message).toBe(UNEXPECTED_ERROR_MESSAGE)
     expect(result.status).toBe(500)
   })
 
@@ -138,6 +153,23 @@ describe('shouldSuppressFromSentry', () => {
     // Manually patch status to 500 to exercise the < 500 guard
     Object.defineProperty(err, 'status', { value: 500 })
     expect(shouldSuppressFromSentry(err)).toBe(false)
+  })
+
+  it('suppresses serialized expected errors but captures serialized 5xx errors', () => {
+    expect(
+      shouldSuppressFromSentry({
+        code: 'NOT_FOUND',
+        userMessage: 'missing',
+        status: 404,
+      }),
+    ).toBe(true)
+    expect(
+      shouldSuppressFromSentry({
+        code: 'SUBMISSION_SAVE_FAILED',
+        userMessage: UNEXPECTED_ERROR_MESSAGE,
+        status: 500,
+      }),
+    ).toBe(false)
   })
 
   it('suppresses TanStack Start input validation errors (Zod issue JSON array)', () => {

@@ -9,7 +9,7 @@ import {
   resolveSkipDetail,
   resolveStatusLines,
 } from './whatsapp-campaign-dialog.domain'
-import { CampaignLockedError } from '@/utils/errors'
+import { CampaignLockedError, UNEXPECTED_ERROR_MESSAGE } from '@/utils/errors'
 
 const noSkips = { alreadySent: 0, invalidPhone: 0, overCap: 0 }
 
@@ -160,10 +160,10 @@ describe('resolvePreviewFailure', () => {
     })
   })
 
-  it('classifies any other error with its user message', () => {
+  it('classifies any other error with a safe user message', () => {
     expect(resolvePreviewFailure(new Error('boom'))).toEqual({
       kind: 'error',
-      message: 'boom',
+      message: UNEXPECTED_ERROR_MESSAGE,
     })
   })
 })

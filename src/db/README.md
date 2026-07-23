@@ -37,6 +37,9 @@ Database access layer and schema definitions.
   - Notable tables:
     - `profiles`
       - Stores authenticated user profile data, including optional `lecturer_title` metadata for teacher/lecturer display surfaces.
+    - `submissions`
+      - Stores text answers and grading data; no attachment or URL field.
+      - Enforces one row per `(assignment_id, student_id)`; assignment saves use conflict-safe upsert behavior.
     - `media_library`
       - Stores org-wide library materials (YouTube links, PDFs, etc.).
       - Draft gating is modeled via `is_published`.

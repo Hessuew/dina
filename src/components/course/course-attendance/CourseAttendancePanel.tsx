@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useCourseAttendance } from './useCourseAttendance'
 import type {
   AttendancePanelSlots,
@@ -30,6 +31,8 @@ type AttendanceControls = ReturnType<typeof useCourseAttendance>
 
 export function CourseAttendancePanel({ courseId, canManage, role }: Props) {
   const ctl = useCourseAttendance(courseId)
+  if (!ctl.state) return <AttendancePanelSkeleton />
+
   const slots = buildAttendancePanelSlots({
     state: ctl.state,
     canManage,
@@ -40,8 +43,35 @@ export function CourseAttendancePanel({ courseId, canManage, role }: Props) {
     <AttendanceSlotsView
       slots={slots}
       ctl={ctl}
-      serverNow={ctl.state?.serverNow ?? new Date()}
+      serverNow={ctl.state.serverNow}
     />
+  )
+}
+
+function AttendancePanelSkeleton() {
+  const [dotCount, setDotCount] = useState(0)
+
+  useEffect(() => {
+    const interval = window.setInterval(
+      () => setDotCount((count) => (count + 1) % 4),
+      400,
+    )
+    return () => window.clearInterval(interval)
+  }, [])
+
+  return (
+    <div
+      aria-busy="true"
+      className="flex h-[198px] items-center justify-center border border-[#C5A059]/40 bg-[#1C1A17] p-5 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.8)]"
+    >
+      <span className="sr-only">Loading attendance</span>
+      <span aria-hidden="true" className="text-sm text-[#CFC6B7]">
+        Loading
+        <span className="inline-block w-4 text-left">
+          {'.'.repeat(dotCount)}
+        </span>
+      </span>
+    </div>
   )
 }
 
