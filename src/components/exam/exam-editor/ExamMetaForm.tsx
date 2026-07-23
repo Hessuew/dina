@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useMutation } from '@/hooks/useMutation'
 import { updateExam } from '@/utils/exam'
-import { toDatetimeLocalValue } from '@/components/view/exams-view/exams-view.domain'
+import { toDatetimeLocalValue } from '@/utils/datetime'
 
 export type MetaExam = {
   id: string
@@ -69,7 +69,11 @@ export function ExamMetaForm({ exam }: { exam: MetaExam }) {
         onOpensAtChange={setOpensAt}
         onClosesAtChange={setClosesAt}
       />
-      <Button type="submit" variant="outline" disabled={updateMutation.isPending}>
+      <Button
+        type="submit"
+        variant="outline"
+        disabled={updateMutation.isPending}
+      >
         {updateMutation.isPending ? 'Saving…' : 'Save details'}
       </Button>
     </form>

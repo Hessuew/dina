@@ -2,9 +2,11 @@ import type {
   CloseAttendanceInput,
   CourseIdInput,
   MarkPresentInput,
+  SetStudentPresentInput,
   StartAttendanceInput,
 } from '@/schemas/attendance.schema'
 import {
+  clearPresentOverrideAtomically,
   closeAttendanceSessionAtomically,
   findLessonInCourse,
   findLessonsWithSessionsByCourseId,
@@ -13,6 +15,7 @@ import {
   findPresent,
   markPresentAtomically,
   openAttendanceSessionAtomically,
+  setPresentOverrideAtomically,
 } from '@/utils/attendance/repository/attendance.repository'
 import { assertCanOpenSession } from '@/utils/attendance/domain/attendance-session.domain'
 import {
@@ -222,4 +225,58 @@ export async function listOpenAttendanceForStudentService(userId: string) {
     courseTitle: row.courseTitle,
   }))
   return { sessions, serverNow: now }
+}
+
+export async function setStudentPresentService(
+  data: SetStudentPresentInput,
+  actorId: string,
+) {
+  await requireCourseManage(actorId, data.courseId)
+
+  const target = await getUserProfile(data.studentId)
+  if (target.role !== 'student') {
+    throw new ValidationError('Target must be a student', {
+      code: 'TARGET_NOT_STUDENT',
+      details: { studentId: data.studentId },
+    })
+  }
+
+  const lesson = await findLessonInCourse(data.lessonId, data.courseId)
+  if (!lesson) {
+    throw new NotFoundError('Lesson not found on this course', {
+      code: 'LESSON_NOT_FOUND',
+      details: { lessonId: data.lessonId, courseId: data.courseId },
+    })
+  }
+
+  if (data.present) {
+    const result = await setPresentOverrideAtomically({
+      courseId: data.courseId,
+      lessonId: data.lessonId,
+      studentId: data.studentId,
+      openedBy: actorId,
+    })
+    return {
+      present: true as const,
+      created: result.created,
+      cleared: false as const,
+      checkedInAt: result.present.checkedInAt,
+      sessionId: result.session.id,
+      lessonId: result.session.lessonId,
+    }
+  }
+
+  const cleared = await clearPresentOverrideAtomically({
+    courseId: data.courseId,
+    lessonId: data.lessonId,
+    studentId: data.studentId,
+  })
+  return {
+    present: false as const,
+    created: false as const,
+    cleared: cleared.cleared,
+    checkedInAt: null,
+    sessionId: cleared.session?.id ?? null,
+    lessonId: data.lessonId,
+  }
 }

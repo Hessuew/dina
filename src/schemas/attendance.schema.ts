@@ -17,7 +17,15 @@ export const markPresentSchema = z.object({
   courseId: z.string().uuid(),
 })
 
+export const setStudentPresentSchema = z.object({
+  studentId: z.string().uuid(),
+  courseId: z.string().uuid(),
+  lessonId: z.string().uuid(),
+  present: z.boolean(),
+})
+
 export type CourseIdInput = z.infer<typeof courseIdSchema>
 export type StartAttendanceInput = z.infer<typeof startAttendanceSchema>
 export type CloseAttendanceInput = z.infer<typeof closeAttendanceSchema>
 export type MarkPresentInput = z.infer<typeof markPresentSchema>
+export type SetStudentPresentInput = z.infer<typeof setStudentPresentSchema>

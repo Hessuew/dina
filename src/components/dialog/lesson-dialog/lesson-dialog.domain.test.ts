@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
-  getLessonInitialValues,
-  buildLessonCreateInput,
-  buildLessonUpdateInput,
-  buildLessonDialogConfig,
   MAX_LESSONS_PER_COURSE,
+  buildLessonCreateInput,
+  buildLessonDialogConfig,
+  buildLessonUpdateInput,
+  getLessonInitialValues,
 } from '../lesson-dialog/lesson-dialog.domain'
 
 const baseInitialData = {
   lessonId: 'lesson-1',
   title: 'My Lesson',
   content: 'Some content',
-  scheduledTime: new Date('2024-03-15T10:30:00Z'),
+  // Local wall-clock ctor so form value is stable across host timezones.
+  scheduledTime: new Date(2024, 2, 15, 10, 30),
   duration: 45,
   isPublished: true,
   orderIndex: 0,
@@ -46,7 +47,7 @@ describe('getLessonInitialValues', () => {
     expect(result.isPublished).toBe(true)
   })
 
-  it('formats scheduledTime as ISO slice when present', () => {
+  it('formats scheduledTime as local datetime-local value when present', () => {
     const result = getLessonInitialValues(baseInitialData, 'edit')
     expect(result.scheduledTime).toBe('2024-03-15T10:30')
   })

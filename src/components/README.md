@@ -30,7 +30,7 @@ This folder contains:
   - `auth/`: signup/login/reset/enrolment forms. Public auth pages compose the shared layout primitives in `auth-layout.tsx`: `AuthPageShell`, `AuthFeaturePanel`, `AuthFormSurface`, reset-token state helpers, and `EnrolmentPageShell`.
   - `dialog/`: dialogs for profile, invitations, teachers, event previews.
   - `card/`: card-style feature components.
-  - `view/`: composite “page section” components for feature pages.
+  - `view/`: composite “page section” components for feature pages. Includes `students-view/StudentAttendanceDetail` — Course Teacher/Admin Present override toggles on student detail (list popover stays read-only).
   - `landing/`: public landing page sections.
 
 ## Key Invariants / Assumptions

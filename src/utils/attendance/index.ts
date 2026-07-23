@@ -3,5 +3,6 @@ export {
   getCourseAttendanceState,
   listOpenAttendanceForStudent,
   markPresent,
+  setStudentPresent,
   startOrReopenAttendance,
 } from './attendance'

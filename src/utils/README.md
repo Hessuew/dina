@@ -47,6 +47,7 @@ This folder is primarily where TanStack Start server functions live (via `create
     - `teacher-assignment.ts` - Teacher-course relationship management (2-teacher invariant)
     - `index.ts` - Re-exports all functions for backward compatibility
   - `assignments.ts`, `students.ts`, `teachers.ts`, `calendar.ts`, `events.ts`, `invitations.ts`, `enrollments.ts`, `posts.ts`, `library.ts`.
+  - `attendance/` — live Attendance Session open/close, student self check-in (`markPresent`), and Course Teacher/Admin override (`setStudentPresent`) from student detail.
   - These typically export server functions that routes call for loading and mutations.
   - Server functions are thin adapters that validate input, call domain services from `src/domain/`, and return responses.
   - `postNotifications.ts`.
@@ -71,6 +72,10 @@ This folder is primarily where TanStack Start server functions live (via `create
 
 - **Role-gated route helpers**
   - `admin.ts`: shared admin-only access check for routes (legacy, migrate to authz).
+
+- **Datetime helpers** (`datetime/`)
+  - Pure glue for `<input type="datetime-local">`: `toDatetimeLocalValue` / `parseDatetimeLocalValue`.
+  - Always use browser-local wall-clock components (`getHours`, …). Never `toISOString().slice` for form load — that is UTC and shifts displayed times by the host offset.
 
 - **Misc**
   - `imageUpload.ts`: server-side upload-related helpers.

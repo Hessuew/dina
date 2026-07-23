@@ -5,6 +5,7 @@ import {
   closeAttendanceSchema,
   courseIdSchema,
   markPresentSchema,
+  setStudentPresentSchema,
   startAttendanceSchema,
 } from '@/schemas/attendance.schema'
 import {
@@ -12,6 +13,7 @@ import {
   getCourseAttendanceStateService,
   listOpenAttendanceForStudentService,
   markPresentService,
+  setStudentPresentService,
   startOrReopenAttendanceService,
 } from '@/utils/attendance/service/attendance.service'
 
@@ -51,3 +53,10 @@ export const listOpenAttendanceForStudent = createServerFn({
   const user = await getCurrentUser()
   return withRequestCache(() => listOpenAttendanceForStudentService(user.id))
 })
+
+export const setStudentPresent = createServerFn({ method: 'POST' })
+  .inputValidator(setStudentPresentSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    return withRequestCache(() => setStudentPresentService(data, user.id))
+  })

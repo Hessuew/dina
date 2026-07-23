@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useMutation } from '@/hooks/useMutation'
 import { createExam } from '@/utils/exam'
-import { toDatetimeLocalValue } from '@/components/view/exams-view/exams-view.domain'
+import { toDatetimeLocalValue } from '@/utils/datetime'
 
 function defaultWindow() {
   const opens = new Date(Date.now() + 24 * 60 * 60_000)

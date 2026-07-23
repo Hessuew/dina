@@ -22,6 +22,7 @@ export type AppErrorCode =
   | 'EMAIL_SEND_FAILED'
   | 'PASSWORD_UPDATE_FAILED'
   | 'STORAGE_OPERATION_FAILED'
+  | 'TARGET_NOT_STUDENT'
   | 'CAMPAIGN_LOCKED'
 
 export type AppErrorDetails = Record<string, unknown>

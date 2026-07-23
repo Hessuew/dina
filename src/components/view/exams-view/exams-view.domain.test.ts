@@ -6,7 +6,6 @@ import {
   studentExamCardAction,
   studentLandingClosedMessage,
   studentLandingGoLabel,
-  toDatetimeLocalValue,
 } from './exams-view.domain'
 
 const T0 = new Date('2026-07-04T10:00:00.000Z')
@@ -82,12 +81,5 @@ describe('formatExamWindow', () => {
     const formatted = formatExamWindow(opensAt, closesAt)
     expect(formatted).toContain('–')
     expect(formatted.length).toBeGreaterThan(10)
-  })
-})
-
-describe('toDatetimeLocalValue', () => {
-  it('formats a date for a datetime-local input', () => {
-    const value = toDatetimeLocalValue(new Date(2026, 6, 4, 9, 5))
-    expect(value).toBe('2026-07-04T09:05')
   })
 })

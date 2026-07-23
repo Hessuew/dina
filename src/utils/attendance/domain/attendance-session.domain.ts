@@ -56,3 +56,11 @@ export function buildOpenWindow(now: Date): {
 export function buildManualClose(now: Date): { closesAt: Date } {
   return { closesAt: now }
 }
+
+/** Closed session stamp for teacher/admin Present override (no live window). */
+export function buildClosedOverrideSession(now: Date): {
+  openedAt: Date
+  closesAt: Date
+} {
+  return { openedAt: now, closesAt: now }
+}

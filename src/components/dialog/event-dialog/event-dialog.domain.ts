@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
 import type { CalendarEventRow } from '@/utils/event/events'
+import { toDatetimeLocalValue } from '@/utils/datetime'
 
 export type EventDialogMode = 'view' | 'create' | 'edit' | 'delete'
 
@@ -21,8 +22,8 @@ export function getEventDefaultValues(
     return {
       title: event.title,
       description: event.description ?? '',
-      startTime: new Date(event.startTime).toISOString().slice(0, 16),
-      endTime: new Date(event.endTime).toISOString().slice(0, 16),
+      startTime: toDatetimeLocalValue(event.startTime),
+      endTime: toDatetimeLocalValue(event.endTime),
       location: event.location ?? '',
       zoomLink: event.zoomLink ?? '',
       category: event.category ?? '',
