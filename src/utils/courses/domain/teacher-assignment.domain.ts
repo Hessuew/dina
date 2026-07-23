@@ -2,6 +2,29 @@ import { NotFoundError, ValidationError } from '@/utils/errors'
 
 type ProfileLike = { id: string; role: string; fullName?: string | null }
 
+export function resolveOptionalTeacherPair(
+  teacher1Id: string | undefined,
+  teacher2Id: string | undefined,
+): [string, string] | undefined {
+  if (teacher1Id && teacher2Id) return [teacher1Id, teacher2Id]
+  if (!teacher1Id && !teacher2Id) return undefined
+  throw new ValidationError('Please assign either both teachers or neither', {
+    code: 'TEACHER_PAIR_INVALID',
+    details: { teacher1Id, teacher2Id },
+  })
+}
+
+export function isTeacherAssignmentConflict(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const candidate = error as { constraint?: unknown; cause?: unknown }
+  if (candidate.constraint === 'course_teachers_teacher_id_unique') return true
+  if (!candidate.cause || typeof candidate.cause !== 'object') return false
+  return (
+    (candidate.cause as { constraint?: unknown }).constraint ===
+    'course_teachers_teacher_id_unique'
+  )
+}
+
 export function validateSameTeacher(
   teacher1Id: string,
   teacher2Id: string,

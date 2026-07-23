@@ -19,7 +19,13 @@ export async function findAllTeachersSimple() {
       id: true,
       fullName: true,
       email: true,
+      role: true,
       avatarUrl: true,
+    },
+    with: {
+      courseTeachers: {
+        columns: { courseId: true },
+      },
     },
     orderBy: (p, { asc }) => [asc(p.fullName)],
   })

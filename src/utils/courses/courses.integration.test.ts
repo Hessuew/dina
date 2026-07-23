@@ -20,7 +20,12 @@ import {
   updateCourseTeachersService,
   validateTeacherPair,
 } from '@/utils/courses/service/teacher-assignment.service'
-import { findCourseById, findCourseTeachers } from '@/utils/courses/repository'
+import {
+  findAllCourses,
+  findCourseById,
+  findCourseTeachers,
+  insertCourse,
+} from '@/utils/courses/repository'
 import {
   seedAssignment,
   seedCourse,
@@ -196,6 +201,77 @@ describe('createCourseService (integration)', () => {
 
     const teachers = await findCourseTeachers(course.id)
     expect(teachers).toHaveLength(2)
+  })
+
+  it('admin creates a course with an admin in the teacher pair', async () => {
+    const creatorAdminId = await seedProfile({ role: 'admin' })
+    const teacherAdminId = await seedProfile({ role: 'admin' })
+    const teacherId = await seedProfile({ role: 'teacher' })
+
+    const { course } = await createCourseService(
+      {
+        title: 'Admin-Taught Course',
+        description: 'desc',
+        orderIndex: 0,
+        teacher1Id: teacherAdminId,
+        teacher2Id: teacherId,
+      },
+      creatorAdminId,
+    )
+
+    const teachers = await findCourseTeachers(course.id)
+    expect(teachers.map((entry) => entry.teacher.id)).toEqual(
+      expect.arrayContaining([teacherAdminId, teacherId]),
+    )
+  })
+
+  it('rejects assigned teachers without leaving a course row', async () => {
+    const adminId = await seedProfile({ role: 'admin' })
+    const teacher1Id = await seedProfile({ role: 'teacher' })
+    const teacher2Id = await seedProfile({ role: 'teacher' })
+    const existingCourseId = await seedCourse()
+    await seedCourseTeacher(existingCourseId, teacher1Id)
+
+    await expect(
+      createCourseService(
+        {
+          title: 'Must Roll Back',
+          description: 'desc',
+          orderIndex: 0,
+          teacher1Id,
+          teacher2Id,
+        },
+        adminId,
+      ),
+    ).rejects.toMatchObject({ code: 'CONFLICT', status: 409 })
+
+    expect(await findAllCourses(true)).not.toContainEqual(
+      expect.objectContaining({ title: 'Must Roll Back' }),
+    )
+  })
+
+  it('rolls back the course row when a concurrent assignment conflicts', async () => {
+    const assignedTeacherId = await seedProfile({ role: 'teacher' })
+    const availableTeacherId = await seedProfile({ role: 'teacher' })
+    const existingCourseId = await seedCourse()
+    await seedCourseTeacher(existingCourseId, assignedTeacherId)
+
+    await expect(
+      insertCourse(
+        {
+          title: 'Atomic Course',
+          description: 'desc',
+          thumbnailUrl: null,
+          isPublished: false,
+          orderIndex: 0,
+        },
+        [assignedTeacherId, availableTeacherId],
+      ),
+    ).rejects.toThrow()
+
+    expect(await findAllCourses(true)).not.toContainEqual(
+      expect.objectContaining({ title: 'Atomic Course' }),
+    )
   })
 
   it('rejects a non-admin caller', async () => {

@@ -66,8 +66,23 @@ describe('teachers service (integration)', () => {
           id: teacherId,
           fullName: 'Lecturer One',
           email: 'lecturer@test.dev',
+          role: 'teacher',
+          courseId: null,
         }),
       )
+    })
+
+    it('includes the assigned course id', async () => {
+      const adminId = await seedProfile({ role: 'admin' })
+      const teacherId = await seedProfile({ role: 'teacher' })
+      const courseId = await seedCourse()
+      await seedCourseTeacher(courseId, teacherId)
+
+      const { teachers } = await getAllTeachersService(adminId)
+
+      expect(
+        teachers.find((teacher) => teacher.id === teacherId)?.courseId,
+      ).toBe(courseId)
     })
 
     it('rejects a non-admin caller', async () => {

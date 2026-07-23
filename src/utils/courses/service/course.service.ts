@@ -4,12 +4,19 @@ import type {
   GetCourseInput,
   UpdateCourseInput,
 } from '@/schemas/course.schema'
-import { assignTeachersToCourse } from '@/utils/courses/service/teacher-assignment.service'
+import {
+  assignTeachersToCourse,
+  validateNewCourseTeacherPair,
+} from '@/utils/courses/service/teacher-assignment.service'
 import {
   buildAssignmentStats,
   buildCoursesWithProgress,
   extractTeacherIds,
 } from '@/utils/courses/domain/course.domain'
+import {
+  isTeacherAssignmentConflict,
+  resolveOptionalTeacherPair,
+} from '@/utils/courses/domain/teacher-assignment.domain'
 import {
   deleteCourseById,
   findAllCourses,
@@ -26,6 +33,7 @@ import { authz } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
 import {
   AuthorizationError,
+  ConflictError,
   NotFoundError,
   ValidationError,
 } from '@/utils/errors'
@@ -168,21 +176,33 @@ export async function createCourseService(
     })
   }
 
-  const course = await insertCourse({
-    title: data.title,
-    description: data.description,
-    thumbnailUrl: courseThumbnailPath(data.thumbnailUrl),
-    isPublished: false,
-    orderIndex: data.orderIndex,
-  })
+  const teacherIds = resolveOptionalTeacherPair(
+    data.teacher1Id,
+    data.teacher2Id,
+  )
+  if (teacherIds) {
+    await validateNewCourseTeacherPair(...teacherIds)
+  }
 
-  if (data.teacher1Id && data.teacher2Id) {
-    await assignTeachersToCourse(course.id, data.teacher1Id, data.teacher2Id)
-  } else if (data.teacher1Id || data.teacher2Id) {
-    throw new ValidationError('Please assign either both teachers or neither', {
-      code: 'TEACHER_PAIR_INVALID',
-      details: { teacher1Id: data.teacher1Id, teacher2Id: data.teacher2Id },
-    })
+  let course
+  try {
+    course = await insertCourse(
+      {
+        title: data.title,
+        description: data.description,
+        thumbnailUrl: courseThumbnailPath(data.thumbnailUrl),
+        isPublished: false,
+        orderIndex: data.orderIndex,
+      },
+      teacherIds,
+    )
+  } catch (error) {
+    if (isTeacherAssignmentConflict(error)) {
+      throw new ConflictError(
+        'One or both selected teachers are already assigned to another course',
+      )
+    }
+    throw error
   }
 
   const [signedCourse] = await signCourseThumbnailRows([course])

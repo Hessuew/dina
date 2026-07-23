@@ -1,7 +1,7 @@
 /* v8 ignore start */
 import { eq } from 'drizzle-orm'
 import { getDb } from '@/db'
-import { courses } from '@/db/schema'
+import { courseTeachers, courses } from '@/db/schema'
 
 export async function findAllCourses(includeUnpublishedLessons: boolean) {
   const db = await getDb()
@@ -59,16 +59,28 @@ export async function findAllCourseIds() {
   return result.map((c) => c.id)
 }
 
-export async function insertCourse(values: {
-  title: string
-  description: string
-  thumbnailUrl: string | null
-  isPublished: boolean
-  orderIndex: number
-}) {
+export async function insertCourse(
+  values: {
+    title: string
+    description: string
+    thumbnailUrl: string | null
+    isPublished: boolean
+    orderIndex: number
+  },
+  teacherIds?: [string, string],
+) {
   const db = await getDb()
-  const [course] = await db.insert(courses).values(values).returning()
-  return course
+  return db.transaction(async (tx) => {
+    const [course] = await tx.insert(courses).values(values).returning()
+    if (teacherIds) {
+      await tx
+        .insert(courseTeachers)
+        .values(
+          teacherIds.map((teacherId) => ({ courseId: course.id, teacherId })),
+        )
+    }
+    return course
+  })
 }
 
 export async function updateCourseById(

@@ -27,6 +27,16 @@ export type CourseInitialData = {
   orderIndex: number
 }
 
+export function getAvailableCourseTeachers<
+  T extends { role: string; courseId: string | null },
+>(teachers: Array<T>, currentCourseId?: string): Array<T> {
+  return teachers.filter(
+    (teacher) =>
+      (teacher.role === 'teacher' || teacher.role === 'admin') &&
+      (teacher.courseId === null || teacher.courseId === currentCourseId),
+  )
+}
+
 export function getInitialValues(
   initialData: CourseInitialData | undefined,
 ): CourseFormData {
