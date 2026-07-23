@@ -40,7 +40,11 @@ export async function getTeachersService() {
 export async function getAllTeachersService(userId: string) {
   await authz(userId).hasRole('admin')
 
-  const teachers = await signAvatarRows(await findAllTeachersSimple())
+  const rows = await signAvatarRows(await findAllTeachersSimple())
+  const teachers = rows.map(({ courseTeachers, ...teacher }) => ({
+    ...teacher,
+    courseId: courseTeachers[0]?.courseId ?? null,
+  }))
 
   return { teachers }
 }

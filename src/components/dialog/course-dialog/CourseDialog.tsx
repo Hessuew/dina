@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import {
   buildCourseSubmitAction,
   extractCreatedCourseId,
+  getAvailableCourseTeachers,
   getCourseDialogChrome,
   getCourseLoadingLabel,
   getInitialValues,
@@ -367,6 +368,7 @@ type UseCourseMutationsArgs = {
   clearFile: () => void
   setThumbnailUrl: (url: string | null) => void
   handleThumbnailUpload: (courseId: string) => Promise<void>
+  refetchTeachers: () => Promise<void>
 }
 
 function useCourseMutations({
@@ -374,6 +376,7 @@ function useCourseMutations({
   clearFile,
   setThumbnailUrl,
   handleThumbnailUpload,
+  refetchTeachers,
 }: UseCourseMutationsArgs) {
   return useEntityMutation({
     createFn: createCourse,
@@ -384,6 +387,7 @@ function useCourseMutations({
       const courseId = extractCreatedCourseId(data)
       if (courseId) {
         await handleThumbnailUpload(courseId)
+        await refetchTeachers()
         clearFile()
         setThumbnailUrl(null)
         onOpenChange(false)
@@ -460,9 +464,11 @@ function useCourseDialog({
     handleThumbnailUpload,
   } = useCourseThumbnail()
 
-  const { teachers, error: teachersError } = useAllTeachers(
-    shouldLoadCourseTeachers(open, isAdmin),
-  )
+  const {
+    teachers,
+    error: teachersError,
+    refetch: refetchTeachers,
+  } = useAllTeachers(shouldLoadCourseTeachers(open, isAdmin))
   if (teachersError) {
     console.error('Failed to load teachers:', teachersError)
   }
@@ -472,6 +478,7 @@ function useCourseDialog({
     clearFile,
     setThumbnailUrl,
     handleThumbnailUpload,
+    refetchTeachers,
   })
 
   const form = useCourseForm({
@@ -486,7 +493,7 @@ function useCourseDialog({
 
   return {
     form,
-    teachers,
+    teachers: getAvailableCourseTeachers(teachers, initialData?.courseId),
     fileInputRef,
     fileData,
     thumbnailUrl,

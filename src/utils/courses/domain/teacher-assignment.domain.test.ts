@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isTeacherAssignmentConflict,
+  resolveOptionalTeacherPair,
   validateSameTeacher,
   validateTeacherRoles,
 } from './teacher-assignment.domain'
@@ -8,6 +10,40 @@ const makeTeacher = (id: string, role = 'teacher', fullName?: string) => ({
   id,
   role,
   fullName: fullName ?? null,
+})
+
+describe('resolveOptionalTeacherPair', () => {
+  it('returns a complete pair', () => {
+    expect(resolveOptionalTeacherPair('t-1', 't-2')).toEqual(['t-1', 't-2'])
+  })
+
+  it('returns undefined when neither teacher is supplied', () => {
+    expect(resolveOptionalTeacherPair(undefined, undefined)).toBeUndefined()
+  })
+
+  it('rejects either incomplete pair', () => {
+    expect(() => resolveOptionalTeacherPair('t-1', undefined)).toThrow(
+      'Please assign either both teachers or neither',
+    )
+    expect(() => resolveOptionalTeacherPair(undefined, 't-2')).toThrow(
+      'Please assign either both teachers or neither',
+    )
+  })
+})
+
+describe('isTeacherAssignmentConflict', () => {
+  const conflict = { constraint: 'course_teachers_teacher_id_unique' }
+
+  it('recognizes direct and wrapped constraint errors', () => {
+    expect(isTeacherAssignmentConflict(conflict)).toBe(true)
+    expect(isTeacherAssignmentConflict({ cause: conflict })).toBe(true)
+  })
+
+  it('rejects unrelated and malformed errors', () => {
+    expect(isTeacherAssignmentConflict({ constraint: 'other' })).toBe(false)
+    expect(isTeacherAssignmentConflict({ cause: 'other' })).toBe(false)
+    expect(isTeacherAssignmentConflict(null)).toBe(false)
+  })
 })
 
 describe('validateSameTeacher', () => {

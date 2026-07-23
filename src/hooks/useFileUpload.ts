@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface UseFileUploadReturn {
   fileInputRef: React.RefObject<HTMLInputElement | null>
@@ -12,27 +12,41 @@ interface UseFileUploadReturn {
 
 export function useFileUpload(): UseFileUploadReturn {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const objectUrlRef = useRef<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [fileData, setFileData] = useState<string | null>(null)
   const [fileObject, setFileObject] = useState<File | null>(null)
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
 
-    if (fileData) URL.revokeObjectURL(fileData)
-    setFileData(URL.createObjectURL(file))
-    setFileObject(file)
-  }
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
+      const objectUrl = URL.createObjectURL(file)
+      objectUrlRef.current = objectUrl
+      setFileData(objectUrl)
+      setFileObject(file)
+    },
+    [],
+  )
 
   const clearFile = useCallback(() => {
-    if (fileData) URL.revokeObjectURL(fileData)
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
+    objectUrlRef.current = null
     setFileData(null)
     setFileObject(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
-  }, [fileData])
+  }, [])
+
+  useEffect(
+    () => () => {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
+    },
+    [],
+  )
 
   return {
     fileInputRef,

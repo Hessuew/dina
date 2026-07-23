@@ -1,11 +1,8 @@
 import { useCachedData } from './useCachedData'
 import { getAllTeachers } from '@/utils/courses'
 
-type Teacher = {
-  id: string
-  fullName: string
-  email: string
-}
+type AllTeachersResponse = Awaited<ReturnType<typeof getAllTeachers>>
+type Teacher = AllTeachersResponse['teachers'][number]
 
 type UseAllTeachersResult = {
   teachers: Array<Teacher>

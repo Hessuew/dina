@@ -1,5 +1,5 @@
 /* v8 ignore start */
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { courseTeachers } from '@/db/schema'
 
@@ -18,6 +18,16 @@ export async function findCourseTeachers(courseId: string) {
         },
       },
     },
+  })
+}
+
+export async function findCourseAssignmentsByTeacherIds(
+  teacherIds: Array<string>,
+) {
+  const db = await getDb()
+  return db.query.courseTeachers.findMany({
+    where: inArray(courseTeachers.teacherId, teacherIds),
+    columns: { teacherId: true },
   })
 }
 

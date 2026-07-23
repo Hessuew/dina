@@ -38,7 +38,7 @@ function MediaCardWithActions({
     permissions.isCourseTeacher
 
   return (
-    <div className="group relative shrink-0">
+    <div className="group relative w-full shrink-0 sm:w-auto">
       <MediaCard item={item} viewerRole={viewerRole} />
       {canManage && (
         <div
@@ -84,7 +84,7 @@ export function LibraryShelf({
           <p className="text-[0.68rem] font-medium tracking-[0.25em] text-[#9B7A41] uppercase">
             eBooks
           </p>
-          <div className="flex gap-4 pb-2">
+          <div className="flex flex-col gap-4 pb-2 sm:flex-row">
             {ebooks.map((item) => (
               <MediaCardWithActions
                 key={item.id}
@@ -104,7 +104,7 @@ export function LibraryShelf({
           <p className="text-[0.68rem] font-medium tracking-[0.25em] text-[#9B7A41] uppercase">
             Audio-Visual
           </p>
-          <div className="flex gap-4 pb-2">
+          <div className="flex flex-col gap-4 pb-2 sm:flex-row">
             {audioVisual.map((item) => (
               <MediaCardWithActions
                 key={item.id}

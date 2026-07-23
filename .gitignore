@@ -14,3 +14,4 @@ todos.json
 worker-configuration.d.ts
 /coverage
 /firstmate
+/.lavish

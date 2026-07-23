@@ -3,6 +3,7 @@ import {
   buildCourseSubmitAction,
   emptyCourseFormData,
   extractCreatedCourseId,
+  getAvailableCourseTeachers,
   getCourseDialogChrome,
   getCourseLoadingLabel,
   getInitialValues,
@@ -21,6 +22,28 @@ const initialData: CourseInitialData = {
   teacher2Id: 't2',
   orderIndex: 3,
 }
+
+describe('getAvailableCourseTeachers', () => {
+  const teachers = [
+    { id: 'free', role: 'teacher', courseId: null },
+    { id: 'current', role: 'teacher', courseId: 'course-1' },
+    { id: 'assigned', role: 'teacher', courseId: 'course-2' },
+    { id: 'admin', role: 'admin', courseId: null },
+  ]
+
+  it('offers unassigned teachers and admins when creating', () => {
+    expect(getAvailableCourseTeachers(teachers).map((t) => t.id)).toEqual([
+      'free',
+      'admin',
+    ])
+  })
+
+  it('keeps current teachers available when editing', () => {
+    expect(
+      getAvailableCourseTeachers(teachers, 'course-1').map((t) => t.id),
+    ).toEqual(['free', 'current', 'admin'])
+  })
+})
 
 describe('getInitialValues', () => {
   it('returns a fresh copy of empty form data when no initialData', () => {
