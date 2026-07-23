@@ -3,6 +3,7 @@ import {
   createMediaSchema,
   deleteMediaSchema,
   getMediaSchema,
+  requestMediaVideoUploadSchema,
   updateMediaSchema,
   uploadMediaPdfSchema,
   uploadMediaThumbnailSchema,
@@ -13,6 +14,7 @@ import {
   deleteLibraryMediaService,
   getLibraryMediaItemService,
   getLibraryMediaService,
+  requestMediaVideoUploadService,
   updateLibraryMediaService,
   uploadMediaPdfService,
   uploadMediaThumbnailService,
@@ -28,7 +30,7 @@ export type MediaLibraryRow = {
   category: string
   description: string | null
   fileUrl: string
-  fileType: 'video' | 'audio' | 'document' | 'image' | 'other'
+  fileType: 'video' | 'video_file' | 'audio' | 'document' | 'image' | 'other'
   fileSize: number | null
   thumbnailUrl: string | null
   isPublished: boolean
@@ -90,4 +92,12 @@ export const uploadMediaThumbnailFn = createServerFn({ method: 'POST' })
     const user = await getCurrentUser()
     const profile = await getUserProfile(user.id)
     return uploadMediaThumbnailService(data, user.id, profile.role)
+  })
+
+export const requestMediaVideoUploadFn = createServerFn({ method: 'POST' })
+  .inputValidator(requestMediaVideoUploadSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    const profile = await getUserProfile(user.id)
+    return requestMediaVideoUploadService(data, user.id, profile.role)
   })

@@ -11,11 +11,11 @@ import { Button } from '@/components/ui/button'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { getLibraryMedia } from '@/utils/library'
 import {
+  buildLibraryThumbModel,
   canCreateMedia,
   canManageMediaRow,
   getLibraryEmptyStateDescription,
   getVisibleShelfTopics,
-  getYoutubeThumbnail,
 } from '@/utils/library/domain/library-view.domain'
 import { PageLayout } from '@/components/layout/page-layout'
 import { EmptyState } from '@/components/ui/empty-state/EmptyState'
@@ -31,48 +31,92 @@ export const Route = createFileRoute('/_authed/library/')({
 
 const columnHelper = createColumnHelper<MediaLibraryRow>()
 
-function ThumbCell({ row }: { row: MediaLibraryRow }) {
-  if (row.fileType === 'video') {
-    const thumb = getYoutubeThumbnail(row.fileUrl)
-
-    return (
-      <Link
-        to="/library/$mediaId"
-        params={{ mediaId: row.id }}
-        className="group relative block aspect-video w-28 border border-white/10 bg-black/20"
-      >
-        {thumb ? (
-          <img
-            src={thumb}
-            alt={row.title}
-            className="size-full object-cover transition-transform group-hover:scale-[1.02]"
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center text-xs text-[#8E816D]">
-            Video
-          </div>
-        )}
-        <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-black/10 via-transparent to-black/50" />
-      </Link>
-    )
-  }
-
+function YoutubeThumbCell({
+  mediaId,
+  title,
+  thumbUrl,
+}: {
+  mediaId: string
+  title: string
+  thumbUrl: string | null
+}) {
   return (
     <Link
       to="/library/$mediaId"
-      params={{ mediaId: row.id }}
-      className="group relative flex aspect-video w-28 items-center justify-center border border-white/10 bg-black/20 text-[#8E816D]"
+      params={{ mediaId }}
+      className="group relative block aspect-video w-28 border border-white/10 bg-black/20"
     >
-      {row.thumbnailUrl ? (
+      {thumbUrl ? (
         <img
-          src={row.thumbnailUrl}
-          alt={row.title}
+          src={thumbUrl}
+          alt={title}
           className="size-full object-cover transition-transform group-hover:scale-[1.02]"
         />
       ) : (
-        <FileTextIcon className="size-4" />
+        <div className="flex size-full items-center justify-center text-xs text-[#8E816D]">
+          Video
+        </div>
+      )}
+      <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-black/10 via-transparent to-black/50" />
+    </Link>
+  )
+}
+
+function ThumbPlaceholder({ icon }: { icon: 'video' | 'file' }) {
+  if (icon === 'video') {
+    return <span className="text-xs text-[#8E816D]">Video</span>
+  }
+  return <FileTextIcon className="size-4" />
+}
+
+function GenericThumbCell({
+  mediaId,
+  title,
+  thumbUrl,
+  icon,
+}: {
+  mediaId: string
+  title: string
+  thumbUrl: string | null
+  icon: 'video' | 'file'
+}) {
+  return (
+    <Link
+      to="/library/$mediaId"
+      params={{ mediaId }}
+      className="group relative flex aspect-video w-28 items-center justify-center border border-white/10 bg-black/20 text-[#8E816D]"
+    >
+      {thumbUrl ? (
+        <img
+          src={thumbUrl}
+          alt={title}
+          className="size-full object-cover transition-transform group-hover:scale-[1.02]"
+        />
+      ) : (
+        <ThumbPlaceholder icon={icon} />
       )}
     </Link>
+  )
+}
+
+function ThumbCell({ row }: { row: MediaLibraryRow }) {
+  const model = buildLibraryThumbModel(row)
+  if (model.kind === 'youtube') {
+    return (
+      <YoutubeThumbCell
+        mediaId={row.id}
+        title={row.title}
+        thumbUrl={model.thumbUrl}
+      />
+    )
+  }
+  return (
+    <GenericThumbCell
+      mediaId={row.id}
+      title={row.title}
+      thumbUrl={model.thumbUrl}
+      icon={model.icon}
+    />
   )
 }
 

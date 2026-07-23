@@ -8,6 +8,7 @@ import {
   deleteLibraryMediaService,
   getLibraryMediaItemService,
   getLibraryMediaService,
+  requestMediaVideoUploadService,
   updateLibraryMediaService,
   uploadMediaPdfService,
   uploadMediaThumbnailService,
@@ -20,6 +21,7 @@ import { mediaLibrary } from '@/db/schema'
 // orchestration are exercised for real. See docs/TESTING_GUIDE.md / ADR 0009.
 const mocks = vi.hoisted(() => ({
   createSignedUrl: vi.fn(),
+  createSignedUploadUrl: vi.fn(),
   upload: vi.fn(),
   getPublicUrl: vi.fn(),
   remove: vi.fn(),
@@ -29,7 +31,13 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/utils/supabase', () => ({
   getSupabaseAdminClient: () => ({
-    storage: { from: () => ({ createSignedUrl: mocks.createSignedUrl }) },
+    storage: {
+      from: () => ({
+        createSignedUrl: mocks.createSignedUrl,
+        createSignedUploadUrl: mocks.createSignedUploadUrl,
+        getPublicUrl: mocks.getPublicUrl,
+      }),
+    },
   }),
   getSupabaseServerClient: () => ({
     storage: {
@@ -67,6 +75,14 @@ const findMedia = async (id: string) => {
 beforeEach(() => {
   mocks.createSignedUrl.mockReset().mockResolvedValue({
     data: { signedUrl: 'https://signed/url' },
+    error: null,
+  })
+  mocks.createSignedUploadUrl.mockReset().mockResolvedValue({
+    data: {
+      path: 'teacher-1-1.mp4',
+      token: 'tok',
+      signedUrl: 'https://signed-upload',
+    },
     error: null,
   })
   mocks.upload.mockReset().mockResolvedValue({ error: null })
@@ -144,6 +160,26 @@ describe('getLibraryMediaItemService (integration)', () => {
     expect(result.permissions.canManage).toBe(true)
     expect(result.viewer).toEqual({ id: uploaderId, role: 'teacher' })
   })
+
+  it('returns a signed viewer URL for a video_file', async () => {
+    const uploaderId = await seedProfile({ role: 'teacher' })
+    const mediaId = await seedMedia({
+      uploaderId,
+      isPublished: true,
+      fileType: 'video_file',
+      fileUrl:
+        'https://x.supabase.co/storage/v1/object/public/media-library/u-1.mp4',
+    })
+
+    const result = await getLibraryMediaItemService(
+      { mediaId },
+      uploaderId,
+      'teacher',
+    )
+
+    expect(mocks.createSignedUrl).toHaveBeenCalledWith('u-1.mp4', 3600)
+    expect(result.viewerUrl).toBe('https://signed/url')
+  })
 })
 
 describe('createLibraryMediaService (integration)', () => {
@@ -166,6 +202,41 @@ describe('createLibraryMediaService (integration)', () => {
     expect(row?.title).toBe('Created')
     expect(row?.uploaderId).toBe(uploaderId)
     expect(row?.fileType).toBe('video') // kind 'youtube' -> 'video'
+  })
+
+  it('inserts a video_file row when URL is owned media-library object', async () => {
+    const uploaderId = await seedProfile({ role: 'teacher' })
+    const url = `https://x.supabase.co/storage/v1/object/public/media-library/${uploaderId}-9.mp4`
+
+    const result = await createLibraryMediaService(
+      makeCreateInput({
+        title: 'Uploaded talk',
+        kind: 'video-file',
+        url,
+        fileSize: 1024,
+      }),
+      uploaderId,
+      'teacher',
+    )
+
+    const row = await findMedia(result.media.id)
+    expect(row?.fileType).toBe('video_file')
+    expect(row?.fileUrl).toBe(url)
+    expect(row?.fileSize).toBe(1024)
+  })
+
+  it('rejects video-file create with a foreign object name', async () => {
+    const uploaderId = await seedProfile({ role: 'teacher' })
+    await expect(
+      createLibraryMediaService(
+        makeCreateInput({
+          kind: 'video-file',
+          url: 'https://x.supabase.co/storage/v1/object/public/media-library/other-9.mp4',
+        }),
+        uploaderId,
+        'teacher',
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' })
   })
 })
 
@@ -222,6 +293,62 @@ describe('updateLibraryMediaService (integration)', () => {
     const row = await findMedia(mediaId)
     expect(row?.title).toBe('New Title')
   })
+
+  it('keeps file_size when video_file metadata is saved without size', async () => {
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const url = `https://x.supabase.co/storage/v1/object/public/media-library/${ownerId}-9.mp4`
+    const mediaId = await seedMedia({
+      uploaderId: ownerId,
+      fileType: 'video_file',
+      fileUrl: url,
+      fileSize: 4096,
+    })
+
+    await updateLibraryMediaService(
+      {
+        ...makeCreateInput({
+          title: 'Renamed talk',
+          kind: 'video-file',
+          url,
+        }),
+        mediaId,
+      },
+      ownerId,
+      'teacher',
+    )
+
+    const row = await findMedia(mediaId)
+    expect(row?.fileSize).toBe(4096)
+    expect(mocks.deleteStorageObject).not.toHaveBeenCalled()
+  })
+
+  it('deletes old storage object when leaving video_file for youtube', async () => {
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const oldUrl = `https://x.supabase.co/storage/v1/object/public/media-library/${ownerId}-9.mp4`
+    const mediaId = await seedMedia({
+      uploaderId: ownerId,
+      fileType: 'video_file',
+      fileUrl: oldUrl,
+      fileSize: 1024,
+    })
+
+    await updateLibraryMediaService(
+      {
+        ...makeCreateInput({
+          kind: 'youtube',
+          url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        }),
+        mediaId,
+      },
+      ownerId,
+      'teacher',
+    )
+
+    expect(mocks.deleteStorageObject).toHaveBeenCalledWith(
+      'media-library',
+      `${ownerId}-9.mp4`,
+    )
+  })
 })
 
 describe('deleteLibraryMediaService (integration)', () => {
@@ -266,6 +393,100 @@ describe('deleteLibraryMediaService (integration)', () => {
 
     expect(result).toEqual({ success: true })
     expect(await findMedia(mediaId)).toBeUndefined()
+  })
+
+  it('removes media-library object when deleting a video_file row', async () => {
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const mediaId = await seedMedia({
+      uploaderId: ownerId,
+      fileType: 'video_file',
+      fileUrl: `https://x.supabase.co/storage/v1/object/public/media-library/${ownerId}-9.mp4`,
+    })
+
+    await deleteLibraryMediaService({ mediaId }, ownerId, 'teacher')
+
+    expect(mocks.deleteStorageObject).toHaveBeenCalledWith(
+      'media-library',
+      `${ownerId}-9.mp4`,
+    )
+    expect(await findMedia(mediaId)).toBeUndefined()
+  })
+})
+
+describe('requestMediaVideoUploadService (integration)', () => {
+  it('rejects a student', async () => {
+    await expect(
+      requestMediaVideoUploadService(
+        {
+          fileName: 'a.mp4',
+          fileType: 'video/mp4',
+          fileSize: 1024,
+        },
+        'student-1',
+        'student',
+      ),
+    ).rejects.toMatchObject({ code: 'ROLE_REQUIRED' })
+  })
+
+  it('rejects oversize files', async () => {
+    await expect(
+      requestMediaVideoUploadService(
+        {
+          fileName: 'a.mp4',
+          fileType: 'video/mp4',
+          fileSize: 100 * 1024 * 1024 + 1,
+        },
+        'teacher-1',
+        'teacher',
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' })
+    expect(mocks.createSignedUploadUrl).not.toHaveBeenCalled()
+  })
+
+  it('returns a signed upload URL for a teacher', async () => {
+    mocks.getPublicUrl.mockReturnValue({
+      data: {
+        publicUrl:
+          'https://host/storage/v1/object/public/media-library/teacher-1-1.mp4',
+      },
+    })
+
+    const result = await requestMediaVideoUploadService(
+      {
+        fileName: 'talk.mp4',
+        fileType: 'video/mp4',
+        fileSize: 1024,
+      },
+      'teacher-1',
+      'teacher',
+    )
+
+    expect(mocks.createSignedUploadUrl).toHaveBeenCalled()
+    expect(result.signedUrl).toBe('https://signed-upload')
+    expect(result.token).toBe('tok')
+    expect(result.fileUrl).toContain('media-library')
+  })
+
+  it('accepts empty MIME when the filename ends in .mp4', async () => {
+    mocks.getPublicUrl.mockReturnValue({
+      data: {
+        publicUrl:
+          'https://host/storage/v1/object/public/media-library/teacher-1-1.mp4',
+      },
+    })
+
+    const result = await requestMediaVideoUploadService(
+      {
+        fileName: 'talk.mp4',
+        fileType: '',
+        fileSize: 1024,
+      },
+      'teacher-1',
+      'teacher',
+    )
+
+    expect(result.signedUrl).toBe('https://signed-upload')
+    expect(mocks.createSignedUploadUrl).toHaveBeenCalled()
   })
 })
 

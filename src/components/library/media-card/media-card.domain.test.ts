@@ -33,6 +33,12 @@ describe('resolveMediaTypeConfig', () => {
     )
   })
 
+  it('returns the video_file config for uploaded videos', () => {
+    expect(resolveMediaTypeConfig(makeItem({ fileType: 'video_file' }))).toBe(
+      MEDIA_TYPE_CONFIG.video_file,
+    )
+  })
+
   it('returns the audio config for audio files', () => {
     expect(resolveMediaTypeConfig(makeItem({ fileType: 'audio' }))).toBe(
       MEDIA_TYPE_CONFIG.audio,
@@ -86,6 +92,20 @@ describe('buildMediaCardViewModel', () => {
     expect(vm.thumbnailUrl).toBe(
       'https://img.youtube.com/vi/abc123/mqdefault.jpg',
     )
+  })
+
+  it('uses stored thumbnail for video_file (never YouTube id)', () => {
+    const vm = buildMediaCardViewModel(
+      makeItem({
+        fileType: 'video_file',
+        fileUrl: 'https://www.youtube.com/watch?v=abc123',
+        thumbnailUrl: 'https://cdn/file-thumb.jpg',
+      }),
+      'student',
+      'default',
+    )
+    expect(vm.thumbnailUrl).toBe('https://cdn/file-thumb.jpg')
+    expect(vm.mediaType.label).toBe('Video')
   })
 
   it('falls back to the stored thumbnail when no video id is found', () => {

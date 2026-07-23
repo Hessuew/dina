@@ -2,7 +2,7 @@ import type { LibraryTopic } from '@/lib/library-topics'
 import type { MediaLibraryRow } from '@/utils/library/library'
 
 export type MediaDialogMode = 'create' | 'edit' | 'delete'
-export type MediaKind = 'youtube' | 'document'
+export type MediaKind = 'youtube' | 'document' | 'video-file'
 
 export type MediaFormData = {
   title: string
@@ -23,7 +23,9 @@ export const emptyFormData: MediaFormData = {
 }
 
 export function fromFileType(fileType: MediaLibraryRow['fileType']): MediaKind {
-  return fileType === 'document' ? 'document' : 'youtube'
+  if (fileType === 'document') return 'document'
+  if (fileType === 'video_file') return 'video-file'
+  return 'youtube'
 }
 
 export function getInitialValues(
@@ -69,6 +71,7 @@ export function getThumbnailPreviewSrc(params: {
 
 export type MediaOpenResetState = {
   existingDocUrl: string | null
+  existingVideoUrl: string | null
   thumbnailUrl: string | null
 }
 
@@ -78,9 +81,10 @@ export function computeOpenResetState(params: {
 }): MediaOpenResetState {
   const { mode, media } = params
   const isDocEdit = mode === 'edit' && media?.fileType === 'document'
+  const isVideoFileEdit = mode === 'edit' && media?.fileType === 'video_file'
   return {
-    // `isDocEdit` narrows `media` to defined here.
     existingDocUrl: isDocEdit ? media.fileUrl : null,
+    existingVideoUrl: isVideoFileEdit ? media.fileUrl : null,
     thumbnailUrl: media?.thumbnailUrl ?? null,
   }
 }
@@ -115,9 +119,15 @@ export function getMediaLoadingLabel(isUploading: boolean): string | undefined {
 export function isMediaDialogSubmitting(params: {
   isAnyPending: boolean
   isDocUploading: boolean
+  isVideoUploading: boolean
   isThumbUploading: boolean
 }): boolean {
-  return params.isAnyPending || params.isDocUploading || params.isThumbUploading
+  return (
+    params.isAnyPending ||
+    params.isDocUploading ||
+    params.isVideoUploading ||
+    params.isThumbUploading
+  )
 }
 
 export type DocumentResolution =
@@ -136,6 +146,22 @@ export function preflightDocumentUrl(params: {
   if (!params.hasFile) {
     if (params.existingDocUrl) return { ok: true, url: params.existingDocUrl }
     return { ok: false, message: 'Please upload a document file' }
+  }
+  return null
+}
+
+export type VideoResolution =
+  | { ok: true; url: string; fileSize?: number }
+  | { ok: false; message: string }
+
+export function preflightVideoUrl(params: {
+  hasFile: boolean
+  existingVideoUrl: string | null
+}): VideoResolution | null {
+  if (!params.hasFile) {
+    if (params.existingVideoUrl)
+      return { ok: true, url: params.existingVideoUrl }
+    return { ok: false, message: 'Please upload a video file' }
   }
   return null
 }
@@ -203,3 +229,7 @@ export function buildMediaPayload(params: {
     courseId: params.courseId,
   }
 }
+
+export type FileResolution =
+  | { ok: true; url: string; fileSize?: number }
+  | { ok: false; message: string }

@@ -39,6 +39,15 @@ describe('buildMediaContentViewModel', () => {
     expect(vm).toEqual({ kind: 'unembeddable-video', videoId: null })
   })
 
+  it('resolves uploaded video files to uploaded-video', () => {
+    const vm = buildMediaContentViewModel({
+      fileType: 'video_file',
+      fileUrl:
+        'https://x.supabase.co/storage/v1/object/public/media-library/u-1.mp4',
+    })
+    expect(vm).toEqual({ kind: 'uploaded-video', videoId: null })
+  })
+
   it('classifies a pdf document', () => {
     const vm = buildMediaContentViewModel({
       fileType: 'document',

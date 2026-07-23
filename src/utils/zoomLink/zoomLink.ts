@@ -13,7 +13,6 @@ import {
 import { getCurrentUser } from '@/utils/auth/auth'
 
 export type { ZoomLinkRow, ZoomLinkSection } from './domain/zoomLink.domain'
-export { groupTeacherZoomLinks } from './domain/zoomLink.domain'
 
 export const getZoomLinks = createServerFn({ method: 'POST' }).handler(
   async () => {

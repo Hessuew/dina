@@ -29,6 +29,22 @@ export function getYoutubeThumbnail(url: string): string | null {
   return `https://img.youtube.com/vi/${id}/hqdefault.jpg`
 }
 
+export type LibraryThumbModel =
+  | { kind: 'youtube'; thumbUrl: string | null }
+  | { kind: 'image-or-icon'; thumbUrl: string | null; icon: 'video' | 'file' }
+
+export function buildLibraryThumbModel(row: {
+  fileType: MediaLibraryRow['fileType']
+  fileUrl: string
+  thumbnailUrl: string | null
+}): LibraryThumbModel {
+  if (row.fileType === 'video') {
+    return { kind: 'youtube', thumbUrl: getYoutubeThumbnail(row.fileUrl) }
+  }
+  const icon = row.fileType === 'video_file' ? 'video' : 'file'
+  return { kind: 'image-or-icon', thumbUrl: row.thumbnailUrl, icon }
+}
+
 export function getVisibleShelfTopics(media: Array<MediaLibraryRow>): {
   shelves: ReturnType<typeof buildShelves<MediaLibraryRow>>
   shelfTopics: Array<LibraryTopic>

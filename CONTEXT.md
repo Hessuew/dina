@@ -215,3 +215,11 @@ A meeting credential on `/zoom` owned by exactly one Teacher-user or Admin profi
 ### Student Discipleship View
 
 Read-only surface for `profiles.role = 'student'` on `/discipleship`. When the Student has a Discipleship Assignment they see: their Teacher-user (name, avatar), their own individual / pair / group anchors (or "not scheduled"), their peer partner when paired, and a same-teacher roster of classmate names+avatars grouped by Peer Pair (with solos). Other students' individual and pair times never leave the server; emails are never included. Unassigned Students see an empty state. Staff keep the manage board (see ADR 0018).
+
+### Media Library item
+
+A row in `media_library` shared with authenticated users (students only see published). Teachers and Admins create/edit via Media Dialog. Three form kinds map to storage as:
+
+- **YouTube media** — form kind `youtube` → DB `file_type = video`. `file_url` is a YouTube watch/embed URL; detail page embeds via YouTube.
+- **Video file media** — form kind `video-file` → DB `file_type = video_file`. Teacher uploads MP4/WebM (max 100MB) via signed direct upload into private `media-library` storage (ADR 0020). Detail page plays with HTML5 `<video>` against a short-lived signed URL.
+- **Document media** — form kind `document` → DB `file_type = document`. PDF/PPTX/DOCX in `media-library` (base64 server upload, max 25MB); PDFs render in-app (ADR 0002).

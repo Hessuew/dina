@@ -23,6 +23,7 @@ describe('buildShelves', () => {
     { id: '4', category: 'Healing', fileType: 'document' },
     { id: '5', category: 'General', fileType: 'document' }, // not a valid topic
     { id: '6', category: 'Wisdom', fileType: 'image' }, // not ebook or AV
+    { id: '7', category: 'Wisdom', fileType: 'video_file' },
   ] as const
 
   it('puts documents in ebooks', () => {
@@ -31,17 +32,17 @@ describe('buildShelves', () => {
     expect(wisdom.ebooks.map((i) => i.id)).toEqual(['1'])
   })
 
-  it('puts videos and audio in audioVisual', () => {
+  it('puts videos, video_file, and audio in audioVisual', () => {
     const shelves = buildShelves(media)
     const wisdom = shelves.get('Wisdom')!
-    expect(wisdom.audioVisual.map((i) => i.id)).toEqual(['2', '3'])
+    expect(wisdom.audioVisual.map((i) => i.id)).toEqual(['2', '3', '7'])
   })
 
-  it('excludes items with fileType other than document/video/audio', () => {
+  it('excludes items with fileType other than document/video/video_file/audio', () => {
     const shelves = buildShelves(media)
     const wisdom = shelves.get('Wisdom')!
     expect(wisdom.ebooks).toHaveLength(1)
-    expect(wisdom.audioVisual).toHaveLength(2)
+    expect(wisdom.audioVisual).toHaveLength(3)
   })
 
   it('excludes items whose category is not a valid topic', () => {

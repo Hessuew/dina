@@ -15,6 +15,7 @@ type MediaContentInput = {
 export type MediaContentKind =
   | 'youtube'
   | 'unembeddable-video'
+  | 'uploaded-video'
   | 'pdf'
   | 'office'
   | 'none'
@@ -27,6 +28,9 @@ export type MediaContentViewModel = {
 export function buildMediaContentViewModel(
   media: MediaContentInput,
 ): MediaContentViewModel {
+  if (media.fileType === 'video_file') {
+    return { kind: 'uploaded-video', videoId: null }
+  }
   if (media.fileType === 'video') {
     const videoId = getYoutubeVideoId(media.fileUrl)
     return { kind: videoId ? 'youtube' : 'unembeddable-video', videoId }

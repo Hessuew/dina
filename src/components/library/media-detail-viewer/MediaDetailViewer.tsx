@@ -73,6 +73,28 @@ function UnembeddableVideo({ fileUrl }: { fileUrl: string }) {
   )
 }
 
+function UploadedVideoContent({ viewerUrl }: { viewerUrl: string | null }) {
+  if (!viewerUrl) {
+    return (
+      <p className="px-6 py-8 text-sm text-[#8E816D]">Video unavailable.</p>
+    )
+  }
+
+  return (
+    <div className="bg-black">
+      <video
+        controls
+        playsInline
+        preload="metadata"
+        src={viewerUrl}
+        className="aspect-video w-full"
+      >
+        Your browser does not support video playback.
+      </video>
+    </div>
+  )
+}
+
 function PdfContent({ viewerUrl }: { viewerUrl: string | null }) {
   if (!viewerUrl) {
     return (
@@ -128,6 +150,7 @@ function MediaContent({
       <YouTubeEmbed videoId={videoId ?? ''} originalUrl={media.fileUrl} />
     ),
     'unembeddable-video': <UnembeddableVideo fileUrl={media.fileUrl} />,
+    'uploaded-video': <UploadedVideoContent viewerUrl={viewerUrl} />,
     pdf: <PdfContent viewerUrl={viewerUrl} />,
     office: <OfficeContent viewerUrl={viewerUrl} />,
     none: (
@@ -146,7 +169,9 @@ export function MediaDetailViewer({
 }: MediaDetailViewerProps) {
   const viewModel = buildMediaContentViewModel(media)
   const isVideo =
-    viewModel.kind === 'youtube' || viewModel.kind === 'unembeddable-video'
+    viewModel.kind === 'youtube' ||
+    viewModel.kind === 'unembeddable-video' ||
+    viewModel.kind === 'uploaded-video'
 
   return (
     <>
