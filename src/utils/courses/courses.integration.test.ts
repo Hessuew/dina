@@ -33,6 +33,7 @@ import {
   seedLesson,
   seedLessonProgress,
   seedProfile,
+  seedSubmission,
 } from '@/../test/integration/seed'
 
 // The only external boundary in this area is Supabase storage, used by
@@ -103,6 +104,32 @@ describe('getCoursesService (integration)', () => {
       gradedAssignments: expect.any(Number),
     })
   })
+
+  it('student progress counts only published assignments', async () => {
+    const studentId = await seedProfile({ role: 'student' })
+    const courseId = await seedCourse()
+    const lessonId = await seedLesson({ courseId, isPublished: true })
+    const publishedId = await seedAssignment({
+      lessonId,
+      status: 'published',
+      dueDate: new Date('2020-01-01'),
+    })
+    await seedAssignment({ lessonId, status: 'draft' })
+    await seedAssignment({ lessonId, status: 'closed' })
+    await seedSubmission({
+      assignmentId: publishedId,
+      studentId,
+      status: 'submitted',
+    })
+
+    const { courses } = await getCoursesService(studentId)
+
+    expect(courses[0]).toMatchObject({
+      totalAssignments: 1,
+      submittedAssignments: 1,
+      gradedAssignments: 0,
+    })
+  })
 })
 
 describe('getCourseService (integration)', () => {
@@ -145,6 +172,33 @@ describe('getCourseService (integration)', () => {
     expect(result.role).toBe('student')
     expect(result.course.lessons).toHaveLength(1)
     expect(result.completedLessonIds).toContain(publishedLessonId)
+  })
+
+  it('student course detail counts only published assignments', async () => {
+    const studentId = await seedProfile({ role: 'student' })
+    const courseId = await seedCourse()
+    const lessonId = await seedLesson({ courseId, isPublished: true })
+    const publishedId = await seedAssignment({
+      lessonId,
+      status: 'published',
+      dueDate: new Date('2020-01-01'),
+    })
+    await seedAssignment({ lessonId, status: 'draft' })
+    await seedAssignment({ lessonId, status: 'closed' })
+    await seedSubmission({
+      assignmentId: publishedId,
+      studentId,
+      status: 'graded',
+      grade: 90,
+    })
+
+    const result = await getCourseService({ courseId }, studentId)
+
+    expect(result.assignmentData).toEqual({
+      totalAssignments: 1,
+      submittedCount: 0,
+      gradedCount: 1,
+    })
   })
 })
 
