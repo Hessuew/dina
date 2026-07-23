@@ -16,8 +16,8 @@ The acting user is readily available in both runtimes:
 - **Client** — the root route context already exposes `UserContext { id, email, role, … }`
   (`src/routes/__root.tsx`, built by `buildUserContext`).
 - **Server** — `getCurrentUser()` (`src/utils/auth/auth.ts`) returns the Supabase user
-  `{ id, email }` and is called as the auth boundary inside `withRequestCache` in essentially
-  every authed server function. It has no `role` — role lives on the profile row.
+  `{ id, email }` and is called as the auth boundary inside the global request scope in
+  essentially every authed server function. It has no `role` — role lives on the profile row.
 
 ## Decision
 
@@ -26,7 +26,7 @@ The acting user is readily available in both runtimes:
 - **Server:** call `Sentry.setUser({ id, email })` inside `getCurrentUser()`, right after the
   user resolves. This piggybacks the existing auth-boundary call, adds no query, and runs
   inside the request's Sentry isolation scope (established by `sentryGlobalFunctionMiddleware`
-  within the same `AsyncLocalStorage` context that `withRequestCache` runs the handler in), so
+  alongside the global request-scope middleware), so
   identity is scoped to that request and cannot leak across the reused Worker isolate. No
   clearing is needed — each request gets a fresh isolation scope.
 - **Client:** a browser-only `useSentryUser` hook in `RootDocument` syncs the route-context
@@ -36,7 +36,7 @@ The acting user is readily available in both runtimes:
 
 Identity is deliberately **decoupled from authorization**: it is not routed through the
 `authz` permission system (`src/utils/authz/`) and no new permission middleware is introduced.
-Sentry only needs *who* — a passive label on the event — never *what they may do*.
+Sentry only needs _who_ — a passive label on the event — never _what they may do_.
 
 ## Consequences
 

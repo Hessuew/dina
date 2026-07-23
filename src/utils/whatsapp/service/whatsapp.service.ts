@@ -19,7 +19,7 @@ import {
   insertWhatsAppMessage,
   releaseWhatsAppCampaignLock,
 } from '@/utils/whatsapp/repository/whatsapp.repository'
-import { authz, withRequestCache } from '@/utils/authz'
+import { authz } from '@/utils/authz'
 import { CampaignLockedError } from '@/utils/errors'
 
 export type CampaignPreview = {
@@ -87,13 +87,11 @@ export async function previewWhatsAppCampaignService(
   data: SendWhatsAppCampaignInput,
   userId: string,
 ): Promise<CampaignPreview> {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
-    const acquired = await acquireWhatsAppCampaignLock(data.campaign, userId)
-    if (!acquired) throw new CampaignLockedError()
-    const { plan } = await planCampaign(data)
-    return { toSend: plan.toSend.length, skipped: summarizeSkips(plan.skipped) }
-  })
+  await authz(userId).hasRole('admin')
+  const acquired = await acquireWhatsAppCampaignLock(data.campaign, userId)
+  if (!acquired) throw new CampaignLockedError()
+  const { plan } = await planCampaign(data)
+  return { toSend: plan.toSend.length, skipped: summarizeSkips(plan.skipped) }
 }
 
 /**
@@ -104,36 +102,29 @@ export async function sendWhatsAppCampaignService(
   data: SendWhatsAppCampaignInput,
   userId: string,
 ): Promise<CampaignSendSummary> {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
-    const holdsLock = await checkWhatsAppCampaignLockHeldBy(
-      data.campaign,
-      userId,
-    )
-    if (!holdsLock) throw new CampaignLockedError()
+  await authz(userId).hasRole('admin')
+  const holdsLock = await checkWhatsAppCampaignLockHeldBy(data.campaign, userId)
+  if (!holdsLock) throw new CampaignLockedError()
 
-    const { templateName, plan } = await planCampaign(data)
+  const { templateName, plan } = await planCampaign(data)
 
-    let sent = 0
-    let failed = 0
-    try {
-      for (const [index, planned] of plan.toSend.entries()) {
-        if (index > 0) {
-          await new Promise((resolve) => setTimeout(resolve, SEND_INTERVAL_MS))
-        }
-        const outcome = await sendPlannedMessage(planned, templateName, userId)
-        if (outcome === 'sent') sent++
-        else failed++
+  let sent = 0
+  let failed = 0
+  try {
+    for (const [index, planned] of plan.toSend.entries()) {
+      if (index > 0) {
+        await new Promise((resolve) => setTimeout(resolve, SEND_INTERVAL_MS))
       }
-    } finally {
-      await releaseWhatsAppCampaignLock(data.campaign, userId).catch(
-        (error) => {
-          console.error('Failed to release campaign lock after send:', error)
-        },
-      )
+      const outcome = await sendPlannedMessage(planned, templateName, userId)
+      if (outcome === 'sent') sent++
+      else failed++
     }
+  } finally {
+    await releaseWhatsAppCampaignLock(data.campaign, userId).catch((error) => {
+      console.error('Failed to release campaign lock after send:', error)
+    })
+  }
 
-    return { sent, failed, skipped: summarizeSkips(plan.skipped) }
-  })
+  return { sent, failed, skipped: summarizeSkips(plan.skipped) }
 }
 /* v8 ignore end */

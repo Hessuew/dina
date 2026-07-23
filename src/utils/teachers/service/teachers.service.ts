@@ -5,7 +5,7 @@ import {
   findCourseAssignmentsForTeachers,
   findCourseTeacher,
 } from '@/utils/teachers/repository'
-import { authz, withRequestCache } from '@/utils/authz'
+import { authz } from '@/utils/authz'
 
 export async function getTeachersService() {
   const teachers = await findAllTeachers()
@@ -37,13 +37,11 @@ export async function getTeachersService() {
 }
 
 export async function getAllTeachersService(userId: string) {
-  return withRequestCache(async () => {
-    await authz(userId).hasRole('admin')
+  await authz(userId).hasRole('admin')
 
-    const teachers = await findAllTeachersSimple()
+  const teachers = await findAllTeachersSimple()
 
-    return { teachers }
-  })
+  return { teachers }
 }
 
 export async function isCourseTeacherService(courseId: string, userId: string) {

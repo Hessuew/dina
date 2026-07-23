@@ -23,7 +23,7 @@ import {
 } from '@/utils/courses/repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import { getSupabaseServerClient } from '@/utils/supabase'
-import { authz, withRequestCache } from '@/utils/authz'
+import { authz } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
 import {
   AppError,
@@ -146,45 +146,43 @@ export async function updateCourseService(
   data: UpdateCourseInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    const isUserAdmin = await authz(userId).isAdmin()
-    if (!isUserAdmin) {
-      await authz(userId).perform('editCourse').on('course', data.courseId)
-    }
+  const isUserAdmin = await authz(userId).isAdmin()
+  if (!isUserAdmin) {
+    await authz(userId).perform('editCourse').on('course', data.courseId)
+  }
 
-    const course = await updateCourseById(data.courseId, {
-      title: data.title,
-      description: data.description,
-      thumbnailUrl: data.thumbnailUrl || null,
-      isPublished: data.isPublished,
-      orderIndex: data.orderIndex,
-      updatedAt: new Date(),
-    })
-
-    if (isUserAdmin) {
-      if (data.teacher1Id && data.teacher2Id) {
-        await assignTeachersToCourse(
-          data.courseId,
-          data.teacher1Id,
-          data.teacher2Id,
-          true,
-        )
-      } else if (data.teacher1Id || data.teacher2Id) {
-        throw new ValidationError(
-          'Please assign either both teachers or neither',
-          {
-            code: 'TEACHER_PAIR_INVALID',
-            details: {
-              teacher1Id: data.teacher1Id,
-              teacher2Id: data.teacher2Id,
-            },
-          },
-        )
-      }
-    }
-
-    return { course }
+  const course = await updateCourseById(data.courseId, {
+    title: data.title,
+    description: data.description,
+    thumbnailUrl: data.thumbnailUrl || null,
+    isPublished: data.isPublished,
+    orderIndex: data.orderIndex,
+    updatedAt: new Date(),
   })
+
+  if (isUserAdmin) {
+    if (data.teacher1Id && data.teacher2Id) {
+      await assignTeachersToCourse(
+        data.courseId,
+        data.teacher1Id,
+        data.teacher2Id,
+        true,
+      )
+    } else if (data.teacher1Id || data.teacher2Id) {
+      throw new ValidationError(
+        'Please assign either both teachers or neither',
+        {
+          code: 'TEACHER_PAIR_INVALID',
+          details: {
+            teacher1Id: data.teacher1Id,
+            teacher2Id: data.teacher2Id,
+          },
+        },
+      )
+    }
+  }
+
+  return { course }
 }
 
 export async function deleteCourseService(
@@ -193,47 +191,45 @@ export async function deleteCourseService(
 ) {
   const supabase = getSupabaseServerClient()
 
-  return withRequestCache(async () => {
-    const isUserAdmin = await authz(userId).isAdmin()
-    if (!isUserAdmin) {
-      await authz(userId).perform('deleteCourse').on('course', data.courseId)
-    }
+  const isUserAdmin = await authz(userId).isAdmin()
+  if (!isUserAdmin) {
+    await authz(userId).perform('deleteCourse').on('course', data.courseId)
+  }
 
-    const course = await findCourseById(data.courseId)
-    if (!course) {
-      throw new NotFoundError('Course not found', {
-        code: 'COURSE_NOT_FOUND',
-        details: { courseId: data.courseId },
-      })
-    }
+  const course = await findCourseById(data.courseId)
+  if (!course) {
+    throw new NotFoundError('Course not found', {
+      code: 'COURSE_NOT_FOUND',
+      details: { courseId: data.courseId },
+    })
+  }
 
-    if (course.thumbnailUrl) {
-      const oldPath = course.thumbnailUrl.split('/').pop()
-      if (oldPath) {
-        const { error: deleteError } = await supabase.storage
-          .from('course-thumbnails')
-          .remove([oldPath])
-        if (deleteError) {
-          console.error('Failed to delete course thumbnail from storage', {
+  if (course.thumbnailUrl) {
+    const oldPath = course.thumbnailUrl.split('/').pop()
+    if (oldPath) {
+      const { error: deleteError } = await supabase.storage
+        .from('course-thumbnails')
+        .remove([oldPath])
+      if (deleteError) {
+        console.error('Failed to delete course thumbnail from storage', {
+          courseId: data.courseId,
+          path: oldPath,
+          error: deleteError.message,
+        })
+        throw new AppError({
+          code: 'STORAGE_OPERATION_FAILED',
+          status: 500,
+          userMessage: 'Failed to delete course thumbnail',
+          internalMessage: `Storage deletion failed for course ${data.courseId}: ${deleteError.message}`,
+          details: {
             courseId: data.courseId,
             path: oldPath,
-            error: deleteError.message,
-          })
-          throw new AppError({
-            code: 'STORAGE_OPERATION_FAILED',
-            status: 500,
-            userMessage: 'Failed to delete course thumbnail',
-            internalMessage: `Storage deletion failed for course ${data.courseId}: ${deleteError.message}`,
-            details: {
-              courseId: data.courseId,
-              path: oldPath,
-              error: deleteError,
-            },
-          })
-        }
+            error: deleteError,
+          },
+        })
       }
     }
+  }
 
-    await deleteCourseById(data.courseId)
-  })
+  await deleteCourseById(data.courseId)
 }

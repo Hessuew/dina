@@ -18,8 +18,10 @@ Defines eng + repo nav guidance for AI changes.
 - **Routing**: `src/routes/**` with root route in `src/routes/__root.tsx`.
 - **Server logic**: TanStack Start server functions via `createServerFn`.
 - **Database**: Postgres via Drizzle.
-  - DB entrypoint: `src/db/index.ts` exports `getDb()` and `getConnectionString()`.
+  - DB entrypoint: `src/db/index.ts` exports `getDb()` and `withDbConnection()`.
   - Cloudflare Hyperdrive via `cloudflare:workers` env (`HYPERDRIVE.connectionString`).
+  - Global Start middleware (`src/start.tsx` → `src/utils/request-scope-middleware.ts`)
+    enters one ambient request scope for authz caching and DB connection reuse.
 - **Auth**: Supabase.
   - Server client: `src/utils/supabase.ts` (`getSupabaseServerClient`).
   - Root context user fetched in `src/routes/__root.tsx`, available as `context.user`.
@@ -42,8 +44,14 @@ Defines eng + repo nav guidance for AI changes.
   - Typed env in `src/env.ts`. No hardcoded secrets; use bindings/env.
 - **Database connections**
   - Use `getDb()` from `src/db/index.ts`. No ad-hoc DB instantiation.
-  - One connection per request, reused across all `getDb()` calls and closed when
-    the request finishes (`withDbConnection`, composed by `withRequestCache()`).
+  - One `pg.Client` per request under Hyperdrive (Hyperdrive is the real pool). Do
+    not use a module-scoped `Pool` on Workers.
+  - Scope is **global**: Start `requestMiddleware` + `functionMiddleware` enter
+    `withRequestScope`, which composes authz cache maps with `withDbConnection`.
+    Handlers need no manual scope wrapper.
+  - Parallel first-touch `getDb()` shares one in-flight connect (see
+    `src/db/connection-scope.ts`). Nested request and DB scopes re-enter; outer
+    scopes own cache maps and `end()`.
 - **Domain services**
   - Business logic in `src/domain/` as pure fns, no HTTP infra.
   - Server fns in `src/utils/` are thin adapters: validate → call domain → return.

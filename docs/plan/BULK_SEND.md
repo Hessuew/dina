@@ -90,7 +90,7 @@ async function sendPlannedMessage(
 No new files. No new tests required (existing integration tests still pass; the failure-isolation test covers provider errors; DB-insert failures are an infrastructure concern outside PGlite test scope).
 
 Fix 2 — Per-campaign lock (concurrent-send prevention)
-Root cause. planCampaign reads the dedupe set once before any messages are sent. Two admins triggering the same campaign concurrently both read an identical (empty or partial) dedupe set, both plan the same cohort, and both send → duplicate messages. withRequestCache is an AsyncLocalStorage scope guard (role-check cache only); it does not deduplicate across concurrent HTTP requests.
+Root cause. planCampaign reads the dedupe set once before any messages are sent. Two admins triggering the same campaign concurrently both read an identical (empty or partial) dedupe set, both plan the same cohort, and both send → duplicate messages. The global request-scope AsyncLocalStorage caches authz checks within one HTTP request only; it does not deduplicate across concurrent requests.
 
 Decisions (grilled and approved):
 

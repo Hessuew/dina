@@ -14,64 +14,58 @@ import {
 } from '@/utils/courses/repository'
 import { buildCourseCalendarEvents } from '@/utils/courses/domain/course.domain'
 import { getUserProfile } from '@/utils/auth/auth'
-import { authz, withRequestCache } from '@/utils/authz'
+import { authz } from '@/utils/authz'
 
 export async function createLessonService(
   data: CreateLessonInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    await authz(userId).perform('createLesson').on('course', data.courseId)
+  await authz(userId).perform('createLesson').on('course', data.courseId)
 
-    const lesson = await insertLesson({
-      courseId: data.courseId,
-      title: data.title,
-      content: data.content || null,
-      videoUrl: data.videoUrl || null,
-      thumbnailUrl: data.thumbnailUrl || null,
-      scheduledTime: data.scheduledTime || null,
-      duration: data.duration || null,
-      orderIndex: data.orderIndex,
-      isPublished: data.isPublished ?? false,
-    })
-
-    return { lesson }
+  const lesson = await insertLesson({
+    courseId: data.courseId,
+    title: data.title,
+    content: data.content || null,
+    videoUrl: data.videoUrl || null,
+    thumbnailUrl: data.thumbnailUrl || null,
+    scheduledTime: data.scheduledTime || null,
+    duration: data.duration || null,
+    orderIndex: data.orderIndex,
+    isPublished: data.isPublished ?? false,
   })
+
+  return { lesson }
 }
 
 export async function updateLessonService(
   data: UpdateLessonInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    await authz(userId).perform('editLesson').on('course', data.courseId)
+  await authz(userId).perform('editLesson').on('course', data.courseId)
 
-    const lesson = await updateLessonById(data.lessonId, {
-      title: data.title,
-      content: data.content || null,
-      videoUrl: data.videoUrl || null,
-      thumbnailUrl: data.thumbnailUrl || null,
-      scheduledTime: data.scheduledTime || null,
-      duration: data.duration || null,
-      orderIndex: data.orderIndex,
-      isPublished: data.isPublished,
-      updatedAt: new Date(),
-    })
-
-    return { lesson }
+  const lesson = await updateLessonById(data.lessonId, {
+    title: data.title,
+    content: data.content || null,
+    videoUrl: data.videoUrl || null,
+    thumbnailUrl: data.thumbnailUrl || null,
+    scheduledTime: data.scheduledTime || null,
+    duration: data.duration || null,
+    orderIndex: data.orderIndex,
+    isPublished: data.isPublished,
+    updatedAt: new Date(),
   })
+
+  return { lesson }
 }
 
 export async function deleteLessonService(
   data: DeleteLessonInput,
   userId: string,
 ) {
-  return withRequestCache(async () => {
-    await authz(userId).perform('deleteLesson').on('course', data.courseId)
-    await deleteLessonById(data.lessonId)
+  await authz(userId).perform('deleteLesson').on('course', data.courseId)
+  await deleteLessonById(data.lessonId)
 
-    return { success: true, lessonId: data.lessonId }
-  })
+  return { success: true, lessonId: data.lessonId }
 }
 
 export async function getUpcomingLessonsService(userId: string) {

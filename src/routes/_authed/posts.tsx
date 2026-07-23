@@ -28,7 +28,6 @@ import { useMutation } from '@/hooks/useMutation'
 import { cn } from '@/lib/utils'
 import { PostCard } from '@/components/post/post-card/PostCard'
 import { getCurrentUser, getUserProfile } from '@/utils/auth/auth'
-import { withRequestCache } from '@/utils/authz'
 import {
   createPost,
   getPostById,
@@ -44,16 +43,14 @@ import {
 
 const fetchCurrentUser = createServerFn({ method: 'POST' }).handler(
   async () => {
-    return withRequestCache(async () => {
-      const user = await getCurrentUser()
-      const profile = await getUserProfile(user.id)
-      return {
-        id: user.id,
-        fullName: profile.fullName,
-        avatarUrl: profile.avatarUrl,
-        role: profile.role,
-      }
-    })
+    const user = await getCurrentUser()
+    const profile = await getUserProfile(user.id)
+    return {
+      id: user.id,
+      fullName: profile.fullName,
+      avatarUrl: profile.avatarUrl,
+      role: profile.role,
+    }
   },
 )
 
