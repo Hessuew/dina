@@ -7,7 +7,6 @@ import {
   PlusIcon,
   UserIcon,
 } from 'lucide-react'
-import { format } from 'date-fns'
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { CalendarEventRow } from '@/utils/event'
@@ -21,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { getCourses } from '@/utils/courses'
 import { getEvents } from '@/utils/event'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
+import { ViewerDateTime } from '@/components/ui/viewer-date-time'
 
 export const Route = createFileRoute('/_authed/events')({
   beforeLoad: async () => {
@@ -100,11 +100,15 @@ function useEventColumns(
         header: 'Category',
       }),
       columnHelper.accessor('startTime', {
-        cell: (info) => format(new Date(info.getValue()), 'PPp'),
+        cell: (info) => (
+          <ViewerDateTime value={info.getValue()} pattern="PPp" />
+        ),
         header: 'Start',
       }),
       columnHelper.accessor('endTime', {
-        cell: (info) => format(new Date(info.getValue()), 'PPp'),
+        cell: (info) => (
+          <ViewerDateTime value={info.getValue()} pattern="PPp" />
+        ),
         header: 'End',
       }),
       columnHelper.accessor('location', {

@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { resolveLessonRowView } from '@/components/course/lesson-row.domain'
 import { resolveLessonActionsView } from '@/components/course/lesson-actions.domain'
 import { CourseAttendancePanel } from '@/components/course/course-attendance/CourseAttendancePanel'
+import { ViewerDateTime } from '@/components/ui/viewer-date-time'
 
 type Lesson = {
   id: string
@@ -467,7 +468,7 @@ function LessonRowMeta({ lesson }: { lesson: Lesson }) {
       {lesson.scheduledTime && (
         <div className="flex items-center gap-1">
           <CalendarIcon className="size-3" />
-          <span>{new Date(lesson.scheduledTime).toLocaleDateString()}</span>
+          <ViewerDateTime value={lesson.scheduledTime} pattern="Pp" />
         </div>
       )}
     </div>
