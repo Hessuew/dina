@@ -104,11 +104,8 @@ function OpenSessionCard({
   busy: boolean
   onPresent: () => void
 }) {
-  const deadline = session.closesAt ?? new Date(0)
-  const countdown = useServerCountdown(deadline, serverNow)
-  if (!session.closesAt || countdown.isExpired) return null
-
-  const remainingLabel = formatRemaining(countdown.remainingMs)
+  const remainingLabel = useOpenSessionRemaining(session.closesAt, serverNow)
+  if (!remainingLabel) return null
   if (session.alreadyPresent) {
     return (
       <PresentSessionCard
@@ -130,7 +127,7 @@ function OpenSessionCard({
           {session.courseTitle}
         </p>
         <p className="text-sm text-[#E9D9B4]">
-          {session.lessonTitle ?? 'Lesson'} · {remainingLabel} remaining
+          {sessionLessonTitle(session.lessonTitle)} · {remainingLabel} remaining
         </p>
       </div>
       <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
@@ -147,6 +144,20 @@ function OpenSessionCard({
       </div>
     </div>
   )
+}
+
+function useOpenSessionRemaining(
+  closesAt: Date | string | null,
+  serverNow: Date | string,
+) {
+  const countdown = useServerCountdown(closesAt ?? new Date(0), serverNow)
+  if (!closesAt) return null
+  if (countdown.isExpired) return null
+  return formatRemaining(countdown.remainingMs)
+}
+
+function sessionLessonTitle(title: string | null) {
+  return title ?? 'Lesson'
 }
 
 function PresentSessionCard({
