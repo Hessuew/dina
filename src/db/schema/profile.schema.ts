@@ -20,7 +20,7 @@ export const profiles = pgTable(
     bio: text('bio'),
     lecturerTitle: text('lecturer_title'),
     gemstone: gemstoneEnum('gemstone'),
-    avatarUrl: text('avatar_url'),
+    avatarUrl: text('avatar_path'),
     emailNotifications: boolean('email_notifications').default(true),
     notifyNewAssignments: boolean('notify_new_assignments').default(true),
     notifyGrades: boolean('notify_grades').default(true),

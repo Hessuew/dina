@@ -52,6 +52,7 @@ import {
   updateAssignmentTeacher,
   upsertGroupAnchor,
 } from '@/utils/discipleship/repository'
+import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
 
 type ManageFlags = { isAdmin: boolean; isTeacher: boolean }
 type AssignmentRow = Awaited<ReturnType<typeof findAssignmentByStudentId>>
@@ -171,8 +172,10 @@ export async function getDiscipleshipBoardService(userId: string) {
   return {
     isAdmin,
     currentUserId: userId,
-    teachers: isAdmin ? teachers : teachers.filter((t) => t.id === userId),
-    students,
+    teachers: await signAvatarRows(
+      isAdmin ? teachers : teachers.filter((t) => t.id === userId),
+    ),
+    students: await signAvatarRows(students),
     assignments: assignments.map(toAssignmentDTO),
     pairs: pairs.map(toPairDTO),
     groups: groups.map(toGroupDTO),
@@ -260,13 +263,16 @@ export async function getStudentDiscipleshipViewService(
   const classmateIds = teacherAssignments
     .map((a) => a.studentId)
     .filter((id) => id !== userId)
-  const classmates = await findPublicPersonsByIds(classmateIds)
+  const [signedPeople, classmates] = await Promise.all([
+    signAvatarRows(teacher ? [teacher] : []),
+    findPublicPersonsByIds(classmateIds).then(signAvatarRows),
+  ])
 
   return buildStudentDiscipleshipView(
     toStudentViewBuilderInput({
       viewerId: userId,
       assignment,
-      teacher,
+      teacher: signedPeople[0],
       classmates,
       teacherAssignments,
       pairs,

@@ -1,12 +1,43 @@
 export type SeedBucketSpec = {
   id: string
   public: boolean
+  fileSizeLimit: number
+  allowedMimeTypes: Array<string>
 }
 
+const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+
 export const DEVELOPMENT_STORAGE_BUCKETS: ReadonlyArray<SeedBucketSpec> = [
-  { id: 'avatars', public: true },
-  { id: 'course-thumbnails', public: true },
-  { id: 'media-library', public: false },
+  {
+    id: 'avatars',
+    public: false,
+    fileSizeLimit: 2 * 1024 * 1024,
+    allowedMimeTypes: IMAGE_MIME_TYPES,
+  },
+  {
+    id: 'course-thumbnails',
+    public: false,
+    fileSizeLimit: 2 * 1024 * 1024,
+    allowedMimeTypes: IMAGE_MIME_TYPES,
+  },
+  {
+    id: 'media-library',
+    public: false,
+    fileSizeLimit: 100 * 1024 * 1024,
+    allowedMimeTypes: [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'video/mp4',
+      'video/webm',
+    ],
+  },
+  {
+    id: 'media-thumbnails',
+    public: false,
+    fileSizeLimit: 2 * 1024 * 1024,
+    allowedMimeTypes: IMAGE_MIME_TYPES,
+  },
 ]
 
 export const MAX_USER_LIST_PAGES = 20

@@ -222,4 +222,5 @@ A row in `media_library` shared with authenticated users (students only see publ
 
 - **YouTube media** — form kind `youtube` → DB `file_type = video`. `file_url` is a YouTube watch/embed URL; detail page embeds via YouTube.
 - **Video file media** — form kind `video-file` → DB `file_type = video_file`. Teacher uploads MP4/WebM (max 100MB) via signed direct upload into private `media-library` storage (ADR 0020). Detail page plays with HTML5 `<video>` against a short-lived signed URL.
-- **Document media** — form kind `document` → DB `file_type = document`. PDF/PPTX/DOCX in `media-library` (base64 server upload, max 25MB); PDFs render in-app (ADR 0002).
+- **Document media** — form kind `document` → DB `file_type = document`. PDF/PPTX/DOCX upload directly to private `media-library` through signed URLs (max 25MB); PDFs render in-app (ADRs 0002 and 0022).
+- **Private first-party uploads** — `avatars`, `course-thumbnails`, `media-library`, and `media-thumbnails` are private. Browser uploads use signed direct URLs; DB records store canonical object paths; authorized response DTOs receive one-hour signed display URLs (ADR 0022).

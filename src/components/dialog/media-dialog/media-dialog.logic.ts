@@ -1,10 +1,12 @@
 import { toast } from 'sonner'
 import type { useFileUpload } from '@/hooks/useFileUpload'
 import {
-  requestMediaVideoUploadFn,
+  requestMediaFileUploadFn,
+  requestMediaThumbnailUploadFn,
   uploadMediaThumbnailFn,
 } from '@/utils/library/library'
 import { toUserError } from '@/utils/errors'
+import { putFileToSignedUrl } from '@/utils/storage/private-upload'
 
 /**
  * Upload a freshly picked thumbnail for a saved media row, if one is staged.
@@ -17,15 +19,17 @@ export async function uploadThumbnailIfPresent(
 ): Promise<void> {
   if (!thumbUpload.fileObject) return
   try {
-    await uploadMediaThumbnailFn({
+    const file = thumbUpload.fileObject
+    const signed = await requestMediaThumbnailUploadFn({
       data: {
         mediaId,
-        fileData: thumbUpload.fileData!,
-        fileName: thumbUpload.fileObject.name,
-        fileType: thumbUpload.fileObject.type,
-        fileSize: thumbUpload.fileObject.size,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
       },
     })
+    await putFileToSignedUrl(file, signed.signedUrl)
+    await uploadMediaThumbnailFn({ data: { mediaId, path: signed.path } })
   } catch (error) {
     toast.error(toUserError(error).message)
   }
@@ -33,37 +37,24 @@ export async function uploadThumbnailIfPresent(
 
 /**
  * Request a signed upload URL, PUT the file directly to Storage, return the
- * public object URL to store on the media row. Bytes never pass through the app
- * server (100MB-capable path).
+ * canonical object path to store on the media row.
  */
-export async function uploadVideoFileDirect(file: File): Promise<{
+export async function uploadMediaFileDirect(
+  file: File,
+  kind: 'document' | 'video-file',
+): Promise<{
   fileUrl: string
   fileSize: number
 }> {
-  const signed = await requestMediaVideoUploadFn({
+  const signed = await requestMediaFileUploadFn({
     data: {
+      kind,
       fileName: file.name,
       fileType: file.type,
       fileSize: file.size,
     },
   })
 
-  // Match storage-js uploadToSignedUrl body shape for Blob/File (FormData + PUT).
-  const body = new FormData()
-  body.append('cacheControl', '3600')
-  body.append('', file)
-
-  const put = await fetch(signed.signedUrl, {
-    method: 'PUT',
-    headers: {
-      'x-upsert': 'false',
-    },
-    body,
-  })
-
-  if (!put.ok) {
-    throw new Error(`Video upload failed (${put.status})`)
-  }
-
-  return { fileUrl: signed.fileUrl, fileSize: file.size }
+  await putFileToSignedUrl(file, signed.signedUrl)
+  return { fileUrl: signed.path, fileSize: file.size }
 }

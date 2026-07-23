@@ -40,6 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { signPrivateStoragePath } from '@/utils/storage/service/private-storage.service'
 
 const fetchCurrentUser = createServerFn({ method: 'POST' }).handler(
   async () => {
@@ -48,7 +49,7 @@ const fetchCurrentUser = createServerFn({ method: 'POST' }).handler(
     return {
       id: user.id,
       fullName: profile.fullName,
-      avatarUrl: profile.avatarUrl,
+      avatarUrl: await signPrivateStoragePath('avatars', profile.avatarUrl),
       role: profile.role,
     }
   },

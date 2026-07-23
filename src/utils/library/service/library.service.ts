@@ -2,24 +2,23 @@ import type {
   CreateMediaInput,
   DeleteMediaInput,
   GetMediaInput,
-  RequestMediaVideoUploadInput,
+  RequestMediaFileUploadInput,
+  RequestMediaThumbnailUploadInput,
   UpdateMediaInput,
-  UploadMediaPdfInput,
   UploadMediaThumbnailInput,
 } from '@/schemas/media.schema'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import type { Role } from '@/utils/authz'
+import type {
+  MediaRecord,
+  MediaRecordWithCourse,
+} from '@/utils/library/repository/library.repository'
+import type { SignedUpload } from '@/utils/storage/service/private-storage.service'
 import {
-  buildMediaListItems,
-  buildVideoObjectName,
   canManageMedia,
-  extractMediaLibraryFilePath,
-  extractPdfFilePath,
-  isOwnedMediaLibraryObjectUrl,
   needsSignedViewerUrl,
   resolveVideoFileExtension,
   resolveVideoMimeType,
-  shouldRemoveMediaLibraryObject,
   toFileType,
   validatePdfUpload,
   validateVideoUpload,
@@ -30,24 +29,109 @@ import {
   findMediaById,
   insertMedia,
   updateMedia,
-  updateMediaThumbnail,
+  updateMediaThumbnailPath,
 } from '@/utils/library/repository/library.repository'
 import {
-  AppError,
   AuthorizationError,
   NotFoundError,
   ValidationError,
 } from '@/utils/errors'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
 import {
-  getSupabaseAdminClient,
-  getSupabaseServerClient,
-} from '@/utils/supabase'
+  resolveFileExtension,
+  validateImageUpload,
+} from '@/utils/imageUpload/domain/imageUpload.domain'
+import { deleteStorageObject } from '@/utils/imageUpload/service/imageUpload.service'
 import {
-  deleteStorageObject,
-  uploadImageService,
-} from '@/utils/imageUpload/service/imageUpload.service'
-import { extractStorageObjectName } from '@/utils/imageUpload/domain/imageUpload.domain'
+  buildOwnedStoragePath,
+  extractPrivateStoragePath,
+  isOwnedStoragePath,
+} from '@/utils/storage/domain/private-storage.domain'
+import {
+  createPrivateSignedUpload,
+  signPrivateStoragePath,
+  signPrivateStoragePaths,
+} from '@/utils/storage/service/private-storage.service'
+
+function requireStaff(role: Role, action: string): void {
+  if (role !== 'student') return
+  throw new AuthorizationError('Teacher access required', {
+    code: 'ROLE_REQUIRED',
+    internalMessage: `Student attempted to ${action}`,
+    details: { role },
+  })
+}
+
+function mediaFilePathOrThrow(
+  value: string,
+  userId: string,
+  existingPath?: string | null,
+): string {
+  const path = extractPrivateStoragePath(value, 'media-library')
+  if (path && path === existingPath) return path
+  if (!path || !isOwnedStoragePath(path, userId)) {
+    throw new ValidationError(
+      'File must be an owned media-library object path',
+      { details: { value } },
+    )
+  }
+  return path
+}
+
+function mediaSource(
+  data: Pick<CreateMediaInput, 'kind' | 'url'>,
+  userId: string,
+  existingPath?: string | null,
+): { externalUrl: string | null; filePath: string | null } {
+  if (data.kind === 'youtube') {
+    return { externalUrl: data.url, filePath: null }
+  }
+  return {
+    externalUrl: null,
+    filePath: mediaFilePathOrThrow(data.url, userId, existingPath),
+  }
+}
+
+export async function serializeMediaRecords(
+  rows: ReadonlyArray<MediaRecordWithCourse>,
+): Promise<Array<MediaLibraryRow>> {
+  const [files, thumbnails] = await Promise.all([
+    signPrivateStoragePaths(
+      'media-library',
+      rows.map((row) => row.filePath),
+    ),
+    signPrivateStoragePaths(
+      'media-thumbnails',
+      rows.map((row) => row.thumbnailUrl),
+    ),
+  ])
+
+  return rows.map((row) => ({
+    id: row.id,
+    uploaderId: row.uploaderId,
+    courseId: row.courseId,
+    courseName: row.course?.title,
+    courseNumber:
+      row.course != null ? (row.course.orderIndex ?? 0) + 1 : undefined,
+    title: row.title,
+    category: row.category,
+    description: row.description,
+    fileUrl: row.externalUrl ?? files.get(row.filePath ?? '') ?? '',
+    fileType: row.fileType,
+    fileSize: row.fileSize,
+    thumbnailUrl: thumbnails.get(row.thumbnailUrl ?? '') ?? null,
+    isPublished: row.isPublished,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }))
+}
+
+async function serializeMediaRecord(
+  row: MediaRecord,
+): Promise<MediaLibraryRow> {
+  const [media] = await serializeMediaRecords([row])
+  return media
+}
 
 export async function getLibraryMediaService(
   userId: string,
@@ -57,28 +141,23 @@ export async function getLibraryMediaService(
   viewer: { id: string; role: Role }
 }> {
   const rows = await findAllMedia(role === 'student')
-  const media = buildMediaListItems(rows)
-  return { media, viewer: { id: userId, role } }
+  return {
+    media: await serializeMediaRecords(rows),
+    viewer: { id: userId, role },
+  }
 }
 
 export async function getLibraryMediaItemService(
   data: GetMediaInput,
   userId: string,
   role: Role,
-): Promise<{
-  media: MediaLibraryRow
-  viewerUrl: string | null
-  permissions: ReturnType<typeof calculateEntityPermissions>
-  viewer: { id: string; role: Role }
-}> {
+) {
   const row = await findMediaById(data.mediaId)
-
   if (!row) {
     throw new NotFoundError('Media not found', {
       details: { mediaId: data.mediaId },
     })
   }
-
   if (role === 'student' && !row.isPublished) {
     throw new AuthorizationError('Media not available', {
       internalMessage: `Student attempted to view unpublished media: ${data.mediaId}`,
@@ -86,49 +165,19 @@ export async function getLibraryMediaItemService(
     })
   }
 
+  const media = await serializeMediaRecord(row)
   const permissions = calculateEntityPermissions(
     role,
     { teacher1Id: row.uploaderId, teacher2Id: null },
     userId,
   )
-
-  let viewerUrl: string | null = null
-  if (needsSignedViewerUrl(row.fileType)) {
-    const supabase = getSupabaseAdminClient()
-    const filePath = extractMediaLibraryFilePath(row.fileUrl)
-    if (filePath) {
-      const { data: signedData, error: signedError } = await supabase.storage
-        .from('media-library')
-        .createSignedUrl(filePath, 3600)
-      if (signedError) {
-        console.error('Failed to create signed URL', {
-          filePath,
-          error: signedError.message,
-        })
-      }
-      viewerUrl = signedData?.signedUrl ?? null
-    }
-  }
-
   return {
-    media: row as MediaLibraryRow,
-    viewerUrl,
+    media,
+    viewerUrl: needsSignedViewerUrl(row.fileType)
+      ? media.fileUrl || null
+      : null,
     permissions,
     viewer: { id: userId, role },
-  }
-}
-
-function assertVideoFileUrlOwned(
-  url: string,
-  userId: string,
-  existingUrl?: string,
-): void {
-  if (existingUrl && url === existingUrl) return
-  if (!isOwnedMediaLibraryObjectUrl(url, userId)) {
-    throw new ValidationError(
-      'Video file must be an owned media-library object',
-      { details: { url } },
-    )
   }
 }
 
@@ -137,33 +186,49 @@ export async function createLibraryMediaService(
   userId: string,
   role: Role,
 ): Promise<{ media: MediaLibraryRow }> {
-  if (role === 'student') {
-    throw new AuthorizationError('Teacher access required', {
-      code: 'ROLE_REQUIRED',
-      internalMessage: 'Student attempted to create library media',
-      details: { role },
-    })
-  }
-
-  if (data.kind === 'video-file') {
-    assertVideoFileUrlOwned(data.url, userId)
-  }
-
+  requireStaff(role, 'create library media')
+  const source = mediaSource(data, userId)
   const media = await insertMedia({
     uploaderId: userId,
     courseId: data.courseId ?? null,
     title: data.title,
     category: data.category,
     description: data.description ?? null,
-    fileUrl: data.url,
+    ...source,
     fileType: toFileType(data.kind),
     fileSize: data.fileSize ?? null,
     isPublished: data.isPublished,
     createdAt: new Date(),
     updatedAt: new Date(),
   })
+  return { media: await serializeMediaRecord(media) }
+}
 
-  return { media }
+async function requireManagedMedia(
+  mediaId: string,
+  userId: string,
+  role: Role,
+  action: string,
+): Promise<MediaRecord> {
+  requireStaff(role, `${action} library media`)
+  const existing = await findMediaById(mediaId)
+  if (!existing) {
+    throw new NotFoundError('Media not found', { details: { mediaId } })
+  }
+  if (!canManageMedia(role, userId, existing.uploaderId)) {
+    throw new AuthorizationError(`Not authorized to ${action} this media`, {
+      details: { mediaId, userId },
+    })
+  }
+  return existing
+}
+
+async function removeReplacedMediaFile(
+  previous: MediaRecord,
+  nextPath: string | null,
+): Promise<void> {
+  if (!previous.filePath || previous.filePath === nextPath) return
+  await deleteStorageObject('media-library', previous.filePath)
 }
 
 export async function updateLibraryMediaService(
@@ -171,61 +236,20 @@ export async function updateLibraryMediaService(
   userId: string,
   role: Role,
 ): Promise<{ media: MediaLibraryRow }> {
-  if (role === 'student') {
-    throw new AuthorizationError('Teacher access required', {
-      code: 'ROLE_REQUIRED',
-      internalMessage: 'Student attempted to update library media',
-      details: { role },
-    })
-  }
-
-  const existing = await findMediaById(data.mediaId)
-
-  if (!existing) {
-    throw new NotFoundError('Media not found', {
-      details: { mediaId: data.mediaId },
-    })
-  }
-
-  if (!canManageMedia(role, userId, existing.uploaderId)) {
-    throw new AuthorizationError('Not authorized to edit this media', {
-      internalMessage: `User cannot edit library media: ${data.mediaId}`,
-      details: { mediaId: data.mediaId, userId },
-    })
-  }
-
-  if (data.kind === 'video-file') {
-    assertVideoFileUrlOwned(data.url, userId, existing.fileUrl)
-  }
-
-  const nextFileType = toFileType(data.kind)
+  const existing = await requireManagedMedia(data.mediaId, userId, role, 'edit')
+  const source = mediaSource(data, userId, existing.filePath)
   const media = await updateMedia(data.mediaId, {
     title: data.title,
     category: data.category,
     description: data.description ?? null,
-    fileUrl: data.url,
-    fileType: nextFileType,
-    // Metadata-only edits omit fileSize; keep the stored value.
+    ...source,
+    fileType: toFileType(data.kind),
     fileSize: data.fileSize ?? existing.fileSize ?? null,
     isPublished: data.isPublished,
     updatedAt: new Date(),
   })
-
-  if (
-    shouldRemoveMediaLibraryObject({
-      previousFileType: existing.fileType,
-      previousFileUrl: existing.fileUrl,
-      nextFileType,
-      nextFileUrl: data.url,
-    })
-  ) {
-    const oldPath = extractMediaLibraryFilePath(existing.fileUrl)
-    if (oldPath) {
-      await deleteStorageObject('media-library', oldPath)
-    }
-  }
-
-  return { media }
+  await removeReplacedMediaFile(existing, source.filePath)
+  return { media: await serializeMediaRecord(media) }
 }
 
 export async function deleteLibraryMediaService(
@@ -233,204 +257,87 @@ export async function deleteLibraryMediaService(
   userId: string,
   role: Role,
 ): Promise<{ success: true }> {
-  if (role === 'student') {
-    throw new AuthorizationError('Teacher access required', {
-      code: 'ROLE_REQUIRED',
-      internalMessage: 'Student attempted to delete library media',
-      details: { role },
-    })
-  }
-
-  const existing = await findMediaById(data.mediaId)
-
-  if (!existing) {
-    throw new NotFoundError('Media not found', {
-      details: { mediaId: data.mediaId },
-    })
-  }
-
-  if (!canManageMedia(role, userId, existing.uploaderId)) {
-    throw new AuthorizationError('Not authorized to delete this media', {
-      internalMessage: `User cannot delete library media: ${data.mediaId}`,
-      details: { mediaId: data.mediaId, userId },
-    })
-  }
-
+  const existing = await requireManagedMedia(
+    data.mediaId,
+    userId,
+    role,
+    'delete',
+  )
   await deleteMedia(data.mediaId)
-
-  if (needsSignedViewerUrl(existing.fileType)) {
-    const path = extractMediaLibraryFilePath(existing.fileUrl)
-    if (path) {
-      await deleteStorageObject('media-library', path)
-    }
-  }
-
+  await Promise.all([
+    existing.filePath
+      ? deleteStorageObject('media-library', existing.filePath)
+      : Promise.resolve(),
+    existing.thumbnailUrl
+      ? deleteStorageObject('media-thumbnails', existing.thumbnailUrl)
+      : Promise.resolve(),
+  ])
   return { success: true }
 }
 
-export async function requestMediaVideoUploadService(
-  data: RequestMediaVideoUploadInput,
-  userId: string,
-  role: Role,
-): Promise<{
-  path: string
-  token: string
-  signedUrl: string
-  fileUrl: string
-}> {
-  if (role === 'student') {
-    throw new AuthorizationError('Teacher access required', {
-      code: 'ROLE_REQUIRED',
-      internalMessage: 'Student attempted to request library video upload',
-      details: { role },
-    })
-  }
-
-  validateVideoUpload(data.fileSize, data.fileType, data.fileName)
-
-  const mime = resolveVideoMimeType(data.fileType, data.fileName) ?? 'video/mp4'
-  const fileExt = resolveVideoFileExtension(mime, data.fileName)
-  const path = buildVideoObjectName(userId, fileExt, Date.now())
-
-  const admin = getSupabaseAdminClient()
-  const { data: signed, error } = await admin.storage
-    .from('media-library')
-    .createSignedUploadUrl(path)
-
-  if (error) {
-    throw new AppError({
-      code: 'STORAGE_UPLOAD_FAILED',
-      status: 502,
-      userMessage: 'Failed to prepare video upload',
-      internalMessage: error.message,
-    })
-  }
-
-  const { data: urlData } = admin.storage
-    .from('media-library')
-    .getPublicUrl(path)
-
-  return {
-    path: signed.path,
-    token: signed.token,
-    signedUrl: signed.signedUrl,
-    fileUrl: urlData.publicUrl,
-  }
+function resolveDocumentExtension(fileType: string): string {
+  if (fileType === 'application/pdf') return 'pdf'
+  if (fileType.includes('presentationml')) return 'pptx'
+  return 'docx'
 }
 
-export async function uploadMediaPdfService(
-  data: UploadMediaPdfInput,
+export async function requestMediaFileUploadService(
+  data: RequestMediaFileUploadInput,
   userId: string,
   role: Role,
-): Promise<{ success: true; fileUrl: string }> {
-  if (role === 'student') {
-    throw new AuthorizationError('Teacher access required', {
-      code: 'ROLE_REQUIRED',
-      internalMessage: 'Student attempted to upload library PDF',
-      details: { role },
-    })
+): Promise<SignedUpload> {
+  requireStaff(role, 'request library file upload')
+  let extension: string
+  if (data.kind === 'video-file') {
+    validateVideoUpload(data.fileSize, data.fileType, data.fileName)
+    const mime =
+      resolveVideoMimeType(data.fileType, data.fileName) ?? 'video/mp4'
+    extension = resolveVideoFileExtension(mime, data.fileName)
+  } else {
+    validatePdfUpload(data.fileSize, data.fileType)
+    extension = resolveDocumentExtension(data.fileType)
   }
+  const path = buildOwnedStoragePath(
+    userId,
+    extension,
+    Date.now(),
+    crypto.randomUUID(),
+  )
+  return createPrivateSignedUpload('media-library', path)
+}
 
-  validatePdfUpload(data.fileSize, data.fileType)
-
-  // Derive the previous PDF URL server-side from the media row. Never trust a
-  // client-supplied URL here: deletion runs with the RLS-bypassing admin client,
-  // so a client value would allow deleting arbitrary media-library objects.
-  const existing = data.mediaId ? await findMediaById(data.mediaId) : undefined
-  const oldFileUrl = existing?.fileUrl
-
-  const supabase = getSupabaseServerClient()
-
-  const fileExt = data.fileName.split('.').pop() || 'pdf'
-  const fileName = `${userId}-${Date.now()}.${fileExt}`
-  const commaIndex = data.fileData.indexOf(',')
-  const base64Data =
-    commaIndex !== -1 ? data.fileData.slice(commaIndex + 1) : data.fileData
-  if (!base64Data) {
-    throw new ValidationError('Invalid file data: missing base64 content', {
-      details: { fileName: data.fileName },
-    })
-  }
-  const buffer = Buffer.from(base64Data, 'base64')
-
-  const { error: uploadError } = await supabase.storage
-    .from('media-library')
-    .upload(fileName, buffer, {
-      contentType: data.fileType,
-      upsert: false,
-    })
-
-  if (uploadError) {
-    throw new AppError({
-      code: 'STORAGE_UPLOAD_FAILED',
-      status: 502,
-      userMessage: 'Failed to upload file',
-      internalMessage: uploadError.message,
-    })
-  }
-
-  const { data: urlData } = supabase.storage
-    .from('media-library')
-    .getPublicUrl(fileName)
-
-  if (oldFileUrl) {
-    const oldPath = extractPdfFilePath(oldFileUrl)
-    if (oldPath) {
-      await deleteStorageObject('media-library', oldPath)
-    } else {
-      console.warn('Could not extract PDF file path from URL', {
-        url: oldFileUrl,
-      })
-    }
-  }
-
-  return { success: true, fileUrl: urlData.publicUrl }
+export async function requestMediaThumbnailUploadService(
+  data: RequestMediaThumbnailUploadInput,
+  userId: string,
+  role: Role,
+): Promise<SignedUpload> {
+  await requireManagedMedia(data.mediaId, userId, role, 'edit')
+  validateImageUpload(data.fileSize, data.fileType)
+  const extension = resolveFileExtension(data.fileType, data.fileName)
+  const path = buildOwnedStoragePath(
+    userId,
+    extension,
+    Date.now(),
+    crypto.randomUUID(),
+  )
+  return createPrivateSignedUpload('media-thumbnails', path)
 }
 
 export async function uploadMediaThumbnailService(
   data: UploadMediaThumbnailInput,
   userId: string,
   role: Role,
-): Promise<{ thumbnailUrl: string }> {
-  if (role === 'student') {
-    throw new AuthorizationError('Teacher access required', {
-      code: 'ROLE_REQUIRED',
-      internalMessage: 'Student attempted to upload media thumbnail',
-      details: { role },
-    })
+): Promise<{ thumbnailUrl: string | null }> {
+  const existing = await requireManagedMedia(data.mediaId, userId, role, 'edit')
+  const path = extractPrivateStoragePath(data.path, 'media-thumbnails')
+  if (!path || !isOwnedStoragePath(path, userId)) {
+    throw new ValidationError('Thumbnail path is not owned by this user')
   }
-
-  const existing = await findMediaById(data.mediaId)
-
-  if (!existing) {
-    throw new NotFoundError('Media not found', {
-      details: { mediaId: data.mediaId },
-    })
+  await updateMediaThumbnailPath(data.mediaId, path)
+  if (existing.thumbnailUrl && existing.thumbnailUrl !== path) {
+    await deleteStorageObject('media-thumbnails', existing.thumbnailUrl)
   }
-
-  const uploadResult = await uploadImageService(
-    {
-      fileData: data.fileData,
-      fileName: data.fileName,
-      fileType: data.fileType,
-      fileSize: data.fileSize,
-      bucket: 'media-thumbnails',
-    },
-    userId,
-  )
-
-  await updateMediaThumbnail(data.mediaId, uploadResult.imageUrl)
-
-  if (existing.thumbnailUrl) {
-    const oldPath = extractStorageObjectName(existing.thumbnailUrl)
-    if (oldPath) {
-      await deleteStorageObject('media-thumbnails', oldPath)
-    } else {
-      console.warn('Could not extract storage object name from URL', {
-        url: existing.thumbnailUrl,
-      })
-    }
+  return {
+    thumbnailUrl: await signPrivateStoragePath('media-thumbnails', path),
   }
-
-  return { thumbnailUrl: uploadResult.imageUrl }
 }

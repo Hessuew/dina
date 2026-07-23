@@ -29,6 +29,7 @@ import {
 import { DefaultCatchBoundary } from '@/components/navigation/DefaultCatchBoundary'
 import { NotFound } from '@/components/navigation/NotFound'
 import { Header } from '@/components/navigation/Header'
+import { signPrivateStoragePath } from '@/utils/storage/service/private-storage.service'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = getSupabaseServerClient()
@@ -51,7 +52,13 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
     },
   })
 
-  return buildUserContext(data.user, profile)
+  const signedProfile = profile
+    ? {
+        ...profile,
+        avatarUrl: await signPrivateStoragePath('avatars', profile.avatarUrl),
+      }
+    : undefined
+  return buildUserContext(data.user, signedProfile)
 })
 
 export const Route = createRootRoute({

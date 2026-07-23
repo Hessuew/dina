@@ -35,17 +35,37 @@ import {
 // stays real via the `@/db` alias and authz resolves from real seeded rows.
 // See docs/TESTING_GUIDE.md / ADR 0009.
 const mocks = vi.hoisted(() => ({
+  createSignedUrls: vi.fn(),
   remove: vi.fn(),
 }))
 
 vi.mock('@/utils/supabase', () => ({
-  getSupabaseServerClient: () => ({
-    storage: { from: () => ({ remove: mocks.remove }) },
+  getSupabaseAdminClient: () => ({
+    storage: {
+      from: () => ({
+        createSignedUrls: mocks.createSignedUrls,
+        remove: mocks.remove,
+      }),
+    },
   }),
 }))
 
 beforeEach(() => {
-  mocks.remove.mockReset().mockResolvedValue({ error: null })
+  mocks.createSignedUrls
+    .mockReset()
+    .mockImplementation((paths: Array<string>) =>
+      Promise.resolve({
+        data: paths.map((path) => ({
+          path,
+          error: null,
+          signedUrl: `https://signed/${path}`,
+        })),
+        error: null,
+      }),
+    )
+  mocks.remove
+    .mockReset()
+    .mockResolvedValue({ data: [{ name: 'removed' }], error: null })
 })
 
 describe('getCoursesService (integration)', () => {
@@ -134,6 +154,28 @@ describe('createCourseService (integration)', () => {
 
     expect(course.title).toBe('New Course')
     expect(course.isPublished).toBe(false)
+  })
+
+  it('stores canonical thumbnail path and returns signed display URL', async () => {
+    const adminId = await seedProfile({ role: 'admin' })
+    const inputUrl =
+      `https://x.supabase.co/storage/v1/object/sign/course-thumbnails/` +
+      `${adminId}/thumb.png?token=x`
+
+    const { course } = await createCourseService(
+      {
+        title: 'Private Thumbnail',
+        description: 'desc',
+        orderIndex: 0,
+        thumbnailUrl: inputUrl,
+      },
+      adminId,
+    )
+
+    expect(course.thumbnailUrl).toBe(`https://signed/${adminId}/thumb.png`)
+    expect((await findCourseById(course.id))?.thumbnailUrl).toBe(
+      `${adminId}/thumb.png`,
+    )
   })
 
   it('admin creates a course with a valid teacher pair', async () => {
@@ -280,20 +322,19 @@ describe('deleteCourseService (integration)', () => {
   it('admin deletes a course and removes its thumbnail from storage', async () => {
     const adminId = await seedProfile({ role: 'admin' })
     const courseId = await seedCourse({
-      thumbnailUrl: 'https://cdn.test/bucket/thumb.png',
+      thumbnailUrl: `${adminId}/thumb.png`,
     })
 
     await deleteCourseService({ courseId }, adminId)
 
-    expect(mocks.remove).toHaveBeenCalledWith(['thumb.png'])
+    expect(mocks.remove).toHaveBeenCalledWith([`${adminId}/thumb.png`])
     expect(await findCourseById(courseId)).toBeUndefined()
   })
 
   it('surfaces a storage failure and does not delete the course', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const courseId = await seedCourse({
-      thumbnailUrl: 'https://cdn.test/bucket/thumb.png',
+      thumbnailUrl: `${adminId}/thumb.png`,
     })
     mocks.remove.mockResolvedValue({ error: { message: 'storage down' } })
 
@@ -301,9 +342,6 @@ describe('deleteCourseService (integration)', () => {
       deleteCourseService({ courseId }, adminId),
     ).rejects.toMatchObject({ code: 'STORAGE_OPERATION_FAILED', status: 500 })
     expect(await findCourseById(courseId)).toBeDefined()
-    expect(errorSpy).toHaveBeenCalled()
-
-    errorSpy.mockRestore()
   })
 
   it('throws when the course does not exist', async () => {

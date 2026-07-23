@@ -40,8 +40,8 @@ describe('resolveFileExtension', () => {
     expect(resolveFileExtension('image/gif', 'photo.gif')).toBe('gif')
   })
 
-  it('returns the whole name when there is no extension', () => {
-    expect(resolveFileExtension('image/gif', 'photo')).toBe('photo')
+  it('derives extension from trusted MIME when name has no extension', () => {
+    expect(resolveFileExtension('image/gif', 'photo')).toBe('gif')
   })
 })
 

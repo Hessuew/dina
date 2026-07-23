@@ -43,6 +43,11 @@ Database access layer and schema definitions.
     - `media_library`
       - Stores org-wide library materials (YouTube links, PDFs, etc.).
       - Draft gating is modeled via `is_published`.
+      - Stores private uploads as canonical `file_path` / `thumbnail_path`;
+        external media stays in `external_url` (ADR 0022).
+    - `profiles.avatar_path` and `courses.thumbnail_path`
+      - Store canonical private Storage object paths. Read services return
+        short-lived signed display URLs instead of exposing paths.
     - `enrollments`
       - Stores public enrolment submissions (application data).
       - Admin-only review workflow via `status`, plus invitation tracking via `invitation_sent`.

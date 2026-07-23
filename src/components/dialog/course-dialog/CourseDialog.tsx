@@ -22,7 +22,11 @@ import { useAllTeachers } from '@/hooks/useAllTeachers'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import { createCourse, updateCourse } from '@/utils/courses'
-import { uploadCourseThumbnailFn } from '@/utils/imageUpload'
+import {
+  requestCourseThumbnailUploadFn,
+  uploadCourseThumbnailFn,
+} from '@/utils/imageUpload'
+import { putFileToSignedUrl } from '@/utils/storage/private-upload'
 import { getTeacherName } from '@/utils/teachers/domain/teachers.domain'
 
 type CourseDialogProps = {
@@ -327,14 +331,17 @@ function useCourseThumbnail() {
     if (!fileObject) return
     setUploading(true)
     try {
-      await uploadCourseThumbnailFn({
+      const signed = await requestCourseThumbnailUploadFn({
         data: {
-          fileData: fileData!,
           fileName: fileObject.name,
           fileType: fileObject.type,
           fileSize: fileObject.size,
           courseId,
         },
+      })
+      await putFileToSignedUrl(fileObject, signed.signedUrl)
+      await uploadCourseThumbnailFn({
+        data: { courseId, path: signed.path },
       })
     } catch (error) {
       console.error('Thumbnail upload error:', error)

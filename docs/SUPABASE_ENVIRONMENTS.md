@@ -22,10 +22,10 @@ copy production rows or Storage objects into `development`.
    invitation OTP, password-reset, and email-change messages are sent through the application's
    Resend integration; the application does not currently expose Supabase magic-link login.
 5. Copy the production Storage access policies into the development branch without copying
-   objects. The seed workflow creates the required bucket structure: public `avatars`, public
-   `course-thumbnails`, and private `media-library`.
-6. Ensure the private `media-library` bucket `file_size_limit` is at least **100MB** (library
-   video file uploads; see ADR 0020). Confirm in both development and production dashboards.
+   objects. The seed workflow creates private `avatars`, `course-thumbnails`, `media-library`,
+   and `media-thumbnails` buckets with MIME and size limits (ADR 0022).
+6. Ensure `media-library.file_size_limit` is **100MB** and each image bucket limit is **2MB**.
+   Confirm all four buckets are private in both development and production dashboards.
 
 ## Connect a local app safely
 
@@ -42,6 +42,13 @@ branch:
 Keep the browser and server URLs on the same Supabase branch. Mixing a development public URL with
 a production service-role key or database connection can create cross-environment auth/profile
 mismatches.
+
+## Private Storage rollout
+
+Deploy ADR 0022 application and migration changes before changing existing hosted buckets from
+public to private. After deployment, update all four bucket settings and verify signed avatar,
+course-thumbnail, library-file, and media-thumbnail reads. Reversing this order temporarily breaks
+existing images because public object endpoints stop serving immediately.
 
 ## GitHub migration environments
 

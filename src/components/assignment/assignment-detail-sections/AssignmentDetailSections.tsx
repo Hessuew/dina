@@ -366,7 +366,7 @@ function SubmissionPanel({
 
 export function AssignmentDetailSections(props: AssignmentDetailSectionsProps) {
   return (
-    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
       <AssignmentAboutCard
         assignment={props.assignment}
         isPastDue={props.isPastDue}

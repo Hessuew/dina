@@ -26,12 +26,12 @@ export function validateImageUpload(fileSize: number, fileType: string): void {
 
 export function resolveFileExtension(
   fileType: string,
-  originalName: string,
+  _originalName: string,
 ): string {
-  if (fileType === 'image/webp') {
-    return 'webp'
-  }
-  return originalName.slice(originalName.lastIndexOf('.') + 1)
+  if (fileType === 'image/jpeg') return 'jpg'
+  if (fileType === 'image/png') return 'png'
+  if (fileType === 'image/gif') return 'gif'
+  return 'webp'
 }
 
 export function decodeBase64DataUrl(fileData: string): Buffer {

@@ -19,7 +19,7 @@ export const courses = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     title: text('title').notNull(),
     description: text('description'),
-    thumbnailUrl: text('thumbnail_url'),
+    thumbnailUrl: text('thumbnail_path'),
     isPublished: boolean('is_published').default(false),
     orderIndex: integer('order_index').default(0),
     createdAt: timestamp('created_at').defaultNow().notNull(),

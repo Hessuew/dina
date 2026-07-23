@@ -3,9 +3,9 @@ import {
   createMediaSchema,
   deleteMediaSchema,
   getMediaSchema,
-  requestMediaVideoUploadSchema,
+  requestMediaFileUploadSchema,
+  requestMediaThumbnailUploadSchema,
   updateMediaSchema,
-  uploadMediaPdfSchema,
   uploadMediaThumbnailSchema,
 } from '@/schemas/media.schema'
 import { getCurrentUser, getUserProfile } from '@/utils/auth/auth'
@@ -14,9 +14,9 @@ import {
   deleteLibraryMediaService,
   getLibraryMediaItemService,
   getLibraryMediaService,
-  requestMediaVideoUploadService,
+  requestMediaFileUploadService,
+  requestMediaThumbnailUploadService,
   updateLibraryMediaService,
-  uploadMediaPdfService,
   uploadMediaThumbnailService,
 } from '@/utils/library/service/library.service'
 
@@ -78,12 +78,20 @@ export const deleteLibraryMedia = createServerFn({ method: 'POST' })
     return deleteLibraryMediaService(data, user.id, profile.role)
   })
 
-export const uploadMediaPdfFn = createServerFn({ method: 'POST' })
-  .inputValidator(uploadMediaPdfSchema)
+export const requestMediaFileUploadFn = createServerFn({ method: 'POST' })
+  .inputValidator(requestMediaFileUploadSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     const profile = await getUserProfile(user.id)
-    return uploadMediaPdfService(data, user.id, profile.role)
+    return requestMediaFileUploadService(data, user.id, profile.role)
+  })
+
+export const requestMediaThumbnailUploadFn = createServerFn({ method: 'POST' })
+  .inputValidator(requestMediaThumbnailUploadSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    const profile = await getUserProfile(user.id)
+    return requestMediaThumbnailUploadService(data, user.id, profile.role)
   })
 
 export const uploadMediaThumbnailFn = createServerFn({ method: 'POST' })
@@ -92,12 +100,4 @@ export const uploadMediaThumbnailFn = createServerFn({ method: 'POST' })
     const user = await getCurrentUser()
     const profile = await getUserProfile(user.id)
     return uploadMediaThumbnailService(data, user.id, profile.role)
-  })
-
-export const requestMediaVideoUploadFn = createServerFn({ method: 'POST' })
-  .inputValidator(requestMediaVideoUploadSchema)
-  .handler(async ({ data }) => {
-    const user = await getCurrentUser()
-    const profile = await getUserProfile(user.id)
-    return requestMediaVideoUploadService(data, user.id, profile.role)
   })

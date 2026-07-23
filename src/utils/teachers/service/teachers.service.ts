@@ -6,9 +6,10 @@ import {
   findCourseTeacher,
 } from '@/utils/teachers/repository'
 import { authz } from '@/utils/authz'
+import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
 
 export async function getTeachersService() {
-  const teachers = await findAllTeachers()
+  const teachers = await signAvatarRows(await findAllTeachers())
 
   const teacherIds = teachers.map((t) => t.id)
   const allAssignments = await findCourseAssignmentsForTeachers(teacherIds)
@@ -39,7 +40,7 @@ export async function getTeachersService() {
 export async function getAllTeachersService(userId: string) {
   await authz(userId).hasRole('admin')
 
-  const teachers = await findAllTeachersSimple()
+  const teachers = await signAvatarRows(await findAllTeachersSimple())
 
   return { teachers }
 }
