@@ -130,12 +130,17 @@ async function ensureDevelopmentAdmin(
 
 async function upsertStorageBucket(
   supabase: AdminClient,
-  bucket: { id: string; public: boolean },
+  bucket: {
+    id: string
+    public: boolean
+    fileSizeLimit: number
+    allowedMimeTypes: Array<string>
+  },
   exists: boolean,
 ) {
   const result = exists
-    ? await supabase.storage.updateBucket(bucket.id, { public: bucket.public })
-    : await supabase.storage.createBucket(bucket.id, { public: bucket.public })
+    ? await supabase.storage.updateBucket(bucket.id, bucket)
+    : await supabase.storage.createBucket(bucket.id, bucket)
   if (result.error) throw result.error
 }
 

@@ -1,19 +1,37 @@
 import { createServerFn } from '@tanstack/react-start'
 import {
+  requestAvatarUploadSchema,
+  requestCourseThumbnailUploadSchema,
   uploadAvatarSchema,
   uploadCourseThumbnailSchema,
 } from '@/schemas/image.schema'
 import { getCurrentUser } from '@/utils/auth/auth'
 import {
+  requestAvatarUploadService,
+  requestCourseThumbnailUploadService,
   uploadAvatarService,
   uploadCourseThumbnailService,
 } from '@/utils/imageUpload/service/imageUpload.service'
+
+export const requestAvatarUploadFn = createServerFn({ method: 'POST' })
+  .inputValidator(requestAvatarUploadSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    return requestAvatarUploadService(data, user.id)
+  })
 
 export const uploadAvatarFn = createServerFn({ method: 'POST' })
   .inputValidator(uploadAvatarSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return uploadAvatarService(data, user.id)
+  })
+
+export const requestCourseThumbnailUploadFn = createServerFn({ method: 'POST' })
+  .inputValidator(requestCourseThumbnailUploadSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    return requestCourseThumbnailUploadService(data, user.id)
   })
 
 export const uploadCourseThumbnailFn = createServerFn({ method: 'POST' })

@@ -83,13 +83,11 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Always use browser-local wall-clock components (`getHours`, …). Never `toISOString().slice` for form load — that is UTC and shifts displayed times by the host offset.
 
 - **Misc**
-  - `imageUpload.ts`: server-side upload-related helpers.
-    - `uploadImageFn`: Generic image upload with automatic WebP conversion
-    - `uploadAvatarFn`: Avatar upload with profile update
-    - `uploadCourseThumbnailFn`: Course thumbnail upload with course update
-    - `fileToBase64`: Client-side utility to convert File to base64 string
-    - `convertToWebP`: Server-side utility to convert images to WebP format
-    - **WebP conversion**: All image uploads (JPEG, PNG, WebP) are automatically converted to WebP at 80% quality to reduce file size. GIF files are preserved (animations). PDF files are excluded from conversion.
+  - `imageUpload/` and `storage/`: private upload helpers.
+    - Request server functions validate metadata and mint actor-owned signed upload URLs.
+    - Browser bytes upload directly to Supabase Storage.
+    - Completion server functions persist canonical paths and remove replaced objects.
+    - Read services batch-mint one-hour signed display URLs (ADR 0022).
   - `password.ts`: password-related helpers for auth flows.
   - `seo.ts`: metadata helper.
 

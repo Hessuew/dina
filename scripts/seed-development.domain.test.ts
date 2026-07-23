@@ -65,12 +65,25 @@ describe('bucketsToEnsure', () => {
     expect(plan.create.map((b) => b.id)).toEqual([
       'course-thumbnails',
       'media-library',
+      'media-thumbnails',
     ])
   })
 
   it('creates all when none exist', () => {
     const plan = bucketsToEnsure([])
-    expect(plan.create).toHaveLength(3)
+    expect(plan.create).toHaveLength(4)
     expect(plan.update).toHaveLength(0)
+  })
+
+  it('defines every application bucket as private with limits', () => {
+    expect(DEVELOPMENT_STORAGE_BUCKETS).toHaveLength(4)
+    expect(
+      DEVELOPMENT_STORAGE_BUCKETS.every(
+        (bucket) =>
+          !bucket.public &&
+          bucket.fileSizeLimit > 0 &&
+          bucket.allowedMimeTypes.length > 0,
+      ),
+    ).toBe(true)
   })
 })

@@ -29,6 +29,10 @@ import {
 } from '@/utils/attendance/repository/attendance.repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import { findCourseAssignmentsForTeachers } from '@/utils/teachers/repository/course-teachers.repository'
+import {
+  signAvatarRows,
+  signPrivateStoragePath,
+} from '@/utils/storage/service/private-storage.service'
 
 export async function getStudentsService() {
   const [allStudents, courses, allAssignments, allLessons] = await Promise.all([
@@ -38,7 +42,8 @@ export async function getStudentsService() {
     findAllLessonsForAttendance(),
   ])
 
-  const studentIds = allStudents.map((s) => s.id)
+  const signedStudents = await signAvatarRows(allStudents)
+  const studentIds = signedStudents.map((s) => s.id)
   const [allSubmissions, allPresents] = await Promise.all([
     findSubmissionsForStudents(studentIds),
     findPresentsForStudents(studentIds),
@@ -51,7 +56,7 @@ export async function getStudentsService() {
     submissionsByStudent.set(s.studentId, arr)
   }
 
-  const studentsWithStats: Array<StudentWithStats> = allStudents.map(
+  const studentsWithStats: Array<StudentWithStats> = signedStudents.map(
     (student) =>
       buildStudentWithStats(
         student,
@@ -127,7 +132,7 @@ export async function getStudentDetailService(
     fullName: student.fullName,
     email: student.email,
     bio: student.bio,
-    avatarUrl: student.avatarUrl,
+    avatarUrl: await signPrivateStoragePath('avatars', student.avatarUrl),
     createdAt: student.createdAt,
     enrollments: enrollments.map((e) => ({
       id: e.id,

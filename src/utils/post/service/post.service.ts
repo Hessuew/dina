@@ -48,6 +48,47 @@ import {
 } from '@/utils/post/repository/post.repository'
 import { AuthorizationError, NotFoundError } from '@/utils/errors'
 import { authz } from '@/utils/authz'
+import { signPrivateStoragePaths } from '@/utils/storage/service/private-storage.service'
+
+async function signPostAvatars(
+  posts: ReadonlyArray<PostWithDetails>,
+): Promise<Array<PostWithDetails>> {
+  const paths = posts.flatMap((post) => [
+    post.author.avatarUrl,
+    ...post.previewComments.map((comment) => comment.author.avatarUrl),
+  ])
+  const urls = await signPrivateStoragePaths('avatars', paths)
+  return posts.map((post) => ({
+    ...post,
+    author: {
+      ...post.author,
+      avatarUrl: urls.get(post.author.avatarUrl ?? '') ?? null,
+    },
+    previewComments: post.previewComments.map((comment) => ({
+      ...comment,
+      author: {
+        ...comment.author,
+        avatarUrl: urls.get(comment.author.avatarUrl ?? '') ?? null,
+      },
+    })),
+  }))
+}
+
+async function signCommentAvatars(
+  comments: ReadonlyArray<CommentWithAuthor>,
+): Promise<Array<CommentWithAuthor>> {
+  const urls = await signPrivateStoragePaths(
+    'avatars',
+    comments.map((comment) => comment.author.avatarUrl),
+  )
+  return comments.map((comment) => ({
+    ...comment,
+    author: {
+      ...comment.author,
+      avatarUrl: urls.get(comment.author.avatarUrl ?? '') ?? null,
+    },
+  }))
+}
 
 export async function getPostChannelsService(): Promise<{
   channels: Array<PostChannel>
@@ -80,9 +121,10 @@ export async function getPostsService(data: GetPostsInput): Promise<{
   const postIds = postsSlice.map((p) => p.id)
   const commentCounts = await calculateCommentCounts(postIds)
 
-  const result = postsSlice.map((p) =>
+  const transformed = postsSlice.map((p) =>
     transformPostWithDetails(p, commentCounts[p.id] ?? 0),
   )
+  const result = await signPostAvatars(transformed)
 
   const lastPost = postsSlice[postsSlice.length - 1]
   const nextCursor = hasMore
@@ -105,9 +147,10 @@ export async function getPostByIdService(data: GetPostByIdInput): Promise<{
   }
 
   const commentCounts = await calculateCommentCounts([row.id])
-  return {
-    post: transformPostWithDetails(row, commentCounts[row.id] ?? 0),
-  }
+  const [post] = await signPostAvatars([
+    transformPostWithDetails(row, commentCounts[row.id] ?? 0),
+  ])
+  return { post }
 }
 
 export async function createPostBaseService(
@@ -134,7 +177,8 @@ export async function createPostBaseService(
     })
   }
 
-  return { post: transformPostWithDetails(full, 0), canModerate }
+  const [post] = await signPostAvatars([transformPostWithDetails(full, 0)])
+  return { post, canModerate }
 }
 
 export async function updatePostService(
@@ -191,10 +235,11 @@ export async function getCommentsService(data: GetCommentsInput): Promise<{
   const hasMore = rows.length > limit
   const commentsSlice = hasMore ? rows.slice(0, limit) : rows
 
-  const result = commentsSlice
+  const transformed = commentsSlice
     .slice()
     .reverse()
     .map((c) => transformCommentWithAuthor(c))
+  const result = await signCommentAvatars(transformed)
 
   const lastRow = commentsSlice[commentsSlice.length - 1]
   const nextCursor = hasMore
@@ -230,8 +275,9 @@ export async function createCommentBaseService(
     })
   }
 
+  const [comment] = await signCommentAvatars([transformCommentWithAuthor(full)])
   return {
-    comment: transformCommentWithAuthor(full),
+    comment,
     postAuthorId: post.authorId,
   }
 }

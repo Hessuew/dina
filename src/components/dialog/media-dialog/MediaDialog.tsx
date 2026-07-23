@@ -3,8 +3,8 @@ import { UploadIcon, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { useVideoFilePick } from './media-dialog.hooks'
 import {
+  uploadMediaFileDirect,
   uploadThumbnailIfPresent,
-  uploadVideoFileDirect,
 } from './media-dialog.logic'
 import type { VideoFilePick } from './media-dialog.hooks'
 import type { MediaLibraryRow } from '@/utils/library/library'
@@ -20,7 +20,6 @@ import {
   createLibraryMedia,
   deleteLibraryMedia,
   updateLibraryMedia,
-  uploadMediaPdfFn,
 } from '@/utils/library/library'
 import { toUserError } from '@/utils/errors'
 import { useAppForm, withForm } from '@/hooks/form'
@@ -36,7 +35,6 @@ import { FormFieldSelect } from '@/components/ui/form-field/form-field'
 import { LIBRARY_TOPICS } from '@/lib/library-topics'
 import {
   buildMediaPayload,
-  buildPdfUploadData,
   computeOpenResetState,
   emptyFormData,
   getDocumentFileVariant,
@@ -86,16 +84,10 @@ async function resolveDocumentUrl(params: {
 
   docUpload.setUploading(true)
   try {
-    const uploaded = await uploadMediaPdfFn({
-      data: buildPdfUploadData({
-        fileData: docUpload.fileData!,
-        fileName: docUpload.fileObject!.name,
-        fileType: docUpload.fileObject!.type,
-        fileSize: docUpload.fileObject!.size,
-        mode,
-        media,
-      }),
-    })
+    const uploaded = await uploadMediaFileDirect(
+      docUpload.fileObject!,
+      'document',
+    )
     return resolveDocumentUploadResult({
       fileUrl: uploaded.fileUrl,
       currentUrl,
@@ -121,7 +113,7 @@ async function resolveVideoUrl(params: {
 
   videoPick.setUploading(true)
   try {
-    const uploaded = await uploadVideoFileDirect(videoPick.file!)
+    const uploaded = await uploadMediaFileDirect(videoPick.file!, 'video-file')
     return {
       ok: true as const,
       url: uploaded.fileUrl,

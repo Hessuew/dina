@@ -103,14 +103,10 @@ describe('buildProfileUpdateInput', () => {
 })
 
 describe('buildAvatarUploadInput', () => {
-  it('combines the encoded data with the file metadata', () => {
+  it('returns file metadata for signed-upload validation', () => {
     expect(
-      buildAvatarUploadInput(
-        { name: 'a.png', type: 'image/png', size: 123 },
-        'data:base64',
-      ),
+      buildAvatarUploadInput({ name: 'a.png', type: 'image/png', size: 123 }),
     ).toEqual({
-      fileData: 'data:base64',
       fileName: 'a.png',
       fileType: 'image/png',
       fileSize: 123,

@@ -1,58 +1,32 @@
 import { eq } from 'drizzle-orm'
-import type { MediaLibraryRow } from '@/utils/library/library'
 import { getDb } from '@/db'
 import { mediaLibrary } from '@/db/schema'
 
-type RawMediaRow = MediaLibraryRow & {
-  course?: { id: string; title: string; orderIndex: number } | null
+export type MediaRecord = typeof mediaLibrary.$inferSelect
+export type MediaRecordWithCourse = MediaRecord & {
+  course?: { id: string; title: string; orderIndex: number | null } | null
 }
-
-type InsertMediaValues = {
-  uploaderId: string
-  courseId: string | null
-  title: string
-  category: string
-  description: string | null
-  fileUrl: string
-  fileType: MediaLibraryRow['fileType']
-  fileSize: number | null
-  isPublished: boolean
-  createdAt: Date
-  updatedAt: Date
-}
-
-type UpdateMediaValues = {
-  title: string
-  category: string
-  description: string | null
-  fileUrl: string
-  fileType: MediaLibraryRow['fileType']
-  fileSize: number | null
-  isPublished: boolean
-  updatedAt: Date
-}
+export type InsertMediaValues = typeof mediaLibrary.$inferInsert
 
 /* v8 ignore start */
 export async function findAllMedia(
   studentRole: boolean,
-): Promise<Array<RawMediaRow>> {
+): Promise<Array<MediaRecordWithCourse>> {
   const db = await getDb()
   return db.query.mediaLibrary.findMany({
     where: studentRole ? (t) => eq(t.isPublished, true) : undefined,
     orderBy: (t, { desc }) => [desc(t.createdAt)],
     with: {
       course: {
-        columns: {
-          id: true,
-          title: true,
-          orderIndex: true,
-        },
+        columns: { id: true, title: true, orderIndex: true },
       },
     },
-  }) as Promise<Array<RawMediaRow>>
+  })
 }
 
-export async function findMediaById(mediaId: string) {
+export async function findMediaById(
+  mediaId: string,
+): Promise<MediaRecord | undefined> {
   const db = await getDb()
   return db.query.mediaLibrary.findFirst({
     where: eq(mediaLibrary.id, mediaId),
@@ -61,7 +35,7 @@ export async function findMediaById(mediaId: string) {
 
 export async function insertMedia(
   values: InsertMediaValues,
-): Promise<MediaLibraryRow> {
+): Promise<MediaRecord> {
   const db = await getDb()
   const [row] = await db.insert(mediaLibrary).values(values).returning()
   return row
@@ -69,8 +43,8 @@ export async function insertMedia(
 
 export async function updateMedia(
   mediaId: string,
-  values: UpdateMediaValues,
-): Promise<MediaLibraryRow> {
+  values: Partial<InsertMediaValues>,
+): Promise<MediaRecord> {
   const db = await getDb()
   const [row] = await db
     .update(mediaLibrary)
@@ -85,14 +59,14 @@ export async function deleteMedia(mediaId: string): Promise<void> {
   await db.delete(mediaLibrary).where(eq(mediaLibrary.id, mediaId))
 }
 
-export async function updateMediaThumbnail(
+export async function updateMediaThumbnailPath(
   mediaId: string,
-  thumbnailUrl: string,
+  thumbnailPath: string,
 ): Promise<void> {
   const db = await getDb()
   await db
     .update(mediaLibrary)
-    .set({ thumbnailUrl, updatedAt: new Date() })
+    .set({ thumbnailUrl: thumbnailPath, updatedAt: new Date() })
     .where(eq(mediaLibrary.id, mediaId))
 }
 /* v8 ignore end */

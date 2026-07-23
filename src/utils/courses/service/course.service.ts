@@ -22,15 +22,53 @@ import {
   updateCourseById,
 } from '@/utils/courses/repository'
 import { getUserProfile } from '@/utils/auth/auth'
-import { getSupabaseServerClient } from '@/utils/supabase'
 import { authz } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
 import {
-  AppError,
   AuthorizationError,
   NotFoundError,
   ValidationError,
 } from '@/utils/errors'
+import { deleteStorageObjectStrict } from '@/utils/imageUpload/service/imageUpload.service'
+import { extractPrivateStoragePath } from '@/utils/storage/domain/private-storage.domain'
+import {
+  signCourseThumbnailRows,
+  signPrivateStoragePaths,
+} from '@/utils/storage/service/private-storage.service'
+import { serializeMediaRecords } from '@/utils/library/service/library.service'
+
+type CourseAssetRow = Awaited<ReturnType<typeof findAllCourses>>[number]
+
+async function signCourseAssets<T extends CourseAssetRow>(
+  rows: ReadonlyArray<T>,
+): Promise<Array<T>> {
+  const thumbnailPaths = rows.map((row) => row.thumbnailUrl)
+  const avatarPaths = rows.flatMap((row) =>
+    row.courseTeachers.map((entry) => entry.teacher.avatarUrl),
+  )
+  const [thumbnails, avatars] = await Promise.all([
+    signPrivateStoragePaths('course-thumbnails', thumbnailPaths),
+    signPrivateStoragePaths('avatars', avatarPaths),
+  ])
+  return rows.map((row) => ({
+    ...row,
+    thumbnailUrl: thumbnails.get(row.thumbnailUrl ?? '') ?? null,
+    courseTeachers: row.courseTeachers.map((entry) => ({
+      ...entry,
+      teacher: {
+        ...entry.teacher,
+        avatarUrl: avatars.get(entry.teacher.avatarUrl ?? '') ?? null,
+      },
+    })),
+  }))
+}
+
+function courseThumbnailPath(value: string | null | undefined): string | null {
+  if (!value) return null
+  const path = extractPrivateStoragePath(value, 'course-thumbnails')
+  if (!path) throw new ValidationError('Invalid course thumbnail path')
+  return path
+}
 
 export async function getCoursesService(userId: string) {
   const profile = await getUserProfile(userId)
@@ -38,7 +76,10 @@ export async function getCoursesService(userId: string) {
   const allCourses = await findAllCourses(!isStudentView)
 
   if (!isStudentView) {
-    return { courses: allCourses, role: profile.role }
+    return {
+      courses: await signCourseAssets(allCourses),
+      role: profile.role,
+    }
   }
 
   const allLessonIds = allCourses.flatMap((course) =>
@@ -54,7 +95,10 @@ export async function getCoursesService(userId: string) {
     allSubmissions,
   )
 
-  return { courses: coursesWithProgress, role: profile.role }
+  return {
+    courses: await signCourseAssets(coursesWithProgress),
+    role: profile.role,
+  }
 }
 
 export async function getCourseService(data: GetCourseInput, userId: string) {
@@ -90,8 +134,10 @@ export async function getCourseService(data: GetCourseInput, userId: string) {
   }
 
   const completedLessonIds = new Set(progress.map((item) => item.lessonId))
+  const [signedCourse] = await signCourseAssets([course])
   const courseWithTeachers = {
-    ...course,
+    ...signedCourse,
+    mediaFiles: await serializeMediaRecords(course.mediaFiles),
     ...extractTeacherIds(course.courseTeachers),
   }
   const permissions = calculateEntityPermissions(
@@ -125,7 +171,7 @@ export async function createCourseService(
   const course = await insertCourse({
     title: data.title,
     description: data.description,
-    thumbnailUrl: data.thumbnailUrl || null,
+    thumbnailUrl: courseThumbnailPath(data.thumbnailUrl),
     isPublished: false,
     orderIndex: data.orderIndex,
   })
@@ -139,7 +185,8 @@ export async function createCourseService(
     })
   }
 
-  return { course }
+  const [signedCourse] = await signCourseThumbnailRows([course])
+  return { course: signedCourse }
 }
 
 export async function updateCourseService(
@@ -154,7 +201,7 @@ export async function updateCourseService(
   const course = await updateCourseById(data.courseId, {
     title: data.title,
     description: data.description,
-    thumbnailUrl: data.thumbnailUrl || null,
+    thumbnailUrl: courseThumbnailPath(data.thumbnailUrl),
     isPublished: data.isPublished,
     orderIndex: data.orderIndex,
     updatedAt: new Date(),
@@ -182,15 +229,14 @@ export async function updateCourseService(
     }
   }
 
-  return { course }
+  const [signedCourse] = await signCourseThumbnailRows([course])
+  return { course: signedCourse }
 }
 
 export async function deleteCourseService(
   data: DeleteCourseInput,
   userId: string,
 ) {
-  const supabase = getSupabaseServerClient()
-
   const isUserAdmin = await authz(userId).isAdmin()
   if (!isUserAdmin) {
     await authz(userId).perform('deleteCourse').on('course', data.courseId)
@@ -205,30 +251,11 @@ export async function deleteCourseService(
   }
 
   if (course.thumbnailUrl) {
-    const oldPath = course.thumbnailUrl.split('/').pop()
-    if (oldPath) {
-      const { error: deleteError } = await supabase.storage
-        .from('course-thumbnails')
-        .remove([oldPath])
-      if (deleteError) {
-        console.error('Failed to delete course thumbnail from storage', {
-          courseId: data.courseId,
-          path: oldPath,
-          error: deleteError.message,
-        })
-        throw new AppError({
-          code: 'STORAGE_OPERATION_FAILED',
-          status: 500,
-          userMessage: 'Failed to delete course thumbnail',
-          internalMessage: `Storage deletion failed for course ${data.courseId}: ${deleteError.message}`,
-          details: {
-            courseId: data.courseId,
-            path: oldPath,
-            error: deleteError,
-          },
-        })
-      }
-    }
+    await deleteStorageObjectStrict(
+      'course-thumbnails',
+      course.thumbnailUrl,
+      'Failed to delete course thumbnail',
+    )
   }
 
   await deleteCourseById(data.courseId)

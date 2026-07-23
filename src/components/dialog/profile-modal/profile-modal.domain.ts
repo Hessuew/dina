@@ -78,15 +78,12 @@ export function buildProfileUpdateInput(value: ProfileFormData): {
 
 export function buildAvatarUploadInput(
   file: Pick<File, 'name' | 'type' | 'size'>,
-  fileData: string,
 ): {
-  fileData: string
   fileName: string
   fileType: string
   fileSize: number
 } {
   return {
-    fileData,
     fileName: file.name,
     fileType: file.type,
     fileSize: file.size,

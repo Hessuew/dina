@@ -3,7 +3,7 @@ import { getDb } from '@/db'
 import { courses, profiles } from '@/db/schema'
 
 /* v8 ignore start */
-export async function findProfileAvatarUrl(
+export async function findProfileAvatarPath(
   userId: string,
 ): Promise<string | null | undefined> {
   const db = await getDb()
@@ -13,14 +13,14 @@ export async function findProfileAvatarUrl(
   return profile?.avatarUrl
 }
 
-export async function updateProfileAvatar(
+export async function updateProfileAvatarPath(
   userId: string,
-  avatarUrl: string,
+  avatarPath: string,
 ): Promise<void> {
   const db = await getDb()
   await db
     .update(profiles)
-    .set({ avatarUrl, updatedAt: new Date() })
+    .set({ avatarUrl: avatarPath, updatedAt: new Date() })
     .where(eq(profiles.id, userId))
 }
 
@@ -31,14 +31,14 @@ export async function findCourseForThumbnail(courseId: string) {
   })
 }
 
-export async function updateCourseThumbnail(
+export async function updateCourseThumbnailPath(
   courseId: string,
-  thumbnailUrl: string,
+  thumbnailPath: string,
 ): Promise<void> {
   const db = await getDb()
   await db
     .update(courses)
-    .set({ thumbnailUrl, updatedAt: new Date() })
+    .set({ thumbnailUrl: thumbnailPath, updatedAt: new Date() })
     .where(eq(courses.id, courseId))
 }
 /* v8 ignore end */

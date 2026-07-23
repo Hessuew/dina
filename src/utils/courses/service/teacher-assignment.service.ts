@@ -15,6 +15,7 @@ import {
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { NotFoundError } from '@/utils/errors'
+import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
 
 export async function validateTeacherPair(
   teacher1Id: string,
@@ -42,7 +43,9 @@ export async function getCourseTeachersService(
 ) {
   await getUserProfile(userId)
   const courseTeachersList = await findCourseTeachers(data.courseId)
-  return { teachers: courseTeachersList.map((ct) => ct.teacher) }
+  return {
+    teachers: await signAvatarRows(courseTeachersList.map((ct) => ct.teacher)),
+  }
 }
 
 export async function updateCourseTeachersService(

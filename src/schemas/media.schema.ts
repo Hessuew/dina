@@ -26,36 +26,35 @@ export const getMediaSchema = z.object({
   mediaId: z.uuid('Invalid media ID'),
 })
 
-export const uploadMediaPdfSchema = z.object({
-  fileData: z.string().min(1),
+export const requestMediaFileUploadSchema = z.object({
+  kind: z.enum(['document', 'video-file']),
   fileName: z.string().min(1),
   fileType: z.string().min(1),
   fileSize: z.number().int().nonnegative(),
-  mediaId: z.uuid().optional(),
+})
+
+export const requestMediaThumbnailUploadSchema = z.object({
+  mediaId: z.uuid(),
+  fileName: z.string().min(1),
+  fileType: z.string().min(1),
+  fileSize: z.number().int().nonnegative(),
 })
 
 export const uploadMediaThumbnailSchema = z.object({
   mediaId: z.uuid(),
-  fileData: z.string().min(1),
-  fileName: z.string().min(1),
-  fileType: z.string().min(1),
-  fileSize: z.number().int().nonnegative(),
-})
-
-export const requestMediaVideoUploadSchema = z.object({
-  fileName: z.string().min(1),
-  fileType: z.string().min(1),
-  fileSize: z.number().int().nonnegative(),
+  path: z.string().min(1),
 })
 
 export type CreateMediaInput = z.infer<typeof createMediaSchema>
 export type UpdateMediaInput = z.infer<typeof updateMediaSchema>
 export type DeleteMediaInput = z.infer<typeof deleteMediaSchema>
 export type GetMediaInput = z.infer<typeof getMediaSchema>
-export type UploadMediaPdfInput = z.infer<typeof uploadMediaPdfSchema>
+export type RequestMediaFileUploadInput = z.infer<
+  typeof requestMediaFileUploadSchema
+>
+export type RequestMediaThumbnailUploadInput = z.infer<
+  typeof requestMediaThumbnailUploadSchema
+>
 export type UploadMediaThumbnailInput = z.infer<
   typeof uploadMediaThumbnailSchema
->
-export type RequestMediaVideoUploadInput = z.infer<
-  typeof requestMediaVideoUploadSchema
 >

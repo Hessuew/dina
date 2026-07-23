@@ -29,7 +29,8 @@ import {
 import { FieldGroup } from '@/components/ui/field'
 import { useMutation } from '@/hooks/useMutation'
 import { useAppForm, withForm } from '@/hooks/form'
-import { uploadAvatarFn } from '@/utils/imageUpload'
+import { requestAvatarUploadFn, uploadAvatarFn } from '@/utils/imageUpload'
+import { putFileToSignedUrl } from '@/utils/storage/private-upload'
 import { updatePasswordFn, updateProfileFn } from '@/utils/profile'
 import {
   updatePasswordSchema,
@@ -45,51 +46,45 @@ type ProfileModalProps = {
 
 function useAvatarUpload(onProfileUpdate?: () => void) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = useState(false)
 
   const uploadAvatarMutation = useMutation({
     fn: uploadAvatarFn,
     onSuccess: () => {
+      setIsUploading(false)
       toast.dismiss('avatar-upload')
       toast.success('Avatar uploaded successfully')
       onProfileUpdate?.()
     },
     onError: (error) => {
+      setIsUploading(false)
       toast.dismiss('avatar-upload')
       toast.error(toUserError(error).message)
     },
   })
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const fileData = reader.result
-      if (typeof fileData !== 'string') {
-        toast.error('Failed to read file')
-        if (fileInputRef.current) fileInputRef.current.value = ''
-        return
-      }
-
-      toast.loading('Uploading avatar...', { id: 'avatar-upload' })
-      uploadAvatarMutation.mutate({
-        data: buildAvatarUploadInput(file, fileData),
+    setIsUploading(true)
+    toast.loading('Uploading avatar...', { id: 'avatar-upload' })
+    try {
+      const signed = await requestAvatarUploadFn({
+        data: buildAvatarUploadInput(file),
       })
-      if (fileInputRef.current) fileInputRef.current.value = ''
+      await putFileToSignedUrl(file, signed.signedUrl)
+      uploadAvatarMutation.mutate({ data: { path: signed.path } })
+    } catch (error) {
+      toast.dismiss('avatar-upload')
+      toast.error(toUserError(error).message)
+      setIsUploading(false)
     }
-
-    reader.onerror = () => {
-      toast.error('Failed to read file')
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
-
-    reader.readAsDataURL(file)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   return {
     fileInputRef,
-    isUploading: uploadAvatarMutation.isPending,
+    isUploading: isUploading || uploadAvatarMutation.isPending,
     handleAvatarChange,
   }
 }
