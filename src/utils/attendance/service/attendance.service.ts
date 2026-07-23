@@ -123,6 +123,7 @@ export async function getCourseAttendanceStateService(
 
   return {
     role: profile.role,
+    serverNow: now,
     openSession: openSession
       ? mapOpenSession(openSession, now, { lessonTitle, alreadyPresent })
       : null,
@@ -220,5 +221,5 @@ export async function listOpenAttendanceForStudentService(userId: string) {
     }),
     courseTitle: row.courseTitle,
   }))
-  return { sessions }
+  return { sessions, serverNow: now }
 }

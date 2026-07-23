@@ -1,8 +1,10 @@
-import { Link } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { listOpenAttendanceForStudent, markPresent } from '@/utils/attendance'
+import { formatRemaining } from '@/utils/attendance/domain/attendance-window.domain'
+import { useServerCountdown } from '@/hooks/useServerCountdown'
 import { Button } from '@/components/ui/button'
+import { ButtonLink } from '@/components/ui/button-link'
 
 const POLL_MS = 20_000
 
@@ -12,6 +14,7 @@ type OpenSession = {
   lessonId: string
   courseTitle: string
   lessonTitle: string | null
+  closesAt: Date | string | null
   remainingLabel: string | null
   alreadyPresent: boolean
 }
@@ -31,6 +34,7 @@ function clearBusy(mounted: { current: boolean }, clear: () => void) {
 
 export function OpenAttendanceBanner() {
   const [sessions, setSessions] = useState<Array<OpenSession>>([])
+  const [serverNow, setServerNow] = useState<Date | string>(() => new Date())
   const [busyId, setBusyId] = useState<string | null>(null)
   const requestIdRef = useRef(0)
   const mountedRef = useRef(true)
@@ -41,6 +45,7 @@ export function OpenAttendanceBanner() {
       const result = await listOpenAttendanceForStudent()
       if (requestId !== requestIdRef.current) return
       setSessions(result.sessions as Array<OpenSession>)
+      if (result.serverNow) setServerNow(result.serverNow as Date | string)
     } catch {
       // silent poll
     }
@@ -75,29 +80,46 @@ export function OpenAttendanceBanner() {
 
   if (sessions.length === 0) return null
 
-  return (
-    <div className="mb-8 space-y-3">
-      {sessions.map((session) => (
-        <OpenSessionCard
-          key={session.id}
-          session={session}
-          busy={busyId === session.courseId}
-          onPresent={() => void onPresent(session.courseId)}
-        />
-      ))}
-    </div>
-  )
+  const cards = sessions.map((session) => (
+    <OpenSessionCard
+      key={session.id}
+      session={session}
+      serverNow={serverNow}
+      busy={busyId === session.courseId}
+      onPresent={() => void onPresent(session.courseId)}
+    />
+  ))
+
+  return <div className="mb-8 space-y-3">{cards}</div>
 }
 
 function OpenSessionCard({
   session,
+  serverNow,
   busy,
   onPresent,
 }: {
   session: OpenSession
+  serverNow: Date | string
   busy: boolean
   onPresent: () => void
 }) {
+  const deadline = session.closesAt ?? new Date(0)
+  const countdown = useServerCountdown(deadline, serverNow)
+  if (!session.closesAt || countdown.isExpired) return null
+
+  const remainingLabel = formatRemaining(countdown.remainingMs)
+  if (session.alreadyPresent) {
+    return (
+      <PresentSessionCard
+        courseId={session.courseId}
+        courseTitle={session.courseTitle}
+        lessonTitle={session.lessonTitle}
+        remainingLabel={remainingLabel}
+      />
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4 border-2 border-[#C5A059] bg-[#2A2118] p-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
@@ -108,32 +130,64 @@ function OpenSessionCard({
           {session.courseTitle}
         </p>
         <p className="text-sm text-[#E9D9B4]">
-          {session.lessonTitle ?? 'Lesson'} · {session.remainingLabel} remaining
+          {session.lessonTitle ?? 'Lesson'} · {remainingLabel} remaining
         </p>
       </div>
       <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
-        {session.alreadyPresent ? (
-          <span className="border border-[#C5A059]/40 bg-[#1A1716] px-4 py-2 text-sm text-[#E9D9B4]">
-            Present
-          </span>
-        ) : (
-          <Button
-            type="button"
-            disabled={busy}
-            onClick={onPresent}
-            className="rounded-none bg-[#C5A059] text-[#141210] hover:bg-[#D4B373]"
-          >
-            I'm here
-          </Button>
-        )}
-        <Link
-          to="/courses/$courseId"
-          params={{ courseId: session.courseId }}
-          className="text-center text-sm text-[#D4B373] underline-offset-4 hover:underline"
+        <Button
+          type="button"
+          theme="dark"
+          disabled={busy}
+          onClick={onPresent}
+          className="rounded-none"
         >
-          Open course
-        </Link>
+          Mark present
+        </Button>
+        <OpenCourseButton courseId={session.courseId} />
       </div>
     </div>
+  )
+}
+
+function PresentSessionCard({
+  courseId,
+  courseTitle,
+  lessonTitle,
+  remainingLabel,
+}: {
+  courseId: string
+  courseTitle: string
+  lessonTitle: string | null
+  remainingLabel: string
+}) {
+  return (
+    <div className="flex flex-col gap-4 border border-[#C5A059]/50 bg-[#1A1716] p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-[0.65rem] font-medium tracking-[0.22em] text-[#C5A059] uppercase">
+          Attendance
+        </p>
+        <p className="mt-1 font-serif text-xl text-[#F8F4EC]">
+          You're marked present
+        </p>
+        <p className="mt-1 text-sm text-[#CFC6B7]">
+          {courseTitle}
+          {lessonTitle ? ` · ${lessonTitle}` : ''} · {remainingLabel} left
+        </p>
+      </div>
+      <OpenCourseButton courseId={courseId} />
+    </div>
+  )
+}
+
+function OpenCourseButton({ courseId }: { courseId: string }) {
+  return (
+    <ButtonLink
+      to="/courses/$courseId"
+      params={{ courseId }}
+      theme="dark"
+      className="rounded-none"
+    >
+      Open course
+    </ButtonLink>
   )
 }

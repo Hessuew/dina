@@ -3,6 +3,8 @@ export type OpenSessionView = {
   lessonId: string
   lessonTitle: string | null
   isOpen: boolean
+  /** Absolute window end; client countdown anchors here. */
+  closesAt: Date | string | null
   remainingLabel: string | null
   remainingMs: number
   alreadyPresent: boolean
@@ -14,6 +16,15 @@ export type LessonOption = {
   orderIndex: number
   hasSession: boolean
   isOpen: boolean
+}
+
+export function lessonPickerLabel(
+  lessons: Array<LessonOption>,
+  selectedLessonId: string,
+): string | undefined {
+  const lesson = lessons.find((item) => item.lessonId === selectedLessonId)
+  if (!lesson) return undefined
+  return `${lesson.lessonTitle}${lesson.hasSession ? ' · has session' : ''}`
 }
 
 export function pickDefaultLessonId(

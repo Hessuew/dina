@@ -2,6 +2,12 @@
 
 React hooks for data fetching and UI state.
 
+## useServerCountdown
+
+Server-anchored 1s countdown for any deadline (`deadlineAt` + `serverNow` skew).
+Used by exam take and live attendance timers. Re-anchors when either sample
+changes (poll / re-open). Alias: `useExamCountdown`.
+
 ## Structure
 
 Simple hooks live as flat files (`useMutation.ts`, `useDialogState.ts`, etc.).
