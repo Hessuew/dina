@@ -4,6 +4,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
@@ -91,7 +92,6 @@ export const submissions = pgTable(
       .notNull()
       .references(() => profiles.id, { onDelete: 'cascade' }),
     content: text('content'),
-    fileUrl: text('file_url'),
     status: submissionStatusEnum('status').notNull().default('draft'),
     grade: integer('grade'),
     feedback: text('feedback'),
@@ -100,7 +100,11 @@ export const submissions = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
+    uniqueIndex('submissions_assignment_student_unique').on(
+      table.assignmentId,
+      table.studentId,
+    ),
     // Students can view their own submissions
     pgPolicy('students_view_own_submissions', {
       for: 'select',

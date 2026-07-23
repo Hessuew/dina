@@ -117,6 +117,7 @@ useMutation({
 - `onError` takes precedence over `errorHandler`
 - `errorHandler` takes precedence over default `toastErrorHandler`
 - Default behavior displays user-friendly error messages via toast
+- Unexpected mutation failures are captured in Sentry before custom or default error handling; expected 4xx errors remain suppressed.
 
 ## useEntityMutation
 

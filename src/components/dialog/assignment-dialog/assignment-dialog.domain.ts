@@ -21,7 +21,6 @@ export type AssignmentData = {
 export type SubmissionData = {
   id: string
   content: string | null
-  fileUrl: string | null
   grade: number | null
   feedback: string | null
   student: { fullName: string }
@@ -154,11 +153,8 @@ export function resolveMaxGrade(
 
 export function getSubmissionPreviewModel(
   submission: SubmissionData | null | undefined,
-): { contentText: string; fileUrl: string | null } {
-  return {
-    contentText: submission?.content || 'No content provided',
-    fileUrl: submission?.fileUrl ?? null,
-  }
+): { contentText: string } {
+  return { contentText: submission?.content || 'No content provided' }
 }
 
 export function getSubmissionStudentName(

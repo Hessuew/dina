@@ -32,7 +32,6 @@ export const getAssignmentSubmissionCountSchema = z.object({
 export const createOrUpdateSubmissionSchema = z.object({
   assignmentId: z.uuid('Invalid assignment ID'),
   content: z.string().optional(),
-  fileUrl: z.url('Invalid file URL').optional(),
   submit: z.boolean().optional(),
 })
 

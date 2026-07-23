@@ -253,6 +253,20 @@
       "when": 1784500000000,
       "tag": "0038_media_type_video_file",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1784742522831,
+      "tag": "0039_submissions_assignment_student_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1784743000000,
+      "tag": "0040_remove_submission_file_url",
+      "breakpoints": true
     }
   ]
 }

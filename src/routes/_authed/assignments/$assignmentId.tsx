@@ -90,7 +90,6 @@ export const Route = createFileRoute('/_authed/assignments/$assignmentId')({
 type SubmissionWithStudent = {
   id: string
   content: string | null
-  fileUrl: string | null
   status: 'draft' | 'submitted' | 'graded' | 'returned'
   grade: number | null
   feedback: string | null
@@ -213,7 +212,6 @@ function useSubmissionForm(
       data: {
         assignmentId,
         content: submissionFormData.content,
-        fileUrl: submissionFormData.fileUrl,
         submit,
       },
     })

@@ -23,7 +23,11 @@ export type AppErrorCode =
   | 'PASSWORD_UPDATE_FAILED'
   | 'STORAGE_OPERATION_FAILED'
   | 'TARGET_NOT_STUDENT'
+  | 'SUBMISSION_SAVE_FAILED'
   | 'CAMPAIGN_LOCKED'
+
+export const UNEXPECTED_ERROR_MESSAGE =
+  'Something went wrong. Please try again.'
 
 export type AppErrorDetails = Record<string, unknown>
 
@@ -39,6 +43,7 @@ type AppErrorOptions = {
   userMessage: string
   internalMessage?: string
   details?: AppErrorDetails
+  cause?: unknown
 }
 
 type DomainErrorOptions = {
@@ -55,7 +60,7 @@ export class AppError extends Error {
   readonly details?: AppErrorDetails
 
   constructor(options: AppErrorOptions) {
-    super(options.userMessage)
+    super(options.userMessage, { cause: options.cause })
     this.name = 'AppError'
     this.code = options.code
     this.status = options.status
@@ -230,6 +235,8 @@ function isStaleServerFnError(error: unknown): boolean {
 export function shouldSuppressFromSentry(error: unknown): boolean {
   return (
     (isAppError(error) && error.status < 500) ||
+    (hasSerializedAppErrorShape(error) && error.status < 500) ||
+    (hasSerializedErrorShape(error) && error.status < 500) ||
     isInputValidationError(error) ||
     isTanStackRedirectResponse(error) ||
     isBenignNetworkTypeError(error) ||
@@ -255,7 +262,7 @@ export function toUserError(error: unknown): UserError {
     }
   }
 
-  if (hasSerializedErrorShape(error)) {
+  if (hasSerializedErrorShape(error) && error.status < 500) {
     return {
       code: error.code,
       message: error.message,
@@ -267,14 +274,14 @@ export function toUserError(error: unknown): UserError {
   if (error instanceof Error) {
     return {
       code: 'UNEXPECTED_ERROR',
-      message: error.message || 'An unexpected error occurred',
+      message: UNEXPECTED_ERROR_MESSAGE,
       status: 500,
     }
   }
 
   return {
     code: 'UNEXPECTED_ERROR',
-    message: 'An unexpected error occurred',
+    message: UNEXPECTED_ERROR_MESSAGE,
     status: 500,
   }
 }

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useCourseAttendance } from './useCourseAttendance'
 import type {
   AttendancePanelSlots,
@@ -30,6 +31,8 @@ type AttendanceControls = ReturnType<typeof useCourseAttendance>
 
 export function CourseAttendancePanel({ courseId, canManage, role }: Props) {
   const ctl = useCourseAttendance(courseId)
+  if (!ctl.state) return <AttendancePanelSkeleton />
+
   const slots = buildAttendancePanelSlots({
     state: ctl.state,
     canManage,
@@ -40,8 +43,35 @@ export function CourseAttendancePanel({ courseId, canManage, role }: Props) {
     <AttendanceSlotsView
       slots={slots}
       ctl={ctl}
-      serverNow={ctl.state?.serverNow ?? new Date()}
+      serverNow={ctl.state.serverNow}
     />
+  )
+}
+
+function AttendancePanelSkeleton() {
+  const [dotCount, setDotCount] = useState(0)
+
+  useEffect(() => {
+    const interval = window.setInterval(
+      () => setDotCount((count) => (count + 1) % 4),
+      400,
+    )
+    return () => window.clearInterval(interval)
+  }, [])
+
+  return (
+    <div
+      aria-busy="true"
+      className="flex h-49.5 items-center justify-center border border-[#C5A059]/40 bg-[#1C1A17] p-5 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.8)]"
+    >
+      <span className="sr-only">Loading attendance</span>
+      <span aria-hidden="true" className="text-sm text-[#CFC6B7]">
+        Loading
+        <span className="inline-block w-4 text-left">
+          {'.'.repeat(dotCount)}
+        </span>
+      </span>
+    </div>
   )
 }
 
@@ -69,11 +99,26 @@ function useLiveRemaining(
 ) {
   const deadline = closesAt ?? new Date(0)
   const countdown = useServerCountdown(deadline, serverNow)
-  const label =
-    closesAt && !countdown.isExpired
-      ? formatRemaining(countdown.remainingMs)
-      : (fallbackLabel ?? '0:00')
-  return { label, isExpired: !closesAt || countdown.isExpired }
+  if (!closesAt || countdown.isExpired) {
+    return { label: remainingFallback(fallbackLabel), isExpired: true }
+  }
+  return { label: formatRemaining(countdown.remainingMs), isExpired: false }
+}
+
+function remainingFallback(fallbackLabel: string | null) {
+  return fallbackLabel ?? '0:00'
+}
+
+function lessonTitleOr(title: string | null, fallback: string) {
+  return title ?? fallback
+}
+
+function teacherSessionTiming(open: OpenSessionView | null) {
+  if (!open) return { closesAt: null, remainingLabel: null }
+  return {
+    closesAt: open.closesAt,
+    remainingLabel: open.remainingLabel,
+  }
 }
 
 function TeacherSlot({
@@ -86,14 +131,19 @@ function TeacherSlot({
   serverNow: Date | string
 }) {
   const open = slots.openTeacherSession
+  const timing = teacherSessionTiming(open)
   const live = useLiveRemaining(
-    open?.closesAt,
+    timing.closesAt,
     serverNow,
-    open?.remainingLabel ?? null,
+    timing.remainingLabel,
   )
-  const locallyExpired = open !== null && live.isExpired
 
-  if (open && !live.isExpired) {
+  if (!open) {
+    return slots.showIdleTeacher ? (
+      <IdleTeacherSlot ctl={ctl} slots={slots} />
+    ) : null
+  }
+  if (!live.isExpired) {
     return (
       <OpenTeacherBody
         label={live.label}
@@ -104,7 +154,16 @@ function TeacherSlot({
     )
   }
   // Local expiry still has open in poll payload — show idle until poll clears.
-  if (!slots.showIdleTeacher && !locallyExpired) return null
+  return <IdleTeacherSlot ctl={ctl} slots={slots} />
+}
+
+function IdleTeacherSlot({
+  ctl,
+  slots,
+}: {
+  ctl: AttendanceControls
+  slots: AttendancePanelSlots
+}) {
   return (
     <IdleTeacherBody
       lessons={slots.lessons}
@@ -262,7 +321,7 @@ function StudentAttendanceCard({
           You're marked present
         </p>
         <p className="mt-1 text-sm text-[#CFC6B7]">
-          {openSession.lessonTitle ?? 'This lesson'} · {label} left
+          {lessonTitleOr(openSession.lessonTitle, 'This lesson')} · {label} left
         </p>
       </div>
     )
@@ -277,7 +336,7 @@ function StudentAttendanceCard({
         Mark yourself present
       </p>
       <p className="mt-1 text-sm text-[#E9D9B4]">
-        {openSession.lessonTitle ?? 'Lesson'} · {label} remaining
+        {lessonTitleOr(openSession.lessonTitle, 'Lesson')} · {label} remaining
       </p>
       <Button
         type="button"

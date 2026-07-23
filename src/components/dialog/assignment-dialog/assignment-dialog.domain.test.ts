@@ -38,7 +38,6 @@ function makeSubmission(
   return {
     id: 's1',
     content: 'My answer',
-    fileUrl: 'https://example.com/file.pdf',
     grade: 75,
     feedback: 'Good work',
     student: { fullName: 'Jane Doe' },
@@ -276,26 +275,21 @@ describe('resolveMaxGrade', () => {
 })
 
 describe('getSubmissionPreviewModel', () => {
-  it('returns content text and file url for a submission', () => {
+  it('returns content text for a submission', () => {
     expect(getSubmissionPreviewModel(makeSubmission())).toEqual({
       contentText: 'My answer',
-      fileUrl: 'https://example.com/file.pdf',
     })
   })
 
-  it('uses a placeholder for empty content and null file url', () => {
-    expect(
-      getSubmissionPreviewModel(makeSubmission({ content: '', fileUrl: null })),
-    ).toEqual({
+  it('uses a placeholder for empty content', () => {
+    expect(getSubmissionPreviewModel(makeSubmission({ content: '' }))).toEqual({
       contentText: 'No content provided',
-      fileUrl: null,
     })
   })
 
   it('handles a null submission', () => {
     expect(getSubmissionPreviewModel(null)).toEqual({
       contentText: 'No content provided',
-      fileUrl: null,
     })
   })
 })

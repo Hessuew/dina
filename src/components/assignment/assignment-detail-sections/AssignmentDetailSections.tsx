@@ -8,7 +8,6 @@ import type { SubmissionStatusVariant } from '@/utils/assignments/domain/assignm
 import { Button } from '@/components/ui/button'
 import { StatusChip } from '@/components/ui/status-chip'
 import { Field, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { DataTable } from '@/components/table/DataTable'
 import { DarkCard } from '@/components/ui/dark-card'
@@ -23,7 +22,6 @@ type Assignment = {
 
 type Submission = {
   content: string | null
-  fileUrl: string | null
   status: SubmissionStatusVariant
   grade: number | null
   feedback: string | null
@@ -33,7 +31,6 @@ type Submission = {
 type SubmissionWithStudent = {
   id: string
   content: string | null
-  fileUrl: string | null
   status: SubmissionStatusVariant
   grade: number | null
   feedback: string | null
@@ -48,7 +45,6 @@ type SubmissionWithStudent = {
 
 type SubmissionFormData = {
   content: string
-  fileUrl: string
 }
 
 type AssignmentDetailSectionsProps = {
@@ -219,36 +215,6 @@ function SubmissionContentField({
   )
 }
 
-function SubmissionFileUrlField({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: string
-  onChange: (fileUrl: string) => void
-  disabled: boolean
-}) {
-  return (
-    <Field>
-      <FieldLabel
-        htmlFor="fileUrl"
-        className="text-[0.68rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase"
-      >
-        File URL (Optional)
-      </FieldLabel>
-      <Input
-        id="fileUrl"
-        type="url"
-        placeholder="https://..."
-        value={value}
-        className="rounded-none border-white/12 bg-white/6 text-[#F8F4EC] placeholder:text-[#8E816D] focus:border-[#C5A059]/50"
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-      />
-    </Field>
-  )
-}
-
 function SubmissionFormActions({
   isSavingSubmission,
   onSaveSubmission,
@@ -308,16 +274,7 @@ function StudentSubmissionForm({
     <div className="space-y-5">
       <SubmissionContentField
         value={formData.content}
-        onChange={(content) =>
-          onChangeSubmissionFormData({ ...formData, content })
-        }
-        disabled={!canSubmit}
-      />
-      <SubmissionFileUrlField
-        value={formData.fileUrl}
-        onChange={(fileUrl) =>
-          onChangeSubmissionFormData({ ...formData, fileUrl })
-        }
+        onChange={(content) => onChangeSubmissionFormData({ content })}
         disabled={!canSubmit}
       />
 

@@ -28,14 +28,10 @@ export function formatSubmittedDate(submittedAt: Date | null): string {
 
 /** Initial submission form values, defaulting null fields to empty strings. */
 export function buildInitialSubmissionFormData(
-  submission:
-    | { content: string | null; fileUrl: string | null }
-    | null
-    | undefined,
-): { content: string; fileUrl: string } {
+  submission: { content: string | null } | null | undefined,
+): { content: string } {
   return {
     content: submission?.content || '',
-    fileUrl: submission?.fileUrl || '',
   }
 }
 

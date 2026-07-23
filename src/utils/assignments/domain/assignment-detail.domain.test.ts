@@ -66,26 +66,24 @@ describe('formatSubmittedDate', () => {
 })
 
 describe('buildInitialSubmissionFormData', () => {
-  it('uses the submission content and fileUrl when present', () => {
-    expect(
-      buildInitialSubmissionFormData({ content: 'hi', fileUrl: 'u' }),
-    ).toEqual({ content: 'hi', fileUrl: 'u' })
+  it('uses the submission content when present', () => {
+    expect(buildInitialSubmissionFormData({ content: 'hi' })).toEqual({
+      content: 'hi',
+    })
   })
 
-  it('falls back to empty strings for null fields', () => {
-    expect(
-      buildInitialSubmissionFormData({ content: null, fileUrl: null }),
-    ).toEqual({ content: '', fileUrl: '' })
+  it('falls back to an empty string for null content', () => {
+    expect(buildInitialSubmissionFormData({ content: null })).toEqual({
+      content: '',
+    })
   })
 
   it('falls back to empty strings when there is no submission', () => {
     expect(buildInitialSubmissionFormData(null)).toEqual({
       content: '',
-      fileUrl: '',
     })
     expect(buildInitialSubmissionFormData(undefined)).toEqual({
       content: '',
-      fileUrl: '',
     })
   })
 })

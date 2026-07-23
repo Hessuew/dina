@@ -162,12 +162,7 @@ function LessonPopover({
         role="dialog"
         aria-label={`${score.courseTitle} attendance`}
         className="fixed z-50 min-w-55 overflow-y-auto border border-[#C5A059]/40 bg-[#1A1716] p-3 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]"
-        style={{
-          top: coords.openUp ? undefined : coords.top,
-          bottom: coords.openUp ? window.innerHeight - coords.top : undefined,
-          left: coords.left,
-          maxHeight: coords.maxHeight,
-        }}
+        style={popoverStyle(coords)}
       >
         <p className="mb-2 text-[0.62rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
           {score.courseTitle}
@@ -177,4 +172,13 @@ function LessonPopover({
     </>,
     document.body,
   )
+}
+
+function popoverStyle(coords: PopoverCoords) {
+  return {
+    top: coords.openUp ? undefined : coords.top,
+    bottom: coords.openUp ? window.innerHeight - coords.top : undefined,
+    left: coords.left,
+    maxHeight: coords.maxHeight,
+  }
 }

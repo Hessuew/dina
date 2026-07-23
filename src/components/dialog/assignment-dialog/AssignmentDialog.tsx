@@ -157,36 +157,19 @@ function SubmissionPreview({
 }: {
   submission: SubmissionData | null | undefined
 }) {
-  const { contentText, fileUrl } = getSubmissionPreviewModel(submission)
+  const { contentText } = getSubmissionPreviewModel(submission)
 
   return (
-    <>
-      <div>
-        <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-          Student's Answer
-        </div>
-        <div className="mt-2 border border-white/10 bg-white/4 px-4 py-3">
-          <p className="text-sm whitespace-pre-wrap text-[#AFA28F]">
-            {contentText}
-          </p>
-        </div>
+    <div>
+      <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
+        Student's Answer
       </div>
-      {fileUrl && (
-        <div>
-          <div className="text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
-            File URL
-          </div>
-          <a
-            href={fileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-1 block text-sm text-[#9B7A41] hover:underline"
-          >
-            {fileUrl}
-          </a>
-        </div>
-      )}
-    </>
+      <div className="mt-2 border border-white/10 bg-white/4 px-4 py-3">
+        <p className="text-sm whitespace-pre-wrap text-[#AFA28F]">
+          {contentText}
+        </p>
+      </div>
+    </div>
   )
 }
 
@@ -243,7 +226,11 @@ function GradeDialogFooter({
 }) {
   return (
     <DialogFooter className="mt-6 rounded-none border-t border-white/8 bg-white/3 pt-6">
-      <Button variant="outline" theme="dark" onClick={() => onOpenChange(false)}>
+      <Button
+        variant="outline"
+        theme="dark"
+        onClick={() => onOpenChange(false)}
+      >
         Cancel
       </Button>
       <Button theme="dark" onClick={onSave} disabled={isSaving}>

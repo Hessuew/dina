@@ -7,6 +7,7 @@ import {
   getAllAssignmentsForTeacher,
 } from '@/utils/assignments/assignments'
 import { getCourses, getUpcomingLessons } from '@/utils/courses'
+import { getDashboardAssignmentScope } from '@/routes/_authed/dashboard.domain'
 
 export const Route = createFileRoute('/_authed/dashboard')({
   loader: async () => {
@@ -22,7 +23,7 @@ export const Route = createFileRoute('/_authed/dashboard')({
       assignmentsData = await getAllAssignmentsForStudent()
     } else {
       assignmentsData = await getAllAssignmentsForTeacher({
-        data: { scope: 'owned' },
+        data: { scope: getDashboardAssignmentScope(coursesData.role) },
       })
     }
 
