@@ -28,7 +28,10 @@
     "format:write": "prettier --write .",
     "docs:notion-check": "node scripts/notion-check.mjs",
     "quality:fix": "node scripts/quality-fix.mjs",
-    "quality:gate": "node scripts/quality-gate.mjs",
+    "quality:static": "node scripts/quality-gate.mjs static",
+    "quality:test": "node scripts/quality-gate.mjs test",
+    "quality:gate": "node scripts/quality-gate.mjs gate",
+    "quality:release": "node scripts/quality-gate.mjs release",
     "check": "prettier --write . && eslint --fix"
   },
   "dependencies": {

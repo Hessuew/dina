@@ -55,12 +55,12 @@ enforced-by: <how violations are caught — gate / eslint / review>
 
 ## Rules
 
-| Rule                                            | Scope                                | Enforced by                                                     |
-| ----------------------------------------------- | ------------------------------------ | --------------------------------------------------------------- |
-| [complexity](./complexity.md)                   | new/changed components & endpoints   | `quality:gate` (fallow `introduced` cyc/cog/CRAP) + ESLint warn |
-| [react-compiler-memo](./react-compiler-memo.md) | src/components/\*\*, src/routes/\*\* | review                                                          |
-| [db-types](./db-types.md)                       | src/\*\*                             | review                                                          |
-| [notion-sync](./notion-sync.md)                 | docs/\*\*, src/\*\*, agent docs      | review + `bun run docs:notion-check`                            |
+| Rule                                            | Scope                                | Enforced by                                                  |
+| ----------------------------------------------- | ------------------------------------ | ------------------------------------------------------------ |
+| [complexity](./complexity.md)                   | new/changed components & endpoints   | `quality:static` (Fallow `introduced` cyc/cog/CRAP) + ESLint |
+| [react-compiler-memo](./react-compiler-memo.md) | src/components/\*\*, src/routes/\*\* | review                                                       |
+| [db-types](./db-types.md)                       | src/\*\*                             | review                                                       |
+| [notion-sync](./notion-sync.md)                 | docs/\*\*, src/\*\*, agent docs      | review + `bun run docs:notion-check`                         |
 
 ## Backlog (candidate rules)
 

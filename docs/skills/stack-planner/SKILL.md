@@ -2,7 +2,7 @@
 name: stack-planner
 description: >
   Converts git working directory changes into bounded intent-based Graphite stacks,
-  runs a hard quality gate, submits them as ready PRs, links them to Linear
+  runs a fast pre-merge quality gate, submits them as ready PRs, links them to Linear
   issues, and generates AI descriptions for each PR. Full pipeline runs uninterrupted after a single approval gate.
   Uses non-interactive Graphite CLI only. Max 5 stacks per run.
 
@@ -19,12 +19,12 @@ description: >
     - "stack these changes"
 ---
 
-# Graphite Stack Planner — v7.0 (Quality-gated full pipeline)
+# Graphite Stack Planner — v7.1 (Fast pre-merge quality gate)
 
 ## 0. Core intent
 
 Convert:
-`git diff` → intent clusters → stacks → hard quality gate → submit as ready PRs → link Linear → generate PR descriptions
+`git diff` → intent clusters → stacks → fast quality gate → submit as ready PRs → link Linear → generate PR descriptions
 
 **Key constraint:**
 Stacks are ALWAYS created on top of the current active branch context in Graphite.
@@ -59,7 +59,7 @@ After the approval gate the full pipeline runs uninterrupted. graphite-linear-co
 gt c --ai --no-interactive
 ```
 
-**Deterministic quality gate:**
+**Deterministic fast quality gate:**
 
 ```bash
 QUALITY_BASE=<base-ref> bun run quality:gate
@@ -213,7 +213,7 @@ For each cluster (bottom → top):
 
 ---
 
-### Phase 3 — Hard Quality Gate
+### Phase 3 — Fast Pre-Merge Quality Gate
 
 After all stacks are created and before `gt submit`, run read-only checks only. Do not run formatters, fixers, codemods, or any other file-mutating command in this phase.
 
@@ -226,12 +226,15 @@ After all stacks are created and before `gt submit`, run read-only checks only. 
    Blocks submit on:
    - changed-file format check failure
    - changed-file lint failure
+   - changed-diff Fallow failure when governed paths changed
+   - Cloudflare type-generation failure
    - TypeScript failure
    - unit test failure
-   - integration test failure
-   - Fallow `verdict: "fail"`
 
-   `QUALITY_BASE=<QUALITY_BASE_COMMIT> bun run quality:gate` checks Prettier and ESLint only for files changed since the recorded base, then runs TypeScript, tests, and Fallow for full-stack signal. Fallow `verdict: "warn"` does not block, but summarize the warnings in the final output.
+   `QUALITY_BASE=<QUALITY_BASE_COMMIT> bun run quality:gate` checks existing changed files, then
+   runs full type and unit safety. It never runs integration tests or a production build; the
+   post-merge `Main release gate` owns those checks. Fallow `verdict: "warn"` does not block, but
+   summarize the warnings in the final output.
 
 2. Invoke the **reviewing-code** skill against the exact newly-created stack diff
 
@@ -357,7 +360,7 @@ Depends on:
 After plan, show pipeline summary:
 
 ```
-Pipeline: quality fix → stack (N) → hard quality gate → submit as ready PRs → link Linear → generate descriptions
+Pipeline: quality fix → stack (N) → fast quality gate → submit as ready PRs → link Linear → generate descriptions
 ```
 
 ---

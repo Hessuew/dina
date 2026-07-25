@@ -224,7 +224,7 @@ health` run. This is the durable mirror of `--production-health`. **Why it matte
 > `.../view/calendar-view/CalendarView.tsx`). Resolve the real path (glob/find on the function or
 > file name) before working, and correct the row's path as you close it.
 
-Per project practice, do **not** run the full `bun run quality:gate` as the inner loop. Instead:
+Per project practice, do **not** run `bun run quality:gate` as the inner loop. Instead:
 
 1. **Progress metric (per target):** `npx eslint <changed-file>` → confirm **zero**
    `max-lines-per-function` findings across every function in the changed file. That is the pass
@@ -234,7 +234,8 @@ Per project practice, do **not** run the full `bun run quality:gate` as the inne
 2. **Coverage of any new domain file:** scoped `vitest run` on its `*.domain.test.ts`.
 3. **`bun run typecheck`** clean.
 
-Leave the full gate run and the commit/PR to the developer.
+After concurrent workspace work is stable, run `bun run quality:gate` once. Integration and the
+production build run after merge in the serialized `Main release gate`.
 
 ### Sequencing & batching
 
@@ -284,6 +285,7 @@ Pre-populated from the `bunx fallow audit` snapshot (2026-06-20), production fun
 you work. `LOC` and `Tier` are the snapshot line count and size band. `File / site` is
 `path:line`.
 
+<!-- prettier-ignore -->
 | Status  | LOC | Tier      | Target (function)               | File / site                                                                             | Sub-components extracted                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Claimed at |
 | ------- | --- | --------- | ------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | --- | --- |
 | ✅ done | 443 | very-high | `EnrolmentForm`                 | `src/components/auth/enrolment-form/enrolment-form.tsx:128`                             | `IdentityStepFields`, `ContactStepFields`, `LocationStepFields`, `ChurchStepFields`, `StoryStepFields`, `RoofStepFields` (per-step `withForm` sections), `EnrolmentFormBody`, `EnrolmentPageFrame`, `EnrolmentSubmittedPanel`, `EnrolmentStepHeader`, `EnrolmentFooterNav`, `useEnrolmentStepNavigation` hook, `buildEnrolmentSubmissionData` domain                                                                                                                          | 2026-06-21 |

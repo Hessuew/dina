@@ -66,4 +66,7 @@ CASCADE` auto-drops a policy on `inquiry_responses` whose `USING` references
 - The tolerant migration runner is a known, scoped deviation: if a future
   migration legitimately fails on a policy statement, the runner will mask it.
   Non-policy DDL still fails loudly, which is the coverage that matters here.
-- `bun run test:all` (unit + integration) is the full release signal.
+- `bun run quality:gate` keeps full type and unit safety before merge without running this
+  suite. The serialized `Main release gate` runs `bun run quality:release`, where integration
+  tests remain part of the complete signal before the production build and any development
+  migration.

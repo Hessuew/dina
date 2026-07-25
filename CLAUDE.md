@@ -81,6 +81,17 @@ Do not finish without basic correctness check.
 - Avoid speculative edge-case handling unless required
 - Confirm no unintended side effects introduced
 
+### Repository verification
+
+- Run directly affected tests while implementing.
+- Run `bun run quality:gate` once after concurrent work is stable and before handoff. It compares
+  against `QUALITY_BASE`, defaulting to `origin/main`, and runs changed-file static checks,
+  Cloudflare type generation, the full typecheck, and all unit tests.
+- Documentation-only diffs are limited to `docs/**`, root Markdown, and pull-request-template
+  Markdown; every other path fails safe into type and unit verification.
+- Do not run `quality:release` locally. The serialized main workflow adds integration tests and
+  the production build after merge.
+
 ---
 
 ## Multi-Agent Safety Rules
@@ -122,7 +133,7 @@ Binding docs: [`docs/rules/complexity.md`](docs/rules/complexity.md), ADR 0010, 
 
 - Binding, always-on project rules live once in `docs/rules/<name>.md`; `.claude/rules` and `.devin/rules` are adapter symlinks to it. Edit only in `docs/rules/`, never through a symlink.
 - Before writing or editing a component or endpoint, read the applicable `docs/rules/*.md`. They are binding like the Core Priority rules above.
-- First rule: [`docs/rules/complexity.md`](docs/rules/complexity.md) — keep new/changed components and endpoints under the complexity limits (`bun run quality:gate` blocks newly introduced complexity).
+- First rule: [`docs/rules/complexity.md`](docs/rules/complexity.md) — keep new/changed components and endpoints under the complexity limits (`quality:static`, included by `quality:gate`, blocks newly introduced complexity).
 - Notion sync rule: [`docs/rules/notion-sync.md`](docs/rules/notion-sync.md) — run `bun run docs:notion-check` before final handoff when docs, architecture, ADRs, operations, incidents, risks, readiness, or maturity work changes, then update Notion or explain why it was skipped.
 
 ---
