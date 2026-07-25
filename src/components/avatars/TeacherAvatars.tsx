@@ -33,7 +33,7 @@ export function TeacherAvatars({
   }
 
   return (
-    <AvatarGroup>
+    <AvatarGroup className="min-w-0 flex-wrap gap-y-1">
       {teachers.map((teacher) => {
         const avatar = (
           <Avatar key={teacher.id} size={size}>

@@ -39,6 +39,7 @@ import {
   updatePost,
 } from '@/utils/post/posts'
 import { buildCommentsSectionViewModel } from '@/components/post/post-card/comments-section.domain'
+import { SessionImage } from '@/components/ui/session-image'
 import {
   appendToPreview,
   isEditedTimestamps,
@@ -77,7 +78,7 @@ function AuthorAvatar({
 
   if (avatarUrl) {
     return (
-      <img
+      <SessionImage
         src={avatarUrl}
         alt={fullName}
         className={cn(
@@ -1016,7 +1017,7 @@ function CommentAvatar({
 }) {
   if (avatarUrl) {
     return (
-      <img
+      <SessionImage
         src={avatarUrl}
         alt={fullName}
         className="size-7 shrink-0 border border-[#1A1A1A]/10 object-cover"

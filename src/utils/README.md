@@ -88,6 +88,7 @@ This folder is primarily where TanStack Start server functions live (via `create
     - Browser bytes upload directly to Supabase Storage.
     - Completion server functions persist canonical paths and remove replaced objects.
     - Read services batch-mint one-hour signed display URLs (ADR 0022).
+    - Image renderers pass signed avatar and thumbnail URLs through `useSessionPrivateImageUrl`. Its browser-only cache keys by stable signed-storage pathname, reuses the first URL across SPA navigation until near token expiry, and resets at authenticated-user changes. Public/external images and signed video/PDF URLs bypass this cache.
   - `password.ts`: password-related helpers for auth flows.
   - `seo.ts`: metadata helper.
 

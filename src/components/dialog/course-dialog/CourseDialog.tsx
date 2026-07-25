@@ -28,6 +28,7 @@ import {
   uploadCourseThumbnailFn,
 } from '@/utils/imageUpload'
 import { putFileToSignedUrl } from '@/utils/storage/private-upload'
+import { useSessionPrivateImageUrl } from '@/hooks/useSessionPrivateImageUrl'
 import { getTeacherName } from '@/utils/teachers/domain/teachers.domain'
 
 type CourseDialogProps = {
@@ -76,6 +77,8 @@ function ThumbnailUploadField({
   onFileChange,
   onClear,
 }: ThumbnailUploadFieldProps) {
+  const sessionThumbnailUrl = useSessionPrivateImageUrl(thumbnailUrl)
+
   return (
     <Field>
       <FieldLabel className="text-[0.68rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
@@ -89,10 +92,10 @@ function ThumbnailUploadField({
           onChange={onFileChange}
           className="hidden"
         />
-        {fileData || thumbnailUrl ? (
+        {fileData || sessionThumbnailUrl ? (
           <div className="relative aspect-video w-full max-w-sm overflow-hidden border border-white/10">
             <img
-              src={fileData || thumbnailUrl!}
+              src={fileData || sessionThumbnailUrl!}
               alt="Course thumbnail"
               className="size-full object-cover"
             />

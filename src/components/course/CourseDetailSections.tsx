@@ -21,6 +21,7 @@ import { resolveLessonRowView } from '@/components/course/lesson-row.domain'
 import { resolveLessonActionsView } from '@/components/course/lesson-actions.domain'
 import { CourseAttendancePanel } from '@/components/course/course-attendance/CourseAttendancePanel'
 import { ViewerDateTime } from '@/components/ui/viewer-date-time'
+import { useSessionPrivateImageUrl } from '@/hooks/useSessionPrivateImageUrl'
 
 type Lesson = {
   id: string
@@ -71,14 +72,16 @@ function CourseAboutCard({
   thumbnailUrl: string | null
   description: string | null
 }) {
+  const sessionThumbnailUrl = useSessionPrivateImageUrl(thumbnailUrl)
+
   return (
     <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
-      {thumbnailUrl && (
+      {sessionThumbnailUrl && (
         <div className="relative overflow-hidden border-b border-white/10">
           <div
             className="relative min-h-72 bg-cover bg-center sm:min-h-80"
             style={{
-              backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.18), rgba(7,7,8,0.68)), url(${thumbnailUrl})`,
+              backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.18), rgba(7,7,8,0.68)), url(${sessionThumbnailUrl})`,
             }}
           >
             <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_38%,rgba(197,160,89,0.10)_100%)]" />

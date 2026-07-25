@@ -21,6 +21,7 @@ import { PageLayout } from '@/components/layout/page-layout'
 import { EmptyState } from '@/components/ui/empty-state/EmptyState'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
 import { LibraryShelf } from '@/components/library/LibraryShelf'
+import { SessionImage } from '@/components/ui/session-image'
 
 export const Route = createFileRoute('/_authed/library/')({
   loader: async () => {
@@ -47,7 +48,7 @@ function YoutubeThumbCell({
       className="group relative block aspect-video w-28 border border-white/10 bg-black/20"
     >
       {thumbUrl ? (
-        <img
+        <SessionImage
           src={thumbUrl}
           alt={title}
           className="size-full object-cover transition-transform group-hover:scale-[1.02]"
@@ -87,7 +88,7 @@ function GenericThumbCell({
       className="group relative flex aspect-video w-28 items-center justify-center border border-white/10 bg-black/20 text-[#8E816D]"
     >
       {thumbUrl ? (
-        <img
+        <SessionImage
           src={thumbUrl}
           alt={title}
           className="size-full object-cover transition-transform group-hover:scale-[1.02]"

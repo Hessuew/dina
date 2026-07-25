@@ -9,6 +9,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e:dashboard": "playwright test dashboard.spec.ts",
     "test:all": "bun run test && bun run test:integration",
     "typecheck": "tsc --noEmit --noUnusedLocals false --noUnusedParameters false",
     "deploy": "bun run build && wrangler deploy",
@@ -69,6 +70,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.46.0",
     "@electric-sql/pglite": "^0.5.4",
+    "@playwright/test": "^1.62.0",
     "@tailwindcss/vite": "^4.3.3",
     "drizzle-kit": "^0.31.10",
     "vite-tsconfig-paths": "^6.1.1",

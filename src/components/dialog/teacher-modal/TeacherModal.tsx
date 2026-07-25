@@ -9,6 +9,7 @@ import {
   DialogHeader,
 } from '@/components/ui/dialog'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
+import { useSessionPrivateImageUrl } from '@/hooks/useSessionPrivateImageUrl'
 
 type TeacherModalProps = {
   teacher: TeacherWithCourse | null
@@ -29,12 +30,14 @@ function TeacherAvatarPanel({
   initials,
   lecturerTitle,
 }: AvatarPanelProps) {
+  const sessionAvatarUrl = useSessionPrivateImageUrl(avatarUrl)
+
   return (
     <div className="relative min-h-0 overflow-hidden border-b border-white/10 bg-[#171717] lg:border-r lg:border-b-0">
-      {avatarUrl ? (
+      {sessionAvatarUrl ? (
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${avatarUrl})` }}
+          style={{ backgroundImage: `url(${sessionAvatarUrl})` }}
           role="img"
           aria-label={fullName}
         />

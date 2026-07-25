@@ -92,7 +92,7 @@ function CourseListInternal({
             </Button>
           </div>
         )}
-        <div className="grid min-w-0 gap-6 sm:grid-cols-1 md:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6">
           {courses.map((course) => (
             <CourseCard key={course.id} course={course} role={role} />
           ))}
@@ -121,7 +121,7 @@ export function CourseList({
         <CourseListInternal courses={courses} role={role} />
       </div>
 
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <UpcomingLessonsList lessons={lessons} />
         <UpcomingAssignmentsList assignments={assignments} role={role} />
       </div>

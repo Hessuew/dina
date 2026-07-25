@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
 import { ButtonLink } from '@/components/ui/button-link'
 import { buildCourseCardViewModel } from '@/components/card/course-card/course-card.domain'
+import { useSessionPrivateImageUrl } from '@/hooks/useSessionPrivateImageUrl'
 
 type CourseCardProps = {
   course: {
@@ -108,7 +109,10 @@ function CourseTeacherChip({
   if (!courseTeachers?.length) return null
 
   return (
-    <div className="max-w-60 border border-white/12 bg-black/24 px-3 py-3 shadow-[0_24px_40px_-30px_rgba(0,0,0,0.55)] backdrop-blur-sm">
+    <div
+      data-course-teachers
+      className="max-w-full min-w-0 border border-white/12 bg-black/24 px-3 py-3 shadow-[0_24px_40px_-30px_rgba(0,0,0,0.55)] backdrop-blur-sm"
+    >
       <div className="text-[0.58rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
         Teachers
       </div>
@@ -134,7 +138,9 @@ function CourseImage({
   lessonCount: number
   theme: CourseCardTheme
 }) {
-  if (!course.thumbnailUrl) {
+  const thumbnailUrl = useSessionPrivateImageUrl(course.thumbnailUrl)
+
+  if (!thumbnailUrl) {
     return (
       <div
         className={cn(
@@ -153,21 +159,24 @@ function CourseImage({
     <div
       className="relative min-h-48 bg-cover bg-center sm:min-h-56"
       style={{
-        backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.18), rgba(7,7,8,0.68)), url(${course.thumbnailUrl})`,
+        backgroundImage: `linear-gradient(180deg, rgba(7,7,8,0.18), rgba(7,7,8,0.68)), url(${thumbnailUrl})`,
       }}
     >
       <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_38%,rgba(197,160,89,0.10)_100%)]" />
       <div className="relative flex min-h-48 flex-col justify-between p-5 sm:min-h-56 sm:p-6">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-2">
           {isTeacher && <CourseStatusBadge isPublished={course.isPublished} />}
           <div className="border border-white/12 bg-black/18 px-3 py-2 text-[0.8rem] font-medium tracking-[0.26em] text-[#E9D9B4] uppercase">
             {String(course.orderIndex ?? 0).padStart(2, '0')}
           </div>
         </div>
 
-        <div className="flex items-end justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
           <CourseTeacherChip courseTeachers={course.courseTeachers} />
-          <div className="flex items-center gap-1.5 text-[0.62rem] font-medium tracking-[0.22em] text-[#AFA28F] uppercase">
+          <div
+            data-course-lessons
+            className="flex min-w-0 items-center gap-1.5 text-[0.62rem] font-medium tracking-[0.18em] text-[#AFA28F] uppercase"
+          >
             <BookOpenIcon className="size-3" />
             {lessonCount} lessons
           </div>
@@ -195,7 +204,7 @@ function CourseProgress({
 
   return (
     <div className="mt-4 space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span
           className={cn(
             'text-[0.68rem] font-medium tracking-[0.2em] uppercase',
@@ -237,7 +246,7 @@ function CourseCardFooter({
   return (
     <div
       className={cn(
-        'mt-4 flex items-center justify-between border-t pt-4',
+        'mt-4 flex min-w-0 flex-wrap items-center justify-between gap-2 border-t pt-4',
         theme.divider,
       )}
     >
@@ -250,6 +259,8 @@ function CourseCardFooter({
         {isTeacher ? 'Edit course' : 'View course'}
       </span>
       <ButtonLink
+        aria-label={isTeacher ? 'Edit course' : 'View course'}
+        data-course-navigation
         to="/courses/$courseId"
         params={{ courseId }}
         className={cn(
@@ -300,7 +311,10 @@ export function CourseCard({
   const theme = getCourseCardTheme(isDark)
 
   return (
-    <div className={cn('min-w-0 border', theme.card)}>
+    <div
+      data-dashboard-course-card
+      className={cn('min-w-0 border', theme.card)}
+    >
       <div
         className={cn('relative overflow-hidden border-b', theme.imageBorder)}
       >

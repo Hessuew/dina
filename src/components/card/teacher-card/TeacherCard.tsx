@@ -1,5 +1,6 @@
 import { buildTeacherCardViewModel } from './teacher-card.domain'
 import type { TeacherWithCourse } from '@/types/teacher'
+import { useSessionPrivateImageUrl } from '@/hooks/useSessionPrivateImageUrl'
 
 type TeacherCardProps = {
   teacher: TeacherWithCourse
@@ -8,6 +9,7 @@ type TeacherCardProps = {
 
 export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
   const { initials, topLabel, gemImage } = buildTeacherCardViewModel(teacher)
+  const avatarUrl = useSessionPrivateImageUrl(teacher.avatarUrl)
 
   return (
     <div
@@ -18,10 +20,10 @@ export function TeacherCard({ teacher, onClick }: TeacherCardProps) {
       <div className="pointer-events-none absolute inset-[7px] z-10 border border-[#C5A059]/25 transition-colors duration-300 group-hover:border-[#C5A059]/45" />
 
       {/* Full-bleed image or initials fallback */}
-      {teacher.avatarUrl ? (
+      {avatarUrl ? (
         <div
           className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-          style={{ backgroundImage: `url(${teacher.avatarUrl})` }}
+          style={{ backgroundImage: `url(${avatarUrl})` }}
           role="img"
           aria-label={teacher.fullName}
         />

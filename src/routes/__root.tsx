@@ -30,6 +30,7 @@ import { DefaultCatchBoundary } from '@/components/navigation/DefaultCatchBounda
 import { NotFound } from '@/components/navigation/NotFound'
 import { Header } from '@/components/navigation/Header'
 import { signPrivateStoragePath } from '@/utils/storage/service/private-storage.service'
+import { useSessionPrivateImageCacheUser } from '@/hooks/useSessionPrivateImageUrl'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = getSupabaseServerClient()
@@ -132,6 +133,8 @@ function RootComponent() {
 // Browser-only: syncs the route-context user onto the client Sentry scope so
 // browser errors are traceable. `useEffect` never runs during SSR.
 function useSentryUser(user: UserContext | null | undefined) {
+  useSessionPrivateImageCacheUser(user?.id)
+
   React.useEffect(() => {
     if (user) {
       Sentry.setUser({ id: user.id, email: user.email, role: user.role })

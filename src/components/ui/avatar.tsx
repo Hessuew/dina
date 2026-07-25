@@ -4,6 +4,7 @@ import * as React from 'react'
 import { Avatar as AvatarPrimitive } from '@base-ui/react/avatar'
 
 import { cn } from '@/lib/utils'
+import { useSessionPrivateImageUrl } from '@/hooks/useSessionPrivateImageUrl'
 
 function Avatar({
   className,
@@ -25,9 +26,16 @@ function Avatar({
   )
 }
 
-function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props) {
+function AvatarImage({
+  className,
+  src,
+  ...props
+}: AvatarPrimitive.Image.Props) {
+  const sessionSrc = useSessionPrivateImageUrl(src)
+
   return (
     <AvatarPrimitive.Image
+      src={sessionSrc ?? undefined}
       data-slot="avatar-image"
       className={cn(
         'aspect-square size-full rounded-full object-cover',

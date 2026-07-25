@@ -39,7 +39,7 @@ function UpcomingLessonItem({
           <div className="mt-1 truncate font-serif text-base text-[#F8F4EC] group-hover:text-white">
             {lesson.title}
           </div>
-          <div className="mt-1.5 flex items-center gap-3 text-xs text-[#8E816D]">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#8E816D]">
             <div className="flex items-center gap-1">
               <CalendarIcon className="size-3" />
               <ViewerDateTime value={lesson.scheduledTime} pattern="MMM d" />

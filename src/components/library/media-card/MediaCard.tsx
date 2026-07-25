@@ -3,6 +3,7 @@ import { FileTextIcon } from 'lucide-react'
 import { buildMediaCardViewModel } from './media-card.domain'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import type { MediaCardViewModel, MediaTypeConfig } from './media-card.domain'
+import { useSessionPrivateImageUrl } from '@/hooks/useSessionPrivateImageUrl'
 
 type MediaCardProps = {
   item: MediaLibraryRow
@@ -164,12 +165,14 @@ export function MediaCard({
   size = 'default',
 }: MediaCardProps) {
   const view = buildMediaCardViewModel(item, viewerRole, size)
+  const thumbnailUrl = useSessionPrivateImageUrl(view.thumbnailUrl) ?? null
+  const sessionView = { ...view, thumbnailUrl }
 
   return (
     <div className={`group relative shrink-0 max-sm:w-full ${view.widthClass}`}>
       {/* Blurred thumbnail aura behind card */}
-      <MediaCardAura thumbnailUrl={view.thumbnailUrl} />
-      <MediaCardBody item={item} view={view} />
+      <MediaCardAura thumbnailUrl={thumbnailUrl} />
+      <MediaCardBody item={item} view={sessionView} />
     </div>
   )
 }

@@ -15,3 +15,4 @@ worker-configuration.d.ts
 /coverage
 /firstmate
 /.lavish
+/test-results
