@@ -49,6 +49,16 @@ describe('buildSubmissionHeaderViewModel', () => {
       ).toBe('Submit before the due date')
     })
 
+    it('shows late-accepted message when past due and can still submit', () => {
+      expect(
+        buildSubmissionHeaderViewModel({
+          ...base,
+          canSubmit: true,
+          isPastDue: true,
+        }).subtitle,
+      ).toBe('Late submissions accepted')
+    })
+
     it('shows past-due message when past due and cannot submit', () => {
       expect(
         buildSubmissionHeaderViewModel({
@@ -85,12 +95,12 @@ describe('buildSubmissionStatusViewModel', () => {
         { ...baseSubmission, status: 'submitted' },
         null,
       )
-      expect(vm?.statusVariant).toBe('submitted')
+      expect(vm.statusVariant).toBe('submitted')
     })
 
     it('is "draft" when status is "draft"', () => {
       const vm = buildSubmissionStatusViewModel(baseSubmission, null)
-      expect(vm?.statusVariant).toBe('draft')
+      expect(vm.statusVariant).toBe('draft')
     })
 
     it('is "draft" for any non-submitted status', () => {
@@ -98,15 +108,15 @@ describe('buildSubmissionStatusViewModel', () => {
         { ...baseSubmission, status: 'graded' },
         null,
       )
-      expect(vm?.statusVariant).toBe('draft')
+      expect(vm.statusVariant).toBe('draft')
     })
   })
 
   describe('submittedAt', () => {
     it('hides submitted-at row when submittedAt is null', () => {
       const vm = buildSubmissionStatusViewModel(baseSubmission, null)
-      expect(vm?.showSubmittedAt).toBe(false)
-      expect(vm?.submittedAtLabel).toBe('')
+      expect(vm.showSubmittedAt).toBe(false)
+      expect(vm.submittedAtLabel).toBe('')
     })
 
     it('shows submitted-at row with a locale string when date is present', () => {
@@ -115,16 +125,16 @@ describe('buildSubmissionStatusViewModel', () => {
         { ...baseSubmission, submittedAt: date },
         null,
       )
-      expect(vm?.showSubmittedAt).toBe(true)
-      expect(vm?.submittedAtLabel).toBe(date.toLocaleString())
+      expect(vm.showSubmittedAt).toBe(true)
+      expect(vm.submittedAtLabel).toBe(date.toLocaleString())
     })
   })
 
   describe('grade section', () => {
     it('hides grade section when grade is null', () => {
       const vm = buildSubmissionStatusViewModel(baseSubmission, null)
-      expect(vm?.showGradeSection).toBe(false)
-      expect(vm?.gradeLabel).toBe('')
+      expect(vm.showGradeSection).toBe(false)
+      expect(vm.gradeLabel).toBe('')
     })
 
     it('shows grade section when grade is present', () => {
@@ -132,8 +142,8 @@ describe('buildSubmissionStatusViewModel', () => {
         { ...baseSubmission, grade: 85 },
         100,
       )
-      expect(vm?.showGradeSection).toBe(true)
-      expect(vm?.gradeLabel).toBe('85 / 100')
+      expect(vm.showGradeSection).toBe(true)
+      expect(vm.gradeLabel).toBe('85 / 100')
     })
 
     it('defaults maxGrade to 100 when null', () => {
@@ -141,7 +151,7 @@ describe('buildSubmissionStatusViewModel', () => {
         { ...baseSubmission, grade: 72 },
         null,
       )
-      expect(vm?.gradeLabel).toBe('72 / 100')
+      expect(vm.gradeLabel).toBe('72 / 100')
     })
   })
 
@@ -151,7 +161,7 @@ describe('buildSubmissionStatusViewModel', () => {
         { ...baseSubmission, feedback: 'Great work!' },
         null,
       )
-      expect(vm?.showFeedback).toBe(false)
+      expect(vm.showFeedback).toBe(false)
     })
 
     it('hides feedback when feedback is null even if graded', () => {
@@ -159,7 +169,7 @@ describe('buildSubmissionStatusViewModel', () => {
         { ...baseSubmission, grade: 80, feedback: null },
         100,
       )
-      expect(vm?.showFeedback).toBe(false)
+      expect(vm.showFeedback).toBe(false)
     })
 
     it('hides feedback when feedback is empty string', () => {
@@ -167,7 +177,7 @@ describe('buildSubmissionStatusViewModel', () => {
         { ...baseSubmission, grade: 80, feedback: '' },
         100,
       )
-      expect(vm?.showFeedback).toBe(false)
+      expect(vm.showFeedback).toBe(false)
     })
 
     it('shows feedback when graded and feedback is present', () => {
@@ -175,8 +185,8 @@ describe('buildSubmissionStatusViewModel', () => {
         { ...baseSubmission, grade: 80, feedback: 'Great work!' },
         100,
       )
-      expect(vm?.showFeedback).toBe(true)
-      expect(vm?.feedback).toBe('Great work!')
+      expect(vm.showFeedback).toBe(true)
+      expect(vm.feedback).toBe('Great work!')
     })
   })
 })

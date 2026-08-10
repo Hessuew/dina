@@ -371,7 +371,7 @@ describe('createOrUpdateSubmissionService (integration)', () => {
     ).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 })
   })
 
-  it('rejects a submission after the due date', async () => {
+  it('accepts a submission after the due date while published', async () => {
     const { lessonId } = await seedCourseWithTeacher()
     const assignmentId = await seedAssignment({
       lessonId,
@@ -380,12 +380,12 @@ describe('createOrUpdateSubmissionService (integration)', () => {
     })
     const studentId = await seedProfile({ role: 'student' })
 
-    await expect(
-      createOrUpdateSubmissionService(
-        { assignmentId, submit: true },
-        studentId,
-      ),
-    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED', status: 400 })
+    const { submission } = await createOrUpdateSubmissionService(
+      { assignmentId, content: 'late answer', submit: true },
+      studentId,
+    )
+    expect(submission.status).toBe('submitted')
+    expect(submission.submittedAt).not.toBeNull()
   })
 
   it('rejects a submission to an unpublished assignment', async () => {

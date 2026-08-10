@@ -5,21 +5,17 @@ type Assignment = typeof assignments.$inferSelect
 type Submission = typeof submissions.$inferSelect
 
 /**
- * Validates that assignment is open for submissions based on status and due date
+ * Validates that assignment is open for submissions based on status only.
+ * Due date is soft after publish: late drafts and submits remain allowed.
+ * Teachers hard-close the window by setting status to draft/closed.
  */
 export function validateSubmissionWindow(
   assignment: Assignment,
-  now: Date,
+  _now: Date,
 ): void {
   if (assignment.status !== 'published') {
     throw new ValidationError('Assignment is not open for submissions', {
       details: { assignmentId: assignment.id, status: assignment.status },
-    })
-  }
-
-  if (assignment.dueDate < now) {
-    throw new ValidationError('Assignment due date has passed', {
-      details: { assignmentId: assignment.id, dueDate: assignment.dueDate },
     })
   }
 }

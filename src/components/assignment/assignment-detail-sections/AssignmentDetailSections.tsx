@@ -342,8 +342,8 @@ function SubmissionPanel({
         submissionCount={allSubmissions.length}
       />
 
-      {isStudent ? (
-        <div className="px-6 py-6">
+      <div className="px-6 py-6">
+        {isStudent ? (
           <StudentSubmissionForm
             assignment={assignment}
             submission={submission}
@@ -353,13 +353,13 @@ function SubmissionPanel({
             onChangeSubmissionFormData={onChangeSubmissionFormData}
             onSaveSubmission={onSaveSubmission}
           />
-        </div>
-      ) : (
-        <SubmissionsTable
-          allSubmissions={allSubmissions}
-          submissionsColumns={submissionsColumns}
-        />
-      )}
+        ) : (
+          <SubmissionsTable
+            allSubmissions={allSubmissions}
+            submissionsColumns={submissionsColumns}
+          />
+        )}
+      </div>
     </div>
   )
 }
