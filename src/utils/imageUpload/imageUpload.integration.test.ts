@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { getDb } from '../../../test/integration/db'
 import { seedCourse, seedProfile } from '../../../test/integration/seed'
+import { resetCreateSignedUrlsMock } from '../../../test/integration/storage-mocks'
 import {
   requestAvatarUploadService,
   requestCourseThumbnailUploadService,
@@ -41,18 +42,7 @@ beforeEach(() => {
       error: null,
     }),
   )
-  mocks.createSignedUrls
-    .mockReset()
-    .mockImplementation((paths: Array<string>) =>
-      Promise.resolve({
-        data: paths.map((path) => ({
-          path,
-          error: null,
-          signedUrl: `https://signed/${path}`,
-        })),
-        error: null,
-      }),
-    )
+  resetCreateSignedUrlsMock(mocks.createSignedUrls)
   mocks.remove
     .mockReset()
     .mockResolvedValue({ data: [{ name: 'removed' }], error: null })

@@ -35,6 +35,7 @@ import {
   seedProfile,
   seedSubmission,
 } from '@/../test/integration/seed'
+import { resetCreateSignedUrlsMock } from '@/../test/integration/storage-mocks'
 
 // The only external boundary in this area is Supabase storage, used by
 // deleteCourseService to remove a course thumbnail. We mock just that; the DB
@@ -57,18 +58,7 @@ vi.mock('@/utils/supabase', () => ({
 }))
 
 beforeEach(() => {
-  mocks.createSignedUrls
-    .mockReset()
-    .mockImplementation((paths: Array<string>) =>
-      Promise.resolve({
-        data: paths.map((path) => ({
-          path,
-          error: null,
-          signedUrl: `https://signed/${path}`,
-        })),
-        error: null,
-      }),
-    )
+  resetCreateSignedUrlsMock(mocks.createSignedUrls)
   mocks.remove
     .mockReset()
     .mockResolvedValue({ data: [{ name: 'removed' }], error: null })
