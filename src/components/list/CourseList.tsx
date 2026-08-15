@@ -92,7 +92,7 @@ function CourseListInternal({
             </Button>
           </div>
         )}
-        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
+        <div className="grid min-w-0 gap-6 sm:grid-cols-1 md:grid-cols-2">
           {courses.map((course) => (
             <CourseCard key={course.id} course={course} role={role} />
           ))}
@@ -116,8 +116,8 @@ export function CourseList({
   lessons,
 }: CourseListProps) {
   return (
-    <div className="grid gap-12 lg:grid-cols-3">
-      <div className="lg:col-span-2">
+    <div className="grid min-w-0 gap-12 lg:grid-cols-3">
+      <div className="min-w-0 lg:col-span-2">
         <CourseListInternal courses={courses} role={role} />
       </div>
 
