@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { getDb } from '../../../test/integration/db'
 import { seedMedia, seedProfile } from '../../../test/integration/seed'
+import { resetCreateSignedUrlsMock } from '../../../test/integration/storage-mocks'
 import type { CreateMediaInput } from '@/schemas/media.schema'
 import {
   createLibraryMediaService,
@@ -60,18 +61,7 @@ beforeEach(() => {
       error: null,
     }),
   )
-  mocks.createSignedUrls
-    .mockReset()
-    .mockImplementation((paths: Array<string>) =>
-      Promise.resolve({
-        data: paths.map((path) => ({
-          path,
-          error: null,
-          signedUrl: `https://signed/${path}`,
-        })),
-        error: null,
-      }),
-    )
+  resetCreateSignedUrlsMock(mocks.createSignedUrls)
   mocks.removeStorageObject.mockReset().mockResolvedValue(undefined)
 })
 

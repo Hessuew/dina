@@ -81,11 +81,7 @@ export function buildEventNavigation(
 }
 
 export type EventDetailIconKey =
-  | 'clock'
-  | 'book'
-  | 'graduation'
-  | 'mappin'
-  | 'video'
+  'clock' | 'book' | 'graduation' | 'mappin' | 'video'
 
 export type EventDetailRow = {
   iconKey: EventDetailIconKey
@@ -100,55 +96,72 @@ export type EventDetailsViewModel = {
   description: string | null
 }
 
-export function buildEventDetailsViewModel(
-  event: CalendarEvent,
-  isOverdue: boolean,
-): EventDetailsViewModel {
+function formatSpecialTimeRange(event: CalendarEvent): string {
+  const start = format(new Date(event.date), 'p')
+  if (!event.endDate) return start
+  const endDate = new Date(event.endDate)
+  const endFormat = isSameDay(new Date(event.date), endDate) ? 'p' : 'PPp'
+  return `${start} – ${format(endDate, endFormat)}`
+}
+
+function buildSpecialTimeRows(event: CalendarEvent): Array<EventDetailRow> {
+  if (event.type !== 'special') return []
+  return [{ iconKey: 'clock', text: formatSpecialTimeRange(event) }]
+}
+
+function buildLessonRows(event: CalendarEvent): Array<EventDetailRow> {
+  if (event.type !== 'lesson') return []
   const rows: Array<EventDetailRow> = []
-  if (event.type === 'special') {
-    const start = format(new Date(event.date), 'p')
-    const end = event.endDate
-      ? format(
-          new Date(event.endDate),
-          isSameDay(new Date(event.date), new Date(event.endDate))
-            ? 'p'
-            : 'PPp',
-        )
-      : null
-    rows.push({
-      iconKey: 'clock',
-      text: end ? `${start} – ${end}` : start,
-    })
-  }
-  if (event.type === 'lesson' && event.duration) {
+  if (event.duration) {
     rows.push({
       iconKey: 'clock',
       text: `${format(new Date(event.date), 'p')} · ${event.duration} min`,
     })
   }
-  if (event.type === 'lesson') {
-    rows.push({ iconKey: 'book', text: 'Lesson' })
-  }
-  if (event.type === 'assignment' && event.maxGrade != null) {
-    rows.push({
+  rows.push({ iconKey: 'book', text: 'Lesson' })
+  return rows
+}
+
+function buildAssignmentRows(event: CalendarEvent): Array<EventDetailRow> {
+  if (event.type !== 'assignment' || event.maxGrade == null) return []
+  return [
+    {
       iconKey: 'graduation',
       text: `Max grade: ${event.maxGrade} pts`,
-    })
-  }
-  if (event.location) {
-    rows.push({ iconKey: 'mappin', text: event.location })
-  }
-  if (event.zoomLink) {
-    rows.push({
+    },
+  ]
+}
+
+function buildLocationRows(event: CalendarEvent): Array<EventDetailRow> {
+  if (!event.location) return []
+  return [{ iconKey: 'mappin', text: event.location }]
+}
+
+function buildZoomRows(event: CalendarEvent): Array<EventDetailRow> {
+  if (!event.zoomLink) return []
+  return [
+    {
       iconKey: 'video',
       text: event.zoomLink,
       href: event.zoomLink,
-    })
-  }
+    },
+  ]
+}
+
+export function buildEventDetailsViewModel(
+  event: CalendarEvent,
+  isOverdue: boolean,
+): EventDetailsViewModel {
   return {
     dateLabel: format(new Date(event.date), 'PPPP'),
     isOverdue,
-    rows,
+    rows: [
+      ...buildSpecialTimeRows(event),
+      ...buildLessonRows(event),
+      ...buildAssignmentRows(event),
+      ...buildLocationRows(event),
+      ...buildZoomRows(event),
+    ],
     description: event.description ?? null,
   }
 }
