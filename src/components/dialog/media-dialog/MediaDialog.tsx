@@ -721,6 +721,16 @@ const MediaDocumentFields = withForm({
                 />
               )}
             </form.AppField>
+
+            <form.AppField name="allowsDownload">
+              {(field) => (
+                <field.SwitchField
+                  id="media-allows-download"
+                  label="Allow download"
+                  className="sm:col-span-2"
+                />
+              )}
+            </form.AppField>
           </>
         ) : null
       }

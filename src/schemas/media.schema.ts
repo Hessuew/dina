@@ -8,6 +8,7 @@ export const createMediaSchema = z.object({
   description: z.string().optional(),
   category: z.enum([...LIBRARY_TOPICS]),
   isPublished: z.boolean().optional().default(false),
+  allowsDownload: z.boolean().optional().default(false),
   kind: mediaKindEnum,
   url: z.string().min(1, 'URL is required'),
   fileSize: z.number().int().positive().optional(),

@@ -16,6 +16,7 @@ export async function seedMedia(overrides: {
   fileSize?: number
   thumbnailUrl?: string
   isPublished?: boolean
+  allowsDownload?: boolean
 }): Promise<string> {
   const id = overrides.id ?? randomUUID()
   const fileType = overrides.fileType ?? 'video'
@@ -54,6 +55,9 @@ export async function seedMedia(overrides: {
       : {}),
     ...(overrides.isPublished !== undefined
       ? { isPublished: overrides.isPublished }
+      : {}),
+    ...(overrides.allowsDownload !== undefined
+      ? { allowsDownload: overrides.allowsDownload }
       : {}),
   })
   return id

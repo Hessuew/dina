@@ -25,15 +25,19 @@ export function filterUpcomingAssignments(
 ): Array<Assignment> {
   return assignments
     .filter((assignment) => {
-      if (role === 'student') {
-        const isNotPastDue = new Date(assignment.dueDate) >= now
-        const isNotGraded =
-          !assignment.submission || assignment.submission.grade === null
-        return assignment.status === 'published' && isNotPastDue && isNotGraded
-      }
-      return assignment.status === 'published'
+      if (role !== 'student') return assignment.status === 'published'
+      return isStudentOpenAssignment(assignment, now)
     })
     .slice(0, 5)
+}
+
+function isStudentOpenAssignment(assignment: Assignment, now: Date): boolean {
+  if (assignment.status !== 'published') return false
+  if (assignment.submission?.grade != null) return false
+  const overdueAndSubmitted =
+    getSubmissionStatus(assignment) === 'Submitted' &&
+    isAssignmentOverdue(assignment.dueDate, now)
+  return !overdueAndSubmitted
 }
 
 export function getSubmissionStatus(

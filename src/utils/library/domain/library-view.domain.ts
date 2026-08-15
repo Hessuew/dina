@@ -2,7 +2,11 @@ import type { MediaLibraryRow } from '@/utils/library/library'
 import type { Role } from '@/utils/authz/types'
 import type { LibraryTopic } from '@/lib/library-topics'
 import { getYoutubeVideoId } from '@/utils/library/domain/youtube.domain'
-import { LIBRARY_TOPICS, buildShelves } from '@/lib/library-topics'
+import {
+  LIBRARY_TOPICS,
+  buildShelves,
+  shelfHasContent,
+} from '@/lib/library-topics'
 
 export function canCreateMedia(role: Role): boolean {
   return role === 'teacher' || role === 'admin'
@@ -52,7 +56,7 @@ export function getVisibleShelfTopics(media: Array<MediaLibraryRow>): {
   const shelves = buildShelves(media)
   const shelfTopics = LIBRARY_TOPICS.filter((topic) => {
     const s = shelves.get(topic)
-    return (s?.ebooks.length ?? 0) > 0 || (s?.audioVisual.length ?? 0) > 0
+    return s != null && shelfHasContent(s)
   })
   return { shelves, shelfTopics }
 }

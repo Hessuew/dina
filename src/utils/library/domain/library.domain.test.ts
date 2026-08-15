@@ -11,10 +11,13 @@ import {
   extractMediaLibraryFilePath,
   extractPdfFilePath,
   isOwnedMediaLibraryObjectUrl,
+  buildMediaDownloadFilename,
   needsSignedViewerUrl,
+  resolveAllowsDownload,
   resolveVideoFileExtension,
   resolveVideoMimeType,
   shouldRemoveMediaLibraryObject,
+  shouldShowMediaDownload,
   toFileType,
   validatePdfUpload,
   validateVideoUpload,
@@ -40,6 +43,7 @@ const makeRow = (
   fileSize: null,
   thumbnailUrl: null,
   isPublished: true,
+  allowsDownload: false,
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-01-01'),
   course: null,
@@ -386,5 +390,71 @@ describe('needsSignedViewerUrl', () => {
   it('is false for youtube video and other types', () => {
     expect(needsSignedViewerUrl('video')).toBe(false)
     expect(needsSignedViewerUrl('audio')).toBe(false)
+  })
+})
+
+describe('resolveAllowsDownload', () => {
+  it('is true only for document kind with true flag', () => {
+    expect(resolveAllowsDownload('document', true)).toBe(true)
+    expect(resolveAllowsDownload('document', false)).toBe(false)
+    expect(resolveAllowsDownload('document', undefined)).toBe(false)
+    expect(resolveAllowsDownload('youtube', true)).toBe(false)
+    expect(resolveAllowsDownload('video-file', true)).toBe(false)
+  })
+})
+
+describe('shouldShowMediaDownload', () => {
+  it('requires document + flag + non-empty viewerUrl', () => {
+    expect(
+      shouldShowMediaDownload({
+        fileType: 'document',
+        allowsDownload: true,
+        viewerUrl: 'https://signed/doc.pdf',
+      }),
+    ).toBe(true)
+    expect(
+      shouldShowMediaDownload({
+        fileType: 'document',
+        allowsDownload: false,
+        viewerUrl: 'https://signed/doc.pdf',
+      }),
+    ).toBe(false)
+    expect(
+      shouldShowMediaDownload({
+        fileType: 'document',
+        allowsDownload: true,
+        viewerUrl: null,
+      }),
+    ).toBe(false)
+    expect(
+      shouldShowMediaDownload({
+        fileType: 'video_file',
+        allowsDownload: true,
+        viewerUrl: 'https://signed/v.mp4',
+      }),
+    ).toBe(false)
+  })
+})
+
+describe('buildMediaDownloadFilename', () => {
+  it('combines sanitized title with extension from URL', () => {
+    expect(
+      buildMediaDownloadFilename(
+        'Week 1 Lecture!',
+        'https://cdn/u/123-uuid.pdf?token=x',
+      ),
+    ).toBe('Week 1 Lecture.pdf')
+  })
+
+  it('falls back when title is empty after sanitize', () => {
+    expect(buildMediaDownloadFilename('!!!', 'https://cdn/a.pptx')).toBe(
+      'download.pptx',
+    )
+  })
+
+  it('omits extension when URL has none', () => {
+    expect(buildMediaDownloadFilename('Notes', 'https://cdn/path/file')).toBe(
+      'Notes',
+    )
   })
 })

@@ -135,6 +135,44 @@ export function needsSignedViewerUrl(
   return fileType === 'document' || fileType === 'video_file'
 }
 
+/** Only Document media may expose an in-app Download control. */
+export function resolveAllowsDownload(
+  kind: MediaKind,
+  allowsDownload: boolean | undefined,
+): boolean {
+  return kind === 'document' && allowsDownload === true
+}
+
+export function shouldShowMediaDownload(params: {
+  fileType: MediaLibraryRow['fileType']
+  allowsDownload: boolean
+  viewerUrl: string | null
+}): boolean {
+  return (
+    params.fileType === 'document' &&
+    params.allowsDownload &&
+    params.viewerUrl != null &&
+    params.viewerUrl.length > 0
+  )
+}
+
+export function buildMediaDownloadFilename(
+  title: string,
+  fileUrl: string,
+): string {
+  const path = fileUrl.split('?')[0]
+  const dot = path.lastIndexOf('.')
+  const ext = dot === -1 ? '' : path.slice(dot + 1).toLowerCase()
+  const safeTitle =
+    title
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, ' ')
+      .slice(0, 80)
+      .trim() || 'download'
+  return ext ? `${safeTitle}.${ext}` : safeTitle
+}
+
 /** True when prior private library object should be removed after an update. */
 export function shouldRemoveMediaLibraryObject(params: {
   previousFileType: MediaLibraryRow['fileType']

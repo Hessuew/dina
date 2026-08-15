@@ -24,6 +24,7 @@ const makeRow = (
   fileSize: null,
   thumbnailUrl: null,
   isPublished: true,
+  allowsDownload: false,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides,
@@ -127,9 +128,14 @@ describe('buildLibraryThumbModel', () => {
 })
 
 describe('getVisibleShelfTopics', () => {
-  it('returns only topics whose shelf has ebooks or audioVisual content', () => {
+  it('returns only topics whose shelf has lectures, ebooks, or audioVisual content', () => {
     const media = [
-      makeRow({ id: 'a', category: 'Wisdom', fileType: 'document' }),
+      makeRow({
+        id: 'a',
+        category: 'Wisdom',
+        fileType: 'document',
+        allowsDownload: true,
+      }),
       makeRow({ id: 'b', category: 'Wisdom', fileType: 'video' }),
       makeRow({ id: 'c', category: 'Healing', fileType: 'video' }),
     ]
@@ -137,7 +143,20 @@ describe('getVisibleShelfTopics', () => {
 
     expect(shelfTopics).toContain('Wisdom')
     expect(shelfTopics).toContain('Healing')
-    expect(shelves.get('Wisdom')?.ebooks.length).toBeGreaterThan(0)
+    expect(shelves.get('Wisdom')?.lectures.length).toBeGreaterThan(0)
+  })
+
+  it('includes topics that only have lecture documents', () => {
+    const media = [
+      makeRow({
+        id: 'a',
+        category: 'Faith',
+        fileType: 'document',
+        allowsDownload: true,
+      }),
+    ]
+    const { shelfTopics } = getVisibleShelfTopics(media)
+    expect(shelfTopics).toEqual(['Faith'])
   })
 
   it('excludes topics with no content and non-topic categories', () => {

@@ -177,6 +177,7 @@ function LibraryShelves({
           <LibraryShelf
             key={topic}
             topic={topic}
+            lectures={shelf.lectures}
             ebooks={shelf.ebooks}
             audioVisual={shelf.audioVisual}
             viewerRole={viewerRole}

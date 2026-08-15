@@ -34,6 +34,7 @@ export type MediaLibraryRow = {
   fileSize: number | null
   thumbnailUrl: string | null
   isPublished: boolean
+  allowsDownload: boolean
   createdAt: Date
   updatedAt: Date
 }

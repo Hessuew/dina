@@ -28,6 +28,7 @@ const docMedia = {
   category: 'Faith',
   description: 'A lesson document',
   isPublished: true,
+  allowsDownload: true,
 } as unknown as MediaLibraryRow
 
 const videoMedia = {
@@ -39,6 +40,7 @@ const videoMedia = {
   category: 'Music',
   description: null,
   isPublished: false,
+  allowsDownload: false,
 } as unknown as MediaLibraryRow
 
 describe('fromFileType', () => {
@@ -96,6 +98,7 @@ describe('getInitialValues', () => {
       kind: 'document',
       url: '',
       isPublished: true,
+      allowsDownload: true,
     })
   })
 
@@ -107,6 +110,7 @@ describe('getInitialValues', () => {
       kind: 'youtube',
       url: '',
       isPublished: false,
+      allowsDownload: false,
     })
   })
 
@@ -433,6 +437,7 @@ describe('buildMediaPayload', () => {
     kind: 'youtube' as const,
     url: 'https://youtube.com/watch?v=abc',
     isPublished: true,
+    allowsDownload: true,
   }
 
   it('maps all fields from the form value', () => {
@@ -450,9 +455,25 @@ describe('buildMediaPayload', () => {
       kind: 'youtube',
       url: 'https://youtube.com/watch?v=abc',
       isPublished: true,
+      allowsDownload: false,
       fileSize: undefined,
       courseId: 'c1',
     })
+  })
+
+  it('keeps allowsDownload only for document kind', () => {
+    expect(
+      buildMediaPayload({
+        value: {
+          ...value,
+          kind: 'document',
+          allowsDownload: true,
+        },
+        url: 'path/doc.pdf',
+        fileSize: 10,
+        courseId: undefined,
+      }).allowsDownload,
+    ).toBe(true)
   })
 
   it('converts empty description to undefined', () => {
