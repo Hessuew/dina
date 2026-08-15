@@ -4,6 +4,7 @@ import type { StudentWithStats } from '@/types/student'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
 import { AttendanceScoreCell } from '@/components/view/students-view/AttendanceScoreCell'
+import { SessionImage } from '@/components/ui/session-image'
 
 type StudentsViewProps = {
   students: Array<StudentWithStats>
@@ -36,7 +37,7 @@ function nameColumn() {
       return (
         <div className="flex items-center gap-3">
           {student.avatarUrl ? (
-            <img
+            <SessionImage
               src={student.avatarUrl}
               alt={student.fullName}
               className="size-8 shrink-0 border border-white/10 object-cover"

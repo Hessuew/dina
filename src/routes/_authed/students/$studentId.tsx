@@ -17,6 +17,7 @@ import {
   shouldShowOverdueBadge,
 } from '@/utils/student/domain/student-detail-view.domain'
 import { cn } from '@/lib/utils'
+import { SessionImage } from '@/components/ui/session-image'
 
 export const Route = createFileRoute('/_authed/students/$studentId')({
   beforeLoad: async () => {
@@ -57,7 +58,7 @@ function StudentInfoCard({
       <div className="flex items-start gap-6 px-6 py-6">
         <div className="shrink-0">
           {student.avatarUrl ? (
-            <img
+            <SessionImage
               src={student.avatarUrl}
               alt={student.fullName}
               className="size-20 border border-white/10 object-cover"

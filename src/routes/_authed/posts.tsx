@@ -41,6 +41,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { signPrivateStoragePath } from '@/utils/storage/service/private-storage.service'
+import { SessionImage } from '@/components/ui/session-image'
 
 const fetchCurrentUser = createServerFn({ method: 'POST' }).handler(
   async () => {
@@ -510,7 +511,7 @@ type CurrentUser = {
 function ComposerAvatar({ currentUser }: { currentUser: CurrentUser }) {
   if (currentUser.avatarUrl) {
     return (
-      <img
+      <SessionImage
         src={currentUser.avatarUrl}
         alt={currentUser.fullName}
         className="size-9 shrink-0 border border-[#1A1A1A]/10 object-cover"

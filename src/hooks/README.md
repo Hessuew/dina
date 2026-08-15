@@ -82,6 +82,7 @@ export function useTeachers(shouldFetch: boolean) {
 - `useMutation` — Generic mutation hook with configurable error handling and `isPending` convenience property
 - `useEntityMutation` — High-level CRUD mutation hook with toast notifications, router invalidation, and `isAnyPending` convenience property
 - `useIsMobile` — Mobile viewport detection (768px breakpoint)
+- `useSessionPrivateImageUrl` — Reuses one signed avatar or thumbnail URL per stable private-storage pathname during an authenticated SPA session. It refreshes from an incoming URL near token expiry; the root auth boundary clears its browser-only cache when the user changes or logs out.
 
 ## Error Handling
 

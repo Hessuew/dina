@@ -49,14 +49,19 @@ function AssignmentRowMeta({
   teacherStatsText: string | null
 }) {
   return (
-    <div className="mt-1.5 flex items-center justify-between text-xs">
-      <div className={cn('flex items-center gap-1', dueDateClassName)}>
+    <div className="mt-1.5 flex min-w-0 flex-wrap items-center justify-between gap-2 text-xs">
+      <div
+        className={cn(
+          'flex min-w-0 flex-wrap items-center gap-1',
+          dueDateClassName,
+        )}
+      >
         <CalendarIcon className="size-3" />
         <span>Due {formattedDueDate}</span>
         {overdue && <span className="ml-1 text-[#C5A059]">(Overdue)</span>}
       </div>
       {teacherStatsText && (
-        <div className="text-[#8E816D]">{teacherStatsText}</div>
+        <div className="min-w-0 text-[#8E816D]">{teacherStatsText}</div>
       )}
     </div>
   )
@@ -95,7 +100,7 @@ export function UpcomingAssignmentRow({
           {idx + 1}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="text-[0.62rem] font-medium tracking-[0.26em] text-[#D4B373] uppercase">
                 {assignment.lesson.course.title}

@@ -13,6 +13,7 @@ Append-only proposals for unrelated production and test code improvements. Follo
 
 <!-- newest first; remove a line only when a focused improvement task handles it -->
 
+- [2026-07-25] target: scripts/seed-development.ts:findUserByEmail · effort: 15/100 · type: fix · observation: `bun run db:seed:development` missed an existing auth user, attempted `createUser`, and failed with Supabase `email_exists`, leaving canonical development credentials stale. · suggestion: make user pagination/lookup reliably find existing emails and cover the duplicate-user reconciliation path with a focused test. · [model]
 - [2026-07-20] target: src/components/course/CourseDetailSections.tsx · effort: 5/100 · type: fix · observation: `tsc` reports unused `role` param (TS6133). · suggestion: remove unused binding or prefix `_role`. · [model]
 - [2026-07-20] target: src/components/ui/pagination.tsx · effort: 5/100 · type: fix · observation: `tsc` reports unused `PaginationLink` (TS6133). · suggestion: export/use or remove dead import/local. · [model]
 - [2026-07-20] target: src/utils/student/service/student.service.ts:getStudentDetailService · effort: 25/100 · type: better · observation: detail "enrollments" still mirrors all courses with hardcoded `active` status (called out in integration test). · suggestion: wire real course enrollments when product needs it. · [model]

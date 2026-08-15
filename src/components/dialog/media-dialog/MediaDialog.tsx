@@ -25,6 +25,7 @@ import { toUserError } from '@/utils/errors'
 import { useAppForm, withForm } from '@/hooks/form'
 import { useEntityMutation } from '@/hooks/useEntityMutation'
 import { useFileUpload } from '@/hooks/useFileUpload'
+import { useSessionPrivateImageUrl } from '@/hooks/useSessionPrivateImageUrl'
 import { Button } from '@/components/ui/button'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -470,9 +471,10 @@ function ThumbnailControl({
   thumbnailUrl,
   onClearThumbnail,
 }: ThumbnailControlProps) {
+  const sessionThumbnailUrl = useSessionPrivateImageUrl(thumbnailUrl)
   const previewSrc = getThumbnailPreviewSrc({
     fileData: thumbUpload.fileData,
-    thumbnailUrl,
+    thumbnailUrl: sessionThumbnailUrl ?? null,
   })
 
   return (

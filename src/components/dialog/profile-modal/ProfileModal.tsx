@@ -18,6 +18,7 @@ import {
 import type { ProfileModalUser } from './profile-modal.domain'
 import { toUserError } from '@/utils/errors'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
+import { useSessionPrivateImageUrl } from '@/hooks/useSessionPrivateImageUrl'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -233,12 +234,14 @@ function ProfileAvatarPanel({
   onAvatarChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   isUploading: boolean
 }) {
+  const avatarUrl = useSessionPrivateImageUrl(user.avatarUrl)
+
   return (
     <div className="relative min-h-0 overflow-hidden border-b border-white/10 bg-[#171717] lg:border-r lg:border-b-0">
-      {user.avatarUrl ? (
+      {avatarUrl ? (
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${user.avatarUrl})` }}
+          style={{ backgroundImage: `url(${avatarUrl})` }}
           role="img"
           aria-label={getProfileDisplayName(user)}
         />
