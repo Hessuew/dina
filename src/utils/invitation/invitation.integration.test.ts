@@ -264,6 +264,21 @@ describe('resendInvitationService (integration)', () => {
     expect(mocks.sendEmail).toHaveBeenCalledOnce()
   })
 
+  it('admin resends an expired pending invitation → expiry renewed', async () => {
+    const adminId = await seedProfile({ role: 'admin' })
+    const { id, token: oldToken } = await seedInvitation({
+      status: 'pending',
+      expiresAt: new Date(Date.now() - 60_000),
+    })
+
+    await resendInvitationService({ id }, adminId)
+
+    const row = await findInvitationById(id)
+    expect(row?.token).not.toBe(oldToken)
+    expect(row?.expiresAt.getTime()).toBeGreaterThan(Date.now())
+    expect(mocks.sendEmail).toHaveBeenCalledOnce()
+  })
+
   it('reverts to the old token when the email fails to send', async () => {
     const adminId = await seedProfile({ role: 'admin' })
     const { id, token: oldToken } = await seedInvitation({ status: 'pending' })

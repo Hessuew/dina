@@ -10,6 +10,7 @@ import {
   calculateInvitationExpiry,
   generateSecureToken,
   validateInvitationActive,
+  validateInvitationPending,
 } from '@/utils/invitation/domain/invitations.domain'
 import {
   deleteInvitationById,
@@ -236,7 +237,7 @@ export async function resendInvitationService(
     })
   }
 
-  validateInvitationActive(invitation, new Date())
+  validateInvitationPending(invitation)
 
   const oldToken = invitation.token
   const oldExpiresAt = invitation.expiresAt

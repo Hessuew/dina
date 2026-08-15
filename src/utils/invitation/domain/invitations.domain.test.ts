@@ -4,6 +4,7 @@ import {
   calculateInvitationExpiry,
   generateSecureToken,
   validateInvitationActive,
+  validateInvitationPending,
 } from './invitations.domain'
 import { ConflictError, ValidationError } from '@/utils/errors'
 
@@ -72,5 +73,17 @@ describe('validateInvitationActive', () => {
     const boundary = new Date('2025-06-01T00:00:00Z')
     const invitation = { status: 'pending', expiresAt: boundary }
     expect(() => validateInvitationActive(invitation, boundary)).not.toThrow()
+  })
+})
+
+describe('validateInvitationPending', () => {
+  it('allows an expired pending invitation', () => {
+    const invitation = { status: 'pending', expiresAt: new Date('2020-01-01') }
+    expect(() => validateInvitationPending(invitation)).not.toThrow()
+  })
+
+  it.each(['accepted', 'revoked'])('rejects a %s invitation', (status) => {
+    const invitation = { status, expiresAt: new Date('2099-01-01') }
+    expect(() => validateInvitationPending(invitation)).toThrow(ConflictError)
   })
 })
