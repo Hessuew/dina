@@ -17,6 +17,9 @@ Defines eng + repo nav guidance for AI changes.
 - **Framework**: TanStack Start + React + TanStack Router file-based routing.
 - **Routing**: `src/routes/**` with root route in `src/routes/__root.tsx`.
 - **Server logic**: TanStack Start server functions via `createServerFn`.
+  Same-origin RPC only: `src/start.tsx` registers `createCsrfMiddleware`
+  (`filter: handlerType === 'serverFn'`) first on `requestMiddleware`.
+  Cross-origin callers use server routes, not server functions.
 - **Database**: Postgres via Drizzle.
   - DB entrypoint: `src/db/index.ts` exports `getDb()` and `withDbConnection()`.
   - Cloudflare Hyperdrive via `cloudflare:workers` env (`HYPERDRIVE.connectionString`).
