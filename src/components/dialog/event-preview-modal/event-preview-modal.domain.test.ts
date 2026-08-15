@@ -145,7 +145,7 @@ describe('buildEventDetailsViewModel', () => {
     )
     expect(vm.dateLabel).toContain('2026')
     expect(vm.isOverdue).toBe(true)
-    expect(vm.rows).toEqual([])
+    expect(vm.rows).toEqual([{ iconKey: 'clock', text: expect.any(String) }])
     expect(vm.description).toBeNull()
   })
 
@@ -157,6 +157,57 @@ describe('buildEventDetailsViewModel', () => {
     const duration = vm.rows.find((r) => r.iconKey === 'clock')
     expect(duration?.text).toContain('45 min')
     expect(vm.rows.some((r) => r.iconKey === 'book')).toBe(true)
+  })
+
+  it('shows a scheduled event start time without requiring an end', () => {
+    const vm = buildEventDetailsViewModel(
+      makeEvent({ type: 'special', specialCategory: 'lesson', endDate: null }),
+      false,
+    )
+    expect(vm.rows).toEqual([{ iconKey: 'clock', text: expect.any(String) }])
+    expect(vm.rows[0].text).not.toContain('–')
+  })
+
+  it('shows a scheduled event end time when present', () => {
+    const vm = buildEventDetailsViewModel(
+      makeEvent({
+        type: 'special',
+        specialCategory: 'lesson',
+        endDate: new Date('2026-06-19T11:00:00Z'),
+      }),
+      false,
+    )
+    expect(vm.rows[0].text).toContain('–')
+  })
+
+  it('shows a different end date when an event spans multiple days', () => {
+    const vm = buildEventDetailsViewModel(
+      makeEvent({
+        type: 'special',
+        endDate: new Date('2026-06-20T11:00:00Z'),
+      }),
+      false,
+    )
+    expect(vm.rows[0].text).toContain('Jun')
+  })
+
+  it('includes event location and Zoom link details', () => {
+    const vm = buildEventDetailsViewModel(
+      makeEvent({
+        type: 'special',
+        location: 'Room 4',
+        zoomLink: 'https://zoom.test/lesson',
+      }),
+      false,
+    )
+    expect(vm.rows.slice(1)).toEqual([
+      { iconKey: 'mappin', text: 'Room 4' },
+      {
+        iconKey: 'video',
+        text: 'https://zoom.test/lesson',
+        href: 'https://zoom.test/lesson',
+      },
+    ])
   })
 
   it('omits the duration row for a lesson without a duration', () => {

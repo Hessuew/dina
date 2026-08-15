@@ -58,6 +58,9 @@ Database access layer and schema definitions.
       - Stores academy-wide General Zoom Links and links owned by a Teacher-user or Admin.
       - General rows have no `teacher_id`; teacher rows require one and cascade on owner deletion.
       - Student visibility follows `discipleship_assignments` without granting Student SELECT on that table (ADR 0019).
+    - `calendar_events`
+      - Supports lesson, chapel, exam, and personal categories.
+      - Requires a start time; end time is optional for open-ended calendar entries.
     - `whatsapp_messages` / `whatsapp_campaign_locks`
       - Audit/logging and per-campaign locking for admin WhatsApp campaigns.
     - `email_messages` / `email_campaign_locks`

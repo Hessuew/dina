@@ -38,6 +38,7 @@ export const invitationStatusEnum = pgEnum('invitation_status', [
 export const calendarEventCategoryEnum = pgEnum('calendar_event_category', [
   'exam',
   'chapel',
+  'lesson',
   'personal',
 ])
 export const zoomLinkSectionEnum = pgEnum('zoom_link_section', [

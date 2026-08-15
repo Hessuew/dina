@@ -1,12 +1,13 @@
 import { z } from 'zod'
+import { calendarEventCategoryEnum } from '@/db/schema'
 
-const categoryEnum = z.enum(['exam', 'chapel', 'personal'])
+const categoryEnum = z.enum(calendarEventCategoryEnum.enumValues)
 
 export const createEventSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
   startTime: z.coerce.date(),
-  endTime: z.coerce.date(),
+  endTime: z.coerce.date().optional(),
   location: z.string().optional(),
   zoomLink: z.string().optional(),
   category: categoryEnum.optional(),
@@ -18,7 +19,7 @@ export const updateEventSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
   startTime: z.coerce.date(),
-  endTime: z.coerce.date(),
+  endTime: z.coerce.date().optional(),
   location: z.string().optional(),
   zoomLink: z.string().optional(),
   category: categoryEnum.optional(),

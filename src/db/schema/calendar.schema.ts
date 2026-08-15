@@ -14,7 +14,7 @@ export const calendarEvents = pgTable(
     title: text('title').notNull(),
     description: text('description'),
     startTime: timestamp('start_time').notNull(),
-    endTime: timestamp('end_time').notNull(),
+    endTime: timestamp('end_time'),
     location: text('location'),
     zoomLink: text('zoom_link'),
     category: calendarEventCategoryEnum('category'),

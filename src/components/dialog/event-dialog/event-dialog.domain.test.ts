@@ -51,12 +51,14 @@ describe('getEventDefaultValues', () => {
       'edit',
       makeEvent({
         description: null,
+        endTime: null,
         location: null,
         zoomLink: null,
         category: null,
       }),
     )
     expect(values.description).toBe('')
+    expect(values.endTime).toBe('')
     expect(values.location).toBe('')
     expect(values.zoomLink).toBe('')
     expect(values.category).toBe('')
@@ -100,6 +102,15 @@ describe('buildEventViewModel', () => {
     })
   })
 
+  it('derives the lesson category display', () => {
+    const vm = buildEventViewModel(makeEvent({ category: 'lesson' }))
+    expect(vm.category).toEqual({
+      iconKey: 'lesson',
+      label: 'Lesson',
+      chipClass: expect.stringContaining('emerald'),
+    })
+  })
+
   it('returns a null category when the event has none', () => {
     expect(
       buildEventViewModel(makeEvent({ category: null })).category,
@@ -126,6 +137,18 @@ describe('buildEventViewModel', () => {
     expect(vm.detailRows[0].text).toContain('2026')
     expect(vm.detailRows[0].href).toBeNull()
     expect(vm.detailRows[1].text).toContain('–')
+  })
+
+  it('shows only the start time when the event has no end time', () => {
+    const vm = buildEventViewModel(makeEvent({ endTime: null }))
+    expect(vm.detailRows[1].text).not.toContain('–')
+  })
+
+  it('shows the end date when an event spans multiple days', () => {
+    const vm = buildEventViewModel(
+      makeEvent({ endTime: new Date(2026, 5, 20, 11, 0) }),
+    )
+    expect(vm.detailRows[1].text).toContain('Jun')
   })
 
   it('adds a location row when a location is present', () => {

@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import {
   AlertTriangleIcon,
+  BookOpenIcon,
   CalendarDaysIcon,
   HeartHandshakeIcon,
   UserIcon,
@@ -52,6 +53,7 @@ export const Route = createFileRoute('/_authed/calendar')({
 const SPECIAL_ICON: Record<SpecialEventCategory, React.ElementType> = {
   chapel: HeartHandshakeIcon,
   exam: AlertTriangleIcon,
+  lesson: BookOpenIcon,
   personal: UserIcon,
   other: CalendarDaysIcon,
 }
@@ -69,6 +71,11 @@ const SPECIAL_STYLES: Record<
     chip: 'border-red-500/30 bg-red-950/40 text-red-300',
     dot: 'bg-red-400',
     label: 'Exam',
+  },
+  lesson: {
+    chip: 'border-emerald-500/30 bg-emerald-950/40 text-emerald-300',
+    dot: 'bg-emerald-400',
+    label: 'Lesson',
   },
   personal: {
     chip: 'border-sky-500/30 bg-sky-950/40 text-sky-300',

@@ -1,4 +1,4 @@
-import { format } from 'date-fns'
+import { format, isSameDay } from 'date-fns'
 import type { CalendarEventRow } from '@/utils/event/events'
 import { toDatetimeLocalValue } from '@/utils/datetime'
 
@@ -23,7 +23,7 @@ export function getEventDefaultValues(
       title: event.title,
       description: event.description ?? '',
       startTime: toDatetimeLocalValue(event.startTime),
-      endTime: toDatetimeLocalValue(event.endTime),
+      endTime: event.endTime ? toDatetimeLocalValue(event.endTime) : '',
       location: event.location ?? '',
       zoomLink: event.zoomLink ?? '',
       category: event.category ?? '',
@@ -45,12 +45,14 @@ export type EventCategory = NonNullable<CalendarEventRow['category']>
 const CATEGORY_LABELS: Record<EventCategory, string> = {
   chapel: 'Chapel',
   exam: 'Exam',
+  lesson: 'Lesson',
   personal: 'Personal',
 }
 
 const CATEGORY_CHIP: Record<EventCategory, string> = {
   chapel: 'border-violet-500/30 bg-violet-950/40 text-violet-300',
   exam: 'border-red-500/30 bg-red-950/40 text-red-300',
+  lesson: 'border-emerald-500/30 bg-emerald-950/40 text-emerald-300',
   personal: 'border-sky-500/30 bg-sky-950/40 text-sky-300',
 }
 
@@ -84,10 +86,14 @@ export function buildEventViewModel(event: CalendarEventRow): EventViewModel {
     },
     {
       iconKey: 'clock',
-      text: `${format(new Date(event.startTime), 'p')} – ${format(
-        new Date(event.endTime),
-        'p',
-      )}`,
+      text: event.endTime
+        ? `${format(new Date(event.startTime), 'p')} – ${format(
+            new Date(event.endTime),
+            isSameDay(new Date(event.startTime), new Date(event.endTime))
+              ? 'p'
+              : 'PPp',
+          )}`
+        : format(new Date(event.startTime), 'p'),
       href: null,
     },
   ]
