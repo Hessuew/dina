@@ -46,13 +46,22 @@ describe('validateSubmissionWindow', () => {
     ).toThrow('Assignment is not open for submissions')
   })
 
-  it('throws when due date has passed', () => {
+  it('allows submission after the due date while published', () => {
     expect(() =>
       validateSubmissionWindow(
         makeAssignment({ dueDate: new Date('2020-01-01') }),
         new Date('2025-01-01'),
       ),
-    ).toThrow('Assignment due date has passed')
+    ).not.toThrow()
+  })
+
+  it('throws when assignment is closed', () => {
+    expect(() =>
+      validateSubmissionWindow(
+        makeAssignment({ status: 'closed' }),
+        new Date('2020-01-01'),
+      ),
+    ).toThrow('Assignment is not open for submissions')
   })
 })
 

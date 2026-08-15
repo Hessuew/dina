@@ -14,6 +14,8 @@ export function buildSubmissionHeaderViewModel(input: {
   let subtitle: string
   if (!isStudent) {
     subtitle = `${submissionCount} submitted`
+  } else if (canSubmit && isPastDue) {
+    subtitle = 'Late submissions accepted'
   } else if (canSubmit) {
     subtitle = 'Submit before the due date'
   } else if (isPastDue) {

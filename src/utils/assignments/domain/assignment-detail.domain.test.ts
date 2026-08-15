@@ -102,14 +102,14 @@ describe('deriveSubmissionPermissions', () => {
     ).toEqual({ isStudent: true, isPastDue: false, canSubmit: true })
   })
 
-  it('blocks submission once past due', () => {
+  it('allows submission once past due while published', () => {
     expect(
       deriveSubmissionPermissions({
         role: 'student',
         status: 'published',
         dueDate: past,
       }),
-    ).toEqual({ isStudent: true, isPastDue: true, canSubmit: false })
+    ).toEqual({ isStudent: true, isPastDue: true, canSubmit: true })
   })
 
   it('blocks submission for an unpublished assignment', () => {

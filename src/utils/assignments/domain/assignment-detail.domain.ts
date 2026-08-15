@@ -45,7 +45,8 @@ export function deriveSubmissionPermissions(input: {
   const now = input.now ?? new Date()
   const isStudent = input.role === 'student'
   const isPastDue = new Date(input.dueDate) < now
-  const canSubmit = isStudent && input.status === 'published' && !isPastDue
+  // Due date is soft: published assignments stay submittable after due.
+  const canSubmit = isStudent && input.status === 'published'
   return { isStudent, isPastDue, canSubmit }
 }
 

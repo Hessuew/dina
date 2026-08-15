@@ -40,6 +40,10 @@ A boolean admin flag (`enrollments.special_case`) marking an enrollment for spec
 
 A user with `profiles.role = 'student'` (default). Enrolled via an admin-sent invitation after their enrollment submission is approved. Cannot view the enrollment review surface.
 
+### Assignment submission window
+
+While an assignment's status is **`published`**, Students may save drafts and submit (or re-submit) at any time — **before or after the due date**. The due date is a soft target for urgency and teacher visibility (`submittedAt`); it is not a hard lock. Teachers hard-close the window by setting assignment status to **`closed`** (or back to **`draft`**); only `published` accepts student saves.
+
 ### Invitation lifecycle
 
 An invitation (`invitations` table) is the single, admin-issued gate into signup — there is no open registration. Its `status` enum has three values, and their precise meaning is:
