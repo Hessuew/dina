@@ -20,10 +20,10 @@ import {
 import {
   deleteCourseById,
   findAllCourses,
-  findAssignmentsByLessonIds,
   findCompletedLessonProgress,
   findCourseById,
   findCourseWithDetails,
+  findPublishedAssignmentsByLessonIds,
   findStudentSubmissions,
   insertCourse,
   updateCourseById,
@@ -93,7 +93,7 @@ export async function getCoursesService(userId: string) {
   const allLessonIds = allCourses.flatMap((course) =>
     course.lessons.map((l) => l.id),
   )
-  const allAssignments = await findAssignmentsByLessonIds(allLessonIds)
+  const allAssignments = await findPublishedAssignmentsByLessonIds(allLessonIds)
   const allAssignmentIds = allAssignments.map((a) => a.id)
   const allSubmissions = await findStudentSubmissions(userId, allAssignmentIds)
 
@@ -132,7 +132,8 @@ export async function getCourseService(data: GetCourseInput, userId: string) {
   if (profile.role === 'student') {
     progress = await findCompletedLessonProgress(userId)
     const lessonIds = course.lessons.map((lesson) => lesson.id)
-    const courseAssignments = await findAssignmentsByLessonIds(lessonIds)
+    const courseAssignments =
+      await findPublishedAssignmentsByLessonIds(lessonIds)
     const assignmentIds = courseAssignments.map((assignment) => assignment.id)
     const studentSubmissions = await findStudentSubmissions(
       userId,

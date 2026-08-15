@@ -1,13 +1,18 @@
 /* v8 ignore start */
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { assignments, courses, lessons } from '@/db/schema'
 
-export async function findAssignmentsByLessonIds(lessonIds: Array<string>) {
+export async function findPublishedAssignmentsByLessonIds(
+  lessonIds: Array<string>,
+) {
   if (lessonIds.length === 0) return []
   const db = await getDb()
   return db.query.assignments.findMany({
-    where: inArray(assignments.lessonId, lessonIds),
+    where: and(
+      inArray(assignments.lessonId, lessonIds),
+      eq(assignments.status, 'published'),
+    ),
   })
 }
 
