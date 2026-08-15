@@ -1,6 +1,6 @@
-import { format } from 'date-fns'
 import { CalendarDaysIcon } from 'lucide-react'
 import type { CalendarEvent } from '@/utils/calendar'
+import { ViewerDateTime } from '@/components/ui/viewer-date-time'
 
 type EventListSidebarProps = {
   title: string
@@ -45,7 +45,7 @@ export function EventListSidebar({
                 {event.title}
               </div>
               <div className="mt-0.5 text-[0.68rem] text-[#8E816D]">
-                {format(new Date(event.date), 'MMM d, yyyy')}
+                <ViewerDateTime value={event.date} pattern="MMM d, yyyy" />
               </div>
             </button>
           ))}

@@ -1,8 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import {
   parseDatetimeLocalValue,
   toDatetimeLocalValue,
 } from './datetime.domain'
+
+const originalTimeZone = process.env.TZ
+
+afterEach(() => {
+  if (originalTimeZone) process.env.TZ = originalTimeZone
+  else delete process.env.TZ
+})
 
 describe('toDatetimeLocalValue', () => {
   it('returns empty string for null and undefined', () => {
@@ -34,6 +41,14 @@ describe('toDatetimeLocalValue', () => {
       expect(value).not.toBe(d.toISOString().slice(0, 16))
     }
   })
+
+  it('shows one stored instant in each viewer timezone', () => {
+    const instant = new Date('2026-01-15T14:00:00.000Z')
+    process.env.TZ = 'America/New_York'
+    expect(toDatetimeLocalValue(instant)).toBe('2026-01-15T09:00')
+    process.env.TZ = 'Asia/Tokyo'
+    expect(toDatetimeLocalValue(instant)).toBe('2026-01-15T23:00')
+  })
 })
 
 describe('parseDatetimeLocalValue', () => {
@@ -53,5 +68,16 @@ describe('parseDatetimeLocalValue', () => {
     expect(parsed?.getDate()).toBe(24)
     expect(parsed?.getHours()).toBe(14)
     expect(parsed?.getMinutes()).toBe(30)
+  })
+
+  it('interprets entered wall-clock time in the saver timezone', () => {
+    process.env.TZ = 'America/New_York'
+    expect(parseDatetimeLocalValue('2026-01-15T09:00')?.toISOString()).toBe(
+      '2026-01-15T14:00:00.000Z',
+    )
+    process.env.TZ = 'Asia/Tokyo'
+    expect(parseDatetimeLocalValue('2026-01-15T09:00')?.toISOString()).toBe(
+      '2026-01-15T00:00:00.000Z',
+    )
   })
 })

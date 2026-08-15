@@ -12,10 +12,10 @@ import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { LessonDetailSections } from '@/components/lesson/LessonDetailSections'
+import { ViewerDateTime } from '@/components/ui/viewer-date-time'
 import {
   buildLessonBackNavigation,
   buildLessonDialogInitialData,
-  formatLessonSchedule,
   getLessonStatus,
   handleDialogDismiss,
   resolveDeleteErrorMessage,
@@ -67,18 +67,21 @@ type AssignmentDialogState = ReturnType<typeof useDialogState<Assignment>>
 type LessonDialogState = ReturnType<typeof useDialogState>
 
 function LessonHeaderMetadata({
-  scheduleLabel,
+  scheduledTime,
   duration,
 }: {
-  scheduleLabel: string | null
+  scheduledTime: Date | string | null
   duration: number | null
 }) {
   return (
     <>
-      {scheduleLabel && (
+      {scheduledTime && (
         <div className="flex items-center gap-1.5">
           <CalendarIcon className="size-3" />
-          <span>{scheduleLabel}</span>
+          <ViewerDateTime
+            value={scheduledTime}
+            pattern="MMMM d, yyyy 'at' h:mm a"
+          />
         </div>
       )}
       {duration && (
@@ -104,15 +107,13 @@ function LessonDetailHeader({
   lessonDialog: LessonDialogState
   onBack: () => void
 }) {
-  const scheduleLabel = formatLessonSchedule(lesson.scheduledTime)
-
   return (
     <PageHeader
       title={lesson.title}
       onBack={onBack}
       metadata={
         <LessonHeaderMetadata
-          scheduleLabel={scheduleLabel}
+          scheduledTime={lesson.scheduledTime}
           duration={lesson.duration}
         />
       }
@@ -280,8 +281,11 @@ function LessonDetailComponent() {
     courseId: lesson.course.id,
     search,
   })
-  const { closeAssignmentDialog, handleDeleteAssignmentClick, submissionCount } =
-    useAssignmentDeleteDialog(assignmentDialog)
+  const {
+    closeAssignmentDialog,
+    handleDeleteAssignmentClick,
+    submissionCount,
+  } = useAssignmentDeleteDialog(assignmentDialog)
 
   return (
     <PageLayout>
