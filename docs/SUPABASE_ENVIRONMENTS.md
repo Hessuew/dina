@@ -14,8 +14,10 @@ copy production rows or Storage objects into `development`.
 
 1. In the Supabase dashboard, create a **persistent** branch named `development` from the existing
    production project. Supabase branches are data-less, so production records are not copied.
-2. Apply the existing Drizzle migration history by configuring the GitHub `development`
-   environment below and manually running **Migrate Supabase development** once.
+2. Apply the existing Drizzle migration history after configuring the GitHub `development`
+   environment below. The next `drizzle/**` change merged through the green main release gate
+   performs the migration and seed; for initial provisioning, run the same migrate and seed
+   commands with development credentials.
 3. In the development branch's Auth URL configuration, set the site URL to
    `http://localhost:3000` and allow the app's localhost Auth callback URLs.
 4. Mirror production Auth settings, while keeping branch-specific secrets separate. DINA's
@@ -64,11 +66,11 @@ Create GitHub environments named `development` and `production` with these value
 | development | Variable | `DEVELOPMENT_SEED_EMAIL`          |
 | production  | Secret   | `DATABASE_URL`                    |
 
-The development workflow runs after a Drizzle migration reaches GitHub `main`. It replays the real
-migration chain through the PGlite integration suite, migrates the hosted development branch, then
-idempotently creates its synthetic admin/profile and Storage buckets. The production workflow does
-the same migration validation after a migration reaches the protected GitHub `production` branch,
-but never seeds production.
+The serialized `Main release gate` runs the full integration suite and production build for every
+runtime change. When its push diff includes `drizzle/**`, a dependent job migrates the hosted
+development branch and idempotently creates its synthetic admin/profile and Storage buckets. The
+separate production workflow retains its own migration-chain integration validation after a
+migration reaches the protected GitHub `production` branch, but never seeds production.
 
 Protect the GitHub `production` branch and the `production` environment. Drizzle has no automatic
 rollback: repair a failed forward migration with a new migration, or restore a Supabase backup.

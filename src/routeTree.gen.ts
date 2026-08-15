@@ -9,69 +9,48 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as VerifyEmailChangeRouteImport } from './routes/verify-email-change'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as LogoutRouteImport } from './routes/logout'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as EnrolmentRouteImport } from './routes/enrolment'
-import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiUploadImageRouteImport } from './routes/api.upload-image'
-import { Route as AuthedZoomRouteImport } from './routes/_authed/zoom'
-import { Route as AuthedTeachersRouteImport } from './routes/_authed/teachers'
-import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
-import { Route as AuthedInvitationsRouteImport } from './routes/_authed/invitations'
-import { Route as AuthedEventsRouteImport } from './routes/_authed/events'
-import { Route as AuthedDiscipleshipRouteImport } from './routes/_authed/discipleship'
-import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
+import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as EnrolmentRouteImport } from './routes/enrolment'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as LogoutRouteImport } from './routes/logout'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as VerifyEmailChangeRouteImport } from './routes/verify-email-change'
 import { Route as AuthedCalendarRouteImport } from './routes/_authed/calendar'
-import { Route as AuthedStudentsIndexRouteImport } from './routes/_authed/students/index'
-import { Route as AuthedLibraryIndexRouteImport } from './routes/_authed/library/index'
-import { Route as AuthedExamsIndexRouteImport } from './routes/_authed/exams/index'
-import { Route as AuthedEnrollmentsIndexRouteImport } from './routes/_authed/enrollments/index'
-import { Route as AuthedCoursesIndexRouteImport } from './routes/_authed/courses/index'
+import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
+import { Route as AuthedDiscipleshipRouteImport } from './routes/_authed/discipleship'
+import { Route as AuthedEventsRouteImport } from './routes/_authed/events'
+import { Route as AuthedInvitationsRouteImport } from './routes/_authed/invitations'
+import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
+import { Route as AuthedTeachersRouteImport } from './routes/_authed/teachers'
+import { Route as AuthedZoomRouteImport } from './routes/_authed/zoom'
+import { Route as ApiUploadImageRouteImport } from './routes/api.upload-image'
 import { Route as AuthedAssignmentsIndexRouteImport } from './routes/_authed/assignments/index'
-import { Route as AuthedStudentsStudentIdRouteImport } from './routes/_authed/students/$studentId'
-import { Route as AuthedLibraryMediaIdRouteImport } from './routes/_authed/library/$mediaId'
-import { Route as AuthedLessonsLessonIdRouteImport } from './routes/_authed/lessons/$lessonId'
-import { Route as AuthedEnrollmentsEnrollmentIdRouteImport } from './routes/_authed/enrollments/$enrollmentId'
-import { Route as AuthedCoursesCourseIdRouteImport } from './routes/_authed/courses/$courseId'
 import { Route as AuthedAssignmentsAssignmentIdRouteImport } from './routes/_authed/assignments/$assignmentId'
+import { Route as AuthedCoursesIndexRouteImport } from './routes/_authed/courses/index'
+import { Route as AuthedCoursesCourseIdRouteImport } from './routes/_authed/courses/$courseId'
+import { Route as AuthedEnrollmentsIndexRouteImport } from './routes/_authed/enrollments/index'
+import { Route as AuthedEnrollmentsEnrollmentIdRouteImport } from './routes/_authed/enrollments/$enrollmentId'
+import { Route as AuthedExamsIndexRouteImport } from './routes/_authed/exams/index'
+import { Route as AuthedLessonsLessonIdRouteImport } from './routes/_authed/lessons/$lessonId'
+import { Route as AuthedLibraryIndexRouteImport } from './routes/_authed/library/index'
+import { Route as AuthedLibraryMediaIdRouteImport } from './routes/_authed/library/$mediaId'
+import { Route as AuthedStudentsIndexRouteImport } from './routes/_authed/students/index'
+import { Route as AuthedStudentsStudentIdRouteImport } from './routes/_authed/students/$studentId'
 import { Route as AuthedExamsExamIdIndexRouteImport } from './routes/_authed/exams/$examId.index'
 import { Route as AuthedExamsExamIdTakeRouteImport } from './routes/_authed/exams/$examId.take'
 import { Route as AuthedExamsExamIdGradingIndexRouteImport } from './routes/_authed/exams/$examId.grading.index'
 import { Route as AuthedExamsExamIdGradingAttemptIdRouteImport } from './routes/_authed/exams/$examId.grading.$attemptId'
 
-const VerifyEmailChangeRoute = VerifyEmailChangeRouteImport.update({
-  id: '/verify-email-change',
-  path: '/verify-email-change',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LogoutRoute = LogoutRouteImport.update({
-  id: '/logout',
-  path: '/logout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
+const AuthedRoute = AuthedRouteImport.update({
+  id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EnrolmentRoute = EnrolmentRouteImport.update({
@@ -79,48 +58,39 @@ const EnrolmentRoute = EnrolmentRouteImport.update({
   path: '/enrolment',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedRoute = AuthedRouteImport.update({
-  id: '/_authed',
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiUploadImageRoute = ApiUploadImageRouteImport.update({
-  id: '/api/upload-image',
-  path: '/api/upload-image',
+const LogoutRoute = LogoutRouteImport.update({
+  id: '/logout',
+  path: '/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedZoomRoute = AuthedZoomRouteImport.update({
-  id: '/zoom',
-  path: '/zoom',
-  getParentRoute: () => AuthedRoute,
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedTeachersRoute = AuthedTeachersRouteImport.update({
-  id: '/teachers',
-  path: '/teachers',
-  getParentRoute: () => AuthedRoute,
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedPostsRoute = AuthedPostsRouteImport.update({
-  id: '/posts',
-  path: '/posts',
-  getParentRoute: () => AuthedRoute,
+const VerifyEmailChangeRoute = VerifyEmailChangeRouteImport.update({
+  id: '/verify-email-change',
+  path: '/verify-email-change',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedInvitationsRoute = AuthedInvitationsRouteImport.update({
-  id: '/invitations',
-  path: '/invitations',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedEventsRoute = AuthedEventsRouteImport.update({
-  id: '/events',
-  path: '/events',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedDiscipleshipRoute = AuthedDiscipleshipRouteImport.update({
-  id: '/discipleship',
-  path: '/discipleship',
+const AuthedCalendarRoute = AuthedCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
@@ -128,65 +98,44 @@ const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedCalendarRoute = AuthedCalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
+const AuthedDiscipleshipRoute = AuthedDiscipleshipRouteImport.update({
+  id: '/discipleship',
+  path: '/discipleship',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedStudentsIndexRoute = AuthedStudentsIndexRouteImport.update({
-  id: '/students/',
-  path: '/students/',
+const AuthedEventsRoute = AuthedEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedLibraryIndexRoute = AuthedLibraryIndexRouteImport.update({
-  id: '/library/',
-  path: '/library/',
+const AuthedInvitationsRoute = AuthedInvitationsRouteImport.update({
+  id: '/invitations',
+  path: '/invitations',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedExamsIndexRoute = AuthedExamsIndexRouteImport.update({
-  id: '/exams/',
-  path: '/exams/',
+const AuthedPostsRoute = AuthedPostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedEnrollmentsIndexRoute = AuthedEnrollmentsIndexRouteImport.update({
-  id: '/enrollments/',
-  path: '/enrollments/',
+const AuthedTeachersRoute = AuthedTeachersRouteImport.update({
+  id: '/teachers',
+  path: '/teachers',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedCoursesIndexRoute = AuthedCoursesIndexRouteImport.update({
-  id: '/courses/',
-  path: '/courses/',
+const AuthedZoomRoute = AuthedZoomRouteImport.update({
+  id: '/zoom',
+  path: '/zoom',
   getParentRoute: () => AuthedRoute,
+} as any)
+const ApiUploadImageRoute = ApiUploadImageRouteImport.update({
+  id: '/api/upload-image',
+  path: '/api/upload-image',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthedAssignmentsIndexRoute = AuthedAssignmentsIndexRouteImport.update({
   id: '/assignments/',
   path: '/assignments/',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedStudentsStudentIdRoute = AuthedStudentsStudentIdRouteImport.update({
-  id: '/students/$studentId',
-  path: '/students/$studentId',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedLibraryMediaIdRoute = AuthedLibraryMediaIdRouteImport.update({
-  id: '/library/$mediaId',
-  path: '/library/$mediaId',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedLessonsLessonIdRoute = AuthedLessonsLessonIdRouteImport.update({
-  id: '/lessons/$lessonId',
-  path: '/lessons/$lessonId',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedEnrollmentsEnrollmentIdRoute =
-  AuthedEnrollmentsEnrollmentIdRouteImport.update({
-    id: '/enrollments/$enrollmentId',
-    path: '/enrollments/$enrollmentId',
-    getParentRoute: () => AuthedRoute,
-  } as any)
-const AuthedCoursesCourseIdRoute = AuthedCoursesCourseIdRouteImport.update({
-  id: '/courses/$courseId',
-  path: '/courses/$courseId',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedAssignmentsAssignmentIdRoute =
@@ -195,6 +144,57 @@ const AuthedAssignmentsAssignmentIdRoute =
     path: '/assignments/$assignmentId',
     getParentRoute: () => AuthedRoute,
   } as any)
+const AuthedCoursesIndexRoute = AuthedCoursesIndexRouteImport.update({
+  id: '/courses/',
+  path: '/courses/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedCoursesCourseIdRoute = AuthedCoursesCourseIdRouteImport.update({
+  id: '/courses/$courseId',
+  path: '/courses/$courseId',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedEnrollmentsIndexRoute = AuthedEnrollmentsIndexRouteImport.update({
+  id: '/enrollments/',
+  path: '/enrollments/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedEnrollmentsEnrollmentIdRoute =
+  AuthedEnrollmentsEnrollmentIdRouteImport.update({
+    id: '/enrollments/$enrollmentId',
+    path: '/enrollments/$enrollmentId',
+    getParentRoute: () => AuthedRoute,
+  } as any)
+const AuthedExamsIndexRoute = AuthedExamsIndexRouteImport.update({
+  id: '/exams/',
+  path: '/exams/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedLessonsLessonIdRoute = AuthedLessonsLessonIdRouteImport.update({
+  id: '/lessons/$lessonId',
+  path: '/lessons/$lessonId',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedLibraryIndexRoute = AuthedLibraryIndexRouteImport.update({
+  id: '/library/',
+  path: '/library/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedLibraryMediaIdRoute = AuthedLibraryMediaIdRouteImport.update({
+  id: '/library/$mediaId',
+  path: '/library/$mediaId',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedStudentsIndexRoute = AuthedStudentsIndexRouteImport.update({
+  id: '/students/',
+  path: '/students/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedStudentsStudentIdRoute = AuthedStudentsStudentIdRouteImport.update({
+  id: '/students/$studentId',
+  path: '/students/$studentId',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedExamsExamIdIndexRoute = AuthedExamsExamIdIndexRouteImport.update({
   id: '/exams/$examId/',
   path: '/exams/$examId/',
@@ -449,53 +449,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/verify-email-change': {
-      id: '/verify-email-change'
-      path: '/verify-email-change'
-      fullPath: '/verify-email-change'
-      preLoaderRoute: typeof VerifyEmailChangeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/logout': {
-      id: '/logout'
-      path: '/logout'
-      fullPath: '/logout'
-      preLoaderRoute: typeof LogoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/enrolment': {
-      id: '/enrolment'
-      path: '/enrolment'
-      fullPath: '/enrolment'
-      preLoaderRoute: typeof EnrolmentRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed': {
@@ -505,60 +463,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/enrolment': {
+      id: '/enrolment'
+      path: '/enrolment'
+      fullPath: '/enrolment'
+      preLoaderRoute: typeof EnrolmentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/upload-image': {
-      id: '/api/upload-image'
-      path: '/api/upload-image'
-      fullPath: '/api/upload-image'
-      preLoaderRoute: typeof ApiUploadImageRouteImport
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authed/zoom': {
-      id: '/_authed/zoom'
-      path: '/zoom'
-      fullPath: '/zoom'
-      preLoaderRoute: typeof AuthedZoomRouteImport
-      parentRoute: typeof AuthedRoute
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authed/teachers': {
-      id: '/_authed/teachers'
-      path: '/teachers'
-      fullPath: '/teachers'
-      preLoaderRoute: typeof AuthedTeachersRouteImport
-      parentRoute: typeof AuthedRoute
+    '/logout': {
+      id: '/logout'
+      path: '/logout'
+      fullPath: '/logout'
+      preLoaderRoute: typeof LogoutRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authed/posts': {
-      id: '/_authed/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof AuthedPostsRouteImport
-      parentRoute: typeof AuthedRoute
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authed/invitations': {
-      id: '/_authed/invitations'
-      path: '/invitations'
-      fullPath: '/invitations'
-      preLoaderRoute: typeof AuthedInvitationsRouteImport
-      parentRoute: typeof AuthedRoute
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authed/events': {
-      id: '/_authed/events'
-      path: '/events'
-      fullPath: '/events'
-      preLoaderRoute: typeof AuthedEventsRouteImport
-      parentRoute: typeof AuthedRoute
+    '/verify-email-change': {
+      id: '/verify-email-change'
+      path: '/verify-email-change'
+      fullPath: '/verify-email-change'
+      preLoaderRoute: typeof VerifyEmailChangeRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authed/discipleship': {
-      id: '/_authed/discipleship'
-      path: '/discipleship'
-      fullPath: '/discipleship'
-      preLoaderRoute: typeof AuthedDiscipleshipRouteImport
+    '/_authed/calendar': {
+      id: '/_authed/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof AuthedCalendarRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/dashboard': {
@@ -568,39 +526,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedDashboardRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/calendar': {
-      id: '/_authed/calendar'
-      path: '/calendar'
-      fullPath: '/calendar'
-      preLoaderRoute: typeof AuthedCalendarRouteImport
+    '/_authed/discipleship': {
+      id: '/_authed/discipleship'
+      path: '/discipleship'
+      fullPath: '/discipleship'
+      preLoaderRoute: typeof AuthedDiscipleshipRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/students/': {
-      id: '/_authed/students/'
-      path: '/students'
-      fullPath: '/students/'
-      preLoaderRoute: typeof AuthedStudentsIndexRouteImport
+    '/_authed/events': {
+      id: '/_authed/events'
+      path: '/events'
+      fullPath: '/events'
+      preLoaderRoute: typeof AuthedEventsRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/library/': {
-      id: '/_authed/library/'
-      path: '/library'
-      fullPath: '/library/'
-      preLoaderRoute: typeof AuthedLibraryIndexRouteImport
+    '/_authed/invitations': {
+      id: '/_authed/invitations'
+      path: '/invitations'
+      fullPath: '/invitations'
+      preLoaderRoute: typeof AuthedInvitationsRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/exams/': {
-      id: '/_authed/exams/'
-      path: '/exams'
-      fullPath: '/exams/'
-      preLoaderRoute: typeof AuthedExamsIndexRouteImport
+    '/_authed/posts': {
+      id: '/_authed/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof AuthedPostsRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/enrollments/': {
-      id: '/_authed/enrollments/'
-      path: '/enrollments'
-      fullPath: '/enrollments/'
-      preLoaderRoute: typeof AuthedEnrollmentsIndexRouteImport
+    '/_authed/teachers': {
+      id: '/_authed/teachers'
+      path: '/teachers'
+      fullPath: '/teachers'
+      preLoaderRoute: typeof AuthedTeachersRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/zoom': {
+      id: '/_authed/zoom'
+      path: '/zoom'
+      fullPath: '/zoom'
+      preLoaderRoute: typeof AuthedZoomRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/api/upload-image': {
+      id: '/api/upload-image'
+      path: '/api/upload-image'
+      fullPath: '/api/upload-image'
+      preLoaderRoute: typeof ApiUploadImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/assignments/': {
+      id: '/_authed/assignments/'
+      path: '/assignments'
+      fullPath: '/assignments/'
+      preLoaderRoute: typeof AuthedAssignmentsIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/assignments/$assignmentId': {
+      id: '/_authed/assignments/$assignmentId'
+      path: '/assignments/$assignmentId'
+      fullPath: '/assignments/$assignmentId'
+      preLoaderRoute: typeof AuthedAssignmentsAssignmentIdRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/courses/': {
@@ -610,32 +596,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedCoursesIndexRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/assignments/': {
-      id: '/_authed/assignments/'
-      path: '/assignments'
-      fullPath: '/assignments/'
-      preLoaderRoute: typeof AuthedAssignmentsIndexRouteImport
+    '/_authed/courses/$courseId': {
+      id: '/_authed/courses/$courseId'
+      path: '/courses/$courseId'
+      fullPath: '/courses/$courseId'
+      preLoaderRoute: typeof AuthedCoursesCourseIdRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/students/$studentId': {
-      id: '/_authed/students/$studentId'
-      path: '/students/$studentId'
-      fullPath: '/students/$studentId'
-      preLoaderRoute: typeof AuthedStudentsStudentIdRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/library/$mediaId': {
-      id: '/_authed/library/$mediaId'
-      path: '/library/$mediaId'
-      fullPath: '/library/$mediaId'
-      preLoaderRoute: typeof AuthedLibraryMediaIdRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/lessons/$lessonId': {
-      id: '/_authed/lessons/$lessonId'
-      path: '/lessons/$lessonId'
-      fullPath: '/lessons/$lessonId'
-      preLoaderRoute: typeof AuthedLessonsLessonIdRouteImport
+    '/_authed/enrollments/': {
+      id: '/_authed/enrollments/'
+      path: '/enrollments'
+      fullPath: '/enrollments/'
+      preLoaderRoute: typeof AuthedEnrollmentsIndexRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/enrollments/$enrollmentId': {
@@ -645,18 +617,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedEnrollmentsEnrollmentIdRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/courses/$courseId': {
-      id: '/_authed/courses/$courseId'
-      path: '/courses/$courseId'
-      fullPath: '/courses/$courseId'
-      preLoaderRoute: typeof AuthedCoursesCourseIdRouteImport
+    '/_authed/exams/': {
+      id: '/_authed/exams/'
+      path: '/exams'
+      fullPath: '/exams/'
+      preLoaderRoute: typeof AuthedExamsIndexRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/assignments/$assignmentId': {
-      id: '/_authed/assignments/$assignmentId'
-      path: '/assignments/$assignmentId'
-      fullPath: '/assignments/$assignmentId'
-      preLoaderRoute: typeof AuthedAssignmentsAssignmentIdRouteImport
+    '/_authed/lessons/$lessonId': {
+      id: '/_authed/lessons/$lessonId'
+      path: '/lessons/$lessonId'
+      fullPath: '/lessons/$lessonId'
+      preLoaderRoute: typeof AuthedLessonsLessonIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/library/': {
+      id: '/_authed/library/'
+      path: '/library'
+      fullPath: '/library/'
+      preLoaderRoute: typeof AuthedLibraryIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/library/$mediaId': {
+      id: '/_authed/library/$mediaId'
+      path: '/library/$mediaId'
+      fullPath: '/library/$mediaId'
+      preLoaderRoute: typeof AuthedLibraryMediaIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/students/': {
+      id: '/_authed/students/'
+      path: '/students'
+      fullPath: '/students/'
+      preLoaderRoute: typeof AuthedStudentsIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/students/$studentId': {
+      id: '/_authed/students/$studentId'
+      path: '/students/$studentId'
+      fullPath: '/students/$studentId'
+      preLoaderRoute: typeof AuthedStudentsStudentIdRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/exams/$examId/': {

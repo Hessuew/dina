@@ -1,0 +1,83 @@
+name: Main release gate
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  release:
+    name: Main release gate
+    runs-on: ubuntu-latest
+    outputs:
+      drizzle_changed: ${{ steps.changes.outputs.drizzle_changed }}
+    steps:
+      - name: Wait for earlier main release gates
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const current = Number(process.env.GITHUB_RUN_NUMBER)
+            while (true) {
+              const statuses = ['queued', 'in_progress']
+              const active = (await Promise.all(statuses.map((status) =>
+                github.paginate(github.rest.actions.listWorkflowRuns, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: 'main-release.yml',
+                  branch: 'main',
+                  status,
+                  per_page: 100,
+                })
+              ))).flat()
+              const earlier = active.filter(
+                (run) => run.run_number < current && run.status !== 'completed',
+              )
+              if (earlier.length === 0) break
+              core.info(`Waiting for ${earlier.length} earlier main release gate(s).`)
+              await new Promise((resolve) => setTimeout(resolve, 15000))
+            }
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+      - run: bun install --frozen-lockfile
+      - id: changes
+        name: Detect Drizzle changes
+        run: |
+          if git diff --quiet "${{ github.event.before }}" "${{ github.sha }}" -- drizzle/; then
+            echo "drizzle_changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "drizzle_changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run complete release verification
+        run: QUALITY_BASE=${{ github.event.before }} bun run quality:release
+
+  migrate-development:
+    name: Migrate and seed development
+    needs: release
+    if: needs.release.outputs.drizzle_changed == 'true'
+    runs-on: ubuntu-latest
+    environment: development
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SUPABASE_ENVIRONMENT: development
+      SUPABASE_PRODUCTION_PROJECT_REF: ${{ vars.SUPABASE_PRODUCTION_PROJECT_REF }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      DEVELOPMENT_SEED_EMAIL: ${{ vars.DEVELOPMENT_SEED_EMAIL }}
+      DEVELOPMENT_SEED_PASSWORD: ${{ secrets.DEVELOPMENT_SEED_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+      - run: bun install --frozen-lockfile
+      - name: Apply pending migrations to development
+        run: bun run db:migrate
+      - name: Apply idempotent synthetic development seed
+        run: bun run db:seed:development

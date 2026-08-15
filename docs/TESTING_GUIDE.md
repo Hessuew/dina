@@ -8,7 +8,7 @@ as the worked example. Read this before adding tests for a new endpoint.
 - **Pure business logic lives in a `domain/` layer and is unit-tested to 100%.**
 - IO (DB, auth) is pushed out to `repository/` and `service/` layers that are
   **deliberately excluded** from the coverage gate.
-- Run `bun run test` (or `bun run test:coverage`) — both must stay green.
+- Run directly affected tests while developing, then the fast quality gate once before handoff.
 - Integration tests use PGlite and replay the real migration journal.
 
 ## Why the layering makes testing easy
@@ -106,6 +106,26 @@ bun run test:all           # unit suite + integration suite (the full signal)
 
 `bun run test` / `test:coverage` stay unit-only: the unit config excludes
 `src/**/*.integration.test.ts`, so the 100% domain coverage gate is unaffected.
+
+## Verification lanes
+
+The shared planner compares committed, staged, unstaged, and untracked paths against
+`QUALITY_BASE`, which defaults to `origin/main`. Deleted paths remain in classification, so
+deleting source cannot produce a documentation-only skip. Documentation-only means only
+`docs/**`, root Markdown, and pull-request-template Markdown; all other paths fail safe.
+
+```bash
+bun run quality:static   # existing changed files: Prettier, ESLint, applicable Fallow
+bun run quality:test     # Cloudflare types, full typecheck, all unit tests
+bun run quality:gate     # static + test; run once before handoff and in PR CI
+bun run quality:release  # gate + integration + production build; main CI only
+```
+
+Safe documentation-only diffs run only the static lane. Pull requests use the stable required
+check `Fast quality gate` and cancel superseded runs for the same PR. Pushes to `main` run one
+complete `Main release gate` at a time without cancelling older pushes, then migrate and seed
+the development database only when `drizzle/**` changed. Credentialed Playwright E2E stays
+manual and implementation-scoped.
 
 ### How the harness works (`test/integration/`)
 

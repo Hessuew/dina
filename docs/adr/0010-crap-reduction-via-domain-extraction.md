@@ -172,16 +172,15 @@ Note any deliberate broadening in the commit message so it is not mistaken for a
 
 - The function no longer appears in `bunx fallow health --format json --quiet`.
 - `bun run test:coverage` green at 100% for the new domain file.
-- `bun run quality:gate` and `bun run typecheck` clean.
+- `bun run quality:gate` clean after the workspace is stable.
 - **No behavior change** (tests bound to the public interface stay green across the swap), or a
   deliberate **broadening** noted per "Reconciling divergent near-duplicates".
 
 ### Verification — the fast loop (don't run the full gate every cycle)
 
-The full `bun run quality:gate` re-runs the entire unit + integration suites **and**
-`fallow audit --base main`, which lists every _pre-existing_ branch-vs-`main` finding. That
-noise is irrelevant to a paydown target and the suites are slow, so don't use it as the inner
-loop. Instead:
+`bun run quality:gate` runs the full unit suite and the changed-diff static/Fallow checks, so
+do not use it as the inner loop. Integration and production build now run only in the post-merge
+`Main release gate`. During implementation:
 
 1. **Progress metric (cheap, no test run):** `bunx fallow health --format json --quiet` — the
    target finding is gone and the total dropped. This _is_ the burndown number. The count is
@@ -192,13 +191,15 @@ loop. Instead:
    both CRAP and unit-size.
 2. **Coverage of the new domain file:** `bun run test:coverage` (or a scoped `vitest run` on the
    `*.domain.test.ts` during red→green).
-3. **Isolate _introduced_ complexity, not the whole branch:** the gate only blocks on fallow's
-   `introduced` flag, but `--base main` computes that against the whole branch diff. Scope it to
+3. **Isolate _introduced_ complexity, not the whole branch:** the gate only blocks on Fallow's
+   `introduced` flag, and its default `origin/main` base computes that against the whole branch
+   diff. Scope it to
    _your_ change by pointing the base at the commit immediately before the target —
    `QUALITY_BASE=<pre-change-ref> bun run quality:gate` (e.g. `QUALITY_BASE=HEAD` to check
    working-tree changes before committing). The verdict then reflects only what this target
    introduced, not unrelated pre-existing findings.
-4. **Full `bun run quality:gate` once** before the commit, as the final pre-flight.
+4. **`bun run quality:gate` once** after concurrent workspace work is stable, as the final
+   pre-flight.
 
 ### Worked example (first target)
 

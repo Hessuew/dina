@@ -1,0 +1,7 @@
+# Repository commands become authoritative only after this file lands on the
+# default branch. They never write formatting changes or run release-only work.
+allow_repo_commands: false
+
+commands:
+  test: 'bun run quality:test'
+  lint: 'bun run quality:static'
