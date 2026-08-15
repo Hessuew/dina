@@ -630,6 +630,34 @@ const MediaKindField = withForm({
   ),
 })
 
+const MediaVisibilityFields = withForm({
+  defaultValues: emptyFormData,
+  render: ({ form }) => (
+    <>
+      <form.AppField name="isPublished">
+        {(field) => (
+          <field.SwitchField id="media-published" label="Published" />
+        )}
+      </form.AppField>
+
+      <form.Subscribe selector={(state) => state.values.kind}>
+        {(kind) =>
+          kind === 'document' ? (
+            <form.AppField name="allowsDownload">
+              {(field) => (
+                <field.SwitchField
+                  id="media-allows-download"
+                  label="Allow download"
+                />
+              )}
+            </form.AppField>
+          ) : null
+        }
+      </form.Subscribe>
+    </>
+  ),
+})
+
 const MediaYoutubeUrlField = withForm({
   defaultValues: emptyFormData,
   render: ({ form }) => (
@@ -711,26 +739,6 @@ const MediaDocumentFields = withForm({
               thumbnailUrl={thumbnailUrl}
               onClearThumbnail={onClearThumbnail}
             />
-
-            <form.AppField name="isPublished">
-              {(field) => (
-                <field.SwitchField
-                  id="media-published"
-                  label="Published"
-                  className="sm:col-span-2"
-                />
-              )}
-            </form.AppField>
-
-            <form.AppField name="allowsDownload">
-              {(field) => (
-                <field.SwitchField
-                  id="media-allows-download"
-                  label="Allow download"
-                  className="sm:col-span-2"
-                />
-              )}
-            </form.AppField>
           </>
         ) : null
       }
@@ -776,16 +784,6 @@ const MediaVideoFileFields = withForm({
               thumbnailUrl={thumbnailUrl}
               onClearThumbnail={onClearThumbnail}
             />
-
-            <form.AppField name="isPublished">
-              {(field) => (
-                <field.SwitchField
-                  id="media-published"
-                  label="Published"
-                  className="sm:col-span-2"
-                />
-              )}
-            </form.AppField>
           </>
         ) : null
       }
@@ -808,16 +806,6 @@ const MediaYoutubeExtraFields = withForm({
                   className="sm:col-span-2"
                   placeholder="Short summary for students"
                   rows={6}
-                />
-              )}
-            </form.AppField>
-
-            <form.AppField name="isPublished">
-              {(field) => (
-                <field.SwitchField
-                  id="media-published"
-                  label="Published"
-                  className="sm:col-span-2"
                 />
               )}
             </form.AppField>
@@ -847,6 +835,7 @@ const MediaFormFields = withForm({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <MediaTitleCategoryFields form={form} />
         <MediaKindField form={form} onYoutubeSelected={onYoutubeSelected} />
+        <MediaVisibilityFields form={form} />
         <MediaYoutubeUrlField form={form} />
         <MediaDocumentFields
           form={form}

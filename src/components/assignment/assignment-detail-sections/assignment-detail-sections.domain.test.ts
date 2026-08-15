@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildPastDueNoticeViewModel,
   buildSubmissionHeaderViewModel,
   buildSubmissionStatusViewModel,
 } from './assignment-detail-sections.domain'
@@ -77,6 +78,36 @@ describe('buildSubmissionHeaderViewModel', () => {
           isPastDue: false,
         }).subtitle,
       ).toBe('Not yet open')
+    })
+  })
+})
+
+describe('buildPastDueNoticeViewModel', () => {
+  it('hides notice when not past due', () => {
+    expect(
+      buildPastDueNoticeViewModel({ isPastDue: false, canSubmit: true }),
+    ).toBeNull()
+  })
+
+  it('uses soft copy when past due and late submissions still allowed', () => {
+    expect(
+      buildPastDueNoticeViewModel({ isPastDue: true, canSubmit: true }),
+    ).toEqual({
+      tone: 'soft',
+      message: 'Past due — late submissions still accepted',
+      className:
+        'border border-[#C5A059]/30 bg-[#C5A059]/10 px-4 py-3 text-xs text-[#E9D9B4]',
+    })
+  })
+
+  it('uses hard copy when past due and submissions closed', () => {
+    expect(
+      buildPastDueNoticeViewModel({ isPastDue: true, canSubmit: false }),
+    ).toEqual({
+      tone: 'hard',
+      message: 'This assignment is past due',
+      className:
+        'border border-red-400/30 bg-red-900/20 px-4 py-3 text-xs text-red-400',
     })
   })
 })

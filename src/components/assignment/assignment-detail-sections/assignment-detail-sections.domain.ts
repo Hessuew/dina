@@ -3,6 +3,14 @@ export interface SubmissionHeaderViewModel {
   subtitle: string
 }
 
+export type PastDueNoticeTone = 'soft' | 'hard'
+
+export interface PastDueNoticeViewModel {
+  tone: PastDueNoticeTone
+  message: string
+  className: string
+}
+
 export function buildSubmissionHeaderViewModel(input: {
   isStudent: boolean
   canSubmit: boolean
@@ -24,6 +32,28 @@ export function buildSubmissionHeaderViewModel(input: {
     subtitle = 'Not yet open'
   }
   return { title, subtitle }
+}
+
+/** Past-due about-card notice; null when not past due. Soft when late still allowed. */
+export function buildPastDueNoticeViewModel(input: {
+  isPastDue: boolean
+  canSubmit: boolean
+}): PastDueNoticeViewModel | null {
+  if (!input.isPastDue) return null
+  if (input.canSubmit) {
+    return {
+      tone: 'soft',
+      message: 'Past due — late submissions still accepted',
+      className:
+        'border border-[#C5A059]/30 bg-[#C5A059]/10 px-4 py-3 text-xs text-[#E9D9B4]',
+    }
+  }
+  return {
+    tone: 'hard',
+    message: 'This assignment is past due',
+    className:
+      'border border-red-400/30 bg-red-900/20 px-4 py-3 text-xs text-red-400',
+  }
 }
 
 export interface SubmissionStatusViewModel {

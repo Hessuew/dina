@@ -143,14 +143,20 @@ export function resolveAllowsDownload(
   return kind === 'document' && allowsDownload === true
 }
 
+export function shouldShowDownloadableChip(params: {
+  fileType: MediaLibraryRow['fileType']
+  allowsDownload: boolean
+}): boolean {
+  return params.fileType === 'document' && params.allowsDownload
+}
+
 export function shouldShowMediaDownload(params: {
   fileType: MediaLibraryRow['fileType']
   allowsDownload: boolean
   viewerUrl: string | null
 }): boolean {
   return (
-    params.fileType === 'document' &&
-    params.allowsDownload &&
+    shouldShowDownloadableChip(params) &&
     params.viewerUrl != null &&
     params.viewerUrl.length > 0
   )

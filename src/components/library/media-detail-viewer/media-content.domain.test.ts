@@ -1,8 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
+  BLOB_REVOKE_DELAY_MS,
   buildMediaContentViewModel,
+  downloadFileOrOpenTab,
   getFileExtension,
 } from './media-content.domain'
+import type { MediaDownloadIo, MediaDownloadTab } from './media-content.domain'
 
 describe('getFileExtension', () => {
   it('returns the lowercased extension', () => {
@@ -86,5 +89,99 @@ describe('buildMediaContentViewModel', () => {
     })
     expect(vm.kind).toBe('none')
     expect(vm.videoId).toBeNull()
+  })
+})
+
+function makeTab(overrides: Partial<MediaDownloadTab> = {}): MediaDownloadTab {
+  return {
+    navigate: vi.fn(),
+    close: vi.fn(),
+    ...overrides,
+  }
+}
+
+function makeDownloadIo(
+  overrides: Partial<MediaDownloadIo> & { tab?: MediaDownloadTab | null } = {},
+): MediaDownloadIo {
+  const { tab = makeTab(), ...ioOverrides } = overrides
+  return {
+    fetch: vi.fn(),
+    createObjectURL: vi.fn(() => 'blob:saved'),
+    revokeObjectURL: vi.fn(),
+    clickAnchor: vi.fn(),
+    openBlankTab: vi.fn(() => tab),
+    schedule: vi.fn(),
+    ...ioOverrides,
+  }
+}
+
+describe('downloadFileOrOpenTab', () => {
+  it('reserves a tab before fetch, then saves a blob and closes the tab', async () => {
+    const blob = new Blob(['pdf'])
+    const tab = makeTab()
+    const io = makeDownloadIo({
+      tab,
+      fetch: vi.fn().mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(blob),
+      }),
+    })
+
+    await downloadFileOrOpenTab('https://signed/doc.pdf', 'Notes.pdf', io)
+
+    expect(io.openBlankTab).toHaveBeenCalled()
+    expect(tab.close).toHaveBeenCalled()
+    expect(tab.navigate).not.toHaveBeenCalled()
+    expect(io.clickAnchor).toHaveBeenCalledWith('blob:saved', 'Notes.pdf')
+    expect(io.revokeObjectURL).not.toHaveBeenCalled()
+    expect(io.schedule).toHaveBeenCalledWith(
+      expect.any(Function),
+      BLOB_REVOKE_DELAY_MS,
+    )
+    const scheduled = vi.mocked(io.schedule).mock.calls[0][0]
+    scheduled()
+    expect(io.revokeObjectURL).toHaveBeenCalledWith('blob:saved')
+  })
+
+  it('navigates the reserved tab when fetch is not ok', async () => {
+    const tab = makeTab()
+    const io = makeDownloadIo({
+      tab,
+      fetch: vi.fn().mockResolvedValue({ ok: false }),
+    })
+
+    await downloadFileOrOpenTab('https://signed/doc.pdf', 'Notes.pdf', io)
+
+    expect(tab.navigate).toHaveBeenCalledWith('https://signed/doc.pdf')
+    expect(tab.close).not.toHaveBeenCalled()
+    expect(io.clickAnchor).not.toHaveBeenCalled()
+  })
+
+  it('navigates the reserved tab when fetch throws', async () => {
+    const tab = makeTab()
+    const io = makeDownloadIo({
+      tab,
+      fetch: vi.fn().mockRejectedValue(new Error('cors')),
+    })
+
+    await downloadFileOrOpenTab('https://signed/doc.pdf', 'Notes.pdf', io)
+
+    expect(tab.navigate).toHaveBeenCalledWith('https://signed/doc.pdf')
+    expect(io.clickAnchor).not.toHaveBeenCalled()
+  })
+
+  it('still saves a blob when the reserved tab is blocked', async () => {
+    const blob = new Blob(['pdf'])
+    const io = makeDownloadIo({
+      tab: null,
+      fetch: vi.fn().mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(blob),
+      }),
+    })
+
+    await downloadFileOrOpenTab('https://signed/doc.pdf', 'Notes.pdf', io)
+
+    expect(io.clickAnchor).toHaveBeenCalledWith('blob:saved', 'Notes.pdf')
   })
 })

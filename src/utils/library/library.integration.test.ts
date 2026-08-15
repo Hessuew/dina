@@ -44,6 +44,7 @@ const makeCreateInput = (
   description: 'desc',
   category: 'Wisdom',
   isPublished: true,
+  allowsDownload: false,
   kind: 'youtube',
   url: 'https://youtube.com/watch?v=abc',
   ...overrides,
