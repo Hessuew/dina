@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { FileTextIcon, PlusIcon } from 'lucide-react'
 import { createColumnHelper } from '@tanstack/react-table'
@@ -22,6 +22,7 @@ import { EmptyState } from '@/components/ui/empty-state/EmptyState'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
 import { LibraryShelf } from '@/components/library/LibraryShelf'
 import { SessionImage } from '@/components/ui/session-image'
+import { ImportEbooksDialog } from '@/components/dialog/ebook-import/ImportEbooksDialog'
 
 export const Route = createFileRoute('/_authed/library/')({
   loader: async () => {
@@ -317,9 +318,11 @@ function buildLibraryColumns(
 function LibraryHeader({
   canCreate,
   openDialog,
+  onImport,
 }: {
   canCreate: boolean
   openDialog: OpenLibraryDialog
+  onImport: () => void
 }) {
   return (
     <div className="mb-8 flex items-start justify-between gap-4">
@@ -337,10 +340,16 @@ function LibraryHeader({
       </div>
 
       {canCreate && (
-        <Button theme="light" onClick={() => openDialog('create')}>
-          <PlusIcon className="size-4" />
-          Add Media
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button theme="light" variant="outline" onClick={onImport}>
+            <FileTextIcon className="size-4" />
+            Import eBooks
+          </Button>
+          <Button theme="light" onClick={() => openDialog('create')}>
+            <PlusIcon className="size-4" />
+            Add Media
+          </Button>
+        </div>
       )}
     </div>
   )
@@ -356,6 +365,7 @@ function LibraryComponent() {
     openDialog,
     closeDialog,
   } = useDialogState<MediaLibraryRow>()
+  const [importOpen, setImportOpen] = useState(false)
 
   const canCreate = canCreateMedia(viewer.role)
   const { shelves, shelfTopics } = getVisibleShelfTopics(media)
@@ -366,7 +376,11 @@ function LibraryComponent() {
 
   return (
     <PageLayout>
-      <LibraryHeader canCreate={canCreate} openDialog={openDialog} />
+      <LibraryHeader
+        canCreate={canCreate}
+        openDialog={openDialog}
+        onImport={() => setImportOpen(true)}
+      />
 
       <LibraryBody
         media={media}
@@ -384,6 +398,11 @@ function LibraryComponent() {
         onOpenChange={(open) => !open && closeDialog()}
         mode={dialogMode as 'create' | 'edit' | 'delete'}
         media={dialogMedia}
+      />
+      <ImportEbooksDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        media={media}
       />
     </PageLayout>
   )

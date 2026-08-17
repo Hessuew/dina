@@ -11,7 +11,7 @@
   "editor.formatOnSave": true,
   "editor.formatOnSaveMode": "file",
   "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "cSpell.words": ["Disciplers", "SUPABASE"],
+  "cSpell.words": ["Disciplers", "pdfs", "SUPABASE"],
   "vim.useSystemClipboard": true,
   "vim.overrideCopy": true,
   "vim.overridePaste": true
