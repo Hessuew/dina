@@ -35,6 +35,14 @@ export function resolveIsAdmin(
   return user?.role === 'admin'
 }
 
+/** Export Contacts is Admin or a live enrolment-contact-export Staff Privilege. */
+export function resolveCanExportContacts(
+  isAdmin: boolean,
+  canExportContacts: boolean | undefined,
+): boolean {
+  return isAdmin || canExportContacts === true
+}
+
 /** Button variant + label for the view-all / view-own toggle. */
 export function getViewAllButtonProps(viewAll: boolean): {
   variant: 'default' | 'outline'
@@ -62,9 +70,7 @@ export function resolveReviewOverlayContext<TEnrollment>(args: {
   isOpen: boolean
   current: TEnrollment | null | undefined
   user:
-    | { id: string; email: string; fullName?: string | null }
-    | null
-    | undefined
+    { id: string; email: string; fullName?: string | null } | null | undefined
 }): ReviewOverlayContext<TEnrollment> | null {
   if (!args.isOpen || !args.current || !args.user) {
     return null
@@ -77,8 +83,7 @@ export function resolveReviewOverlayContext<TEnrollment>(args: {
 }
 
 export type SearchChangeDecision =
-  | { kind: 'noop' }
-  | { kind: 'search'; request: EnrollmentsNavRequest }
+  { kind: 'noop' } | { kind: 'search'; request: EnrollmentsNavRequest }
 
 /**
  * Decide how a search-input change should drive navigation: an unchanged term is a

@@ -3,6 +3,7 @@ import {
   buildDistributeToastMessage,
   buildSortChangeRequest,
   getViewAllButtonProps,
+  resolveCanExportContacts,
   resolveIsAdmin,
   resolveReviewOverlayContext,
   resolveSearchChange,
@@ -67,6 +68,21 @@ describe('resolveIsAdmin', () => {
   it('is false when there is no user', () => {
     expect(resolveIsAdmin(null)).toBe(false)
     expect(resolveIsAdmin(undefined)).toBe(false)
+  })
+})
+
+describe('resolveCanExportContacts', () => {
+  it('is true for an Admin', () => {
+    expect(resolveCanExportContacts(true, false)).toBe(true)
+  })
+
+  it('is true for a privileged Teacher-user', () => {
+    expect(resolveCanExportContacts(false, true)).toBe(true)
+  })
+
+  it('is false for a plain Teacher-user', () => {
+    expect(resolveCanExportContacts(false, false)).toBe(false)
+    expect(resolveCanExportContacts(false, undefined)).toBe(false)
   })
 })
 

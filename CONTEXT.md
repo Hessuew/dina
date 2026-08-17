@@ -14,7 +14,7 @@ Spelling note: the user-facing route and utils dir use British "enrolment" (`/en
 
 ### Teacher-user
 
-An authenticated platform user with `profiles.role = 'teacher'`. Can view the faculty **catalog** of published courses, lessons, and assignments across the academy; **manage** (edit/delete, drafts, student submissions/grades, submission stats) only on courses where they are a **Course Teacher**. Also view students and enrollments in read-only (redacted) mode. Distinct from the static landing-page Lecturer array.
+An authenticated platform user with `profiles.role = 'teacher'`. Can view the faculty **catalog** of published courses, lessons, and assignments across the academy; **manage** (edit/delete, drafts, student submissions/grades, submission stats) only on courses where they are a **Course Teacher**. Also view students and enrollments in read-only (redacted) mode. Distinct from the static landing-page Lecturer array. An Admin may attach **Staff Privileges** without changing this Role.
 
 ### Course Teacher
 
@@ -30,7 +30,16 @@ What a Teacher-user sees when viewing enrollments. Full applicant story (name, d
 
 ### Admin
 
-A user with `profiles.role = 'admin'`. Full enrollment access: read all fields, change status, send invitation, delete. The send-invitation action is only offered once the enrollment `status` is `approved`. Only role that can manage users and invitations.
+A user with `profiles.role = 'admin'`. Full enrollment access: read all fields, change status, send invitation, delete. The send-invitation action is only offered once the enrollment `status` is `approved`. Only role that can manage users, invitations, and **Staff Privileges**. Admins already have every Staff Privilege by virtue of being Admin; they never hold grant rows.
+
+### Staff Privilege
+
+A named extra capability an Admin grants a Teacher-user. Orthogonal to Role (`profiles.role` stays `teacher`) and to **Course Teacher**. Not a fourth Role. Students never receive one. Live check is `role = teacher` AND a `staff_privileges` row, or Admin. Writes reject unless the target Role is `teacher`. Grants are independent; revoke deletes the row. Only Admin sees or edits grants, on the `/teachers` TeacherModal. See ADR 0023.
+
+Two first privileges:
+
+- **Academy-wide attendance override** (`attendance_override`) — Present override on any Course via `/students/$studentId`. Does not open or close live Attendance Sessions on courses the holder does not teach.
+- **Enrolment contact export** (`enrollment_contact_export`) — existing Export Contacts dialog (Email Export Cohorts + Enrollment Contact Lookup). Enrolments list and detail stay the **Redacted Enrollment View**. Campaigns, status, invite, and delete stay Admin-only.
 
 ### Special Case
 
@@ -67,11 +76,11 @@ The four groups selectable in the export-emails dialog (`ExportEmailsDialog`), r
 - **Registered** — the enrollment's linked invitation is `accepted` (see **Registered**).
 - **Not yet registered** — **invited but not signed up**: `invitation_sent = true` **and** the linked invitation is not `accepted`. Deliberately anchored on _invited_, **not** on `status = 'approved'` — the cohort is the people who were emailed an invite and haven't finished creating their account, so they are the actionable "nudge to finish signup" list.
 
-All four are Admin-only. This keeps email addresses and invitation/registration tracking within the Admin-owned outreach workflow and consistent with the **Redacted Enrollment View**.
+All four are available to Admins and to Teacher-users holding the **Enrolment contact export** Staff Privilege. The enrolments list and detail stay redacted for Teacher-users; export is a deliberate copy action. WhatsApp and email campaigns stay Admin-only, consistent with the **Redacted Enrollment View**.
 
 ### Enrollment Contact Lookup
 
-An Admin-only manual lookup mode in `ExportContactsDialog` that maps pasted applicant names to enrollment contacts. Admins enter one or more names separated by commas or newlines; the system searches enrollment `full_legal_name` and `preferred_name`, shows matching or suggested enrollment rows, and selects rows before copying. After each search, a query group is auto-selected (merge-add, deduped by enrollment id) when it has **exactly one strong match**, or when multiple strong matches include **exactly one exact name match** (normalized equality, score 100). Ambiguous strong/exact ties and fuzzy-only suggestions stay manual. Admins can copy email, normalized E.164 phone, or both, with an optional full legal name prefix. Email-only output stays semicolon-separated for Outlook; all other output uses one person per line with comma-separated fields. Phone values use the shared `normalizeToE164` rule, so invalid selected phones block phone-based copying until removed or Email is chosen. Invalid phones are highlighted on selected rows (destructive border and phone text) and can be bulk-removed with one control. This is separate from **Email Export Cohorts**: lookup is name-driven and selection-based, not status/cohort-driven, and it is not exposed to Teacher-users.
+A manual lookup mode in `ExportContactsDialog` that maps pasted applicant names to enrollment contacts. Available to Admins and Teacher-users holding **Enrolment contact export**. Admins enter one or more names separated by commas or newlines; the system searches enrollment `full_legal_name` and `preferred_name`, shows matching or suggested enrollment rows, and selects rows before copying. After each search, a query group is auto-selected (merge-add, deduped by enrollment id) when it has **exactly one strong match**, or when multiple strong matches include **exactly one exact name match** (normalized equality, score 100). Ambiguous strong/exact ties and fuzzy-only suggestions stay manual. Admins and Teacher-users holding **Enrolment contact export** can copy email, normalized E.164 phone, or both, with an optional full legal name prefix. Email-only output stays semicolon-separated for Outlook; all other output uses one person per line with comma-separated fields. Phone values use the shared `normalizeToE164` rule, so invalid selected phones block phone-based copying until removed or Email is chosen. Invalid phones are highlighted on selected rows (destructive border and phone text) and can be bulk-removed with one control. This is separate from **Email Export Cohorts**: lookup is name-driven and selection-based, not status/cohort-driven. The list/detail views stay redacted for Teacher-users.
 
 ### WhatsApp Campaign
 
@@ -148,7 +157,7 @@ A teacher who temporarily covers another teacher's (**Absent Teacher's**) Review
 
 Exactly one **Attendance Session** per **Lesson** (unique `lesson_id`) under a **Course**. A Course Teacher or Admin opens a fixed **10-minute** check-in window from the Course screen by choosing which Lesson the live class covers. At most one open window exists per Course at a time. Re-open reuses the same session row (new window; prior **Present** marks kept). Absent is not stored — only Present rows exist. All academy Students may mark Present during the open window (auth identity only). Score display on `/students` is present / all lessons (including drafts) per course.
 
-A **Course Teacher** (on that course) or **Admin** may also **override** Present from the student detail page (`/students/$studentId`) at any time: set Present or clear it (toggle). Override does not require a live open window. If the Lesson has no session yet, override creates a **closed** session (`openedAt = closesAt = now`, `openedBy` = actor) so Present can attach; existing session timestamps are never rewritten. Clear Present deletes the Present row only. List popover on `/students` stays read-only.
+A **Course Teacher** (on that course), **Admin**, or Teacher-user holding **Academy-wide attendance override** may also **override** Present from the student detail page (`/students/$studentId`) at any time: set Present or clear it (toggle). Override does not require a live open window. If the Lesson has no session yet, override creates a **closed** session (`openedAt = closesAt = now`, `openedBy` = actor) so Present can attach; existing session timestamps are never rewritten. Clear Present deletes the Present row only. List popover on `/students` stays read-only. Live session open/close stays Course Teacher or Admin.
 
 ### Awaiting approval
 

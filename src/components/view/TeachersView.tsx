@@ -2,9 +2,11 @@ import { useState } from 'react'
 import type { TeacherWithCourse } from '@/types/teacher'
 import { TeacherCard } from '@/components/card/teacher-card/TeacherCard'
 import { TeacherModal } from '@/components/dialog/teacher-modal/TeacherModal'
+import { resolveSelectedTeacher } from '@/components/dialog/teacher-modal/teacher-modal.domain'
 
 type TeachersViewProps = {
   teachers: Array<TeacherWithCourse>
+  isAdmin?: boolean
 }
 
 function TeachersHeader() {
@@ -21,20 +23,22 @@ function TeachersHeader() {
   )
 }
 
-export function TeachersView({ teachers }: TeachersViewProps) {
-  const [selectedTeacher, setSelectedTeacher] =
-    useState<TeacherWithCourse | null>(null)
+export function TeachersView({ teachers, isAdmin = false }: TeachersViewProps) {
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(
+    null,
+  )
   const [modalOpen, setModalOpen] = useState(false)
+  const selectedTeacher = resolveSelectedTeacher(teachers, selectedTeacherId)
 
   const handleTeacherClick = (teacher: TeacherWithCourse) => {
-    setSelectedTeacher(teacher)
+    setSelectedTeacherId(teacher.id)
     setModalOpen(true)
   }
 
   const handleModalClose = (open: boolean) => {
     setModalOpen(open)
     if (!open) {
-      setTimeout(() => setSelectedTeacher(null), 200)
+      setTimeout(() => setSelectedTeacherId(null), 200)
     }
   }
 
@@ -75,6 +79,7 @@ export function TeachersView({ teachers }: TeachersViewProps) {
         teacher={selectedTeacher}
         open={modalOpen}
         onOpenChange={handleModalClose}
+        isAdmin={isAdmin}
       />
     </>
   )

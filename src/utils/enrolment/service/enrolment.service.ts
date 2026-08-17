@@ -63,7 +63,11 @@ import {
   updateInvitationToken,
   upsertEvaluation,
 } from '@/utils/enrolment/repository/enrolment.repository'
-import { authz, resolveAdminOrTeacherAccess } from '@/utils/authz'
+import {
+  authz,
+  hasStaffPrivilege,
+  resolveAdminOrTeacherAccess,
+} from '@/utils/authz'
 import {
   AppError,
   AuthorizationError,
@@ -274,9 +278,10 @@ export async function getEnrollmentsService(
   const enrollmentIds = rows.map((row) => row.id)
 
   // Fetch evaluations and reviewer assignments in parallel.
-  const [evaluations, rawAssignments] = await Promise.all([
+  const [evaluations, rawAssignments, canExportContacts] = await Promise.all([
     findEvaluationsForEnrollments(enrollmentIds),
     findReviewerAssignmentsForEnrollments(enrollmentIds),
+    hasStaffPrivilege(userId, 'enrollment_contact_export'),
   ])
 
   // Legacy rows may have courseId = null (created before ADR 0007 rev 2).
@@ -346,7 +351,7 @@ export async function getEnrollmentsService(
     }
   })
 
-  return { enrollments: enrollmentsOut, total, evaluations }
+  return { enrollments: enrollmentsOut, total, evaluations, canExportContacts }
 }
 
 export async function getEnrollmentByIdService(
@@ -694,15 +699,22 @@ export async function endSubstitutionService(
   }
 }
 
+async function requireEnrollmentContactExport(userId: string) {
+  if (await hasStaffPrivilege(userId, 'enrollment_contact_export')) return
+  throw new AuthorizationError('admin access required', {
+    code: 'ROLE_REQUIRED',
+  })
+}
+
 /**
  * Returns all enrollment emails for the requested group.
- * Admin-only because it exposes enrollment contact details.
+ * Restricted to Admins and Teacher-users with enrolment contact export.
  */
 export async function getEnrollmentEmailsService(
   data: GetEnrollmentEmailsInput,
   userId: string,
 ): Promise<{ emails: Array<string> }> {
-  await authz(userId).hasRole('admin')
+  await requireEnrollmentContactExport(userId)
   const emails = await findEnrollmentEmailsByGroup(data.group)
   return { emails }
 }
@@ -715,7 +727,7 @@ export async function searchEnrollmentContactsByNamesService(
   data: SearchEnrollmentContactsByNamesInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
+  await requireEnrollmentContactExport(userId)
 
   const queries = parseEnrollmentContactLookupNames(data.names)
   if (queries.length === 0) {
@@ -784,9 +796,7 @@ export async function bulkGradeEnrollmentsService(
     status: row.specialCase
       ? 'approved'
       : (assignBulkGradeStatus(row.sum, thresholds) as
-          | 'approved'
-          | 'waitlisted'
-          | 'rejected'),
+          'approved' | 'waitlisted' | 'rejected'),
   }))
 
   await bulkUpdateEnrollmentStatuses(updates)

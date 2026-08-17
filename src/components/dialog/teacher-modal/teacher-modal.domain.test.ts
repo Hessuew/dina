@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildTeacherModalViewModel,
   getTeacherInitials,
+  resolveSelectedTeacher,
   resolveTeacherModalGemImage,
 } from '../teacher-modal/teacher-modal.domain'
 import type { TeacherWithCourse } from '@/types/teacher'
@@ -78,5 +79,22 @@ describe('buildTeacherModalViewModel', () => {
   it('returns null gemImage when gemstone has no mapped asset', () => {
     const vm = buildTeacherModalViewModel(makeTeacher({ gemstone: 'unknown' }))
     expect(vm.gemImage).toBeNull()
+  })
+})
+
+describe('resolveSelectedTeacher', () => {
+  it('returns the catalog row for the selected id', () => {
+    const jane = makeTeacher({ id: 't1', staffPrivileges: [] })
+    const john = makeTeacher({
+      id: 't2',
+      fullName: 'John Smith',
+      staffPrivileges: ['attendance_override'],
+    })
+    expect(resolveSelectedTeacher([jane, john], 't2')).toEqual(john)
+  })
+
+  it('returns null when nothing is selected or the id is gone', () => {
+    expect(resolveSelectedTeacher([makeTeacher()], null)).toBeNull()
+    expect(resolveSelectedTeacher([makeTeacher()], 'missing')).toBeNull()
   })
 })

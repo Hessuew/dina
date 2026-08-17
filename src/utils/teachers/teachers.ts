@@ -7,7 +7,8 @@ import { getCurrentUser } from '@/utils/auth/auth'
 
 export const getTeachers = createServerFn({ method: 'POST' }).handler(
   async () => {
-    return getTeachersService()
+    const user = await getCurrentUser()
+    return getTeachersService(user.id)
   },
 )
 

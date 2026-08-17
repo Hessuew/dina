@@ -33,3 +33,11 @@ export function buildTeacherModalViewModel(
     gemImage: resolveTeacherModalGemImage(teacher.gemstone),
   }
 }
+
+export function resolveSelectedTeacher(
+  teachers: ReadonlyArray<TeacherWithCourse>,
+  selectedId: string | null,
+): TeacherWithCourse | null {
+  if (!selectedId) return null
+  return teachers.find((teacher) => teacher.id === selectedId) ?? null
+}

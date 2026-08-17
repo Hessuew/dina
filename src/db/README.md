@@ -66,6 +66,9 @@ Database access layer and schema definitions.
     - `email_messages` / `email_campaign_locks`
       - Audit/failure logging and per-campaign locking for admin bulk email campaigns.
       - `email_messages` logs bulk campaign attempts only; one-off invitation emails are not backfilled.
+    - `staff_privileges`
+      - Named Staff Privilege grants on Teacher-users (`user_id`, `privilege`).
+      - Unique `(user_id, privilege)`. Admin insert/delete. Not a fourth Role (ADR 0023).
 
 ## Key Invariants / Assumptions
 

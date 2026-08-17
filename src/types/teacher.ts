@@ -1,3 +1,6 @@
+import type { Role } from '@/utils/authz/types'
+import type { StaffPrivilege } from '@/utils/staff-privilege/domain/staff-privilege.domain'
+
 export type Teacher = {
   id: string
   fullName: string
@@ -7,6 +10,8 @@ export type Teacher = {
   gemstone: string | null
   avatarUrl: string | null
   createdAt: Date
+  role?: Role
+  staffPrivileges?: Array<StaffPrivilege>
 }
 
 export type TeacherCourse = {

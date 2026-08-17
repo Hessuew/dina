@@ -24,6 +24,7 @@ import {
   remainingMs,
 } from '@/utils/attendance/domain/attendance-window.domain'
 import { getUserProfile } from '@/utils/auth/auth'
+import { hasStaffPrivilege } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
 import { findCourseById } from '@/utils/courses/repository'
 import { findCourseTeachers } from '@/utils/courses/repository/course-teachers.repository'
@@ -55,6 +56,16 @@ async function requireCourseManage(userId: string, courseId: string) {
     )
   }
   return { profile, course, permissions }
+}
+
+async function requireAttendanceOverride(userId: string, courseId: string) {
+  try {
+    return await requireCourseManage(userId, courseId)
+  } catch (error) {
+    if (!(error instanceof AuthorizationError)) throw error
+    if (await hasStaffPrivilege(userId, 'attendance_override')) return
+    throw error
+  }
 }
 
 function mapOpenSession(
@@ -231,7 +242,7 @@ export async function setStudentPresentService(
   data: SetStudentPresentInput,
   actorId: string,
 ) {
-  await requireCourseManage(actorId, data.courseId)
+  await requireAttendanceOverride(actorId, data.courseId)
 
   const target = await getUserProfile(data.studentId)
   if (target.role !== 'student') {

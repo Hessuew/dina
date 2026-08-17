@@ -15,10 +15,11 @@ export const Route = createFileRoute('/_authed/teachers')({
 
 function TeachersComponent() {
   const { teachers } = Route.useLoaderData()
+  const { user } = Route.useRouteContext()
 
   return (
     <PageLayout>
-      <TeachersView teachers={teachers} />
+      <TeachersView teachers={teachers} isAdmin={user?.role === 'admin'} />
     </PageLayout>
   )
 }

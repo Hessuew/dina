@@ -35,6 +35,7 @@ import {
   posts,
 } from './post.schema'
 import { profiles } from './profile.schema'
+import { staffPrivileges } from './staff-privilege.schema'
 import { zoomLinks } from './zoom.schema'
 
 export const profilesRelations = relations(profiles, ({ one, many }) => ({
@@ -72,7 +73,18 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
     references: [discipleshipGroups.teacherId],
   }),
   zoomLinks: many(zoomLinks),
+  staffPrivileges: many(staffPrivileges),
 }))
+
+export const staffPrivilegesRelations = relations(
+  staffPrivileges,
+  ({ one }) => ({
+    user: one(profiles, {
+      fields: [staffPrivileges.userId],
+      references: [profiles.id],
+    }),
+  }),
+)
 
 export const accountSecurityRelations = relations(
   accountSecurity,

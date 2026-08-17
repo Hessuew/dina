@@ -5,13 +5,20 @@ import {
   findCourseAssignmentsForTeachers,
   findCourseTeacher,
 } from '@/utils/teachers/repository'
-import { authz } from '@/utils/authz'
+import { authz, resolveAdminOrTeacherAccess } from '@/utils/authz'
+import { findPrivilegesForUsers } from '@/utils/staff-privilege/repository'
 import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
 
-export async function getTeachersService() {
+export async function getTeachersService(actorId?: string) {
   const teachers = await signAvatarRows(await findAllTeachers())
 
   const teacherIds = teachers.map((t) => t.id)
+  const isAdmin = actorId
+    ? (await resolveAdminOrTeacherAccess(actorId)).isAdmin
+    : false
+  const granted = isAdmin
+    ? await findPrivilegesForUsers(teacherIds)
+    : new Map<string, Array<never>>()
   const allAssignments = await findCourseAssignmentsForTeachers(teacherIds)
 
   // Results are ordered by createdAt desc; first occurrence per teacher = most recent.
@@ -29,9 +36,11 @@ export async function getTeachersService() {
     bio: teacher.bio,
     avatarUrl: teacher.avatarUrl,
     createdAt: teacher.createdAt,
+    role: teacher.role,
     course: assignmentByTeacher.get(teacher.id)?.course,
     lecturerTitle: teacher.lecturerTitle,
     gemstone: teacher.gemstone ?? null,
+    staffPrivileges: isAdmin ? (granted.get(teacher.id) ?? []) : undefined,
   }))
 
   return { teachers: sortTeachers(teachersWithCourses) }
