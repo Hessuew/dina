@@ -27,8 +27,11 @@ function makeState(
   }
 }
 
-function makeEvent(key: string) {
-  return { key, preventDefault: vi.fn() }
+function makeEvent(
+  key: string,
+  modifiers: { metaKey?: boolean; ctrlKey?: boolean } = {},
+) {
+  return { key, preventDefault: vi.fn(), ...modifiers }
 }
 
 describe('handleEvaluationKey', () => {
@@ -100,6 +103,30 @@ describe('handleEvaluationKey', () => {
       handlers,
     )
     expect(handlers.saveAdmissionCategory).toHaveBeenCalledWith('emerging')
+  })
+
+  it('lets Command+C copy instead of setting a category', () => {
+    const handlers = makeHandlers()
+    const event = makeEvent('c', { metaKey: true })
+    handleEvaluationKey(
+      event,
+      makeState({ admissionCategoryEnabled: true }),
+      handlers,
+    )
+    expect(event.preventDefault).not.toHaveBeenCalled()
+    expect(handlers.saveAdmissionCategory).not.toHaveBeenCalled()
+  })
+
+  it('lets Control+C copy instead of setting a category', () => {
+    const handlers = makeHandlers()
+    const event = makeEvent('c', { ctrlKey: true })
+    handleEvaluationKey(
+      event,
+      makeState({ admissionCategoryEnabled: true }),
+      handlers,
+    )
+    expect(event.preventDefault).not.toHaveBeenCalled()
+    expect(handlers.saveAdmissionCategory).not.toHaveBeenCalled()
   })
 
   it('ignores a category shortcut when categories are disabled', () => {

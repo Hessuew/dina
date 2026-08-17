@@ -4,6 +4,8 @@ import type { AdmissionCategory, EvaluationScore } from './evaluation.domain'
 /** The single key event field the dispatcher needs (a real `KeyboardEvent` satisfies this). */
 export type EvaluationKeyEvent = {
   key: string
+  metaKey?: boolean
+  ctrlKey?: boolean
   preventDefault: () => void
 }
 
@@ -29,7 +31,8 @@ export type EvaluationKeyHandlers = {
  * Keyboard shortcuts for the evaluation overlay: arrows navigate, Escape closes,
  * `n`/`N` focuses the note, `A`/`B`/`C` set the admission category (when enabled),
  * and `0`-`4`/Backspace/Delete set or clear the score. All shortcuts are ignored
- * while typing in a text field.
+ * while typing in a text field, and while Command/Ctrl is held so native
+ * copy/cut/paste/select-all still work.
  */
 export function handleEvaluationKey(
   event: EvaluationKeyEvent,
@@ -37,6 +40,7 @@ export function handleEvaluationKey(
   handlers: EvaluationKeyHandlers,
 ): void {
   if (state.isTyping) return
+  if (event.metaKey || event.ctrlKey) return
 
   if (event.key === 'ArrowRight') {
     event.preventDefault()
