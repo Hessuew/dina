@@ -40,13 +40,3 @@ export const uploadCourseThumbnailFn = createServerFn({ method: 'POST' })
     const user = await getCurrentUser()
     return uploadCourseThumbnailService(data, user.id)
   })
-
-// Utility to convert File to base64 string
-export function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.readAsDataURL(file)
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = (error) => reject(error)
-  })
-}

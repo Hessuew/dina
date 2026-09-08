@@ -1,5 +1,4 @@
 export {
-  fileToBase64,
   requestAvatarUploadFn,
   requestCourseThumbnailUploadFn,
   uploadAvatarFn,
