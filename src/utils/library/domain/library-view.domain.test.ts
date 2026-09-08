@@ -5,6 +5,7 @@ import {
   buildLibraryThumbModel,
   canCreateMedia,
   canManageMediaRow,
+  canManageShelfItem,
   getLibraryEmptyStateDescription,
   getVisibleShelfTopics,
   getYoutubeThumbnail,
@@ -59,6 +60,33 @@ describe('canManageMediaRow', () => {
   it('student cannot manage rows', () => {
     const viewer = { id: 's1', role: 'student' as Role }
     expect(canManageMediaRow(viewer, makeRow({ uploaderId: 's1' }))).toBe(false)
+  })
+})
+
+describe('canManageShelfItem', () => {
+  it('returns true when permissions allow edit and user is course teacher, and actions exist', () => {
+    expect(
+      canManageShelfItem({ canEdit: true, isCourseTeacher: true }, true, true),
+    ).toBe(true)
+  })
+
+  it('returns false when permissions are missing or either edit or delete action is missing', () => {
+    expect(canManageShelfItem(undefined, true, true)).toBe(false)
+    expect(
+      canManageShelfItem({ canEdit: true, isCourseTeacher: true }, false, true),
+    ).toBe(false)
+    expect(
+      canManageShelfItem({ canEdit: true, isCourseTeacher: true }, true, false),
+    ).toBe(false)
+  })
+
+  it('returns false when canEdit or isCourseTeacher is false', () => {
+    expect(
+      canManageShelfItem({ canEdit: false, isCourseTeacher: true }, true, true),
+    ).toBe(false)
+    expect(
+      canManageShelfItem({ canEdit: true, isCourseTeacher: false }, true, true),
+    ).toBe(false)
   })
 })
 

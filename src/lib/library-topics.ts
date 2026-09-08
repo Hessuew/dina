@@ -1,20 +1,43 @@
 export const LIBRARY_TOPICS = [
-  'Wisdom',
-  'Healing',
-  'Miracles',
-  'Kingdom',
-  'Faith',
-  'Marriage',
-  'Finance',
+  "Biography of God's Generals",
   'Church Growth',
-  "God's Generals Biography",
+  'Demons and Deliverance',
+  'Evangelism & Gospel Missions',
+  'Faith',
+  'Finance',
+  'Gifts of the Spirit',
+  'Healing',
+  'Holy Spirit',
+  'Kingdom',
+  'Lectures',
+  'Marriage',
+  'Miracles',
+  'Prayer',
+  'Prophetic Christian Literatures',
+  'Repentance from sin',
+  'Revival',
+  'Spiritual Growth',
   'Spiritual Warfare',
+  'Triumphant church',
+  'Wisdom',
 ] as const
 
 export type LibraryTopic = (typeof LIBRARY_TOPICS)[number]
 
+export const LEGACY_LIBRARY_TOPICS = ["God's Generals Biography"] as const
+type LegacyLibraryTopic = (typeof LEGACY_LIBRARY_TOPICS)[number]
+
+const LEGACY_TOPIC_ALIASES: Record<LegacyLibraryTopic, LibraryTopic> = {
+  "God's Generals Biography": "Biography of God's Generals",
+}
+
 export function isLibraryTopic(value: string): value is LibraryTopic {
   return (LIBRARY_TOPICS as ReadonlyArray<string>).includes(value)
+}
+
+export function canonicalizeLibraryTopic(value: string): LibraryTopic | null {
+  if (isLibraryTopic(value)) return value
+  return (LEGACY_TOPIC_ALIASES as Record<string, LibraryTopic>)[value] ?? null
 }
 
 export type GroupableMedia = {
@@ -38,11 +61,12 @@ export function buildShelves<T extends GroupableMedia>(
 ): Map<string, LibraryShelfBuckets<T>> {
   const shelves = new Map<string, LibraryShelfBuckets<T>>()
   for (const item of media) {
-    if (!isLibraryTopic(item.category)) continue
-    if (!shelves.has(item.category)) {
-      shelves.set(item.category, emptyShelfBuckets())
+    const topic = canonicalizeLibraryTopic(item.category)
+    if (!topic) continue
+    if (!shelves.has(topic)) {
+      shelves.set(topic, emptyShelfBuckets())
     }
-    const shelf = shelves.get(item.category)!
+    const shelf = shelves.get(topic)!
     if (item.fileType === 'document') {
       if (item.allowsDownload) shelf.lectures.push(item)
       else shelf.ebooks.push(item)

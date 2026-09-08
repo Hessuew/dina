@@ -1,12 +1,12 @@
 import { z } from 'zod'
-import { LIBRARY_TOPICS } from '@/lib/library-topics'
+import { LEGACY_LIBRARY_TOPICS, LIBRARY_TOPICS } from '@/lib/library-topics'
 
 const mediaKindEnum = z.enum(['youtube', 'document', 'video-file'])
 
 export const createMediaSchema = z.object({
   title: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
-  category: z.enum([...LIBRARY_TOPICS]),
+  category: z.enum([...LIBRARY_TOPICS, ...LEGACY_LIBRARY_TOPICS]),
   isPublished: z.boolean().optional().default(false),
   allowsDownload: z.boolean().optional().default(false),
   kind: mediaKindEnum,

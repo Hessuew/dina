@@ -21,6 +21,15 @@ export function canManageMediaRow(
   return false
 }
 
+export function canManageShelfItem(
+  permissions: { canEdit: boolean; isCourseTeacher: boolean } | undefined,
+  hasEditAction: boolean,
+  hasDeleteAction: boolean,
+): boolean {
+  if (!permissions || !hasEditAction || !hasDeleteAction) return false
+  return permissions.canEdit && permissions.isCourseTeacher
+}
+
 export function getLibraryEmptyStateDescription(canCreate: boolean): string {
   return canCreate
     ? 'Add the first library item to get started'

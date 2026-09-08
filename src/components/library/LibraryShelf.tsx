@@ -1,6 +1,7 @@
 import type { MediaLibraryRow } from '@/utils/library/library'
 import { MediaCard } from '@/components/library/media-card/MediaCard'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
+import { canManageShelfItem } from '@/utils/library/domain/library-view.domain'
 
 type LibraryShelfPermissions = {
   canEdit: boolean
@@ -31,17 +32,16 @@ function MediaCardWithActions({
   onEditMedia?: (item: MediaLibraryRow) => void
   onDeleteMedia?: (item: MediaLibraryRow) => void
 }) {
-  const canManage =
-    permissions != null &&
-    onEditMedia != null &&
-    onDeleteMedia != null &&
-    permissions.canEdit &&
-    permissions.isCourseTeacher
+  const canManage = canManageShelfItem(
+    permissions,
+    onEditMedia != null,
+    onDeleteMedia != null,
+  )
 
   return (
     <div className="group relative w-full shrink-0 sm:w-auto">
       <MediaCard item={item} viewerRole={viewerRole} />
-      {canManage && (
+      {canManage && permissions && onEditMedia && onDeleteMedia && (
         <div
           className="absolute top-1 left-1 hidden group-hover:flex"
           onClick={(e) => e.preventDefault()}
@@ -84,7 +84,7 @@ function ShelfSection({
       <p className="text-[0.68rem] font-medium tracking-[0.25em] text-[#9B7A41] uppercase">
         {label}
       </p>
-      <div className="flex flex-col gap-4 pb-2 sm:flex-row">
+      <div className="flex flex-col gap-4 pb-2 sm:flex-row sm:items-start sm:overflow-x-auto sm:pb-4">
         {items.map((item) => (
           <MediaCardWithActions
             key={item.id}

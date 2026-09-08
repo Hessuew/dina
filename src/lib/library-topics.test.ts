@@ -2,9 +2,33 @@ import { describe, expect, it } from 'vitest'
 import {
   LIBRARY_TOPICS,
   buildShelves,
+  canonicalizeLibraryTopic,
   isLibraryTopic,
   shelfHasContent,
 } from './library-topics'
+
+describe('LIBRARY_TOPICS', () => {
+  it('is sorted alphabetically', () => {
+    const sorted = [...LIBRARY_TOPICS].sort((a, b) => a.localeCompare(b))
+    expect(LIBRARY_TOPICS).toEqual(sorted)
+  })
+
+  it('contains 21 topics including Lectures and folder topics', () => {
+    expect(LIBRARY_TOPICS).toContain('Lectures')
+    expect(LIBRARY_TOPICS).toContain("Biography of God's Generals")
+    expect(LIBRARY_TOPICS).toContain('Demons and Deliverance')
+    expect(LIBRARY_TOPICS).toContain('Evangelism & Gospel Missions')
+    expect(LIBRARY_TOPICS).toContain('Gifts of the Spirit')
+    expect(LIBRARY_TOPICS).toContain('Holy Spirit')
+    expect(LIBRARY_TOPICS).toContain('Prayer')
+    expect(LIBRARY_TOPICS).toContain('Prophetic Christian Literatures')
+    expect(LIBRARY_TOPICS).toContain('Repentance from sin')
+    expect(LIBRARY_TOPICS).toContain('Revival')
+    expect(LIBRARY_TOPICS).toContain('Spiritual Growth')
+    expect(LIBRARY_TOPICS).toContain('Triumphant church')
+    expect(LIBRARY_TOPICS).toHaveLength(21)
+  })
+})
 
 describe('isLibraryTopic', () => {
   it('returns true for every predefined topic', () => {
@@ -17,6 +41,26 @@ describe('isLibraryTopic', () => {
     expect(isLibraryTopic('General')).toBe(false)
     expect(isLibraryTopic('')).toBe(false)
     expect(isLibraryTopic('wisdom')).toBe(false) // case-sensitive
+  })
+})
+
+describe('canonicalizeLibraryTopic', () => {
+  it('returns canonical topic unchanged', () => {
+    expect(canonicalizeLibraryTopic('Wisdom')).toBe('Wisdom')
+    expect(canonicalizeLibraryTopic("Biography of God's Generals")).toBe(
+      "Biography of God's Generals",
+    )
+  })
+
+  it("maps legacy God's Generals Biography to Biography of God's Generals", () => {
+    expect(canonicalizeLibraryTopic("God's Generals Biography")).toBe(
+      "Biography of God's Generals",
+    )
+  })
+
+  it('returns null for unrecognized strings', () => {
+    expect(canonicalizeLibraryTopic('Unknown Topic')).toBeNull()
+    expect(canonicalizeLibraryTopic('')).toBeNull()
   })
 })
 
@@ -87,6 +131,28 @@ describe('buildShelves', () => {
     ])
     expect(shelves.get('Faith')?.ebooks.map((i) => i.id)).toEqual(['x'])
     expect(shelves.get('Faith')?.lectures).toHaveLength(0)
+  })
+
+  it("groups legacy God's Generals Biography under Biography of God's Generals shelf", () => {
+    const shelves = buildShelves([
+      {
+        id: 'legacy-1',
+        category: "God's Generals Biography",
+        fileType: 'document',
+        allowsDownload: false,
+      },
+      {
+        id: 'canonical-1',
+        category: "Biography of God's Generals",
+        fileType: 'document',
+        allowsDownload: true,
+      },
+    ])
+    const generalsShelf = shelves.get("Biography of God's Generals")!
+    expect(generalsShelf).toBeDefined()
+    expect(generalsShelf.ebooks.map((i) => i.id)).toEqual(['legacy-1'])
+    expect(generalsShelf.lectures.map((i) => i.id)).toEqual(['canonical-1'])
+    expect(shelves.has("God's Generals Biography")).toBe(false)
   })
 })
 
