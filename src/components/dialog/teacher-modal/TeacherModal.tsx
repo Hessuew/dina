@@ -1,5 +1,6 @@
 import { XIcon } from 'lucide-react'
 import { buildTeacherModalViewModel } from './teacher-modal.domain'
+import { TeacherPrivilegePanel } from './TeacherPrivilegePanel'
 import type { TeacherWithCourse } from '@/types/teacher'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,6 +16,7 @@ type TeacherModalProps = {
   teacher: TeacherWithCourse | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  isAdmin?: boolean
 }
 
 type AvatarPanelProps = {
@@ -101,6 +103,7 @@ export function TeacherModal({
   teacher,
   open,
   onOpenChange,
+  isAdmin = false,
 }: TeacherModalProps) {
   if (!teacher) return null
 
@@ -145,6 +148,12 @@ export function TeacherModal({
 
               <div className="flex min-h-0 flex-col overflow-hidden bg-[#151515]/88 px-7 py-4 sm:px-10 md:py-10 lg:px-12">
                 <TeacherBioPanel bio={teacher.bio} gemImage={vm.gemImage} />
+                <TeacherPrivilegePanel
+                  teacherId={teacher.id}
+                  role={teacher.role}
+                  privileges={teacher.staffPrivileges ?? []}
+                  isAdmin={isAdmin}
+                />
               </div>
             </div>
           </DialogBody>

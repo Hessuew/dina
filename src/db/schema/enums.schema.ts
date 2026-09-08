@@ -1,6 +1,10 @@
 import { pgEnum } from 'drizzle-orm/pg-core'
 
 export const userRoleEnum = pgEnum('user_role', ['student', 'teacher', 'admin'])
+export const staffPrivilegeEnum = pgEnum('staff_privilege', [
+  'attendance_override',
+  'enrollment_contact_export',
+])
 export const submissionStatusEnum = pgEnum('submission_status', [
   'draft',
   'submitted',

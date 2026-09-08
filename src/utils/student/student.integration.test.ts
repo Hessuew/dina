@@ -10,6 +10,7 @@ import {
   getStudentDetailService,
   getStudentsService,
 } from '@/utils/student/service/student.service'
+import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 import { NotFoundError } from '@/utils/errors'
 
 describe('getStudentsService (integration)', () => {
@@ -129,6 +130,25 @@ describe('getStudentDetailService (integration)', () => {
     ])
     expect(
       student.attendanceByCourse.find((s) => s.courseId === courseId)
+        ?.canManageAttendance,
+    ).toBe(true)
+  })
+
+  it('flags every course as manageable for a privileged outsider teacher', async () => {
+    const adminId = await seedProfile({ role: 'admin' })
+    const outsiderId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
+    const courseId = await seedCourse({ title: 'Foundations' })
+    await seedLesson({ courseId })
+    await setStaffPrivilegeService(adminId, {
+      userId: outsiderId,
+      privilege: 'attendance_override',
+      granted: true,
+    })
+
+    const { student } = await getStudentDetailService({ studentId }, outsiderId)
+    expect(
+      student.attendanceByCourse.find((score) => score.courseId === courseId)
         ?.canManageAttendance,
     ).toBe(true)
   })

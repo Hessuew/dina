@@ -288,6 +288,13 @@
       "when": 1786358400000,
       "tag": "0043_media_allows_download",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1787000000000,
+      "tag": "0044_staff_privileges",
+      "breakpoints": true
     }
   ]
 }

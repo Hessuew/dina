@@ -9,6 +9,7 @@ import {
   setEvaluationScoreService,
   substituteTeacherService,
 } from '@/utils/enrolment/service/enrolment.service'
+import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 import {
   findEnrollmentById,
   findEnrollmentContactLookupCandidates,
@@ -333,6 +334,23 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
       getEnrollmentEmailsService({ group: 'all' }, teacherId),
     ).rejects.toBeInstanceOf(AuthorizationError)
   })
+
+  it('lets a Teacher-user with enrolment contact export read cohorts', async () => {
+    const adminId = await seedProfile({ role: 'admin' })
+    const teacherId = await seedProfile({ role: 'teacher' })
+    await seedExportCohorts()
+    await setStaffPrivilegeService(adminId, {
+      userId: teacherId,
+      privilege: 'enrollment_contact_export',
+      granted: true,
+    })
+
+    const { emails } = await getEnrollmentEmailsService(
+      { group: 'registered' },
+      teacherId,
+    )
+    expect(emails).toEqual(['registered@test.dev'])
+  })
 })
 
 describe('enrollment contact lookup by name (integration)', () => {
@@ -400,6 +418,23 @@ describe('enrollment contact lookup by name (integration)', () => {
     await expect(
       searchEnrollmentContactsByNamesService({ names: 'Mia' }, teacherId),
     ).rejects.toBeInstanceOf(AuthorizationError)
+  })
+
+  it('lets a privileged Teacher-user look up contacts', async () => {
+    const adminId = await seedProfile({ role: 'admin' })
+    const teacherId = await seedProfile({ role: 'teacher' })
+    await seedLookupEnrollments()
+    await setStaffPrivilegeService(adminId, {
+      userId: teacherId,
+      privilege: 'enrollment_contact_export',
+      granted: true,
+    })
+
+    const result = await searchEnrollmentContactsByNamesService(
+      { names: 'Mia' },
+      teacherId,
+    )
+    expect(result.groups[0].matches[0]?.email).toBe('maria@test.dev')
   })
 })
 

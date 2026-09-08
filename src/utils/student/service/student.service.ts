@@ -28,6 +28,7 @@ import {
   findPresentsForStudents,
 } from '@/utils/attendance/repository/attendance.repository'
 import { getUserProfile } from '@/utils/auth/auth'
+import { hasStaffPrivilege } from '@/utils/authz'
 import { findCourseAssignmentsForTeachers } from '@/utils/teachers/repository/course-teachers.repository'
 import {
   signAvatarRows,
@@ -83,6 +84,9 @@ async function resolveManageableCourseIds(
   const profile = await getUserProfile(actorId)
   if (profile.role === 'admin') return new Set(courseIds)
   if (profile.role !== 'teacher') return new Set()
+  if (await hasStaffPrivilege(actorId, 'attendance_override')) {
+    return new Set(courseIds)
+  }
   const assignments = await findCourseAssignmentsForTeachers([actorId])
   const managed = new Set(assignments.map((a) => a.courseId))
   return new Set(courseIds.filter((id) => managed.has(id)))

@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { EyeIcon } from 'lucide-react'
+import { EyeIcon, MailIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { EnrollmentsNavRequest } from '@/utils/enrolment/domain/enrollments-navigation.domain'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ import {
   buildDistributeToastMessage,
   buildSortChangeRequest,
   getViewAllButtonProps,
+  resolveCanExportContacts,
   resolveIsAdmin,
   resolveReviewOverlayContext,
   resolveSearchChange,
@@ -59,6 +60,7 @@ export const Route = createFileRoute('/_authed/enrollments/')({
       enrollments: result.enrollments,
       total: result.total,
       evaluations: result.evaluations,
+      canExportContacts: result.canExportContacts,
     }
   },
   component: EnrollmentsPage,
@@ -197,12 +199,13 @@ function useEnrollmentsActions(router: AppRouter, params: EnrollmentsSearch) {
 
 function useEnrollmentsPageController() {
   const loaderData = Route.useLoaderData()
-  const { enrollments, total, evaluations } = loaderData
+  const { enrollments, total, evaluations, canExportContacts } = loaderData
   const { user } = Route.useRouteContext()
   const router = useRouter()
   const params = Route.useSearch()
   const { page, pageSize, search, sortBy, sortDir, review, viewAll } = params
   const isAdmin = resolveIsAdmin(user)
+  const canExport = resolveCanExportContacts(isAdmin, canExportContacts)
 
   const reviewState = useEnrollmentReview({
     initialEnrollments: enrollments,
@@ -234,6 +237,7 @@ function useEnrollmentsPageController() {
     sortBy,
     sortDir,
     isAdmin,
+    canExportContacts: canExport,
     router,
     reviewState,
     reviewOverlay,
@@ -246,6 +250,7 @@ function useEnrollmentsPageController() {
 type EnrollmentsPageHeaderProps = {
   viewAllButton: ReturnType<typeof getViewAllButtonProps>
   isAdmin: boolean
+  canExportContacts: boolean
   isDistributing: boolean
   onToggleViewAll: () => void
   onDistribute: () => void
@@ -260,6 +265,7 @@ type EnrollmentsPageHeaderProps = {
 function EnrollmentsPageHeader({
   viewAllButton,
   isAdmin,
+  canExportContacts,
   isDistributing,
   onToggleViewAll,
   onDistribute,
@@ -290,12 +296,17 @@ function EnrollmentsPageHeader({
           <EyeIcon className="size-3.5" />
           {viewAllButton.label}
         </Button>
+        {canExportContacts && (
+          <Button theme="light" variant="outline" onClick={onExportContacts}>
+            <MailIcon className="size-3.5" />
+            Export contacts
+          </Button>
+        )}
         {isAdmin && (
           <AdminActionsDropdown
             onDistribute={onDistribute}
             onStartSubstitution={onStartSubstitution}
             onEndSubstitution={onEndSubstitution}
-            onExportContacts={onExportContacts}
             onBulkGrade={onBulkGrade}
             onSendWhatsApp={onSendWhatsApp}
             onSendEmailCampaign={onSendEmailCampaign}
@@ -427,6 +438,7 @@ function EnrollmentsPage() {
       <EnrollmentsPageHeader
         viewAllButton={c.viewAllButton}
         isAdmin={c.isAdmin}
+        canExportContacts={c.canExportContacts}
         isDistributing={c.isDistributing}
         onToggleViewAll={c.handleToggleViewAll}
         onDistribute={() => void c.handleDistribute()}
@@ -450,7 +462,7 @@ function EnrollmentsPage() {
         />
       )}
 
-      {c.isAdmin && (
+      {c.canExportContacts && (
         <ExportContactsDialog
           open={c.isExportContactsDialogOpen}
           onOpenChange={c.setIsExportContactsDialogOpen}

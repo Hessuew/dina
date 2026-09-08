@@ -16,6 +16,7 @@ import {
 import { findPresentsForStudent } from '@/utils/attendance/repository/attendance.repository'
 import { getDb } from '@/db'
 import { attendanceSessions } from '@/db/schema'
+import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 import {
   AuthorizationError,
   ConflictError,
@@ -248,6 +249,29 @@ describe('setStudentPresentService override (integration)', () => {
       adminId,
     )
     expect(result.present).toBe(true)
+  })
+
+  it('privileged outsider can override but cannot open a live window', async () => {
+    const { outsiderId, adminId, studentId, courseId, lesson1 } =
+      await seedManagedCourse()
+    await setStaffPrivilegeService(adminId, {
+      userId: outsiderId,
+      privilege: 'attendance_override',
+      granted: true,
+    })
+
+    const result = await setStudentPresentService(
+      { studentId, courseId, lessonId: lesson1, present: true },
+      outsiderId,
+    )
+    expect(result.present).toBe(true)
+
+    await expect(
+      startOrReopenAttendanceService(
+        { courseId, lessonId: lesson1 },
+        outsiderId,
+      ),
+    ).rejects.toBeInstanceOf(AuthorizationError)
   })
 
   it('rejects non-student target and student actor', async () => {
