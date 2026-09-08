@@ -30,6 +30,9 @@ This folder contains:
 - **Feature component families**
   - `auth/`: signup/login/reset/enrolment forms. Public auth pages compose the shared layout primitives in `auth-layout.tsx`: `AuthPageShell`, `AuthFeaturePanel`, `AuthFormSurface`, reset-token state helpers, and `EnrolmentPageShell`.
   - `dialog/`: dialogs for profile, invitations, teachers, event previews.
+    - `dialog/ebook-import/`: multi-step staff-only bulk eBook importer. It scans folder or
+      multi-file selections, validates PDFs locally through lazy-loaded PDF.js, reviews titles and
+      duplicates, then uploads at most three files concurrently through existing private media APIs.
   - `card/`: card-style feature components.
   - `view/`: composite “page section” components for feature pages. Includes `students-view/StudentAttendanceDetail` — Course Teacher/Admin Present override toggles on student detail (list popover stays read-only).
   - `landing/`: public landing page sections.

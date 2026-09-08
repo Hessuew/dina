@@ -237,3 +237,11 @@ A row in `media_library` shared with authenticated users (students only see publ
 - **Video file media** — form kind `video-file` → DB `file_type = video_file`. Teacher uploads MP4/WebM (max 100MB) via signed direct upload into private `media-library` storage (ADR 0020). Detail page plays with HTML5 `<video>` against a short-lived signed URL.
 - **Document media** — form kind `document` → DB `file_type = document`. PDF/PPTX/DOCX upload directly to private `media-library` through signed URLs (max 25MB); PDFs render in-app (ADRs 0002 and 0022). `allows_download` is Document-only. When true, the item is a **Lecture** on the library shelf and the detail page shows a Downloadable chip plus an in-app Download against the signed viewer URL. When false, the item is an **eBook**: in-app reading only, no download UI (ADR 0002).
 - **Private first-party uploads** — `avatars`, `course-thumbnails`, `media-library`, and `media-thumbnails` are private. Browser uploads use signed direct URLs; DB records store canonical object paths; authorized response DTOs receive one-hour signed display URLs (ADR 0022).
+
+### Bulk eBook Import
+
+Staff workflow on the Library page for importing up to 100 PDF eBooks into one Library Topic.
+Each file becomes non-downloadable Document media with no course, description, or thumbnail.
+Folder hierarchy and relative paths exist only as browser selection/review metadata; they are not
+persisted and do not create library structure. Imports reuse the private signed direct-upload flow
+from ADR 0022 and the eBook semantics from ADR 0002.

@@ -51,6 +51,14 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { IconButton } from '@/components/table/IconButton'
+import {
+  DATA_TABLE_BODY_CELL_CLASS,
+  DATA_TABLE_BODY_ROW_CLASS,
+  DATA_TABLE_FRAME_CLASS,
+  DATA_TABLE_HEADER_CELL_CLASS,
+  DATA_TABLE_HEADER_ROW_CLASS,
+  DATA_TABLE_STICKY_HEADER_CELL_CLASS,
+} from '@/components/table/data-table.styles'
 
 type ButtonConfig<TData> = {
   icon: ComponentType<{ className?: string }>
@@ -190,7 +198,15 @@ function derivePaginationInfo<TData>(
   const sizeOptions = PAGE_SIZE_OPTIONS.includes(pageSize)
     ? PAGE_SIZE_OPTIONS
     : [...PAGE_SIZE_OPTIONS, pageSize].sort((a, b) => a - b)
-  return { pageIndex, pageSize, filteredTotal, start, end, pageWindow, sizeOptions }
+  return {
+    pageIndex,
+    pageSize,
+    filteredTotal,
+    start,
+    end,
+    pageWindow,
+    sizeOptions,
+  }
 }
 
 function SearchBar({
@@ -233,19 +249,15 @@ function DataTableHead<TData>({
   return (
     <TableHeader>
       {table.getHeaderGroups().map((headerGroup) => (
-        <TableRow
-          key={headerGroup.id}
-          className="border-b border-white/10 hover:bg-transparent"
-        >
+        <TableRow key={headerGroup.id} className={DATA_TABLE_HEADER_ROW_CLASS}>
           {headerGroup.headers.map((header) => {
             const canSort = header.column.getCanSort()
             return (
               <TableHead
                 key={header.id}
                 className={cn(
-                  'h-11 px-4 text-[0.68rem] font-medium tracking-[0.22em] text-[#8E816D] uppercase',
-                  maxRows &&
-                    'sticky top-0 z-10 border-b border-white/10 bg-[#151515]',
+                  DATA_TABLE_HEADER_CELL_CLASS,
+                  maxRows && DATA_TABLE_STICKY_HEADER_CELL_CLASS,
                 )}
               >
                 {header.isPlaceholder ? null : (
@@ -312,15 +324,12 @@ function DataTableRows<TData>({
         <TableRow
           key={row.id}
           className={cn(
-            'border-b border-white/8 transition-colors last:border-b-0 hover:bg-white/4',
+            DATA_TABLE_BODY_ROW_CLASS,
             rowClassName?.(row.original),
           )}
         >
           {row.getVisibleCells().map((cell) => (
-            <TableCell
-              key={cell.id}
-              className="px-4 py-3 text-sm text-[#D6CCBE]"
-            >
+            <TableCell key={cell.id} className={DATA_TABLE_BODY_CELL_CLASS}>
               {flexRender(cell.column.columnDef.cell, cell.getContext())}
             </TableCell>
           ))}
@@ -351,7 +360,7 @@ function DataTableContent<TData>({
   // children that read live table state.
   'use no memo'
   return (
-    <div className="relative border border-white/10 bg-[#151515]/88 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
+    <div className={DATA_TABLE_FRAME_CLASS}>
       {isLoading && (
         <div className="absolute inset-x-0 top-0 z-20 flex items-center gap-2 border-b border-[#C5A059]/20 bg-[#1A1716]/95 px-4 py-2 text-[0.68rem] font-medium tracking-[0.18em] text-[#D4B373] uppercase">
           <Loader2 className="size-3.5 animate-spin" />
@@ -538,7 +547,11 @@ function PaginationFooter<TData>({
         end={end}
         filteredTotal={filteredTotal}
       />
-      <PaginationNavRow table={table} pageIndex={pageIndex} pageWindow={pageWindow} />
+      <PaginationNavRow
+        table={table}
+        pageIndex={pageIndex}
+        pageWindow={pageWindow}
+      />
     </div>
   )
 }
@@ -633,9 +646,7 @@ function useDataTableSyncedState({
   }
 }
 
-type DataTableChangeHandlerArgs = ReturnType<
-  typeof useDataTableSyncedState
-> & {
+type DataTableChangeHandlerArgs = ReturnType<typeof useDataTableSyncedState> & {
   isServerMode: boolean
   onSortingChange?: (sortBy: string | null, sortDir: 'asc' | 'desc') => void
   onPageChange?: (page: number) => void
@@ -719,14 +730,17 @@ function useDataTableState<TData>({
     onSearchChange,
   })
 
-  const { handleSortingChange, handlePaginationChange, handleGlobalFilterChange } =
-    useDataTableChangeHandlers({
-      ...syncedState,
-      isServerMode,
-      onSortingChange,
-      onPageChange,
-      onPageSizeChange,
-    })
+  const {
+    handleSortingChange,
+    handlePaginationChange,
+    handleGlobalFilterChange,
+  } = useDataTableChangeHandlers({
+    ...syncedState,
+    isServerMode,
+    onSortingChange,
+    onPageChange,
+    onPageSizeChange,
+  })
 
   const table = useReactTable({
     columns,
