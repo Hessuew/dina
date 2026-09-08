@@ -26,6 +26,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `request-scope.ts`: composes re-entrant authz cache maps with `withDbConnection`.
   - `request-scope-middleware.ts`: enters that scope for every TanStack Start request
     and server function.
+  - CSRF runs first on Start `requestMiddleware` in `src/start.tsx` and only
+    checks `handlerType === 'serverFn'`. Request scope is not entered for a
+    rejected cross-site server-function call.
 
 - **Auth utilities**
   - `auth.ts`: current user lookup and role/access helpers (legacy, migrate to authz).
