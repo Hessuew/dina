@@ -441,18 +441,49 @@ function PaginationSummaryRow<TData>({
   )
 }
 
-function PaginationNavRow<TData>({
-  table,
-  pageIndex,
-  pageWindow,
-}: {
+type PaginationNavRowProps<TData> = {
   table: TanstackTable<TData>
   pageIndex: number
   pageWindow: Array<number | '…'>
-}) {
+}
+
+function PaginationPageItems<TData>({
+  table,
+  pageIndex,
+  pageWindow,
+}: PaginationNavRowProps<TData>) {
+  // React Compiler must not memoize this: it receives the stable `table` ref
+  // used by page-selection callbacks.
+  'use no memo'
+  return pageWindow.map((page, i) =>
+    page === '…' ? (
+      <PaginationItem key={`ellipsis-${i}`}>
+        <PaginationEllipsis className="text-[#8E816D]/60" />
+      </PaginationItem>
+    ) : (
+      <PaginationItem key={page}>
+        <button
+          type="button"
+          onClick={() => table.setPageIndex(Number(page) - 1)}
+          className={cn(
+            'flex h-8 w-8 items-center justify-center rounded-sm border text-[0.76rem] transition-all duration-200 active:scale-95',
+            page === pageIndex + 1
+              ? 'border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_0_12px_-4px_rgba(197,160,89,0.15)]'
+              : 'border-white/8 bg-black/10 text-[#8E816D] hover:border-white/15 hover:bg-black/20 hover:text-black',
+          )}
+        >
+          {page}
+        </button>
+      </PaginationItem>
+    ),
+  )
+}
+
+function PaginationNavRow<TData>(props: PaginationNavRowProps<TData>) {
   // React Compiler must not memoize this: it reads live `table` state
   // (getCanPreviousPage/getCanNextPage) off a stable `table` ref.
   'use no memo'
+  const { table, pageIndex, pageWindow } = props
   const canPrevious = table.getCanPreviousPage()
   const canNext = table.getCanNextPage()
   return (
@@ -473,28 +504,11 @@ function PaginationNavRow<TData>({
           </button>
         </PaginationItem>
 
-        {pageWindow.map((page, i) =>
-          page === '…' ? (
-            <PaginationItem key={`ellipsis-${i}`}>
-              <PaginationEllipsis className="text-[#8E816D]/60" />
-            </PaginationItem>
-          ) : (
-            <PaginationItem key={page}>
-              <button
-                type="button"
-                onClick={() => table.setPageIndex(Number(page) - 1)}
-                className={cn(
-                  'flex h-8 w-8 items-center justify-center rounded-sm border text-[0.76rem] transition-all duration-200 active:scale-95',
-                  page === pageIndex + 1
-                    ? 'border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_0_12px_-4px_rgba(197,160,89,0.15)]'
-                    : 'border-white/8 bg-black/10 text-[#8E816D] hover:border-white/15 hover:bg-black/20 hover:text-black',
-                )}
-              >
-                {page}
-              </button>
-            </PaginationItem>
-          ),
-        )}
+        <PaginationPageItems
+          table={table}
+          pageIndex={pageIndex}
+          pageWindow={pageWindow}
+        />
 
         <PaginationItem>
           <button
