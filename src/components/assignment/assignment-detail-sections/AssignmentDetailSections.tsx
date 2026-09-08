@@ -1,5 +1,6 @@
 import { SaveIcon, SendIcon } from 'lucide-react'
 import {
+  buildPastDueNoticeViewModel,
   buildSubmissionHeaderViewModel,
   buildSubmissionStatusViewModel,
 } from './assignment-detail-sections.domain'
@@ -66,10 +67,14 @@ type AssignmentDetailSectionsProps = {
 function AssignmentAboutCard({
   assignment,
   isPastDue,
+  canSubmit,
 }: {
   assignment: Assignment
   isPastDue: boolean
+  canSubmit: boolean
 }) {
+  const pastDueNotice = buildPastDueNoticeViewModel({ isPastDue, canSubmit })
+
   return (
     <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
       <DarkCard label="About this assignment">
@@ -94,9 +99,9 @@ function AssignmentAboutCard({
               {assignment.maxGrade ?? 100} pts
             </span>
           </div>
-          {isPastDue && (
-            <div className="border border-red-400/30 bg-red-900/20 px-4 py-3 text-xs text-red-400">
-              This assignment is past due
+          {pastDueNotice && (
+            <div className={pastDueNotice.className}>
+              {pastDueNotice.message}
             </div>
           )}
         </div>
@@ -370,6 +375,7 @@ export function AssignmentDetailSections(props: AssignmentDetailSectionsProps) {
       <AssignmentAboutCard
         assignment={props.assignment}
         isPastDue={props.isPastDue}
+        canSubmit={props.canSubmit}
       />
       {props.showSubmissionsPanel && <SubmissionPanel {...props} />}
     </div>

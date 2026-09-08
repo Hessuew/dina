@@ -40,3 +40,40 @@ export function buildMediaContentViewModel(
   if (ext === 'pptx' || ext === 'docx') return { kind: 'office', videoId: null }
   return { kind: 'none', videoId: null }
 }
+
+export const BLOB_REVOKE_DELAY_MS = 1000
+
+export type MediaDownloadTab = {
+  navigate: (url: string) => void
+  close: () => void
+}
+
+export type MediaDownloadIo = {
+  fetch: (url: string) => Promise<Response>
+  createObjectURL: (blob: Blob) => string
+  revokeObjectURL: (url: string) => void
+  clickAnchor: (href: string, filename: string) => void
+  openBlankTab: () => MediaDownloadTab | null
+  schedule: (callback: () => void, delayMs: number) => void
+}
+
+export async function downloadFileOrOpenTab(
+  href: string,
+  filename: string,
+  io: MediaDownloadIo,
+): Promise<void> {
+  const tab = io.openBlankTab()
+  try {
+    const response = await io.fetch(href)
+    if (!response.ok) {
+      tab?.navigate(href)
+      return
+    }
+    const objectUrl = io.createObjectURL(await response.blob())
+    tab?.close()
+    io.clickAnchor(objectUrl, filename)
+    io.schedule(() => io.revokeObjectURL(objectUrl), BLOB_REVOKE_DELAY_MS)
+  } catch {
+    tab?.navigate(href)
+  }
+}

@@ -5,18 +5,19 @@ import {
   DOCUMENT_MIME_TYPES,
   VIDEO_MAX_SIZE,
   VIDEO_MIME_TYPES,
+  buildMediaDownloadFilename,
   buildMediaListItems,
   buildVideoObjectName,
   canManageMedia,
   extractMediaLibraryFilePath,
   extractPdfFilePath,
   isOwnedMediaLibraryObjectUrl,
-  buildMediaDownloadFilename,
   needsSignedViewerUrl,
   resolveAllowsDownload,
   resolveVideoFileExtension,
   resolveVideoMimeType,
   shouldRemoveMediaLibraryObject,
+  shouldShowDownloadableChip,
   shouldShowMediaDownload,
   toFileType,
   validatePdfUpload,
@@ -400,6 +401,29 @@ describe('resolveAllowsDownload', () => {
     expect(resolveAllowsDownload('document', undefined)).toBe(false)
     expect(resolveAllowsDownload('youtube', true)).toBe(false)
     expect(resolveAllowsDownload('video-file', true)).toBe(false)
+  })
+})
+
+describe('shouldShowDownloadableChip', () => {
+  it('is true only for downloadable documents', () => {
+    expect(
+      shouldShowDownloadableChip({
+        fileType: 'document',
+        allowsDownload: true,
+      }),
+    ).toBe(true)
+    expect(
+      shouldShowDownloadableChip({
+        fileType: 'document',
+        allowsDownload: false,
+      }),
+    ).toBe(false)
+    expect(
+      shouldShowDownloadableChip({
+        fileType: 'video_file',
+        allowsDownload: true,
+      }),
+    ).toBe(false)
   })
 })
 
