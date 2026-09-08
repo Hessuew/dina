@@ -17,6 +17,7 @@ import type { SignedUpload } from '@/utils/storage/service/private-storage.servi
 import {
   canManageMedia,
   needsSignedViewerUrl,
+  resolveAllowsDownload,
   resolveVideoFileExtension,
   resolveVideoMimeType,
   toFileType,
@@ -121,6 +122,7 @@ export async function serializeMediaRecords(
     fileSize: row.fileSize,
     thumbnailUrl: thumbnails.get(row.thumbnailUrl ?? '') ?? null,
     isPublished: row.isPublished,
+    allowsDownload: row.allowsDownload,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }))
@@ -198,6 +200,7 @@ export async function createLibraryMediaService(
     fileType: toFileType(data.kind),
     fileSize: data.fileSize ?? null,
     isPublished: data.isPublished,
+    allowsDownload: resolveAllowsDownload(data.kind, data.allowsDownload),
     createdAt: new Date(),
     updatedAt: new Date(),
   })
@@ -246,6 +249,7 @@ export async function updateLibraryMediaService(
     fileType: toFileType(data.kind),
     fileSize: data.fileSize ?? existing.fileSize ?? null,
     isPublished: data.isPublished,
+    allowsDownload: resolveAllowsDownload(data.kind, data.allowsDownload),
     updatedAt: new Date(),
   })
   await removeReplacedMediaFile(existing, source.filePath)

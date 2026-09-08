@@ -11,6 +11,7 @@ export type MediaFormData = {
   kind: MediaKind
   url: string
   isPublished: boolean
+  allowsDownload: boolean
 }
 
 export const emptyFormData: MediaFormData = {
@@ -20,6 +21,7 @@ export const emptyFormData: MediaFormData = {
   kind: 'youtube',
   url: '',
   isPublished: false,
+  allowsDownload: false,
 }
 
 export function validateYoutubeUrl(
@@ -50,6 +52,7 @@ export function getInitialValues(
     kind: fromFileType(media.fileType),
     url: '',
     isPublished: media.isPublished,
+    allowsDownload: media.allowsDownload,
   }
 }
 
@@ -138,8 +141,7 @@ export function isMediaDialogSubmitting(params: {
 }
 
 export type DocumentResolution =
-  | { ok: true; url: string; fileSize?: number }
-  | { ok: false; message: string }
+  { ok: true; url: string; fileSize?: number } | { ok: false; message: string }
 
 /**
  * Pre-flight check before attempting a document upload.
@@ -158,8 +160,7 @@ export function preflightDocumentUrl(params: {
 }
 
 export type VideoResolution =
-  | { ok: true; url: string; fileSize?: number }
-  | { ok: false; message: string }
+  { ok: true; url: string; fileSize?: number } | { ok: false; message: string }
 
 export function preflightVideoUrl(params: {
   hasFile: boolean
@@ -213,6 +214,7 @@ export type MediaSubmitPayload = {
   category: LibraryTopic
   description: string | undefined
   isPublished: boolean
+  allowsDownload: boolean
   kind: MediaKind
   url: string
   fileSize: number | undefined
@@ -230,6 +232,8 @@ export function buildMediaPayload(params: {
     category: params.value.category as LibraryTopic,
     description: params.value.description || undefined,
     isPublished: params.value.isPublished,
+    allowsDownload:
+      params.value.kind === 'document' && params.value.allowsDownload,
     kind: params.value.kind,
     url: params.url,
     fileSize: params.fileSize,
@@ -238,5 +242,4 @@ export function buildMediaPayload(params: {
 }
 
 export type FileResolution =
-  | { ok: true; url: string; fileSize?: number }
-  | { ok: false; message: string }
+  { ok: true; url: string; fileSize?: number } | { ok: false; message: string }

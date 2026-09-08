@@ -100,6 +100,7 @@ export const mediaLibrary = pgTable(
     fileSize: integer('file_size'),
     thumbnailUrl: text('thumbnail_path'),
     isPublished: boolean('is_published').notNull().default(false),
+    allowsDownload: boolean('allows_download').notNull().default(false),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },

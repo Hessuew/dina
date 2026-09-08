@@ -281,6 +281,13 @@
       "when": 1784827126000,
       "tag": "0042_lesson_calendar_events",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1786358400000,
+      "tag": "0043_media_allows_download",
+      "breakpoints": true
     }
   ]
 }

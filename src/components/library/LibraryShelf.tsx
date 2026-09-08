@@ -9,6 +9,7 @@ type LibraryShelfPermissions = {
 
 type LibraryShelfProps = {
   topic: string
+  lectures: Array<MediaLibraryRow>
   ebooks: Array<MediaLibraryRow>
   audioVisual: Array<MediaLibraryRow>
   viewerRole: 'student' | 'teacher' | 'admin'
@@ -61,8 +62,47 @@ function MediaCardWithActions({
   )
 }
 
+function ShelfSection({
+  label,
+  items,
+  viewerRole,
+  permissions,
+  onEditMedia,
+  onDeleteMedia,
+}: {
+  label: string
+  items: Array<MediaLibraryRow>
+  viewerRole: LibraryShelfProps['viewerRole']
+  permissions?: LibraryShelfPermissions
+  onEditMedia?: (item: MediaLibraryRow) => void
+  onDeleteMedia?: (item: MediaLibraryRow) => void
+}) {
+  if (items.length === 0) return null
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[0.68rem] font-medium tracking-[0.25em] text-[#9B7A41] uppercase">
+        {label}
+      </p>
+      <div className="flex flex-col gap-4 pb-2 sm:flex-row">
+        {items.map((item) => (
+          <MediaCardWithActions
+            key={item.id}
+            item={item}
+            viewerRole={viewerRole}
+            permissions={permissions}
+            onEditMedia={onEditMedia}
+            onDeleteMedia={onDeleteMedia}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function LibraryShelf({
   topic,
+  lectures,
   ebooks,
   audioVisual,
   viewerRole,
@@ -79,45 +119,30 @@ export function LibraryShelf({
         </h2>
       </div>
 
-      {ebooks.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <p className="text-[0.68rem] font-medium tracking-[0.25em] text-[#9B7A41] uppercase">
-            eBooks
-          </p>
-          <div className="flex flex-col gap-4 pb-2 sm:flex-row">
-            {ebooks.map((item) => (
-              <MediaCardWithActions
-                key={item.id}
-                item={item}
-                viewerRole={viewerRole}
-                permissions={permissions}
-                onEditMedia={onEditMedia}
-                onDeleteMedia={onDeleteMedia}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {audioVisual.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <p className="text-[0.68rem] font-medium tracking-[0.25em] text-[#9B7A41] uppercase">
-            Audio-Visual
-          </p>
-          <div className="flex flex-col gap-4 pb-2 sm:flex-row">
-            {audioVisual.map((item) => (
-              <MediaCardWithActions
-                key={item.id}
-                item={item}
-                viewerRole={viewerRole}
-                permissions={permissions}
-                onEditMedia={onEditMedia}
-                onDeleteMedia={onDeleteMedia}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <ShelfSection
+        label="Lectures"
+        items={lectures}
+        viewerRole={viewerRole}
+        permissions={permissions}
+        onEditMedia={onEditMedia}
+        onDeleteMedia={onDeleteMedia}
+      />
+      <ShelfSection
+        label="eBooks"
+        items={ebooks}
+        viewerRole={viewerRole}
+        permissions={permissions}
+        onEditMedia={onEditMedia}
+        onDeleteMedia={onDeleteMedia}
+      />
+      <ShelfSection
+        label="Audio-Visual"
+        items={audioVisual}
+        viewerRole={viewerRole}
+        permissions={permissions}
+        onEditMedia={onEditMedia}
+        onDeleteMedia={onDeleteMedia}
+      />
     </section>
   )
 }

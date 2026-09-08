@@ -20,6 +20,7 @@ function makeItem(overrides: Partial<MediaLibraryRow> = {}): MediaLibraryRow {
     fileSize: null,
     thumbnailUrl: null,
     isPublished: true,
+    allowsDownload: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

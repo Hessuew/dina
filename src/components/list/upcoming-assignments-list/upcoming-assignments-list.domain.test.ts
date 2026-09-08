@@ -30,7 +30,7 @@ function makeAssignment(overrides: Partial<Assignment> = {}): Assignment {
 }
 
 describe('filterUpcomingAssignments', () => {
-  it('keeps published, not-past-due, ungraded assignments for students', () => {
+  it('keeps published, ungraded assignments for students', () => {
     const a = makeAssignment()
     expect(filterUpcomingAssignments([a], 'student', NOW)).toEqual([a])
   })
@@ -40,8 +40,21 @@ describe('filterUpcomingAssignments', () => {
     expect(filterUpcomingAssignments([a], 'student', NOW)).toEqual([])
   })
 
-  it('excludes past-due assignments for students', () => {
+  it('keeps overdue assignments for students when no submission is sent', () => {
     const a = makeAssignment({ dueDate: new Date('2026-06-19T12:00:00Z') })
+    expect(filterUpcomingAssignments([a], 'student', NOW)).toEqual([a])
+  })
+
+  it('excludes overdue submitted assignments for students', () => {
+    const a = makeAssignment({
+      dueDate: new Date('2026-06-19T12:00:00Z'),
+      submission: {
+        id: 's1',
+        status: 'submitted',
+        grade: null,
+        submittedAt: new Date('2026-06-18T12:00:00Z'),
+      },
+    })
     expect(filterUpcomingAssignments([a], 'student', NOW)).toEqual([])
   })
 
