@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 13
-**Scope:** continue request-correlated structured logging by migrating the
-admin WhatsApp campaign to the shared redacted logger.
+**Iteration:** 14
+**Scope:** continue request-correlated structured logging by migrating post and
+comment notification persistence failures to the shared redacted logger.
 
 ## Executive summary
 
@@ -37,6 +37,10 @@ The repository already has the first production-fundamentals slice:
   campaign completion summaries, and lock-release failures with request
   correlation and stable error categories. Recipient phone numbers, names, and
   provider error text are excluded.
+- Post/comment notification persistence failures now emit a redacted
+  `notification_delivery_failed` event with request correlation, notification
+  type, recipient count, duration, and a stable error category. Best-effort
+  delivery semantics are unchanged.
 
 The operating decision for this roadmap is:
 
@@ -57,8 +61,8 @@ credentials, connection strings, cookies, email/phone values, request bodies,
 and raw error messages. The health and readiness endpoints, assignment
 submission persistence, signup/OTP flows, invitation-email campaign, password
 reset, teacher grading, enrollment evaluation, private image storage, exam
-submission, and WhatsApp campaign are consumers; broader server-function
-migration remains intentionally incremental.
+submission, WhatsApp campaign, and post/comment notification delivery are
+consumers; broader server-function migration remains intentionally incremental.
 
 No secrets, account tokens, or account-specific URLs belong in this file or in
 the repository.
@@ -327,6 +331,32 @@ logger:
 Validation: the WhatsApp integration suite passed all 14 tests, including the
 new structured-event redaction test. Better Stack destination, dashboard,
 alert, and source-map checks remain pending external account setup.
+
+## Iteration 14 — notification delivery structured event
+
+This iteration migrated the remaining raw notification persistence failure log
+in the shared notification delivery adapter:
+
+- Failed `post_created` and `comment_created` notification inserts now emit
+  `notification_delivery_failed` through the redacted logger with request ID,
+  `notifications:deliver` action path, failure status, duration, notification
+  type, recipient count, and stable `notification_delivery` category.
+- The adapter still swallows persistence failures intentionally so notification
+  fan-out remains best effort and does not fail the originating post/comment
+  mutation.
+- Database/provider exception text is not passed to the logger and therefore
+  cannot flow to Better Stack through Cloudflare telemetry.
+- Focused unit coverage verifies row creation, failure swallowing, event shape,
+  and secret/error-message exclusion. The existing notification integration
+  suite remains green.
+
+Validation: focused notification adapter tests, notification integration tests,
+typecheck, formatting, and `bun run quality:gate` passed (1,928 unit tests).
+Better Stack destination, dashboard, alert, and source-map checks remain
+pending external account setup. Notion Architecture Inventory, Structured
+server logging, Observability, and Engineering Roadmap records were
+synchronized; Production Readiness was not changed because this slice did not
+alter a launch decision.
 
 ## Better Stack setup
 

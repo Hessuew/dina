@@ -94,7 +94,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     - `types.ts` - Core types (NotificationEvent, DeliveryAdapter, Handler)
     - `events.ts` - Event factories (createPostCreatedEvent, createCommentCreatedEvent)
     - `recipients.ts` - Business rules for recipient calculation
-    - `delivery.ts` - Delivery adapters (DatabaseDeliveryAdapter for DB writes)
+    - `delivery.ts` - Delivery adapters (DatabaseDeliveryAdapter for DB writes); failed
+      persistence is best-effort and emits redacted `notification_delivery_failed` telemetry
     - `index.ts` - Main exports: emit(event) for sending notifications
     - Usage: `await emit(createPostCreatedEvent(actorId, postId, courseId, canModerate))`
   - `email/` - Shared outbound email utilities:
