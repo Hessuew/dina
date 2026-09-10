@@ -49,6 +49,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `observability/domain/identity.domain.ts`: maps build modes and optional
     deployment settings to the canonical `local`, `preview`, and `production`
     environments and normalizes release identifiers for error tracking.
+  - `observability/logger.ts`: emits JSON server events at `info`, `warn`, or
+    `error` level and recursively redacts sensitive fields before writing to
+    the Worker console.
 
 - **Supabase utilities**
   - `supabase.ts`: server client (`@supabase/ssr`) and admin client.

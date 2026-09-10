@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-10  
-**Iteration:** 3
-**Scope:** make the Sentry-compatible integration ready for a provider cutover
-with explicit environment/release identity and externalized source-map settings.
+**Iteration:** 4
+**Scope:** add the shared redacted structured server logger and migrate the
+health/readiness events to it.
 
 ## Executive summary
 
@@ -30,6 +30,12 @@ officially supports the Sentry SDK protocol. The cutover is primarily a DSN,
 source-map, Cloudflare destination, and dashboard change. Do not add the
 Better Stack browser JavaScript tag while the existing Sentry-compatible client
 SDK is active; doing both would duplicate browser errors and page telemetry.
+
+The in-repo structured-logging baseline now has a shared server logger. It
+emits stable JSON fields to the Worker console and recursively redacts tokens,
+credentials, connection strings, cookies, email/phone values, request bodies,
+and raw error messages. The health and readiness endpoints are the first
+consumer; broader server-function migration remains intentionally incremental.
 
 No secrets, account tokens, or account-specific URLs belong in this file or in
 the repository.
@@ -81,6 +87,28 @@ set its DSN and source-map endpoint in the deployment environments, provide a
 release value such as the deployed commit SHA, and run the controlled ingestion
 checks in the acceptance checklist below. No provider token or account URL was
 added to the repository.
+
+## Iteration 4 — shared redacted structured server logger
+
+This iteration completed the next smallest Phase 1 structured-logging slice:
+
+- Added `src/utils/observability/logger.ts` with `info`, `warn`, and `error`
+  levels, stable event names, JSON output, recursive nested-field redaction,
+  safe `Error` serialization, and BigInt handling.
+- Migrated `/healthz` and `/readyz` logging off their local console formatter
+  and onto the shared helper. Their existing event names and operational fields
+  remain unchanged.
+- Added focused tests for console-level selection, nested redaction, and raw
+  error-message suppression.
+- Updated `docs/plan/STRUCTURED_LOGGING.md` and `src/utils/README.md` to mark
+  the shared helper and health migration complete. The next slice is one
+  high-value server-function family at a time, starting with stable event,
+  request, status, and duration fields.
+
+Validation for this iteration: focused health/logger tests (8 passing),
+TypeScript typecheck, and targeted Prettier checks pass. The full
+`bun run quality:gate` also passed after the local documentation stabilized;
+Notion synchronization completed afterward.
 
 ## Better Stack setup
 
@@ -304,7 +332,7 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 | Roadmap item          | Current state                                                                                                          | Next smallest verifiable slice                                                          |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                 | Verify `/healthz` and `/readyz` after deployment                                        |
-| Structured logging    | Health endpoints emit redacted JSON; broad server logs still use ad-hoc console calls                                  | Add a small shared server logger and migrate one high-value service at a time           |
+| Structured logging    | Shared redacted JSON logger is used by health endpoints; broad server logs still use ad-hoc console calls              | Migrate one high-value server-function family at a time                                 |
 | Error tracking        | Sentry-compatible SDK wiring now emits explicit environment/release identity; Better Stack provider cutover is pending | Create Better Stack DSN, configure deployment secrets, and verify ingestion/source maps |
 | Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                | Create Better Stack/Cloudflare dashboard and extract stable log metrics                 |
 | Production dashboards | Notion dashboard rows exist but links are blank                                                                        | Create external dashboards and update existing rows                                     |

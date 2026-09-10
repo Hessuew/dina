@@ -1,4 +1,5 @@
 import { resolveObservabilityIdentity } from '@/utils/observability/domain/identity.domain'
+import { logServerEvent } from '@/utils/observability/logger'
 
 export type HealthStatus = 'ok' | 'error'
 
@@ -48,9 +49,7 @@ type HealthOptions = {
   requestId?: string
 }
 
-type LogEntry = {
-  level: 'info' | 'warn'
-  event: 'health_check' | 'readiness_check'
+type HealthLogFields = {
   requestId: string
   path: string
   status: HealthStatus
@@ -72,7 +71,7 @@ export function handleHealthRequest(
   const context = buildRequestContext(request, options)
   const body = buildHealthPayload(context, 'ok')
 
-  writeStructuredLog(buildLogEntry(context, 'health_check', body.status))
+  logServerEvent('info', 'health_check', buildLogFields(context, body.status))
 
   return jsonResponse(body, 200)
 }
@@ -92,8 +91,10 @@ export async function handleReadinessRequest(
     dependencies: { database },
   }
 
-  writeStructuredLog(
-    buildLogEntry(context, 'readiness_check', status, database.error?.category),
+  logServerEvent(
+    status === 'ok' ? 'info' : 'warn',
+    'readiness_check',
+    buildLogFields(context, status, database.error?.category),
   )
 
   return jsonResponse(body, status === 'ok' ? 200 : 503)
@@ -182,32 +183,18 @@ function withTimeout<T>(
   })
 }
 
-function buildLogEntry(
+function buildLogFields(
   context: RequestContext,
-  event: LogEntry['event'],
   status: HealthStatus,
   errorCategory?: string,
-): LogEntry {
+): HealthLogFields {
   return {
-    level: status === 'ok' ? 'info' : 'warn',
-    event,
     requestId: context.requestId,
     path: context.pathname,
     status,
     durationMs: elapsedMs(context.startedAt),
     ...(errorCategory ? { errorCategory } : {}),
   }
-}
-
-function writeStructuredLog(entry: LogEntry): void {
-  const line = JSON.stringify(entry)
-
-  if (entry.level === 'warn') {
-    console.warn(line)
-    return
-  }
-
-  console.info(line)
 }
 
 function jsonResponse(body: HealthPayload | ReadinessPayload, status: number) {

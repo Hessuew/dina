@@ -1,6 +1,6 @@
 # Structured Logging
 
-**Status:** Planned after health baseline
+**Status:** In progress
 
 ## Target Shape
 
@@ -21,7 +21,14 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
 
 ## Rollout
 
-1. Keep the health/readiness logs as the first canonical example.
-2. Add a shared server logging helper before replacing broad `console.error` and `console.warn` usage.
+1. Keep the health/readiness logs as the first canonical example. **Done:**
+   both endpoints now use `src/utils/observability/logger.ts`.
+2. Add a shared server logging helper before replacing broad `console.error` and `console.warn` usage. **Done:**
+   the helper emits stable JSON and recursively redacts sensitive fields and
+   raw error messages.
 3. Convert high-value server functions first: auth, enrollment, assignment submission, teacher review, admin workflows.
 4. Keep expected user-input failures out of noisy error logs.
+
+The next migration should target one high-value server-function family at a
+time and provide stable `event`, `requestId`, `status`, and `durationMs`
+fields. Do not pass raw exception messages or request bodies to the logger.
