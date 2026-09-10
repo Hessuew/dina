@@ -69,7 +69,13 @@ async function seedPublishedMcExam(teacherId: string) {
     orderIndex: 1,
     points: 5,
   })
-  return { examId, mcQuestionId, correctOptionId, wrongOptionId, openQuestionId }
+  return {
+    examId,
+    mcQuestionId,
+    correctOptionId,
+    wrongOptionId,
+    openQuestionId,
+  }
 }
 
 describe('exam authoring (integration)', () => {
@@ -85,7 +91,7 @@ describe('exam authoring (integration)', () => {
       teacherId,
     )
     expect(exam.status).toBe('draft')
-    expect(exam.durationMinutes).toBe(30)
+    expect(exam.durationMinutes).toBe(45)
 
     const question = await upsertQuestionService(
       {
@@ -106,10 +112,34 @@ describe('exam authoring (integration)', () => {
     await publishExamService({ examId: exam.id }, teacherId)
     const studentList = await getExamsForStudentService(studentId)
     expect(studentList.map((item) => item.exam.id)).toEqual([exam.id])
+    expect(studentList[0]?.exam.totalPoints).toBe(1)
 
     await expect(
       updateExamService({ examId: exam.id, title: 'Changed' }, teacherId),
     ).rejects.toThrow(ConflictError)
+
+    const adminId = await seedProfile({ role: 'admin' })
+    const updatedByAdmin = await updateExamService(
+      { examId: exam.id, title: 'Admin Fixed Title' },
+      adminId,
+    )
+    expect(updatedByAdmin.title).toBe('Admin Fixed Title')
+
+    const updatedQuestion = await upsertQuestionService(
+      {
+        examId: exam.id,
+        questionId: question.id,
+        type: 'multiple_choice',
+        prompt: 'Pick A (fixed typo)',
+        orderIndex: 0,
+        options: [
+          { label: 'A (correct)', orderIndex: 0, isCorrect: true },
+          { label: 'B (wrong)', orderIndex: 1, isCorrect: false },
+        ],
+      },
+      adminId,
+    )
+    expect(updatedQuestion.prompt).toBe('Pick A (fixed typo)')
   })
 
   it('rejects publishing invalid multiple choice and edits by non-creator teachers', async () => {
@@ -118,9 +148,9 @@ describe('exam authoring (integration)', () => {
     const examId = await seedExam({ createdBy: teacherId })
     await seedExamQuestion({ examId, orderIndex: 0 })
 
-    await expect(
-      publishExamService({ examId }, teacherId),
-    ).rejects.toThrow(ValidationError)
+    await expect(publishExamService({ examId }, teacherId)).rejects.toThrow(
+      ValidationError,
+    )
 
     await expect(
       updateExamService({ examId, title: 'Hijacked' }, otherTeacherId),
@@ -146,7 +176,7 @@ describe('exam taking (integration)', () => {
     expect(
       payload.attempt.deadlineAt.getTime() -
         payload.attempt.startedAt.getTime(),
-    ).toBe(30 * 60_000)
+    ).toBe(45 * 60_000)
 
     const again = await startAttemptService({ examId }, studentId)
     expect(again.attempt.id).toBe(payload.attempt.id)
@@ -166,9 +196,9 @@ describe('exam taking (integration)', () => {
     ).rejects.toThrow(ValidationError)
 
     const { examId } = await seedPublishedMcExam(teacherId)
-    await expect(
-      startAttemptService({ examId }, teacherId),
-    ).rejects.toThrow(AuthorizationError)
+    await expect(startAttemptService({ examId }, teacherId)).rejects.toThrow(
+      AuthorizationError,
+    )
   })
 
   it('upserts autosaved answers and never leaks isCorrect to students', async () => {
@@ -248,7 +278,11 @@ describe('exam taking (integration)', () => {
 
     await expect(
       saveAnswerService(
-        { attemptId, questionId: mcQuestionId, selectedOptionId: correctOptionId },
+        {
+          attemptId,
+          questionId: mcQuestionId,
+          selectedOptionId: correctOptionId,
+        },
         studentId,
       ),
     ).rejects.toThrow(ValidationError)
@@ -290,7 +324,11 @@ describe('exam taking (integration)', () => {
       studentId,
     )
     await saveAnswerService(
-      { attemptId: payload.attempt.id, questionId: openQuestionId, textAnswer: 'essay' },
+      {
+        attemptId: payload.attempt.id,
+        questionId: openQuestionId,
+        textAnswer: 'essay',
+      },
       studentId,
     )
 
@@ -319,7 +357,10 @@ describe('exam grading (integration)', () => {
   async function submitFullAttempt(teacherId: string) {
     const studentId = await seedProfile({ role: 'student' })
     const seeded = await seedPublishedMcExam(teacherId)
-    const payload = await startAttemptService({ examId: seeded.examId }, studentId)
+    const payload = await startAttemptService(
+      { examId: seeded.examId },
+      studentId,
+    )
     await saveAnswerService(
       {
         attemptId: payload.attempt.id,
@@ -395,7 +436,10 @@ describe('exam grading (integration)', () => {
       (answer) => answer.questionId === mcQuestionId,
     )
     await expect(
-      gradeOpenAnswerService({ answerId: mcAnswer!.id, awardedPoints: 1 }, teacherId),
+      gradeOpenAnswerService(
+        { answerId: mcAnswer!.id, awardedPoints: 1 },
+        teacherId,
+      ),
     ).rejects.toThrow(ValidationError)
 
     const openAnswer = grading.answers.find(

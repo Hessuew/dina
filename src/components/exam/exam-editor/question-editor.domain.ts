@@ -26,7 +26,7 @@ export type QuestionEditorInitialState = {
 /** Initial editor state for an existing question, or blank MC defaults. */
 export function initialQuestionEditorState(
   question: EditorQuestionLike | null,
-  options: Array<{ label: string; isCorrect: boolean }>,
+  options: Array<{ id?: string; label: string; isCorrect: boolean }>,
   readOnly: boolean,
 ): QuestionEditorInitialState {
   if (question === null) {
@@ -49,7 +49,11 @@ export function initialQuestionEditorState(
     points: question.points,
     optionDrafts:
       question.type === 'multiple_choice'
-        ? options.map((o) => ({ label: o.label, isCorrect: o.isCorrect }))
+        ? options.map((o) => ({
+            ...(o.id ? { id: o.id } : {}),
+            label: o.label,
+            isCorrect: o.isCorrect,
+          }))
         : DEFAULT_OPTION_DRAFTS.map((draft) => ({ ...draft })),
   }
 }
@@ -76,6 +80,7 @@ export function buildUpsertQuestionInput(draft: UpsertQuestionDraft) {
     options:
       draft.type === 'multiple_choice'
         ? draft.optionDrafts.map((option, index) => ({
+            ...(option.id ? { id: option.id } : {}),
             label: option.label,
             orderIndex: index,
             isCorrect: option.isCorrect,

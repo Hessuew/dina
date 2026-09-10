@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 export type OptionDraft = {
+  id?: string
   label: string
   isCorrect: boolean
 }
@@ -54,7 +55,9 @@ export function McOptionsEditor({
         <Button
           size="xs"
           variant="outline"
-          onClick={() => onChange([...options, { label: '', isCorrect: false }])}
+          onClick={() =>
+            onChange([...options, { label: '', isCorrect: false }])
+          }
         >
           Add option
         </Button>

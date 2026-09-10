@@ -15,9 +15,25 @@ type PublishOption = {
   isCorrect: boolean
 }
 
-/** Exams are only editable while draft; publishing freezes the questions. */
-export function canEditExam(status: ExamStatus): boolean {
-  return status === 'draft'
+export type ExamAuthorAccess = {
+  isAdmin: boolean
+  isCreator: boolean
+}
+
+/**
+ * Exams are editable while draft for teachers/creators, and always editable
+ * by admins even after publishing.
+ */
+export function canEditExam(status: ExamStatus, isAdmin = false): boolean {
+  return status === 'draft' || isAdmin
+}
+
+export function canAuthorEditExam(
+  status: ExamStatus,
+  access: ExamAuthorAccess,
+): boolean {
+  if (access.isAdmin) return true
+  return status === 'draft' && access.isCreator
 }
 
 /**
@@ -53,12 +69,14 @@ export function validateForPublish(
   return errors
 }
 
-const ATTEMPT_TRANSITIONS: Record<ExamAttemptStatus, Array<ExamAttemptStatus>> =
-  {
-    in_progress: ['submitted'],
-    submitted: ['graded'],
-    graded: [],
-  }
+const ATTEMPT_TRANSITIONS: Record<
+  ExamAttemptStatus,
+  Array<ExamAttemptStatus>
+> = {
+  in_progress: ['submitted'],
+  submitted: ['graded'],
+  graded: [],
+}
 
 /** Attempt lifecycle: in_progress → submitted → graded. */
 export function canTransitionAttempt(

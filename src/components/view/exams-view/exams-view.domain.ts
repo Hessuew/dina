@@ -2,12 +2,7 @@ import type { ExamAttemptStatus } from '@/utils/exam/domain/exam-lifecycle.domai
 import { isWithinStartWindow } from '@/utils/exam/domain/exam-timing.domain'
 
 export type StudentExamCardState =
-  | 'upcoming'
-  | 'open'
-  | 'in_progress'
-  | 'submitted'
-  | 'graded'
-  | 'closed'
+  'upcoming' | 'open' | 'in_progress' | 'submitted' | 'graded' | 'closed'
 
 type StudentExamCardInput = {
   opensAt: Date
@@ -28,7 +23,7 @@ export function deriveStudentExamCardState(
   return 'closed'
 }
 
-export const STUDENT_EXAM_CARD_LABELS: Record<StudentExamCardState, string> = {
+const STUDENT_EXAM_CARD_LABELS: Record<StudentExamCardState, string> = {
   upcoming: 'Opens soon',
   open: 'Open',
   in_progress: 'In progress',
@@ -86,4 +81,66 @@ export function formatExamWindow(opensAt: Date, closesAt: Date): string {
   const open = opensAt.toLocaleString('en-GB', WINDOW_FORMAT)
   const close = closesAt.toLocaleString('en-GB', WINDOW_FORMAT)
   return `${open} – ${close}`
+}
+
+/** Formats a graded attempt's final score out of total available points. */
+export function formatGradedScore(
+  totalScore: number | null,
+  totalPoints: number,
+): string | null {
+  if (totalScore === null) return null
+  return `${totalScore} / ${totalPoints}`
+}
+
+export type StudentExamItemLike = {
+  exam: {
+    durationMinutes: number
+    opensAt: Date
+    closesAt: Date
+    totalPoints: number
+  }
+  attempt: {
+    status: ExamAttemptStatus
+    totalScore: number | null
+  } | null
+}
+
+export type StudentCardViewModel = {
+  state: StudentExamCardState
+  action: 'start' | 'continue' | 'review' | null
+  stateLabel: string
+  windowLabel: string
+  durationMinutes: number
+  scoreDisplay: string | null
+}
+
+/** Derives all presentation state for a student exam card. */
+export function deriveStudentCardViewModel(
+  item: StudentExamItemLike,
+  now: Date,
+): StudentCardViewModel {
+  const state = deriveStudentExamCardState(
+    {
+      opensAt: item.exam.opensAt,
+      closesAt: item.exam.closesAt,
+      attemptStatus: item.attempt?.status ?? null,
+    },
+    now,
+  )
+  const action = studentExamCardAction(state)
+  const scoreDisplay =
+    state === 'graded'
+      ? formatGradedScore(
+          item.attempt?.totalScore ?? null,
+          item.exam.totalPoints,
+        )
+      : null
+  return {
+    state,
+    action,
+    stateLabel: STUDENT_EXAM_CARD_LABELS[state],
+    windowLabel: formatExamWindow(item.exam.opensAt, item.exam.closesAt),
+    durationMinutes: item.exam.durationMinutes,
+    scoreDisplay,
+  }
 }

@@ -30,7 +30,7 @@ describe('initialQuestionEditorState', () => {
     const state = initialQuestionEditorState(
       { id: 'q1', type: 'multiple_choice', prompt: 'Pick one', points: 2 },
       [
-        { label: 'A', isCorrect: true },
+        { id: 'opt1', label: 'A', isCorrect: true },
         { label: 'B', isCorrect: false },
       ],
       false,
@@ -42,7 +42,7 @@ describe('initialQuestionEditorState', () => {
     expect(state.prompt).toBe('Pick one')
     expect(state.points).toBe(2)
     expect(state.optionDrafts).toEqual([
-      { label: 'A', isCorrect: true },
+      { id: 'opt1', label: 'A', isCorrect: true },
       { label: 'B', isCorrect: false },
     ])
   })
@@ -72,19 +72,25 @@ describe('buildUpsertQuestionInput', () => {
   }
 
   it('includes questionId only for existing questions', () => {
-    expect(buildUpsertQuestionInput({ ...base, questionId: 'q1' })).toHaveProperty(
-      'questionId',
-      'q1',
-    )
+    expect(
+      buildUpsertQuestionInput({ ...base, questionId: 'q1' }),
+    ).toHaveProperty('questionId', 'q1')
     expect(
       buildUpsertQuestionInput({ ...base, questionId: null }),
     ).not.toHaveProperty('questionId')
   })
 
   it('indexes MC options and omits options for open-ended', () => {
-    const mc = buildUpsertQuestionInput({ ...base, questionId: null })
+    const mc = buildUpsertQuestionInput({
+      ...base,
+      questionId: null,
+      optionDrafts: [
+        { id: 'opt1', label: 'A', isCorrect: true },
+        { label: 'B', isCorrect: false },
+      ],
+    })
     expect(mc.options).toEqual([
-      { label: 'A', orderIndex: 0, isCorrect: true },
+      { id: 'opt1', label: 'A', orderIndex: 0, isCorrect: true },
       { label: 'B', orderIndex: 1, isCorrect: false },
     ])
     const open = buildUpsertQuestionInput({

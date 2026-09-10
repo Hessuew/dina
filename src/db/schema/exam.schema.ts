@@ -33,7 +33,7 @@ export const exams = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     title: text('title').notNull(),
-    durationMinutes: integer('duration_minutes').notNull().default(30),
+    durationMinutes: integer('duration_minutes').notNull().default(45),
     opensAt: timestamp('opens_at').notNull(),
     closesAt: timestamp('closes_at').notNull(),
     status: examStatusEnum('status').notNull().default('draft'),

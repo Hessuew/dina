@@ -15,6 +15,7 @@ type ExamEditorViewProps = {
   questions: Array<EditorQuestion>
   options: Array<EditorOption>
   attemptCount: number
+  canEdit?: boolean
 }
 
 export function ExamEditorView({
@@ -22,6 +23,7 @@ export function ExamEditorView({
   questions,
   options,
   attemptCount,
+  canEdit = exam.status === 'draft',
 }: ExamEditorViewProps) {
   const isDraft = exam.status === 'draft'
   return (
@@ -31,7 +33,7 @@ export function ExamEditorView({
         isDraft={isDraft}
         attemptCount={attemptCount}
       />
-      {isDraft && <ExamMetaForm exam={exam} />}
+      {canEdit && <ExamMetaForm exam={exam} />}
       <div className="space-y-4">
         {questions.map((question, index) => (
           <QuestionEditor
@@ -40,10 +42,10 @@ export function ExamEditorView({
             question={question}
             options={options.filter((o) => o.questionId === question.id)}
             orderIndex={index}
-            readOnly={!isDraft}
+            readOnly={!canEdit}
           />
         ))}
-        {isDraft && (
+        {canEdit && (
           <QuestionEditor
             key={`new-${questions.length}`}
             examId={exam.id}

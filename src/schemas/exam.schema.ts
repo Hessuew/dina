@@ -32,6 +32,7 @@ export const publishExamSchema = z.object({
 })
 
 const questionOptionSchema = z.object({
+  id: z.uuid('Invalid option ID').optional(),
   label: z.string().min(1, 'Option label is required'),
   orderIndex: z.number().int().min(0),
   isCorrect: z.boolean(),

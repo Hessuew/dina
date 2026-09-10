@@ -6,12 +6,11 @@ import type {
 import { StatusChip } from '@/components/ui/status-chip'
 import {
   STUDENT_EXAM_ACTION_LABELS,
-  STUDENT_EXAM_CARD_LABELS,
-  deriveStudentExamCardState,
+  deriveStudentCardViewModel,
   formatExamWindow,
-  studentExamCardAction,
 } from '@/components/view/exams-view/exams-view.domain'
 import { CreateExamForm } from '@/components/view/exams-view/CreateExamForm'
+import { ExamInstructionsBanner } from '@/components/view/exams-view/ExamInstructionsBanner'
 import { Button } from '@/components/ui/button'
 
 type TeacherExamListItem = {
@@ -30,8 +29,12 @@ export type StudentExamItem = {
     durationMinutes: number
     opensAt: Date
     closesAt: Date
+    totalPoints: number
   }
-  attempt: { status: ExamAttemptStatus } | null
+  attempt: {
+    status: ExamAttemptStatus
+    totalScore: number | null
+  } | null
 }
 
 type ExamsViewProps = {
@@ -59,7 +62,10 @@ export function ExamsView({
         </p>
       </div>
       {role === 'student' ? (
-        <StudentExamList items={studentItems} />
+        <div className="space-y-6">
+          <ExamInstructionsBanner />
+          <StudentExamList items={studentItems} />
+        </div>
       ) : (
         <TeacherExamList exams={teacherExams} />
       )}
@@ -122,35 +128,34 @@ function StudentExamList({ items }: { items: Array<StudentExamItem> }) {
 }
 
 function StudentExamCard({ item }: { item: StudentExamItem }) {
-  const state = deriveStudentExamCardState(
-    {
-      opensAt: item.exam.opensAt,
-      closesAt: item.exam.closesAt,
-      attemptStatus: item.attempt?.status ?? null,
-    },
-    new Date(),
-  )
-  const action = studentExamCardAction(state)
+  const vm = deriveStudentCardViewModel(item, new Date())
   return (
     <div className="space-y-4 border border-[#1A1A1A]/10 bg-white/70 p-5">
       <div className="flex items-start justify-between gap-3">
         <p className="font-serif text-lg text-[#1C1815]">{item.exam.title}</p>
         <span className="inline-block shrink-0 border border-[#C5A059]/40 px-2 py-0.5 text-[0.55rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase">
-          {STUDENT_EXAM_CARD_LABELS[state]}
+          {vm.stateLabel}
         </span>
       </div>
       <p className="text-xs text-[#8E816D]">
-        {formatExamWindow(item.exam.opensAt, item.exam.closesAt)} ·{' '}
-        {item.exam.durationMinutes} min
+        {vm.windowLabel} · {vm.durationMinutes} min
       </p>
-      {action !== null && (
+      {vm.scoreDisplay !== null && (
+        <div className="border border-[#C5A059]/30 bg-[#F8F4EC]/70 px-3 py-1.5 text-xs text-[#1C1815]">
+          Score:{' '}
+          <span className="font-semibold text-[#9B7A41]">
+            {vm.scoreDisplay}
+          </span>
+        </div>
+      )}
+      {vm.action !== null && (
         <Button
           size="sm"
           render={
             <Link to="/exams/$examId" params={{ examId: item.exam.id }} />
           }
         >
-          {STUDENT_EXAM_ACTION_LABELS[action]}
+          {STUDENT_EXAM_ACTION_LABELS[vm.action]}
         </Button>
       )}
     </div>

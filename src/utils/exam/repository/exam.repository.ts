@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import {
   examAnswers,
@@ -15,6 +15,7 @@ export type ExamAttemptRow = typeof examAttempts.$inferSelect
 export type ExamAnswerRow = typeof examAnswers.$inferSelect
 
 export type QuestionOptionInput = {
+  id?: string
   label: string
   orderIndex: number
   isCorrect: boolean
@@ -126,6 +127,64 @@ export async function insertQuestionWithOptions(
   })
 }
 
+type TransactionClient = Parameters<
+  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
+>[0]
+
+async function replaceOptionsPreservingIds(
+  tx: TransactionClient,
+  questionId: string,
+  options: Array<QuestionOptionInput>,
+) {
+  const optionsWithId = options.filter(
+    (o): o is QuestionOptionInput & { id: string } => Boolean(o.id),
+  )
+  if (optionsWithId.length > 0) {
+    const keepIds = optionsWithId.map((o) => o.id)
+    await tx
+      .delete(examQuestionOptions)
+      .where(
+        and(
+          eq(examQuestionOptions.questionId, questionId),
+          notInArray(examQuestionOptions.id, keepIds),
+        ),
+      )
+    await tx
+      .update(examQuestionOptions)
+      .set({ isCorrect: false })
+      .where(eq(examQuestionOptions.questionId, questionId))
+    for (const option of options) {
+      if (option.id) {
+        await tx
+          .update(examQuestionOptions)
+          .set({
+            label: option.label,
+            orderIndex: option.orderIndex,
+            isCorrect: option.isCorrect,
+          })
+          .where(eq(examQuestionOptions.id, option.id))
+      } else {
+        await tx.insert(examQuestionOptions).values({
+          questionId,
+          label: option.label,
+          orderIndex: option.orderIndex,
+          isCorrect: option.isCorrect,
+        })
+      }
+    }
+    return
+  }
+
+  await tx
+    .delete(examQuestionOptions)
+    .where(eq(examQuestionOptions.questionId, questionId))
+  if (options.length > 0) {
+    await tx
+      .insert(examQuestionOptions)
+      .values(options.map((option) => ({ ...option, questionId })))
+  }
+}
+
 export async function updateQuestionWithOptions(
   examId: string,
   questionId: string,
@@ -148,15 +207,8 @@ export async function updateQuestionWithOptions(
       .returning()
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- .returning() yields [] for a missing id; the destructured element is undefined at runtime
     if (!updated) return undefined
-    // Replace options wholesale — draft-only editing makes this safe.
-    await tx
-      .delete(examQuestionOptions)
-      .where(eq(examQuestionOptions.questionId, questionId))
-    if (options.length > 0) {
-      await tx
-        .insert(examQuestionOptions)
-        .values(options.map((option) => ({ ...option, questionId })))
-    }
+
+    await replaceOptionsPreservingIds(tx, questionId, options)
     return updated
   })
 }
@@ -370,5 +422,21 @@ export async function countAttemptsByExam(examId: string): Promise<number> {
     .from(examAttempts)
     .where(eq(examAttempts.examId, examId))
   return row.value
+}
+
+export async function findExamTotalPointsMap(
+  examIds: Array<string>,
+): Promise<Map<string, number>> {
+  if (examIds.length === 0) return new Map()
+  const db = await getDb()
+  const rows = await db
+    .select({
+      examId: examQuestions.examId,
+      totalPoints: sql<number>`coalesce(sum(${examQuestions.points}), 0)::int`,
+    })
+    .from(examQuestions)
+    .where(inArray(examQuestions.examId, examIds))
+    .groupBy(examQuestions.examId)
+  return new Map(rows.map((row) => [row.examId, Number(row.totalPoints)]))
 }
 /* v8 ignore end */
