@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
-**Date:** 2026-09-10  
-**Iteration:** 9
-**Scope:** continue request-correlated structured logging by migrating teacher
-assignment grading to the shared redacted logger.
+**Date:** 2026-09-11
+**Iteration:** 10
+**Scope:** continue request-correlated structured logging by migrating
+enrollment evaluation mutations to the shared redacted logger.
 
 ## Executive summary
 
@@ -26,6 +26,9 @@ The repository already has the first production-fundamentals slice:
   request correlation and stable error categories.
 - Teacher grading now emits a request-correlated completion event with stable
   status, duration, assignment, submission, and actor identifiers.
+- Enrollment evaluation score, admission-category, and note mutations now emit
+  one redacted completion event shape with request correlation, status, duration,
+  enrollment/evaluator identifiers, action path, and field type.
 
 The operating decision for this roadmap is:
 
@@ -228,6 +231,24 @@ The next structured-logging slice remains enrollment evaluation or another
 high-value mutation after this event shape is observed in Better Stack. The
 external Better Stack destination, dashboard, alert, and source-map checks
 remain pending account setup described below.
+
+## Iteration 10 — enrollment evaluation structured events
+
+This iteration completed the next enrollment-review slice in the shared logger:
+
+- Score, admission-category, and note mutations emit
+  `enrollment_evaluation_updated` with request ID, server-function path,
+  `updated` status, duration, enrollment ID, evaluator ID, and an
+  `evaluationField` discriminator.
+- The score, admission category, and note values are intentionally excluded;
+  note text is private mentorship content and must not reach Better Stack or
+  Cloudflare logs.
+- Integration coverage verifies the event shape, duration, all three field
+  variants, and absence of evaluation values/note text.
+
+Validation for this iteration: focused enrollment integration tests, formatting,
+typecheck, and `bun run quality:gate` passed. Better Stack destination,
+dashboard, alert, and source-map checks remain pending external account setup.
 
 ## Better Stack setup
 

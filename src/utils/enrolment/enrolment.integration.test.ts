@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
 import {
@@ -6,6 +6,8 @@ import {
   getEnrollmentsService,
   searchEnrollmentContactsByNamesService,
   sendInvitationForEnrollmentService,
+  setEvaluationAdmissionCategoryService,
+  setEvaluationNoteService,
   setEvaluationScoreService,
   substituteTeacherService,
 } from '@/utils/enrolment/service/enrolment.service'
@@ -177,6 +179,55 @@ describe('setEvaluationScoreService (integration)', () => {
     await expect(
       setEvaluationScoreService({ enrollmentId, score: 3 }, studentId),
     ).rejects.toBeInstanceOf(AuthorizationError)
+  })
+
+  it('emits a redacted completion event without evaluation values', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { reviewerId, enrollmentId } = await seedPeerReviewScenario()
+
+    await setEvaluationScoreService({ enrollmentId, score: 4 }, reviewerId)
+
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'enrollment_evaluation_updated')
+
+    expect(event).toMatchObject({
+      event: 'enrollment_evaluation_updated',
+      path: 'serverFn:setEvaluationScore',
+      status: 'updated',
+      enrollmentId,
+      evaluatorId: reviewerId,
+      evaluationField: 'score',
+    })
+    expect(event?.durationMs).toEqual(expect.any(Number))
+    expect(event).not.toHaveProperty('score')
+    expect(event).not.toHaveProperty('note')
+    expect(event).not.toHaveProperty('admissionCategory')
+  })
+
+  it('uses the same event shape for category and note updates', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { reviewerId, enrollmentId } = await seedPeerReviewScenario()
+
+    await setEvaluationAdmissionCategoryService(
+      { enrollmentId, score: 4, admissionCategory: 'new' },
+      reviewerId,
+    )
+    await setEvaluationNoteService(
+      { enrollmentId, note: 'private mentorship details' },
+      reviewerId,
+    )
+
+    const events = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) => entry.event === 'enrollment_evaluation_updated')
+
+    expect(events).toHaveLength(2)
+    expect(events.map((event) => event.evaluationField)).toEqual([
+      'admission_category',
+      'note',
+    ])
+    expect(JSON.stringify(events)).not.toContain('private mentorship details')
   })
 })
 

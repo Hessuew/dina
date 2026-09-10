@@ -85,6 +85,28 @@ import {
   calculateInvitationExpiry,
   generateSecureToken,
 } from '@/utils/invitation/domain/invitations.domain'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+
+type EvaluationField = 'score' | 'admission_category' | 'note'
+
+function logEvaluationUpdated(
+  field: EvaluationField,
+  action: string,
+  enrollmentId: string,
+  userId: string,
+  startedAt: number,
+): void {
+  logServerEvent('info', 'enrollment_evaluation_updated', {
+    requestId: getRequestId(),
+    path: `serverFn:${action}`,
+    status: 'updated',
+    durationMs: elapsedMs(startedAt),
+    enrollmentId,
+    evaluatorId: userId,
+    evaluationField: field,
+  })
+}
 
 /**
  * Throws if a non-admin user is not authorized to evaluate the given enrollment.
@@ -222,7 +244,15 @@ export async function setEvaluationScoreService(
   data: SetEvaluationScoreInput,
   userId: string,
 ) {
-  return setEvaluationScoreWithAccess(data, userId)
+  const startedAt = performance.now()
+  await setEvaluationScoreWithAccess(data, userId)
+  logEvaluationUpdated(
+    'score',
+    'setEvaluationScore',
+    data.enrollmentId,
+    userId,
+    startedAt,
+  )
 }
 
 export async function createEnrollmentService(data: CreateEnrollmentInput) {
@@ -584,6 +614,7 @@ export async function setEvaluationAdmissionCategoryService(
   data: SetEvaluationAdmissionCategoryInput,
   userId: string,
 ) {
+  const startedAt = performance.now()
   const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
   if (!isAdmin && !isTeacher) {
     throw new AuthorizationError('admin or teacher access required', {
@@ -598,13 +629,20 @@ export async function setEvaluationAdmissionCategoryService(
     admissionCategory: data.admissionCategory,
   })
 
-  return
+  logEvaluationUpdated(
+    'admission_category',
+    'setEvaluationAdmissionCategory',
+    data.enrollmentId,
+    userId,
+    startedAt,
+  )
 }
 
 export async function setEvaluationNoteService(
   data: SetEvaluationNoteInput,
   userId: string,
 ) {
+  const startedAt = performance.now()
   const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
   if (!isAdmin && !isTeacher) {
     throw new AuthorizationError('admin or teacher access required', {
@@ -617,7 +655,13 @@ export async function setEvaluationNoteService(
 
   await upsertEvaluation(data.enrollmentId, userId, { note: data.note })
 
-  return
+  logEvaluationUpdated(
+    'note',
+    'setEvaluationNote',
+    data.enrollmentId,
+    userId,
+    startedAt,
+  )
 }
 
 export async function distributeEnrollmentsService(userId: string) {
