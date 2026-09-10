@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { FieldDescription, FieldGroup } from '@/components/ui/field'
 import { SelectItem } from '@/components/ui/select'
 import { useAppForm, withForm } from '@/hooks/form'
+import { trackAnalyticsEvent } from '@/utils/analytics'
 import { createEnrollment } from '@/utils/enrolment/enrollments'
 import { env } from '@/env'
 import {
@@ -621,6 +622,9 @@ export function EnrolmentForm({ success }: EnrolmentFormProps) {
     onSubmit: async ({ value }) => {
       try {
         await createEnrollmentFn({ data: buildEnrolmentSubmissionData(value) })
+        trackAnalyticsEvent('enrollment_submitted', {
+          source: 'public_enrollment_form',
+        })
         await router.navigate({ to: '/enrolment', search: { success: true } })
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Submission failed'

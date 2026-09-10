@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 22
-**Scope:** add the optional PostHog product-analytics foundation.
+**Iteration:** 23
+**Scope:** instrument the public enrollment-submission PostHog event.
 
 ## Executive summary
 
@@ -76,6 +76,10 @@ The repository already has the first production-fundamentals slice:
   when `VITE_POSTHOG_KEY` is configured. It identifies users by stable ID and
   role only, allow-lists the initial LMS journey event names, disables
   autocapture and session recording, and resets identity on logout.
+- The public enrollment form now emits `enrollment_submitted` after the
+  enrollment server mutation succeeds. Its only property is the stable
+  `source=public_enrollment_form` discriminator; applicant identity, contact
+  details, demographic values, and application text remain outside analytics.
 
 The operating decision for this roadmap is:
 
@@ -577,6 +581,27 @@ TypeScript typecheck passed. The next product-analytics slice is to wire one
 completed journey at a time, starting with enrollment submission, then verify
 the events in the configured PostHog project.
 
+## Iteration 23 — enrollment submission product event
+
+This iteration completed the next smallest PostHog roadmap slice:
+
+- The public enrollment form emits `enrollment_submitted` only after
+  `createEnrollment` resolves successfully and before the confirmation
+  navigation runs.
+- The event uses the privacy-safe `source=public_enrollment_form` property;
+  names, email addresses, phone numbers, demographic values, and free-form
+  application responses are not included.
+- Tracking remains optional: the existing analytics boundary returns without
+  sending anything when `VITE_POSTHOG_KEY` is absent.
+- Placing the capture in the mutation-success handler prevents a page refresh
+  on the `?success=true` confirmation URL from counting a duplicate submission.
+
+Verification: focused enrollment-form and analytics tests passed (24 tests),
+the full quality gate passed (1,930 unit tests), TypeScript passed, and the
+changed files pass formatting. External follow-up remains: verify the event in
+the configured PostHog project, then instrument assignment submission and
+course progression.
+
 ### PostHog setup required outside the repository
 
 1. Open [PostHog](https://app.posthog.com/) and create or select the DINA
@@ -842,7 +867,7 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 | Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                     | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
 | Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                    | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
 | Alerting              | No verified production alert set                                                                                                                            | Configure Uptime, error-rate, readiness, and latency alerts; test them                       |
-| Product analytics     | Optional PostHog browser foundation is implemented; journey events are not wired or externally verified                                                     | Instrument enrollment submission, assignment submission, and course progression              |
+| Product analytics     | Enrollment submission event is instrumented; project verification and remaining journey events are pending                                                  | Instrument assignment submission, then course progression                                    |
 
 ### Phase 2 — Reliability
 

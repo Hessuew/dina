@@ -1,6 +1,6 @@
 # PostHog Product Analytics
 
-**Status:** Foundation implemented; event instrumentation pending
+**Status:** Foundation implemented; enrollment submission instrumented
 
 ## Purpose
 
@@ -35,6 +35,9 @@ captured accidentally. Authenticated users are identified by stable user ID and
 role; email, names, and free-form content are excluded.
 
 The typed event boundary currently allow-lists the initial journey events. The
-next product-analytics slice should wire one completed user journey at a time,
-starting with enrollment submission, then assignment submission and course
-progression, and verify the resulting events in the configured PostHog project.
+public enrollment form now emits `enrollment_submitted` only after the server
+mutation succeeds. The event carries only the stable
+`source=public_enrollment_form` discriminator; applicant identity, contact
+details, demographic values, and application text are never sent. The next
+product-analytics slices are assignment submission and course progression,
+followed by verification in the configured PostHog project.
