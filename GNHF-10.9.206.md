@@ -1,9 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 19
-**Scope:** add the admin-only observability hub and document its
-environment-configured provider links.
+**Iteration:** 20
+**Scope:** add structured telemetry to course-teacher lesson authoring.
 
 ## Executive summary
 
@@ -58,6 +57,11 @@ The repository already has the first production-fundamentals slice:
   duration, and stable error categories. Revoke and delete operations emit the
   same audit shape, and invitation email addresses, tokens, and provider error
   text remain excluded.
+- Course-teacher lesson creation, update, and deletion now emit redacted
+  `lesson_created`, `lesson_updated`, and `lesson_deleted` events with request
+  correlation, server-function path, actor/course/lesson IDs, status, and
+  duration. Persistence failures emit stable `lesson_persistence` categories;
+  lesson content, titles, and provider/database messages are excluded.
 - Admins now have an authenticated `/admin/observability` hub that links to
   Better Stack, Cloudflare, Supabase, and Notion operations surfaces. Link URLs
   are public environment configuration only; no provider credentials are sent
@@ -82,9 +86,9 @@ credentials, connection strings, cookies, email/phone values, request bodies,
 and raw error messages. The health and readiness endpoints, assignment
 submission persistence, signup/OTP flows, invitation-email campaign, password
 reset, teacher grading, enrollment evaluation, private image storage, exam
-submission, WhatsApp campaign, post/comment notification delivery, and student
-attendance check-in are consumers; broader server-function migration remains
-intentionally incremental.
+submission, WhatsApp campaign, post/comment notification delivery, student
+attendance check-in, and course-teacher lesson authoring are consumers; broader
+server-function migration remains intentionally incremental.
 
 No secrets, account tokens, or account-specific URLs belong in this file or in
 the repository.
@@ -494,6 +498,25 @@ passed, including typecheck, formatting, Cloudflare type generation, Fallow,
 ESLint without errors, and 1,928 unit tests. Better Stack destinations, real
 dashboard URLs, alert delivery, Uptime monitors, and source-map verification
 remain external setup work described below.
+
+## Iteration 20 — lesson-authoring structured telemetry
+
+This iteration completed the next high-value server-function slice:
+
+- Course teachers creating lessons now emit `lesson_created` after the lesson
+  row is persisted; unexpected insert failures emit `lesson_create_failed`.
+- Lesson updates now emit `lesson_updated`, and deletes emit `lesson_deleted`.
+  Their persistence failures emit matching stable failure events without
+  changing authorization, validation, or delete behavior.
+- Every event carries the request ID, server-function path, outcome status,
+  duration, actor ID, course ID, and lesson ID when available. Lesson titles,
+  body content, URLs, and raw database/provider errors are not logged.
+- Integration coverage verifies the success event shape for create, update,
+  and delete mutations while existing authorization tests remain unchanged.
+
+Validation for this iteration: the focused course integration suite passed all
+46 tests, and formatting passed. Full quality-gate and external Better Stack
+verification remain pending for the final handoff.
 
 ## Better Stack setup
 

@@ -484,6 +484,7 @@ describe('deleteCourseService (integration)', () => {
 
 describe('createLessonService (integration)', () => {
   it('course teacher creates a lesson (defaults to unpublished)', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const teacherId = await seedProfile({ role: 'teacher' })
     const courseId = await seedCourse()
     await seedCourseTeacher(courseId, teacherId)
@@ -496,6 +497,13 @@ describe('createLessonService (integration)', () => {
     expect(lesson.title).toBe('Lesson 1')
     expect(lesson.courseId).toBe(courseId)
     expect(lesson.isPublished).toBe(false)
+    expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
+      event: 'lesson_created',
+      actorId: teacherId,
+      courseId,
+      lessonId: lesson.id,
+      status: 'success',
+    })
   })
 
   it('rejects a user without course permission', async () => {
@@ -510,6 +518,7 @@ describe('createLessonService (integration)', () => {
 
 describe('updateLessonService (integration)', () => {
   it('course teacher updates a lesson', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const teacherId = await seedProfile({ role: 'teacher' })
     const courseId = await seedCourse()
     await seedCourseTeacher(courseId, teacherId)
@@ -521,6 +530,13 @@ describe('updateLessonService (integration)', () => {
     )
 
     expect(lesson.title).toBe('New')
+    expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
+      event: 'lesson_updated',
+      actorId: teacherId,
+      courseId,
+      lessonId,
+      status: 'success',
+    })
   })
 
   it('rejects a user without course permission', async () => {
@@ -536,6 +552,7 @@ describe('updateLessonService (integration)', () => {
 
 describe('deleteLessonService (integration)', () => {
   it('course teacher deletes a lesson', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const teacherId = await seedProfile({ role: 'teacher' })
     const courseId = await seedCourse()
     await seedCourseTeacher(courseId, teacherId)
@@ -544,6 +561,13 @@ describe('deleteLessonService (integration)', () => {
     const result = await deleteLessonService({ lessonId, courseId }, teacherId)
 
     expect(result).toEqual({ success: true, lessonId })
+    expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
+      event: 'lesson_deleted',
+      actorId: teacherId,
+      courseId,
+      lessonId,
+      status: 'success',
+    })
   })
 
   it('rejects a user without course permission', async () => {

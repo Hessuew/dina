@@ -47,6 +47,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    persistence failures; revoke and delete emit audit events. Actor and
    invitation IDs plus role are safe fields, while email addresses, tokens,
    and provider messages are excluded.
+   Course-teacher lesson authoring now emits redacted
+   `lesson_created`, `lesson_updated`, and `lesson_deleted` events with
+   request correlation, server-function path, actor/course/lesson IDs,
+   status, and duration; persistence failures use the stable
+   `lesson_persistence` category.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

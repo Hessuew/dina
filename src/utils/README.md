@@ -82,6 +82,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     persistence failures; revoke and delete emit audit events. Actor and
     invitation IDs plus role are safe fields, while email addresses, tokens,
     and provider messages are excluded.
+  - Course-teacher lesson authoring emits redacted `lesson_created`,
+    `lesson_updated`, and `lesson_deleted` events with request correlation,
+    actor/course/lesson IDs, status, and duration; persistence failures use
+    the stable `lesson_persistence` category.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is
