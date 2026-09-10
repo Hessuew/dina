@@ -17,7 +17,7 @@ Server-side operational logs should be JSON objects with:
 
 ## Redaction Rules
 
-Never log passwords, tokens, cookies, Supabase service-role keys, connection strings, raw request bodies, or raw exception messages that may contain secrets. Prefer stable categories and IDs that let the team pivot into Sentry or Cloudflare logs.
+Never log passwords, tokens, cookies, Supabase service-role keys, connection strings, raw request bodies, or raw exception messages that may contain secrets. Prefer stable categories and IDs that let the team pivot into Better Stack or Cloudflare logs.
 
 ## Rollout
 

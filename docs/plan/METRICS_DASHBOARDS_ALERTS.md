@@ -8,7 +8,9 @@ Use Notion as the operations hub linking to:
 
 - Cloudflare Worker metrics, logs, traces, deployments, and domain health.
 - Supabase database/storage/auth dashboards and metrics.
-- Sentry issues, releases, performance, and alerts.
+- Better Stack Errors issues, releases, performance, and alerts.
+- Better Stack Logs & Traces dashboards and log-derived metrics.
+- Better Stack Uptime health monitors and incidents.
 - PostHog product analytics after adoption tracking is implemented.
 
 Do not build a custom in-app dashboard for Phase 1.
@@ -19,7 +21,7 @@ Start with a small actionable alert set:
 
 - App unavailable or sustained Worker 5xx responses.
 - `/readyz` failure in production.
-- Sentry new high-severity issue or error-rate spike.
+- Better Stack new high-severity issue or error-rate spike.
 - Auth failure spike beyond expected user mistakes.
 - Database connection/query degradation.
 - Deploy regression shortly after release.

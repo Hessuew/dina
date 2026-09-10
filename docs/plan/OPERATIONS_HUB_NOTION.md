@@ -13,7 +13,8 @@ The operations hub should link to:
 - Cloudflare production health dashboard.
 - Cloudflare Worker logs/traces.
 - Supabase project dashboard and metrics.
-- Sentry project issues, releases, performance, and alerts.
+- Better Stack Errors issues, releases, performance, and alerts.
+- Better Stack Logs & Traces dashboards and Uptime monitors.
 - PostHog product analytics dashboards.
 - Runbooks and incident templates.
 - Production readiness reviews.

@@ -10,7 +10,7 @@ Production fundamentals is intentionally split into small implementation parts:
 
 1. [Production Health Checks](./PRODUCTION_HEALTH_CHECKS.md)
 2. [Structured Logging](./STRUCTURED_LOGGING.md)
-3. [Error Tracing with Sentry](./ERROR_TRACING_SENTRY.md)
+3. [Error Tracking with Better Stack](./ERROR_TRACING_SENTRY.md)
 4. [Metrics, Dashboards, and Alerts](./METRICS_DASHBOARDS_ALERTS.md)
 5. [PostHog Product Analytics](./PRODUCT_ANALYTICS_POSTHOG.md)
 6. [Notion Operations Hub](./OPERATIONS_HUB_NOTION.md)
@@ -22,7 +22,10 @@ Keep the current stack for this phase:
 - Cloudflare Workers for the application runtime and domain routing.
 - Cloudflare Hyperdrive for Postgres connection pooling.
 - Supabase for database, auth, and storage.
-- Sentry for application errors and tracing.
+- Better Stack Errors for application errors and releases, using the existing
+  Sentry-compatible SDK integration during the transition.
+- Better Stack Logs & Traces for centralized Worker telemetry.
+- Better Stack Uptime for synthetic `/healthz` and `/readyz` monitoring.
 - Cloudflare observability for Worker logs, traces, request volume, status codes, and latency.
 - PostHog for product analytics after the technical baseline is stable.
 - Notion as the single source of truth for operational dashboard links, runbooks, readiness, risks, and roadmap status.
@@ -34,7 +37,7 @@ Do not migrate to Railway or Sevalla during Phase 1. Revisit hosting only when a
 - `/healthz` confirms the Worker/app is alive without dependency checks.
 - `/readyz` checks database readiness through the production database path.
 - Operational endpoint responses and logs are structured, redacted, and no-store.
-- Sentry remains enabled for frontend and Worker errors with expected-error suppression.
-- Cloudflare, Supabase, Sentry, and PostHog dashboards are linked from Notion.
+- Better Stack receives frontend and Worker errors with expected-error suppression.
+- Cloudflare, Supabase, Better Stack, and PostHog dashboards are linked from Notion.
 - Critical failure-mode alerts are defined and tested.
 - Follow-up work is tracked in Linear or the roadmap before moving to SLOs.
