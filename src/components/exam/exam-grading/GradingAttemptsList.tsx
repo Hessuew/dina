@@ -13,7 +13,7 @@ export const ATTEMPT_STATUS_CHIP: Record<ExamAttemptStatus, StatusChipVariant> =
 export type GradingAttemptListItem = {
   id: string
   examId: string
-  studentId: string
+  studentName: string
   status: ExamAttemptStatus
   submittedAt: Date | null
   totalScore: number | null
@@ -41,7 +41,7 @@ export function GradingAttemptsList({
           className="flex items-center justify-between gap-4 border border-[#1A1A1A]/10 bg-white/70 px-5 py-4 transition-colors hover:border-[#C5A059]/40"
         >
           <div>
-            <p className="text-sm text-[#1C1815]">Student {attempt.studentId}</p>
+            <p className="text-sm text-[#1C1815]">{attempt.studentName}</p>
             <p className="mt-1 text-xs text-[#8E816D]">
               {attempt.submittedAt
                 ? `Submitted ${attempt.submittedAt.toLocaleString('en-GB')}`

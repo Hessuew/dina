@@ -57,6 +57,7 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `assignments.ts`, `students.ts`, `teachers.ts`, `calendar.ts`, `events.ts`, `invitations.ts`, `enrollments.ts`, `posts.ts`, `library.ts`.
   - `attendance/` — live Attendance Session open/close, student self check-in (`markPresent`), and Course Teacher/Admin/privileged-teacher override (`setStudentPresent`) from student detail.
   - `staff-privilege/` — Staff Privilege grants (ADR 0023): domain live-check, Admin grant/revoke, `hasStaffPrivilege` used by attendance override and enrolment contact export.
+  - `exam/` — Timed exam authoring, attempt lifecycle, autosave, lazy finalization, and grading (ADR 0017).
   - These typically export server functions that routes call for loading and mutations.
   - Server functions are thin adapters that validate input, call domain services from `src/domain/`, and return responses.
   - `postNotifications.ts`.

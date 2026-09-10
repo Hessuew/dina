@@ -166,9 +166,10 @@ An `enrollment_status` value meaning the assigned Reviewer scored the applicant 
 ### Exam
 
 A standalone timed assessment authored by a Teacher-user or Admin: a title, a per-exam
-duration (`durationMinutes`, default 30), a start window (`opensAt`–`closesAt`), and an
+duration (`durationMinutes`, default 45), a start window (`opensAt`–`closesAt`), and an
 ordered list of questions (multiple-choice with exactly one correct option, or open-ended).
-Lifecycle is `draft → published`; questions freeze at publish, and Students only ever see
+Lifecycle is `draft → published`; questions freeze at publish for teachers, but an Admin
+can edit even a published exam (title, dates, duration, questions). Students only ever see
 published exams. Not attached to a course (course scoping is a deferred extension). See
 ADR 0017.
 

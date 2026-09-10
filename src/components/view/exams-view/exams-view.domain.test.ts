@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  deriveStudentCardViewModel,
   deriveStudentExamCardState,
   formatExamWindow,
+  formatGradedScore,
   startExamButtonLabel,
   studentExamCardAction,
+  studentExamCardTarget,
   studentLandingClosedMessage,
   studentLandingGoLabel,
 } from './exams-view.domain'
@@ -57,6 +60,17 @@ describe('studentExamCardAction', () => {
   })
 })
 
+describe('studentExamCardTarget', () => {
+  it('keeps the start action on the instructions page', () => {
+    expect(studentExamCardTarget('start')).toBe('/exams/$examId')
+  })
+
+  it('opens existing attempts directly', () => {
+    expect(studentExamCardTarget('continue')).toBe('/exams/$examId/take')
+    expect(studentExamCardTarget('review')).toBe('/exams/$examId/take')
+  })
+})
+
 describe('landing labels', () => {
   it('labels the go button per action', () => {
     expect(studentLandingGoLabel('continue')).toBe('Continue exam')
@@ -81,5 +95,48 @@ describe('formatExamWindow', () => {
     const formatted = formatExamWindow(opensAt, closesAt)
     expect(formatted).toContain('–')
     expect(formatted.length).toBeGreaterThan(10)
+  })
+})
+
+describe('formatGradedScore', () => {
+  it('formats score out of total points when totalScore is present', () => {
+    expect(formatGradedScore(18, 20)).toBe('18 / 20')
+    expect(formatGradedScore(0, 15)).toBe('0 / 15')
+  })
+
+  it('returns null when totalScore is null', () => {
+    expect(formatGradedScore(null, 20)).toBeNull()
+  })
+})
+
+describe('deriveStudentCardViewModel', () => {
+  const baseExam = {
+    durationMinutes: 45,
+    opensAt,
+    closesAt,
+    totalPoints: 20,
+  }
+
+  it('derives view model for open unstarted exam', () => {
+    const vm = deriveStudentCardViewModel({ exam: baseExam, attempt: null }, T0)
+    expect(vm.state).toBe('open')
+    expect(vm.action).toBe('start')
+    expect(vm.stateLabel).toBe('Open')
+    expect(vm.scoreDisplay).toBeNull()
+    expect(vm.durationMinutes).toBe(45)
+  })
+
+  it('derives view model for graded attempt with score', () => {
+    const vm = deriveStudentCardViewModel(
+      {
+        exam: baseExam,
+        attempt: { status: 'graded', totalScore: 19 },
+      },
+      T0,
+    )
+    expect(vm.state).toBe('graded')
+    expect(vm.action).toBe('review')
+    expect(vm.stateLabel).toBe('Graded')
+    expect(vm.scoreDisplay).toBe('19 / 20')
   })
 })

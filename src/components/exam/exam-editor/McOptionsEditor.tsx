@@ -2,18 +2,21 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 export type OptionDraft = {
+  id?: string
   label: string
   isCorrect: boolean
 }
 
 type McOptionsEditorProps = {
   options: Array<OptionDraft>
+  optionGroupName: string
   onChange: (options: Array<OptionDraft>) => void
   readOnly: boolean
 }
 
 export function McOptionsEditor({
   options,
+  optionGroupName,
   onChange,
   readOnly,
 }: McOptionsEditorProps) {
@@ -28,14 +31,16 @@ export function McOptionsEditor({
     <div className="space-y-2">
       {options.map((option, index) => (
         <div key={index} className="flex items-center gap-3">
-          <input
-            type="radio"
-            name="correct-option"
-            checked={option.isCorrect}
-            onChange={() => setCorrect(index)}
-            disabled={readOnly}
-            title="Correct answer"
-          />
+          <label className="flex shrink-0 items-center gap-1.5 text-xs text-[#8E816D]">
+            <input
+              type="radio"
+              name={optionGroupName}
+              checked={option.isCorrect}
+              onChange={() => setCorrect(index)}
+              disabled={readOnly}
+            />
+            Correct
+          </label>
           <Input
             value={option.label}
             onChange={(event) => setLabel(index, event.target.value)}
@@ -54,7 +59,9 @@ export function McOptionsEditor({
         <Button
           size="xs"
           variant="outline"
-          onClick={() => onChange([...options, { label: '', isCorrect: false }])}
+          onClick={() =>
+            onChange([...options, { label: '', isCorrect: false }])
+          }
         >
           Add option
         </Button>

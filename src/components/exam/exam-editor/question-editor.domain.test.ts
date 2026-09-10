@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_OPTION_DRAFTS,
+  buildQuestionChangeInput,
   buildUpsertQuestionInput,
   initialQuestionEditorState,
-  questionSaveButtonLabel,
-  questionSavedMessage,
+  questionEditorMode,
 } from './question-editor.domain'
 
 describe('initialQuestionEditorState', () => {
@@ -30,7 +30,7 @@ describe('initialQuestionEditorState', () => {
     const state = initialQuestionEditorState(
       { id: 'q1', type: 'multiple_choice', prompt: 'Pick one', points: 2 },
       [
-        { label: 'A', isCorrect: true },
+        { id: 'opt1', label: 'A', isCorrect: true },
         { label: 'B', isCorrect: false },
       ],
       false,
@@ -42,7 +42,7 @@ describe('initialQuestionEditorState', () => {
     expect(state.prompt).toBe('Pick one')
     expect(state.points).toBe(2)
     expect(state.optionDrafts).toEqual([
-      { label: 'A', isCorrect: true },
+      { id: 'opt1', label: 'A', isCorrect: true },
       { label: 'B', isCorrect: false },
     ])
   })
@@ -72,19 +72,25 @@ describe('buildUpsertQuestionInput', () => {
   }
 
   it('includes questionId only for existing questions', () => {
-    expect(buildUpsertQuestionInput({ ...base, questionId: 'q1' })).toHaveProperty(
-      'questionId',
-      'q1',
-    )
+    expect(
+      buildUpsertQuestionInput({ ...base, questionId: 'q1' }),
+    ).toHaveProperty('questionId', 'q1')
     expect(
       buildUpsertQuestionInput({ ...base, questionId: null }),
     ).not.toHaveProperty('questionId')
   })
 
   it('indexes MC options and omits options for open-ended', () => {
-    const mc = buildUpsertQuestionInput({ ...base, questionId: null })
+    const mc = buildUpsertQuestionInput({
+      ...base,
+      questionId: null,
+      optionDrafts: [
+        { id: 'opt1', label: 'A', isCorrect: true },
+        { label: 'B', isCorrect: false },
+      ],
+    })
     expect(mc.options).toEqual([
-      { label: 'A', orderIndex: 0, isCorrect: true },
+      { id: 'opt1', label: 'A', orderIndex: 0, isCorrect: true },
       { label: 'B', orderIndex: 1, isCorrect: false },
     ])
     const open = buildUpsertQuestionInput({
@@ -94,13 +100,30 @@ describe('buildUpsertQuestionInput', () => {
     })
     expect(open.options).toBeUndefined()
   })
+
+  it('builds question changes without the exam wrapper', () => {
+    expect(
+      buildQuestionChangeInput({ ...base, questionId: 'q1' }),
+    ).toMatchObject({ questionId: 'q1', prompt: 'Pick' })
+  })
 })
 
-describe('labels', () => {
-  it('distinguishes add from update', () => {
-    expect(questionSavedMessage(true)).toBe('Question updated')
-    expect(questionSavedMessage(false)).toBe('Question added')
-    expect(questionSaveButtonLabel(true)).toBe('Save question')
-    expect(questionSaveButtonLabel(false)).toBe('Add question')
+describe('questionEditorMode', () => {
+  it('marks a blank question as new and editable', () => {
+    expect(questionEditorMode(null, false)).toEqual({
+      isNew: true,
+      typeLocked: false,
+    })
+  })
+
+  it('locks a blank question in read-only mode', () => {
+    expect(questionEditorMode(null, true).typeLocked).toBe(true)
+  })
+
+  it('locks the type for existing questions', () => {
+    expect(questionEditorMode('q1', false)).toEqual({
+      isNew: false,
+      typeLocked: true,
+    })
   })
 })

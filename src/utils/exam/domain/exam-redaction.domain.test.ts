@@ -39,11 +39,15 @@ function attempt(overrides: Partial<AttemptRow>): AttemptRow {
 
 describe('redactOptionsForStudent', () => {
   it('strips isCorrect and keeps everything else', () => {
-    const redacted = redactOptionsForStudent([option])
+    const redacted = redactOptionsForStudent([option], 'submitted')
     expect(redacted).toEqual([
       { id: 'o1', questionId: 'q1', label: 'Answer A', orderIndex: 0 },
     ])
     expect(redacted[0]).not.toHaveProperty('isCorrect')
+  })
+
+  it('reveals isCorrect once the attempt is graded', () => {
+    expect(redactOptionsForStudent([option], 'graded')).toEqual([option])
   })
 })
 

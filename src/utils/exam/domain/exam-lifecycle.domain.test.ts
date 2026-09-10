@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canAuthorEditExam,
   canEditExam,
   canTransitionAttempt,
   validateForPublish,
@@ -19,9 +20,48 @@ function options(...corrects: Array<boolean>) {
 }
 
 describe('canEditExam', () => {
-  it('allows editing drafts only', () => {
+  it('allows editing drafts for non-admins and rejects published exams', () => {
     expect(canEditExam('draft')).toBe(true)
+    expect(canEditExam('draft', false)).toBe(true)
     expect(canEditExam('published')).toBe(false)
+    expect(canEditExam('published', false)).toBe(false)
+  })
+
+  it('allows editing published exams for admins', () => {
+    expect(canEditExam('draft', true)).toBe(true)
+    expect(canEditExam('published', true)).toBe(true)
+  })
+})
+
+describe('canAuthorEditExam', () => {
+  it('allows admin to edit draft or published exams regardless of creator', () => {
+    expect(
+      canAuthorEditExam('draft', { isAdmin: true, isCreator: false }),
+    ).toBe(true)
+    expect(
+      canAuthorEditExam('published', { isAdmin: true, isCreator: false }),
+    ).toBe(true)
+    expect(
+      canAuthorEditExam('published', { isAdmin: true, isCreator: true }),
+    ).toBe(true)
+  })
+
+  it('allows creator teacher to edit draft only', () => {
+    expect(
+      canAuthorEditExam('draft', { isAdmin: false, isCreator: true }),
+    ).toBe(true)
+    expect(
+      canAuthorEditExam('published', { isAdmin: false, isCreator: true }),
+    ).toBe(false)
+  })
+
+  it('rejects non-creator teacher for drafts and published', () => {
+    expect(
+      canAuthorEditExam('draft', { isAdmin: false, isCreator: false }),
+    ).toBe(false)
+    expect(
+      canAuthorEditExam('published', { isAdmin: false, isCreator: false }),
+    ).toBe(false)
   })
 })
 
@@ -49,7 +89,10 @@ describe('validateForPublish', () => {
   })
 
   it('rejects multiple choice with fewer than 2 options', () => {
-    const errors = validateForPublish([mc('q1')], new Map([['q1', options(true)]]))
+    const errors = validateForPublish(
+      [mc('q1')],
+      new Map([['q1', options(true)]]),
+    )
     expect(errors).toContain('Question 1: needs at least 2 options')
   })
 

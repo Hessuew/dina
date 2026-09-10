@@ -24,6 +24,7 @@ This folder contains feature areas implemented as route files:
 - **Enrollments**: `enrollments.tsx`, `enrollments/$enrollmentId.tsx`
 - **Discipleship**: `discipleship.tsx` supplies Student-to-Teacher placement and schedules.
 - **Zoom**: `zoom.tsx` shows academy-wide General links plus role-visible Teacher-owned links; Admins manage ownership there.
+- **Exams**: `exams/index.tsx`, `exams/$examId.index.tsx`, `exams/$examId.take.tsx`, `exams/$examId.grading.index.tsx`, `exams/$examId.grading.$attemptId.tsx` provides standalone timed exams with autosave, automatic/manual grading, and score review.
 
 ## Key Invariants / Assumptions
 

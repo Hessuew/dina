@@ -3,15 +3,19 @@ import type { examAttempts, examQuestionOptions } from '@/db/schema'
 type OptionRow = typeof examQuestionOptions.$inferSelect
 type AttemptRow = typeof examAttempts.$inferSelect
 
-export type StudentOption = Omit<OptionRow, 'isCorrect'>
+export type StudentOption = Omit<OptionRow, 'isCorrect'> & {
+  isCorrect?: boolean
+}
 
 /**
- * Strips the correct-answer flag before an option row leaves the server for
- * a student (redacted-view precedent; see ADR 0017).
+ * Hides correct answers from active/submitted attempts and reveals them after
+ * grading, so a student can review the graded exam without seeing answers early.
  */
 export function redactOptionsForStudent(
   options: Array<OptionRow>,
+  attemptStatus: AttemptRow['status'],
 ): Array<StudentOption> {
+  if (attemptStatus === 'graded') return options
   return options.map(({ isCorrect: _isCorrect, ...rest }) => rest)
 }
 
