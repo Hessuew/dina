@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import type { z } from 'zod'
 import type { User } from '@supabase/supabase-js'
 import type { updateProfileSchema } from '@/schemas/profile.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import {
   calculateTokenExpiry,
   checkEmailChangeRateLimit,
@@ -22,15 +23,56 @@ import {
   updateProfileWithEmailChange,
 } from '@/utils/profile/repository'
 import { AppError } from '@/utils/errors'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { getSupabaseAdminClient } from '@/utils/supabase'
+
+type ProfileAction = 'updateProfile' | 'verifyEmailChange'
+
+type ProfileLogContext = {
+  action: ProfileAction
+  startedAt: number
+}
+
+function logProfileEvent(
+  level: LogLevel,
+  event: string,
+  context: ProfileLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    ...fields,
+  })
+}
 
 export async function updateProfileBasicService(
   data: z.infer<typeof updateProfileSchema>,
   user: User,
 ) {
-  await updateProfileBasic(user.id, {
-    fullName: data.fullName,
-    bio: data.bio ?? null,
+  const context: ProfileLogContext = {
+    action: 'updateProfile',
+    startedAt: performance.now(),
+  }
+  try {
+    await updateProfileBasic(user.id, {
+      fullName: data.fullName,
+      bio: data.bio ?? null,
+    })
+  } catch (error) {
+    logProfileEvent('error', 'profile_update_failed', context, {
+      errorCategory: 'profile_persistence',
+      userId: user.id,
+    })
+    throw error
+  }
+
+  logProfileEvent('info', 'profile_updated', context, {
+    updateType: 'basic',
+    userId: user.id,
   })
 
   return { emailChangePending: false, pendingEmail: undefined }
@@ -40,6 +82,10 @@ export async function updateProfileWithEmailChangeService(
   data: z.infer<typeof updateProfileSchema>,
   user: User,
 ) {
+  const context: ProfileLogContext = {
+    action: 'updateProfile',
+    startedAt: performance.now(),
+  }
   const lastEmailChangeRequestAt = await findLastEmailChangeRequestAt(user.id)
 
   const waitSeconds = checkEmailChangeRateLimit(
@@ -58,22 +104,38 @@ export async function updateProfileWithEmailChangeService(
   const { token, tokenHash } = generateEmailChangeToken()
   const expiresAt = calculateTokenExpiry()
 
-  await updateProfileWithEmailChange(user.id, {
-    fullName: data.fullName,
-    bio: data.bio ?? null,
-    pendingEmail: data.email,
-    emailChangeTokenHash: tokenHash,
-    emailChangeTokenExpiresAt: expiresAt,
-  })
+  try {
+    await updateProfileWithEmailChange(user.id, {
+      fullName: data.fullName,
+      bio: data.bio ?? null,
+      pendingEmail: data.email,
+      emailChangeTokenHash: tokenHash,
+      emailChangeTokenExpiresAt: expiresAt,
+    })
+  } catch (error) {
+    logProfileEvent('error', 'email_change_request_failed', context, {
+      errorCategory: 'email_change_persistence',
+      userId: user.id,
+    })
+    throw error
+  }
 
   const verifyLink = buildVerifyLink(token)
 
   try {
     await sendEmailChangeVerification(data.email, verifyLink)
   } catch (error) {
+    logProfileEvent('error', 'email_change_request_failed', context, {
+      errorCategory: 'email_change_email_delivery',
+      userId: user.id,
+    })
     await clearEmailChangeTokens(user.id)
     throw error
   }
+
+  logProfileEvent('info', 'email_change_requested', context, {
+    userId: user.id,
+  })
 
   return { emailChangePending: true, pendingEmail: data.email }
 }
@@ -81,6 +143,10 @@ export async function updateProfileWithEmailChangeService(
 export async function verifyEmailChangeService(
   token: string,
 ): Promise<{ success: boolean; message: string }> {
+  const context: ProfileLogContext = {
+    action: 'verifyEmailChange',
+    startedAt: performance.now(),
+  }
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
   const user = await findProfileByEmailChangeToken(tokenHash)
 
@@ -109,6 +175,11 @@ export async function verifyEmailChangeService(
   )
 
   if (updateError) {
+    logProfileEvent('error', 'email_change_update_failed', context, {
+      errorCategory: 'email_change_auth_update',
+      providerCode: updateError.code ?? 'unknown',
+      userId: user.id,
+    })
     await incrementEmailChangeAttempts(user.id)
     return {
       success: false,
@@ -116,7 +187,19 @@ export async function verifyEmailChangeService(
     }
   }
 
-  await completeEmailChange(user.id, user.pendingEmail!)
+  try {
+    await completeEmailChange(user.id, user.pendingEmail!)
+  } catch (error) {
+    logProfileEvent('error', 'email_change_completion_failed', context, {
+      errorCategory: 'email_change_persistence',
+      userId: user.id,
+    })
+    throw error
+  }
+
+  logProfileEvent('info', 'email_change_completed', context, {
+    userId: user.id,
+  })
 
   return { success: true, message: 'Your email address has been updated.' }
 }

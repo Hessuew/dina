@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 15
-**Scope:** continue request-correlated structured logging by migrating student
-attendance check-in outcomes to the shared redacted logger.
+**Iteration:** 16
+**Scope:** continue request-correlated structured logging by migrating profile
+updates and email-change verification outcomes to the shared redacted logger.
 
 ## Executive summary
 
@@ -46,6 +46,10 @@ The repository already has the first production-fundamentals slice:
   course/session/lesson/student identifiers, status, duration, and a stable
   error category. Closed-window validation remains an expected user-facing
   outcome.
+- Profile updates and email-change verification now emit redacted success and
+  failure events with request correlation, user ID, status, duration, and
+  stable persistence/provider categories. Email addresses, verification tokens,
+  and provider messages are excluded.
 
 The operating decision for this roadmap is:
 
@@ -388,6 +392,29 @@ all 17 tests; the full integration suite passed 325 tests; typecheck,
 formatting, the full quality gate (1,928 unit tests), and the production build
 passed. Better Stack destination, dashboard, alert, and source-map verification
 remain pending external account setup.
+
+## Iteration 16 — profile and email-change structured events
+
+This iteration migrated the profile mutation and email-change verification
+workflow to the shared redacted logger:
+
+- Basic profile updates emit `profile_updated` with request correlation,
+  `serverFn:updateProfile`, `success` status, duration, user ID, and a basic
+  update discriminator.
+- Email-change requests emit `email_change_requested`; persistence and
+  verification-email delivery failures emit `email_change_request_failed` with
+  stable categories. The existing token cleanup and error behavior remain
+  unchanged.
+- Successful verification emits `email_change_completed`; Supabase auth
+  update and final persistence failures emit stable failure events with a
+  provider code or error category.
+- Email addresses, verification tokens, and raw provider messages are not
+  passed to structured telemetry.
+
+Validation for this iteration: focused profile integration coverage verifies
+success/failure event shapes and redaction. Better Stack destination,
+dashboard, alert, and source-map verification remain pending external account
+setup.
 
 ## Better Stack setup
 

@@ -68,6 +68,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     `attendance_check_in_completed` / `attendance_check_in_ignored` events
     with request correlation, course/session/lesson/student IDs, status, and
     duration; unexpected persistence failures use a stable category.
+  - Profile updates and email-change verification emit redacted
+    `profile_updated`, `email_change_requested`, `email_change_completed`, and
+    failure events with request correlation, user ID, status, duration, and
+    stable persistence/provider categories; email addresses, verification
+    tokens, and provider messages are excluded.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is

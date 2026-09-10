@@ -33,6 +33,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    duration; unexpected persistence failures emit
    `attendance_check_in_failed` with a stable error category. Closed-window
    validation remains an expected user-facing outcome.
+   Profile updates and email-change verification now emit redacted
+   `profile_updated`, `email_change_requested`, `email_change_completed`, and
+   failure events with request correlation, user ID, status, duration, and
+   stable persistence/provider categories; email addresses, verification
+   tokens, and provider messages are excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a
