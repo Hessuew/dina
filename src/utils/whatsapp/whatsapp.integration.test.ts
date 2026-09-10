@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { getDb } from 'test/integration/db'
 import type {
@@ -157,6 +157,58 @@ describe('sendWhatsAppCampaignService (integration)', () => {
     expect((await findLogRows(okId))[0].status).toBe('sent')
   })
 
+  it('emits redacted structured events for provider failures and completion', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    try {
+      const adminId = await seedProfile({ role: 'admin' })
+      installFakeSender(['+14155552671'])
+      await seedEnrollment({
+        status: 'approved',
+        phoneWhatsApp: '+14155552671',
+        preferredName: 'Private recipient',
+      })
+
+      await previewThenSend('congratulations', adminId)
+
+      const failure = errorSpy.mock.calls
+        .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+        .find((entry) => entry.event === 'whatsapp_campaign_message_failed')
+      expect(failure).toMatchObject({
+        level: 'error',
+        event: 'whatsapp_campaign_message_failed',
+        path: 'serverFn:send_whatsapp_campaign',
+        campaign: 'congratulations',
+        status: 'failed',
+        errorCategory: 'whatsapp_message_delivery',
+        userId: adminId,
+        templateName: 'dina_congratulations',
+      })
+      expect(failure).not.toHaveProperty('errorMessage')
+      expect(String(errorSpy.mock.calls[0]?.[0])).not.toContain(
+        'provider rejected message',
+      )
+
+      const completion = infoSpy.mock.calls
+        .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+        .find((entry) => entry.event === 'whatsapp_campaign_completed')
+      expect(completion).toMatchObject({
+        event: 'whatsapp_campaign_completed',
+        path: 'serverFn:send_whatsapp_campaign',
+        status: 'partial_failure',
+        userId: adminId,
+        sent: 0,
+        failed: 1,
+        skippedAlreadySent: 0,
+        skippedInvalidRecipients: 0,
+        skippedOverCap: 0,
+      })
+    } finally {
+      errorSpy.mockRestore()
+      infoSpy.mockRestore()
+    }
+  })
+
   it('retries failed sends but dedupes sent ones on re-run', async () => {
     const adminId = await seedProfile({ role: 'admin' })
     installFakeSender(['+14155552671'])
@@ -222,7 +274,10 @@ describe('previewWhatsAppCampaignService (integration)', () => {
   it('requires admin role', async () => {
     const studentId = await seedProfile({ role: 'student' })
     await expect(
-      previewWhatsAppCampaignService({ campaign: 'congratulations' }, studentId),
+      previewWhatsAppCampaignService(
+        { campaign: 'congratulations' },
+        studentId,
+      ),
     ).rejects.toThrow(AuthorizationError)
   })
 
@@ -257,7 +312,10 @@ describe('campaign lock (integration)', () => {
   it('preview acquires the campaign lock for the caller', async () => {
     const adminId = await seedProfile({ role: 'admin' })
 
-    await previewWhatsAppCampaignService({ campaign: 'congratulations' }, adminId)
+    await previewWhatsAppCampaignService(
+      { campaign: 'congratulations' },
+      adminId,
+    )
 
     const locks = await findLockRows('congratulations')
     expect(locks).toHaveLength(1)
@@ -267,7 +325,10 @@ describe('campaign lock (integration)', () => {
   it('preview is blocked while another admin holds the lock', async () => {
     const adminA = await seedProfile({ role: 'admin' })
     const adminB = await seedProfile({ role: 'admin' })
-    await previewWhatsAppCampaignService({ campaign: 'congratulations' }, adminA)
+    await previewWhatsAppCampaignService(
+      { campaign: 'congratulations' },
+      adminA,
+    )
 
     await expect(
       previewWhatsAppCampaignService({ campaign: 'congratulations' }, adminB),
@@ -277,7 +338,10 @@ describe('campaign lock (integration)', () => {
   it('different campaigns are lockable concurrently', async () => {
     const adminA = await seedProfile({ role: 'admin' })
     const adminB = await seedProfile({ role: 'admin' })
-    await previewWhatsAppCampaignService({ campaign: 'congratulations' }, adminA)
+    await previewWhatsAppCampaignService(
+      { campaign: 'congratulations' },
+      adminA,
+    )
 
     await expect(
       previewWhatsAppCampaignService({ campaign: 'signup_reminder' }, adminB),

@@ -1,4 +1,5 @@
 import type { SendWhatsAppCampaignInput } from '@/schemas/whatsapp.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import type {
   BulkSendPlan,
   PlannedSend,
@@ -21,6 +22,8 @@ import {
 } from '@/utils/whatsapp/repository/whatsapp.repository'
 import { authz } from '@/utils/authz'
 import { CampaignLockedError } from '@/utils/errors'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 export type CampaignPreview = {
   toSend: number
@@ -35,6 +38,51 @@ export type CampaignSendSummary = {
 
 // Inter-send pause: stays polite to the Cloud API rate limits without a queue.
 const SEND_INTERVAL_MS = 100
+
+type WhatsAppCampaignLogContext = {
+  campaign: SendWhatsAppCampaignInput['campaign']
+  startedAt: number
+}
+
+function logWhatsAppCampaignEvent(
+  level: LogLevel,
+  event: string,
+  context: WhatsAppCampaignLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:send_whatsapp_campaign',
+    campaign: context.campaign,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    ...fields,
+  })
+}
+
+function logWhatsAppMessageOutcome(input: {
+  status: 'sent' | 'failed'
+  planned: PlannedSend
+  templateName: WhatsAppTemplateName
+  userId: string
+  context: WhatsAppCampaignLogContext
+}): void {
+  const failed = input.status === 'failed'
+  logWhatsAppCampaignEvent(
+    failed ? 'error' : 'info',
+    failed
+      ? 'whatsapp_campaign_message_failed'
+      : 'whatsapp_campaign_message_sent',
+    input.context,
+    {
+      status: input.status,
+      errorCategory: failed ? 'whatsapp_message_delivery' : null,
+      enrollmentId: input.planned.enrollmentId,
+      templateName: input.templateName,
+      userId: input.userId,
+    },
+  )
+}
 
 /* v8 ignore start */
 async function planCampaign(
@@ -56,6 +104,7 @@ async function sendPlannedMessage(
   planned: PlannedSend,
   templateName: WhatsAppTemplateName,
   userId: string,
+  context: WhatsAppCampaignLogContext,
 ): Promise<'sent' | 'failed'> {
   let providerMessageId: string | undefined
   let errorMessage: string | undefined
@@ -66,7 +115,6 @@ async function sendPlannedMessage(
       recipientName: planned.recipientName,
     }))
   } catch (error) {
-    console.error('WhatsApp send failed:', error)
     errorMessage = error instanceof Error ? error.message : String(error)
   }
   const status: 'sent' | 'failed' = providerMessageId ? 'sent' : 'failed'
@@ -78,6 +126,13 @@ async function sendPlannedMessage(
     providerMessageId: providerMessageId ?? null,
     errorMessage,
     sentByUserId: userId,
+  })
+  logWhatsAppMessageOutcome({
+    status,
+    planned,
+    templateName,
+    userId,
+    context,
   })
   return status
 }
@@ -102,6 +157,10 @@ export async function sendWhatsAppCampaignService(
   data: SendWhatsAppCampaignInput,
   userId: string,
 ): Promise<CampaignSendSummary> {
+  const context: WhatsAppCampaignLogContext = {
+    campaign: data.campaign,
+    startedAt: performance.now(),
+  }
   await authz(userId).hasRole('admin')
   const holdsLock = await checkWhatsAppCampaignLockHeldBy(data.campaign, userId)
   if (!holdsLock) throw new CampaignLockedError()
@@ -115,16 +174,36 @@ export async function sendWhatsAppCampaignService(
       if (index > 0) {
         await new Promise((resolve) => setTimeout(resolve, SEND_INTERVAL_MS))
       }
-      const outcome = await sendPlannedMessage(planned, templateName, userId)
+      const outcome = await sendPlannedMessage(
+        planned,
+        templateName,
+        userId,
+        context,
+      )
       if (outcome === 'sent') sent++
       else failed++
     }
   } finally {
-    await releaseWhatsAppCampaignLock(data.campaign, userId).catch((error) => {
-      console.error('Failed to release campaign lock after send:', error)
+    await releaseWhatsAppCampaignLock(data.campaign, userId).catch(() => {
+      logWhatsAppCampaignEvent(
+        'error',
+        'whatsapp_campaign_lock_release_failed',
+        context,
+        { errorCategory: 'campaign_lock_release', userId },
+      )
     })
   }
 
-  return { sent, failed, skipped: summarizeSkips(plan.skipped) }
+  const summary = { sent, failed, skipped: summarizeSkips(plan.skipped) }
+  logWhatsAppCampaignEvent('info', 'whatsapp_campaign_completed', context, {
+    status: failed > 0 ? 'partial_failure' : 'success',
+    userId,
+    sent,
+    failed,
+    skippedAlreadySent: summary.skipped.alreadySent,
+    skippedInvalidRecipients: summary.skipped.invalidPhone,
+    skippedOverCap: summary.skipped.overCap,
+  })
+  return summary
 }
 /* v8 ignore end */

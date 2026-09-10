@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 12
-**Scope:** continue request-correlated structured logging by migrating student
-exam-attempt submission to the shared redacted logger.
+**Iteration:** 13
+**Scope:** continue request-correlated structured logging by migrating the
+admin WhatsApp campaign to the shared redacted logger.
 
 ## Executive summary
 
@@ -33,6 +33,10 @@ The repository already has the first production-fundamentals slice:
   no-op, and unexpected-finalization failure events with request correlation,
   outcome status, duration, attempt/exam/student identifiers, and submission
   mode. Answer text and scores are excluded.
+- The admin WhatsApp campaign now emits redacted per-message delivery outcomes,
+  campaign completion summaries, and lock-release failures with request
+  correlation and stable error categories. Recipient phone numbers, names, and
+  provider error text are excluded.
 
 The operating decision for this roadmap is:
 
@@ -51,13 +55,15 @@ The in-repo structured-logging baseline now has a shared server logger. It
 emits stable JSON fields to the Worker console and recursively redacts tokens,
 credentials, connection strings, cookies, email/phone values, request bodies,
 and raw error messages. The health and readiness endpoints, assignment
-submission persistence, signup/OTP flows, and the invitation-email campaign are
-consumers; broader server-function migration remains intentionally incremental.
+submission persistence, signup/OTP flows, invitation-email campaign, password
+reset, teacher grading, enrollment evaluation, private image storage, exam
+submission, and WhatsApp campaign are consumers; broader server-function
+migration remains intentionally incremental.
 
 No secrets, account tokens, or account-specific URLs belong in this file or in
 the repository.
 
-## What the previous iteration changed
+## Initial Better Stack handoff foundation
 
 - Captured the Better Stack replacement decision and the staged cutover plan.
 - Documented exact dashboard navigation, source creation, Cloudflare
@@ -67,10 +73,10 @@ the repository.
   and which work requires an authenticated Better Stack, Cloudflare, Supabase,
   Slack, or Notion dashboard action.
 
-The previous iteration intentionally did not change application code: the
-Better Stack application DSN, Telemetry source token/host, and Cloudflare
-destination names did not exist in the repository and had to be created in the
-external accounts first.
+The account-specific Better Stack application DSN, Telemetry source token/host,
+and Cloudflare destination names are external account values. They must be
+created in the provider dashboards and injected through deployment secrets;
+they do not belong in the repository.
 
 ## Iteration 3 — explicit Better Stack-ready release identity
 
@@ -298,6 +304,30 @@ duration, idempotent retry visibility, and answer redaction. Better Stack
 destination, dashboard, alert, and source-map checks remain pending external
 account setup.
 
+## Iteration 13 — WhatsApp campaign structured events
+
+This iteration completed the next high-value admin workflow slice in the shared
+logger:
+
+- Successful and failed WhatsApp message deliveries emit stable events with
+  request ID, server-function path, campaign/template, enrollment and actor
+  identifiers, outcome status, duration, and a stable
+  `whatsapp_message_delivery` error category on failure.
+- Completed campaigns emit sent/failed/skip counters, including a
+  `partial_failure` status when individual provider deliveries fail; the safe
+  counters are flattened so the defensive phone-key redaction does not mask
+  useful metrics.
+- Campaign lock-release failures emit a separate
+  `whatsapp_campaign_lock_release_failed` event. Provider exception text stays
+  in the existing database audit row but is no longer written to console logs,
+  so it cannot flow to Better Stack through Cloudflare telemetry.
+- Integration coverage verifies event shape and confirms provider error text,
+  recipient names, and phone data are not copied into structured events.
+
+Validation: the WhatsApp integration suite passed all 14 tests, including the
+new structured-event redaction test. Better Stack destination, dashboard,
+alert, and source-map checks remain pending external account setup.
+
 ## Better Stack setup
 
 Use the official product surfaces:
@@ -337,9 +367,9 @@ observed in production.
 
 Use distinct environments in the SDK configuration: `local`, `preview`, and
 `production`. Use the deployed commit SHA as the release identifier when the
-build pipeline exposes it. The next code change should add those explicit
-`environment` and `release` options to the existing browser and Worker
-initializers.
+build pipeline exposes it. The existing browser and Worker initializers now
+accept those explicit `environment` and `release` values; the remaining action
+is to configure and verify them with the real Better Stack DSN.
 
 ### 2. Configure source maps and releases
 
@@ -352,17 +382,18 @@ Better Stack values for:
 - A Better Stack Telemetry API token used as `SENTRY_AUTH_TOKEN` for build
   upload only.
 
-The repository already uses the Sentry Vite plugin in `vite.config.ts`.
-Better Stack documents that the existing Sentry source-map upload integration
-can be reused by pointing it at Better Stack. The next code slice should:
+The repository uses the Sentry Vite plugin in `vite.config.ts`. Better Stack
+documents that the existing Sentry source-map upload integration can be reused
+by pointing it at Better Stack. The current build configuration now:
 
 1. Read `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_URL` from build
    environment instead of keeping the organization/project hardcoded.
 2. Keep `SENTRY_AUTH_TOKEN` available only to the build/source-map step.
 3. Never expose that token through `VITE_*` variables or Worker runtime
    bindings.
-4. Upload source maps for a preview release first, trigger one controlled test
-   error, and confirm the stack is symbolicated in Better Stack.
+4. The remaining external verification is to upload source maps for a preview
+   release first, trigger one controlled test error, and confirm the stack is
+   symbolicated in Better Stack.
 
 ### 3. Export Cloudflare Worker logs and traces
 
