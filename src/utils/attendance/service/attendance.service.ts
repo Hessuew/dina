@@ -34,6 +34,31 @@ import {
   NotFoundError,
   ValidationError,
 } from '@/utils/errors'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+
+type AttendanceCheckInLogContext = {
+  courseId: string
+  studentId: string
+  startedAt: number
+}
+
+function logAttendanceCheckInEvent(
+  level: 'info' | 'error',
+  event: string,
+  context: AttendanceCheckInLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:markPresent',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    courseId: context.courseId,
+    studentId: context.studentId,
+    ...fields,
+  })
+}
 
 async function requireCourseManage(userId: string, courseId: string) {
   const profile = await getUserProfile(userId)
@@ -194,18 +219,44 @@ export async function markPresentService(
   data: MarkPresentInput,
   userId: string,
 ) {
+  const context: AttendanceCheckInLogContext = {
+    courseId: data.courseId,
+    studentId: userId,
+    startedAt: performance.now(),
+  }
   const profile = await getUserProfile(userId)
   if (profile.role !== 'student') {
     throw new AuthorizationError('Only students can mark attendance')
   }
 
-  const result = await markPresentAtomically({
-    courseId: data.courseId,
-    studentId: userId,
-  })
+  let result: Awaited<ReturnType<typeof markPresentAtomically>>
+  try {
+    result = await markPresentAtomically({
+      courseId: data.courseId,
+      studentId: userId,
+    })
+  } catch (error) {
+    logAttendanceCheckInEvent('error', 'attendance_check_in_failed', context, {
+      errorCategory: 'attendance_check_in',
+    })
+    throw error
+  }
   if (!result) {
     throw new ValidationError('Attendance window is closed')
   }
+
+  logAttendanceCheckInEvent(
+    'info',
+    result.created
+      ? 'attendance_check_in_completed'
+      : 'attendance_check_in_ignored',
+    context,
+    {
+      status: result.created ? 'checked_in' : 'already_present',
+      sessionId: result.session.id,
+      lessonId: result.session.lessonId,
+    },
+  )
 
   return {
     present: true,

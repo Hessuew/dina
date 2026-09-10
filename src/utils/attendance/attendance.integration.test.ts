@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import {
   seedCourse,
@@ -143,6 +143,7 @@ describe('attendance open / re-open / close (integration)', () => {
 
 describe('attendance mark present (integration)', () => {
   it('student marks present once; second press is idempotent', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { teacherId, studentId, courseId, lesson1 } =
       await seedManagedCourse()
     await startOrReopenAttendanceService(
@@ -154,6 +155,41 @@ describe('attendance mark present (integration)', () => {
     expect(a.created).toBe(true)
     expect(b.created).toBe(false)
     expect(b.checkedInAt).toEqual(a.checkedInAt)
+
+    const events = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) =>
+        [
+          'attendance_check_in_completed',
+          'attendance_check_in_ignored',
+        ].includes(String(entry.event)),
+      )
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'attendance_check_in_completed',
+          path: 'serverFn:markPresent',
+          status: 'checked_in',
+          courseId,
+          studentId,
+          sessionId: a.sessionId,
+          lessonId: lesson1,
+        }),
+        expect.objectContaining({
+          event: 'attendance_check_in_ignored',
+          path: 'serverFn:markPresent',
+          status: 'already_present',
+          courseId,
+          studentId,
+          sessionId: b.sessionId,
+          lessonId: lesson1,
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    infoSpy.mockRestore()
   })
 
   it('teacher cannot mark present', async () => {

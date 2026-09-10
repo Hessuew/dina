@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 14
-**Scope:** continue request-correlated structured logging by migrating post and
-comment notification persistence failures to the shared redacted logger.
+**Iteration:** 15
+**Scope:** continue request-correlated structured logging by migrating student
+attendance check-in outcomes to the shared redacted logger.
 
 ## Executive summary
 
@@ -41,6 +41,11 @@ The repository already has the first production-fundamentals slice:
   `notification_delivery_failed` event with request correlation, notification
   type, recipient count, duration, and a stable error category. Best-effort
   delivery semantics are unchanged.
+- Student attendance check-ins now emit redacted completed, idempotent-retry,
+  and unexpected-failure events with request correlation, safe
+  course/session/lesson/student identifiers, status, duration, and a stable
+  error category. Closed-window validation remains an expected user-facing
+  outcome.
 
 The operating decision for this roadmap is:
 
@@ -61,8 +66,9 @@ credentials, connection strings, cookies, email/phone values, request bodies,
 and raw error messages. The health and readiness endpoints, assignment
 submission persistence, signup/OTP flows, invitation-email campaign, password
 reset, teacher grading, enrollment evaluation, private image storage, exam
-submission, WhatsApp campaign, and post/comment notification delivery are
-consumers; broader server-function migration remains intentionally incremental.
+submission, WhatsApp campaign, post/comment notification delivery, and student
+attendance check-in are consumers; broader server-function migration remains
+intentionally incremental.
 
 No secrets, account tokens, or account-specific URLs belong in this file or in
 the repository.
@@ -357,6 +363,31 @@ pending external account setup. Notion Architecture Inventory, Structured
 server logging, Observability, and Engineering Roadmap records were
 synchronized; Production Readiness was not changed because this slice did not
 alter a launch decision.
+
+## Iteration 15 — student attendance check-in structured events
+
+This iteration migrated the student attendance check-in mutation to the shared
+redacted logger:
+
+- New attendance check-ins emit `attendance_check_in_completed` with request
+  correlation, `serverFn:markPresent`, `checked_in` status, duration, and safe
+  course/student/session/lesson identifiers.
+- Repeated check-ins emit `attendance_check_in_ignored` with
+  `already_present` status, making idempotent client retries visible without
+  treating them as failures.
+- Unexpected attendance persistence errors emit
+  `attendance_check_in_failed` with the stable `attendance_check_in` category;
+  raw database/provider details are not copied to structured telemetry.
+- Closed attendance windows and non-student callers remain expected user-facing
+  outcomes and do not create noisy error events.
+- Integration coverage verifies both success/idempotent event shapes and
+  duration fields.
+
+Validation for this iteration: the focused attendance integration suite passed
+all 17 tests; the full integration suite passed 325 tests; typecheck,
+formatting, the full quality gate (1,928 unit tests), and the production build
+passed. Better Stack destination, dashboard, alert, and source-map verification
+remain pending external account setup.
 
 ## Better Stack setup
 

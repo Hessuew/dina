@@ -64,6 +64,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     `exam_attempt_submitted` / `exam_attempt_submission_ignored` events with
     request correlation, attempt/exam/student IDs, status, duration, and
     submission mode; unexpected finalization failures use a stable category.
+  - Student attendance check-in emits redacted
+    `attendance_check_in_completed` / `attendance_check_in_ignored` events
+    with request correlation, course/session/lesson/student IDs, status, and
+    duration; unexpected persistence failures use a stable category.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is
