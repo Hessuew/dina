@@ -27,6 +27,10 @@ export const env = createEnv({
     VITE_GOOGLE_ADS_ID: z.string().min(1),
     VITE_META_PIXEL_ID: z.string().min(1),
     VITE_SENTRY_DSN: z.url(),
+    VITE_BETTER_STACK_DASHBOARD_URL: z.url().optional(),
+    VITE_CLOUDFLARE_DASHBOARD_URL: z.url().optional(),
+    VITE_SUPABASE_DASHBOARD_URL: z.url().optional(),
+    VITE_NOTION_OPERATIONS_URL: z.url().optional(),
   },
   /**
    * What object holds the environment variables at runtime. This is usually
@@ -48,6 +52,12 @@ export const env = createEnv({
     VITE_GOOGLE_ADS_ID: import.meta.env.VITE_GOOGLE_ADS_ID,
     VITE_META_PIXEL_ID: import.meta.env.VITE_META_PIXEL_ID,
     VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN,
+    VITE_BETTER_STACK_DASHBOARD_URL: import.meta.env
+      .VITE_BETTER_STACK_DASHBOARD_URL,
+    VITE_CLOUDFLARE_DASHBOARD_URL: import.meta.env
+      .VITE_CLOUDFLARE_DASHBOARD_URL,
+    VITE_SUPABASE_DASHBOARD_URL: import.meta.env.VITE_SUPABASE_DASHBOARD_URL,
+    VITE_NOTION_OPERATIONS_URL: import.meta.env.VITE_NOTION_OPERATIONS_URL,
   },
   /**
    * By default, this library will feed the environment variables directly to

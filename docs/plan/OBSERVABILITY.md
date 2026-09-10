@@ -1,8 +1,8 @@
 # Observability Architecture Implementation Plan
 
-**Status:** Planned (Not Yet Implemented)  
+**Status:** In progress
 **Date:** 2026-07-04  
-**Context:** Handoff document for future implementation by another agent
+**Context:** Engineering roadmap implementation plan and Better Stack transition record
 
 ---
 
@@ -11,7 +11,8 @@
 This document outlines the observability architecture for the Christ-Dina LMS project, designed to support current operations (1-2 engineers) while being future-proof for 10x scale. The architecture leverages best-of-breed SaaS tools with minimal custom engineering, ensuring quick time-to-value and clear evolution paths.
 
 **Chosen Stack:**
-- **Technical Observability:** Sentry (errors + performance) + Cloudflare (logs + traces + metrics)
+
+- **Technical Observability:** Better Stack (errors, logs, traces, uptime, and alerts) + Cloudflare (Worker logs, traces, and metrics)
 - **Business Metrics:** PostHog (product analytics, funnels, retention)
 - **Alerting:** Slack (primary) + Email (secondary)
 - **Internal Dashboard:** Lightweight navigation page linking to external dashboards
@@ -21,22 +22,21 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 ## Current State
 
 ### Already Implemented ✅
-- **Sentry:** Error tracking for client + server (Cloudflare Workers)
-  - DSN configured in `wrangler.jsonc`
-  - User identity attached to Sentry scope (ADR 0013)
-  - Error suppression rules in place
-  - Packages: `@sentry/cloudflare`, `@sentry/tanstackstart-react`
+
+- **Better Stack-compatible error transport:** The existing Sentry SDK packages remain as the transition transport for Better Stack Errors. Browser and Worker telemetry include explicit environment/release identity and suppress expected errors.
+- **Structured application telemetry:** Shared redacted JSON logging covers health/readiness plus high-value assignment, auth, enrollment, storage, exam, attendance, notification, profile, and Admin workflows. See [`STRUCTURED_LOGGING.md`](./STRUCTURED_LOGGING.md).
 
 - **Cloudflare Workers:** Basic observability
   - Logs enabled (100% sampling)
   - Traces enabled (1% sampling)
   - Workers deployment via `wrangler deploy`
+- **Admin observability hub:** `/admin/observability` is admin-only and links to configured Better Stack, Cloudflare, Supabase, and Notion operating surfaces.
 
 ### Not Yet Implemented ❌
+
 - PostHog integration
 - Slack workspace
-- Alert configuration (Sentry → Slack, Cloudflare → Slack)
-- Internal observability dashboard
+- Alert configuration (Better Stack/Cloudflare → Slack)
 - Business metrics tracking
 - Incident response workflow
 
@@ -44,17 +44,19 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 
 ## Architecture Decisions
 
-### 1. Technical Observability: Sentry + Cloudflare
+### 1. Technical Observability: Better Stack + Cloudflare
 
 **Rationale:**
-- Both already integrated into the stack
-- Native support for Cloudflare Workers
-- Minimal additional effort required
+
+- Better Stack is the operator-facing replacement selected for this roadmap
+- The existing Sentry-compatible SDK and Cloudflare telemetry avoid a broad request-path rewrite
+- Minimal additional effort required during provider cutover
 - Complementary coverage:
-  - Sentry: Application-level errors, performance traces, user sessions
-  - Cloudflare: Infrastructure-level metrics, request logs, worker execution
+  - Better Stack: Application-level errors, releases, logs, traces, uptime, and alerts
+  - Cloudflare: Worker request logs, traces, infrastructure metrics, and deployment context
 
 **Future Evolution:**
+
 - Scale to Datadog if unified metrics platform needed
 - Cloudflare Analytics Pro upgrade ($5/mo) for richer metrics
 - Data export APIs available if compliance requires data ownership
@@ -62,6 +64,7 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 ### 2. Business Metrics: PostHog (Don't Build Custom)
 
 **Rationale:**
+
 - **Time to value:** 1 day vs 2-4 weeks for custom implementation
 - **Feature set:** Funnels, retention, session replay, feature flags out of the box
 - **Maintenance:** Zero engineering burden vs ongoing custom maintenance
@@ -70,6 +73,7 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 - **LMS-specific features:** Perfect for enrollment funnels, completion rates, user engagement
 
 **Alternative Rejected:** Custom metrics dashboard
+
 - Would require ongoing engineering effort
 - Rebuilding features PostHog provides for free
 - Harder to scale with team growth
@@ -77,6 +81,7 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 ### 3. Alerting: Slack + Email
 
 **Rationale:**
+
 - **Slack:** Industry standard for dev team communication
   - Real-time discussion during incidents
   - Context sharing via links
@@ -86,25 +91,29 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   - On-call escalation path
 
 **Alternatives Considered:**
+
 - **PagerDuty/Opsgenie:** Rejected for now (overkill for 1-2 engineers, additional cost)
 - Can add later when team grows to 3+ engineers
 
 ### 4. Internal Dashboard: Lightweight Navigation Page
 
 **Rationale:**
+
 - Single entry point for team
 - Leverages best-of-breed external dashboards
 - Minimal engineering effort (2-3 hours)
 - Easy to evolve later (can embed widgets if needed)
 
 **Structure:**
+
 - Route: `/admin/observability` (authed only)
 - Content:
-  - Links to PostHog dashboard
-  - Links to Sentry dashboard
+  - Links to Better Stack dashboard
   - Links to Cloudflare dashboard
+  - Links to Supabase database dashboard
+  - Links to Notion operations hub
   - Link to incident tracker (Google Doc/Notion)
-  - 1-2 critical summary metrics (error rate, active users)
+  - Provider links are supplied through public `VITE_*_DASHBOARD_URL` variables; no provider tokens are sent to the browser
 
 ---
 
@@ -113,11 +122,14 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 ### Phase 1: Foundation (Week 1)
 
 #### 1.1 Set Up PostHog
+
 **Prerequisites:**
+
 - Create PostHog account (https://posthog.com)
 - Get project API key and host
 
 **Implementation:**
+
 1. Install PostHog in TanStack Start app
    ```bash
    bun add posthog-js
@@ -128,18 +140,22 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
    - Add `VITE_POSTHOG_HOST` to client env vars
 
 **Files to modify:**
+
 - `package.json` (add dependency)
 - `src/env.ts` (add env vars)
 - `src/routes/__root.tsx` (initialize PostHog)
 
 #### 1.2 Track Key Events
+
 **Initial events to track:**
+
 - `enrollment_created` - User enrolls in a course
 - `course_started` - User starts first lesson in a course
 - `assignment_submitted` - User submits an assignment
 - `course_completed` - User completes all lessons in a course
 
 **Implementation:**
+
 - Create `src/utils/analytics.ts` with typed event functions
 - Integrate calls at appropriate locations in the codebase
 - Example:
@@ -153,12 +169,15 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   ```
 
 #### 1.3 Set Up Slack Workspace
+
 **Prerequisites:**
+
 - Create Slack workspace (https://slack.com)
 - Create `#incidents` channel
 - Create incoming webhook URL
 
 **Configuration:**
+
 - Document webhook URL in project secrets (not in repo)
 - Set up channel description with incident tracker link
 
@@ -166,10 +185,12 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 
 ### Phase 2: Alerting (Week 2)
 
-#### 2.1 Configure Sentry Alerts → Slack
+#### 2.1 Configure Better Stack Alerts → Slack
+
 **Implementation:**
-1. In Sentry project settings:
-   - Create new alert rule
+
+1. In Better Stack Errors and Telemetry:
+   - Create a new alert rule
    - Trigger: Error rate > 5% in 5 minutes
    - Delivery: Slack webhook (use workspace webhook)
 2. Create additional alert rules:
@@ -178,7 +199,9 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 3. Test alert flow by triggering a test error
 
 #### 2.2 Configure Cloudflare Alerts → Slack
+
 **Implementation:**
+
 1. In Cloudflare dashboard:
    - Navigate to Workers > your worker > Monitoring
    - Create alert for Worker errors (execution failures)
@@ -187,7 +210,9 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 2. Test alert flow
 
 #### 2.3 Create Incident Tracker Template
+
 **Implementation:**
+
 1. Create Google Doc/Notion template with sections:
    - Incident start time
    - Severity (P1/P2/P3)
@@ -202,31 +227,34 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 
 ### Phase 3: Internal Dashboard (Week 3)
 
-#### 3.1 Build `/admin/observability` Page
+#### 3.1 Build `/admin/observability` Page — implemented
+
 **Implementation:**
-1. Create new route: `src/routes/_authed/admin/observability.tsx`
-2. Add to authed layout (requires authentication)
+
+1. Route: `src/routes/_authed/admin/observability.tsx`
+2. Access is restricted with the existing `checkAdminAccess` server function and the route is linked from the Admin sidebar.
 3. Page content:
-   - Header: "Observability Dashboard"
+   - Header: "Observability"
    - Link cards:
-     - PostHog Dashboard (external link)
-     - Sentry Dashboard (external link)
-     - Cloudflare Analytics (external link)
-     - Incident Tracker (Google Doc link)
-   - Summary metrics:
-     - Error rate (last 24h) - fetch from Sentry API
-     - Active users (last 24h) - fetch from PostHog API
+     - Better Stack
+     - Cloudflare
+     - Supabase
+     - Notion Operations
+   - Unconfigured links remain visible as setup prompts.
 4. Styling: Match existing design system (docs/DESIGN_SYSTEM.md)
 
 **Files to create:**
+
 - `src/routes/_authed/admin/observability.tsx`
 
-**API integration (optional for v1):**
-- Can start with just links
-- Add API calls for summary metrics in v2 if needed
+**API integration (deferred):**
+
+- The first version is intentionally link-only. Provider APIs would require server-side credentials and can be added after the external dashboards are operationalized.
 
 #### 3.4 Document Runbook
+
 **Implementation:**
+
 1. Create `docs/observability-runbook.md`
 2. Include:
    - How to respond to different alert types
@@ -253,7 +281,8 @@ Before implementation begins, ensure:
 
 ## Metrics to Track
 
-### Technical Metrics (Sentry + Cloudflare)
+### Technical Metrics (Better Stack + Cloudflare)
+
 - Error rate (by route, by error type)
 - p50/p95/p99 latency
 - Worker execution time
@@ -261,12 +290,15 @@ Before implementation begins, ensure:
 - Request volume
 
 ### Business Metrics (PostHog)
+
 **Phase 1 (Week 1):**
+
 - Enrollment funnel: Signup → Course enrollment → First lesson
 - Course completion rate
 - Active users (DAU/MAU)
 
 **Phase 2 (Future):**
+
 - Assignment submission rate
 - Time to complete courses
 - Feature usage (which features are used most)
@@ -279,20 +311,21 @@ Before implementation begins, ensure:
 
 ### When to Add Dedicated Tools
 
-| Trigger | Action |
-|---------|--------|
-| Team grows to 3+ engineers | Add PagerDuty for on-call scheduling |
-| Need formal incident management | Add incident.io or build custom workflow |
-| Compliance requirements (SOC2, GDPR) | Evaluate self-hosted PostHog or data export |
-| Custom business metrics become complex | Expand internal dashboard with embedded widgets |
-| 10x traffic scale | Upgrade Cloudflare Analytics Pro, add Datadog |
-| Need unified metrics platform | Migrate to Datadog (keep Sentry for errors) |
+| Trigger                                | Action                                                              |
+| -------------------------------------- | ------------------------------------------------------------------- |
+| Team grows to 3+ engineers             | Add PagerDuty for on-call scheduling                                |
+| Need formal incident management        | Add incident.io or build custom workflow                            |
+| Compliance requirements (SOC2, GDPR)   | Evaluate self-hosted PostHog or data export                         |
+| Custom business metrics become complex | Expand internal dashboard with embedded widgets                     |
+| 10x traffic scale                      | Upgrade Cloudflare Analytics Pro, add Datadog                       |
+| Need unified metrics platform          | Migrate to Datadog after Better Stack usage and cost are understood |
 
 ### Data Ownership Paths
 
 If compliance requires data ownership:
+
 - **PostHog:** Self-hosted option available, or use data export APIs
-- **Sentry:** Data export APIs available, self-hosted option
+- **Better Stack:** Export and retention options should be evaluated if compliance requires data ownership
 - **Cloudflare:** Logpush feature to export logs to your storage
 
 ---
@@ -307,16 +340,16 @@ Implementation is successful when:
    - [ ] Basic funnel dashboard created in PostHog
 
 2. **Alerting:**
-   - [ ] Sentry alerts routing to Slack
+   - [ ] Better Stack Errors/Telemetry alerts routing to Slack
    - [ ] Cloudflare alerts routing to Slack
    - [ ] Email fallback configured
    - [ ] Test alerts verified working
 
 3. **Internal Dashboard:**
-   - [ ] `/admin/observability` page accessible
-   - [ ] All external dashboards linked
+   - [x] `/admin/observability` page accessible to admins
+   - [ ] External dashboard URLs configured per deployment environment
    - [ ] Incident tracker linked
-   - [ ] At least 1 summary metric displayed
+   - [ ] Provider summary metrics displayed (deferred until provider APIs are operationalized)
 
 4. **Documentation:**
    - [ ] Runbook created
@@ -330,7 +363,7 @@ Implementation is successful when:
 1. **Read relevant docs first:**
    - `docs/ENGINEERING_GUIDE.md` - engineering patterns
    - `docs/DESIGN_SYSTEM.md` - design system constraints
-   - `docs/adr/0013-sentry-user-identity.md` - existing Sentry setup
+   - `docs/adr/0013-sentry-user-identity.md` - compatibility transport and user identity behavior
    - `src/utils/errors.ts` - error handling patterns
    - `src/routes/__root.tsx` - root route structure
 
@@ -349,7 +382,7 @@ Implementation is successful when:
    - Run `bun run quality:gate` before completion
    - Test PostHog events actually fire
    - Verify alerts trigger correctly
-   - Test dashboard page loads and links work
+   - Test the admin dashboard page loads and configured links work
 
 5. **Documentation updates:**
    - Update `AGENTS.md` with observability runbook reference
@@ -369,9 +402,10 @@ Implementation is successful when:
 
 ## Related Files
 
-- `src/env.ts` - Environment variables
-- `src/routes/__root.tsx` - Root route (PostHog initialization)
-- `src/server.ts` - Sentry configuration
+- `src/routes/__root.tsx` - Root route and browser error identity
+- `src/routes/_authed/admin/observability.tsx` - Admin operating-surface links
+- `src/server.ts` - Better Stack-compatible Worker error transport
+- `src/env.ts` - public dashboard-link configuration
 - `wrangler.jsonc` - Cloudflare Workers config
 - `docs/adr/0013-sentry-user-identity.md` - Sentry user identity ADR
 - `src/utils/errors.ts` - Error handling utilities
@@ -382,11 +416,12 @@ Implementation is successful when:
 
 When ready to implement:
 
-1. Complete prerequisites checklist (PostHog account, Slack workspace)
-2. Hand off this document to implementing agent
-3. Agent follows roadmap in order
-4. Update this document with actual implementation details
-5. Consider creating ADR 0015 to document the completed implementation
+1. Complete Better Stack and Cloudflare external setup in `GNHF-10.9.206.md`
+2. Set the public dashboard-link variables from `.env.example` in each deployment environment
+3. Complete prerequisites checklist (PostHog account, Slack workspace)
+4. Validate the admin observability hub and external links
+5. Update this document with actual implementation details
+6. Consider creating ADR 0015 to document the completed implementation
 
 ---
 

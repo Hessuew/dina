@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 18
-**Scope:** add request-correlated redacted telemetry for Admin invitation
-creation, resend, revoke, and delete operations.
+**Iteration:** 19
+**Scope:** add the admin-only observability hub and document its
+environment-configured provider links.
 
 ## Executive summary
 
@@ -58,6 +58,10 @@ The repository already has the first production-fundamentals slice:
   duration, and stable error categories. Revoke and delete operations emit the
   same audit shape, and invitation email addresses, tokens, and provider error
   text remain excluded.
+- Admins now have an authenticated `/admin/observability` hub that links to
+  Better Stack, Cloudflare, Supabase, and Notion operations surfaces. Link URLs
+  are public environment configuration only; no provider credentials are sent
+  to the browser.
 
 The operating decision for this roadmap is:
 
@@ -466,6 +470,31 @@ Validation for this iteration: the focused invitation integration suite passed
 all 25 tests. Better Stack destination, dashboard, alert, and source-map
 verification remain pending external account setup.
 
+## Iteration 19 — admin observability hub
+
+This iteration completed the smallest repo-owned slice of the internal
+dashboard work:
+
+- Added the admin-only `/admin/observability` route and an Admin-sidebar entry.
+- Added link cards for Better Stack, Cloudflare, Supabase, and Notion
+  operations surfaces. Missing URLs remain visible as setup prompts, so local
+  development does not require account-specific links.
+- Added optional public environment variables to `.env.example` and
+  `src/env.ts`: `VITE_BETTER_STACK_DASHBOARD_URL`,
+  `VITE_CLOUDFLARE_DASHBOARD_URL`, `VITE_SUPABASE_DASHBOARD_URL`, and
+  `VITE_NOTION_OPERATIONS_URL`.
+- Updated `docs/plan/OBSERVABILITY.md` so Better Stack is the operator-facing
+  replacement for Sentry and the link-only v1 dashboard is recorded as
+  implemented. Provider API metrics remain intentionally deferred until
+  external dashboards and credentials are operationalized.
+
+Validation for this iteration: the route remains protected by the existing
+server-side `checkAdminAccess` guard; `bun run build` and `bun run quality:gate`
+passed, including typecheck, formatting, Cloudflare type generation, Fallow,
+ESLint without errors, and 1,928 unit tests. Better Stack destinations, real
+dashboard URLs, alert delivery, Uptime monitors, and source-map verification
+remain external setup work described below.
+
 ## Better Stack setup
 
 Use the official product surfaces:
@@ -605,6 +634,25 @@ the Worker itself is still serving requests.
 Test each monitor in a non-production or controlled window. Do not deliberately
 break production database credentials to test readiness.
 
+### 5. Configure links for the in-app admin hub
+
+The `/admin/observability` page intentionally stores no provider credentials.
+After creating the external dashboards, copy their normal browser URLs into
+the deployment environment as the following public variables:
+
+| Variable                          | URL to copy from                                                                                             |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `VITE_BETTER_STACK_DASHBOARD_URL` | Better Stack Telemetry → Dashboards → `DINA — Production Overview` (or the team’s chosen overview dashboard) |
+| `VITE_CLOUDFLARE_DASHBOARD_URL`   | Cloudflare → Workers & Pages → `christ-dina` → Observability                                                 |
+| `VITE_SUPABASE_DASHBOARD_URL`     | Supabase → project → Database/Reports dashboard                                                              |
+| `VITE_NOTION_OPERATIONS_URL`      | The Notion Operations and Runbooks hub page                                                                  |
+
+Set these values separately in local, preview, and production environments as
+appropriate. The variables are safe to expose because they are links, not
+tokens. Never place Better Stack source tokens, Sentry-compatible DSNs,
+Cloudflare API tokens, or Slack webhook URLs in any `VITE_*_DASHBOARD_URL`
+variable.
+
 ## Better Stack dashboard and alert recipe
 
 Create a dashboard in `Telemetry → Metrics → Create dashboard`. Start with a
@@ -686,14 +734,14 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 
 ### Phase 1 — Production fundamentals
 
-| Roadmap item          | Current state                                                                                                          | Next smallest verifiable slice                                                          |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                 | Verify `/healthz` and `/readyz` after deployment                                        |
-| Structured logging    | Shared redacted JSON logger is used by health endpoints; broad server logs still use ad-hoc console calls              | Migrate one high-value server-function family at a time                                 |
-| Error tracking        | Sentry-compatible SDK wiring now emits explicit environment/release identity; Better Stack provider cutover is pending | Create Better Stack DSN, configure deployment secrets, and verify ingestion/source maps |
-| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                | Create Better Stack/Cloudflare dashboard and extract stable log metrics                 |
-| Production dashboards | Notion dashboard rows exist but links are blank                                                                        | Create external dashboards and update existing rows                                     |
-| Alerting              | No verified production alert set                                                                                       | Configure Uptime, error-rate, readiness, and latency alerts; test them                  |
+| Roadmap item          | Current state                                                                                                          | Next smallest verifiable slice                                                               |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                 | Verify `/healthz` and `/readyz` after deployment                                             |
+| Structured logging    | Shared redacted JSON logger is used by health endpoints; broad server logs still use ad-hoc console calls              | Migrate one high-value server-function family at a time                                      |
+| Error tracking        | Sentry-compatible SDK wiring now emits explicit environment/release identity; Better Stack provider cutover is pending | Create Better Stack DSN, configure deployment secrets, and verify ingestion/source maps      |
+| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
+| Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                               | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
+| Alerting              | No verified production alert set                                                                                       | Configure Uptime, error-rate, readiness, and latency alerts; test them                       |
 
 ### Phase 2 — Reliability
 
