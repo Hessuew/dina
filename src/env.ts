@@ -27,6 +27,8 @@ export const env = createEnv({
     VITE_GOOGLE_ADS_ID: z.string().min(1),
     VITE_META_PIXEL_ID: z.string().min(1),
     VITE_SENTRY_DSN: z.url(),
+    VITE_POSTHOG_KEY: z.string().min(1).optional(),
+    VITE_POSTHOG_HOST: z.url().optional(),
     VITE_BETTER_STACK_DASHBOARD_URL: z.url().optional(),
     VITE_CLOUDFLARE_DASHBOARD_URL: z.url().optional(),
     VITE_SUPABASE_DASHBOARD_URL: z.url().optional(),
@@ -52,6 +54,8 @@ export const env = createEnv({
     VITE_GOOGLE_ADS_ID: import.meta.env.VITE_GOOGLE_ADS_ID,
     VITE_META_PIXEL_ID: import.meta.env.VITE_META_PIXEL_ID,
     VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN,
+    VITE_POSTHOG_KEY: import.meta.env.VITE_POSTHOG_KEY,
+    VITE_POSTHOG_HOST: import.meta.env.VITE_POSTHOG_HOST,
     VITE_BETTER_STACK_DASHBOARD_URL: import.meta.env
       .VITE_BETTER_STACK_DASHBOARD_URL,
     VITE_CLOUDFLARE_DASHBOARD_URL: import.meta.env

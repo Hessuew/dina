@@ -97,6 +97,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is
     present.
 
+- **Product analytics**
+  - `analytics.ts`: optional browser-only PostHog boundary with an allow-listed
+    LMS event-name union, stable user-ID/role identification, logout reset, and
+    disabled autocapture/session recording by default. No event leaves the
+    browser until `VITE_POSTHOG_KEY` is configured.
+
 - **Supabase utilities**
   - `supabase.ts`: server client (`@supabase/ssr`) and admin client.
 

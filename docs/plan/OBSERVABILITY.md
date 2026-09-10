@@ -31,10 +31,13 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   - Traces enabled (1% sampling)
   - Workers deployment via `wrangler deploy`
 - **Admin observability hub:** `/admin/observability` is admin-only and links to configured Better Stack, Cloudflare, Supabase, and Notion operating surfaces.
+- **PostHog foundation:** optional browser-only initialization is wired from the
+  root route with stable user-ID/role identification; event instrumentation is
+  still pending. Autocapture and session recording remain disabled by default.
 
 ### Not Yet Implemented ❌
 
-- PostHog integration
+- PostHog event instrumentation and project verification
 - Slack workspace
 - Alert configuration (Better Stack/Cloudflare → Slack)
 - Business metrics tracking

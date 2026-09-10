@@ -60,6 +60,7 @@
     "lucide-react": "^0.561.0",
     "motion": "^12.42.2",
     "pdfjs-dist": "^5.7.284",
+    "posthog-js": "^1.429.5",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "resend": "^6.18.0",

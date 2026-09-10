@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 21
-**Scope:** add structured telemetry to course management mutations.
+**Iteration:** 22
+**Scope:** add the optional PostHog product-analytics foundation.
 
 ## Executive summary
 
@@ -72,6 +72,10 @@ The repository already has the first production-fundamentals slice:
   Better Stack, Cloudflare, Supabase, and Notion operations surfaces. Link URLs
   are public environment configuration only; no provider credentials are sent
   to the browser.
+- The optional PostHog browser foundation now initializes from the root route
+  when `VITE_POSTHOG_KEY` is configured. It identifies users by stable ID and
+  role only, allow-lists the initial LMS journey event names, disables
+  autocapture and session recording, and resets identity on logout.
 
 The operating decision for this roadmap is:
 
@@ -548,6 +552,49 @@ Validation for this iteration: the focused course integration suite passed all
 46 tests. Full quality-gate, production build, and external Better Stack
 verification remain pending for the final handoff.
 
+## Iteration 22 — optional PostHog product-analytics foundation
+
+This iteration completed the smallest repo-owned product-analytics slice after
+the technical observability baseline:
+
+- Added `posthog-js` and optional `VITE_POSTHOG_KEY` / `VITE_POSTHOG_HOST`
+  configuration. Missing configuration is a safe no-op, so local and preview
+  builds do not emit product data accidentally.
+- Added `src/utils/analytics.ts` as the typed browser-only analytics boundary.
+  The allow-listed event names cover enrollment, activation, course progress,
+  assignment submission, teacher review, and course completion.
+- Initialized PostHog from the root route and identify authenticated users with
+  stable user ID plus role only. Email, names, lesson text, assignment text,
+  mentorship content, and provider secrets are not sent by this boundary.
+- Disabled PostHog autocapture and session recording until the privacy review
+  and event instrumentation are complete. Logout resets the previous person
+  identity so a shared browser does not merge users.
+- Updated the product-analytics and observability plans, environment example,
+  route documentation, utility documentation, and this handoff.
+
+Validation for this iteration: the focused analytics suite passed 2 tests and
+TypeScript typecheck passed. The next product-analytics slice is to wire one
+completed journey at a time, starting with enrollment submission, then verify
+the events in the configured PostHog project.
+
+### PostHog setup required outside the repository
+
+1. Open [PostHog](https://app.posthog.com/) and create or select the DINA
+   project.
+2. In the project settings, copy the public project key. Put it in the
+   deployment environment as `VITE_POSTHOG_KEY`; this key is intended for the
+   browser and is not a secret.
+3. Set `VITE_POSTHOG_HOST` to the host shown for the project (the default in
+   this repository is `https://us.i.posthog.com`). Use the EU host if the
+   project was created there.
+4. Deploy the build, sign in once, and verify that the project receives the
+   automatic pageview plus the later allow-listed journey events. Do not turn
+   on autocapture or session recording until private lesson and mentorship
+   content masking has been reviewed.
+5. Add the PostHog project/dashboard URL to the Admin observability hub only
+   when a real URL exists; do not place a project token in a dashboard URL or
+   in the repository.
+
 ## Better Stack setup
 
 Use the official product surfaces:
@@ -787,14 +834,15 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 
 ### Phase 1 — Production fundamentals
 
-| Roadmap item          | Current state                                                                                                          | Next smallest verifiable slice                                                               |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                 | Verify `/healthz` and `/readyz` after deployment                                             |
-| Structured logging    | Shared redacted JSON logger is used by health endpoints; broad server logs still use ad-hoc console calls              | Migrate one high-value server-function family at a time                                      |
-| Error tracking        | Sentry-compatible SDK wiring now emits explicit environment/release identity; Better Stack provider cutover is pending | Create Better Stack DSN, configure deployment secrets, and verify ingestion/source maps      |
-| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
-| Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                               | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
-| Alerting              | No verified production alert set                                                                                       | Configure Uptime, error-rate, readiness, and latency alerts; test them                       |
+| Roadmap item          | Current state                                                                                                                                               | Next smallest verifiable slice                                                               |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                      | Verify `/healthz` and `/readyz` after deployment                                             |
+| Structured logging    | Shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, and Admin workflows | Migrate remaining high-value server-function families one at a time                          |
+| Error tracking        | Sentry-compatible SDK wiring now emits explicit environment/release identity; Better Stack provider cutover is pending                                      | Create Better Stack DSN, configure deployment secrets, and verify ingestion/source maps      |
+| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                     | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
+| Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                    | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
+| Alerting              | No verified production alert set                                                                                                                            | Configure Uptime, error-rate, readiness, and latency alerts; test them                       |
+| Product analytics     | Optional PostHog browser foundation is implemented; journey events are not wired or externally verified                                                     | Instrument enrollment submission, assignment submission, and course progression              |
 
 ### Phase 2 — Reliability
 

@@ -31,6 +31,11 @@ import { NotFound } from '@/components/navigation/NotFound'
 import { Header } from '@/components/navigation/Header'
 import { signPrivateStoragePath } from '@/utils/storage/service/private-storage.service'
 import { useSessionPrivateImageCacheUser } from '@/hooks/useSessionPrivateImageUrl'
+import {
+  identifyAnalyticsUser,
+  initializeAnalytics,
+  resetAnalyticsUser,
+} from '@/utils/analytics'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = getSupabaseServerClient()
@@ -144,11 +149,26 @@ function useSentryUser(user: UserContext | null | undefined) {
   }, [user])
 }
 
+// Browser-only: initializes optional PostHog capture and keeps identity scoped
+// to the authenticated user without sending email or profile text.
+function useAnalyticsUser(user: UserContext | null | undefined) {
+  React.useEffect(() => {
+    initializeAnalytics()
+
+    if (user) {
+      identifyAnalyticsUser(user)
+    } else {
+      resetAnalyticsUser()
+    }
+  }, [user])
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { user } = Route.useRouteContext()
   const role = user?.role || 'student'
 
   useSentryUser(user)
+  useAnalyticsUser(user)
 
   return (
     <html>

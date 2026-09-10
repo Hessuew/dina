@@ -13,9 +13,11 @@ This folder defines:
 ## What Lives Here
 
 - **`__root.tsx`**
-  - Defines the root route.
-  - Fetches the current user on the server and exposes it via `context.user`.
-  - Wraps the app with global providers and persistent UI (sidebar, header, toaster).
+- Defines the root route.
+- Fetches the current user on the server and exposes it via `context.user`.
+- Wraps the app with global providers and persistent UI (sidebar, header, toaster).
+- Initializes optional PostHog product analytics in the browser and identifies
+  authenticated users by stable ID plus role only.
 
 - **`_authed.tsx`**
   - Layout route for the authenticated route tree (`/_authed`).
