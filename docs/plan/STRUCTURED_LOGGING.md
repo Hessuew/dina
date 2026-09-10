@@ -52,6 +52,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    request correlation, server-function path, actor/course/lesson IDs,
    status, and duration; persistence failures use the stable
    `lesson_persistence` category.
+   Course management now emits redacted `course_created`, `course_updated`,
+   and `course_deleted` events with request correlation, server-function path,
+   actor/course IDs, publication status where relevant, and duration;
+   unexpected persistence failures use the stable `course_persistence`
+   category while expected authorization, validation, and teacher-conflict
+   outcomes remain out of noisy error logs.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

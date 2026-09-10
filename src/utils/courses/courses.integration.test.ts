@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createCourseService,
   deleteCourseService,
@@ -62,6 +62,10 @@ beforeEach(() => {
   mocks.remove
     .mockReset()
     .mockResolvedValue({ data: [{ name: 'removed' }], error: null })
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 describe('getCoursesService (integration)', () => {
@@ -194,6 +198,7 @@ describe('getCourseService (integration)', () => {
 
 describe('createCourseService (integration)', () => {
   it('admin creates a course without teachers', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
 
     const { course } = await createCourseService(
@@ -203,6 +208,13 @@ describe('createCourseService (integration)', () => {
 
     expect(course.title).toBe('New Course')
     expect(course.isPublished).toBe(false)
+    expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
+      event: 'course_created',
+      actorId: adminId,
+      courseId: course.id,
+      status: 'success',
+      published: false,
+    })
   })
 
   it('stores canonical thumbnail path and returns signed display URL', async () => {
@@ -381,6 +393,7 @@ describe('createCourseService (integration)', () => {
 
 describe('updateCourseService (integration)', () => {
   it('admin updates the course and reassigns teachers', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const teacher1Id = await seedProfile({ role: 'teacher' })
     const teacher2Id = await seedProfile({ role: 'teacher' })
@@ -398,6 +411,12 @@ describe('updateCourseService (integration)', () => {
     )
 
     expect(course.title).toBe('Updated')
+    expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
+      event: 'course_updated',
+      actorId: adminId,
+      courseId,
+      status: 'success',
+    })
     const teachers = await findCourseTeachers(courseId)
     expect(teachers).toHaveLength(2)
   })
@@ -430,6 +449,7 @@ describe('updateCourseService (integration)', () => {
 
 describe('deleteCourseService (integration)', () => {
   it('admin deletes a course without a thumbnail', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const courseId = await seedCourse()
 
@@ -437,6 +457,12 @@ describe('deleteCourseService (integration)', () => {
 
     expect(await findCourseById(courseId)).toBeUndefined()
     expect(mocks.remove).not.toHaveBeenCalled()
+    expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
+      event: 'course_deleted',
+      actorId: adminId,
+      courseId,
+      status: 'success',
+    })
   })
 
   it('admin deletes a course and removes its thumbnail from storage', async () => {
@@ -452,6 +478,7 @@ describe('deleteCourseService (integration)', () => {
   })
 
   it('surfaces a storage failure and does not delete the course', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const courseId = await seedCourse({
       thumbnailUrl: `${adminId}/thumb.png`,
@@ -462,6 +489,10 @@ describe('deleteCourseService (integration)', () => {
       deleteCourseService({ courseId }, adminId),
     ).rejects.toMatchObject({ code: 'STORAGE_OPERATION_FAILED', status: 500 })
     expect(await findCourseById(courseId)).toBeDefined()
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('course_delete_failed'),
+    )
+    expect(errorSpy.mock.calls.at(-1)?.[0]).not.toContain('storage down')
   })
 
   it('throws when the course does not exist', async () => {

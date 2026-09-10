@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 20
-**Scope:** add structured telemetry to course-teacher lesson authoring.
+**Iteration:** 21
+**Scope:** add structured telemetry to course management mutations.
 
 ## Executive summary
 
@@ -62,6 +62,12 @@ The repository already has the first production-fundamentals slice:
   correlation, server-function path, actor/course/lesson IDs, status, and
   duration. Persistence failures emit stable `lesson_persistence` categories;
   lesson content, titles, and provider/database messages are excluded.
+- Course creation, update, and deletion now emit redacted `course_created`,
+  `course_updated`, and `course_deleted` events with request correlation,
+  server-function path, actor/course IDs, status, duration, and publication
+  state where relevant. Unexpected persistence failures emit the stable
+  `course_persistence` category; expected authorization, validation, and
+  teacher-assignment conflict outcomes remain outside noisy error logs.
 - Admins now have an authenticated `/admin/observability` hub that links to
   Better Stack, Cloudflare, Supabase, and Notion operations surfaces. Link URLs
   are public environment configuration only; no provider credentials are sent
@@ -516,6 +522,30 @@ This iteration completed the next high-value server-function slice:
 
 Validation for this iteration: the focused course integration suite passed all
 46 tests, and formatting passed. Full quality-gate and external Better Stack
+verification remain pending for the final handoff.
+
+## Iteration 21 — course-management structured telemetry
+
+This iteration completed the next high-value server-function slice:
+
+- Course creation now emits `course_created` after the row and private
+  thumbnail projection complete. Unexpected persistence or signing failures
+  emit `course_create_failed`; expected teacher-assignment conflicts emit a
+  warning-category rejection event instead of an error.
+- Course updates now emit `course_updated` after the content and optional
+  teacher-pair mutation completes. Course deletion emits `course_deleted`
+  after storage cleanup and row deletion; unexpected failures emit matching
+  `course_*_failed` events with the stable `course_persistence` category.
+- Every event carries `requestId`, the server-function path, outcome status,
+  duration, actor ID, and course ID when available. Course titles,
+  descriptions, thumbnail paths, teacher IDs, and raw provider/database
+  messages are excluded from telemetry.
+- Expected authorization, validation, not-found, and teacher-conflict
+  outcomes remain ordinary user-facing results and do not create noisy error
+  logs.
+
+Validation for this iteration: the focused course integration suite passed all
+46 tests. Full quality-gate, production build, and external Better Stack
 verification remain pending for the final handoff.
 
 ## Better Stack setup

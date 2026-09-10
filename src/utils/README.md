@@ -86,6 +86,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     `lesson_updated`, and `lesson_deleted` events with request correlation,
     actor/course/lesson IDs, status, and duration; persistence failures use
     the stable `lesson_persistence` category.
+  - Course create, update, and delete mutations emit redacted
+    `course_created`, `course_updated`, and `course_deleted` events with
+    request correlation, actor/course IDs, status, duration, and publication
+    state where relevant; unexpected persistence failures use the stable
+    `course_persistence` category while expected conflicts and validation
+    outcomes remain outside noisy error logs.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is
