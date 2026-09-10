@@ -26,7 +26,7 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
 2. Add a shared server logging helper before replacing broad `console.error` and `console.warn` usage. **Done:**
    the helper emits stable JSON and recursively redacts sensitive fields and
    raw error messages.
-3. Convert high-value server functions first: auth, enrollment, assignment submission, teacher review, admin workflows. **In progress:** assignment submission persistence now emits redacted `assignment_submission_saved` and `assignment_submission_failed` events with request correlation, outcome status, duration, and stable error category fields. Signup and OTP flows now emit the same shape for OTP delivery, account provisioning, rollback, auto-login, and resend outcomes.
+3. Convert high-value server functions first: auth, enrollment, assignment submission, teacher review, admin workflows. **In progress:** assignment submission persistence now emits redacted `assignment_submission_saved` and `assignment_submission_failed` events with request correlation, outcome status, duration, and stable error category fields. Signup and OTP flows now emit the same shape for OTP delivery, account provisioning, rollback, auto-login, and resend outcomes. The admin invitation-email campaign now emits redacted per-invitation delivery outcomes, campaign summaries, and lock-release failures.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

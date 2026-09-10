@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
@@ -267,6 +267,37 @@ describe('sendEmailCampaignService (integration)', () => {
       errorMessage: 'provider rejected email',
     })
     expect((await findLogRows(okId))[0].status).toBe('sent')
+  })
+
+  it('emits a redacted structured event for provider failure', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const adminId = await seedProfile({ role: 'admin' })
+      installFakeSender(['structured-failure@test.dev'])
+      await seedEnrollment({
+        status: 'approved',
+        email: 'structured-failure@test.dev',
+      })
+
+      await previewThenSend(adminId)
+
+      const event = errorSpy.mock.calls
+        .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+        .find((entry) => entry.event === 'email_campaign_invitation_failed')
+      expect(event).toMatchObject({
+        level: 'error',
+        event: 'email_campaign_invitation_failed',
+        path: 'serverFn:send_email_campaign',
+        status: 'failed',
+        errorCategory: 'invitation_email_delivery',
+        userId: adminId,
+      })
+      expect(String(errorSpy.mock.calls[0]?.[0])).not.toContain(
+        'provider rejected email',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 
   it('restores a rotated invitation when the provider fails', async () => {

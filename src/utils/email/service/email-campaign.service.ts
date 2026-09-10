@@ -1,4 +1,5 @@
 import type { SendEmailCampaignInput } from '@/schemas/email-campaign.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import type {
   BulkInvitePlan,
   PlannedInvitationEmail,
@@ -31,6 +32,8 @@ import { findProfileById } from '@/utils/enrolment/repository/enrolment.reposito
 import { authz } from '@/utils/authz'
 import { CampaignLockedError, ValidationError } from '@/utils/errors'
 import { env } from '@/env'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 export type EmailCampaignPreview = {
   toSend: number
@@ -44,6 +47,54 @@ export type EmailCampaignSendSummary = {
 }
 
 const SEND_INTERVAL_MS = 600
+
+type EmailCampaignLogContext = {
+  campaign: SendEmailCampaignInput['campaign']
+  startedAt: number
+}
+
+function logEmailCampaignEvent(
+  level: LogLevel,
+  event: string,
+  context: EmailCampaignLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:send_email_campaign',
+    campaign: context.campaign,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    ...fields,
+  })
+}
+
+function logInvitationOutcome(input: {
+  status: 'sent' | 'failed'
+  planned: PlannedInvitationEmail
+  invitationId: string
+  invitationCreated: boolean
+  userId: string
+  context: EmailCampaignLogContext
+}): void {
+  const failed = input.status === 'failed'
+  logEmailCampaignEvent(
+    failed ? 'error' : 'info',
+    failed
+      ? 'email_campaign_invitation_failed'
+      : 'email_campaign_invitation_sent',
+    input.context,
+    {
+      status: input.status,
+      errorCategory: failed ? 'invitation_email_delivery' : null,
+      enrollmentId: input.planned.enrollmentId,
+      invitationId: input.invitationId,
+      userId: input.userId,
+      invitationAction: input.planned.action,
+      invitationCreated: input.invitationCreated,
+    },
+  )
+}
 
 async function planCampaign(
   data: SendEmailCampaignInput,
@@ -133,6 +184,7 @@ async function sendPlannedInvitation(input: {
   userId: string
   senderName: string
   lecturerTitle: string | null
+  context: EmailCampaignLogContext
 }): Promise<'sent' | 'failed'> {
   const oldToken = input.planned.invitation?.token ?? null
   const oldExpiresAt = input.planned.invitation?.expiresAt ?? null
@@ -153,7 +205,6 @@ async function sendPlannedInvitation(input: {
       invitation.id,
     )
   } catch (error) {
-    console.error('Invitation email campaign send failed:', error)
     errorMessage = error instanceof Error ? error.message : String(error)
     await rollbackInvitationForSend({
       planned: input.planned,
@@ -172,6 +223,14 @@ async function sendPlannedInvitation(input: {
     providerMessageId,
     errorMessage,
     sentByUserId: input.userId,
+  })
+  logInvitationOutcome({
+    status,
+    planned: input.planned,
+    invitationId: invitation.id,
+    invitationCreated: invitation.created,
+    userId: input.userId,
+    context: input.context,
   })
   return status
 }
@@ -194,14 +253,23 @@ export async function sendEmailCampaignService(
   data: SendEmailCampaignInput,
   userId: string,
 ): Promise<EmailCampaignSendSummary> {
+  const context: EmailCampaignLogContext = {
+    campaign: data.campaign,
+    startedAt: performance.now(),
+  }
   await authz(userId).hasRole('admin')
   const holdsLock = await checkEmailCampaignLockHeldBy(data.campaign, userId)
   if (!holdsLock) throw new CampaignLockedError()
   try {
-    return await sendLockedEmailCampaign(data, userId)
+    return await sendLockedEmailCampaign(data, userId, context)
   } finally {
-    await releaseEmailCampaignLock(data.campaign, userId).catch((error) => {
-      console.error('Failed to release email campaign lock after send:', error)
+    await releaseEmailCampaignLock(data.campaign, userId).catch(() => {
+      logEmailCampaignEvent(
+        'error',
+        'email_campaign_lock_release_failed',
+        context,
+        { errorCategory: 'campaign_lock_release', userId },
+      )
     })
   }
 }
@@ -209,6 +277,7 @@ export async function sendEmailCampaignService(
 async function sendLockedEmailCampaign(
   data: SendEmailCampaignInput,
   userId: string,
+  context: EmailCampaignLogContext,
 ): Promise<EmailCampaignSendSummary> {
   const profile = await findProfileById(userId)
   const senderName = resolveSenderName(profile)
@@ -220,8 +289,17 @@ async function sendLockedEmailCampaign(
     userId,
     senderName,
     lecturerTitle: profile?.lecturerTitle ?? null,
+    context,
   })
-  return { ...result, skipped: summarizeInviteSkips(plan.skipped) }
+  const summary = { ...result, skipped: summarizeInviteSkips(plan.skipped) }
+  logEmailCampaignEvent('info', 'email_campaign_completed', context, {
+    status: result.failed > 0 ? 'partial_failure' : 'success',
+    userId,
+    sent: result.sent,
+    failed: result.failed,
+    skipped: summary.skipped,
+  })
+  return summary
 }
 
 async function sendPlannedInvitations(input: {
@@ -230,6 +308,7 @@ async function sendPlannedInvitations(input: {
   userId: string
   senderName: string
   lecturerTitle: string | null
+  context: EmailCampaignLogContext
 }): Promise<{ sent: number; failed: number }> {
   let sent = 0
   let failed = 0

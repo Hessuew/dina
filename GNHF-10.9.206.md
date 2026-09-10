@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-10  
-**Iteration:** 6
-**Scope:** continue request-correlated structured logging by migrating
-assignment-submission and signup/OTP outcomes to the shared redacted logger.
+**Iteration:** 7
+**Scope:** continue request-correlated structured logging by migrating the
+admin invitation-email campaign to the shared redacted logger.
 
 ## Executive summary
 
@@ -21,6 +21,9 @@ The repository already has the first production-fundamentals slice:
   outcome events with request ID, status, duration, and stable error category.
 - Signup and OTP flows now emit the same safe event shape for delivery,
   provisioning, rollback, verification, auto-login, and resend outcomes.
+- The admin invitation-email campaign now emits safe per-invitation delivery
+  outcomes, campaign completion summaries, and lock-release failures with
+  request correlation and stable error categories.
 
 The operating decision for this roadmap is:
 
@@ -39,8 +42,8 @@ The in-repo structured-logging baseline now has a shared server logger. It
 emits stable JSON fields to the Worker console and recursively redacts tokens,
 credentials, connection strings, cookies, email/phone values, request bodies,
 and raw error messages. The health and readiness endpoints, assignment
-submission persistence, and signup/OTP flows are consumers; broader
-server-function migration remains intentionally incremental.
+submission persistence, signup/OTP flows, and the invitation-email campaign are
+consumers; broader server-function migration remains intentionally incremental.
 
 No secrets, account tokens, or account-specific URLs belong in this file or in
 the repository.
@@ -160,9 +163,30 @@ success outcomes to the shared redacted logger:
 
 Validation completed with 16 signup integration tests, 28 focused
 observability/signup-domain tests, formatting, and TypeScript validation. The
-next structured-logging slice remains enrollment or another high-value admin
-workflow; Better Stack destination and dashboard verification remains an
-external account task described below.
+next structured-logging slice remains enrollment or teacher review; Better Stack
+destination and dashboard verification remains an external account task
+described below.
+
+## Iteration 7 — admin invitation-email campaign structured events
+
+This iteration migrated the next high-value admin workflow to the shared
+redacted logger:
+
+- Successful and failed invitation deliveries emit stable events with the
+  request ID, server-function path, campaign, enrollment/invitation IDs,
+  outcome status, elapsed time, actor ID, and invitation action.
+- Completed campaigns emit sent/failed/skipped counts. Partial failures are
+  marked as `partial_failure` so an otherwise completed batch remains visible
+  without treating expected per-recipient failures as an unhandled request.
+- Lock-release failures emit a separate
+  `email_campaign_lock_release_failed` event with the stable
+  `campaign_lock_release` category.
+- Provider exception text is not copied into structured logs; existing email
+  audit rows retain their prior behavior.
+
+Validation: the email-campaign integration suite now includes a redaction
+assertion for provider failures. `bun run quality:gate` passed with 1,926 unit
+tests, and `bun run test:integration` passed with 317 integration tests.
 
 ## Better Stack setup
 
