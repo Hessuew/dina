@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { getDb } from '@/db'
 import { submissions as submissionsTable } from '@/db/schema'
 import { upsertSubmission } from '@/utils/assignments/repository/submissions.repository'
@@ -547,6 +547,7 @@ describe('getAssignmentSubmissionCountService (integration)', () => {
 
 describe('gradeSubmissionService (integration)', () => {
   it('grades a submission belonging to the assignment', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { teacherId, lessonId } = await seedCourseWithTeacher()
     const assignmentId = await seedAssignment({ lessonId, status: 'published' })
     const studentId = await seedProfile({ role: 'student' })
@@ -563,6 +564,21 @@ describe('gradeSubmissionService (integration)', () => {
 
     expect(submission.grade).toBe(95)
     expect(submission.gradedAt).not.toBeNull()
+
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'assignment_grading_completed')
+    expect(event).toMatchObject({
+      level: 'info',
+      event: 'assignment_grading_completed',
+      path: 'serverFn:gradeSubmission',
+      status: 'graded',
+      assignmentId,
+      submissionId,
+      userId: teacherId,
+    })
+    expect(event?.durationMs).toEqual(expect.any(Number))
+    infoSpy.mockRestore()
   })
 
   it('rejects a submission that belongs to a different assignment', async () => {

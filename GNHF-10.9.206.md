@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-10  
-**Iteration:** 7
-**Scope:** continue request-correlated structured logging by migrating the
-admin invitation-email campaign to the shared redacted logger.
+**Iteration:** 9
+**Scope:** continue request-correlated structured logging by migrating teacher
+assignment grading to the shared redacted logger.
 
 ## Executive summary
 
@@ -24,6 +24,8 @@ The repository already has the first production-fundamentals slice:
 - The admin invitation-email campaign now emits safe per-invitation delivery
   outcomes, campaign completion summaries, and lock-release failures with
   request correlation and stable error categories.
+- Teacher grading now emits a request-correlated completion event with stable
+  status, duration, assignment, submission, and actor identifiers.
 
 The operating decision for this roadmap is:
 
@@ -208,6 +210,24 @@ logger:
 Validation: the password-reset integration suite passed all 5 tests after the
 structured logging migration. `bun run quality:gate` passed with 1,926 unit
 tests, and `bun run test:integration` passed with 319 integration tests.
+
+## Iteration 9 — teacher grading structured event
+
+This iteration completed the next teacher-review slice in the shared logger:
+
+- Successful assignment grading emits `assignment_grading_completed` with
+  request ID, server-function path, `graded` status, duration, assignment ID,
+  submission ID, and grader ID.
+- Feedback text, grades beyond the stable outcome, and provider/database error
+  details are not copied into the event. Expected authorization, missing-record,
+  and cross-assignment validation failures remain ordinary service errors.
+- Integration coverage verifies the event shape and confirms duration is
+  present while the existing persisted grade assertions remain intact.
+
+The next structured-logging slice remains enrollment evaluation or another
+high-value mutation after this event shape is observed in Better Stack. The
+external Better Stack destination, dashboard, alert, and source-map checks
+remain pending account setup described below.
 
 ## Better Stack setup
 

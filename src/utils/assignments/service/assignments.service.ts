@@ -544,6 +544,7 @@ export async function gradeSubmissionService(
   data: GradeSubmissionInput,
   userId: string,
 ) {
+  const startedAt = performance.now()
   const assignment = await findAssignmentWithLesson(data.assignmentId)
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
@@ -577,6 +578,16 @@ export async function gradeSubmissionService(
     feedback: data.feedback || null,
     gradedAt: new Date(),
     updatedAt: new Date(),
+  })
+
+  logServerEvent('info', 'assignment_grading_completed', {
+    requestId: getRequestId(),
+    path: 'serverFn:gradeSubmission',
+    status: 'graded',
+    durationMs: elapsedMs(startedAt),
+    assignmentId: data.assignmentId,
+    submissionId: data.submissionId,
+    userId,
   })
 
   return { submission: gradedSubmission }
