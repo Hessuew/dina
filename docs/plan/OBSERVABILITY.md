@@ -176,8 +176,9 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 The public enrollment form and student assignment detail route now capture
 privacy-safe success events after their server mutations resolve. Assignment
 draft saves do not count as submissions, and neither event includes free-form
-application or assignment content. Course progression remains the next
-repository-owned event slice.
+application or assignment content. A student opening the first unfinished
+published lesson from a course detail page now emits `course_started` with only
+the course ID. Lesson completion and later course milestones remain pending.
 
 #### 1.3 Set Up Slack Workspace
 

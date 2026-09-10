@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 24
-**Scope:** instrument the authenticated assignment-submission PostHog event.
+**Iteration:** 25
+**Scope:** instrument the student course-start PostHog event.
 
 ## Executive summary
 
@@ -84,6 +84,9 @@ The repository already has the first production-fundamentals slice:
   successful submit mutation. Draft saves do not emit the event, and the only
   property is the stable assignment ID; answer content remains outside
   analytics.
+- The course detail route now emits `course_started` when a student opens the
+  first unfinished published lesson. The event carries only the stable course
+  ID; lesson content and titles remain outside analytics.
 
 The operating decision for this roadmap is:
 
@@ -623,6 +626,22 @@ formatting, and the repository quality gate passed. External follow-up remains:
 verify the event in the configured PostHog project, then instrument course
 progression.
 
+## Iteration 25 — course start product event
+
+This iteration completed the next smallest PostHog roadmap slice:
+
+- Added `trackCourseStarted` to the typed browser analytics boundary.
+- The authenticated course detail route calls it when a student opens the
+  first unfinished published lesson, before navigating to the lesson detail.
+- Teacher and Admin lesson navigation does not emit the event, and a completed
+  first lesson does not count as a new start. The event carries only the stable
+  `courseId` property and remains a safe no-op without a PostHog project key.
+
+Verification: the focused analytics suite passed and changed files pass
+formatting. External follow-up remains: verify enrollment, assignment, and
+course-start events in the configured PostHog project, then assess whether the
+existing lesson-progress UI supports a trustworthy `lesson_completed` event.
+
 ### PostHog setup required outside the repository
 
 1. Open [PostHog](https://app.posthog.com/) and create or select the DINA
@@ -880,15 +899,15 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 
 ### Phase 1 — Production fundamentals
 
-| Roadmap item          | Current state                                                                                                                                               | Next smallest verifiable slice                                                               |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                      | Verify `/healthz` and `/readyz` after deployment                                             |
-| Structured logging    | Shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, and Admin workflows | Migrate remaining high-value server-function families one at a time                          |
-| Error tracking        | Sentry-compatible SDK wiring now emits explicit environment/release identity; Better Stack provider cutover is pending                                      | Create Better Stack DSN, configure deployment secrets, and verify ingestion/source maps      |
-| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                     | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
-| Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                    | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
-| Alerting              | No verified production alert set                                                                                                                            | Configure Uptime, error-rate, readiness, and latency alerts; test them                       |
-| Product analytics     | Enrollment submission event is instrumented; project verification and remaining journey events are pending                                                  | Instrument assignment submission, then course progression                                    |
+| Roadmap item          | Current state                                                                                                                                               | Next smallest verifiable slice                                                                       |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                      | Verify `/healthz` and `/readyz` after deployment                                                     |
+| Structured logging    | Shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, and Admin workflows | Migrate remaining high-value server-function families one at a time                                  |
+| Error tracking        | Sentry-compatible SDK wiring now emits explicit environment/release identity; Better Stack provider cutover is pending                                      | Create Better Stack DSN, configure deployment secrets, and verify ingestion/source maps              |
+| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                     | Create Better Stack/Cloudflare dashboard and extract stable log metrics                              |
+| Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                    | Create external dashboards, set the admin hub URL variables, and update existing Notion rows         |
+| Alerting              | No verified production alert set                                                                                                                            | Configure Uptime, error-rate, readiness, and latency alerts; test them                               |
+| Product analytics     | Enrollment, assignment submission, and course-start events are instrumented; project verification and later milestones remain pending                       | Verify events in PostHog, then instrument lesson completion when a reliable completion action exists |
 
 ### Phase 2 — Reliability
 

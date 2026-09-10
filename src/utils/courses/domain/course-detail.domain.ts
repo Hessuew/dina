@@ -51,14 +51,27 @@ export function getCourseStatus(
   return isPublished ? 'published' : 'draft'
 }
 
+export function shouldTrackCourseStarted(input: {
+  role: 'student' | 'teacher' | 'admin'
+  firstLessonId: string | undefined
+  lessonId: string
+  completedLessonIds: ReadonlyArray<string>
+}): boolean {
+  return (
+    input.role === 'student' &&
+    input.firstLessonId === input.lessonId &&
+    !input.completedLessonIds.includes(input.lessonId)
+  )
+}
+
 export function handleDialogDismiss(open: boolean, onClose: () => void): void {
   if (!open) onClose()
 }
 
-export function isDialogModeActive<M extends string>(
+export function isDialogModeActive<TMode extends string>(
   isOpen: boolean,
-  mode: M,
-  target: M,
+  mode: TMode,
+  target: TMode,
 ): boolean {
   return isOpen && mode === target
 }
