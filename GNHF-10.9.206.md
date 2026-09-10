@@ -250,6 +250,28 @@ Validation for this iteration: focused enrollment integration tests, formatting,
 typecheck, and `bun run quality:gate` passed. Better Stack destination,
 dashboard, alert, and source-map checks remain pending external account setup.
 
+## Iteration 11 — private image/storage structured events
+
+This iteration completed the next storage-backed mutation slice in the shared
+redacted logger:
+
+- Avatar and course-thumbnail signed-upload requests and completion actions now
+  emit `image_upload_completed` or `image_upload_failed` with request ID,
+  server-function path, status, duration, bucket, and safe actor/course IDs.
+- Best-effort old-object cleanup and batched private-storage URL signing now
+  emit stable warning events with bucket, count, and error-category fields;
+  storage paths and provider messages are excluded.
+- Expected validation, authorization, and missing-course failures remain out
+  of noisy error logging.
+- Focused integration/unit coverage verifies event shape, failure categories,
+  and provider-message/path redaction.
+
+Validation for this iteration: image-upload integration tests (10), private
+storage unit tests (5), full unit tests (1,926), full integration tests (324),
+`bun run quality:gate`, and `bun run build` passed. Notion Architecture
+Inventory, Service Catalog, Observability, and Engineering Roadmap records were
+synchronized; external Better Stack destination verification remains pending.
+
 ## Better Stack setup
 
 Use the official product surfaces:

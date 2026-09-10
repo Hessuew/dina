@@ -6,7 +6,13 @@ import type {
 } from '@/schemas/image.schema'
 import type { PrivateStorageBucket } from '@/utils/storage/domain/private-storage.domain'
 import type { SignedUpload } from '@/utils/storage/service/private-storage.service'
-import { AppError, NotFoundError, ValidationError } from '@/utils/errors'
+import type { LogLevel } from '@/utils/observability/logger'
+import {
+  AppError,
+  NotFoundError,
+  ValidationError,
+  isAppError,
+} from '@/utils/errors'
 import {
   resolveFileExtension,
   validateImageUpload,
@@ -28,6 +34,58 @@ import {
   createPrivateSignedUpload,
   signPrivateStoragePath,
 } from '@/utils/storage/service/private-storage.service'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+
+type ImageUploadAction =
+  | 'request_avatar_upload'
+  | 'upload_avatar'
+  | 'request_course_thumbnail_upload'
+  | 'upload_course_thumbnail'
+
+type ImageUploadLogContext = {
+  action: ImageUploadAction
+  bucket: PrivateStorageBucket
+  startedAt: number
+  userId: string
+  courseId?: string
+}
+
+function logImageUploadEvent(
+  level: LogLevel,
+  event: string,
+  context: ImageUploadLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    bucket: context.bucket,
+    userId: context.userId,
+    ...(context.courseId ? { courseId: context.courseId } : {}),
+    ...fields,
+  })
+}
+
+async function runImageUploadAction<T>(
+  context: ImageUploadLogContext,
+  operation: () => Promise<T>,
+): Promise<T> {
+  try {
+    const result = await operation()
+    logImageUploadEvent('info', 'image_upload_completed', context)
+    return result
+  } catch (error) {
+    if (!isAppError(error) || error.status >= 500) {
+      logImageUploadEvent('error', 'image_upload_failed', context, {
+        errorCategory: isAppError(error) ? error.code : 'unexpected',
+      })
+    }
+    throw error
+  }
+}
 
 export async function deleteStorageObject(
   bucket: PrivateStorageBucket,
@@ -38,10 +96,12 @@ export async function deleteStorageObject(
     .from(bucket)
     .remove([objectPath])
   if (error || !removed.length) {
-    console.error('Failed to delete old storage object', {
+    logServerEvent('warn', 'storage_object_cleanup_failed', {
+      requestId: getRequestId(),
+      path: 'storage:delete_object',
+      status: 'failure',
       bucket,
-      objectPath,
-      error,
+      errorCategory: error ? 'storage_delete' : 'storage_object_missing',
     })
   }
 }
@@ -106,18 +166,36 @@ export function requestAvatarUploadService(
   data: RequestAvatarUploadInput,
   userId: string,
 ): Promise<SignedUpload> {
-  return requestImageUpload(data, userId, 'avatars')
+  return runImageUploadAction(
+    {
+      action: 'request_avatar_upload',
+      bucket: 'avatars',
+      startedAt: performance.now(),
+      userId,
+    },
+    () => requestImageUpload(data, userId, 'avatars'),
+  )
 }
 
 export async function uploadAvatarService(
   data: UploadAvatarInput,
   userId: string,
 ): Promise<{ avatarUrl: string | null }> {
-  const path = ownedPathOrThrow(data.path, 'avatars', userId)
-  const oldPath = await findProfileAvatarPath(userId)
-  await updateProfileAvatarPath(userId, path)
-  await removePreviousPath('avatars', oldPath, path)
-  return { avatarUrl: await signPrivateStoragePath('avatars', path) }
+  return runImageUploadAction(
+    {
+      action: 'upload_avatar',
+      bucket: 'avatars',
+      startedAt: performance.now(),
+      userId,
+    },
+    async () => {
+      const path = ownedPathOrThrow(data.path, 'avatars', userId)
+      const oldPath = await findProfileAvatarPath(userId)
+      await updateProfileAvatarPath(userId, path)
+      await removePreviousPath('avatars', oldPath, path)
+      return { avatarUrl: await signPrivateStoragePath('avatars', path) }
+    },
+  )
 }
 
 async function requireCourseThumbnailAccess(courseId: string, userId: string) {
@@ -136,19 +214,41 @@ export async function requestCourseThumbnailUploadService(
   data: RequestCourseThumbnailUploadInput,
   userId: string,
 ): Promise<SignedUpload> {
-  await requireCourseThumbnailAccess(data.courseId, userId)
-  return requestImageUpload(data, userId, 'course-thumbnails')
+  return runImageUploadAction(
+    {
+      action: 'request_course_thumbnail_upload',
+      bucket: 'course-thumbnails',
+      courseId: data.courseId,
+      startedAt: performance.now(),
+      userId,
+    },
+    async () => {
+      await requireCourseThumbnailAccess(data.courseId, userId)
+      return requestImageUpload(data, userId, 'course-thumbnails')
+    },
+  )
 }
 
 export async function uploadCourseThumbnailService(
   data: UploadCourseThumbnailInput,
   userId: string,
 ): Promise<{ thumbnailUrl: string | null }> {
-  const course = await requireCourseThumbnailAccess(data.courseId, userId)
-  const path = ownedPathOrThrow(data.path, 'course-thumbnails', userId)
-  await updateCourseThumbnailPath(data.courseId, path)
-  await removePreviousPath('course-thumbnails', course.thumbnailUrl, path)
-  return {
-    thumbnailUrl: await signPrivateStoragePath('course-thumbnails', path),
-  }
+  return runImageUploadAction(
+    {
+      action: 'upload_course_thumbnail',
+      bucket: 'course-thumbnails',
+      courseId: data.courseId,
+      startedAt: performance.now(),
+      userId,
+    },
+    async () => {
+      const course = await requireCourseThumbnailAccess(data.courseId, userId)
+      const path = ownedPathOrThrow(data.path, 'course-thumbnails', userId)
+      await updateCourseThumbnailPath(data.courseId, path)
+      await removePreviousPath('course-thumbnails', course.thumbnailUrl, path)
+      return {
+        thumbnailUrl: await signPrivateStoragePath('course-thumbnails', path),
+      }
+    },
+  )
 }

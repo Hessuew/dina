@@ -56,6 +56,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     `enrollment_evaluation_updated` events with request correlation, action,
     status, duration, evaluator/enrollment IDs, and the updated field type;
     scores, admission values, and note text are not logged.
+  - Avatar and course-thumbnail upload actions emit request-correlated
+    `image_upload_completed` / `image_upload_failed` events; signed-URL and
+    old-object cleanup failures use stable warning categories without storage
+    paths or provider messages.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is

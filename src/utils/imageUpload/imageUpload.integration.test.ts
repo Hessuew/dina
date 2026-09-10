@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { getDb } from '../../../test/integration/db'
 import { seedCourse, seedProfile } from '../../../test/integration/seed'
@@ -48,12 +48,56 @@ beforeEach(() => {
     .mockResolvedValue({ data: [{ name: 'removed' }], error: null })
 })
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 describe('avatar signed upload', () => {
   it('validates metadata and returns an actor-owned signed upload', async () => {
     const result = await requestAvatarUploadService(imageInput, 'user-1')
 
     expect(result.path).toMatch(/^user-1\/\d+-[\w-]+\.png$/)
     expect(result.signedUrl).toBe('https://signed-upload')
+  })
+
+  it('emits a request-correlated completion event', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+
+    await requestAvatarUploadService(imageInput, 'user-1')
+
+    const entry = JSON.parse(
+      infoSpy.mock.calls[infoSpy.mock.calls.length - 1]?.[0] as string,
+    )
+    expect(entry).toMatchObject({
+      event: 'image_upload_completed',
+      path: 'serverFn:request_avatar_upload',
+      requestId: 'unknown',
+      status: 'success',
+      bucket: 'avatars',
+      userId: 'user-1',
+    })
+  })
+
+  it('logs provider failures without exposing the provider message', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mocks.createSignedUploadUrl.mockResolvedValue({
+      data: null,
+      error: { message: 'provider secret' },
+    })
+
+    await expect(
+      requestAvatarUploadService(imageInput, 'user-1'),
+    ).rejects.toMatchObject({ code: 'STORAGE_UPLOAD_FAILED' })
+
+    const entry = JSON.parse(
+      errorSpy.mock.calls[errorSpy.mock.calls.length - 1]?.[0] as string,
+    )
+    expect(entry).toMatchObject({
+      event: 'image_upload_failed',
+      path: 'serverFn:request_avatar_upload',
+      errorCategory: 'STORAGE_UPLOAD_FAILED',
+    })
+    expect(entry).not.toHaveProperty('message')
   })
 
   it('rejects oversized metadata before signing', async () => {
@@ -98,6 +142,34 @@ describe('avatar signed upload', () => {
     await uploadAvatarService({ path: `${id}/new.png` }, id)
 
     expect(mocks.remove).toHaveBeenCalledWith([`${id}/old.png`])
+  })
+
+  it('emits a redacted warning when old-object cleanup fails', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const id = await seedProfile()
+    const db = await getDb()
+    await db
+      .update(profiles)
+      .set({ avatarUrl: `${id}/old.png` })
+      .where(eq(profiles.id, id))
+    mocks.remove.mockResolvedValue({
+      data: [],
+      error: { message: 'provider secret' },
+    })
+
+    await uploadAvatarService({ path: `${id}/new.png` }, id)
+
+    const entry = JSON.parse(
+      warnSpy.mock.calls[warnSpy.mock.calls.length - 1]?.[0] as string,
+    )
+    expect(entry).toMatchObject({
+      event: 'storage_object_cleanup_failed',
+      path: 'storage:delete_object',
+      bucket: 'avatars',
+      errorCategory: 'storage_delete',
+    })
+    expect(entry).not.toHaveProperty('objectPath')
+    expect(entry).not.toHaveProperty('message')
   })
 })
 

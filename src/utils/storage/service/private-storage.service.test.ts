@@ -79,7 +79,7 @@ describe('signPrivateStoragePaths', () => {
   })
 
   it('returns null entries when batch signing fails', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     mocks.createSignedUrls.mockResolvedValue({
       data: null,
       error: { message: 'nope' },
@@ -88,8 +88,19 @@ describe('signPrivateStoragePaths', () => {
     const result = await signPrivateStoragePaths('avatars', ['a.png'])
 
     expect(result.get('a.png')).toBeNull()
-    expect(errorSpy).toHaveBeenCalled()
-    errorSpy.mockRestore()
+    const entry = JSON.parse(
+      warnSpy.mock.calls[warnSpy.mock.calls.length - 1]?.[0] as string,
+    )
+    expect(entry).toMatchObject({
+      event: 'private_storage_url_signing_failed',
+      path: 'storage:sign_private_paths',
+      status: 'failure',
+      bucket: 'avatars',
+      pathCount: 1,
+      errorCategory: 'storage_signed_url_generation',
+    })
+    expect(entry).not.toHaveProperty('message')
+    warnSpy.mockRestore()
   })
 
   it('avoids provider call for empty path set', async () => {
