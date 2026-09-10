@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import type { LogLevel } from '@/utils/observability/logger'
 import { env } from '@/env'
 import { sendTransactionalEmail } from '@/utils/email'
 import { getSupabaseAdminClient } from '@/utils/supabase'
@@ -21,11 +22,39 @@ import {
   incrementResetTokenAttempts,
   updateProfileResetToken,
 } from '@/utils/password-reset/repository'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 /* v8 ignore start */
+type PasswordResetAction = 'request_password_reset' | 'reset_password'
+
+type PasswordResetLogContext = {
+  action: PasswordResetAction
+  startedAt: number
+}
+
+function logPasswordResetEvent(
+  level: LogLevel,
+  event: string,
+  context: PasswordResetLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    ...fields,
+  })
+}
+
 export async function requestPasswordResetService(
   email: string,
 ): Promise<{ success: boolean; message: string }> {
+  const context: PasswordResetLogContext = {
+    action: 'request_password_reset',
+    startedAt: performance.now(),
+  }
   const user = await findProfileByEmail(email)
 
   if (!user) {
@@ -60,8 +89,11 @@ export async function requestPasswordResetService(
       resetLink,
       expiryMinutes: 10,
     })
-  } catch (error) {
-    console.error('Failed to send password reset email:', error)
+  } catch {
+    logPasswordResetEvent('error', 'password_reset_email_failed', context, {
+      errorCategory: 'password_reset_email_delivery',
+      userId: user.id,
+    })
     await clearProfileResetToken(user.id)
     return {
       success: false,
@@ -69,6 +101,9 @@ export async function requestPasswordResetService(
     }
   }
 
+  logPasswordResetEvent('info', 'password_reset_email_sent', context, {
+    userId: user.id,
+  })
   return { success: true, message: RESET_ANONYMOUS_MESSAGE }
 }
 
@@ -96,6 +131,10 @@ export async function resetPasswordService(
   token: string | undefined,
   newPassword: string | undefined,
 ): Promise<{ success: boolean; message: string }> {
+  const context: PasswordResetLogContext = {
+    action: 'reset_password',
+    startedAt: performance.now(),
+  }
   const input = checkResetPasswordInput(token, newPassword)
   if (!input.ok) {
     return { success: false, message: input.message }
@@ -121,7 +160,11 @@ export async function resetPasswordService(
   )
 
   if (updateError) {
-    console.error('Failed to update password:', updateError)
+    logPasswordResetEvent('error', 'password_reset_update_failed', context, {
+      errorCategory: 'password_reset_update',
+      providerCode: updateError.code ?? 'unknown',
+      userId: resolved.user.id,
+    })
     await incrementResetTokenAttempts(resolved.user.id)
     return {
       success: false,
@@ -131,6 +174,9 @@ export async function resetPasswordService(
 
   await clearProfileResetToken(resolved.user.id)
 
+  logPasswordResetEvent('info', 'password_reset_completed', context, {
+    userId: resolved.user.id,
+  })
   return { success: true, message: 'Password reset successfully' }
 }
 /* v8 ignore end */

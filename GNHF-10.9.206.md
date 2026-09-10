@@ -188,6 +188,27 @@ Validation: the email-campaign integration suite now includes a redaction
 assertion for provider failures. `bun run quality:gate` passed with 1,926 unit
 tests, and `bun run test:integration` passed with 317 integration tests.
 
+## Iteration 8 — password-reset structured events
+
+This iteration completed the next auth-family slice in the shared redacted
+logger:
+
+- Password-reset email delivery emits `password_reset_email_sent` or
+  `password_reset_email_failed` with request ID, server-function path, status,
+  duration, user ID, and the stable `password_reset_email_delivery` category
+  on failure.
+- Password updates emit `password_reset_completed` or
+  `password_reset_update_failed`. Provider codes are retained for diagnosis,
+  while provider messages, reset tokens, and new passwords are not logged.
+- Existing anonymous-account, cooldown, invalid-token, and validation outcomes
+  remain ordinary user-facing results rather than noisy error events.
+- Integration coverage verifies reset-state cleanup, failed-attempt counting,
+  event shape, and redaction of provider/password values.
+
+Validation: the password-reset integration suite passed all 5 tests after the
+structured logging migration. `bun run quality:gate` passed with 1,926 unit
+tests, and `bun run test:integration` passed with 319 integration tests.
+
 ## Better Stack setup
 
 Use the official product surfaces:
