@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 16
-**Scope:** continue request-correlated structured logging by migrating profile
-updates and email-change verification outcomes to the shared redacted logger.
+**Iteration:** 17
+**Scope:** add request-correlated redacted audit telemetry for Admin
+staff-privilege grants and revokes.
 
 ## Executive summary
 
@@ -50,6 +50,9 @@ The repository already has the first production-fundamentals slice:
   failure events with request correlation, user ID, status, duration, and
   stable persistence/provider categories. Email addresses, verification tokens,
   and provider messages are excluded.
+- Admin staff-privilege grants and revokes now emit redacted audit events with
+  request correlation, actor/target IDs, privilege name, grant direction,
+  duration, and a stable persistence-failure category.
 
 The operating decision for this roadmap is:
 
@@ -415,6 +418,25 @@ Validation for this iteration: focused profile integration coverage verifies
 success/failure event shapes and redaction. Better Stack destination,
 dashboard, alert, and source-map verification remain pending external account
 setup.
+
+## Iteration 17 — staff-privilege audit events
+
+This iteration completed one security-sensitive structured-logging slice:
+
+- Admin grants and revokes of Teacher-user staff privileges now emit
+  `staff_privilege_updated` with request correlation, server-function path,
+  success status, duration, actor ID, target user ID, privilege, and grant
+  direction.
+- Persistence or result-read failures emit `staff_privilege_update_failed`
+  with the stable `staff_privilege_persistence` category without copying raw
+  database/provider details into telemetry.
+- Authorization and invalid-target failures remain expected access/user-input
+  outcomes and are not logged as noisy operational failures.
+- Integration coverage verifies both grant and revoke audit event shapes.
+
+Validation for this iteration: the focused staff-privilege integration suite
+passed all 4 tests. Better Stack destination, dashboard, alert, and source-map
+verification remain pending external account setup.
 
 ## Better Stack setup
 

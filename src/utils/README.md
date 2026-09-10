@@ -73,6 +73,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     failure events with request correlation, user ID, status, duration, and
     stable persistence/provider categories; email addresses, verification
     tokens, and provider messages are excluded.
+  - Admin staff-privilege grants and revokes emit redacted
+    `staff_privilege_updated` audit events with request correlation, actor and
+    target IDs, privilege, grant direction, status, and duration; persistence
+    failures use a stable category without raw provider details.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { seedProfile } from '@/../test/integration/seed'
 import { getTeachersService } from '@/utils/teachers/service/teachers.service'
 import { AuthorizationError, ValidationError } from '@/utils/errors'
@@ -6,6 +6,7 @@ import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-
 
 describe('setStaffPrivilegeService (integration)', () => {
   it('lets an Admin grant and revoke a Teacher-user privilege', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const teacherId = await seedProfile({ role: 'teacher' })
 
@@ -22,6 +23,30 @@ describe('setStaffPrivilegeService (integration)', () => {
       granted: false,
     })
     expect(revoked.privileges).toEqual([])
+
+    const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'staff_privilege_updated',
+          path: 'serverFn:setStaffPrivilege',
+          status: 'success',
+          actorId: adminId,
+          targetUserId: teacherId,
+          privilege: 'attendance_override',
+          granted: true,
+        }),
+        expect.objectContaining({
+          event: 'staff_privilege_updated',
+          path: 'serverFn:setStaffPrivilege',
+          status: 'success',
+          actorId: adminId,
+          targetUserId: teacherId,
+          privilege: 'attendance_override',
+          granted: false,
+        }),
+      ]),
+    )
   })
 
   it('rejects granting to a Student or Admin', async () => {
