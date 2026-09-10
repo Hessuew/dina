@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-10  
-**Iteration:** 5
-**Scope:** add request-scoped correlation and migrate assignment-submission
-outcomes and persistence failures to the shared redacted logger.
+**Iteration:** 6
+**Scope:** continue request-correlated structured logging by migrating
+assignment-submission and signup/OTP outcomes to the shared redacted logger.
 
 ## Executive summary
 
@@ -19,6 +19,8 @@ The repository already has the first production-fundamentals slice:
   browser and Worker.
 - Assignment submission saves now emit structured Better Stack/Cloudflare-ready
   outcome events with request ID, status, duration, and stable error category.
+- Signup and OTP flows now emit the same safe event shape for delivery,
+  provisioning, rollback, verification, auto-login, and resend outcomes.
 
 The operating decision for this roadmap is:
 
@@ -36,9 +38,9 @@ SDK is active; doing both would duplicate browser errors and page telemetry.
 The in-repo structured-logging baseline now has a shared server logger. It
 emits stable JSON fields to the Worker console and recursively redacts tokens,
 credentials, connection strings, cookies, email/phone values, request bodies,
-and raw error messages. The health and readiness endpoints plus assignment
-submission persistence are consumers; broader server-function migration remains
-intentionally incremental.
+and raw error messages. The health and readiness endpoints, assignment
+submission persistence, and signup/OTP flows are consumers; broader
+server-function migration remains intentionally incremental.
 
 No secrets, account tokens, or account-specific URLs belong in this file or in
 the repository.
@@ -137,6 +139,30 @@ not load the integration config aliases; use the repository integration script
 for that lane. The next code slice is another high-value server-function
 family, likely enrollment or auth, after the assignment event shape is
 observed in Better Stack.
+
+## Iteration 6 — signup and OTP structured events
+
+This iteration migrated the auth/signup family’s operational failures and key
+success outcomes to the shared redacted logger:
+
+- Signup OTP delivery emits `signup_otp_sent` or
+  `signup_otp_email_failed`; stale-OTP cleanup failures are separately
+  reported as `signup_otp_cleanup_failed`.
+- OTP verification emits `signup_verified` and records stable failure
+  categories for auth-user creation, duplicate-user confirmation, profile
+  persistence, user rollback, and post-verification auto-login.
+- OTP resend emits `signup_otp_resent` or `signup_otp_resend_failed`.
+- Every event carries the request ID, `serverFn:<action>` path, outcome status,
+  elapsed duration, and only safe identifiers/provider codes. Passwords,
+  emails, OTPs, request bodies, and raw provider errors are not logged.
+- Expected invalid invitations, expired/cooldown codes, and incorrect OTPs
+  remain ordinary user-facing outcomes and do not create noisy error events.
+
+Validation completed with 16 signup integration tests, 28 focused
+observability/signup-domain tests, formatting, and TypeScript validation. The
+next structured-logging slice remains enrollment or another high-value admin
+workflow; Better Stack destination and dashboard verification remains an
+external account task described below.
 
 ## Better Stack setup
 
