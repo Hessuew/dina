@@ -4,6 +4,7 @@ import {
   buildResolveAlias,
   isCloudflareMode,
   resolveCloudflareClientShim,
+  resolveSentryBuildConfig,
 } from './vite-config.domain.ts'
 
 describe('isCloudflareMode', () => {
@@ -60,5 +61,51 @@ describe('resolveCloudflareClientShim', () => {
     expect(
       resolveCloudflareClientShim('react', false, '/shim.ts'),
     ).toBeUndefined()
+  })
+})
+
+describe('resolveSentryBuildConfig', () => {
+  it('returns no upload configuration until all required values exist', () => {
+    expect(
+      resolveSentryBuildConfig({
+        SENTRY_AUTH_TOKEN: 'token',
+        SENTRY_ORG: 'org',
+      }),
+    ).toBeNull()
+  })
+
+  it('trims provider settings and prefers the explicit release value', () => {
+    expect(
+      resolveSentryBuildConfig({
+        SENTRY_AUTH_TOKEN: ' token ',
+        SENTRY_ORG: ' org ',
+        SENTRY_PROJECT: ' project ',
+        SENTRY_RELEASE: ' commit-sha ',
+        SENTRY_URL: ' https://errors.example.test ',
+        VITE_SENTRY_RELEASE: 'fallback-release',
+      }),
+    ).toEqual({
+      authToken: 'token',
+      org: 'org',
+      project: 'project',
+      release: { name: 'commit-sha' },
+      sentryUrl: 'https://errors.example.test',
+    })
+  })
+
+  it('falls back to the client release when no build release is set', () => {
+    expect(
+      resolveSentryBuildConfig({
+        SENTRY_AUTH_TOKEN: 'token',
+        SENTRY_ORG: 'org',
+        SENTRY_PROJECT: 'project',
+        VITE_SENTRY_RELEASE: 'client-release',
+      }),
+    ).toEqual({
+      authToken: 'token',
+      org: 'org',
+      project: 'project',
+      release: { name: 'client-release' },
+    })
   })
 })

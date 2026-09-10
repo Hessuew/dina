@@ -1,3 +1,5 @@
+import { resolveObservabilityIdentity } from '@/utils/observability/domain/identity.domain'
+
 export type HealthStatus = 'ok' | 'error'
 
 export type DependencyResult = {
@@ -105,7 +107,12 @@ function buildRequestContext(
   const url = new URL(request.url)
 
   return {
-    environment: options.environment ?? import.meta.env.MODE,
+    environment:
+      options.environment ??
+      resolveObservabilityIdentity(
+        import.meta.env.MODE,
+        import.meta.env.VITE_SENTRY_ENVIRONMENT,
+      ).environment,
     release: options.release ?? readRelease(),
     requestId: options.requestId ?? readRequestId(request),
     startedAt: performance.now(),
@@ -222,11 +229,9 @@ function readRequestId(request: Request): string {
 }
 
 function readRelease(): string | null {
-  return (
-    import.meta.env.VITE_SENTRY_RELEASE ??
-    import.meta.env.VITE_APP_VERSION ??
-    null
-  )
+  const release =
+    import.meta.env.VITE_SENTRY_RELEASE ?? import.meta.env.VITE_APP_VERSION
+  return release?.trim() || null
 }
 
 function elapsedMs(startedAt: number): number {

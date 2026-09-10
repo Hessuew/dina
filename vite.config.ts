@@ -13,11 +13,14 @@ import {
   buildResolveAlias,
   isCloudflareMode,
   resolveCloudflareClientShim,
+  resolveSentryBuildConfig,
 } from './scripts/vite-config.domain.ts'
 
 const config = defineConfig(({ mode }) => {
   const isCloudflare = isCloudflareMode(mode)
-  const sentryAuthToken = loadEnv(mode, process.cwd(), '').SENTRY_AUTH_TOKEN
+  const sentryBuildConfig = resolveSentryBuildConfig(
+    loadEnv(mode, process.cwd(), ''),
+  )
 
   const shimPath = fileURLToPath(
     new URL('./src/cloudflare-shim.ts', import.meta.url),
@@ -61,15 +64,7 @@ const config = defineConfig(({ mode }) => {
       }),
       tailwindcss(),
       tanstackStart(),
-      ...(sentryAuthToken
-        ? [
-            sentryTanstackStart({
-              org: 'cherubim-it',
-              project: 'dina',
-              authToken: sentryAuthToken,
-            }),
-          ]
-        : []),
+      ...(sentryBuildConfig ? [sentryTanstackStart(sentryBuildConfig)] : []),
       viteReact({
         babel: {
           plugins: ['babel-plugin-react-compiler'],

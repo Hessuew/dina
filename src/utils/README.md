@@ -45,6 +45,11 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Dependency checks fail closed after a short timeout (default 2s) so hung Hyperdrive/pg does not hang the probe.
   - Responses and logs use redacted, structured operational fields only.
 
+- **Observability identity**
+  - `observability/domain/identity.domain.ts`: maps build modes and optional
+    deployment settings to the canonical `local`, `preview`, and `production`
+    environments and normalizes release identifiers for error tracking.
+
 - **Supabase utilities**
   - `supabase.ts`: server client (`@supabase/ssr`) and admin client.
 

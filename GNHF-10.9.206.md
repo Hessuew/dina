@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-10  
-**Iteration:** 2  
-**Scope:** establish the Better Stack observability direction and document the
-external setup that cannot be completed safely from this repository.
+**Iteration:** 3
+**Scope:** make the Sentry-compatible integration ready for a provider cutover
+with explicit environment/release identity and externalized source-map settings.
 
 ## Executive summary
 
@@ -34,7 +34,7 @@ SDK is active; doing both would duplicate browser errors and page telemetry.
 No secrets, account tokens, or account-specific URLs belong in this file or in
 the repository.
 
-## What this iteration changed
+## What the previous iteration changed
 
 - Captured the Better Stack replacement decision and the staged cutover plan.
 - Documented exact dashboard navigation, source creation, Cloudflare
@@ -44,11 +44,43 @@ the repository.
   and which work requires an authenticated Better Stack, Cloudflare, Supabase,
   Slack, or Notion dashboard action.
 
-The application code was intentionally not changed in this iteration: the
+The previous iteration intentionally did not change application code: the
 Better Stack application DSN, Telemetry source token/host, and Cloudflare
-destination names do not exist in the repository and must be created in the
-external accounts first. The next code slice can then make the cutover
-deterministic and verify it against real ingestion.
+destination names did not exist in the repository and had to be created in the
+external accounts first.
+
+## Iteration 3 — explicit Better Stack-ready release identity
+
+This iteration completed the smallest code slice that can be verified without
+account-specific Better Stack credentials:
+
+- Browser and Worker Sentry-compatible initialization now sends explicit
+  `environment` and optional `release` values.
+- Build modes map to the operational environments `local`, `preview`, and
+  `production`; an explicit configured value wins when supplied.
+- Source-map upload configuration now reads `SENTRY_ORG`, `SENTRY_PROJECT`,
+  `SENTRY_URL`, and `SENTRY_RELEASE` from build environment. The previous
+  hardcoded organization/project values are gone.
+- Health-check release/environment identity uses the same mapping, so its
+  response and logs can be correlated with Better Stack events.
+- Added focused domain tests for environment/release normalization and build
+  configuration resolution.
+
+Changed paths: `vite.config.ts`, `scripts/vite-config.domain.ts`,
+`src/router.tsx`, `src/server.ts`, `src/utils/health/health.ts`,
+`src/utils/observability/domain/identity.domain.ts`, and the associated tests
+and setup documentation.
+
+Verification completed: focused tests (24 passing), full unit suite (1,919
+passing), TypeScript typecheck, and `bun run quality:gate` all pass. The gate
+also regenerated Cloudflare runtime types without changing the Worker binding
+shape.
+
+External follow-up remains required: create the Better Stack Errors source,
+set its DSN and source-map endpoint in the deployment environments, provide a
+release value such as the deployed commit SHA, and run the controlled ingestion
+checks in the acceptance checklist below. No provider token or account URL was
+added to the repository.
 
 ## Better Stack setup
 
@@ -269,14 +301,14 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 
 ### Phase 1 — Production fundamentals
 
-| Roadmap item          | Current state                                                                         | Next smallest verifiable slice                                                |
-| --------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                | Verify `/healthz` and `/readyz` after deployment                              |
-| Structured logging    | Health endpoints emit redacted JSON; broad server logs still use ad-hoc console calls | Add a small shared server logger and migrate one high-value service at a time |
-| Error tracking        | Sentry-compatible SDK wiring exists; Better Stack provider cutover is pending         | Configure Better Stack DSN, environment/release, and source-map upload        |
-| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo               | Create Better Stack/Cloudflare dashboard and extract stable log metrics       |
-| Production dashboards | Notion dashboard rows exist but links are blank                                       | Create external dashboards and update existing rows                           |
-| Alerting              | No verified production alert set                                                      | Configure Uptime, error-rate, readiness, and latency alerts; test them        |
+| Roadmap item          | Current state                                                                                                          | Next smallest verifiable slice                                                          |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                 | Verify `/healthz` and `/readyz` after deployment                                        |
+| Structured logging    | Health endpoints emit redacted JSON; broad server logs still use ad-hoc console calls                                  | Add a small shared server logger and migrate one high-value service at a time           |
+| Error tracking        | Sentry-compatible SDK wiring now emits explicit environment/release identity; Better Stack provider cutover is pending | Create Better Stack DSN, configure deployment secrets, and verify ingestion/source maps |
+| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                | Create Better Stack/Cloudflare dashboard and extract stable log metrics                 |
+| Production dashboards | Notion dashboard rows exist but links are blank                                                                        | Create external dashboards and update existing rows                                     |
+| Alerting              | No verified production alert set                                                                                       | Configure Uptime, error-rate, readiness, and latency alerts; test them                  |
 
 ### Phase 2 — Reliability
 
