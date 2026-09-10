@@ -30,6 +30,7 @@ import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { AssignmentDetailSections } from '@/components/assignment/assignment-detail-sections/AssignmentDetailSections'
+import { trackAssignmentSubmitted } from '@/utils/analytics'
 
 const getAssignmentData = createServerFn({ method: 'POST' })
   .inputValidator((d: { assignmentId: string }) => d)
@@ -207,14 +208,16 @@ function useSubmissionForm(
     },
   })
 
-  const handleSaveSubmission = (submit: boolean = false) => {
-    submissionMutation.mutate({
+  const handleSaveSubmission = async (submit: boolean = false) => {
+    const result = await submissionMutation.mutate({
       data: {
         assignmentId,
         content: submissionFormData.content,
         submit,
       },
     })
+
+    if (submit && result) trackAssignmentSubmitted(assignmentId)
   }
 
   return {

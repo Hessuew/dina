@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 23
-**Scope:** instrument the public enrollment-submission PostHog event.
+**Iteration:** 24
+**Scope:** instrument the authenticated assignment-submission PostHog event.
 
 ## Executive summary
 
@@ -80,6 +80,10 @@ The repository already has the first production-fundamentals slice:
   enrollment server mutation succeeds. Its only property is the stable
   `source=public_enrollment_form` discriminator; applicant identity, contact
   details, demographic values, and application text remain outside analytics.
+- The student assignment detail route now emits `assignment_submitted` after a
+  successful submit mutation. Draft saves do not emit the event, and the only
+  property is the stable assignment ID; answer content remains outside
+  analytics.
 
 The operating decision for this roadmap is:
 
@@ -601,6 +605,23 @@ the full quality gate passed (1,930 unit tests), TypeScript passed, and the
 changed files pass formatting. External follow-up remains: verify the event in
 the configured PostHog project, then instrument assignment submission and
 course progression.
+
+## Iteration 24 — assignment submission product event
+
+This iteration completed the next smallest PostHog roadmap slice:
+
+- Added `trackAssignmentSubmitted` to the typed browser analytics boundary.
+- The authenticated assignment detail route calls it only after
+  `createOrUpdateSubmission` resolves successfully with `submit=true`.
+- Saving a draft does not emit `assignment_submitted`; answer text and other
+  free-form submission content are never sent. The event carries only the
+  stable `assignmentId` property and remains a safe no-op without a PostHog
+  project key.
+
+Verification: the focused analytics suite passed, changed files pass
+formatting, and the repository quality gate passed. External follow-up remains:
+verify the event in the configured PostHog project, then instrument course
+progression.
 
 ### PostHog setup required outside the repository
 

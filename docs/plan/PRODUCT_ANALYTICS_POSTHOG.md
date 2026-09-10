@@ -1,6 +1,6 @@
 # PostHog Product Analytics
 
-**Status:** Foundation implemented; enrollment submission instrumented
+**Status:** Foundation implemented; enrollment and assignment submission instrumented
 
 ## Purpose
 
@@ -38,6 +38,8 @@ The typed event boundary currently allow-lists the initial journey events. The
 public enrollment form now emits `enrollment_submitted` only after the server
 mutation succeeds. The event carries only the stable
 `source=public_enrollment_form` discriminator; applicant identity, contact
-details, demographic values, and application text are never sent. The next
-product-analytics slices are assignment submission and course progression,
+details, demographic values, and application text are never sent. The student
+assignment detail route now emits `assignment_submitted` only after a successful
+submit mutation; draft saves do not emit it, and the event carries only the
+stable assignment ID. The next product-analytics slice is course progression,
 followed by verification in the configured PostHog project.

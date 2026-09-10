@@ -69,3 +69,8 @@ export function trackAnalyticsEvent(
   posthog.capture(event, properties)
   return true
 }
+
+/** Captures a successful assignment submission without including its content. */
+export function trackAssignmentSubmitted(assignmentId: string): boolean {
+  return trackAnalyticsEvent('assignment_submitted', { assignmentId })
+}
