@@ -51,6 +51,8 @@ import {
   UNEXPECTED_ERROR_MESSAGE,
   ValidationError,
 } from '@/utils/errors'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 export async function getLessonService(data: GetLessonInput, userId: string) {
   const lesson = await findLessonWithDetail(data.lessonId)
@@ -330,8 +332,14 @@ function mapSubmissionPersistenceError(
   error: unknown,
   assignmentId: string,
   userId: string,
+  startedAt: number,
 ): AppError {
-  console.error('Submission persistence failed', {
+  logServerEvent('error', 'assignment_submission_failed', {
+    requestId: getRequestId(),
+    path: 'serverFn:createOrUpdateSubmission',
+    status: 'error',
+    durationMs: elapsedMs(startedAt),
+    errorCategory: 'submission_persistence',
     assignmentId,
     userId,
     error,
@@ -353,11 +361,17 @@ async function saveSubmission(
   existingSubmission: Awaited<
     ReturnType<typeof findSubmissionByAssignmentAndStudent>
   >,
+  startedAt: number,
 ) {
   try {
     return await persistSubmission(data, userId, existingSubmission)
   } catch (error) {
-    throw mapSubmissionPersistenceError(error, data.assignmentId, userId)
+    throw mapSubmissionPersistenceError(
+      error,
+      data.assignmentId,
+      userId,
+      startedAt,
+    )
   }
 }
 
@@ -365,6 +379,7 @@ export async function createOrUpdateSubmissionService(
   data: CreateOrUpdateSubmissionInput,
   userId: string,
 ) {
+  const startedAt = performance.now()
   const profile = await getUserProfile(userId)
   if (profile.role !== 'student') {
     throw new AuthorizationError('Only students can submit assignments', {
@@ -388,7 +403,20 @@ export async function createOrUpdateSubmissionService(
     data.assignmentId,
     userId,
   )
-  const submission = await saveSubmission(data, userId, existingSubmission)
+  const submission = await saveSubmission(
+    data,
+    userId,
+    existingSubmission,
+    startedAt,
+  )
+  logServerEvent('info', 'assignment_submission_saved', {
+    requestId: getRequestId(),
+    path: 'serverFn:createOrUpdateSubmission',
+    status: data.submit ? 'submitted' : 'draft',
+    durationMs: elapsedMs(startedAt),
+    assignmentId: data.assignmentId,
+    userId,
+  })
   return { submission }
 }
 

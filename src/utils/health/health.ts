@@ -1,5 +1,6 @@
 import { resolveObservabilityIdentity } from '@/utils/observability/domain/identity.domain'
 import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, readRequestId } from '@/utils/observability/request-context'
 
 export type HealthStatus = 'ok' | 'error'
 
@@ -207,22 +208,10 @@ function jsonResponse(body: HealthPayload | ReadinessPayload, status: number) {
   })
 }
 
-function readRequestId(request: Request): string {
-  return (
-    request.headers.get('cf-ray') ??
-    request.headers.get('x-request-id') ??
-    crypto.randomUUID()
-  )
-}
-
 function readRelease(): string | null {
   const release =
     import.meta.env.VITE_SENTRY_RELEASE ?? import.meta.env.VITE_APP_VERSION
   return release?.trim() || null
-}
-
-function elapsedMs(startedAt: number): number {
-  return Math.max(0, Math.round(performance.now() - startedAt))
 }
 
 async function noopCheck(_signal?: AbortSignal): Promise<void> {}

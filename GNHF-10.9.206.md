@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-10  
-**Iteration:** 4
-**Scope:** add the shared redacted structured server logger and migrate the
-health/readiness events to it.
+**Iteration:** 5
+**Scope:** add request-scoped correlation and migrate assignment-submission
+outcomes and persistence failures to the shared redacted logger.
 
 ## Executive summary
 
@@ -17,6 +17,8 @@ The repository already has the first production-fundamentals slice:
   log sampling and 1% trace sampling.
 - Application error capture currently uses the Sentry SDK packages in the
   browser and Worker.
+- Assignment submission saves now emit structured Better Stack/Cloudflare-ready
+  outcome events with request ID, status, duration, and stable error category.
 
 The operating decision for this roadmap is:
 
@@ -34,8 +36,9 @@ SDK is active; doing both would duplicate browser errors and page telemetry.
 The in-repo structured-logging baseline now has a shared server logger. It
 emits stable JSON fields to the Worker console and recursively redacts tokens,
 credentials, connection strings, cookies, email/phone values, request bodies,
-and raw error messages. The health and readiness endpoints are the first
-consumer; broader server-function migration remains intentionally incremental.
+and raw error messages. The health and readiness endpoints plus assignment
+submission persistence are consumers; broader server-function migration remains
+intentionally incremental.
 
 No secrets, account tokens, or account-specific URLs belong in this file or in
 the repository.
@@ -109,6 +112,31 @@ Validation for this iteration: focused health/logger tests (8 passing),
 TypeScript typecheck, and targeted Prettier checks pass. The full
 `bun run quality:gate` also passed after the local documentation stabilized;
 Notion synchronization completed afterward.
+
+## Iteration 5 — request correlation and assignment submission events
+
+This iteration migrated the next high-value server-function slice:
+
+- Added an ambient request context that derives correlation IDs from `cf-ray`,
+  `x-request-id`, or a generated UUID and preserves the outer ID through nested
+  request/function middleware.
+- Reused the request context in health/readiness code so request ID extraction
+  has one implementation.
+- Replaced assignment submission persistence `console.error` output with the
+  shared redacted logger. Successful saves and persistence failures now carry
+  `requestId`, `path`, `status`, `durationMs`, assignment/user IDs, and the
+  stable `submission_persistence` error category.
+- Expected authorization, not-found, and validation failures remain outside
+  this error event, avoiding noisy error logs for normal user input failures.
+
+Validation completed with focused request-context, health, and logger tests,
+targeted formatting, typecheck, `bun run quality:gate` (1,926 unit tests), and
+`bun run test:integration` (316 integration tests). The default `bun test`
+invocation is not the correct Cloudflare integration entrypoint because it does
+not load the integration config aliases; use the repository integration script
+for that lane. The next code slice is another high-value server-function
+family, likely enrollment or auth, after the assignment event shape is
+observed in Better Stack.
 
 ## Better Stack setup
 

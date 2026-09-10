@@ -52,6 +52,10 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `observability/logger.ts`: emits JSON server events at `info`, `warn`, or
     `error` level and recursively redacts sensitive fields before writing to
     the Worker console.
+  - `observability/request-context.ts`: keeps the Cloudflare/request
+    correlation ID available through nested request and server-function work;
+    it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is
+    present.
 
 - **Supabase utilities**
   - `supabase.ts`: server client (`@supabase/ssr`) and admin client.
