@@ -71,11 +71,9 @@ type MediaDialogProps = {
 async function resolveDocumentUrl(params: {
   docUpload: ReturnType<typeof useFileUpload>
   existingDocUrl: string | null
-  mode: MediaDialogMode
-  media: MediaLibraryRow | undefined
   currentUrl: string
 }) {
-  const { docUpload, existingDocUrl, mode, media, currentUrl } = params
+  const { docUpload, existingDocUrl, currentUrl } = params
 
   const preflight = preflightDocumentUrl({
     hasFile: Boolean(docUpload.fileObject),
@@ -160,8 +158,6 @@ async function resolveKindFileUrl(params: {
     return resolveDocumentUrl({
       docUpload: params.docUpload,
       existingDocUrl: params.existingDocUrl,
-      mode: params.mode,
-      media: params.media,
       currentUrl: value.url,
     })
   }

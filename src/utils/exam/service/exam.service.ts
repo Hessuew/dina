@@ -1,6 +1,5 @@
 import type {
   CreateExamInput,
-  DeleteQuestionInput,
   FinalizeGradingInput,
   GetAttemptForGradingInput,
   GetAttemptForTakingInput,
@@ -9,10 +8,9 @@ import type {
   ListAttemptsForGradingInput,
   PublishExamInput,
   SaveAnswerInput,
+  SaveExamChangesInput,
   StartAttemptInput,
   SubmitAttemptInput,
-  UpdateExamInput,
-  UpsertQuestionInput,
 } from '@/schemas/exam.schema'
 import type {
   ExamAnswerRow,
@@ -23,7 +21,6 @@ import type { StudentAttempt } from '@/utils/exam/domain/exam-redaction.domain'
 import {
   applyAutoGradeResults,
   countAttemptsByExam,
-  deleteQuestionById,
   findAllExams,
   findAnswerById,
   findAnswersByAttempt,
@@ -32,17 +29,16 @@ import {
   findAttemptsByStudent,
   findAttemptsForGrading,
   findExamById,
+  findExamTotalPointsMap,
   findPublishedExams,
   findQuestionsWithOptions,
   insertAttemptIfAbsent,
   insertExam,
-  insertQuestionWithOptions,
   markAttemptGraded,
   markAttemptSubmittedIfInProgress,
+  saveExamChanges,
   setExamStatus,
   updateAnswerGrade,
-  updateExamById,
-  updateQuestionWithOptions,
   upsertAnswer,
 } from '@/utils/exam/repository/exam.repository'
 import {
@@ -53,6 +49,7 @@ import {
   remainingMs,
 } from '@/utils/exam/domain/exam-timing.domain'
 import {
+  canAuthorEditExam,
   canEditExam,
   validateForPublish,
 } from '@/utils/exam/domain/exam-lifecycle.domain'
@@ -96,7 +93,7 @@ async function assertStudent(userId: string): Promise<void> {
   }
 }
 
-/** Loads an exam and asserts the caller may edit it: creator or admin, draft only. */
+/** Loads an exam and asserts the caller may edit it: creator or admin, draft only (or admin when published). */
 async function loadEditableExam(
   examId: string,
   userId: string,
@@ -109,7 +106,7 @@ async function loadEditableExam(
       'Only the exam creator or an admin can edit it',
     )
   }
-  if (!canEditExam(exam.status)) {
+  if (!canEditExam(exam.status, isAdmin)) {
     throw new ConflictError('A published exam can no longer be edited')
   }
   return exam
@@ -136,80 +133,42 @@ export async function createExamService(
   })
 }
 
-export async function updateExamService(
-  data: UpdateExamInput,
+export async function saveExamChangesService(
+  data: SaveExamChangesInput,
   userId: string,
-): Promise<ExamRow> {
+): Promise<void> {
   const exam = await loadEditableExam(data.examId, userId)
-  const opensAt =
-    data.opensAt !== undefined ? new Date(data.opensAt) : exam.opensAt
-  const closesAt =
-    data.closesAt !== undefined ? new Date(data.closesAt) : exam.closesAt
+  const opensAt = new Date(data.opensAt)
+  const closesAt = new Date(data.closesAt)
   if (closesAt.getTime() <= opensAt.getTime()) {
     throw new ValidationError('Close date must be after open date')
   }
-  const updated = await updateExamById(data.examId, {
-    ...(data.title !== undefined ? { title: data.title } : {}),
-    ...(data.durationMinutes !== undefined
-      ? { durationMinutes: data.durationMinutes }
-      : {}),
+  const result = await saveExamChanges({
+    examId: exam.id,
+    title: data.title,
+    durationMinutes: data.durationMinutes,
     opensAt,
     closesAt,
+    questions: data.questions.map((question) => ({
+      ...question,
+      points: question.points ?? 1,
+      options: question.options ?? [],
+    })),
+    deletedQuestionIds: data.deletedQuestionIds,
   })
-  if (!updated) throw new NotFoundError('Exam not found')
-  return updated
-}
-
-export async function upsertQuestionService(
-  data: UpsertQuestionInput,
-  userId: string,
-) {
-  await loadEditableExam(data.examId, userId)
-  const options = (data.options ?? []).map((option) => ({
-    label: option.label,
-    orderIndex: option.orderIndex,
-    isCorrect: option.isCorrect,
-  }))
-  if (data.questionId !== undefined) {
-    const updated = await updateQuestionWithOptions(
-      data.examId,
-      data.questionId,
-      {
-        type: data.type,
-        prompt: data.prompt,
-        orderIndex: data.orderIndex,
-        ...(data.points !== undefined ? { points: data.points } : {}),
-      },
-      options,
-    )
-    if (!updated) throw new NotFoundError('Question not found')
-    return updated
+  if (result.missingQuestionId) {
+    throw new NotFoundError('Question not found')
   }
-  return insertQuestionWithOptions(
-    {
-      examId: data.examId,
-      type: data.type,
-      prompt: data.prompt,
-      orderIndex: data.orderIndex,
-      ...(data.points !== undefined ? { points: data.points } : {}),
-    },
-    options,
-  )
-}
-
-export async function deleteQuestionService(
-  data: DeleteQuestionInput,
-  userId: string,
-): Promise<void> {
-  await loadEditableExam(data.examId, userId)
-  await deleteQuestionById(data.examId, data.questionId)
 }
 
 export async function publishExamService(
   data: PublishExamInput,
   userId: string,
 ): Promise<void> {
-  await loadEditableExam(data.examId, userId)
+  const exam = await loadEditableExam(data.examId, userId)
+  if (exam.status === 'published') {
+    throw new ConflictError('Exam is already published')
+  }
   const { questions, options } = await findQuestionsWithOptions(data.examId)
   const optionsByQuestion = new Map<string, Array<{ isCorrect: boolean }>>()
   for (const option of options) {
@@ -228,12 +187,16 @@ export async function getExamForAuthorService(
   data: GetExamInput,
   userId: string,
 ) {
-  await assertTeacherOrAdmin(userId)
+  const { isAdmin } = await assertTeacherOrAdmin(userId)
   const exam = await findExamById(data.examId)
   if (!exam) throw new NotFoundError('Exam not found')
   const { questions, options } = await findQuestionsWithOptions(data.examId)
   const attemptCount = await countAttemptsByExam(data.examId)
-  return { exam, questions, options, attemptCount }
+  const canEdit = canAuthorEditExam(exam.status, {
+    isAdmin,
+    isCreator: exam.createdBy === userId,
+  })
+  return { exam, questions, options, attemptCount, canEdit }
 }
 
 export async function getExamsForTeacherService(userId: string) {
@@ -245,7 +208,9 @@ export type StudentExamListItem = {
   exam: Pick<
     ExamRow,
     'id' | 'title' | 'durationMinutes' | 'opensAt' | 'closesAt'
-  >
+  > & {
+    totalPoints: number
+  }
   attempt: StudentAttempt | null
 }
 
@@ -257,6 +222,7 @@ export async function getExamsForStudentService(
     findPublishedExams(),
     findAttemptsByStudent(userId),
   ])
+  const pointsMap = await findExamTotalPointsMap(published.map((e) => e.id))
   const attemptByExam = new Map(attempts.map((a) => [a.examId, a]))
   const now = new Date()
   return published
@@ -276,6 +242,7 @@ export async function getExamsForStudentService(
           durationMinutes: exam.durationMinutes,
           opensAt: exam.opensAt,
           closesAt: exam.closesAt,
+          totalPoints: pointsMap.get(exam.id) ?? 0,
         },
         attempt: finalized,
       }
@@ -352,7 +319,7 @@ async function buildTakingPayload(
   return {
     attempt: redactAttemptForStudent(attempt),
     questions,
-    options: redactOptionsForStudent(options),
+    options: redactOptionsForStudent(options, attempt.status),
     answers: redactAnswersForStudent(answers, attempt.status),
     serverNow: new Date(),
   }
@@ -461,7 +428,12 @@ export async function listAttemptsForGradingService(
   await assertTeacherOrAdmin(userId)
   const attempts = await findAttemptsForGrading(data.examId)
   const now = new Date()
-  return Promise.all(attempts.map((attempt) => finalizeIfExpired(attempt, now)))
+  return Promise.all(
+    attempts.map(async ({ studentName, ...attempt }) => ({
+      ...(await finalizeIfExpired(attempt, now)),
+      studentName,
+    })),
+  )
 }
 
 export async function getAttemptForGradingService(

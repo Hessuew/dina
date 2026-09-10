@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import heroEmblem from '@/assets/images/bg/logo.webp'
 import { LayoutDashboard } from '@/components/animate-ui/icons/layout-dashboard'
 import { ClipboardList } from '@/components/animate-ui/icons/clipboard-list'
+import { BadgeCheck } from '@/components/animate-ui/icons/badge-check'
 import { CalendarCheckIcon } from '@/components/animate-ui/icons/calendar-check'
 import { MessageSquare } from '@/components/animate-ui/icons/message-square'
 import { LayersIcon } from '@/components/animate-ui/icons/layers'
@@ -63,6 +64,11 @@ const navItems: Array<NavItem> = [
     title: 'Assignments',
     url: '/assignments',
     icon: ClipboardList,
+  },
+  {
+    title: 'Exams',
+    url: '/exams',
+    icon: BadgeCheck,
   },
   {
     title: 'Calendar',

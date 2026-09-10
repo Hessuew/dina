@@ -2,7 +2,6 @@ import { createServerFn } from '@tanstack/react-start'
 import { getCurrentUser } from '@/utils/auth/auth'
 import {
   createExamSchema,
-  deleteQuestionSchema,
   finalizeGradingSchema,
   getAttemptForGradingSchema,
   getAttemptForTakingSchema,
@@ -11,14 +10,12 @@ import {
   listAttemptsForGradingSchema,
   publishExamSchema,
   saveAnswerSchema,
+  saveExamChangesSchema,
   startAttemptSchema,
   submitAttemptSchema,
-  updateExamSchema,
-  upsertQuestionSchema,
 } from '@/schemas/exam.schema'
 import {
   createExamService,
-  deleteQuestionService,
   finalizeGradingService,
   getAttemptForGradingService,
   getAttemptForTakingService,
@@ -29,10 +26,9 @@ import {
   listAttemptsForGradingService,
   publishExamService,
   saveAnswerService,
+  saveExamChangesService,
   startAttemptService,
   submitAttemptService,
-  updateExamService,
-  upsertQuestionService,
 } from '@/utils/exam/service/exam.service'
 
 export const createExam = createServerFn({ method: 'POST' })
@@ -42,32 +38,18 @@ export const createExam = createServerFn({ method: 'POST' })
     return createExamService(data, user.id)
   })
 
-export const updateExam = createServerFn({ method: 'POST' })
-  .inputValidator(updateExamSchema)
-  .handler(async ({ data }) => {
-    const user = await getCurrentUser()
-    return updateExamService(data, user.id)
-  })
-
-export const upsertExamQuestion = createServerFn({ method: 'POST' })
-  .inputValidator(upsertQuestionSchema)
-  .handler(async ({ data }) => {
-    const user = await getCurrentUser()
-    return upsertQuestionService(data, user.id)
-  })
-
-export const deleteExamQuestion = createServerFn({ method: 'POST' })
-  .inputValidator(deleteQuestionSchema)
-  .handler(async ({ data }) => {
-    const user = await getCurrentUser()
-    return deleteQuestionService(data, user.id)
-  })
-
 export const publishExam = createServerFn({ method: 'POST' })
   .inputValidator(publishExamSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return publishExamService(data, user.id)
+  })
+
+export const saveExamChanges = createServerFn({ method: 'POST' })
+  .inputValidator(saveExamChangesSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    return saveExamChangesService(data, user.id)
   })
 
 export const getExamForAuthor = createServerFn({ method: 'GET' })

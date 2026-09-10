@@ -22,6 +22,7 @@ export type TakingOption = {
   id: string
   questionId: string
   label: string
+  isCorrect?: boolean
 }
 
 export type TakingAttempt = {
@@ -34,9 +35,12 @@ export type TakingAttempt = {
 }
 
 export type TakingAnswer = {
+  id: string
   questionId: string
   selectedOptionId: string | null
   textAnswer: string | null
+  isCorrect: boolean | null
+  awardedPoints: number | null
 }
 
 type ExamTakingViewProps = {
@@ -70,6 +74,9 @@ export function ExamTakingView({
         maxScore={questions.reduce((sum, q) => sum + q.points, 0)}
         timedOut={expired}
         onRefresh={() => void router.invalidate()}
+        questions={questions}
+        options={options}
+        answers={answers}
       />
     )
   }

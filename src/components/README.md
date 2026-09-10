@@ -34,7 +34,8 @@ This folder contains:
       multi-file selections, validates PDFs locally through lazy-loaded PDF.js, reviews titles and
       duplicates, then uploads at most three files concurrently through existing private media APIs.
   - `card/`: card-style feature components.
-  - `view/`: composite “page section” components for feature pages. Includes `students-view/StudentAttendanceDetail` — Course Teacher/Admin Present override toggles on student detail (list popover stays read-only).
+  - `view/`: composite “page section” components for feature pages. Includes `exams-view/` with `ExamInstructionsBanner` and student/teacher list components.
+  - `exam/`: exam authoring editor (`exam-editor/`), student taking interface (`exam-taking/`), and teacher grading (`exam-grading/`).
   - `landing/`: public landing page sections.
 
 ## Key Invariants / Assumptions

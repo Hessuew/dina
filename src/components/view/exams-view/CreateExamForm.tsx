@@ -17,7 +17,7 @@ export function CreateExamForm() {
   const navigate = useNavigate()
   const initial = defaultWindow()
   const [title, setTitle] = useState('')
-  const [durationMinutes, setDurationMinutes] = useState(30)
+  const [durationMinutes, setDurationMinutes] = useState(45)
   const [opensAt, setOpensAt] = useState(toDatetimeLocalValue(initial.opens))
   const [closesAt, setClosesAt] = useState(toDatetimeLocalValue(initial.closes))
 

@@ -1,55 +1,21 @@
-import { useState } from 'react'
-import { useRouter } from '@tanstack/react-router'
-import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
+import type { ExamMetaDraft } from '@/components/exam/exam-editor/exam-editor.domain'
 import { Input } from '@/components/ui/input'
-import { useMutation } from '@/hooks/useMutation'
-import { updateExam } from '@/utils/exam'
-import { toDatetimeLocalValue } from '@/utils/datetime'
 
-export type MetaExam = {
-  id: string
-  title: string
-  durationMinutes: number
-  opensAt: Date
-  closesAt: Date
-}
-
-export function ExamMetaForm({ exam }: { exam: MetaExam }) {
-  const router = useRouter()
-  const [title, setTitle] = useState(exam.title)
-  const [durationMinutes, setDurationMinutes] = useState(exam.durationMinutes)
-  const [opensAt, setOpensAt] = useState(toDatetimeLocalValue(exam.opensAt))
-  const [closesAt, setClosesAt] = useState(toDatetimeLocalValue(exam.closesAt))
-
-  const updateMutation = useMutation({
-    fn: updateExam,
-    onSuccess: async () => {
-      toast.success('Exam updated')
-      await router.invalidate()
-    },
-  })
-
+export function ExamMetaForm({
+  draft,
+  onChange,
+}: {
+  draft: ExamMetaDraft
+  onChange: (draft: ExamMetaDraft) => void
+}) {
   return (
-    <form
-      className="flex flex-wrap items-end gap-3 border border-[#1A1A1A]/10 bg-white/70 p-5"
-      onSubmit={(event) => {
-        event.preventDefault()
-        void updateMutation.mutate({
-          data: {
-            examId: exam.id,
-            title,
-            durationMinutes,
-            opensAt: new Date(opensAt).toISOString(),
-            closesAt: new Date(closesAt).toISOString(),
-          },
-        })
-      }}
-    >
+    <div className="flex flex-wrap items-end gap-3 border border-[#1A1A1A]/10 bg-white/70 p-5">
       <MetaField label="Title">
         <Input
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
+          value={draft.title}
+          onChange={(event) =>
+            onChange({ ...draft, title: event.target.value })
+          }
           required
           className="w-56"
         />
@@ -58,25 +24,20 @@ export function ExamMetaForm({ exam }: { exam: MetaExam }) {
         <Input
           type="number"
           min={1}
-          value={durationMinutes}
-          onChange={(event) => setDurationMinutes(Number(event.target.value))}
+          value={draft.durationMinutes}
+          onChange={(event) =>
+            onChange({ ...draft, durationMinutes: Number(event.target.value) })
+          }
           className="w-28"
         />
       </MetaField>
       <MetaWindowFields
-        opensAt={opensAt}
-        closesAt={closesAt}
-        onOpensAtChange={setOpensAt}
-        onClosesAtChange={setClosesAt}
+        opensAt={draft.opensAt}
+        closesAt={draft.closesAt}
+        onOpensAtChange={(opensAt) => onChange({ ...draft, opensAt })}
+        onClosesAtChange={(closesAt) => onChange({ ...draft, closesAt })}
       />
-      <Button
-        type="submit"
-        variant="outline"
-        disabled={updateMutation.isPending}
-      >
-        {updateMutation.isPending ? 'Saving…' : 'Save details'}
-      </Button>
-    </form>
+    </div>
   )
 }
 
@@ -98,6 +59,7 @@ function MetaWindowFields({
           type="datetime-local"
           value={opensAt}
           onChange={(event) => onOpensAtChange(event.target.value)}
+          required
         />
       </MetaField>
       <MetaField label="Closes">
@@ -105,6 +67,7 @@ function MetaWindowFields({
           type="datetime-local"
           value={closesAt}
           onChange={(event) => onClosesAtChange(event.target.value)}
+          required
         />
       </MetaField>
     </>

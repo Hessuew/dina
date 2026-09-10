@@ -6,7 +6,7 @@
 ## Context
 
 The portal needs timed exams: a teacher/admin authors an exam with a start window
-(`opensAt`–`closesAt`), a student starts it once and gets a fixed duration (default 30
+(`opensAt`–`closesAt`), a student starts it once and gets a fixed duration (default 45
 minutes). The timer must survive tab closes and reconnects, students must not be able to
 extend it from the client, correct answers must never reach the student, and the app runs
 on Cloudflare Workers, so there is no long-lived process or cron to close out expired
@@ -21,7 +21,7 @@ attempts.
    returned with the taking payload. Later exam edits can never move a live deadline.
 2. **Per-answer upsert is the durable state of record.** Every answer change is upserted
    server-side keyed by unique `(attemptId, questionId)`. There is no client-held draft:
-   closing the tab loses nothing, and at the deadline the saved answers simply *are* the
+   closing the tab loses nothing, and at the deadline the saved answers simply _are_ the
    submission.
 3. **30-second late-save grace.** Saves and submits are accepted until
    `deadlineAt + SAVE_GRACE_MS` (30 s) to absorb network latency on the final autosave;

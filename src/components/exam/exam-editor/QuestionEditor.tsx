@@ -1,23 +1,14 @@
-import { useState } from 'react'
-import { useRouter } from '@tanstack/react-router'
-import { toast } from 'sonner'
-import type { OptionDraft } from '@/components/exam/exam-editor/McOptionsEditor'
 import type {
   ExamQuestionType,
   ExamStatus,
 } from '@/utils/exam/domain/exam-lifecycle.domain'
+import type { OptionDraft } from '@/components/exam/exam-editor/McOptionsEditor'
+import type { QuestionEditorDraft } from '@/components/exam/exam-editor/question-editor.domain'
+import { questionEditorMode } from '@/components/exam/exam-editor/question-editor.domain'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { useMutation } from '@/hooks/useMutation'
-import { deleteExamQuestion, upsertExamQuestion } from '@/utils/exam'
 import { McOptionsEditor } from '@/components/exam/exam-editor/McOptionsEditor'
-import {
-  buildUpsertQuestionInput,
-  initialQuestionEditorState,
-  questionSaveButtonLabel,
-  questionSavedMessage,
-} from '@/components/exam/exam-editor/question-editor.domain'
 
 export type EditorExam = {
   id: string
@@ -44,118 +35,95 @@ export type EditorOption = {
 }
 
 type QuestionEditorProps = {
-  examId: string
-  question: EditorQuestion | null
-  options: Array<EditorOption>
+  question: QuestionEditorDraft
   orderIndex: number
   readOnly: boolean
+  onChange: (question: QuestionEditorDraft) => void
+  onDelete: () => void
 }
 
 export function QuestionEditor({
-  examId,
   question,
-  options,
   orderIndex,
   readOnly,
+  onChange,
+  onDelete,
 }: QuestionEditorProps) {
-  const initial = initialQuestionEditorState(question, options, readOnly)
-  const [type, setType] = useState(initial.type)
-  const [prompt, setPrompt] = useState(initial.prompt)
-  const [points, setPoints] = useState(initial.points)
-  const [optionDrafts, setOptionDrafts] = useState<Array<OptionDraft>>(
-    initial.optionDrafts,
+  const { isNew, typeLocked } = questionEditorMode(
+    question.questionId,
+    readOnly,
   )
-  const { save, saving } = useQuestionSave({
-    examId,
-    questionId: initial.questionId,
-    type,
-    prompt,
-    orderIndex,
-    points,
-    optionDrafts,
-  })
+  const update = (changes: Partial<QuestionEditorDraft>) =>
+    onChange({ ...question, ...changes })
 
   return (
     <div className="space-y-4 border border-[#1A1A1A]/10 bg-white/70 p-5">
       <QuestionEditorHeader
         orderIndex={orderIndex}
-        isNew={initial.isNew}
-        type={type}
-        onTypeChange={setType}
-        readOnly={initial.typeLocked}
+        isNew={isNew}
+        type={question.type}
+        onTypeChange={(type) => update({ type })}
+        readOnly={typeLocked}
       />
       <Textarea
-        value={prompt}
-        onChange={(event) => setPrompt(event.target.value)}
+        value={question.prompt}
+        onChange={(event) => update({ prompt: event.target.value })}
         placeholder="Question prompt"
         disabled={readOnly}
       />
-      {type === 'multiple_choice' && (
-        <McOptionsEditor
-          options={optionDrafts}
-          onChange={setOptionDrafts}
-          readOnly={readOnly}
-        />
-      )}
-      {!readOnly && (
-        <QuestionEditorFooter
-          examId={examId}
-          questionId={initial.questionId}
-          points={points}
-          onPointsChange={setPoints}
-          onSave={save}
-          saving={saving}
-        />
-      )}
+      <QuestionEditorOptions
+        question={question}
+        orderIndex={orderIndex}
+        readOnly={readOnly}
+        onChange={(optionDrafts) => update({ optionDrafts })}
+      />
+      <QuestionEditorFooter
+        questionId={question.questionId}
+        points={question.points}
+        readOnly={readOnly}
+        onPointsChange={(points) => update({ points })}
+        onDelete={onDelete}
+      />
     </div>
   )
 }
 
-function useQuestionSave(draft: {
-  examId: string
-  questionId: string | null
-  type: ExamQuestionType
-  prompt: string
+function QuestionEditorOptions({
+  question,
+  orderIndex,
+  readOnly,
+  onChange,
+}: {
+  question: QuestionEditorDraft
   orderIndex: number
-  points: number
-  optionDrafts: Array<OptionDraft>
+  readOnly: boolean
+  onChange: (options: Array<OptionDraft>) => void
 }) {
-  const router = useRouter()
-  const saveMutation = useMutation({
-    fn: upsertExamQuestion,
-    onSuccess: async () => {
-      toast.success(questionSavedMessage(draft.questionId !== null))
-      await router.invalidate()
-    },
-  })
-  const save = () =>
-    saveMutation.mutate({ data: buildUpsertQuestionInput(draft) })
-  return { save, saving: saveMutation.isPending }
+  if (question.type !== 'multiple_choice') return null
+  return (
+    <McOptionsEditor
+      options={question.optionDrafts}
+      optionGroupName={`correct-option-${question.questionId ?? `new-${orderIndex}`}`}
+      onChange={onChange}
+      readOnly={readOnly}
+    />
+  )
 }
 
 function QuestionEditorFooter({
-  examId,
   questionId,
   points,
+  readOnly,
   onPointsChange,
-  onSave,
-  saving,
+  onDelete,
 }: {
-  examId: string
   questionId: string | null
   points: number
+  readOnly: boolean
   onPointsChange: (points: number) => void
-  onSave: () => void
-  saving: boolean
+  onDelete: () => void
 }) {
-  const router = useRouter()
-  const deleteMutation = useMutation({
-    fn: deleteExamQuestion,
-    onSuccess: async () => {
-      toast.success('Question deleted')
-      await router.invalidate()
-    },
-  })
+  if (readOnly) return null
   return (
     <div className="flex items-center gap-3">
       <label className="flex items-center gap-2 text-xs text-[#8E816D]">
@@ -168,21 +136,9 @@ function QuestionEditorFooter({
           className="w-20"
         />
       </label>
-      <Button size="sm" onClick={onSave} disabled={saving}>
-        {questionSaveButtonLabel(questionId !== null)}
+      <Button size="sm" variant="ghost" type="button" onClick={onDelete}>
+        {questionId === null ? 'Remove' : 'Delete'}
       </Button>
-      {questionId !== null && (
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={deleteMutation.isPending}
-          onClick={() =>
-            deleteMutation.mutate({ data: { examId, questionId } })
-          }
-        >
-          Delete
-        </Button>
-      )}
     </div>
   )
 }

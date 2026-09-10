@@ -552,12 +552,10 @@ function LessonsSection({
 
 function CourseMainColumn({
   course,
-  role,
   permissions,
   assignmentData,
 }: {
   course: CourseDetailSectionsProps['course']
-  role: CourseDetailSectionsProps['role']
   permissions: CoursePermissions
   assignmentData: CourseDetailSectionsProps['assignmentData']
 }) {
@@ -630,7 +628,6 @@ export function CourseDetailSections(props: CourseDetailSectionsProps) {
     <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <CourseMainColumn
         course={props.course}
-        role={props.role}
         permissions={props.permissions}
         assignmentData={props.assignmentData}
       />
