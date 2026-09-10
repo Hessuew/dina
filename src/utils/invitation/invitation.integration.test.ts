@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { EmailSender } from '@/utils/email/types'
 import {
   checkInvitationByEmailService,
@@ -34,8 +34,13 @@ beforeEach(() => {
   setEmailSender(sender)
 })
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 describe('createInvitationService (integration)', () => {
   it('admin creates → pending row inserted with 7-day expiry, email sent', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
 
     const before = Date.now()
@@ -57,6 +62,22 @@ describe('createInvitationService (integration)', () => {
 
     const row = await findInvitationByEmail('new@test.dev')
     expect(row?.id).toBe(invitation.id)
+
+    const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'invitation_created',
+          path: 'serverFn:createInvitation',
+          status: 'success',
+          actorId: adminId,
+          invitationId: invitation.id,
+          role: 'teacher',
+        }),
+      ]),
+    )
+    expect(JSON.stringify(events)).not.toContain('new@test.dev')
+    expect(JSON.stringify(events)).not.toContain(invitation.token)
   })
 
   it('rejects a non-admin caller without sending email', async () => {
@@ -97,6 +118,7 @@ describe('createInvitationService (integration)', () => {
   })
 
   it('rolls back the inserted row when the email fails to send', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     mocks.sendEmail.mockResolvedValue({ error: { message: 'smtp down' } })
 
@@ -108,6 +130,21 @@ describe('createInvitationService (integration)', () => {
     ).rejects.toMatchObject({ code: 'EMAIL_SEND_FAILED', status: 500 })
 
     expect(await findInvitationByEmail('rollback@test.dev')).toBeUndefined()
+
+    const events = errorSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'invitation_create_failed',
+          path: 'serverFn:createInvitation',
+          status: 'failure',
+          actorId: adminId,
+          errorCategory: 'invitation_email_delivery',
+        }),
+      ]),
+    )
+    expect(JSON.stringify(events)).not.toContain('smtp down')
+    expect(JSON.stringify(events)).not.toContain('rollback@test.dev')
   })
 })
 
@@ -213,6 +250,7 @@ describe('getInvitationsService (integration)', () => {
 
 describe('revokeInvitationService (integration)', () => {
   it('admin revokes → status becomes revoked', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const { id } = await seedInvitation({ status: 'pending' })
 
@@ -220,6 +258,19 @@ describe('revokeInvitationService (integration)', () => {
 
     const row = await findInvitationById(id)
     expect(row?.status).toBe('revoked')
+
+    const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'invitation_revoked',
+          path: 'serverFn:revokeInvitation',
+          status: 'success',
+          actorId: adminId,
+          invitationId: id,
+        }),
+      ]),
+    )
   })
 
   it('rejects a non-admin caller', async () => {
@@ -234,12 +285,26 @@ describe('revokeInvitationService (integration)', () => {
 
 describe('deleteInvitationService (integration)', () => {
   it('admin deletes → row removed', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const { id } = await seedInvitation()
 
     await deleteInvitationService({ id }, adminId)
 
     expect(await findInvitationById(id)).toBeUndefined()
+
+    const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'invitation_deleted',
+          path: 'serverFn:deleteInvitation',
+          status: 'success',
+          actorId: adminId,
+          invitationId: id,
+        }),
+      ]),
+    )
   })
 
   it('rejects a non-admin caller', async () => {
@@ -254,6 +319,7 @@ describe('deleteInvitationService (integration)', () => {
 
 describe('resendInvitationService (integration)', () => {
   it('admin resends → new token issued and email sent', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const { id, token: oldToken } = await seedInvitation({ status: 'pending' })
 
@@ -262,6 +328,20 @@ describe('resendInvitationService (integration)', () => {
     const row = await findInvitationById(id)
     expect(row?.token).not.toBe(oldToken)
     expect(mocks.sendEmail).toHaveBeenCalledOnce()
+
+    const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'invitation_resent',
+          path: 'serverFn:resendInvitation',
+          status: 'success',
+          actorId: adminId,
+          invitationId: id,
+          role: 'student',
+        }),
+      ]),
+    )
   })
 
   it('admin resends an expired pending invitation → expiry renewed', async () => {
@@ -280,6 +360,7 @@ describe('resendInvitationService (integration)', () => {
   })
 
   it('reverts to the old token when the email fails to send', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const { id, token: oldToken } = await seedInvitation({ status: 'pending' })
     mocks.sendEmail.mockResolvedValue({ error: { message: 'smtp down' } })
@@ -290,6 +371,21 @@ describe('resendInvitationService (integration)', () => {
 
     const row = await findInvitationById(id)
     expect(row?.token).toBe(oldToken)
+
+    const events = errorSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'invitation_resend_failed',
+          path: 'serverFn:resendInvitation',
+          status: 'failure',
+          actorId: adminId,
+          invitationId: id,
+          errorCategory: 'invitation_email_delivery',
+        }),
+      ]),
+    )
+    expect(JSON.stringify(events)).not.toContain('smtp down')
   })
 
   it('throws when the invitation does not exist', async () => {

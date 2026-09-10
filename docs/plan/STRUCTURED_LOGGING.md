@@ -42,6 +42,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `staff_privilege_updated` audit events with request correlation, actor and
    target IDs, privilege, grant direction, status, and duration; persistence
    failures use `staff_privilege_update_failed` with a stable category.
+   Admin invitation creation and resend now emit redacted
+   `invitation_created` / `invitation_resent` events and stable delivery or
+   persistence failures; revoke and delete emit audit events. Actor and
+   invitation IDs plus role are safe fields, while email addresses, tokens,
+   and provider messages are excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 17
-**Scope:** add request-correlated redacted audit telemetry for Admin
-staff-privilege grants and revokes.
+**Iteration:** 18
+**Scope:** add request-correlated redacted telemetry for Admin invitation
+creation, resend, revoke, and delete operations.
 
 ## Executive summary
 
@@ -53,6 +53,11 @@ The repository already has the first production-fundamentals slice:
 - Admin staff-privilege grants and revokes now emit redacted audit events with
   request correlation, actor/target IDs, privilege name, grant direction,
   duration, and a stable persistence-failure category.
+- Admin invitation creation and resend now emit redacted success and email
+  delivery-failure events with request correlation, actor/invitation IDs, role,
+  duration, and stable error categories. Revoke and delete operations emit the
+  same audit shape, and invitation email addresses, tokens, and provider error
+  text remain excluded.
 
 The operating decision for this roadmap is:
 
@@ -436,6 +441,29 @@ This iteration completed one security-sensitive structured-logging slice:
 
 Validation for this iteration: the focused staff-privilege integration suite
 passed all 4 tests. Better Stack destination, dashboard, alert, and source-map
+verification remain pending external account setup.
+
+## Iteration 18 — invitation lifecycle telemetry
+
+This iteration completed the next high-value server-function slice:
+
+- Admin invitation creation now emits `invitation_created` after the database
+  row and email delivery succeed. Persistence and delivery failures emit
+  `invitation_create_failed` with stable categories, while the existing row
+  rollback remains unchanged.
+- Invitation resend now emits `invitation_resent` or
+  `invitation_resend_failed`; token rotation and rollback behavior remain
+  unchanged.
+- Invitation revoke and delete operations now emit success audit events and
+  stable persistence-failure events.
+- Every event carries `requestId`, the server-function path, outcome status,
+  duration, actor/invitation identifiers, and role when available. Email
+  addresses, invitation tokens, and raw provider error text are excluded.
+- Integration coverage verifies success and delivery-failure event shapes,
+  request-safe fields, and redaction for create, resend, revoke, and delete.
+
+Validation for this iteration: the focused invitation integration suite passed
+all 25 tests. Better Stack destination, dashboard, alert, and source-map
 verification remain pending external account setup.
 
 ## Better Stack setup
