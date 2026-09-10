@@ -40,6 +40,7 @@ describe('analytics boundary', () => {
       trackCourseStarted,
       trackAnalyticsEvent,
       trackAssignmentSubmitted,
+      trackTeacherReviewCompleted,
     } = await import('./analytics')
 
     expect(initializeAnalytics()).toBe(true)
@@ -47,6 +48,9 @@ describe('analytics boundary', () => {
     identifyAnalyticsUser({ id: 'user-1', role: 'student' })
     expect(trackCourseStarted('course-1')).toBe(true)
     expect(trackAssignmentSubmitted('assignment-1')).toBe(true)
+    expect(trackTeacherReviewCompleted('assignment-1', 'submission-1')).toBe(
+      true,
+    )
     expect(
       trackAnalyticsEvent('enrollment_submitted', {
         source: 'public_enrollment_form',
@@ -73,6 +77,10 @@ describe('analytics boundary', () => {
     })
     expect(posthog.capture).toHaveBeenCalledWith('enrollment_submitted', {
       source: 'public_enrollment_form',
+    })
+    expect(posthog.capture).toHaveBeenCalledWith('teacher_review_completed', {
+      assignmentId: 'assignment-1',
+      submissionId: 'submission-1',
     })
     expect(posthog.reset).toHaveBeenCalledOnce()
   })

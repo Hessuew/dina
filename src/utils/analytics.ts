@@ -79,3 +79,14 @@ export function trackAssignmentSubmitted(assignmentId: string): boolean {
 export function trackCourseStarted(courseId: string): boolean {
   return trackAnalyticsEvent('course_started', { courseId })
 }
+
+/** Captures a completed teacher review without including grade or feedback. */
+export function trackTeacherReviewCompleted(
+  assignmentId: string,
+  submissionId: string,
+): boolean {
+  return trackAnalyticsEvent('teacher_review_completed', {
+    assignmentId,
+    submissionId,
+  })
+}

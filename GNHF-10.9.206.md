@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 25
-**Scope:** instrument the student course-start PostHog event.
+**Iteration:** 26
+**Scope:** instrument the teacher-review PostHog event.
 
 ## Executive summary
 
@@ -87,6 +87,26 @@ The repository already has the first production-fundamentals slice:
 - The course detail route now emits `course_started` when a student opens the
   first unfinished published lesson. The event carries only the stable course
   ID; lesson content and titles remain outside analytics.
+- A successful teacher grading mutation now emits
+  `teacher_review_completed` with stable assignment and submission IDs only;
+  grade and feedback content remain outside analytics.
+
+## Iteration 26 — teacher review product analytics
+
+This iteration completed the next independently verifiable PostHog journey
+slice:
+
+- Added `trackTeacherReviewCompleted` to the typed browser analytics boundary.
+- Emit `teacher_review_completed` only after `gradeSubmission` succeeds.
+- Send only `assignmentId` and `submissionId`; grade, feedback, student email,
+  and other submission content are not sent.
+- Updated the PostHog and observability plans with the new event and remaining
+  gaps.
+
+Validation for this iteration: the focused analytics suite, quality gate, and
+production build should pass. The next remaining product-analytics gaps are
+external PostHog project/dashboard verification, lesson completion when a
+reliable completion action exists, and course completion.
 
 The operating decision for this roadmap is:
 

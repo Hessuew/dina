@@ -1,6 +1,6 @@
 # PostHog Product Analytics
 
-**Status:** Foundation implemented; enrollment, assignment submission, and course start instrumented
+**Status:** Foundation implemented; enrollment, assignment submission, course start, and teacher review instrumented
 
 ## Purpose
 
@@ -43,5 +43,7 @@ assignment detail route now emits `assignment_submitted` only after a successful
 submit mutation; draft saves do not emit it, and the event carries only the
 stable assignment ID. A student opening the first unfinished published lesson
 from a course detail page now emits `course_started` with only the stable course
-ID. Lesson completion, teacher review, course completion, and verification in
-the configured PostHog project remain pending.
+ID. A successful teacher grading mutation now emits
+`teacher_review_completed` with only stable assignment and submission IDs;
+grade and feedback content remain outside analytics. Lesson completion, course
+completion, and verification in the configured PostHog project remain pending.

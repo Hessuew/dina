@@ -32,10 +32,10 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   - Workers deployment via `wrangler deploy`
 - **Admin observability hub:** `/admin/observability` is admin-only and links to configured Better Stack, Cloudflare, Supabase, and Notion operating surfaces.
 - **PostHog foundation:** optional browser-only initialization is wired from the
-  root route with stable user-ID/role identification. Enrollment and assignment
-  submission events are instrumented; course progression and project
-  verification remain pending. Autocapture and session recording remain
-  disabled by default.
+  root route with stable user-ID/role identification. Enrollment, assignment
+  submission, course start, and teacher review events are instrumented; lesson
+  completion, course completion, and project verification remain pending.
+  Autocapture and session recording remain disabled by default.
 
 ### Not Yet Implemented ❌
 
@@ -178,7 +178,10 @@ privacy-safe success events after their server mutations resolve. Assignment
 draft saves do not count as submissions, and neither event includes free-form
 application or assignment content. A student opening the first unfinished
 published lesson from a course detail page now emits `course_started` with only
-the course ID. Lesson completion and later course milestones remain pending.
+the course ID. A successful teacher grading mutation emits
+`teacher_review_completed` with only assignment and submission IDs; grade and
+feedback content remain excluded. Lesson completion and later course
+milestones remain pending.
 
 #### 1.3 Set Up Slack Workspace
 

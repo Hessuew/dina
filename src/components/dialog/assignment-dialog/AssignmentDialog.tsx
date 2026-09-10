@@ -47,6 +47,7 @@ import {
   gradeSubmission,
   updateAssignment,
 } from '@/utils/assignments/assignments'
+import { trackTeacherReviewCompleted } from '@/utils/analytics'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 
 type AssignmentDialogProps = {
@@ -293,9 +294,13 @@ const GradeSubmissionDialog = withForm({
 function useAssignmentMutations({
   onOpenChange,
   onDeleteSuccess,
+  assignmentId,
+  submissionId,
 }: {
   onOpenChange: (open: boolean) => void
   onDeleteSuccess?: () => void
+  assignmentId?: string
+  submissionId?: string
 }) {
   const router = useRouter()
   const entityMutations = useEntityMutation({
@@ -317,6 +322,9 @@ function useAssignmentMutations({
     fn: gradeSubmission,
     onSuccess: async () => {
       toast.success('Submission graded successfully!')
+      if (assignmentId && submissionId) {
+        trackTeacherReviewCompleted(assignmentId, submissionId)
+      }
       onOpenChange(false)
       await router.invalidate()
     },
@@ -385,7 +393,12 @@ function useAssignmentDialog({
   submission,
   onDeleteSuccess,
 }: AssignmentDialogProps) {
-  const mutations = useAssignmentMutations({ onOpenChange, onDeleteSuccess })
+  const mutations = useAssignmentMutations({
+    onOpenChange,
+    onDeleteSuccess,
+    assignmentId: assignment?.id,
+    submissionId: submission?.id,
+  })
   const forms = useAssignmentForms({
     open,
     mode,
