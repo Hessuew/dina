@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 10
-**Scope:** continue request-correlated structured logging by migrating
-enrollment evaluation mutations to the shared redacted logger.
+**Iteration:** 12
+**Scope:** continue request-correlated structured logging by migrating student
+exam-attempt submission to the shared redacted logger.
 
 ## Executive summary
 
@@ -29,6 +29,10 @@ The repository already has the first production-fundamentals slice:
 - Enrollment evaluation score, admission-category, and note mutations now emit
   one redacted completion event shape with request correlation, status, duration,
   enrollment/evaluator identifiers, action path, and field type.
+- Student exam-attempt submission now emits redacted completion, idempotent
+  no-op, and unexpected-finalization failure events with request correlation,
+  outcome status, duration, attempt/exam/student identifiers, and submission
+  mode. Answer text and scores are excluded.
 
 The operating decision for this roadmap is:
 
@@ -271,6 +275,28 @@ storage unit tests (5), full unit tests (1,926), full integration tests (324),
 `bun run quality:gate`, and `bun run build` passed. Notion Architecture
 Inventory, Service Catalog, Observability, and Engineering Roadmap records were
 synchronized; external Better Stack destination verification remains pending.
+
+## Iteration 12 — exam attempt submission structured events
+
+This iteration completed the next high-value student workflow slice in the
+shared logger:
+
+- Successful student exam submission emits `exam_attempt_submitted` with
+  request ID, server-function path, final attempt status, duration, attempt/
+  exam/student identifiers, and whether the submission was manual or caused by
+  the deadline.
+- Repeated submission of an already finalized attempt emits
+  `exam_attempt_submission_ignored` with `already_finalized` status, making
+  idempotent client retries visible without treating them as failures.
+- Unexpected errors during auto-grading/finalization emit
+  `exam_attempt_submission_failed` with a stable error category. Expected
+  authorization, not-found, and validation errors remain outside noisy logs.
+- Answer text and score values are never copied into telemetry.
+
+Validation: the exam integration suite verifies event shape, request path,
+duration, idempotent retry visibility, and answer redaction. Better Stack
+destination, dashboard, alert, and source-map checks remain pending external
+account setup.
 
 ## Better Stack setup
 

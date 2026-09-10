@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { getDb } from 'test/integration/db'
 import {
@@ -313,6 +313,10 @@ describe('exam authoring (integration)', () => {
 })
 
 describe('exam taking (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('starts within the window with a correct deadline; restart resumes the same attempt', async () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const studentId = await seedProfile({ role: 'student' })
@@ -457,6 +461,7 @@ describe('exam taking (integration)', () => {
   })
 
   it('submit auto-grades multiple choice and double submit is idempotent', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const teacherId = await seedProfile({ role: 'teacher' })
     const studentId = await seedProfile({ role: 'student' })
     const { examId, mcQuestionId, correctOptionId, openQuestionId } =
@@ -493,6 +498,41 @@ describe('exam taking (integration)', () => {
       .from(examAttempts)
       .where(eq(examAttempts.id, payload.attempt.id))
     expect(row.autoScore).toBe(2)
+
+    const events = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) =>
+        [
+          'exam_attempt_submitted',
+          'exam_attempt_submission_ignored',
+          'exam_attempt_submission_failed',
+        ].includes(String(entry.event)),
+      )
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'exam_attempt_submitted',
+          path: 'serverFn:submitExamAttempt',
+          status: 'submitted',
+          attemptId: payload.attempt.id,
+          examId,
+          studentId,
+          submissionMode: 'manual',
+        }),
+        expect.objectContaining({
+          event: 'exam_attempt_submission_ignored',
+          path: 'serverFn:submitExamAttempt',
+          status: 'already_finalized',
+          attemptId: payload.attempt.id,
+          examId,
+          studentId,
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(events.every((event) => !('textAnswer' in event))).toBe(true)
   })
 })
 

@@ -12,6 +12,7 @@ import type {
   StartAttemptInput,
   SubmitAttemptInput,
 } from '@/schemas/exam.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import type {
   ExamAnswerRow,
   ExamAttemptRow,
@@ -73,7 +74,29 @@ import {
   ConflictError,
   NotFoundError,
   ValidationError,
+  isAppError,
 } from '@/utils/errors'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+
+type ExamAttemptLogContext = {
+  startedAt: number
+}
+
+function logExamAttemptEvent(
+  level: LogLevel,
+  event: string,
+  context: ExamAttemptLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:submitExamAttempt',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    ...fields,
+  })
+}
 
 async function assertTeacherOrAdmin(userId: string): Promise<{
   isAdmin: boolean
@@ -410,15 +433,42 @@ export async function submitAttemptService(
   data: SubmitAttemptInput,
   userId: string,
 ): Promise<StudentAttempt> {
+  const context: ExamAttemptLogContext = { startedAt: performance.now() }
   const attempt = await loadOwnAttempt(data.attemptId, userId)
   if (attempt.status !== 'in_progress') {
+    logExamAttemptEvent('info', 'exam_attempt_submission_ignored', context, {
+      status: 'already_finalized',
+      attemptId: attempt.id,
+      examId: attempt.examId,
+      studentId: userId,
+    })
     return redactAttemptForStudent(attempt)
   }
   const now = new Date()
   const submittedAt = isSaveAllowed(now, attempt.deadlineAt)
     ? now
     : attempt.deadlineAt
-  return redactAttemptForStudent(await finalizeAttempt(attempt, submittedAt))
+  try {
+    const finalized = await finalizeAttempt(attempt, submittedAt)
+    logExamAttemptEvent('info', 'exam_attempt_submitted', context, {
+      status: finalized.status,
+      attemptId: attempt.id,
+      examId: attempt.examId,
+      studentId: userId,
+      submissionMode: submittedAt === now ? 'manual' : 'deadline',
+    })
+    return redactAttemptForStudent(finalized)
+  } catch (error) {
+    if (!isAppError(error) || error.status >= 500) {
+      logExamAttemptEvent('error', 'exam_attempt_submission_failed', context, {
+        errorCategory: isAppError(error) ? error.code : 'attempt_finalization',
+        attemptId: attempt.id,
+        examId: attempt.examId,
+        studentId: userId,
+      })
+    }
+    throw error
+  }
 }
 
 export async function listAttemptsForGradingService(

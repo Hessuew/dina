@@ -60,6 +60,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     `image_upload_completed` / `image_upload_failed` events; signed-URL and
     old-object cleanup failures use stable warning categories without storage
     paths or provider messages.
+  - Student exam submission emits redacted
+    `exam_attempt_submitted` / `exam_attempt_submission_ignored` events with
+    request correlation, attempt/exam/student IDs, status, duration, and
+    submission mode; unexpected finalization failures use a stable category.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is
