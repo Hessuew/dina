@@ -49,6 +49,7 @@ import {
 } from '@/utils/post/repository/post.repository'
 import { AuthorizationError, NotFoundError, isAppError } from '@/utils/errors'
 import { authz } from '@/utils/authz'
+import { getUserProfile } from '@/utils/auth/auth'
 import { signPrivateStoragePaths } from '@/utils/storage/service/private-storage.service'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
@@ -135,9 +136,10 @@ async function signCommentAvatars(
   }))
 }
 
-export async function getPostChannelsService(): Promise<{
+export async function getPostChannelsService(actorId: string): Promise<{
   channels: Array<PostChannel>
 }> {
+  await getUserProfile(actorId)
   const rows = await findChannels()
   const channels: Array<PostChannel> = [
     { id: 'general', name: 'General', courseId: null },
@@ -150,10 +152,14 @@ export async function getPostChannelsService(): Promise<{
   return { channels }
 }
 
-export async function getPostsService(data: GetPostsInput): Promise<{
+export async function getPostsService(
+  data: GetPostsInput,
+  actorId: string,
+): Promise<{
   posts: Array<PostWithDetails>
   nextCursor?: { createdAt: string; id: string }
 }> {
+  await getUserProfile(actorId)
   const limit = data.limit
   const rows = await findPosts({
     courseId: data.courseId,
@@ -179,9 +185,13 @@ export async function getPostsService(data: GetPostsInput): Promise<{
   return { posts: result, nextCursor }
 }
 
-export async function getPostByIdService(data: GetPostByIdInput): Promise<{
+export async function getPostByIdService(
+  data: GetPostByIdInput,
+  actorId: string,
+): Promise<{
   post: PostWithDetails
 }> {
+  await getUserProfile(actorId)
   const row = await findPostById(data.postId)
 
   if (!row) {
@@ -319,10 +329,14 @@ export async function deletePostService(
   }
 }
 
-export async function getCommentsService(data: GetCommentsInput): Promise<{
+export async function getCommentsService(
+  data: GetCommentsInput,
+  actorId: string,
+): Promise<{
   comments: Array<CommentWithAuthor>
   nextCursor?: { createdAt: string; id: string }
 }> {
+  await getUserProfile(actorId)
   const limit = data.limit
   const rows = await findComments({
     postId: data.postId,

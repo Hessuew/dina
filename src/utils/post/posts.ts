@@ -32,16 +32,16 @@ import {
 
 export const getPostChannels = createServerFn({ method: 'POST' }).handler(
   async () => {
-    await getCurrentUser()
-    return getPostChannelsService()
+    const user = await getCurrentUser()
+    return getPostChannelsService(user.id)
   },
 )
 
 export const getPosts = createServerFn({ method: 'POST' })
   .inputValidator(getPostsSchema)
   .handler(async ({ data }) => {
-    await getCurrentUser()
-    return getPostsService(data)
+    const user = await getCurrentUser()
+    return getPostsService(data, user.id)
   })
 
 export const createPost = createServerFn({ method: 'POST' })
@@ -54,9 +54,8 @@ export const createPost = createServerFn({ method: 'POST' })
 export const getPostById = createServerFn({ method: 'POST' })
   .inputValidator(getPostByIdSchema)
   .handler(async ({ data }) => {
-    // Auth boundary: prevents unauthenticated access to post content
-    await getCurrentUser()
-    return getPostByIdService(data)
+    const user = await getCurrentUser()
+    return getPostByIdService(data, user.id)
   })
 
 export const updatePost = createServerFn({ method: 'POST' })
@@ -90,8 +89,8 @@ export const toggleCommentReaction = createServerFn({ method: 'POST' })
 export const getComments = createServerFn({ method: 'POST' })
   .inputValidator(getCommentsSchema)
   .handler(async ({ data }) => {
-    await getCurrentUser()
-    return getCommentsService(data)
+    const user = await getCurrentUser()
+    return getCommentsService(data, user.id)
   })
 
 export const createComment = createServerFn({ method: 'POST' })

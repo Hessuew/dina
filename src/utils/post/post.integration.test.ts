@@ -28,10 +28,17 @@ import {
 // seeded profiles. See docs/TESTING_GUIDE.md / ADR 0009.
 
 describe('getPostChannelsService (integration)', () => {
+  it('requires a persisted profile before reading channels', async () => {
+    await expect(getPostChannelsService(randomUUID())).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    })
+  })
+
   it('returns the general channel plus a channel per course', async () => {
     const courseId = await seedCourse({ title: 'Maths' })
+    const viewerId = await seedProfile()
 
-    const { channels } = await getPostChannelsService()
+    const { channels } = await getPostChannelsService(viewerId)
 
     expect(channels[0]).toEqual({
       id: 'general',
@@ -43,6 +50,12 @@ describe('getPostChannelsService (integration)', () => {
 })
 
 describe('getPostsService (integration)', () => {
+  it('requires a persisted profile before reading posts', async () => {
+    await expect(
+      getPostsService({ courseId: null, limit: 10 }, randomUUID()),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
   it('paginates and returns a cursor when more posts exist', async () => {
     const authorId = await seedProfile({ role: 'teacher' })
     const courseId = await seedCourse()
@@ -50,7 +63,10 @@ describe('getPostsService (integration)', () => {
     await seedPost({ authorId, courseId })
     await seedPost({ authorId, courseId })
 
-    const { posts, nextCursor } = await getPostsService({ courseId, limit: 2 })
+    const { posts, nextCursor } = await getPostsService(
+      { courseId, limit: 2 },
+      authorId,
+    )
 
     expect(posts).toHaveLength(2)
     expect(nextCursor).toBeDefined()
@@ -63,7 +79,7 @@ describe('getPostsService (integration)', () => {
     await seedComment({ postId, authorId })
     await seedComment({ postId, authorId })
 
-    const { posts } = await getPostsService({ courseId, limit: 10 })
+    const { posts } = await getPostsService({ courseId, limit: 10 }, authorId)
 
     const post = posts.find((p) => p.id === postId)
     expect(post?.commentCount).toBe(2)
@@ -71,18 +87,24 @@ describe('getPostsService (integration)', () => {
 })
 
 describe('getPostByIdService (integration)', () => {
+  it('requires a persisted profile before reading a post', async () => {
+    await expect(
+      getPostByIdService({ postId: randomUUID() }, randomUUID()),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
   it('returns the post', async () => {
     const authorId = await seedProfile({ role: 'teacher' })
     const postId = await seedPost({ authorId })
 
-    const { post } = await getPostByIdService({ postId })
+    const { post } = await getPostByIdService({ postId }, authorId)
 
     expect(post.id).toBe(postId)
   })
 
   it('throws when the post does not exist', async () => {
     await expect(
-      getPostByIdService({ postId: randomUUID() }),
+      getPostByIdService({ postId: randomUUID() }, await seedProfile()),
     ).rejects.toMatchObject({ code: 'POST_NOT_FOUND', status: 404 })
   })
 })
@@ -261,7 +283,9 @@ describe('deletePostService (integration)', () => {
     const result = await deletePostService({ postId }, authorId)
 
     expect(result).toEqual({ success: true })
-    await expect(getPostByIdService({ postId })).rejects.toMatchObject({
+    await expect(
+      getPostByIdService({ postId }, authorId),
+    ).rejects.toMatchObject({
       code: 'POST_NOT_FOUND',
     })
   })
@@ -296,6 +320,12 @@ describe('deletePostService (integration)', () => {
 })
 
 describe('getCommentsService (integration)', () => {
+  it('requires a persisted profile before reading comments', async () => {
+    await expect(
+      getCommentsService({ postId: randomUUID(), limit: 10 }, randomUUID()),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
   it('paginates comments and returns a cursor when more exist', async () => {
     const authorId = await seedProfile({ role: 'student' })
     const postId = await seedPost({ authorId })
@@ -303,10 +333,13 @@ describe('getCommentsService (integration)', () => {
     await seedComment({ postId, authorId })
     await seedComment({ postId, authorId })
 
-    const { comments, nextCursor } = await getCommentsService({
-      postId,
-      limit: 2,
-    })
+    const { comments, nextCursor } = await getCommentsService(
+      {
+        postId,
+        limit: 2,
+      },
+      authorId,
+    )
 
     expect(comments).toHaveLength(2)
     expect(nextCursor).toBeDefined()

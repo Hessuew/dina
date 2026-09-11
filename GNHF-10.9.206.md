@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 90
-**Scope:** close the next Phase 5 service authorization boundary after the
-transitive dependency follow-up in iteration 89.
+**Iteration:** 92
+**Scope:** close the next Phase 5 post-read service authorization boundary after
+the calendar-event hardening in iteration 91.
 
 ## Executive summary
 
@@ -81,6 +81,11 @@ The repository already has the first production-fundamentals slice:
   request correlation, actor and target IDs, reaction action, emoji, status,
   and duration. Unexpected persistence failures use stable post/comment
   reaction categories without raw database details.
+- Post channel, feed, single-post, and comment read services now require a
+  persisted caller profile. The authenticated actor ID is passed from each
+  server-function adapter into the service boundary, closing direct service
+  calls that could otherwise bypass the profile check without changing the
+  response shapes for authenticated roles.
 - Post-notification group and mark-all read-state mutations now emit redacted
   `notification_group_marked_read` / `notifications_marked_read` events with
   request correlation, actor/target metadata, read scope, status, and duration.
@@ -2617,3 +2622,22 @@ Validation passed: focused event integration (4 tests), full integration (382
 tests), quality gate (1,953 unit tests), formatting, typecheck, and production
 build. Notion security/roadmap synchronization completed after local
 verification; the protected production-readiness template was left unchanged.
+
+## Iteration 92 — post read service authorization hardening
+
+This iteration closed the next concrete Phase 5 RBAC service-boundary gap:
+
+- Post channel, paginated feed, single-post, and comment read services now
+  require a persisted caller profile before querying community data.
+- The authenticated actor ID is passed from each server-function adapter into
+  the service layer, preserving the existing response shapes and access for
+  all persisted roles.
+- Added integration coverage proving unknown actors are rejected before each
+  post read path while the existing pagination, channel, and post-not-found
+  behavior remains intact.
+
+Validation passed: focused post integration (37 tests), formatting, and
+`git diff --check`. The full quality gate, full integration suite, and Notion
+security/roadmap synchronization remain final handoff checks for this slice;
+the protected production-readiness template remains unchanged because no
+launch decision changed.

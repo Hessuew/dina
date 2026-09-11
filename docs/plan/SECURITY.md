@@ -295,6 +295,15 @@ teacher-or-Admin check. The route still provides the browser redirect, but the
 service boundary rejects direct student calls before querying or mutating
 calendar events. Integration coverage verifies denial for each mutation path.
 
+### Post read service boundary
+
+Post channels, paginated post feeds, single-post reads, and comment reads now
+require a persisted caller profile inside their services. The server-function
+adapters pass the authenticated actor ID through, so direct service callers
+cannot bypass the authentication boundary before reading community content.
+All persisted roles retain the existing post, channel, and comment response
+shapes.
+
 ## Secret inventory and rotation contract
 
 The repository-owned secret inventory in
@@ -333,7 +342,8 @@ measured RBAC/RLS migration plan.
   required; the active
   substitution lookup now has the same Admin-only service boundary, the
   teacher-directory read requires a persisted caller profile, and the student
-  directory list/detail services require a teacher or Admin actor.
+  directory list/detail services require a teacher or Admin actor. Post
+  channel/feed/post/comment reads also require a persisted caller profile.
 - Continue hardening admin access and review authentication/session boundaries;
   the calendar event listing is now covered by a server-side teacher/admin
   check; the teacher directory now also requires a persisted caller profile,
