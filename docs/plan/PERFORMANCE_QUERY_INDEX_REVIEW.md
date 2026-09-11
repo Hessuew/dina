@@ -17,23 +17,39 @@ order by stable columns:
 | Upcoming lesson dashboard | published lessons with future `scheduled_time`, ascending, limit 5 | `lessons_published_scheduled_idx`             |
 | Assignment catalog        | managed `lesson_id` membership plus assignment `status`            | `assignments_lesson_status_idx`               |
 | Course-team reads         | `course_id` membership plus oldest-first `created_at`              | `course_teachers_course_created_at_idx`       |
+| Student submission reads  | `student_id` lookup for assignment and teacher/student views       | `submissions_student_id_idx`                  |
 
 These indexes support the existing cursor pagination, unread read-state,
-ordered/upcoming lesson, assignment catalog, and course-team queries without
-changing response shape or retention behavior. They are additive and safe for
-the expand/contract release procedure.
+ordered/upcoming lesson, assignment catalog, course-team, and student
+submission queries without changing response shape or retention behavior. They
+are additive and safe for the expand/contract release procedure.
 
 ## Verification contract
 
 - The migration is replayed by `bun run test:integration`.
 - The affected post, notification, and course integration suites must remain
   green.
-- After hosted data exists, capture `EXPLAIN (ANALYZE, BUFFERS)` for the seven
+- After hosted data exists, capture `EXPLAIN (ANALYZE, BUFFERS)` for the eight
   query shapes in a controlled development environment and record only plan
-  summaries and timings in the performance review record for the seven
+  summaries and timings in the performance review record for the eight
   indexed query shapes.
 - Revisit index usefulness after production traffic is available; remove or
   refine indexes only through a later measured migration.
+
+## Iteration 65 — student submission lookup index
+
+This iteration completed the next repository-owned Phase 4 slice:
+
+- Added `submissions_student_id_idx` for the existing student-scoped
+  submission reads used by the assignment dashboard and teacher/student
+  submission views.
+- Kept conflict-safe assignment saves, authorization, response shape, and
+  grading behavior unchanged. The index is additive and complements the
+  existing `(assignment_id, student_id)` uniqueness index rather than
+  replacing it.
+- Hosted verification now covers eight `EXPLAIN (ANALYZE, BUFFERS)` shapes;
+  the due-date index for the unbounded student assignment list remains
+  evidence-gated.
 
 ## Remaining Phase 4 review
 

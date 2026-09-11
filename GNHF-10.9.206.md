@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 64
-**Scope:** add a measured, additive index for course-team reads as the next Phase 4 performance slice.
+**Iteration:** 65
+**Scope:** add a measured, additive index for student submission reads as the next Phase 4 performance slice.
 
 ## Executive summary
 
@@ -229,6 +229,32 @@ The repository already has the first production-fundamentals slice:
   reads without changing query, authorization, or response behavior. The
   migration and hosted `EXPLAIN (ANALYZE, BUFFERS)` follow-up are documented
   in `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+- Student submission reads now have the additive `submissions_student_id_idx`
+  index on `student_id`. It supports the existing student-scoped assignment
+  and grading reads without changing conflict-safe saves, authorization,
+  response shape, or grading behavior. Migration `0052_chief_the_fallen` and
+  the hosted `EXPLAIN (ANALYZE, BUFFERS)` follow-up are documented in
+  `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+
+## Iteration 65 — student submission lookup index
+
+This iteration completed the next repository-owned Phase 4 slice:
+
+- Added `submissions_student_id_idx` on `student_id` for the existing
+  student-scoped submission reads used by the assignment dashboard and
+  teacher/student submission views.
+- Kept conflict-safe assignment saves, authorization, response shape, and
+  grading behavior unchanged. The index is additive and complements the
+  existing `(assignment_id, student_id)` uniqueness index rather than
+  replacing it.
+- Extended the performance review and database README. Hosted verification
+  now covers eight `EXPLAIN (ANALYZE, BUFFERS)` shapes; the due-date index for
+  the unbounded student assignment list remains evidence-gated.
+
+Validation for this iteration: migration generation and replay, focused
+assignment/student integration coverage, formatting, `git diff --check`,
+`bun run docs:notion-check`, and `bun run quality:gate`. Hosted plan/timing
+evidence remains pending representative development data.
 
 ## Iteration 64 — course-team query index
 

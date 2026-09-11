@@ -103,6 +103,7 @@ export const submissions = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (table) => [
+    index('submissions_student_id_idx').on(table.studentId),
     uniqueIndex('submissions_assignment_student_unique').on(
       table.assignmentId,
       table.studentId,

@@ -40,6 +40,8 @@ Database access layer and schema definitions.
     - `submissions`
       - Stores text answers and grading data; no attachment or URL field.
       - Enforces one row per `(assignment_id, student_id)`; assignment saves use conflict-safe upsert behavior.
+      - Student-scoped assignment and grading reads use the additive
+        `submissions_student_id_idx` index from migration `0052_chief_the_fallen`.
     - `media_library`
       - Stores org-wide library materials (YouTube links, PDFs, etc.).
       - Draft gating is modeled via `is_published`.
