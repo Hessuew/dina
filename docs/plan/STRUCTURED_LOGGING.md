@@ -182,6 +182,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    identity, contact details, application responses, and raw persistence
    errors remain excluded; the existing enrollment-closed behavior is
    unchanged.
+   Manual Admin invitation sends from an enrollment now emit redacted
+   `enrollment_invitation_sent` and `enrollment_invitation_failed` events with
+   request correlation, `serverFn:sendInvitationForEnrollment`, actor/
+   enrollment/invitation IDs where available, `new` or `resend` mode, status,
+   duration, and stable delivery or persistence categories. Recipient email
+   addresses, invitation tokens, provider errors, and expected user-facing
+   authorization/conflict/not-found outcomes remain excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

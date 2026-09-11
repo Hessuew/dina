@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 47
-**Scope:** add redacted structured telemetry to public enrollment persistence.
+**Iteration:** 48
+**Scope:** add redacted structured telemetry to manual enrollment invitations.
 
 ## Executive summary
 
@@ -52,6 +52,12 @@ The repository already has the first production-fundamentals slice:
   `enrollment_create_failed` events with request correlation, source, status,
   duration, and the persisted enrollment ID on success; applicant identity,
   contact details, application text, and raw database errors remain excluded.
+- Manual Admin enrollment invitation sends now emit redacted
+  `enrollment_invitation_sent` / `enrollment_invitation_failed` events with
+  request correlation, actor/enrollment/invitation IDs where available,
+  new-versus-resend mode, status, duration, and stable delivery or persistence
+  categories; recipient email addresses, invitation tokens, and provider
+  errors remain excluded.
 - Post and comment reaction toggles now emit redacted success events with
   request correlation, actor and target IDs, reaction action, emoji, status,
   and duration. Unexpected persistence failures use stable post/comment
@@ -1524,5 +1530,28 @@ This iteration completed the next repository-owned structured-logging slice:
   shape, duration, and privacy-safe failure logging.
 
 Validation: focused enrollment integration tests (40) passed. Better Stack
+destinations, dashboards, alerts, Uptime monitors, source maps, Slack routing,
+and named ownership remain account-specific external setup work.
+
+## Iteration 48 — manual enrollment invitation telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Manual Admin sends from an enrollment now emit a redacted
+  `enrollment_invitation_sent` event after the invitation is persisted, emailed,
+  and linked to the enrollment.
+- Failed invitation persistence or email delivery emits
+  `enrollment_invitation_failed` with request correlation, actor/enrollment and
+  invitation IDs where available, `new` or `resend` mode, duration, and a stable
+  `enrollment_invitation_email_delivery` or
+  `enrollment_invitation_persistence` category.
+- Expected authorization, not-found, conflict, and validation outcomes remain
+  ordinary user-facing errors. Recipient addresses, invitation tokens, and
+  provider exception text remain outside structured telemetry; rollback behavior
+  is unchanged.
+- Integration coverage verifies the successful event contract, request ID,
+  provider failure categorization, rollback, and sensitive-data exclusion.
+
+Validation: focused enrollment integration tests (43) passed. Better Stack
 destinations, dashboards, alerts, Uptime monitors, source maps, Slack routing,
 and named ownership remain account-specific external setup work.

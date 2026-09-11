@@ -15,6 +15,7 @@ import type {
   SubstituteTeacherInput,
   UpdateEnrollmentStatusInput,
 } from '@/schemas/enrollment.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import type {
   EnrollmentWithEvaluation,
   MaybeRedactedEnrollment,
@@ -118,6 +119,14 @@ type EnrollmentMutationContext = {
   startedAt: number
 }
 
+type EnrollmentInvitationLogContext = {
+  actorId: string
+  enrollmentId: string
+  invitationId?: string
+  invitationMode?: 'new' | 'resend'
+  startedAt: number
+}
+
 function logEnrollmentMutation(
   level: 'info' | 'error',
   event: string,
@@ -163,6 +172,25 @@ function logEnrollmentDistributionCompleted(
     context,
     { assignedCount, unassignedCount, reviewerCount },
   )
+}
+
+function logEnrollmentInvitationEvent(
+  level: LogLevel,
+  event: string,
+  context: EnrollmentInvitationLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:sendInvitationForEnrollment',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    enrollmentId: context.enrollmentId,
+    invitationId: context.invitationId,
+    invitationMode: context.invitationMode,
+    ...fields,
+  })
 }
 
 function logEnrollmentBulkGradeMutation(
@@ -779,6 +807,38 @@ export async function sendInvitationForEnrollmentService(
 ) {
   await authz(userId).hasRole('admin')
 
+  const context: EnrollmentInvitationLogContext = {
+    actorId: userId,
+    enrollmentId: data.enrollmentId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    return await sendEnrollmentInvitation(data, userId, userEmail, context)
+  } catch (error) {
+    if (!(error instanceof AppError && error.status < 500)) {
+      logEnrollmentInvitationEvent(
+        'error',
+        'enrollment_invitation_failed',
+        context,
+        {
+          errorCategory:
+            error instanceof AppError && error.code === 'EMAIL_SEND_FAILED'
+              ? 'enrollment_invitation_email_delivery'
+              : 'enrollment_invitation_persistence',
+        },
+      )
+    }
+    throw error
+  }
+}
+
+async function sendEnrollmentInvitation(
+  data: SendInvitationForEnrollmentInput,
+  userId: string,
+  userEmail: string | undefined,
+  context: EnrollmentInvitationLogContext,
+) {
   const profile = await findProfileById(userId)
 
   const enrollment = await findEnrollmentById(data.enrollmentId)
@@ -800,39 +860,78 @@ export async function sendInvitationForEnrollmentService(
   })
   const lecturerTitle = profile?.lecturerTitle || null
 
-  if (existingInvitation) {
-    if (!isInvitationResendable(existingInvitation)) {
-      throw new ConflictError('An invitation already exists for this email', {
-        code: 'INVITATION_EXISTS',
-        details: {
-          email: enrollment.email,
-          status: existingInvitation.status,
-        },
-      })
-    }
-
-    return sendExistingEnrollmentInvitation({
-      enrollmentId: enrollment.id,
-      email: enrollment.email,
-      invitationId: existingInvitation.id,
-      token,
-      expiresAt,
-      oldToken: existingInvitation.token,
-      oldExpiresAt: existingInvitation.expiresAt,
-      senderName,
-      lecturerTitle,
-    })
-  }
-
-  return sendNewEnrollmentInvitation({
-    enrollmentId: enrollment.id,
-    email: enrollment.email,
+  return sendEnrollmentInvitationVariant({
+    enrollment,
+    existingInvitation,
     token,
     expiresAt,
     senderName,
     userId,
     lecturerTitle,
+    context,
   })
+}
+
+async function sendEnrollmentInvitationVariant(input: {
+  enrollment: NonNullable<Awaited<ReturnType<typeof findEnrollmentById>>>
+  existingInvitation: Awaited<ReturnType<typeof findInvitationByEmail>>
+  token: string
+  expiresAt: Date
+  senderName: string
+  userId: string
+  lecturerTitle: string | null
+  context: EnrollmentInvitationLogContext
+}) {
+  if (input.existingInvitation) {
+    if (!isInvitationResendable(input.existingInvitation)) {
+      throw new ConflictError('An invitation already exists for this email', {
+        code: 'INVITATION_EXISTS',
+        details: {
+          email: input.enrollment.email,
+          status: input.existingInvitation.status,
+        },
+      })
+    }
+
+    input.context.invitationMode = 'resend'
+    input.context.invitationId = input.existingInvitation.id
+    const result = await sendExistingEnrollmentInvitation({
+      enrollmentId: input.enrollment.id,
+      email: input.enrollment.email,
+      invitationId: input.existingInvitation.id,
+      token: input.token,
+      expiresAt: input.expiresAt,
+      oldToken: input.existingInvitation.token,
+      oldExpiresAt: input.existingInvitation.expiresAt,
+      senderName: input.senderName,
+      lecturerTitle: input.lecturerTitle,
+    })
+
+    logEnrollmentInvitationEvent(
+      'info',
+      'enrollment_invitation_sent',
+      input.context,
+    )
+    return result
+  }
+
+  input.context.invitationMode = 'new'
+  const result = await sendNewEnrollmentInvitation({
+    enrollmentId: input.enrollment.id,
+    email: input.enrollment.email,
+    token: input.token,
+    expiresAt: input.expiresAt,
+    senderName: input.senderName,
+    userId: input.userId,
+    lecturerTitle: input.lecturerTitle,
+  })
+  input.context.invitationId = result.invitationId
+  logEnrollmentInvitationEvent(
+    'info',
+    'enrollment_invitation_sent',
+    input.context,
+  )
+  return result
 }
 
 export async function setEvaluationAdmissionCategoryService(

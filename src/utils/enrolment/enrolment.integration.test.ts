@@ -52,7 +52,7 @@ async function seedPeerReviewScenario() {
   return { reviewerId, peerId, courseId, enrollmentId }
 }
 
-function installFakeEmailSender() {
+function installFakeEmailSender(failWith?: string) {
   const calls: Array<InvitationEmailMessage> = []
   const sender: EmailSender = {
     send: async (message) => {
@@ -60,6 +60,7 @@ function installFakeEmailSender() {
       if (message.type !== 'invitation')
         throw new Error('Unexpected email type')
       calls.push(message)
+      if (failWith) throw new Error(failWith)
       return { providerMessageId: `email.${calls.length}` }
     },
   }
@@ -988,7 +989,12 @@ describe('enrollment contact lookup by name (integration)', () => {
 })
 
 describe('sendInvitationForEnrollmentService (integration)', () => {
-  it('uses the shared sender seam without writing bulk campaign logs', async () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs a redacted event when sending a new enrollment invitation', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({
       role: 'admin',
       email: 'admin@test.dev',
@@ -1000,10 +1006,16 @@ describe('sendInvitationForEnrollmentService (integration)', () => {
       email: 'approved@test.dev',
     })
 
-    const result = await sendInvitationForEnrollmentService(
-      { enrollmentId },
-      adminId,
-      'admin@test.dev',
+    const result = await withObservabilityRequest(
+      new Request('https://christ-dina.org/enrollments/send-invitation', {
+        headers: { 'x-request-id': 'enrollment-invitation-request-1' },
+      }),
+      () =>
+        sendInvitationForEnrollmentService(
+          { enrollmentId },
+          adminId,
+          'admin@test.dev',
+        ),
     )
 
     expect(result.invitationId).toBeDefined()
@@ -1019,5 +1031,131 @@ describe('sendInvitationForEnrollmentService (integration)', () => {
     })
     const db = await getDb()
     expect(await db.select().from(emailMessages)).toEqual([])
+
+    const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'enrollment_invitation_sent',
+          path: 'serverFn:sendInvitationForEnrollment',
+          requestId: 'enrollment-invitation-request-1',
+          actorId: adminId,
+          enrollmentId,
+          invitationId: result.invitationId,
+          invitationMode: 'new',
+          status: 'success',
+        }),
+      ]),
+    )
+    expect(JSON.stringify(events)).not.toContain('approved@test.dev')
+  })
+
+  it('logs resend mode when rotating an expired enrollment invitation', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const invitation = await seedInvitation({
+      email: 'expired-invitation@test.dev',
+      token: 'expired-token',
+      expiresAt: new Date(Date.now() - 60_000),
+    })
+    const enrollmentId = await seedEnrollment({
+      status: 'approved',
+      email: invitation.email,
+      invitationSent: true,
+      invitationId: invitation.id,
+    })
+
+    const result = await sendInvitationForEnrollmentService(
+      { enrollmentId },
+      adminId,
+      'admin@test.dev',
+    )
+
+    expect(result.invitationId).toBe(invitation.id)
+    expect((await findInvitationByEmail(invitation.email))?.token).not.toBe(
+      'expired-token',
+    )
+    const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'enrollment_invitation_sent',
+          invitationId: invitation.id,
+          invitationMode: 'resend',
+          enrollmentId,
+          status: 'success',
+        }),
+      ]),
+    )
+  })
+
+  it('logs a stable failure and rolls back a failed enrollment invitation email', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    installFakeEmailSender('provider secret')
+    const enrollmentId = await seedEnrollment({
+      status: 'approved',
+      email: 'failed-invitation@test.dev',
+    })
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/enrollments/send-invitation', {
+          headers: { 'x-request-id': 'enrollment-invitation-request-2' },
+        }),
+        () =>
+          sendInvitationForEnrollmentService(
+            { enrollmentId },
+            adminId,
+            'admin@test.dev',
+          ),
+      ),
+    ).rejects.toMatchObject({ code: 'EMAIL_SEND_FAILED', status: 500 })
+
+    expect(
+      await findInvitationByEmail('failed-invitation@test.dev'),
+    ).toBeUndefined()
+    const events = errorSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'enrollment_invitation_failed',
+          path: 'serverFn:sendInvitationForEnrollment',
+          requestId: 'enrollment-invitation-request-2',
+          actorId: adminId,
+          enrollmentId,
+          invitationMode: 'new',
+          status: 'failure',
+          errorCategory: 'enrollment_invitation_email_delivery',
+        }),
+      ]),
+    )
+    expect(JSON.stringify(events)).not.toContain('provider secret')
+    expect(JSON.stringify(events)).not.toContain('failed-invitation@test.dev')
+  })
+
+  it('does not log expected conflicts when an invitation already exists', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const invitation = await seedInvitation({
+      email: 'accepted-invitation@test.dev',
+      status: 'accepted',
+    })
+    const enrollmentId = await seedEnrollment({
+      status: 'approved',
+      email: invitation.email,
+      invitationSent: true,
+      invitationId: invitation.id,
+    })
+
+    await expect(
+      sendInvitationForEnrollmentService(
+        { enrollmentId },
+        adminId,
+        'admin@test.dev',
+      ),
+    ).rejects.toMatchObject({ code: 'INVITATION_EXISTS', status: 409 })
+
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })

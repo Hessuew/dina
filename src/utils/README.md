@@ -92,6 +92,13 @@ This folder is primarily where TanStack Start server functions live (via `create
     and the generated enrollment ID only on success; applicant identity,
     contact details, application responses, and raw persistence errors are
     excluded.
+  - Manual Admin enrollment invitation sends emit redacted
+    `enrollment_invitation_sent` / `enrollment_invitation_failed` events with
+    request correlation, `serverFn:sendInvitationForEnrollment`, actor/
+    enrollment/invitation IDs where available, new-versus-resend mode, status,
+    duration, and stable delivery/persistence categories; recipient emails,
+    invitation tokens, provider errors, and expected user-facing outcomes are
+    excluded.
   - Admin staff-privilege grants and revokes emit redacted
     `staff_privilege_updated` audit events with request correlation, actor and
     target IDs, privilege, grant direction, status, and duration; persistence
