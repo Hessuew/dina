@@ -163,6 +163,10 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `enrollment_bulk_grade_read_persistence` or
    `enrollment_bulk_grade_update_persistence` categories; enrollment
    identifiers and raw database details remain excluded.
+   Password sign-in now emits redacted `login_succeeded` and `login_failed`
+   events with request correlation, outcome, duration, a safe user ID on
+   success, and a stable auth error category/provider code on rejection;
+   email, password, and provider messages remain excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

@@ -1436,3 +1436,23 @@ The next in-repo structured-logging slice should target another uninstrumented
 mutating family or assignment-independent administration action. Better Stack
 destinations, dashboards, alerts, Uptime, source maps, Slack routing, and named
 ownership remain account-specific external setup work.
+
+## Iteration 44 — login structured telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Supabase password sign-in now runs through `src/utils/auth/login.ts` and
+  emits redacted `login_succeeded` / `login_failed` events with request
+  correlation, server-function path, outcome status, duration, and a stable
+  `auth_sign_in` error category plus provider code for rejected attempts.
+- Successful events include only the authenticated user ID; login email,
+  password, and raw provider messages are excluded from operational telemetry.
+  Existing login return values and the client-side error-message mapping are
+  unchanged.
+- Integration coverage verifies safe success metadata, request correlation,
+  rejection status, provider-code categorization, raw-message exclusion, and
+  preservation of the existing user-facing rejection message.
+
+Validation: focused login integration tests pass. Better Stack destinations,
+dashboards, alerts, Uptime, source maps, Slack routing, and named ownership
+remain account-specific external setup work.
