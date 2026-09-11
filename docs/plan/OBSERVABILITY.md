@@ -266,17 +266,18 @@ milestones remain pending.
 
 - The first version is intentionally link-only. Provider APIs would require server-side credentials and can be added after the external dashboards are operationalized.
 
-#### 3.4 Document Runbook
+#### 3.4 Document Runbook — implemented
 
 **Implementation:**
 
-1. Create `docs/observability-runbook.md`
-2. Include:
+1. `docs/observability-runbook.md` is the repository-owned response contract.
+2. It includes:
    - How to respond to different alert types
    - Escalation paths
    - Incident workflow
    - Link to incident tracker template
-3. Update `AGENTS.md` to reference the runbook
+3. `AGENTS.md` references the runbook. Named contacts, Slack destinations,
+   provider URLs, and credentials remain external setup values.
 
 ---
 
@@ -367,9 +368,9 @@ Implementation is successful when:
    - [ ] Provider summary metrics displayed (deferred until provider APIs are operationalized)
 
 4. **Documentation:**
-   - [ ] Runbook created
+   - [x] Runbook created at `docs/observability-runbook.md`
    - [ ] Incident tracker template created
-   - [ ] This plan updated with actual implementation details
+   - [x] This plan updated with actual implementation details
 
 ---
 

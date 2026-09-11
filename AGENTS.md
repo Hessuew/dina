@@ -20,6 +20,8 @@ Tool-neutral entrypoint for agents and contributors working in this repo.
 - `src/domain/**` — pure business logic.
 - `src/db/**` — Drizzle schema, database entrypoint, and migrations.
 - `docs/**` — canonical rules, skills, ADRs, and engineering documentation.
+- `docs/observability-runbook.md` — production alert response, incident
+  escalation, mitigation, and recovery workflow.
 
 ## Commands
 

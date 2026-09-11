@@ -26,6 +26,11 @@ Start with a small actionable alert set:
 - Database connection/query degradation.
 - Deploy regression shortly after release.
 
+Response procedures for these alerts are documented in
+[`docs/observability-runbook.md`](../observability-runbook.md). Keep each
+external alert linked to the matching runbook entry once the Better Stack and
+Cloudflare alert rules are created.
+
 Every alert must have an owner, a linked runbook, a dashboard link, and a known first action.
 
 ## Metrics

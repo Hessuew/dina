@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 26
-**Scope:** instrument the teacher-review PostHog event.
+**Iteration:** 27
+**Scope:** implement the repository-owned observability and incident-response runbook.
 
 ## Executive summary
 
@@ -90,6 +90,11 @@ The repository already has the first production-fundamentals slice:
 - A successful teacher grading mutation now emits
   `teacher_review_completed` with stable assignment and submission IDs only;
   grade and feedback content remain outside analytics.
+- Added `docs/observability-runbook.md` with Better Stack, Cloudflare, Supabase,
+  and PostHog alert response steps; severity and role-based escalation;
+  first-check and mitigation procedures; incident tracking; recovery; and
+  closure guidance. It intentionally uses role-based owners until account
+  owners and Slack escalation targets are configured externally.
 
 ## Iteration 26 — teacher review product analytics
 
@@ -1007,3 +1012,27 @@ window has been agreed.
 - [Better Stack: dashboard setup and query types](https://betterstack.com/docs/logs/dashboards/getting-started/)
 - [Better Stack: dashboard alerts](https://betterstack.com/docs/logs/dashboards/alerts/)
 - [Better Stack: Uptime monitoring](https://betterstack.com/docs/uptime/monitoring-start/)
+
+## Iteration 27 — observability runbook
+
+This iteration completed the next repository-owned reliability slice:
+
+- Added `docs/observability-runbook.md` covering Worker/site availability,
+  database readiness, sustained 5xx errors, latency regressions, auth failures,
+  storage/external dependency failures, and telemetry-provider failures.
+- Added a consistent `SEV0`–`SEV3` severity model, role-based escalation, a
+  five-minute triage checklist, Notion Incident Database workflow, safe evidence
+  rules, reversible mitigation, recovery checks, and closure/post-incident
+  review steps.
+- Marked the runbook step complete in `docs/plan/OBSERVABILITY.md` and added it
+  to the repository navigation in `AGENTS.md`.
+
+The runbook is intentionally `Draft` until the external Better Stack and
+Cloudflare dashboards, alert routes, Uptime monitors, Slack incident channel,
+and named service owners exist. Account-specific values remain documented as
+setup instructions below rather than committed to the repository.
+
+Validation for this iteration: targeted Markdown formatting,
+`bun run docs:notion-check --json`, and `bun run quality:gate` passed with
+1,933 unit tests. The gate reported only pre-existing lint/Fallow warnings;
+no runtime behavior changed.
