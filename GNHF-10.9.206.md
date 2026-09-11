@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 70
-**Scope:** remediate the direct browser PDF dependency identified by the Phase 5
-dependency-security baseline.
+**Iteration:** 71
+**Scope:** remediate the next reachable Phase 5 dependency-security finding after
+the direct browser PDF dependency fix.
 
 ## Executive summary
 
@@ -268,6 +268,31 @@ opened_at)`. It supports filtering active windows before recent-opening
   importer use only PDF.js parsing/canvas APIs and do not instantiate the
   annotation/viewer scripting layer. Remaining high/critical findings are
   transitive and continue through the report-only audit triage process.
+- The dev-only `@tanstack/devtools-vite` dependency chain no longer resolves the
+  vulnerable `shell-quote@1.8.3`: a root `package.json` override pins
+  `shell-quote` to `^1.10.0`, covering its command-injection and parser
+  denial-of-service advisories without changing application runtime behavior.
+
+## Iteration 71 — shell-quote transitive dependency remediation
+
+This iteration completed the next bounded Phase 5 dependency remediation:
+
+- Added a top-level Bun/npm `overrides` entry that resolves the transitive
+  `shell-quote` dependency to `^1.10.0`. The vulnerable path is
+  `@tanstack/devtools-vite` → `launch-editor` → `shell-quote@1.8.3`.
+- The override covers the command-injection advisory
+  [GHSA-w7jw-789q-3m8p](https://github.com/advisories/GHSA-w7jw-789q-3m8p), patched
+  in `1.8.4`, and the parser denial-of-service advisory
+  [GHSA-395f-4hp3-45gv](https://github.com/advisories/GHSA-395f-4hp3-45gv), patched
+  in `1.9.0`. The lockfile now resolves `shell-quote@1.10.0`.
+- Updated `docs/plan/SECURITY.md` with the reachability, override policy, and
+  re-audit requirement. The remaining audit findings are still transitive and
+  remain report-only pending separate reachability or upgrade slices.
+
+Validation for this iteration: `bun install`, the post-change
+`bun audit --audit-level=high --json`, targeted package resolution, and the
+repository quality gate. The audit no longer reports `shell-quote`; it still
+reports other high-severity transitive findings for follow-up.
 
 ## Iteration 70 — direct PDF dependency remediation
 

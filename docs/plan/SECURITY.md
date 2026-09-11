@@ -1,7 +1,7 @@
 # Security Baseline
 
-**Status:** In progress — the direct browser PDF dependency is remediated; transitive
-advisories and the remaining application security review are pending
+**Status:** In progress — the direct browser PDF and shell-quote dependencies are
+remediated; remaining transitive advisories and the application security review are pending
 **Phase:** Engineering Roadmap Phase 5: Security
 
 ## Dependency scanning
@@ -37,6 +37,17 @@ instantiate the annotation/viewer scripting layer. Preserve that boundary when
 changing PDF.js or introducing another PDF loading path, and explicitly disable
 scripting on any future annotation-layer integration.
 
+## Transitive development-tool dependency remediation
+
+The dev-only `@tanstack/devtools-vite` chain previously resolved
+`launch-editor` to vulnerable `shell-quote@1.8.3`. The root `overrides` entry in
+`package.json` now pins that transitive package to `^1.10.0`, covering the
+command-injection and parser denial-of-service advisories
+[GHSA-w7jw-789q-3m8p](https://github.com/advisories/GHSA-w7jw-789q-3m8p) and
+[GHSA-395f-4hp3-45gv](https://github.com/advisories/GHSA-395f-4hp3-45gv).
+This is a build/development-tooling remediation; no application API or runtime
+behavior changes.
+
 ## Review order
 
 1. Fix or isolate vulnerabilities reachable in the deployed Worker/browser bundle
@@ -45,7 +56,9 @@ scripting on any future annotation-layer integration.
    suite, and production build.
 3. Re-run `bun audit --audit-level=high` locally and attach the report to the
    dependency update or security review.
-4. Record accepted residual risk in the Notion Security page with the advisory,
+4. Keep each root override until its upstream dependency range includes the
+   patched release, then remove it only after a clean lockfile/audit review.
+5. Record accepted residual risk in the Notion Security page with the advisory,
    reachability, mitigation, owner, and review date. Never put secrets or full
    lockfile credentials in the record.
 
