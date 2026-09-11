@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import type {
   CreateEventInput,
   DeleteEventInput,
@@ -6,10 +6,46 @@ import type {
 } from '@/schemas/event.schema'
 import type { LogLevel } from '@/utils/observability/logger'
 import { getDb } from '@/db'
-import { calendarEvents } from '@/db/schema'
+import { calendarEvents, courses } from '@/db/schema'
 import { buildEventValues } from '@/utils/event/domain/event-input.domain'
+import { resolveAdminOrTeacherAccess } from '@/utils/authz'
+import { AuthorizationError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+
+export async function getEventsService(actorId: string) {
+  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(actorId)
+  if (!isAdmin && !isTeacher) {
+    throw new AuthorizationError('Teacher access required')
+  }
+
+  const db = await getDb()
+  const rows = await db
+    .select({
+      id: calendarEvents.id,
+      title: calendarEvents.title,
+      description: calendarEvents.description,
+      startTime: calendarEvents.startTime,
+      endTime: calendarEvents.endTime,
+      location: calendarEvents.location,
+      zoomLink: calendarEvents.zoomLink,
+      category: calendarEvents.category,
+      courseId: calendarEvents.courseId,
+      courseName: courses.title,
+      createdAt: calendarEvents.createdAt,
+      updatedAt: calendarEvents.updatedAt,
+    })
+    .from(calendarEvents)
+    .leftJoin(courses, eq(calendarEvents.courseId, courses.id))
+    .orderBy(asc(calendarEvents.startTime))
+
+  return {
+    events: rows.map((row) => ({
+      ...row,
+      courseName: row.courseName ?? null,
+    })),
+  }
+}
 
 type CalendarEventMutation = 'createEvent' | 'updateEvent' | 'deleteEvent'
 

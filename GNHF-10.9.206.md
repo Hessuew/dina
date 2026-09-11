@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 72
-**Scope:** remediate the next reachable Phase 5 dependency-security finding after
-the shell-quote transitive dependency fix.
+**Iteration:** 73
+**Scope:** close the next bounded Phase 5 authorization gap after the nested Vite
+dependency remediation.
 
 ## Executive summary
 
@@ -276,6 +276,30 @@ opened_at)`. It supports filtering active windows before recent-opening
   `vite@7.3.1`: a root `package.json` override pins every Vite resolution to
   `^7.3.6`, removing the nested package while keeping the existing direct Vite
   version and build behavior unchanged.
+- Calendar event listing now authenticates and authorizes the caller inside the
+  server-side service. Students can no longer bypass the `/events` route guard
+  by invoking the `getEvents` server function directly; teachers and admins
+  retain the existing event-management view.
+
+## Iteration 73 — calendar event listing authorization hardening
+
+This iteration closed one concrete RBAC gap from the Phase 5 application
+security review:
+
+- Moved the calendar event listing query into `getEventsService(actorId)` and
+  required a resolved `teacher` or `admin` role before any event data is read.
+- Updated the `getEvents` server-function adapter to authenticate with
+  `getCurrentUser()` and pass the stable user ID into the guarded service.
+- Added integration coverage proving students are denied while teachers and
+  admins retain access to the existing event payload.
+- Preserved the existing course-name join, ordering, response shape, and
+  create/update/delete behavior. The browser route guard remains as a UX
+  boundary, while the service check is the API boundary.
+
+Validation for this iteration: focused calendar integration (3 tests), full
+quality gate (1,953 unit tests), full integration (371 tests), typecheck,
+formatting, production build, and `git diff --check` passed. The Notion
+Architecture Inventory and Engineering Roadmap records were synchronized.
 
 ## Iteration 72 — nested Vite dependency remediation
 
@@ -1606,9 +1630,10 @@ caching, load tests, and a background-job decision from production data.
 
 Dependency audit reporting is implemented in `.github/workflows/dependency-security.yml`
 and weekly Dependabot checks are enabled; remediation is currently report-only
-because the baseline contains known advisories. The remaining work is an RBAC/RLS
-review, admin access hardening, secret inventory, Better Stack audit-event
-verification, and threat modeling. Better Stack must not receive passwords,
+because the baseline contains known advisories. Calendar event listing now has
+server-side teacher/admin enforcement in addition to the route guard. The
+remaining work is broader RBAC/RLS review, admin access hardening, secret inventory,
+Better Stack audit-event verification, and threat modeling. Better Stack must not receive passwords,
 tokens, cookies, service-role keys, connection strings, raw submission text, or
 private mentorship content. See `docs/plan/SECURITY.md`.
 

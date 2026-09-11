@@ -1,7 +1,8 @@
 # Security Baseline
 
 **Status:** In progress — the direct browser PDF, nested Vite, and shell-quote dependencies
-are remediated; remaining transitive advisories and the application security review are pending
+are remediated; the first direct server-function authorization gap is closed, while remaining
+transitive advisories and the application security review are pending
 **Phase:** Engineering Roadmap Phase 5: Security
 
 ## Dependency scanning
@@ -81,11 +82,24 @@ runtime, but exposed network dev servers must still be kept on a patched release
    reachability, mitigation, owner, and review date. Never put secrets or full
    lockfile credentials in the record.
 
+## Authorization regression hardening
+
+The `/events` route already redirected students in the browser, but its
+`getEvents` server function previously queried calendar events without checking
+the caller. `getEventsService` now requires an authenticated teacher or admin
+before running the query, so direct server-function calls cannot bypass the
+route guard. The integration test covers student denial and teacher/admin
+access. Apply this same server-side check-first pattern when reviewing other
+route loaders that expose staff-only data; a route guard is a user-experience
+boundary, not an API authorization boundary.
+
 ## Remaining Phase 5 work
 
 - Review RBAC and database/RLS defense-in-depth against the current app-level
   authorization model.
-- Harden admin access and review authentication/session boundaries.
+- Continue hardening admin access and review authentication/session boundaries;
+  the calendar event listing is now covered by a server-side teacher/admin
+  check.
 - Inventory runtime and CI secrets, including Better Stack and Cloudflare
   credentials, with rotation owners outside the repository.
 - Verify security-sensitive audit events in Better Stack without exporting PII or

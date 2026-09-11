@@ -1,12 +1,11 @@
 import { createServerFn } from '@tanstack/react-start'
-import { asc, eq } from 'drizzle-orm'
 import {
   createEventService,
   deleteEventService,
+  getEventsService,
   updateEventService,
 } from './service/event.service'
-import { getDb } from '@/db'
-import { calendarEvents, courses } from '@/db/schema'
+import type { calendarEvents } from '@/db/schema'
 import { getCurrentUser } from '@/utils/auth/auth'
 import {
   createEventSchema,
@@ -20,32 +19,8 @@ export type CalendarEventRow = typeof calendarEvents.$inferSelect & {
 
 export const getEvents = createServerFn({ method: 'POST' }).handler(
   async () => {
-    const db = await getDb()
-    const rows = await db
-      .select({
-        id: calendarEvents.id,
-        title: calendarEvents.title,
-        description: calendarEvents.description,
-        startTime: calendarEvents.startTime,
-        endTime: calendarEvents.endTime,
-        location: calendarEvents.location,
-        zoomLink: calendarEvents.zoomLink,
-        category: calendarEvents.category,
-        courseId: calendarEvents.courseId,
-        courseName: courses.title,
-        createdAt: calendarEvents.createdAt,
-        updatedAt: calendarEvents.updatedAt,
-      })
-      .from(calendarEvents)
-      .leftJoin(courses, eq(calendarEvents.courseId, courses.id))
-      .orderBy(asc(calendarEvents.startTime))
-
-    return {
-      events: rows.map((r) => ({
-        ...r,
-        courseName: r.courseName ?? null,
-      })) as Array<CalendarEventRow>,
-    }
+    const user = await getCurrentUser()
+    return getEventsService(user.id)
   },
 )
 

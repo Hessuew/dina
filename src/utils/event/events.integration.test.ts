@@ -3,13 +3,40 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createEventService,
   deleteEventService,
+  getEventsService,
   updateEventService,
 } from './service/event.service'
-import { seedCourse, seedProfile } from '@/../test/integration/seed'
+import { AuthorizationError } from '@/utils/errors'
+import {
+  seedCalendarEvent,
+  seedCourse,
+  seedProfile,
+} from '@/../test/integration/seed'
 
 describe('calendar event mutation telemetry (integration)', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it('keeps event listing restricted to teachers and admins', async () => {
+    const studentId = await seedProfile({ role: 'student' })
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const eventId = await seedCalendarEvent({ title: 'Private event' })
+
+    await expect(getEventsService(studentId)).rejects.toBeInstanceOf(
+      AuthorizationError,
+    )
+    await expect(getEventsService(teacherId)).resolves.toEqual({
+      events: [
+        expect.objectContaining({ id: eventId, title: 'Private event' }),
+      ],
+    })
+    await expect(getEventsService(adminId)).resolves.toEqual({
+      events: [
+        expect.objectContaining({ id: eventId, title: 'Private event' }),
+      ],
+    })
   })
 
   it('logs redacted create, update, and delete outcomes', async () => {
