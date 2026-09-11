@@ -93,6 +93,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    Unexpected read-state persistence failures use the stable
    `notification_read_state_persistence` category; notification content and
    raw database details remain excluded.
+   Admin Zoom-link create, update, and delete mutations now emit redacted
+   `zoom_link_created`, `zoom_link_updated`, and `zoom_link_deleted` events
+   with request correlation, actor/link IDs, section, teacher ownership,
+   status, and duration. Zoom URLs, meeting IDs, passcodes, titles, and raw
+   persistence details remain excluded; unexpected repository failures use
+   the stable `zoom_link_persistence` category.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

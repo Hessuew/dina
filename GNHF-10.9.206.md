@@ -1186,3 +1186,18 @@ passed all 336 tests, `bun run quality:gate` passed with 1,933 unit tests, and
 the production build passed. External Better Stack destination, dashboard,
 alert, Uptime, source-map, Slack, and named-owner setup remains
 account-specific work described above.
+
+## Iteration 34 — Zoom-link Admin mutation telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Admin Zoom-link create, update, and delete mutations now emit redacted
+  `zoom_link_created`, `zoom_link_updated`, and `zoom_link_deleted` events.
+- Events carry request correlation, server-function path, actor/link IDs,
+  section, teacher ownership, status, and duration. Zoom URLs, meeting IDs,
+  passcodes, titles, and raw persistence details are excluded; unexpected
+  repository failures use the stable `zoom_link_persistence` category.
+- Focused Zoom-link integration telemetry and the existing Zoom-link suite
+  verify the event shape and that meeting credentials and URLs never enter the
+  structured logs. External Better Stack destination, dashboard, alert,
+  Uptime, source-map, Slack, and named-owner setup remains pending.

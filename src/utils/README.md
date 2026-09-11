@@ -110,6 +110,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     request correlation, actor/target metadata, read scope, status, and
     duration; unexpected persistence failures use the stable
     `notification_read_state_persistence` category.
+  - Admin Zoom-link create, update, and delete mutations emit redacted
+    `zoom_link_created`, `zoom_link_updated`, and `zoom_link_deleted` events
+    with request correlation, actor/link IDs, ownership section, status, and
+    duration; credentials, meeting IDs, URLs, titles, and raw persistence
+    details remain excluded.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is
