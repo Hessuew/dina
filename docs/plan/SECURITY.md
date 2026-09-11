@@ -280,6 +280,14 @@ passes its already-validated actor ID through. This preserves the teacher
 directory payload and Admin-only staff-privilege metadata while preventing direct
 service calls from reading teacher records without an application profile.
 
+### Student directory service boundary
+
+The student directory list and detail services now require a teacher or Admin
+actor before reading student profiles, submissions, attendance, or related
+course data. The server-function adapters pass the authenticated actor ID into
+the service boundary, and integration coverage verifies that direct student
+service calls fail before the sensitive read begins.
+
 ## Secret inventory and rotation contract
 
 The repository-owned secret inventory in
@@ -315,11 +323,13 @@ measured RBAC/RLS migration plan.
   app-level authorization model. The staff-only event-management listing, the
   authenticated calendar overview, and post/comment moderation now enforce
   server-side identity/ownership and staff role where required; the active
-  substitution lookup now has the same Admin-only service boundary, and the
-  teacher-directory read requires a persisted caller profile.
+  substitution lookup now has the same Admin-only service boundary, the
+  teacher-directory read requires a persisted caller profile, and the student
+  directory list/detail services require a teacher or Admin actor.
 - Continue hardening admin access and review authentication/session boundaries;
   the calendar event listing is now covered by a server-side teacher/admin
-  check; the teacher directory now also requires a persisted caller profile.
+  check; the teacher directory now also requires a persisted caller profile,
+  and student directory reads enforce the same staff boundary in their services.
 - Inventory runtime and CI secrets, including Better Stack and Cloudflare
   credentials, with named rotation owners outside the repository. The
   repository inventory and rotation contract are now documented in

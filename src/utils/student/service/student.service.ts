@@ -17,7 +17,7 @@ import type {
   StudentWithStats,
 } from '@/types/student'
 import type { GetStudentDetailInput } from '@/schemas/student.schema'
-import { NotFoundError } from '@/utils/errors'
+import { AuthorizationError, NotFoundError } from '@/utils/errors'
 import {
   buildCourseAttendanceScores,
   withAttendanceManageFlags,
@@ -28,14 +28,20 @@ import {
   findPresentsForStudents,
 } from '@/utils/attendance/repository/attendance.repository'
 import { getUserProfile } from '@/utils/auth/auth'
-import { hasStaffPrivilege } from '@/utils/authz'
+import { hasStaffPrivilege, resolveAdminOrTeacherAccess } from '@/utils/authz'
 import { findCourseAssignmentsForTeachers } from '@/utils/teachers/repository/course-teachers.repository'
 import {
   signAvatarRows,
   signPrivateStoragePath,
 } from '@/utils/storage/service/private-storage.service'
 
-export async function getStudentsService() {
+async function requireStaffViewer(actorId: string): Promise<void> {
+  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(actorId)
+  if (!isAdmin && !isTeacher) throw new AuthorizationError()
+}
+
+export async function getStudentsService(actorId: string) {
+  await requireStaffViewer(actorId)
   const [allStudents, courses, allAssignments, allLessons] = await Promise.all([
     findAllStudents(),
     findAllCourses(),
@@ -96,6 +102,7 @@ export async function getStudentDetailService(
   data: GetStudentDetailInput,
   actorId: string,
 ) {
+  await requireStaffViewer(actorId)
   const student = await findStudentById(data.studentId)
 
   if (!student) {

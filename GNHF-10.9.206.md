@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
-**Date:** 2026-09-11
-**Iteration:** 85
-**Scope:** remediate the next compatible transitive Phase 5 dependency
-advisory after the fast-uri remediation in iteration 84.
+**Date:** 2026-09-12
+**Iteration:** 90
+**Scope:** close the next Phase 5 service authorization boundary after the
+transitive dependency follow-up in iteration 89.
 
 ## Executive summary
 
@@ -297,6 +297,11 @@ opened_at)`. It supports filtering active windows before recent-opening
   Zoom-link owner-options path passes its authenticated actor through instead of
   invoking the directory without context. Teacher-directory payloads and
   Admin-only privilege metadata are unchanged.
+- Student directory list and detail services now require a teacher or Admin
+  actor before reading student profiles, submissions, attendance, or related
+  course data. The server-function adapters pass the authenticated actor ID
+  into the service boundary, and direct student service calls are covered by
+  negative integration tests.
 - The runtime and CI secret inventory is now documented in
   `docs/plan/SECRET_INVENTORY.md`: server-secret classification, public
   `VITE_*` boundaries, Cloudflare Worker and GitHub environment storage,
@@ -2575,3 +2580,21 @@ typecheck, formatting, `git diff --check`, production build, and
 Tracking Notion records were synchronized; Architecture Inventory, Service
 Catalog, and Production Readiness targets were skipped because this follow-up
 changed dependency/tooling state but no service shape or launch decision.
+
+## Iteration 90 — student-directory service authorization hardening
+
+This iteration closed the next concrete Phase 5 RBAC service-boundary gap:
+
+- `getStudentsService` and `getStudentDetailService` now require a persisted
+  teacher or Admin role before reading student-directory data. The check runs
+  inside the service layer so direct callers cannot bypass the server-function
+  wrapper's route authorization.
+- The `getStudents` and `getStudentDetail` adapters now authenticate once and
+  pass the resulting actor ID into their services; behavior and response
+  shapes for authorized teachers/Admins are unchanged.
+- Added integration coverage proving direct student calls are rejected before
+  the sensitive student list/detail read.
+
+Validation passed: the focused student integration suite (9 tests). The full
+quality gate and Notion security/roadmap synchronization remain part of final
+handoff validation.

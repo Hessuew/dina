@@ -11,21 +11,25 @@ import {
   getStudentsService,
 } from '@/utils/student/service/student.service'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
-import { NotFoundError } from '@/utils/errors'
+import { AuthorizationError, NotFoundError } from '@/utils/errors'
 
 describe('getStudentsService (integration)', () => {
   it('returns only role=student profiles, ordered by fullName', async () => {
     await seedProfile({ role: 'admin', fullName: 'Admin Adams' })
-    await seedProfile({ role: 'teacher', fullName: 'Tina Teacher' })
+    const teacherId = await seedProfile({
+      role: 'teacher',
+      fullName: 'Tina Teacher',
+    })
     await seedProfile({ role: 'student', fullName: 'Bob' })
     await seedProfile({ role: 'student', fullName: 'Alice' })
 
-    const { students } = await getStudentsService()
+    const { students } = await getStudentsService(teacherId)
 
     expect(students.map((s) => s.fullName)).toEqual(['Alice', 'Bob'])
   })
 
   it('builds assignment stats from real submissions', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
     const studentId = await seedProfile({ role: 'student', fullName: 'Sara' })
     const courseId = await seedCourse({ title: 'Foundations' })
     const lessonId = await seedLesson({ courseId })
@@ -41,7 +45,7 @@ describe('getStudentsService (integration)', () => {
     // draft → excluded from submittedAssignments and (null grade) from average
     await seedSubmission({ assignmentId: a2, studentId, status: 'draft' })
 
-    const { students } = await getStudentsService()
+    const { students } = await getStudentsService(teacherId)
 
     expect(students).toHaveLength(1)
     const stats = students[0].assignmentStats
@@ -56,15 +60,31 @@ describe('getStudentsService (integration)', () => {
   })
 
   it('returns an empty list when there are no students', async () => {
-    await seedProfile({ role: 'admin' })
+    const adminId = await seedProfile({ role: 'admin' })
 
-    const { students } = await getStudentsService()
+    const { students } = await getStudentsService(adminId)
 
     expect(students).toEqual([])
+  })
+
+  it('rejects direct student calls before reading the directory', async () => {
+    const studentId = await seedProfile({ role: 'student' })
+
+    await expect(getStudentsService(studentId)).rejects.toBeInstanceOf(
+      AuthorizationError,
+    )
   })
 })
 
 describe('getStudentDetailService (integration)', () => {
+  it('rejects direct student calls before reading another student', async () => {
+    const actorId = await seedProfile({ role: 'student' })
+
+    await expect(
+      getStudentDetailService({ studentId: actorId }, actorId),
+    ).rejects.toBeInstanceOf(AuthorizationError)
+  })
+
   it('throws NotFoundError for an unknown id', async () => {
     const viewerId = await seedProfile({ role: 'admin' })
     await expect(
