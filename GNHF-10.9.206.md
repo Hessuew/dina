@@ -1281,3 +1281,30 @@ This iteration completed the next repository-owned structured-logging slice:
 Validation: focused exam integration passed all 17 tests. Better Stack
 destination, dashboard, alert, Uptime, source-map, Slack, and named-owner
 setup remains account-specific external work described above.
+
+## Iteration 38 — exam-grading structured telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Manual open-answer grading now emits redacted `exam_open_answer_graded`
+  success events, and finalizing a submitted attempt emits
+  `exam_grading_finalized`. Events carry request correlation,
+  server-function path, grader/attempt/exam IDs, answer or question IDs where
+  applicable, question type, status, and duration.
+- Unexpected grading persistence failures emit stable
+  `exam_open_answer_grade_failed` or `exam_grading_finalize_failed` events with
+  the `exam_grading_persistence` category. Authorization, conflict, not-found,
+  and validation outcomes remain ordinary user-facing results.
+- Awarded points, aggregate scores, answer text, and raw database/provider
+  details are excluded from Better Stack/Cloudflare telemetry. Existing
+  grading behavior and score calculations are unchanged.
+- Integration coverage verifies both success event shapes, duration metadata,
+  failure categorization, and privacy exclusions.
+
+Validation: focused exam integration passed all 18 tests, full integration
+passed all 342 tests, `bun run quality:gate` passed with 1,933 unit tests, and
+the production build passed. TypeScript, Cloudflare type generation,
+formatting, static checks, and `git diff --check` also passed; only existing
+deprecation, lint, Fallow, and large-chunk warnings remain. External Better
+Stack destination, dashboard, alert, Uptime, source-map, Slack, and
+named-owner verification remains account-specific setup work described above.

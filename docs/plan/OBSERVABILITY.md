@@ -45,6 +45,10 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   Exam-taking start/resume and answer-save mutations also emit redacted
   request-correlated events with safe student/attempt/exam/question metadata;
   selected option IDs and free-form answer text are excluded.
+  Teacher grading of open answers and finalization now emit redacted,
+  request-correlated events with safe grader/attempt/exam/question metadata;
+  awarded points, aggregate scores, answer text, and raw persistence details
+  are excluded.
 
 - **Cloudflare Workers:** Basic observability
   - Logs enabled (100% sampling)

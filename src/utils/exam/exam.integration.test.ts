@@ -762,6 +762,7 @@ describe('exam grading (integration)', () => {
   })
 
   it('grades open answers, blocks finalize until done, then reveals scores to the student', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const teacherId = await seedProfile({ role: 'teacher' })
     const {
       examId,
@@ -807,6 +808,50 @@ describe('exam grading (integration)', () => {
     )
     await finalizeGradingService({ attemptId }, teacherId)
 
+    const gradingEvents = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) =>
+        ['exam_open_answer_graded', 'exam_grading_finalized'].includes(
+          String(entry.event),
+        ),
+      )
+    expect(gradingEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'exam_open_answer_graded',
+          path: 'serverFn:gradeOpenAnswer',
+          graderId: teacherId,
+          answerId: openAnswer!.id,
+          attemptId,
+          examId,
+          questionId: openQuestionId,
+          questionType: 'open_ended',
+          status: 'graded',
+        }),
+        expect.objectContaining({
+          event: 'exam_grading_finalized',
+          path: 'serverFn:finalizeGrading',
+          graderId: teacherId,
+          attemptId,
+          examId,
+          status: 'graded',
+        }),
+      ]),
+    )
+    expect(
+      gradingEvents.every((event) => typeof event.durationMs === 'number'),
+    ).toBe(true)
+    expect(
+      gradingEvents.every(
+        (event) =>
+          !('awardedPoints' in event) &&
+          !('autoScore' in event) &&
+          !('manualScore' in event) &&
+          !('totalScore' in event) &&
+          !('textAnswer' in event),
+      ),
+    ).toBe(true)
+
     const result = await getAttemptForTakingService({ examId }, studentId)
     expect(result.attempt.status).toBe('graded')
     expect(result.attempt.autoScore).toBe(2)
@@ -818,6 +863,65 @@ describe('exam grading (integration)', () => {
     expect(
       result.answers.find((answer) => answer.questionId === mcQuestionId),
     ).toMatchObject({ isCorrect: true, awardedPoints: 2 })
+  })
+
+  it('logs grading persistence failures without scores or raw errors', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const { examId, attemptId, openQuestionId } =
+      await submitFullAttempt(teacherId)
+    const grading = await getAttemptForGradingService({ attemptId }, teacherId)
+    const openAnswer = grading.answers.find(
+      (answer) => answer.questionId === openQuestionId,
+    )
+    expect(openAnswer).toBeDefined()
+
+    vi.spyOn(examRepository, 'updateAnswerGrade').mockRejectedValueOnce(
+      new Error('grading database secret'),
+    )
+    await expect(
+      gradeOpenAnswerService(
+        { answerId: openAnswer!.id, awardedPoints: 4 },
+        teacherId,
+      ),
+    ).rejects.toThrow('grading database secret')
+
+    const gradeFailureLine = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(gradeFailureLine)).toMatchObject({
+      event: 'exam_open_answer_grade_failed',
+      path: 'serverFn:gradeOpenAnswer',
+      graderId: teacherId,
+      answerId: openAnswer!.id,
+      attemptId,
+      examId,
+      questionId: openQuestionId,
+      status: 'failure',
+      errorCategory: 'exam_grading_persistence',
+    })
+    expect(gradeFailureLine).not.toContain('grading database secret')
+
+    await gradeOpenAnswerService(
+      { answerId: openAnswer!.id, awardedPoints: 4 },
+      teacherId,
+    )
+    vi.spyOn(examRepository, 'markAttemptGraded').mockRejectedValueOnce(
+      new Error('finalize database secret'),
+    )
+    await expect(
+      finalizeGradingService({ attemptId }, teacherId),
+    ).rejects.toThrow('finalize database secret')
+
+    const finalizeFailureLine = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(finalizeFailureLine)).toMatchObject({
+      event: 'exam_grading_finalize_failed',
+      path: 'serverFn:finalizeGrading',
+      graderId: teacherId,
+      attemptId,
+      examId,
+      status: 'failure',
+      errorCategory: 'exam_grading_persistence',
+    })
+    expect(finalizeFailureLine).not.toContain('finalize database secret')
   })
 
   it('rejects grading a multiple-choice answer manually and double finalize', async () => {

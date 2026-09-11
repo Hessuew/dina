@@ -97,6 +97,18 @@ type ExamMutationLogContext = {
   startedAt: number
 }
 
+type ExamGradingAction = 'gradeOpenAnswer' | 'finalizeGrading'
+
+type ExamGradingLogContext = {
+  action: ExamGradingAction
+  graderId: string
+  attemptId?: string
+  examId?: string
+  answerId?: string
+  questionId?: string
+  startedAt: number
+}
+
 function logExamAttemptEvent(
   level: LogLevel,
   event: string,
@@ -128,6 +140,26 @@ function logExamMutationEvent(
     durationMs: elapsedMs(context.startedAt),
     actorId: context.actorId,
     examId: context.examId,
+    ...fields,
+  })
+}
+
+function logExamGradingEvent(
+  level: LogLevel,
+  event: string,
+  context: ExamGradingLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    graderId: context.graderId,
+    attemptId: context.attemptId,
+    examId: context.examId,
+    answerId: context.answerId,
+    questionId: context.questionId,
     ...fields,
   })
 }
@@ -677,54 +709,99 @@ export async function gradeOpenAnswerService(
   data: GradeOpenAnswerInput,
   userId: string,
 ): Promise<void> {
-  await assertTeacherOrAdmin(userId)
-  const answer = await findAnswerById(data.answerId)
-  if (!answer) throw new NotFoundError('Answer not found')
-  const attempt = await findAttemptById(answer.attemptId)
-  if (!attempt) throw new NotFoundError('Attempt not found')
-  if (attempt.status === 'in_progress') {
-    throw new ConflictError('Cannot grade an attempt that is still in progress')
+  const context: ExamGradingLogContext = {
+    action: 'gradeOpenAnswer',
+    graderId: userId,
+    answerId: data.answerId,
+    startedAt: performance.now(),
   }
-  const { questions } = await findQuestionsWithOptions(attempt.examId)
-  const question = questions.find((q) => q.id === answer.questionId)
-  if (!question || question.type !== 'open_ended') {
-    throw new ValidationError('Only open-ended answers can be graded manually')
+  try {
+    await assertTeacherOrAdmin(userId)
+    const answer = await findAnswerById(data.answerId)
+    if (!answer) throw new NotFoundError('Answer not found')
+    context.attemptId = answer.attemptId
+    const attempt = await findAttemptById(answer.attemptId)
+    if (!attempt) throw new NotFoundError('Attempt not found')
+    context.examId = attempt.examId
+    if (attempt.status === 'in_progress') {
+      throw new ConflictError(
+        'Cannot grade an attempt that is still in progress',
+      )
+    }
+    const { questions } = await findQuestionsWithOptions(attempt.examId)
+    const question = questions.find((q) => q.id === answer.questionId)
+    if (!question || question.type !== 'open_ended') {
+      throw new ValidationError(
+        'Only open-ended answers can be graded manually',
+      )
+    }
+    context.questionId = question.id
+    if (data.awardedPoints > question.points) {
+      throw new ValidationError(
+        `Points cannot exceed the question maximum (${question.points})`,
+      )
+    }
+    await updateAnswerGrade(data.answerId, data.awardedPoints)
+    logExamGradingEvent('info', 'exam_open_answer_graded', context, {
+      status: 'graded',
+      questionType: question.type,
+    })
+  } catch (error) {
+    if (shouldLogExamFailure(error)) {
+      logExamGradingEvent('error', 'exam_open_answer_grade_failed', context, {
+        errorCategory: 'exam_grading_persistence',
+      })
+    }
+    throw error
   }
-  if (data.awardedPoints > question.points) {
-    throw new ValidationError(
-      `Points cannot exceed the question maximum (${question.points})`,
-    )
-  }
-  await updateAnswerGrade(data.answerId, data.awardedPoints)
 }
 
 export async function finalizeGradingService(
   data: FinalizeGradingInput,
   userId: string,
 ): Promise<void> {
-  await assertTeacherOrAdmin(userId)
-  const attempt = await findAttemptById(data.attemptId)
-  if (!attempt) throw new NotFoundError('Attempt not found')
-  if (attempt.status !== 'submitted') {
-    throw new ConflictError('Only submitted attempts can be finalized')
+  const context: ExamGradingLogContext = {
+    action: 'finalizeGrading',
+    graderId: userId,
+    attemptId: data.attemptId,
+    startedAt: performance.now(),
   }
-  const [{ questions }, answers] = await Promise.all([
-    findQuestionsWithOptions(attempt.examId),
-    findAnswersByAttempt(attempt.id),
-  ])
-  if (!allOpenAnswersGraded(answers, questions)) {
-    throw new ValidationError(
-      'All answered open-ended questions must be graded first',
+  try {
+    await assertTeacherOrAdmin(userId)
+    const attempt = await findAttemptById(data.attemptId)
+    if (!attempt) throw new NotFoundError('Attempt not found')
+    context.examId = attempt.examId
+    if (attempt.status !== 'submitted') {
+      throw new ConflictError('Only submitted attempts can be finalized')
+    }
+    const [{ questions }, answers] = await Promise.all([
+      findQuestionsWithOptions(attempt.examId),
+      findAnswersByAttempt(attempt.id),
+    ])
+    if (!allOpenAnswersGraded(answers, questions)) {
+      throw new ValidationError(
+        'All answered open-ended questions must be graded first',
+      )
+    }
+    const scores = computeAttemptScores(answers, questions)
+    await markAttemptGraded(
+      attempt.id,
+      {
+        autoScore: scores.autoScore,
+        manualScore: scores.manualScore,
+        totalScore: scores.totalScore,
+      },
+      userId,
     )
+    logExamGradingEvent('info', 'exam_grading_finalized', context, {
+      status: 'graded',
+    })
+  } catch (error) {
+    if (shouldLogExamFailure(error)) {
+      logExamGradingEvent('error', 'exam_grading_finalize_failed', context, {
+        errorCategory: 'exam_grading_persistence',
+      })
+    }
+    throw error
   }
-  const scores = computeAttemptScores(answers, questions)
-  await markAttemptGraded(
-    attempt.id,
-    {
-      autoScore: scores.autoScore,
-      manualScore: scores.manualScore,
-      totalScore: scores.totalScore,
-    },
-    userId,
-  )
 }

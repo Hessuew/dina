@@ -118,6 +118,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    duration. Selected option IDs, answer text, and raw persistence details
    remain excluded; unexpected failures use stable
    `exam_attempt_persistence` or `exam_answer_persistence` categories.
+   Teacher exam grading now emits redacted `exam_open_answer_graded` and
+   `exam_grading_finalized` events with request correlation, server-function
+   path, grader/attempt/exam IDs, answer or question IDs where applicable,
+   question type, status, and duration. Awarded points, aggregate scores,
+   answer text, and raw persistence details remain excluded; unexpected
+   failures use the stable `exam_grading_persistence` category.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

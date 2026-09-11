@@ -126,6 +126,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     question status, question type, and duration. Selected option IDs, answer
     text, and raw persistence details remain excluded; unexpected failures use
     stable `exam_attempt_persistence` or `exam_answer_persistence` categories.
+  - Teacher exam grading emits redacted `exam_open_answer_graded` and
+    `exam_grading_finalized` events with request correlation,
+    grader/attempt/exam/question metadata, status, and duration. Awarded
+    points, aggregate scores, answer text, and raw persistence details remain
+    excluded; unexpected failures use `exam_grading_persistence`.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is
