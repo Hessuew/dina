@@ -1,9 +1,10 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 80
+**Iteration:** 82
 **Scope:** remediate the next transitive Phase 5 dependency advisory after
-documenting the repository-owned threat-model baseline.
+the Browserslist-only attempt in iteration 81 left nested vulnerable copies
+unchanged.
 
 ## Executive summary
 
@@ -315,6 +316,29 @@ opened_at)`. It supports filtering active windows before recent-opening
 brace-expansion` refreshes their compatible 1.x lockfile branches to
   `1.1.18`, while preserving the separate `brace-expansion@5.0.9` and
   `brace-expansion@2.1.4` trees used by newer `minimatch` releases.
+- All audited paths now resolve Browserslist through a root `package.json`
+  override to patched `browserslist@4.28.9`, covering the two high-severity
+  Browserslist advisories without promoting a separate direct dependency or
+  changing application runtime behavior.
+
+## Iteration 82 — Browserslist transitive dependency remediation
+
+This iteration completed the next bounded Phase 5 dependency remediation:
+
+- Added the root Bun override `browserslist: ^4.28.9`, which applies to the
+  shadcn, TanStack, Vite, and Sentry build-tool dependency paths that previously
+  shared vulnerable `browserslist@4.28.1`.
+- Covered the two high-severity Browserslist advisories for unbounded cache
+  growth and untrusted `browserslist-stats.json` normalization:
+  [GHSA-c83g-rgw3-j3cx](https://github.com/advisories/GHSA-c83g-rgw3-j3cx) and
+  [GHSA-73wf-gq98-2v4g](https://github.com/advisories/GHSA-73wf-gq98-2v4g).
+- The high-severity Bun audit baseline dropped from 27 to 25 findings. The
+  remaining findings are transitive development-tool dependencies and remain
+  report-only while each is triaged separately.
+
+Validation for this iteration: `bun install`, lockfile inspection, targeted
+dependency-tree inspection, `bun audit --audit-level=high` (expected exit 1
+with 25 residual high transitive findings), and the repository quality gate.
 
 ## Iteration 80 — brace-expansion transitive dependency remediation
 

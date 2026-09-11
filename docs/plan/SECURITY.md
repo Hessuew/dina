@@ -1,8 +1,8 @@
 # Security Baseline
 
-**Status:** In progress — the direct browser PDF, nested Vite, shell-quote, and
-brace-expansion dependencies are remediated; the reviewed server-function authorization
-gaps, secret-inventory contract, and threat-model baseline are documented incrementally,
+**Status:** In progress — the direct browser PDF, nested Vite, shell-quote,
+brace-expansion, and Browserslist dependencies are remediated; the reviewed
+server-function authorization gaps, secret-inventory contract, and threat-model baseline are documented incrementally,
 while remaining transitive advisories and hosted security verification are pending
 **Phase:** Engineering Roadmap Phase 5: Security
 
@@ -21,8 +21,8 @@ update pull requests with `dependencies` and `security`.
 The advisory workflow is intentionally report-only while the remaining baseline is
 triaged. The current dependency tree still has high/critical transitive findings,
 but the direct browser-used `pdfjs-dist` advisory is remediated at `^6.2.108`.
-After the brace-expansion remediation below, the local high-severity audit reports
-27 remaining high findings; all are currently transitive development-tool dependencies.
+After the Browserslist remediation below, the local high-severity audit reports
+25 remaining high findings; all are currently transitive development-tool dependencies.
 Do not suppress an advisory solely to make the workflow green. For each finding,
 decide whether to upgrade, replace, isolate, or accept it with a documented owner
 and review date.
@@ -83,6 +83,22 @@ The lockfile keeps the separate `brace-expansion@5.0.9` and `brace-expansion@2.1
 branches required by newer `minimatch` releases, rather than forcing an incompatible
 global override. This is a development-tooling remediation; the package is not
 included in the deployed Worker/browser runtime.
+
+## Browserslist transitive dependency remediation
+
+The shadcn, TanStack, Vite, and Sentry build-tool paths previously shared
+`browserslist@4.28.1`, which was affected by the two high-severity advisories
+[GHSA-c83g-rgw3-j3cx](https://github.com/advisories/GHSA-c83g-rgw3-j3cx) and
+[GHSA-73wf-gq98-2v4g](https://github.com/advisories/GHSA-73wf-gq98-2v4g).
+The root `overrides` entry now pins all compatible Browserslist resolutions to
+`^4.28.9`, which is outside the vulnerable `<=4.28.6` range.
+
+This targeted override avoids the failed direct-update pattern from iteration
+81, where Bun promoted a transitive package but retained vulnerable nested
+copies. Browserslist is used by the build/development dependency paths shown by
+the audit tree and is not bundled as application runtime code. The local audit
+baseline decreased from 27 to 25 high findings; the remaining findings stay
+report-only until separately triaged.
 
 ## Review order
 
