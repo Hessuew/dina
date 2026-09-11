@@ -155,6 +155,14 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `enrollment_substitution_persistence`, and
    `enrollment_substitution_end_persistence` categories; applicant content and
    raw database details remain excluded.
+   Bulk enrollment grading now emits redacted
+   `enrollment_bulk_grade_completed` events for preview and execute paths with
+   request correlation, actor ID, thresholds, safe outcome counters, and
+   duration. Read and update failures emit
+   `enrollment_bulk_grade_failed` with stable
+   `enrollment_bulk_grade_read_persistence` or
+   `enrollment_bulk_grade_update_persistence` categories; enrollment
+   identifiers and raw database details remain excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

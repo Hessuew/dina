@@ -1412,8 +1412,27 @@ This iteration completed the next repository-owned structured-logging slice:
   categories.
 
 Validation: the focused enrollment integration suite passed all 35 tests.
+
+## Iteration 43 — bulk enrollment grading telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Bulk enrollment grading now emits a redacted
+  `enrollment_bulk_grade_completed` event for both dry-run previews and status
+  execution. Events carry request correlation, actor ID, configured thresholds,
+  dry-run mode, awaiting-approval and special-case counts, approved/waitlisted/
+  rejected totals, and duration.
+- Repository read and update failures emit the same
+  `enrollment_bulk_grade_failed` event with stable
+  `enrollment_bulk_grade_read_persistence` or
+  `enrollment_bulk_grade_update_persistence` categories. Enrollment IDs,
+  applicant content, and raw database/provider details remain excluded.
+- Integration coverage verifies preview and execute event shapes, threshold
+  assignments, safe counters, duration metadata, and both stable failure
+  categories without raw errors.
+
+Validation: the focused enrollment integration suite passed all 38 tests.
 The next in-repo structured-logging slice should target another uninstrumented
-mutating family, such as bulk enrollment grading or assignment-independent
-administration actions. Better Stack destinations, dashboards, alerts, Uptime,
-source maps, Slack routing, and named ownership remain account-specific
-external setup work.
+mutating family or assignment-independent administration action. Better Stack
+destinations, dashboards, alerts, Uptime, source maps, Slack routing, and named
+ownership remain account-specific external setup work.

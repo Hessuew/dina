@@ -19,6 +19,14 @@ import type {
   EnrollmentWithEvaluation,
   MaybeRedactedEnrollment,
 } from '@/utils/enrolment/domain/enrolment.domain'
+import type {
+  BulkGradeStatus,
+  BulkGradeThresholds,
+} from '@/utils/enrolment/domain/bulk-grade.domain'
+import {
+  assignBulkGradeStatus,
+  computeBulkGradePreview,
+} from '@/utils/enrolment/domain/bulk-grade.domain'
 import {
   buildEnrollmentAssignments,
   deriveCanEvaluate,
@@ -27,10 +35,6 @@ import {
   isInvitationResendable,
   redactEnrollmentForTeacher,
 } from '@/utils/enrolment/domain/enrolment.domain'
-import {
-  assignBulkGradeStatus,
-  computeBulkGradePreview,
-} from '@/utils/enrolment/domain/bulk-grade.domain'
 import {
   bulkAssignEnrollments,
   bulkUpdateEnrollmentStatuses,
@@ -102,6 +106,11 @@ type EnrollmentAssignmentMutationContext = {
   startedAt: number
 }
 
+type EnrollmentBulkGradeContext = {
+  actorId: string
+  startedAt: number
+}
+
 type EnrollmentMutationContext = {
   action: EnrollmentMutationAction
   actorId: string
@@ -153,6 +162,44 @@ function logEnrollmentDistributionCompleted(
     'enrollment_distribution_completed',
     context,
     { assignedCount, unassignedCount, reviewerCount },
+  )
+}
+
+function logEnrollmentBulkGradeMutation(
+  level: 'info' | 'error',
+  event: string,
+  context: EnrollmentBulkGradeContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:bulkGradeEnrollments',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    ...fields,
+  })
+}
+
+function logBulkGradeCompleted(
+  context: EnrollmentBulkGradeContext,
+  data: BulkGradeEnrollmentsInput,
+  result: BulkGradeResult,
+  awaitingApprovalCount: number,
+  specialCaseCount: number,
+): void {
+  logEnrollmentBulkGradeMutation(
+    'info',
+    'enrollment_bulk_grade_completed',
+    context,
+    {
+      approveMin: data.approveMin,
+      waitlistMin: data.waitlistMin ?? null,
+      dryRun: data.dryRun,
+      awaitingApprovalCount,
+      specialCaseCount,
+      ...result,
+    },
   )
 }
 
@@ -252,6 +299,49 @@ async function persistDerivedEvaluationStatus(
   if (nextStatus !== null) {
     await updateEnrollmentStatusById(enrollmentId, nextStatus)
   }
+}
+
+type BulkGradeResult = {
+  approved: number
+  waitlisted: number
+  rejected: number
+  total: number
+}
+
+type BulkGradePlan = {
+  result: BulkGradeResult
+  updates: Array<{ id: string; status: BulkGradeStatus }>
+  specialCaseCount: number
+}
+
+function buildBulkGradePlan(
+  rows: ReadonlyArray<{ id: string; sum: number; specialCase: boolean }>,
+  thresholds: BulkGradeThresholds,
+): BulkGradePlan {
+  const specialCaseCount = rows.filter((row) => row.specialCase).length
+  const regularRows = rows.filter((row) => !row.specialCase)
+  const countsBySum = regularRows.reduce<Array<{ sum: number; count: number }>>(
+    (acc, row) => {
+      const entry = acc.find((item) => item.sum === row.sum)
+      if (entry) entry.count++
+      else acc.push({ sum: row.sum, count: 1 })
+      return acc
+    },
+    [],
+  )
+  const preview = computeBulkGradePreview(countsBySum, thresholds)
+  const result = {
+    ...preview,
+    approved: preview.approved + specialCaseCount,
+    total: preview.total + specialCaseCount,
+  }
+  const updates = rows.map((row) => ({
+    id: row.id,
+    status: row.specialCase
+      ? ('approved' as const)
+      : assignBulkGradeStatus(row.sum, thresholds),
+  }))
+  return { result, updates, specialCaseCount }
 }
 
 async function setEvaluationScoreWithAccess(
@@ -990,55 +1080,65 @@ export async function searchEnrollmentContactsByNamesService(
 export async function bulkGradeEnrollmentsService(
   data: BulkGradeEnrollmentsInput,
   userId: string,
-): Promise<{
-  approved: number
-  waitlisted: number
-  rejected: number
-  total: number
-}> {
+): Promise<BulkGradeResult> {
   await authz(userId).hasRole('admin')
 
+  const context: EnrollmentBulkGradeContext = {
+    actorId: userId,
+    startedAt: performance.now(),
+  }
   const thresholds = {
     approveMin: data.approveMin,
     waitlistMin: data.waitlistMin ?? undefined,
   }
 
-  const rows = await findAwaitingApprovalIdsWithSum()
-
-  const specialCaseCount = rows.filter((r) => r.specialCase).length
-  const regularRows = rows.filter((r) => !r.specialCase)
-
-  const countsBySum = regularRows.reduce<Array<{ sum: number; count: number }>>(
-    (acc, row) => {
-      const entry = acc.find((e) => e.sum === row.sum)
-      if (entry) entry.count++
-      else acc.push({ sum: row.sum, count: 1 })
-      return acc
-    },
-    [],
-  )
-
-  const preview = computeBulkGradePreview(countsBySum, thresholds)
-
-  // Add specialCase enrollments to approved count
-  const finalPreview = {
-    approved: preview.approved + specialCaseCount,
-    waitlisted: preview.waitlisted,
-    rejected: preview.rejected,
-    total: preview.total + specialCaseCount,
+  let rows: Awaited<ReturnType<typeof findAwaitingApprovalIdsWithSum>>
+  try {
+    rows = await findAwaitingApprovalIdsWithSum()
+  } catch (error) {
+    logEnrollmentBulkGradeMutation(
+      'error',
+      'enrollment_bulk_grade_failed',
+      context,
+      { errorCategory: 'enrollment_bulk_grade_read_persistence' },
+    )
+    throw error
   }
 
-  if (data.dryRun) return finalPreview
+  const plan = buildBulkGradePlan(rows, thresholds)
 
-  const updates = rows.map((row) => ({
-    id: row.id,
-    status: row.specialCase
-      ? 'approved'
-      : (assignBulkGradeStatus(row.sum, thresholds) as
-          'approved' | 'waitlisted' | 'rejected'),
-  }))
+  if (data.dryRun) {
+    logBulkGradeCompleted(
+      context,
+      data,
+      plan.result,
+      rows.length,
+      plan.specialCaseCount,
+    )
+    return plan.result
+  }
 
-  await bulkUpdateEnrollmentStatuses(updates)
+  try {
+    await bulkUpdateEnrollmentStatuses(plan.updates)
+  } catch (error) {
+    logEnrollmentBulkGradeMutation(
+      'error',
+      'enrollment_bulk_grade_failed',
+      context,
+      {
+        errorCategory: 'enrollment_bulk_grade_update_persistence',
+        awaitingApprovalCount: rows.length,
+      },
+    )
+    throw error
+  }
 
-  return finalPreview
+  logBulkGradeCompleted(
+    context,
+    data,
+    plan.result,
+    rows.length,
+    plan.specialCaseCount,
+  )
+  return plan.result
 }

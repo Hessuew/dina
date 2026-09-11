@@ -105,6 +105,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     safe teacher/course identifiers, outcome counters, and duration;
     unexpected persistence failures use stable categories without applicant
     content or raw database details.
+  - Bulk enrollment grading emits redacted
+    `enrollment_bulk_grade_completed` events for preview and execute paths with
+    request correlation, actor ID, thresholds, safe outcome counters, and
+    duration; read and update failures use stable persistence categories without
+    enrollment identifiers or raw database details.
   - Course create, update, and delete mutations emit redacted
     `course_created`, `course_updated`, and `course_deleted` events with
     request correlation, actor/course IDs, status, duration, and publication

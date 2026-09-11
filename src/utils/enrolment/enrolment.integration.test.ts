@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
 import {
+  bulkGradeEnrollmentsService,
   deleteEnrollmentService,
   distributeEnrollmentsService,
   endSubstitutionService,
@@ -618,6 +619,127 @@ describe('enrollment distribution and substitution telemetry (integration)', () 
     expect(
       events.every(({ event }) => typeof event.durationMs === 'number'),
     ).toBe(true)
+    expect(
+      events.every(({ serialized }) => !serialized.includes('secret')),
+    ).toBe(true)
+  })
+})
+
+describe('bulk enrollment grading telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const rows = [
+    { id: 'enrollment-approved', sum: 8, specialCase: false },
+    { id: 'enrollment-waitlisted', sum: 5, specialCase: false },
+    { id: 'enrollment-rejected', sum: 1, specialCase: false },
+    { id: 'enrollment-special', sum: 0, specialCase: true },
+  ]
+
+  it('logs a redacted preview event with thresholds and safe counters', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    vi.spyOn(
+      enrollmentRepository,
+      'findAwaitingApprovalIdsWithSum',
+    ).mockResolvedValue(rows)
+
+    const result = await bulkGradeEnrollmentsService(
+      { approveMin: 6, waitlistMin: 3, dryRun: true },
+      adminId,
+    )
+
+    expect(result).toEqual({
+      approved: 2,
+      waitlisted: 1,
+      rejected: 1,
+      total: 4,
+    })
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'enrollment_bulk_grade_completed')
+
+    expect(event).toMatchObject({
+      event: 'enrollment_bulk_grade_completed',
+      path: 'serverFn:bulkGradeEnrollments',
+      status: 'success',
+      actorId: adminId,
+      approveMin: 6,
+      waitlistMin: 3,
+      dryRun: true,
+      awaitingApprovalCount: 4,
+      specialCaseCount: 1,
+      approved: 2,
+      waitlisted: 1,
+      rejected: 1,
+      total: 4,
+    })
+    expect(event?.durationMs).toEqual(expect.any(Number))
+    expect(JSON.stringify(event)).not.toContain('enrollment-approved')
+  })
+
+  it('logs execute completion and applies threshold statuses', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    vi.spyOn(
+      enrollmentRepository,
+      'findAwaitingApprovalIdsWithSum',
+    ).mockResolvedValue(rows)
+    const updateSpy = vi
+      .spyOn(enrollmentRepository, 'bulkUpdateEnrollmentStatuses')
+      .mockResolvedValue()
+
+    await bulkGradeEnrollmentsService(
+      { approveMin: 6, waitlistMin: 3, dryRun: false },
+      adminId,
+    )
+
+    expect(updateSpy).toHaveBeenCalledWith([
+      { id: 'enrollment-approved', status: 'approved' },
+      { id: 'enrollment-waitlisted', status: 'waitlisted' },
+      { id: 'enrollment-rejected', status: 'rejected' },
+      { id: 'enrollment-special', status: 'approved' },
+    ])
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'enrollment_bulk_grade_completed')
+    expect(event).toMatchObject({ dryRun: false, total: 4 })
+  })
+
+  it('logs stable read and update persistence categories without raw errors', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const readSpy = vi
+      .spyOn(enrollmentRepository, 'findAwaitingApprovalIdsWithSum')
+      .mockRejectedValueOnce(new Error('bulk grade read secret'))
+
+    await expect(
+      bulkGradeEnrollmentsService({ approveMin: 6, dryRun: true }, adminId),
+    ).rejects.toThrow('bulk grade read secret')
+
+    readSpy.mockResolvedValue(rows)
+    vi.spyOn(
+      enrollmentRepository,
+      'bulkUpdateEnrollmentStatuses',
+    ).mockRejectedValueOnce(new Error('bulk grade update secret'))
+
+    await expect(
+      bulkGradeEnrollmentsService({ approveMin: 6, dryRun: false }, adminId),
+    ).rejects.toThrow('bulk grade update secret')
+
+    const events = errorSpy.mock.calls.map(([line]) => {
+      const serialized = String(line)
+      return {
+        event: JSON.parse(serialized) as Record<string, unknown>,
+        serialized,
+      }
+    })
+    expect(events.map(({ event }) => event.errorCategory)).toEqual([
+      'enrollment_bulk_grade_read_persistence',
+      'enrollment_bulk_grade_update_persistence',
+    ])
+    expect(events.every(({ event }) => event.status === 'failure')).toBe(true)
     expect(
       events.every(({ serialized }) => !serialized.includes('secret')),
     ).toBe(true)
