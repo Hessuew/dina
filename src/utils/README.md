@@ -193,8 +193,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `analytics.ts`: optional browser-only PostHog boundary with an allow-listed
     LMS event-name union, stable user-ID/role identification, logout reset, and
     disabled autocapture/session recording by default. It exposes privacy-safe
-    helpers for lesson and course completion; no event leaves the browser until
-    `VITE_POSTHOG_KEY` is configured.
+    helpers for student activation, lesson completion, and course completion;
+    student activation is deduplicated per user in browser storage, and no
+    event leaves the browser until `VITE_POSTHOG_KEY` is configured.
 
 - **Supabase utilities**
   - `supabase.ts`: server client (`@supabase/ssr`) and admin client.

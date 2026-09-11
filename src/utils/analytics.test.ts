@@ -31,7 +31,15 @@ describe('analytics boundary', () => {
   it('initializes once with privacy-safe defaults and captures allow-listed events', async () => {
     vi.stubEnv('VITE_POSTHOG_KEY', 'project-key')
     vi.stubEnv('VITE_POSTHOG_HOST', 'https://eu.i.posthog.com')
-    vi.stubGlobal('window', {})
+    const storedValues = new Map<string, string>()
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => storedValues.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          storedValues.set(key, value)
+        },
+      },
+    })
 
     const {
       identifyAnalyticsUser,
@@ -39,6 +47,7 @@ describe('analytics boundary', () => {
       resetAnalyticsUser,
       trackCourseStarted,
       trackCourseCompleted,
+      trackStudentActivated,
       trackEnrollmentStarted,
       trackLessonCompleted,
       trackAnalyticsEvent,
@@ -50,6 +59,9 @@ describe('analytics boundary', () => {
     expect(initializeAnalytics()).toBe(true)
     identifyAnalyticsUser({ id: 'user-1', role: 'student' })
     expect(trackCourseStarted('course-1')).toBe(true)
+    expect(trackStudentActivated('user-1', 'course-1')).toBe(true)
+    expect(trackStudentActivated('user-1', 'course-2')).toBe(false)
+    expect(trackStudentActivated('user-2', 'course-2')).toBe(true)
     expect(trackCourseCompleted('course-1')).toBe(true)
     expect(trackLessonCompleted('lesson-1')).toBe(true)
     expect(trackAssignmentSubmitted('assignment-1')).toBe(true)
@@ -83,6 +95,12 @@ describe('analytics boundary', () => {
     })
     expect(posthog.capture).toHaveBeenCalledWith('course_started', {
       courseId: 'course-1',
+    })
+    expect(posthog.capture).toHaveBeenCalledWith('student_activated', {
+      courseId: 'course-1',
+    })
+    expect(posthog.capture).toHaveBeenCalledWith('student_activated', {
+      courseId: 'course-2',
     })
     expect(posthog.capture).toHaveBeenCalledWith('course_completed', {
       courseId: 'course-1',

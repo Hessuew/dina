@@ -1,6 +1,6 @@
 # PostHog Product Analytics
 
-**Status:** Foundation implemented; enrollment start/submission, assignment submission, course start, lesson completion, course completion, and teacher review instrumented
+**Status:** Foundation implemented; enrollment start/submission, student activation, assignment submission, course start, lesson completion, course completion, and teacher review instrumented
 
 ## Purpose
 
@@ -53,4 +53,10 @@ the persistence mutation succeeds. After a first successful completion of the
 final published lesson, the same route emits `course_completed` with only the
 stable course ID. Repeated lesson-completion requests do not emit duplicate
 course-completion events because the server returns a transition-only flag.
+The same first-course-start boundary emits `student_activated` once per
+authenticated user in a browser profile, using the course ID only. The
+browser-local marker prevents repeated course opens from inflating activation
+counts while keeping the event optional and privacy-safe. Cross-device
+deduplication remains a PostHog reporting concern until activation is backed by
+a server-side product state.
 Verification in the configured PostHog project remains pending.

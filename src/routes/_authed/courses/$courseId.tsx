@@ -23,7 +23,7 @@ import {
   shouldShowMaterials,
   shouldTrackCourseStarted,
 } from '@/utils/courses/domain/course-detail.domain'
-import { trackCourseStarted } from '@/utils/analytics'
+import { trackCourseStarted, trackStudentActivated } from '@/utils/analytics'
 
 export const Route = createFileRoute('/_authed/courses/$courseId')({
   loader: async ({ params }) => {
@@ -63,6 +63,7 @@ type MaterialDialogState = ReturnType<typeof useDialogState<MediaLibraryRow>>
 
 function CourseDetailComponent() {
   const loaderData = Route.useLoaderData()
+  const { user } = Route.useRouteContext()
   const router = useRouter()
   const { course, role, permissions } = loaderData
 
@@ -87,6 +88,7 @@ function CourseDetailComponent() {
       })
     ) {
       trackCourseStarted(course.id)
+      if (user) trackStudentActivated(user.id, course.id)
     }
     router.navigate({ to: '/lessons/$lessonId', params: { lessonId } })
   }

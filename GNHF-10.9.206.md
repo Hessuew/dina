@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 55
-**Scope:** make Better Stack the canonical application error destination configuration.
+**Iteration:** 56
+**Scope:** complete the privacy-safe student activation event at the first-course-start boundary.
 
 ## Executive summary
 
@@ -166,6 +166,11 @@ The repository already has the first production-fundamentals slice:
 - The course detail route now emits `course_started` when a student opens the
   first unfinished published lesson. The event carries only the stable course
   ID; lesson content and titles remain outside analytics.
+- The same first-course-start boundary now emits `student_activated` once per
+  authenticated user in a browser profile. It carries only the stable course
+  ID and uses a user-keyed browser-local marker to avoid duplicate activation
+  events on repeated course opens; cross-device deduplication remains a
+  PostHog reporting concern.
 - A successful teacher grading mutation now emits
   `teacher_review_completed` with stable assignment and submission IDs only;
   grade and feedback content remain outside analytics.
@@ -188,6 +193,26 @@ The repository already has the first production-fundamentals slice:
   availability/error-rate/restore-confidence budgets, breach responses, and
   review rules. The policy is deliberately non-blocking until Better Stack,
   Cloudflare, Uptime, and restore-drill evidence are verified.
+
+## Iteration 56 — student activation product analytics
+
+This iteration completed the next repository-owned PostHog journey slice:
+
+- Added `trackStudentActivated(userId, courseId)` to the typed analytics
+  boundary. It emits the allow-listed `student_activated` event with only the
+  stable course ID and marks the user as activated only after PostHog capture
+  is enabled.
+- The authenticated course route calls it alongside the existing
+  `course_started` event when a student opens the first unfinished published
+  lesson. A browser-local key scoped to the stable user ID suppresses repeats
+  across course opens without adding a database column or sending applicant,
+  lesson, or course content.
+- Added analytics coverage for first activation, duplicate suppression for the
+  same user, and independent activation for another user.
+
+Validation: focused analytics tests, TypeScript, formatting, and the quality
+gate passed. PostHog project/dashboard verification remains external
+follow-up.
 
 ## Iteration 55 — canonical Better Stack DSN configuration
 

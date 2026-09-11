@@ -20,6 +20,33 @@ export type AnalyticsEventProperties = Readonly<
 >
 
 let isInitialized = false
+const STUDENT_ACTIVATION_STORAGE_PREFIX = 'dina:analytics:student-activated:'
+
+function studentActivationStorageKey(userId: string): string {
+  return `${STUDENT_ACTIVATION_STORAGE_PREFIX}${userId}`
+}
+
+function hasTrackedStudentActivation(userId: string): boolean {
+  if (typeof window === 'undefined') return false
+
+  try {
+    return (
+      window.localStorage.getItem(studentActivationStorageKey(userId)) === '1'
+    )
+  } catch {
+    return false
+  }
+}
+
+function rememberStudentActivation(userId: string): void {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(studentActivationStorageKey(userId), '1')
+  } catch {
+    // Analytics remains best-effort when browser storage is unavailable.
+  }
+}
 
 /**
  * Starts PostHog only in a browser build with an explicitly configured key.
@@ -85,6 +112,18 @@ export function trackEnrollmentStarted(): boolean {
 /** Captures the first lesson start without including lesson content. */
 export function trackCourseStarted(courseId: string): boolean {
   return trackAnalyticsEvent('course_started', { courseId })
+}
+
+/** Captures the first student course start for this browser and user. */
+export function trackStudentActivated(
+  userId: string,
+  courseId: string,
+): boolean {
+  if (hasTrackedStudentActivation(userId)) return false
+
+  const tracked = trackAnalyticsEvent('student_activated', { courseId })
+  if (tracked) rememberStudentActivation(userId)
+  return tracked
 }
 
 /** Captures a first lesson completion without including lesson content. */

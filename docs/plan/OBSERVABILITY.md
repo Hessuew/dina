@@ -65,8 +65,9 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 - **Admin observability hub:** `/admin/observability` is admin-only and links to configured Better Stack, Cloudflare, Supabase, and Notion operating surfaces.
 - **PostHog foundation:** optional browser-only initialization is wired from the
   root route with stable user-ID/role identification. Enrollment, assignment
-  submission, course start, teacher review, lesson completion, and course
-  completion events are instrumented. The public enrollment form also emits a
+  submission, student activation, course start, teacher review, lesson
+  completion, and course completion events are instrumented. The public
+  enrollment form also emits a
   privacy-safe `enrollment_started` event once per form visit; project
   verification remains pending.
   Autocapture and session recording remain disabled by default.
