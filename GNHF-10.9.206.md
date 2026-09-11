@@ -1054,3 +1054,22 @@ This iteration completed the next repository-owned structured-logging slice:
 
 The broader Better Stack destination, dashboard, alert, Uptime, source-map,
 Slack, and named-owner setup remains account-specific work documented above.
+
+## Iteration 29 — discipleship mutation telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Discipleship assignment, pairing, and individual/pair/group schedule
+  mutations now emit shared redacted `discipleship_mutation_completed` and
+  `discipleship_mutation_failed` events.
+- Events include request correlation, server-function action, actor ID, safe
+  student/teacher/pair IDs, schedule type where relevant, outcome status, and
+  duration. Schedule timestamps, private profile data, and raw persistence or
+  provider details are excluded.
+- Expected authorization, not-found, and pairing-conflict outcomes remain
+  ordinary user-facing failures and do not create noisy error telemetry.
+
+Focused verification passed: the discipleship integration suite (7 tests),
+full integration (327 tests), typecheck, formatting, and quality:gate. Better
+Stack destination, dashboard, alert, Uptime, source-map, Slack, and named-owner
+setup remains pending external account configuration.

@@ -64,6 +64,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    stable `course_teacher_assignment_persistence` category while expected
    authorization, validation, conflict, and not-found outcomes remain out of
    noisy error logs.
+   Discipleship assignment, pairing, and schedule mutations now emit shared
+   `discipleship_mutation_completed` / `discipleship_mutation_failed` events
+   with request correlation, action path, actor and safe student/teacher/pair
+   IDs, operation type, status, and duration; schedule timestamps and raw
+   persistence details are excluded, and expected authorization, not-found,
+   and pairing-conflict outcomes remain out of noisy error logs.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

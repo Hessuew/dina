@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   seedDiscipleshipAssignment,
   seedDiscipleshipGroup,
@@ -6,8 +6,11 @@ import {
   seedProfile,
 } from '@/../test/integration/seed'
 import {
+  assignStudentToTeacherService,
   getDiscipleshipBoardService,
   getStudentDiscipleshipViewService,
+  pairStudentsService,
+  setIndividualScheduleService,
 } from '@/utils/discipleship/service/discipleship.service'
 import { AuthorizationError } from '@/utils/errors'
 
@@ -158,5 +161,58 @@ describe('getDiscipleshipBoardService (integration)', () => {
     await expect(getDiscipleshipBoardService(studentId)).rejects.toBeInstanceOf(
       AuthorizationError,
     )
+  })
+})
+
+describe('discipleship mutation telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs successful assignment and schedule mutations with safe fields', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
+
+    await assignStudentToTeacherService({ studentId, teacherId }, teacherId)
+    expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
+      event: 'discipleship_mutation_completed',
+      path: 'serverFn:assignStudentToTeacher',
+      actorId: teacherId,
+      studentId,
+      teacherId,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+
+    await setIndividualScheduleService(
+      { studentId, anchorAt: new Date('2026-09-11T10:00:00.000Z') },
+      teacherId,
+    )
+    const scheduleLog = infoSpy.mock.calls.at(-1)?.[0] as string
+    expect(JSON.parse(scheduleLog)).toMatchObject({
+      event: 'discipleship_mutation_completed',
+      path: 'serverFn:setIndividualSchedule',
+      studentId,
+      scheduleType: 'individual',
+      status: 'success',
+    })
+    expect(scheduleLog).not.toContain('2026-09-11')
+  })
+
+  it('keeps expected pairing conflicts out of error telemetry', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
+    await seedDiscipleshipAssignment({ studentId, teacherId })
+
+    await expect(
+      pairStudentsService(
+        { studentIdA: studentId, studentIdB: studentId, teacherId },
+        teacherId,
+      ),
+    ).rejects.toMatchObject({ status: 409 })
+
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })

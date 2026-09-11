@@ -14,12 +14,14 @@ import type {
   UnassignStudentInput,
   UnpairStudentInput,
 } from '@/schemas/discipleship.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import { resolveAdminOrTeacherAccess } from '@/utils/authz'
 import { getAuthorizationService } from '@/utils/authz/service'
 import {
   AuthorizationError,
   ConflictError,
   NotFoundError,
+  isAppError,
 } from '@/utils/errors'
 import { canManageDiscipleship } from '@/utils/discipleship/domain/discipleship-authz.domain'
 import {
@@ -53,9 +55,77 @@ import {
   upsertGroupAnchor,
 } from '@/utils/discipleship/repository'
 import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 type ManageFlags = { isAdmin: boolean; isTeacher: boolean }
 type AssignmentRow = Awaited<ReturnType<typeof findAssignmentByStudentId>>
+
+type DiscipleshipMutation =
+  | 'assignStudentToTeacher'
+  | 'unassignStudent'
+  | 'pairStudents'
+  | 'unpairStudent'
+  | 'setIndividualSchedule'
+  | 'setPairSchedule'
+  | 'setGroupSchedule'
+
+type DiscipleshipMutationContext = {
+  action: DiscipleshipMutation
+  actorId: string
+  startedAt: number
+  fields: Record<string, unknown>
+}
+
+function logDiscipleshipMutationEvent(
+  level: LogLevel,
+  event: string,
+  context: DiscipleshipMutationContext,
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    ...context.fields,
+  })
+}
+
+async function withDiscipleshipMutationTelemetry<T>(args: {
+  action: DiscipleshipMutation
+  actorId: string
+  fields: Record<string, unknown>
+  operation: () => Promise<T>
+}): Promise<T> {
+  const context: DiscipleshipMutationContext = {
+    action: args.action,
+    actorId: args.actorId,
+    startedAt: performance.now(),
+    fields: args.fields,
+  }
+
+  try {
+    const result = await args.operation()
+    logDiscipleshipMutationEvent(
+      'info',
+      'discipleship_mutation_completed',
+      context,
+    )
+    return result
+  } catch (error) {
+    if (!isAppError(error) || error.status >= 500) {
+      logDiscipleshipMutationEvent('error', 'discipleship_mutation_failed', {
+        ...context,
+        fields: {
+          ...context.fields,
+          errorCategory: 'discipleship_persistence',
+        },
+      })
+    }
+    throw error
+  }
+}
 
 async function requireManage(
   userId: string,
@@ -285,19 +355,33 @@ export async function assignStudentToTeacherService(
   data: AssignStudentToTeacherInput,
   userId: string,
 ) {
-  const flags = await requireManage(userId, data.teacherId)
-  await assignInternal(data.studentId, data.teacherId, flags, userId)
+  return withDiscipleshipMutationTelemetry({
+    action: 'assignStudentToTeacher',
+    actorId: userId,
+    fields: { studentId: data.studentId, teacherId: data.teacherId },
+    operation: async () => {
+      const flags = await requireManage(userId, data.teacherId)
+      await assignInternal(data.studentId, data.teacherId, flags, userId)
+    },
+  })
 }
 
 export async function unassignStudentService(
   data: UnassignStudentInput,
   userId: string,
 ) {
-  const existing = await findAssignmentByStudentId(data.studentId)
-  if (!existing) return
-  await requireManage(userId, existing.teacherId)
-  await dissolvePairIfNeeded(existing.pairId, data.studentId)
-  await deleteAssignmentByStudentId(data.studentId)
+  return withDiscipleshipMutationTelemetry({
+    action: 'unassignStudent',
+    actorId: userId,
+    fields: { studentId: data.studentId },
+    operation: async () => {
+      const existing = await findAssignmentByStudentId(data.studentId)
+      if (!existing) return
+      await requireManage(userId, existing.teacherId)
+      await dissolvePairIfNeeded(existing.pairId, data.studentId)
+      await deleteAssignmentByStudentId(data.studentId)
+    },
+  })
 }
 
 function toCandidate(row: NonNullable<AssignmentRow>) {
@@ -312,72 +396,117 @@ export async function pairStudentsService(
   data: PairStudentsInput,
   userId: string,
 ) {
-  const flags = await requireManage(userId, data.teacherId)
+  return withDiscipleshipMutationTelemetry({
+    action: 'pairStudents',
+    actorId: userId,
+    fields: {
+      teacherId: data.teacherId,
+      studentIdA: data.studentIdA,
+      studentIdB: data.studentIdB,
+    },
+    operation: async () => {
+      const flags = await requireManage(userId, data.teacherId)
 
-  // A may be unassigned (dragged from pool directly onto a paired target).
-  // B must already be assigned since only assigned solo students are drop targets.
-  const [a, b] = await Promise.all([
-    findAssignmentByStudentId(data.studentIdA),
-    findAssignmentByStudentId(data.studentIdB),
-  ])
-  if (!b) {
-    throw new NotFoundError(
-      'Target student must already be assigned to a teacher.',
-    )
-  }
+      // A may be unassigned (dragged from pool directly onto a paired target).
+      // B must already be assigned since only assigned solo students are drop targets.
+      const [a, b] = await Promise.all([
+        findAssignmentByStudentId(data.studentIdA),
+        findAssignmentByStudentId(data.studentIdB),
+      ])
+      if (!b) {
+        throw new NotFoundError(
+          'Target student must already be assigned to a teacher.',
+        )
+      }
 
-  // If A has no assignment yet, treat it as a new student joining data.teacherId.
-  const candidateA = a
-    ? toCandidate(a)
-    : { studentId: data.studentIdA, teacherId: data.teacherId, pairId: null }
+      // If A has no assignment yet, treat it as a new student joining data.teacherId.
+      const candidateA = a
+        ? toCandidate(a)
+        : {
+            studentId: data.studentIdA,
+            teacherId: data.teacherId,
+            pairId: null,
+          }
 
-  const validation = canPairStudents(candidateA, toCandidate(b))
-  if (!validation.ok) throw new ConflictError(PAIR_ERROR[validation.reason])
+      const validation = canPairStudents(candidateA, toCandidate(b))
+      if (!validation.ok) throw new ConflictError(PAIR_ERROR[validation.reason])
 
-  // Assign A (inserts if new, moves if under a different teacher).
-  await assignInternal(data.studentIdA, data.teacherId, flags, userId)
+      // Assign A (inserts if new, moves if under a different teacher).
+      await assignInternal(data.studentIdA, data.teacherId, flags, userId)
 
-  const pair = await insertPair(data.teacherId)
-  await Promise.all([
-    setAssignmentPair(data.studentIdA, pair.id),
-    setAssignmentPair(b.studentId, pair.id),
-  ])
+      const pair = await insertPair(data.teacherId)
+      await Promise.all([
+        setAssignmentPair(data.studentIdA, pair.id),
+        setAssignmentPair(b.studentId, pair.id),
+      ])
+    },
+  })
 }
 
 export async function unpairStudentService(
   data: UnpairStudentInput,
   userId: string,
 ) {
-  const existing = await findAssignmentByStudentId(data.studentId)
-  if (!existing || !existing.pairId) return
-  await requireManage(userId, existing.teacherId)
-  await dissolvePairIfNeeded(existing.pairId, data.studentId)
+  return withDiscipleshipMutationTelemetry({
+    action: 'unpairStudent',
+    actorId: userId,
+    fields: { studentId: data.studentId },
+    operation: async () => {
+      const existing = await findAssignmentByStudentId(data.studentId)
+      if (!existing || !existing.pairId) return
+      await requireManage(userId, existing.teacherId)
+      await dissolvePairIfNeeded(existing.pairId, data.studentId)
+    },
+  })
 }
 
 export async function setIndividualScheduleService(
   data: SetIndividualScheduleInput,
   userId: string,
 ) {
-  const existing = await findAssignmentByStudentId(data.studentId)
-  if (!existing) throw new NotFoundError('Discipleship assignment not found.')
-  await requireManage(userId, existing.teacherId)
-  await setAssignmentAnchor(data.studentId, data.anchorAt)
+  return withDiscipleshipMutationTelemetry({
+    action: 'setIndividualSchedule',
+    actorId: userId,
+    fields: { studentId: data.studentId, scheduleType: 'individual' },
+    operation: async () => {
+      const existing = await findAssignmentByStudentId(data.studentId)
+      if (!existing) {
+        throw new NotFoundError('Discipleship assignment not found.')
+      }
+      await requireManage(userId, existing.teacherId)
+      await setAssignmentAnchor(data.studentId, data.anchorAt)
+    },
+  })
 }
 
 export async function setPairScheduleService(
   data: SetPairScheduleInput,
   userId: string,
 ) {
-  const pair = await findPairById(data.pairId)
-  if (!pair) throw new NotFoundError('Discipleship pair not found.')
-  await requireManage(userId, pair.teacherId)
-  await setPairAnchor(data.pairId, data.anchorAt)
+  return withDiscipleshipMutationTelemetry({
+    action: 'setPairSchedule',
+    actorId: userId,
+    fields: { pairId: data.pairId, scheduleType: 'pair' },
+    operation: async () => {
+      const pair = await findPairById(data.pairId)
+      if (!pair) throw new NotFoundError('Discipleship pair not found.')
+      await requireManage(userId, pair.teacherId)
+      await setPairAnchor(data.pairId, data.anchorAt)
+    },
+  })
 }
 
 export async function setGroupScheduleService(
   data: SetGroupScheduleInput,
   userId: string,
 ) {
-  await requireManage(userId, data.teacherId)
-  await upsertGroupAnchor(data.teacherId, data.anchorAt)
+  return withDiscipleshipMutationTelemetry({
+    action: 'setGroupSchedule',
+    actorId: userId,
+    fields: { teacherId: data.teacherId, scheduleType: 'group' },
+    operation: async () => {
+      await requireManage(userId, data.teacherId)
+      await upsertGroupAnchor(data.teacherId, data.anchorAt)
+    },
+  })
 }
