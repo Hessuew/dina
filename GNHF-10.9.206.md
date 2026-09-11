@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 84
+**Iteration:** 85
 **Scope:** remediate the next compatible transitive Phase 5 dependency
-advisories after the PostCSS/Nanoid remediation in iteration 83.
+advisory after the fast-uri remediation in iteration 84.
 
 ## Executive summary
 
@@ -319,6 +319,31 @@ brace-expansion` refreshes their compatible 1.x lockfile branches to
   override to patched `browserslist@4.28.9`, covering the two high-severity
   Browserslist advisories without promoting a separate direct dependency or
   changing application runtime behavior.
+- The ESLint development-tool chain no longer resolves vulnerable
+  `flatted@3.4.1`: a root `package.json` override floors compatible `flatted`
+  paths at `^3.4.2`, and the lockfile resolves `flatted@3.4.4`. This removes
+  the prototype-pollution advisory without changing application runtime
+  behavior.
+
+## Iteration 85 — flatted transitive dependency remediation
+
+This iteration completed the next bounded Phase 5 dependency remediation:
+
+- Added the root Bun/npm override `flatted: ^3.4.2` for the ESLint
+  development-tool chain, which previously resolved `flatted@3.4.1` through
+  `flat-cache`.
+- The lockfile now resolves `flatted@3.4.4`, covering the high-severity
+  prototype-pollution advisory [GHSA-rf6f-7fwh-wjgh](https://github.com/advisories/GHSA-rf6f-7fwh-wjgh).
+  The affected package remains a development-only ESLint dependency and is
+  not bundled into the deployed Worker or browser runtime.
+- The high-severity Bun audit baseline decreased from 13 to 12 findings. The
+  residual findings remain report-only while the next transitive package is
+  reviewed separately.
+
+Validation for this iteration: `bun install --lockfile-only`, targeted lockfile
+and dependency-resolution checks, post-change `bun audit --audit-level=high`
+(expected exit 1 with 12 residual high findings), and the repository quality,
+integration, and production-build gates.
 
 ## Iteration 83 — PostCSS and Nanoid transitive dependency remediation
 

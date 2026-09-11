@@ -1,7 +1,7 @@
 # Security Baseline
 
 **Status:** In progress — the direct browser PDF, nested Vite, shell-quote,
-brace-expansion, Browserslist, PostCSS, Nanoid, and fast-uri dependencies are remediated; the reviewed
+brace-expansion, Browserslist, PostCSS, Nanoid, fast-uri, and flatted dependencies are remediated; the reviewed
 server-function authorization gaps, secret-inventory contract, and threat-model baseline are documented incrementally,
 while remaining transitive advisories and hosted security verification are pending
 **Phase:** Engineering Roadmap Phase 5: Security
@@ -21,8 +21,8 @@ update pull requests with `dependencies` and `security`.
 The advisory workflow is intentionally report-only while the remaining baseline is
 triaged. The current dependency tree still has high/critical transitive findings,
 but the direct browser-used `pdfjs-dist` advisory is remediated at `^6.2.108`.
-After the fast-uri remediation below, the local high-severity audit reports
-13 remaining high findings; all are currently transitive development-tool dependencies.
+After the flatted remediation below, the local high-severity audit reports
+12 remaining high findings; all are currently transitive development-tool dependencies.
 Do not suppress an advisory solely to make the workflow green. For each finding,
 decide whether to upgrade, replace, isolate, or accept it with a documented owner
 and review date.
@@ -136,6 +136,19 @@ range. This is a development-only shadcn/JSON-schema tooling remediation;
 `fast-uri` is not bundled into the deployed Worker/browser runtime. The local
 high-severity audit baseline decreased from 20 to 13 findings; the residual
 findings remain report-only pending separate reachability or upgrade decisions.
+
+## Flatted transitive dependency remediation
+
+The ESLint development-tool chain previously resolved `flatted@3.4.1` through
+`flat-cache`. The root Bun/npm `overrides` entry now floors compatible
+`flatted` paths at `^3.4.2`; the lockfile resolves `flatted@3.4.4`, outside the
+affected range for [GHSA-rf6f-7fwh-wjgh](https://github.com/advisories/GHSA-rf6f-7fwh-wjgh).
+
+This covers the prototype-pollution advisory fixed in `flatted@3.4.2`. The
+package remains a development-only ESLint dependency and is not bundled into
+the deployed Worker/browser runtime. The local high-severity audit baseline
+decreased from 13 to 12 findings; the residual findings remain report-only
+pending separate reachability or upgrade decisions.
 
 ## Review order
 
