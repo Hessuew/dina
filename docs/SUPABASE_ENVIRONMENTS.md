@@ -73,7 +73,17 @@ separate production workflow retains its own migration-chain integration validat
 migration reaches the protected GitHub `production` branch, but never seeds production.
 
 Protect the GitHub `production` branch and the `production` environment. Drizzle has no automatic
-rollback: repair a failed forward migration with a new migration, or restore a Supabase backup.
+rollback: repair a failed forward migration with a new migration, or use the
+[database backup and restore validation runbook](./database-backup-restore-runbook.md) for a
+controlled restore.
+
+## Backup and restore validation
+
+The repository-owned [database backup and restore validation runbook](./database-backup-restore-runbook.md)
+defines the monthly isolated-target drill, schema/index checks, application smoke checks, evidence
+requirements, cleanup, and the incident-only same-project restore path. A database backup does not
+restore Supabase Storage object bytes, so Storage recovery must be validated separately when it is
+part of the recovery objective.
 
 ## Migration promotion
 

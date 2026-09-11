@@ -111,6 +111,9 @@ without evidence of an abnormal rate or user impact.
   pressure. Record the stable category and release instead of raw errors.
 - **Recovery:** Confirm repeated `/readyz` HTTP 2xx responses, successful
   representative reads/writes, and no continuing readiness alerts.
+- For suspected data loss or corruption, follow the separate
+  [database backup and restore validation runbook](./database-backup-restore-runbook.md);
+  do not improvise a same-project restore during readiness triage.
 
 ### Sustained 5xx or new high-severity application error
 

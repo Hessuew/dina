@@ -65,17 +65,16 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 - **Admin observability hub:** `/admin/observability` is admin-only and links to configured Better Stack, Cloudflare, Supabase, and Notion operating surfaces.
 - **PostHog foundation:** optional browser-only initialization is wired from the
   root route with stable user-ID/role identification. Enrollment, assignment
-  submission, course start, and teacher review events are instrumented; lesson
-  completion, course completion, and project verification remain pending.
+  submission, course start, teacher review, lesson completion, and course
+  completion events are instrumented; project verification remains pending.
   Autocapture and session recording remain disabled by default.
 
 ### Not Yet Implemented ❌
 
-- Remaining PostHog journey event instrumentation and project verification
+- PostHog project and dashboard verification
 - Slack workspace
 - Alert configuration (Better Stack/Cloudflare → Slack)
 - Business metrics tracking
-- Incident response workflow
 
 ---
 
@@ -215,7 +214,8 @@ the course ID. A successful teacher grading mutation emits
 feedback content remain excluded. Published lesson completion now emits the
 privacy-safe `lesson_completed` event after persistence. The final published
 lesson now also emits the privacy-safe `course_completed` event once, with only
-the stable course ID; later milestone work remains pending.
+the stable course ID. The remaining analytics work is project/dashboard
+verification and any later event that the product team explicitly approves.
 
 #### 1.3 Set Up Slack Workspace
 

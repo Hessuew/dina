@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 50
-**Scope:** complete the privacy-safe course-completion product-analytics milestone.
+**Iteration:** 51
+**Scope:** document and operationalize the Supabase database backup/restore validation path.
 
 ## Executive summary
 
@@ -167,6 +167,33 @@ The repository already has the first production-fundamentals slice:
   first-check and mitigation procedures; incident tracking; recovery; and
   closure guidance. It intentionally uses role-based owners until account
   owners and Slack escalation targets are configured externally.
+- Added `docs/database-backup-restore-runbook.md` with a monthly isolated-target
+  Supabase restore drill, schema/index and application checks, evidence and
+  cleanup requirements, logical-backup fallback, and incident-only
+  same-project restore guidance. The database restore-confidence SLO remains
+  unverified until an external drill produces dated evidence; Storage object
+  recovery is a separate concern.
+
+## Iteration 51 — database backup and restore validation runbook
+
+This iteration completed the next repository-owned Phase 2 reliability slice:
+
+- Documented a safe monthly restore drill that uses a disposable, restricted
+  Supabase target and never restores production data into the shared development
+  branch.
+- Added read-only checks for core tables and the unique indexes protecting
+  submission and lesson-completion idempotency.
+- Added target-only `/healthz`, `/readyz`, authenticated read, and synthetic
+  write/read-back smoke checks, plus evidence and cleanup requirements.
+- Documented Supabase Dashboard, PITR, and CLI logical-backup paths without
+  putting credentials, dumps, or production data in the repository.
+- Linked the runbook from `docs/SUPABASE_ENVIRONMENTS.md` and recorded that
+  database backups do not restore Storage object bytes.
+
+Validation: Markdown formatting, `git diff --check`, and
+`bun run docs:notion-check` pass. The hosted restore drill remains an external
+follow-up and the database restore-confidence SLO stays `Needs data` until its
+evidence exists.
 
 ## Iteration 30 — calendar event structured telemetry
 
@@ -206,9 +233,9 @@ slice:
   gaps.
 
 Validation for this iteration: the focused analytics suite, quality gate, and
-production build should pass. The next remaining product-analytics gaps are
-external PostHog project/dashboard verification, lesson completion when a
-reliable completion action exists, and course completion.
+production build should pass. The remaining product-analytics gap is external
+PostHog project/dashboard verification; lesson and course completion boundaries
+are now implemented.
 
 The operating decision for this roadmap is:
 
@@ -1021,26 +1048,27 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 
 ### Phase 1 — Production fundamentals
 
-| Roadmap item          | Current state                                                                                                                                               | Next smallest verifiable slice                                                                       |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                      | Verify `/healthz` and `/readyz` after deployment                                                     |
-| Structured logging    | Shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, and Admin workflows | Migrate remaining high-value server-function families one at a time                                  |
-| Error tracking        | Sentry-compatible SDK wiring now emits explicit environment/release identity; Better Stack provider cutover is pending                                      | Create Better Stack DSN, configure deployment secrets, and verify ingestion/source maps              |
-| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                     | Create Better Stack/Cloudflare dashboard and extract stable log metrics                              |
-| Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                    | Create external dashboards, set the admin hub URL variables, and update existing Notion rows         |
-| Alerting              | No verified production alert set                                                                                                                            | Configure Uptime, error-rate, readiness, and latency alerts; test them                               |
-| Product analytics     | Enrollment, assignment submission, course-start, and lesson-completion events are instrumented; project verification and course completion remain pending   | Verify events in PostHog, then instrument course completion when its completion boundary is reliable |
+| Roadmap item          | Current state                                                                                                                                                           | Next smallest verifiable slice                                                               |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                                  | Verify `/healthz` and `/readyz` after deployment                                             |
+| Structured logging    | Shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, and Admin workflows             | Migrate remaining high-value server-function families one at a time                          |
+| Error tracking        | Sentry-compatible SDK wiring now emits explicit environment/release identity; Better Stack provider cutover is pending                                                  | Create Better Stack DSN, configure deployment secrets, and verify ingestion/source maps      |
+| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                                 | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
+| Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                                | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
+| Alerting              | No verified production alert set                                                                                                                                        | Configure Uptime, error-rate, readiness, and latency alerts; test them                       |
+| Product analytics     | Enrollment, assignment submission, course-start, teacher-review, lesson-completion, and course-completion events are instrumented; project verification remains pending | Verify events and create the initial funnel in PostHog                                       |
 
 ### Phase 2 — Reliability
 
 The Notion SLI/SLO catalog has draft entries for web availability, application
 error rate, and database restore confidence. Keep them as `Needs data`/`Draft`
-until Better Stack and Cloudflare telemetry are visible. Then attach real
-dashboard and runbook links and set review dates. The remaining work is:
+until Better Stack and Cloudflare telemetry are visible and the restore drill
+has produced dated evidence. Then attach real dashboard and runbook links and
+set review dates. The remaining work is:
 
 - error-budget policy;
-- incident workflow and runbook;
-- backup/restore validation evidence; and
+- backup/restore validation evidence (procedure is documented; first drill is
+  still pending); and
 - ownership for every critical alert.
 
 ### Phase 3 — Safe delivery

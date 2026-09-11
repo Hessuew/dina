@@ -22,6 +22,8 @@ Tool-neutral entrypoint for agents and contributors working in this repo.
 - `docs/**` — canonical rules, skills, ADRs, and engineering documentation.
 - `docs/observability-runbook.md` — production alert response, incident
   escalation, mitigation, and recovery workflow.
+- `docs/database-backup-restore-runbook.md` — isolated Supabase restore drills,
+  recovery evidence, and incident restore guidance.
 
 ## Commands
 
