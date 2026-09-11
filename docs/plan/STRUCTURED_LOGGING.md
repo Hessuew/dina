@@ -111,6 +111,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    duration. Exam titles, dates, question prompts, option labels, and raw
    persistence details remain excluded; unexpected failures use the stable
    `exam_persistence` category.
+   Student exam-taking start/resume and answer-save mutations now emit
+   redacted `exam_attempt_started`, `exam_attempt_resumed`, and
+   `exam_answer_saved` events with request correlation, server-function path,
+   student/attempt/exam IDs, attempt/question status, question type, and
+   duration. Selected option IDs, answer text, and raw persistence details
+   remain excluded; unexpected failures use stable
+   `exam_attempt_persistence` or `exam_answer_persistence` categories.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

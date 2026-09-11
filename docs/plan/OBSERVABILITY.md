@@ -42,6 +42,9 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   with safe actor/exam metadata, exam state, question counters, and stable
   persistence-failure categories; titles, dates, prompts, option labels, and
   raw persistence details are excluded.
+  Exam-taking start/resume and answer-save mutations also emit redacted
+  request-correlated events with safe student/attempt/exam/question metadata;
+  selected option IDs and free-form answer text are excluded.
 
 - **Cloudflare Workers:** Basic observability
   - Logs enabled (100% sampling)

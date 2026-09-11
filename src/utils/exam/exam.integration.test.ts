@@ -391,6 +391,7 @@ describe('exam taking (integration)', () => {
   })
 
   it('starts within the window with a correct deadline; restart resumes the same attempt', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const teacherId = await seedProfile({ role: 'teacher' })
     const studentId = await seedProfile({ role: 'student' })
     const { examId } = await seedPublishedMcExam(teacherId)
@@ -404,6 +405,39 @@ describe('exam taking (integration)', () => {
 
     const again = await startAttemptService({ examId }, studentId)
     expect(again.attempt.id).toBe(payload.attempt.id)
+
+    const events = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) =>
+        ['exam_attempt_started', 'exam_attempt_resumed'].includes(
+          String(entry.event),
+        ),
+      )
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'exam_attempt_started',
+          path: 'serverFn:startExamAttempt',
+          studentId,
+          examId,
+          attemptId: payload.attempt.id,
+          status: 'started',
+          attemptStatus: 'in_progress',
+        }),
+        expect.objectContaining({
+          event: 'exam_attempt_resumed',
+          path: 'serverFn:startExamAttempt',
+          studentId,
+          examId,
+          attemptId: payload.attempt.id,
+          status: 'resumed',
+          attemptStatus: 'in_progress',
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
   })
 
   it('rejects starting outside the window and starting as a teacher', async () => {
@@ -456,6 +490,81 @@ describe('exam taking (integration)', () => {
       .where(eq(examAnswers.attemptId, payload.attempt.id))
     expect(rows).toHaveLength(1)
     expect(rows[0].selectedOptionId).toBe(correctOptionId)
+  })
+
+  it('logs answer saves without answer values and redacts persistence failures', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
+    const { examId, mcQuestionId, correctOptionId, openQuestionId } =
+      await seedPublishedMcExam(teacherId)
+    const payload = await startAttemptService({ examId }, studentId)
+
+    await saveAnswerService(
+      {
+        attemptId: payload.attempt.id,
+        questionId: mcQuestionId,
+        selectedOptionId: correctOptionId,
+      },
+      studentId,
+    )
+    await saveAnswerService(
+      {
+        attemptId: payload.attempt.id,
+        questionId: openQuestionId,
+        textAnswer: 'private exam response',
+      },
+      studentId,
+    )
+    const answerEvents = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) => entry.event === 'exam_answer_saved')
+    expect(answerEvents).toHaveLength(2)
+    expect(answerEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: 'serverFn:saveExamAnswer',
+          studentId,
+          attemptId: payload.attempt.id,
+          examId,
+          questionId: mcQuestionId,
+          questionType: 'multiple_choice',
+          status: 'saved',
+        }),
+        expect.objectContaining({
+          questionId: openQuestionId,
+          questionType: 'open_ended',
+        }),
+      ]),
+    )
+    expect(JSON.stringify(answerEvents)).not.toContain(correctOptionId)
+    expect(JSON.stringify(answerEvents)).not.toContain('private exam response')
+
+    vi.spyOn(examRepository, 'upsertAnswer').mockRejectedValueOnce(
+      new Error('answer database secret'),
+    )
+    await expect(
+      saveAnswerService(
+        {
+          attemptId: payload.attempt.id,
+          questionId: mcQuestionId,
+          selectedOptionId: correctOptionId,
+        },
+        studentId,
+      ),
+    ).rejects.toThrow('answer database secret')
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'exam_answer_save_failed',
+      path: 'serverFn:saveExamAnswer',
+      studentId,
+      attemptId: payload.attempt.id,
+      examId,
+      status: 'failure',
+      errorCategory: 'exam_answer_persistence',
+    })
+    expect(line).not.toContain('answer database secret')
   })
 
   it('rejects mismatched answer shapes and foreign options', async () => {

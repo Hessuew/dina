@@ -16,6 +16,7 @@ import type { LogLevel } from '@/utils/observability/logger'
 import type {
   ExamAnswerRow,
   ExamAttemptRow,
+  ExamQuestionRow,
   ExamRow,
 } from '@/utils/exam/repository/exam.repository'
 import type { StudentAttempt } from '@/utils/exam/domain/exam-redaction.domain'
@@ -80,6 +81,10 @@ import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 type ExamAttemptLogContext = {
+  action: 'startExamAttempt' | 'saveExamAnswer' | 'submitExamAttempt'
+  studentId: string
+  attemptId?: string
+  examId?: string
   startedAt: number
 }
 
@@ -100,9 +105,12 @@ function logExamAttemptEvent(
 ): void {
   logServerEvent(level, event, {
     requestId: getRequestId(),
-    path: 'serverFn:submitExamAttempt',
+    path: `serverFn:${context.action}`,
     status: level === 'error' ? 'failure' : 'success',
     durationMs: elapsedMs(context.startedAt),
+    studentId: context.studentId,
+    attemptId: context.attemptId,
+    examId: context.examId,
     ...fields,
   })
 }
@@ -437,50 +445,14 @@ async function buildTakingPayload(
   }
 }
 
-export async function startAttemptService(
-  data: StartAttemptInput,
-  userId: string,
-): Promise<TakingPayload> {
-  await assertStudent(userId)
-  const exam = await findExamById(data.examId)
-  if (!exam || exam.status !== 'published') {
-    throw new NotFoundError('Exam not found')
-  }
-  const existing = await findAttemptByExamAndStudent(data.examId, userId)
-  if (existing) {
-    return buildTakingPayload(await finalizeIfExpired(existing, new Date()))
-  }
-  const now = new Date()
-  if (!isWithinStartWindow(now, exam.opensAt, exam.closesAt)) {
-    throw new ValidationError('This exam is not open for starting right now')
-  }
-  const inserted = await insertAttemptIfAbsent({
-    examId: data.examId,
-    studentId: userId,
-    startedAt: now,
-    deadlineAt: computeDeadline(now, exam.durationMinutes),
-  })
-  const attempt =
-    inserted ?? (await findAttemptByExamAndStudent(data.examId, userId))
-  if (!attempt) throw new NotFoundError('Attempt not found')
-  return buildTakingPayload(attempt)
-}
-
-export async function getAttemptForTakingService(
-  data: GetAttemptForTakingInput,
-  userId: string,
-): Promise<TakingPayload> {
-  await assertStudent(userId)
-  const attempt = await findAttemptByExamAndStudent(data.examId, userId)
-  if (!attempt) throw new NotFoundError('Attempt not found')
-  return buildTakingPayload(await finalizeIfExpired(attempt, new Date()))
-}
-
-export async function saveAnswerService(
+async function saveAnswerForAttempt(
+  attempt: ExamAttemptRow,
   data: SaveAnswerInput,
-  userId: string,
-): Promise<{ savedAt: Date; remainingMs: number }> {
-  const attempt = await loadOwnAttempt(data.attemptId, userId)
+): Promise<{
+  answer: ExamAnswerRow
+  question: ExamQuestionRow
+  remainingMs: number
+}> {
   const now = new Date()
   if (attempt.status !== 'in_progress') {
     throw new ValidationError('This attempt is no longer in progress', {
@@ -513,8 +485,113 @@ export async function saveAnswerService(
     textAnswer: data.textAnswer ?? null,
   })
   return {
-    savedAt: answer.updatedAt,
+    answer,
+    question,
     remainingMs: remainingMs(now, attempt.deadlineAt),
+  }
+}
+
+export async function startAttemptService(
+  data: StartAttemptInput,
+  userId: string,
+): Promise<TakingPayload> {
+  await assertStudent(userId)
+  const exam = await findExamById(data.examId)
+  if (!exam || exam.status !== 'published') {
+    throw new NotFoundError('Exam not found')
+  }
+  const context: ExamAttemptLogContext = {
+    action: 'startExamAttempt',
+    studentId: userId,
+    examId: data.examId,
+    startedAt: performance.now(),
+  }
+  try {
+    const existing = await findAttemptByExamAndStudent(data.examId, userId)
+    if (existing) {
+      context.attemptId = existing.id
+      const attempt = await finalizeIfExpired(existing, new Date())
+      const payload = await buildTakingPayload(attempt)
+      logExamAttemptEvent('info', 'exam_attempt_resumed', context, {
+        status: 'resumed',
+        attemptStatus: attempt.status,
+      })
+      return payload
+    }
+    const now = new Date()
+    if (!isWithinStartWindow(now, exam.opensAt, exam.closesAt)) {
+      throw new ValidationError('This exam is not open for starting right now')
+    }
+    const inserted = await insertAttemptIfAbsent({
+      examId: data.examId,
+      studentId: userId,
+      startedAt: now,
+      deadlineAt: computeDeadline(now, exam.durationMinutes),
+    })
+    const attempt =
+      inserted ?? (await findAttemptByExamAndStudent(data.examId, userId))
+    if (!attempt) throw new NotFoundError('Attempt not found')
+    context.attemptId = attempt.id
+    const payload = await buildTakingPayload(attempt)
+    logExamAttemptEvent('info', 'exam_attempt_started', context, {
+      status: 'started',
+      attemptStatus: attempt.status,
+    })
+    return payload
+  } catch (error) {
+    if (shouldLogExamFailure(error)) {
+      logExamAttemptEvent('error', 'exam_attempt_start_failed', context, {
+        errorCategory: 'exam_attempt_persistence',
+      })
+    }
+    throw error
+  }
+}
+
+export async function getAttemptForTakingService(
+  data: GetAttemptForTakingInput,
+  userId: string,
+): Promise<TakingPayload> {
+  await assertStudent(userId)
+  const attempt = await findAttemptByExamAndStudent(data.examId, userId)
+  if (!attempt) throw new NotFoundError('Attempt not found')
+  return buildTakingPayload(await finalizeIfExpired(attempt, new Date()))
+}
+
+export async function saveAnswerService(
+  data: SaveAnswerInput,
+  userId: string,
+): Promise<{ savedAt: Date; remainingMs: number }> {
+  const context: ExamAttemptLogContext = {
+    action: 'saveExamAnswer',
+    studentId: userId,
+    attemptId: data.attemptId,
+    startedAt: performance.now(),
+  }
+  try {
+    const attempt = await loadOwnAttempt(data.attemptId, userId)
+    context.examId = attempt.examId
+    const {
+      answer,
+      question,
+      remainingMs: timeRemainingMs,
+    } = await saveAnswerForAttempt(attempt, data)
+    logExamAttemptEvent('info', 'exam_answer_saved', context, {
+      status: 'saved',
+      questionId: question.id,
+      questionType: question.type,
+    })
+    return {
+      savedAt: answer.updatedAt,
+      remainingMs: timeRemainingMs,
+    }
+  } catch (error) {
+    if (shouldLogExamFailure(error)) {
+      logExamAttemptEvent('error', 'exam_answer_save_failed', context, {
+        errorCategory: 'exam_answer_persistence',
+      })
+    }
+    throw error
   }
 }
 
@@ -522,8 +599,14 @@ export async function submitAttemptService(
   data: SubmitAttemptInput,
   userId: string,
 ): Promise<StudentAttempt> {
-  const context: ExamAttemptLogContext = { startedAt: performance.now() }
+  const context: ExamAttemptLogContext = {
+    action: 'submitExamAttempt',
+    studentId: userId,
+    startedAt: performance.now(),
+  }
   const attempt = await loadOwnAttempt(data.attemptId, userId)
+  context.attemptId = attempt.id
+  context.examId = attempt.examId
   if (attempt.status !== 'in_progress') {
     logExamAttemptEvent('info', 'exam_attempt_submission_ignored', context, {
       status: 'already_finalized',

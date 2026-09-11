@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 36
-**Scope:** add redacted structured telemetry to exam-authoring mutations.
+**Iteration:** 37
+**Scope:** add redacted structured telemetry to exam-taking start/resume and answer-save mutations.
 
 ## Executive summary
 
@@ -98,6 +98,13 @@ The repository already has the first production-fundamentals slice:
   correlation, actor/exam IDs, exam status, question counts, duration, and
   stable persistence failure categories. Exam titles, dates, question
   prompts, option labels, and raw persistence details remain excluded.
+- Student exam-taking start/resume and autosaved-answer mutations now emit
+  redacted `exam_attempt_started`, `exam_attempt_resumed`, and
+  `exam_answer_saved` events with request correlation, student/attempt/exam
+  IDs, attempt/question status, question type, and duration. Selected option
+  IDs, answer text, and raw persistence details remain excluded; unexpected
+  failures use stable `exam_attempt_persistence` or
+  `exam_answer_persistence` categories.
 - The optional PostHog browser foundation now initializes from the root route
   when `VITE_POSTHOG_KEY` is configured. It identifies users by stable ID and
   role only, allow-lists the initial LMS journey event names, disables
@@ -1253,5 +1260,24 @@ This iteration completed the next repository-owned structured-logging slice:
   authoring behavior.
 
 Validation: focused exam integration passed all 16 tests. Better Stack
+destination, dashboard, alert, Uptime, source-map, Slack, and named-owner
+setup remains account-specific external work described above.
+
+## Iteration 37 — exam-taking structured telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Starting a published exam now emits `exam_attempt_started` for a new
+  attempt and `exam_attempt_resumed` when an existing attempt is reopened.
+- Autosaved answers now emit `exam_answer_saved` with safe student, attempt,
+  exam, question, and question-type metadata. Selected option IDs and free-form
+  answer text are never sent to Better Stack/Cloudflare telemetry.
+- Unexpected persistence failures emit stable error events without raw
+  database/provider details. Expected authorization, not-found, validation,
+  and expired-attempt outcomes remain ordinary user-facing results.
+- Existing submit-attempt telemetry now shares the same action-aware path and
+  student/attempt/exam context fields.
+
+Validation: focused exam integration passed all 17 tests. Better Stack
 destination, dashboard, alert, Uptime, source-map, Slack, and named-owner
 setup remains account-specific external work described above.

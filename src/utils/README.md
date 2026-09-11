@@ -120,6 +120,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     correlation, actor/media IDs, media kind, course ID where applicable,
     status, and duration; titles, descriptions, URLs, private storage paths,
     and raw persistence details remain excluded.
+  - Student exam-taking start/resume and answer-save mutations emit redacted
+    `exam_attempt_started`, `exam_attempt_resumed`, and `exam_answer_saved`
+    events with request correlation, student/attempt/exam IDs, attempt or
+    question status, question type, and duration. Selected option IDs, answer
+    text, and raw persistence details remain excluded; unexpected failures use
+    stable `exam_attempt_persistence` or `exam_answer_persistence` categories.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is
