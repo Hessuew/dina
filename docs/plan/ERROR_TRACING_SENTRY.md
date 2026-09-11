@@ -14,6 +14,9 @@
   `SENTRY_URL`, and `SENTRY_RELEASE` from build environment rather than
   hardcoding the current provider account.
 - Expected 4xx, router-control-flow, benign browser network TypeErrors (`Failed to fetch` / `Load failed` / Firefox NetworkError), dynamic-import load noise, and stale server-fn ID misses are suppressed by `shouldSuppressFromSentry()`.
+- When an OpenTelemetry span is active, `beforeSend` adds its `trace_id` and
+  `span_id` to the event context so Better Stack Errors can link the exception
+  to Cloudflare Logs & Traces.
 - User identity attachment is documented in ADR 0013. Better Stack accepts the
   existing SDK event format, so the provider cutover can happen by changing
   the DSN and validating ingestion before renaming code symbols.

@@ -5,6 +5,7 @@ import { DefaultCatchBoundary } from './components/navigation/DefaultCatchBounda
 import { NotFound } from './components/navigation/NotFound'
 import { shouldSuppressFromSentry } from '@/utils/errors'
 import { resolveObservabilityIdentity } from '@/utils/observability/domain/identity.domain'
+import { addActiveTraceContext } from '@/utils/observability/trace-context'
 
 export function getRouter() {
   const router = createRouter({
@@ -30,8 +31,10 @@ export function getRouter() {
       // Filters third-party inline script noise (e.g. Cloudflare bot-protection
       // scripts injected directly into the HTML page).
       allowUrls: [/\/assets\//],
-      beforeSend: (event, hint) =>
-        shouldSuppressFromSentry(hint.originalException) ? null : event,
+      beforeSend: (event, hint) => {
+        if (shouldSuppressFromSentry(hint.originalException)) return null
+        return addActiveTraceContext(event)
+      },
     })
   }
 

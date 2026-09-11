@@ -185,6 +185,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is
     present.
+  - `observability/trace-context.ts`: adds active OpenTelemetry `trace_id` and
+    `span_id` values to Sentry-compatible error events so Better Stack Errors
+    can link them to Cloudflare Logs & Traces when a span is available.
 
 - **Product analytics**
   - `analytics.ts`: optional browser-only PostHog boundary with an allow-listed

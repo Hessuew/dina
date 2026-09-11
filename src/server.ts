@@ -9,6 +9,7 @@ import {
   isOperationalPath,
 } from '@/utils/health'
 import { resolveObservabilityIdentity } from '@/utils/observability/domain/identity.domain'
+import { addActiveTraceContext } from '@/utils/observability/trace-context'
 
 type HandlerOptions = Parameters<typeof handler.fetch>[1]
 type WorkerObservabilityEnv = Env & {
@@ -57,8 +58,10 @@ export default import.meta.env.PROD
         dsn: env.SENTRY_DSN,
         environment: identity.environment,
         release: identity.release,
-        beforeSend: (event, hint) =>
-          shouldSuppressFromSentry(hint.originalException) ? null : event,
+        beforeSend: (event, hint) => {
+          if (shouldSuppressFromSentry(hint.originalException)) return null
+          return addActiveTraceContext(event)
+        },
       }
     }, wrapFetchWithSentry(appHandler))
   : appHandler

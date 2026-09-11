@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 53
-**Scope:** define the Phase 2 reliability error-budget policy against the existing SLO drafts.
+**Iteration:** 54
+**Scope:** correlate Sentry-compatible Better Stack error events with active OpenTelemetry traces.
 
 ## Executive summary
 
@@ -16,6 +16,9 @@ The repository already has the first production-fundamentals slice:
   log sampling and 1% trace sampling.
 - Application error capture currently uses the Sentry SDK packages in the
   browser and Worker.
+- Browser and Worker error events now include active OpenTelemetry trace and
+  span identifiers when available, allowing Better Stack Errors to link into
+  Cloudflare Logs & Traces.
 - Assignment submission saves now emit structured Better Stack/Cloudflare-ready
   outcome events with request ID, status, duration, and stable error category.
 - Enrollment distribution and teacher substitution mutations now emit
@@ -181,6 +184,28 @@ The repository already has the first production-fundamentals slice:
   availability/error-rate/restore-confidence budgets, breach responses, and
   review rules. The policy is deliberately non-blocking until Better Stack,
   Cloudflare, Uptime, and restore-drill evidence are verified.
+
+## Iteration 54 — Better Stack error/trace correlation
+
+This iteration completed the next repository-owned Better Stack transition
+slice:
+
+- Added `@opentelemetry/api` as a direct runtime dependency and introduced
+  `addActiveTraceContext` under `src/utils/observability/`.
+- Browser and Cloudflare Worker Sentry-compatible `beforeSend` hooks now copy
+  valid active OpenTelemetry `trace_id` and `span_id` values into the event
+  context while preserving existing trace fields and expected-error
+  suppression.
+- Added focused tests for missing spans, invalid spans, identifier injection,
+  and context preservation. This is compatible with Better Stack’s documented
+  Sentry SDK correlation path and does not add secrets or custom request-path
+  telemetry.
+
+Validation: focused trace-context tests passed, TypeScript passed, and
+`bun run quality:gate` passed with 1,936 unit tests. Existing lint/Fallow
+warnings remain unrelated. Better Stack application DSN, Cloudflare OTLP
+destinations, dashboards, alerts, Uptime monitors, source maps, Slack routing,
+and named ownership remain account-specific setup work.
 
 ## Iteration 53 — Phase 2 error-budget policy
 
