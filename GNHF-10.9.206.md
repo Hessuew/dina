@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 62
-**Scope:** add a measured, additive index for published upcoming-lesson reads as the next Phase 4 performance slice.
+**Iteration:** 64
+**Scope:** add a measured, additive index for course-team reads as the next Phase 4 performance slice.
 
 ## Executive summary
 
@@ -223,6 +223,31 @@ The repository already has the first production-fundamentals slice:
   without changing query or response behavior. Migration
   `0049_legal_absorbing_man` and the hosted `EXPLAIN (ANALYZE, BUFFERS)`
   follow-up are documented in `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+- Course-team reads now have the additive
+  `course_teachers_course_created_at_idx` index on `(course_id, created_at)`.
+  It supports course membership lookups and oldest-first teacher assignment
+  reads without changing query, authorization, or response behavior. The
+  migration and hosted `EXPLAIN (ANALYZE, BUFFERS)` follow-up are documented
+  in `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+
+## Iteration 64 — course-team query index
+
+This iteration completed the next repository-owned Phase 4 slice:
+
+- Added `course_teachers_course_created_at_idx` on `(course_id, created_at)`
+  for course-team membership reads and the existing oldest-first teacher
+  assignment query.
+- Kept query behavior, authorization, response shape, and assignment
+  replacement semantics unchanged. The index is additive and compatible with
+  the safe-delivery expand/contract procedure.
+- Extended the performance review and database README. Hosted verification
+  now covers seven `EXPLAIN (ANALYZE, BUFFERS)` shapes; the due-date index for
+  the unbounded student assignment list remains evidence-gated.
+
+Validation for this iteration: migration generation and replay, focused course
+integration coverage, formatting, `git diff --check`,
+`bun run docs:notion-check`, and `bun run quality:gate`. Hosted plan/timing
+evidence remains pending representative development data.
 
 ## Iteration 63 — assignment catalog query index
 

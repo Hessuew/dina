@@ -91,6 +91,10 @@ export const courseTeachers = pgTable(
   (table) => [
     // One course per teacher — uniquely constrained (ADR 0007 rev 2).
     uniqueIndex('course_teachers_teacher_id_unique').on(table.teacherId),
+    index('course_teachers_course_created_at_idx').on(
+      table.courseId,
+      table.createdAt,
+    ),
     // Teachers can view their own course assignments
     pgPolicy('teachers_view_own_assignments', {
       for: 'select',

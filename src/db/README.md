@@ -86,6 +86,10 @@ Database access layer and schema definitions.
       - Teacher catalog reads that scope assignments to managed lessons and
         status use `(lesson_id, status)`; the Phase 4 performance migration
         `0050_calm_william_stryker` adds `assignments_lesson_status_idx`.
+    - `course_teachers`
+      - Course-team reads that filter by `course_id` and order by assignment
+        creation use `(course_id, created_at)`; the Phase 4 performance
+        migration adds `course_teachers_course_created_at_idx`.
     - `staff_privileges`
       - Named Staff Privilege grants on Teacher-users (`user_id`, `privilege`).
       - Unique `(user_id, privilege)`. Admin insert/delete. Not a fourth Role (ADR 0023).

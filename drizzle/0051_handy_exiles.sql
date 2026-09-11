@@ -1,0 +1,1 @@
+CREATE INDEX "course_teachers_course_created_at_idx" ON "course_teachers" USING btree ("course_id","created_at");
