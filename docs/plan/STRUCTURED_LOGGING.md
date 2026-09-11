@@ -170,6 +170,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    Password sign-out now emits redacted `logout_succeeded` and `logout_failed`
    events with request correlation, outcome, duration, and a stable
    `auth_sign_out` category/provider code; provider messages remain excluded.
+   Authenticated profile password changes now emit redacted `password_updated`
+   and `password_update_failed` events with request correlation, user ID,
+   outcome, duration, stable `password_update` error categorization, and
+   provider code when available; password values and provider messages remain
+   excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

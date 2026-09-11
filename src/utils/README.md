@@ -82,7 +82,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     `profile_updated`, `email_change_requested`, `email_change_completed`, and
     failure events with request correlation, user ID, status, duration, and
     stable persistence/provider categories; email addresses, verification
-    tokens, and provider messages are excluded.
+    tokens, and provider messages are excluded. Authenticated password changes
+    emit `password_updated` / `password_update_failed` with the same safe
+    fields and stable `password_update` category; password values and provider
+    messages are excluded.
   - Admin staff-privilege grants and revokes emit redacted
     `staff_privilege_updated` audit events with request correlation, actor and
     target IDs, privilege, grant direction, status, and duration; persistence

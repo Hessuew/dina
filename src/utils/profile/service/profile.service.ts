@@ -25,9 +25,12 @@ import {
 import { AppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
-import { getSupabaseAdminClient } from '@/utils/supabase'
+import {
+  getSupabaseAdminClient,
+  getSupabaseServerClient,
+} from '@/utils/supabase'
 
-type ProfileAction = 'updateProfile' | 'verifyEmailChange'
+type ProfileAction = 'updateProfile' | 'updatePassword' | 'verifyEmailChange'
 
 type ProfileLogContext = {
   action: ProfileAction
@@ -76,6 +79,45 @@ export async function updateProfileBasicService(
   })
 
   return { emailChangePending: false, pendingEmail: undefined }
+}
+
+export async function updatePasswordService(
+  newPassword: string,
+  userId: string,
+): Promise<void> {
+  const context: ProfileLogContext = {
+    action: 'updatePassword',
+    startedAt: performance.now(),
+  }
+
+  try {
+    const { error } = await getSupabaseServerClient().auth.updateUser({
+      password: newPassword,
+    })
+
+    if (error) {
+      logProfileEvent('error', 'password_update_failed', context, {
+        errorCategory: 'password_update',
+        providerCode: error.code ?? 'unknown',
+        userId,
+      })
+      throw new AppError({
+        code: 'PASSWORD_UPDATE_FAILED',
+        status: 400,
+        userMessage: error.message,
+        internalMessage: 'Supabase auth password update failed',
+      })
+    }
+  } catch (error) {
+    if (error instanceof AppError) throw error
+    logProfileEvent('error', 'password_update_failed', context, {
+      errorCategory: 'password_update',
+      userId,
+    })
+    throw error
+  }
+
+  logProfileEvent('info', 'password_updated', context, { userId })
 }
 
 export async function updateProfileWithEmailChangeService(

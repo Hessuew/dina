@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 42
-**Scope:** add redacted structured telemetry to enrollment distribution and teacher substitution mutations.
+**Iteration:** 46
+**Scope:** add redacted structured telemetry to authenticated password changes.
 
 ## Executive summary
 
@@ -44,6 +44,10 @@ The repository already has the first production-fundamentals slice:
   `notification_delivery_failed` event with request correlation, notification
   type, recipient count, duration, and a stable error category. Best-effort
   delivery semantics are unchanged.
+- Authenticated profile password changes now emit redacted
+  `password_updated` / `password_update_failed` events with request
+  correlation, user ID, status, duration, stable error category, and provider
+  code; password values and provider messages remain excluded.
 - Post and comment reaction toggles now emit redacted success events with
   request correlation, actor and target IDs, reaction action, emoji, status,
   and duration. Unexpected persistence failures use stable post/comment
@@ -1477,3 +1481,24 @@ Validation: focused logout integration tests (3), targeted Prettier, `git diff
 --check`, and `bun run quality:gate` passed with 1,933 unit tests. Better Stack
 destinations, dashboards, alerts, Uptime, source maps, Slack routing, and named
 ownership remain account-specific external setup work.
+
+## Iteration 46 — authenticated password-change telemetry
+
+This iteration completed the next repository-owned auth structured-logging slice:
+
+- Authenticated profile password changes now run through
+  `src/utils/profile/service/profile.service.ts` and emit redacted
+  `password_updated` / `password_update_failed` events with request
+  correlation, `serverFn:updatePassword`, user ID, outcome status, duration,
+  stable `password_update` error categorization, and provider code when
+  Supabase returns one.
+- Password values, provider messages, and thrown exception text remain outside
+  structured telemetry. Existing `PASSWORD_UPDATE_FAILED` user-facing error
+  behavior is preserved while the server-function adapter now authenticates
+  before delegating to the service.
+- Added three integration tests covering success, returned provider errors, and
+  thrown provider exceptions with message/password exclusion assertions.
+
+Validation: focused profile integration tests (12) and TypeScript typecheck
+passed. Better Stack destinations, dashboards, alerts, Uptime, source maps,
+Slack routing, and named ownership remain account-specific external setup work.

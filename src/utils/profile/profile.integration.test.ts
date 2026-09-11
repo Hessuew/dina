@@ -8,6 +8,7 @@ import type { UpdateProfileInput } from '@/schemas/profile.schema'
 import type { EmailSender } from '@/utils/email/types'
 import { setEmailSender } from '@/utils/email'
 import {
+  updatePasswordService,
   updateProfileBasicService,
   updateProfileWithEmailChangeService,
   verifyEmailChangeService,
@@ -15,9 +16,13 @@ import {
 import { accountSecurity, profiles } from '@/db/schema'
 
 const sendEmail = vi.hoisted(() => vi.fn())
+const updateUser = vi.hoisted(() => vi.fn())
 const updateUserById = vi.hoisted(() => vi.fn())
 
 vi.mock('@/utils/supabase', () => ({
+  getSupabaseServerClient: () => ({
+    auth: { updateUser },
+  }),
   getSupabaseAdminClient: () => ({
     auth: { admin: { updateUserById } },
   }),
@@ -48,6 +53,7 @@ const findSecurity = async (id: string) => {
 
 beforeEach(() => {
   sendEmail.mockReset().mockResolvedValue({ providerMessageId: 'email.test' })
+  updateUser.mockReset().mockResolvedValue({ error: null })
   const sender: EmailSender = { send: sendEmail }
   setEmailSender(sender)
   updateUserById.mockReset().mockResolvedValue({ error: null })
@@ -193,6 +199,85 @@ describe('updateProfileWithEmailChangeService (integration)', () => {
     })
     expect(String(errorSpy.mock.calls.at(-1)?.[0])).not.toContain(
       'provider unavailable',
+    )
+  })
+})
+
+describe('updatePasswordService (integration)', () => {
+  it('updates the authenticated password and emits safe success telemetry', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const id = await seedProfile()
+
+    await updatePasswordService('new-password-value', id)
+
+    expect(updateUser).toHaveBeenCalledWith({ password: 'new-password-value' })
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'password_updated')
+    expect(event).toMatchObject({
+      event: 'password_updated',
+      path: 'serverFn:updatePassword',
+      status: 'success',
+      userId: id,
+    })
+    expect(String(infoSpy.mock.calls.at(-1)?.[0])).not.toContain(
+      'new-password-value',
+    )
+  })
+
+  it('reports provider errors without logging the provider message', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const id = await seedProfile()
+    updateUser.mockResolvedValue({
+      error: { code: 'password_weak', message: 'private provider detail' },
+    })
+
+    await expect(
+      updatePasswordService('new-password-value', id),
+    ).rejects.toMatchObject({
+      code: 'PASSWORD_UPDATE_FAILED',
+      status: 400,
+      message: 'private provider detail',
+    })
+
+    const event = errorSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'password_update_failed')
+    expect(event).toMatchObject({
+      event: 'password_update_failed',
+      path: 'serverFn:updatePassword',
+      status: 'failure',
+      errorCategory: 'password_update',
+      providerCode: 'password_weak',
+      userId: id,
+    })
+    expect(String(errorSpy.mock.calls.at(-1)?.[0])).not.toContain(
+      'private provider detail',
+    )
+  })
+
+  it('logs and rethrows unexpected provider exceptions', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const id = await seedProfile()
+    const providerError = new Error('private thrown provider detail')
+    updateUser.mockRejectedValue(providerError)
+
+    await expect(updatePasswordService('new-password-value', id)).rejects.toBe(
+      providerError,
+    )
+
+    const event = errorSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'password_update_failed')
+    expect(event).toMatchObject({
+      event: 'password_update_failed',
+      path: 'serverFn:updatePassword',
+      status: 'failure',
+      errorCategory: 'password_update',
+      userId: id,
+    })
+    expect(String(errorSpy.mock.calls.at(-1)?.[0])).not.toContain(
+      'private thrown provider detail',
     )
   })
 })
