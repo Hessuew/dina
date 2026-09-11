@@ -24,6 +24,7 @@ import {
   deleteEnrollmentService,
   distributeEnrollmentsService,
   endSubstitutionService,
+  getActiveSubstitutedTeacherIdsService,
   getEnrollmentByIdService,
   getEnrollmentEmailsService,
   getEnrollmentsService,
@@ -36,7 +37,6 @@ import {
   substituteTeacherService,
   updateEnrollmentStatusService,
 } from '@/utils/enrolment/service/enrolment.service'
-import { findAbsentTeacherIdsWithActiveSubstitution } from '@/utils/enrolment/repository/enrolment.repository'
 
 const ENROLLMENT_OPEN = false as boolean
 
@@ -134,8 +134,8 @@ export const endSubstitution = createServerFn({ method: 'POST' })
 export const getActiveSubstitutedTeacherIds = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  const teacherIds = await findAbsentTeacherIdsWithActiveSubstitution()
-  return { teacherIds }
+  const user = await getCurrentUser()
+  return getActiveSubstitutedTeacherIdsService(user.id)
 })
 
 export const getEnrollmentEmails = createServerFn({ method: 'POST' })

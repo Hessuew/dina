@@ -7,6 +7,7 @@ import {
   deleteEnrollmentService,
   distributeEnrollmentsService,
   endSubstitutionService,
+  getActiveSubstitutedTeacherIdsService,
   getEnrollmentEmailsService,
   getEnrollmentsService,
   searchEnrollmentContactsByNamesService,
@@ -545,6 +546,20 @@ describe('teacher substitution — Review heading peer resolution (integration)'
     expect(row?.reviewHeading.reviewerFirstName).toBe('Subby')
     expect(row?.reviewHeading.reviewerHasEvaluated).toBe(true)
     expect(row?.reviewHeading.peerFirstName).toBe('Bella')
+  })
+})
+
+describe('active substitution lookup authorization (integration)', () => {
+  it('allows Admins and rejects students before reading substitution IDs', async () => {
+    const { adminId, absentC } = await seedSubstitutionScenario()
+    const studentId = await seedProfile({ role: 'student' })
+
+    await expect(
+      getActiveSubstitutedTeacherIdsService(adminId),
+    ).resolves.toEqual({ teacherIds: [absentC] })
+    await expect(
+      getActiveSubstitutedTeacherIdsService(studentId),
+    ).rejects.toBeInstanceOf(AuthorizationError)
   })
 })
 

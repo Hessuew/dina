@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 75
-**Scope:** close the next bounded Phase 5 authorization gap after authenticated
-calendar hardening.
+**Iteration:** 76
+**Scope:** close the next bounded Phase 5 authorization gap after post/comment
+moderation hardening.
 
 ## Executive summary
 
@@ -289,6 +289,29 @@ opened_at)`. It supports filtering active windows before recent-opening
   non-author moderation requires Teacher or Admin access; non-owner students
   are rejected before writes. This aligns the application boundary with the
   existing Supabase staff-update policies.
+- The Admin enrollment dialog's active-substitution lookup now authenticates
+  through `getCurrentUser()` and delegates to an Admin-only service boundary.
+  Direct unauthenticated and student calls can no longer read absent-teacher IDs
+  from `course_substitutes`.
+
+## Iteration 76 — active substitution lookup authorization hardening
+
+This iteration closed the next concrete Phase 5 server-function boundary gap:
+
+- Added `getActiveSubstitutedTeacherIdsService(userId)`, which requires the
+  Admin role before reading active substitution IDs.
+- Updated the `getActiveSubstitutedTeacherIds` server-function adapter to
+  authenticate the caller and use the guarded service instead of querying the
+  repository directly.
+- Added integration coverage proving Admin access remains available while a
+  student receives the existing typed `AuthorizationError`.
+
+Validation for this iteration: focused enrollment integration (44 tests), full
+integration (378 tests), `bun run quality:gate` (1,953 unit tests), typecheck,
+formatting, production build, and `git diff --check` passed. Notion Architecture
+Inventory, Security, Risk Register, and Engineering Roadmap records were
+synchronized. Service Catalog and Production Readiness were skipped because
+ownership and launch decisions did not change.
 
 ## Iteration 75 — post/comment moderation authorization hardening
 

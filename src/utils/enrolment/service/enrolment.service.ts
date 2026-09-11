@@ -42,6 +42,7 @@ import {
   deleteCourseSubstituteByAbsent,
   deleteEnrollmentById,
   deleteInvitationById,
+  findAbsentTeacherIdsWithActiveSubstitution,
   findAllTeacherIds,
   findAwaitingApprovalIdsWithSum,
   findCourseIdByTeacherId,
@@ -1145,6 +1146,17 @@ export async function endSubstitutionService(
     context,
     { absentTeacherId: data.absentTeacherId, removedCount: deleted },
   )
+}
+
+/**
+ * Lists absent teachers with an active substitution for the Admin dialog.
+ * Keep the role check in the service so direct callers cannot bypass the
+ * server-function boundary.
+ */
+export async function getActiveSubstitutedTeacherIdsService(userId: string) {
+  await authz(userId).hasRole('admin')
+  const teacherIds = await findAbsentTeacherIdsWithActiveSubstitution()
+  return { teacherIds }
 }
 
 async function requireEnrollmentContactExport(userId: string) {

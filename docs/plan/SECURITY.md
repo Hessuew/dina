@@ -1,8 +1,8 @@
 # Security Baseline
 
 **Status:** In progress — the direct browser PDF, nested Vite, and shell-quote dependencies
-are remediated; the first direct server-function authorization gap is closed, while remaining
-transitive advisories and the application security review are pending
+are remediated; the reviewed server-function authorization gaps are being closed incrementally,
+while remaining transitive advisories and the application security review are pending
 **Phase:** Engineering Roadmap Phase 5: Security
 
 ## Dependency scanning
@@ -111,12 +111,21 @@ or Admin; other students receive the typed authorization failure before any
 write executes. This matches the existing Supabase policies that allow staff
 to update any post or comment while preserving owner-only student writes.
 
+### Active substitution lookup authorization
+
+The Admin enrollment dialog reads active absent-teacher IDs through
+`getActiveSubstitutedTeacherIds`. That server function now authenticates the caller and
+delegates to `getActiveSubstitutedTeacherIdsService`, which requires the Admin role before
+querying `course_substitutes`. The read path is now protected independently of the
+enrollment route and the Admin-only substitution mutations.
+
 ## Remaining Phase 5 work
 
 - Continue reviewing RBAC and database/RLS defense-in-depth against the current
   app-level authorization model. The staff-only event-management listing, the
   authenticated calendar overview, and post/comment moderation now enforce
-  server-side identity/ownership and staff role where required.
+  server-side identity/ownership and staff role where required; the active
+  substitution lookup now has the same Admin-only service boundary.
 - Continue hardening admin access and review authentication/session boundaries;
   the calendar event listing is now covered by a server-side teacher/admin
   check.
