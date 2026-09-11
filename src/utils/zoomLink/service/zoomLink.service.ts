@@ -71,7 +71,7 @@ export async function getZoomLinksService(userId: string) {
   const teacherOrder =
     profile.role === 'student'
       ? []
-      : (await getTeachersService()).teachers.map(({ id, fullName }) => ({
+      : (await getTeachersService(userId)).teachers.map(({ id, fullName }) => ({
           id,
           fullName,
         }))

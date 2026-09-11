@@ -119,16 +119,26 @@ delegates to `getActiveSubstitutedTeacherIdsService`, which requires the Admin r
 querying `course_substitutes`. The read path is now protected independently of the
 enrollment route and the Admin-only substitution mutations.
 
+### Teacher directory service boundary
+
+The teacher directory service previously accepted an omitted actor ID because an
+internal Zoom-link owner-options read called it without context. The service now
+requires the authenticated caller's persisted profile, and the Zoom-link service
+passes its already-validated actor ID through. This preserves the teacher
+directory payload and Admin-only staff-privilege metadata while preventing direct
+service calls from reading teacher records without an application profile.
+
 ## Remaining Phase 5 work
 
 - Continue reviewing RBAC and database/RLS defense-in-depth against the current
   app-level authorization model. The staff-only event-management listing, the
   authenticated calendar overview, and post/comment moderation now enforce
   server-side identity/ownership and staff role where required; the active
-  substitution lookup now has the same Admin-only service boundary.
+  substitution lookup now has the same Admin-only service boundary, and the
+  teacher-directory read requires a persisted caller profile.
 - Continue hardening admin access and review authentication/session boundaries;
   the calendar event listing is now covered by a server-side teacher/admin
-  check.
+  check; the teacher directory now also requires a persisted caller profile.
 - Inventory runtime and CI secrets, including Better Stack and Cloudflare
   credentials, with rotation owners outside the repository.
 - Verify security-sensitive audit events in Better Stack without exporting PII or

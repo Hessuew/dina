@@ -5,17 +5,17 @@ import {
   findCourseAssignmentsForTeachers,
   findCourseTeacher,
 } from '@/utils/teachers/repository'
-import { authz, resolveAdminOrTeacherAccess } from '@/utils/authz'
+import { authz } from '@/utils/authz'
+import { getUserProfile } from '@/utils/auth/auth'
 import { findPrivilegesForUsers } from '@/utils/staff-privilege/repository'
 import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
 
-export async function getTeachersService(actorId?: string) {
+export async function getTeachersService(actorId: string) {
+  const profile = await getUserProfile(actorId)
   const teachers = await signAvatarRows(await findAllTeachers())
 
   const teacherIds = teachers.map((t) => t.id)
-  const isAdmin = actorId
-    ? (await resolveAdminOrTeacherAccess(actorId)).isAdmin
-    : false
+  const isAdmin = profile.role === 'admin'
   const granted = isAdmin
     ? await findPrivilegesForUsers(teacherIds)
     : new Map<string, Array<never>>()

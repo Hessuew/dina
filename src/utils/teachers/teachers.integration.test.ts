@@ -1,10 +1,11 @@
+import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import {
   getAllTeachersService,
   getTeachersService,
   isCourseTeacherService,
 } from '@/utils/teachers/service/teachers.service'
-import { AuthorizationError } from '@/utils/errors'
+import { AuthorizationError, NotFoundError } from '@/utils/errors'
 import {
   seedCourse,
   seedCourseTeacher,
@@ -18,7 +19,7 @@ describe('teachers service (integration)', () => {
       const adminId = await seedProfile({ role: 'admin' })
       const studentId = await seedProfile({ role: 'student' })
 
-      const { teachers } = await getTeachersService()
+      const { teachers } = await getTeachersService(teacherId)
 
       const ids = teachers.map((t) => t.id)
       expect(ids).toContain(teacherId)
@@ -31,7 +32,7 @@ describe('teachers service (integration)', () => {
       const courseId = await seedCourse({ title: 'Foundations' })
       await seedCourseTeacher(courseId, teacherId)
 
-      const { teachers } = await getTeachersService()
+      const { teachers } = await getTeachersService(teacherId)
 
       const teacher = teachers.find((t) => t.id === teacherId)
       expect(teacher?.course).toMatchObject({
@@ -43,10 +44,16 @@ describe('teachers service (integration)', () => {
     it('leaves course undefined for an unassigned teacher', async () => {
       const teacherId = await seedProfile({ role: 'teacher' })
 
-      const { teachers } = await getTeachersService()
+      const { teachers } = await getTeachersService(teacherId)
 
       const teacher = teachers.find((t) => t.id === teacherId)
       expect(teacher?.course).toBeUndefined()
+    })
+
+    it('requires a persisted profile for direct service calls', async () => {
+      await expect(getTeachersService(randomUUID())).rejects.toBeInstanceOf(
+        NotFoundError,
+      )
     })
   })
 

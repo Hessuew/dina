@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 76
-**Scope:** close the next bounded Phase 5 authorization gap after post/comment
-moderation hardening.
+**Iteration:** 77
+**Scope:** close the next bounded Phase 5 service authorization gap after
+active-substitution lookup hardening.
 
 ## Executive summary
 
@@ -293,6 +293,30 @@ opened_at)`. It supports filtering active windows before recent-opening
   through `getCurrentUser()` and delegates to an Admin-only service boundary.
   Direct unauthenticated and student calls can no longer read absent-teacher IDs
   from `course_substitutes`.
+- The teacher-directory service now requires a persisted caller profile, and the
+  Zoom-link owner-options path passes its authenticated actor through instead of
+  invoking the directory without context. Teacher-directory payloads and
+  Admin-only privilege metadata are unchanged.
+
+## Iteration 77 — teacher directory service authorization hardening
+
+This iteration closed the next concrete Phase 5 service boundary gap:
+
+- Changed `getTeachersService` to require an actor ID and validate its persisted
+  profile before reading teacher records.
+- Threaded the already-authenticated actor through `getZoomLinksService` when it
+  builds non-student teacher owner options.
+- Added integration coverage proving a missing profile cannot call the direct
+  teacher-directory service, while existing teacher/admin listing behavior and
+  Admin-only staff privilege metadata remain intact.
+
+Validation for this iteration: the focused teacher and Zoom-link integration
+suites, full integration tests, `bun run quality:gate`, typecheck, formatting,
+production build, and `git diff --check` passed. The existing Notion Architecture
+Inventory row and Engineering Roadmap were synchronized. Service Catalog was
+skipped because ownership, criticality, runtime boundary, and SLOs did not
+change; Production Readiness Reviews was skipped because this was not a new
+launch review.
 
 ## Iteration 76 — active substitution lookup authorization hardening
 
