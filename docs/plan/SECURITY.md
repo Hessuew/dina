@@ -1,9 +1,9 @@
 # Security Baseline
 
-**Status:** In progress — the direct browser PDF, nested Vite, and shell-quote dependencies
-are remediated; the reviewed server-function authorization gaps, secret-inventory contract,
-and threat-model baseline are documented incrementally, while remaining transitive advisories
-and hosted security verification are pending
+**Status:** In progress — the direct browser PDF, nested Vite, shell-quote, and
+brace-expansion dependencies are remediated; the reviewed server-function authorization
+gaps, secret-inventory contract, and threat-model baseline are documented incrementally,
+while remaining transitive advisories and hosted security verification are pending
 **Phase:** Engineering Roadmap Phase 5: Security
 
 ## Dependency scanning
@@ -21,8 +21,8 @@ update pull requests with `dependencies` and `security`.
 The advisory workflow is intentionally report-only while the remaining baseline is
 triaged. The current dependency tree still has high/critical transitive findings,
 but the direct browser-used `pdfjs-dist` advisory is remediated at `^6.2.108`.
-After the Vite remediation below, the local high-severity audit reports 36 remaining
-high findings; all are currently transitive development-tool dependencies.
+After the brace-expansion remediation below, the local high-severity audit reports
+27 remaining high findings; all are currently transitive development-tool dependencies.
 Do not suppress an advisory solely to make the workflow green. For each finding,
 decide whether to upgrade, replace, isolate, or accept it with a documented owner
 and review date.
@@ -68,6 +68,21 @@ Vite's first two advisories are patched in `7.3.2`, and the Windows alternate-pa
 advisory is patched in `7.3.5`; `7.3.6` satisfies all three. This remains a
 development-tooling remediation: Vite is not part of the deployed Worker/browser
 runtime, but exposed network dev servers must still be kept on a patched release.
+
+## Brace-expansion transitive dependency remediation
+
+The ESLint and `ts-morph` development-tool chains previously resolved their
+`minimatch@3.1.5` dependency to vulnerable `brace-expansion@1.1.12`. A targeted
+`bun update brace-expansion` refreshed the compatible 1.x lockfile branches to
+`1.1.18`, covering the unbounded-expansion and intermediate-array denial-of-service
+advisories [GHSA-mh99-v99m-4gvg](https://github.com/advisories/GHSA-mh99-v99m-4gvg),
+[GHSA-rgw5-rvv9-x895](https://github.com/advisories/GHSA-rgw5-rvv9-x895), and
+[GHSA-3jxr-9vmj-r5cp](https://github.com/advisories/GHSA-3jxr-9vmj-r5cp).
+
+The lockfile keeps the separate `brace-expansion@5.0.9` and `brace-expansion@2.1.4`
+branches required by newer `minimatch` releases, rather than forcing an incompatible
+global override. This is a development-tooling remediation; the package is not
+included in the deployed Worker/browser runtime.
 
 ## Review order
 

@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 79
-**Scope:** add the repository-owned Phase 5 threat-model baseline after
-documenting the runtime and CI secret inventory.
+**Iteration:** 80
+**Scope:** remediate the next transitive Phase 5 dependency advisory after
+documenting the repository-owned threat-model baseline.
 
 ## Executive summary
 
@@ -310,6 +310,32 @@ opened_at)`. It supports filtering active windows before recent-opening
   recovery, capacity, RLS, and provider configuration. Each row names the
   current repository control and the remaining external or evidence-gated
   action.
+- The ESLint and `ts-morph` development-tool chains no longer resolve
+  vulnerable `brace-expansion@1.1.12`: a targeted `bun update
+brace-expansion` refreshes their compatible 1.x lockfile branches to
+  `1.1.18`, while preserving the separate `brace-expansion@5.0.9` and
+  `brace-expansion@2.1.4` trees used by newer `minimatch` releases.
+
+## Iteration 80 — brace-expansion transitive dependency remediation
+
+This iteration completed the next bounded Phase 5 dependency remediation:
+
+- Refreshed the compatible `brace-expansion` lockfile branches with
+  `bun update brace-expansion`. Bun now resolves the vulnerable ESLint/`ts-morph`
+  `1.1.12` branch to `1.1.18` while retaining `2.1.4` and `5.0.9` for the
+  newer `minimatch` consumers.
+- Covered the three high-severity brace-expansion denial-of-service advisories
+  reported by the local audit: unbounded expansion length, unbounded
+  intermediate arrays, and exponential expansion of consecutive non-expanding
+  groups.
+- The high-severity Bun audit baseline dropped from 36 to 27 findings. The
+  remaining findings are transitive development-tool dependencies and remain
+  report-only while each is triaged separately.
+
+Validation for this iteration: `bun update brace-expansion`, `bun install`,
+targeted dependency-tree inspection, `bun audit --audit-level=high` (expected
+exit 1 with 27 residual high transitive findings), and the repository quality
+gate.
 
 ## Iteration 79 — Phase 5 threat-model baseline
 
