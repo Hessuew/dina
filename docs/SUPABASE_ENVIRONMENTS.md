@@ -94,6 +94,12 @@ part of the recovery objective.
 5. Promote the reviewed commit to GitHub `production`; CI applies the same migration to Supabase
    production.
 
+For expand/contract rules, release evidence, application-versus-database
+rollback decisions, and the production smoke checklist, follow
+[`docs/plan/SAFE_DELIVERY.md`](plan/SAFE_DELIVERY.md). A green migration job
+does not by itself prove that the deployed Worker is compatible with the new
+schema.
+
 Do not use the remote Supabase SQL/Table editors for schema changes. They bypass Drizzle migration
 history and make the two environments drift.
 

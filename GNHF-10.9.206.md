@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 56
-**Scope:** complete the privacy-safe student activation event at the first-course-start boundary.
+**Iteration:** 57
+**Scope:** document and operationalize the Phase 3 safe-delivery migration and rollback procedure.
 
 ## Executive summary
 
@@ -193,6 +193,32 @@ The repository already has the first production-fundamentals slice:
   availability/error-rate/restore-confidence budgets, breach responses, and
   review rules. The policy is deliberately non-blocking until Better Stack,
   Cloudflare, Uptime, and restore-drill evidence are verified.
+- Phase 3 now has a repository-owned safe-delivery procedure covering the
+  existing GitHub quality/migration gates, hosted Supabase promotion order,
+  expand/contract schema changes, release evidence, and application-versus-
+  database rollback decisions. Hosted rehearsal and external branch,
+  Cloudflare, Better Stack, and Notion controls remain pending.
+
+## Iteration 57 — safe delivery migration and rollback procedure
+
+This iteration completed the next repository-owned Phase 3 slice:
+
+- Added `docs/plan/SAFE_DELIVERY.md` as the canonical release procedure for
+  application-only and migration releases.
+- Defined expand/contract rules, the exact `main` → hosted development →
+  protected production promotion sequence, post-deploy evidence, and a
+  rollback decision tree that does not confuse application rollback with
+  database rollback.
+- Corrected `drizzle/README.md` so `bun db:push` is explicitly prohibited for
+  hosted branches and linked the controlled restore procedure for destructive
+  failures.
+- Linked the new procedure from `docs/SUPABASE_ENVIRONMENTS.md`; external
+  branch protection, Cloudflare deployment checks, Better Stack release
+  verification, and rollback rehearsal remain manual follow-up.
+
+Validation for this documentation slice: Prettier, `git diff --check`, and
+`bun run docs:notion-check` passed. The hosted migration/rollback rehearsal is
+not executable from this unauthenticated local environment.
 
 ## Iteration 56 — student activation product analytics
 

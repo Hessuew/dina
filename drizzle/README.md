@@ -33,12 +33,19 @@ bun db:migrate
 3. Copy contents of `0000_add_rls_policies.sql`
 4. Execute the SQL
 
-## Migration Order
+## Hosted migration safety
 
-1. **First**: Push Drizzle schema (`bun db:push`)
-   - Creates all tables, enums, constraints
-2. **Second**: Apply RLS policies (`bun db:migrate`)
-   - Adds security policies to tables
+`bun db:push` is a development-only escape hatch for a disposable database. Do
+not use it against the hosted Supabase `development` or production branches:
+it bypasses the committed migration history and can make the environments
+drift.
+
+For a hosted schema change, follow
+[`docs/plan/SAFE_DELIVERY.md`](../docs/plan/SAFE_DELIVERY.md): generate a new
+versioned migration, replay the real journal with `bun run test:integration`,
+merge through the green main release gate, exercise the hosted development
+branch, and promote the same reviewed commit to production. The GitHub
+workflows run `bun db:migrate`; production is never seeded.
 
 ## Creating New Migrations
 
@@ -85,14 +92,20 @@ PGlite. DINA does not run a local Supabase instance.
 
 Merge the migration to GitHub `main` to apply it to the hosted Supabase `development` branch.
 After testing the localhost app against that branch, promote the same commit to the protected
-GitHub `production` branch. See [`../docs/SUPABASE_ENVIRONMENTS.md`](../docs/SUPABASE_ENVIRONMENTS.md).
+GitHub `production` branch. See [`../docs/SUPABASE_ENVIRONMENTS.md`](../docs/SUPABASE_ENVIRONMENTS.md)
+and the [safe-delivery procedure](../docs/plan/SAFE_DELIVERY.md).
 
 ## Rollback
 
-Drizzle doesn't have automatic rollback. To rollback:
+Drizzle doesn't have automatic rollback. Application rollback and database
+rollback are separate decisions. To recover:
 
-1. Create a new migration that reverses changes
-2. Or restore from database backup
+1. Redeploy the last known-good application version when the schema remains
+   backward-compatible.
+2. Prefer a new forward-fix migration for an applied additive schema change.
+3. Use the controlled restore path in
+   [`docs/database-backup-restore-runbook.md`](../docs/database-backup-restore-runbook.md)
+   for corruption or destructive mistakes.
 
 Example rollback migration:
 
@@ -108,6 +121,8 @@ DROP POLICY "policy_name" ON table_name;
 3. **Backup before migrating** - Especially in production
 4. **Keep migrations small** - One logical change per migration
 5. **Document complex changes** - Add comments explaining why
+6. **Use expand/contract** - Keep old and new application versions compatible
+   until the rollback window has ended
 
 ## Troubleshooting
 
