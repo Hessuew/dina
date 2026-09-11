@@ -125,6 +125,103 @@ describe('library reads', () => {
 })
 
 describe('library persistence', () => {
+  it('logs redacted CRUD telemetry with stable media fields', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const created = await createLibraryMediaService(
+      makeCreateInput({
+        title: 'Private media title',
+        description: 'Private media description',
+        url: 'https://private.example/media',
+      }),
+      ownerId,
+      'teacher',
+    )
+
+    await updateLibraryMediaService(
+      {
+        ...makeCreateInput({
+          title: 'Updated private media title',
+          description: 'Updated private media description',
+          url: 'https://private.example/updated',
+        }),
+        mediaId: created.media.id,
+      },
+      ownerId,
+      'teacher',
+    )
+    await deleteLibraryMediaService(
+      { mediaId: created.media.id },
+      ownerId,
+      'teacher',
+    )
+
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'media_created',
+          path: 'serverFn:createLibraryMedia',
+          actorId: ownerId,
+          mediaId: created.media.id,
+          mediaKind: 'youtube',
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'media_updated',
+          path: 'serverFn:updateLibraryMedia',
+          actorId: ownerId,
+          mediaId: created.media.id,
+          mediaKind: 'youtube',
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'media_deleted',
+          path: 'serverFn:deleteLibraryMedia',
+          actorId: ownerId,
+          mediaId: created.media.id,
+          status: 'success',
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(lines.join('\n')).not.toContain('Private media title')
+    expect(lines.join('\n')).not.toContain('private.example')
+    expect(lines.join('\n')).not.toContain('Private media description')
+  })
+
+  it('logs stable persistence failures without raw storage details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const mediaId = await seedMedia({
+      uploaderId: ownerId,
+      fileType: 'document',
+      fileUrl: `${ownerId}/private.pdf`,
+    })
+    mocks.removeStorageObject.mockRejectedValueOnce(
+      new Error('private storage provider failure'),
+    )
+
+    await expect(
+      deleteLibraryMediaService({ mediaId }, ownerId, 'teacher'),
+    ).rejects.toThrow('private storage provider failure')
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    const event = JSON.parse(line)
+    expect(event).toMatchObject({
+      event: 'media_mutation_failed',
+      path: 'serverFn:deleteLibraryMedia',
+      actorId: ownerId,
+      mediaId,
+      status: 'failure',
+      errorCategory: 'media_persistence',
+    })
+    expect(line).not.toContain('private storage provider failure')
+  })
+
   it('stores YouTube URL separately from private file path', async () => {
     const uploaderId = await seedProfile({ role: 'teacher' })
     const result = await createLibraryMediaService(

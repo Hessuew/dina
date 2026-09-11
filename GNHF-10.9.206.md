@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 32
-**Scope:** add redacted structured telemetry to post and comment reaction mutations.
+**Iteration:** 35
+**Scope:** add redacted structured telemetry to media-library CRUD mutations.
 
 ## Executive summary
 
@@ -87,6 +87,12 @@ The repository already has the first production-fundamentals slice:
   Better Stack, Cloudflare, Supabase, and Notion operations surfaces. Link URLs
   are public environment configuration only; no provider credentials are sent
   to the browser.
+- Media-library create, update, and delete mutations now emit redacted
+  `media_created`, `media_updated`, and `media_deleted` events with request
+  correlation, actor/media IDs, media kind, course ID, status, and duration.
+  Titles, descriptions, URLs, private storage paths, and raw persistence
+  details remain excluded; unexpected failures use the stable
+  `media_persistence` category.
 - The optional PostHog browser foundation now initializes from the root route
   when `VITE_POSTHOG_KEY` is configured. It identifies users by stable ID and
   role only, allow-lists the initial LMS journey event names, disables
@@ -1201,3 +1207,25 @@ This iteration completed the next repository-owned structured-logging slice:
   verify the event shape and that meeting credentials and URLs never enter the
   structured logs. External Better Stack destination, dashboard, alert,
   Uptime, source-map, Slack, and named-owner setup remains pending.
+
+## Iteration 35 — media-library CRUD telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Media-library create, update, and delete mutations now emit redacted
+  `media_created`, `media_updated`, and `media_deleted` events.
+- Events carry request correlation, server-function path, actor/media IDs,
+  media kind, course ID where applicable, status, and duration. Media titles,
+  descriptions, external URLs, private storage paths, and raw persistence or
+  storage-provider details are excluded.
+- Unexpected persistence or storage failures emit the stable
+  `media_mutation_failed` event with `media_persistence`; expected role,
+  authorization, not-found, and validation outcomes remain outside noisy error
+  telemetry.
+- Integration coverage verifies all three success event shapes, duration and
+  safe-field metadata, privacy exclusions, and redaction of raw storage
+  failures.
+
+Validation: focused library integration passed all 20 tests. Better Stack
+destination, dashboard, alert, Uptime, source-map, Slack, and named-owner
+setup remains account-specific external work described above.

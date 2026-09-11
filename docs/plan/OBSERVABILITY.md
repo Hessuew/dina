@@ -34,7 +34,10 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   Post-notification read-state mutations emit redacted request-correlated
   success/failure events. Admin Zoom-link create/update/delete mutations also
   emit redacted request-correlated events with safe actor/link ownership
-  metadata; meeting credentials and links are excluded.
+  metadata; meeting credentials and links are excluded. Media-library
+  create/update/delete mutations emit redacted request-correlated events with
+  safe actor/media metadata; titles, descriptions, URLs, and private storage
+  paths are excluded.
 
 - **Cloudflare Workers:** Basic observability
   - Logs enabled (100% sampling)

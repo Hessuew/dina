@@ -7,6 +7,7 @@ import type {
   UpdateMediaInput,
   UploadMediaThumbnailInput,
 } from '@/schemas/media.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import type { Role } from '@/utils/authz'
 import type {
@@ -14,6 +15,8 @@ import type {
   MediaRecordWithCourse,
 } from '@/utils/library/repository/library.repository'
 import type { SignedUpload } from '@/utils/storage/service/private-storage.service'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+import { logServerEvent } from '@/utils/observability/logger'
 import {
   canManageMedia,
   needsSignedViewerUrl,
@@ -36,6 +39,7 @@ import {
   AuthorizationError,
   NotFoundError,
   ValidationError,
+  isAppError,
 } from '@/utils/errors'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
 import {
@@ -53,6 +57,37 @@ import {
   signPrivateStoragePath,
   signPrivateStoragePaths,
 } from '@/utils/storage/service/private-storage.service'
+
+type LibraryMutationAction =
+  'createLibraryMedia' | 'updateLibraryMedia' | 'deleteLibraryMedia'
+
+type LibraryMutationContext = {
+  action: LibraryMutationAction
+  actorId: string
+  mediaId?: string
+  startedAt: number
+}
+
+function logLibraryMutation(
+  level: LogLevel,
+  event: string,
+  context: LibraryMutationContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    mediaId: context.mediaId,
+    ...fields,
+  })
+}
+
+function shouldLogLibraryMutationFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
 
 function requireStaff(role: Role, action: string): void {
   if (role !== 'student') return
@@ -190,21 +225,42 @@ export async function createLibraryMediaService(
 ): Promise<{ media: MediaLibraryRow }> {
   requireStaff(role, 'create library media')
   const source = mediaSource(data, userId)
-  const media = await insertMedia({
-    uploaderId: userId,
-    courseId: data.courseId ?? null,
-    title: data.title,
-    category: data.category,
-    description: data.description ?? null,
-    ...source,
-    fileType: toFileType(data.kind),
-    fileSize: data.fileSize ?? null,
-    isPublished: data.isPublished,
-    allowsDownload: resolveAllowsDownload(data.kind, data.allowsDownload),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  })
-  return { media: await serializeMediaRecord(media) }
+  const context: LibraryMutationContext = {
+    action: 'createLibraryMedia',
+    actorId: userId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const media = await insertMedia({
+      uploaderId: userId,
+      courseId: data.courseId ?? null,
+      title: data.title,
+      category: data.category,
+      description: data.description ?? null,
+      ...source,
+      fileType: toFileType(data.kind),
+      fileSize: data.fileSize ?? null,
+      isPublished: data.isPublished,
+      allowsDownload: resolveAllowsDownload(data.kind, data.allowsDownload),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    context.mediaId = media.id
+    const serialized = await serializeMediaRecord(media)
+    logLibraryMutation('info', 'media_created', context, {
+      mediaKind: data.kind,
+      courseId: data.courseId ?? null,
+    })
+    return { media: serialized }
+  } catch (error) {
+    if (shouldLogLibraryMutationFailure(error)) {
+      logLibraryMutation('error', 'media_mutation_failed', context, {
+        errorCategory: 'media_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 async function requireManagedMedia(
@@ -241,19 +297,40 @@ export async function updateLibraryMediaService(
 ): Promise<{ media: MediaLibraryRow }> {
   const existing = await requireManagedMedia(data.mediaId, userId, role, 'edit')
   const source = mediaSource(data, userId, existing.filePath)
-  const media = await updateMedia(data.mediaId, {
-    title: data.title,
-    category: data.category,
-    description: data.description ?? null,
-    ...source,
-    fileType: toFileType(data.kind),
-    fileSize: data.fileSize ?? existing.fileSize ?? null,
-    isPublished: data.isPublished,
-    allowsDownload: resolveAllowsDownload(data.kind, data.allowsDownload),
-    updatedAt: new Date(),
-  })
-  await removeReplacedMediaFile(existing, source.filePath)
-  return { media: await serializeMediaRecord(media) }
+  const context: LibraryMutationContext = {
+    action: 'updateLibraryMedia',
+    actorId: userId,
+    mediaId: data.mediaId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const media = await updateMedia(data.mediaId, {
+      title: data.title,
+      category: data.category,
+      description: data.description ?? null,
+      ...source,
+      fileType: toFileType(data.kind),
+      fileSize: data.fileSize ?? existing.fileSize ?? null,
+      isPublished: data.isPublished,
+      allowsDownload: resolveAllowsDownload(data.kind, data.allowsDownload),
+      updatedAt: new Date(),
+    })
+    await removeReplacedMediaFile(existing, source.filePath)
+    const serialized = await serializeMediaRecord(media)
+    logLibraryMutation('info', 'media_updated', context, {
+      mediaKind: data.kind,
+      courseId: data.courseId ?? null,
+    })
+    return { media: serialized }
+  } catch (error) {
+    if (shouldLogLibraryMutationFailure(error)) {
+      logLibraryMutation('error', 'media_mutation_failed', context, {
+        errorCategory: 'media_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function deleteLibraryMediaService(
@@ -267,16 +344,33 @@ export async function deleteLibraryMediaService(
     role,
     'delete',
   )
-  await deleteMedia(data.mediaId)
-  await Promise.all([
-    existing.filePath
-      ? deleteStorageObject('media-library', existing.filePath)
-      : Promise.resolve(),
-    existing.thumbnailUrl
-      ? deleteStorageObject('media-thumbnails', existing.thumbnailUrl)
-      : Promise.resolve(),
-  ])
-  return { success: true }
+  const context: LibraryMutationContext = {
+    action: 'deleteLibraryMedia',
+    actorId: userId,
+    mediaId: data.mediaId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    await deleteMedia(data.mediaId)
+    await Promise.all([
+      existing.filePath
+        ? deleteStorageObject('media-library', existing.filePath)
+        : Promise.resolve(),
+      existing.thumbnailUrl
+        ? deleteStorageObject('media-thumbnails', existing.thumbnailUrl)
+        : Promise.resolve(),
+    ])
+    logLibraryMutation('info', 'media_deleted', context)
+    return { success: true }
+  } catch (error) {
+    if (shouldLogLibraryMutationFailure(error)) {
+      logLibraryMutation('error', 'media_mutation_failed', context, {
+        errorCategory: 'media_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 function resolveDocumentExtension(fileType: string): string {

@@ -99,6 +99,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    status, and duration. Zoom URLs, meeting IDs, passcodes, titles, and raw
    persistence details remain excluded; unexpected repository failures use
    the stable `zoom_link_persistence` category.
+   Media-library create, update, and delete mutations now emit redacted
+   `media_created`, `media_updated`, and `media_deleted` events with request
+   correlation, actor/media IDs, media kind, course ID where applicable,
+   status, and duration. Media titles, descriptions, external URLs, private
+   storage paths, and raw persistence details remain excluded; unexpected
+   failures use the stable `media_persistence` category.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

@@ -115,6 +115,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     with request correlation, actor/link IDs, ownership section, status, and
     duration; credentials, meeting IDs, URLs, titles, and raw persistence
     details remain excluded.
+  - Media-library create, update, and delete mutations emit redacted
+    `media_created`, `media_updated`, and `media_deleted` events with request
+    correlation, actor/media IDs, media kind, course ID where applicable,
+    status, and duration; titles, descriptions, URLs, private storage paths,
+    and raw persistence details remain excluded.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is
