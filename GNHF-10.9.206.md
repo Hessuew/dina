@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 61
-**Scope:** add a measured, additive index for ordered course lesson reads as the next Phase 4 performance slice.
+**Iteration:** 62
+**Scope:** add a measured, additive index for published upcoming-lesson reads as the next Phase 4 performance slice.
 
 ## Executive summary
 
@@ -217,6 +217,30 @@ The repository already has the first production-fundamentals slice:
   without changing query or response behavior. Migration
   `0048_blue_golden_guardian` and the hosted `EXPLAIN (ANALYZE, BUFFERS)`
   follow-up are documented in `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+- The published upcoming-lesson dashboard query now has the additive
+  `lessons_published_scheduled_idx` index on `(is_published, scheduled_time)`.
+  It supports the existing future-lesson filter, ascending order, and limit
+  without changing query or response behavior. Migration
+  `0049_legal_absorbing_man` and the hosted `EXPLAIN (ANALYZE, BUFFERS)`
+  follow-up are documented in `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+
+## Iteration 62 — published upcoming-lesson query index
+
+This iteration completed the next repository-owned Phase 4 slice:
+
+- Added `lessons_published_scheduled_idx` for the existing dashboard query
+  that filters published lessons after the current time, orders by
+  `scheduled_time`, and limits the result to five rows.
+- Added migration `drizzle/0049_legal_absorbing_man.sql` and updated the
+  database README plus the performance review plan.
+- Kept the query, response shape, publication semantics, authorization, and
+  retention behavior unchanged. The index is additive and compatible with the
+  safe-delivery expand/contract procedure.
+
+Validation for this iteration: migration generation and replay, focused course
+integration coverage, formatting, `git diff --check`,
+`bun run docs:notion-check`, and `bun run quality:gate`. Hosted plan/timing
+evidence remains pending representative development data.
 
 ## Iteration 61 — ordered course lesson query index
 

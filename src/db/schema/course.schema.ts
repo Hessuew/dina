@@ -151,6 +151,10 @@ export const lessons = pgTable(
       table.orderIndex,
       table.id,
     ),
+    index('lessons_published_scheduled_idx').on(
+      table.isPublished,
+      table.scheduledTime,
+    ),
     // All authenticated users can view lessons
     pgPolicy('authenticated_view_lessons', {
       for: 'select',

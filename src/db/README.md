@@ -79,6 +79,9 @@ Database access layer and schema definitions.
     - `lessons`
       - Course lesson reads are indexed by `(course_id, order_index, id)` for
         ordered course detail, authoring, attendance, and completion queries.
+      - Published upcoming-lesson reads are indexed by
+        `(is_published, scheduled_time)` for the dashboard's future lesson
+        query; migration `0049_legal_absorbing_man` adds this index.
     - `staff_privileges`
       - Named Staff Privilege grants on Teacher-users (`user_id`, `privilege`).
       - Unique `(user_id, privilege)`. Admin insert/delete. Not a fourth Role (ADR 0023).
