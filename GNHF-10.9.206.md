@@ -1330,3 +1330,28 @@ This iteration completed the next repository-owned structured-logging slice:
 Validation: focused enrollment integration passed all 32 tests. Full quality
 and external Better Stack/Cloudflare verification remain the standard final
 checks and account-specific setup described above.
+
+## Iteration 40 — attendance-management structured telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Attendance session open/re-open, close, and Course Teacher/Admin/privileged
+  student overrides now emit redacted `attendance_session_opened`,
+  `attendance_session_closed`, and `attendance_override_updated` events.
+- Events carry request correlation, server-function path, actor/course/lesson
+  metadata, target student IDs where applicable, safe outcome status, and
+  duration. Attendance timestamps and raw database/provider details are not
+  sent to Better Stack/Cloudflare telemetry.
+- Unexpected persistence failures use stable
+  `attendance_session_open_persistence`,
+  `attendance_session_close_persistence`, and
+  `attendance_override_persistence` categories. Expected authorization,
+  not-found, validation, and attendance-window conflicts remain ordinary
+  user-facing outcomes and do not create noisy error telemetry.
+- Integration coverage verifies all three management event paths, both
+  override directions, safe metadata, and duration fields.
+
+External Better Stack destination, dashboard, alert, Uptime, source-map,
+Slack, and named-owner verification remains account-specific setup work. The
+repository handoff above remains the source for the required dashboard links,
+secrets, alert thresholds, and rollback procedure.

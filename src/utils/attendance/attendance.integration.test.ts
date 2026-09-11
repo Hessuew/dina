@@ -141,6 +141,80 @@ describe('attendance open / re-open / close (integration)', () => {
   })
 })
 
+describe('attendance management telemetry (integration)', () => {
+  it('logs redacted session and override outcomes with safe metadata', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { teacherId, studentId, courseId, lesson1 } =
+      await seedManagedCourse()
+
+    const opened = await startOrReopenAttendanceService(
+      { courseId, lessonId: lesson1 },
+      teacherId,
+    )
+    await closeAttendanceService({ courseId }, teacherId)
+    await setStudentPresentService(
+      { studentId, courseId, lessonId: lesson1, present: true },
+      teacherId,
+    )
+    await setStudentPresentService(
+      { studentId, courseId, lessonId: lesson1, present: false },
+      teacherId,
+    )
+
+    const events = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) =>
+        [
+          'attendance_session_opened',
+          'attendance_session_closed',
+          'attendance_override_updated',
+        ].includes(String(entry.event)),
+      )
+
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'attendance_session_opened',
+          path: 'serverFn:startOrReopenAttendance',
+          actorId: teacherId,
+          courseId,
+          lessonId: lesson1,
+          sessionId: opened.session.id,
+          attendanceStatus: 'open',
+        }),
+        expect.objectContaining({
+          event: 'attendance_session_closed',
+          path: 'serverFn:closeAttendance',
+          actorId: teacherId,
+          courseId,
+          sessionId: opened.session.id,
+          attendanceStatus: 'closed',
+        }),
+        expect.objectContaining({
+          event: 'attendance_override_updated',
+          path: 'serverFn:setStudentPresent',
+          actorId: teacherId,
+          targetStudentId: studentId,
+          attendanceStatus: 'present',
+          present: true,
+        }),
+        expect.objectContaining({
+          event: 'attendance_override_updated',
+          path: 'serverFn:setStudentPresent',
+          actorId: teacherId,
+          targetStudentId: studentId,
+          attendanceStatus: 'absent',
+          present: false,
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    infoSpy.mockRestore()
+  })
+})
+
 describe('attendance mark present (integration)', () => {
   it('student marks present once; second press is idempotent', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})

@@ -46,6 +46,15 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `enrollment_status_persistence`, `enrollment_special_case_persistence`, or
    `enrollment_delete_persistence` categories; enrollment content and raw
    database details remain excluded.
+   Attendance session open/re-open, close, and teacher/admin student overrides
+   now emit redacted `attendance_session_opened`,
+   `attendance_session_closed`, and `attendance_override_updated` events with
+   request correlation, actor/course/lesson metadata, target student IDs where
+   applicable, outcome status, and duration. Unexpected attendance persistence
+   failures use stable `attendance_session_open_persistence`,
+   `attendance_session_close_persistence`, or
+   `attendance_override_persistence` categories; attendance timestamps and
+   raw database details remain excluded.
    Admin staff-privilege grants and revokes now emit redacted
    `staff_privilege_updated` audit events with request correlation, actor and
    target IDs, privilege, grant direction, status, and duration; persistence
