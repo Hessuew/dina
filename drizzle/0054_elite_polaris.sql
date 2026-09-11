@@ -1,0 +1,1 @@
+CREATE INDEX "attendance_sessions_closes_at_opened_at_idx" ON "attendance_sessions" USING btree ("closes_at","opened_at");

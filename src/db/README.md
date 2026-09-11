@@ -91,6 +91,10 @@ Database access layer and schema definitions.
       - Teacher lesson assignment reads that scope by lesson and order by due
         date use `(lesson_id, due_date)`; the Phase 4 performance migration
         `0053_youthful_rafael_vega` adds `assignments_lesson_due_date_idx`.
+    - `attendance_sessions`
+      - Student open-session reads filter by `closes_at` and order by recent
+        `opened_at`; the Phase 4 performance migration
+        `0054_elite_polaris` adds `attendance_sessions_closes_at_opened_at_idx`.
     - `course_teachers`
       - Course-team reads that filter by `course_id` and order by assignment
         creation use `(course_id, created_at)`; the Phase 4 performance

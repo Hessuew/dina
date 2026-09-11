@@ -19,6 +19,7 @@ order by stable columns:
 | Teacher lesson assignments | managed `lesson_id` membership plus ascending `due_date`           | `assignments_lesson_due_date_idx`             |
 | Course-team reads          | `course_id` membership plus oldest-first `created_at`              | `course_teachers_course_created_at_idx`       |
 | Student submission reads   | `student_id` lookup for assignment and teacher/student views       | `submissions_student_id_idx`                  |
+| Open attendance sessions   | active `closes_at` plus newest-first `opened_at`                   | `attendance_sessions_closes_at_opened_at_idx` |
 
 These indexes support the existing cursor pagination, unread read-state,
 ordered/upcoming lesson, assignment catalog, teacher lesson assignment,
@@ -31,9 +32,9 @@ procedure.
 - The migration is replayed by `bun run test:integration`.
 - The affected post, notification, and course integration suites must remain
   green.
-- After hosted data exists, capture `EXPLAIN (ANALYZE, BUFFERS)` for the nine
+- After hosted data exists, capture `EXPLAIN (ANALYZE, BUFFERS)` for the ten
   query shapes in a controlled development environment and record only plan
-  summaries and timings in the performance review record for the nine
+  summaries and timings in the performance review record for the ten
   indexed query shapes.
 - Revisit index usefulness after production traffic is available; remove or
   refine indexes only through a later measured migration.
@@ -73,3 +74,17 @@ Production evidence is still needed before changing pagination limits,
 caching, connection behavior, or rate-limit policy. Those changes should be
 separate, measured slices rather than inferred from local seed data. A due-date
 index for the unbounded student assignment list remains evidence-gated.
+
+## Iteration 67 — open attendance session index
+
+This iteration completed the next repository-owned Phase 4 slice:
+
+- Added `attendance_sessions_closes_at_opened_at_idx` on `(closes_at,
+opened_at)` for the existing student open-session read, which filters out
+  closed windows and orders the remaining sessions by most recent opening.
+- Kept attendance authorization, session lifecycle, check-in idempotency, and
+  response shape unchanged. The index is additive and complements the existing
+  course-scoped `(course_id, closes_at)` index used by open/close mutations.
+- Hosted verification now covers ten `EXPLAIN (ANALYZE, BUFFERS)` shapes; the
+  unbounded student assignment list still needs representative hosted data
+  before a due-date-only index is considered.

@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 66
-**Scope:** add a measured, additive index for teacher lesson assignment reads as the next Phase 4 performance slice.
+**Iteration:** 67
+**Scope:** add a measured, additive index for student open-attendance-session reads as the next Phase 4 performance slice.
 
 ## Executive summary
 
@@ -242,6 +242,32 @@ The repository already has the first production-fundamentals slice:
   Migration `0053_youthful_rafael_vega` and the hosted
   `EXPLAIN (ANALYZE, BUFFERS)` follow-up are documented in
   `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+- Student open-attendance-session reads now have the additive
+  `attendance_sessions_closes_at_opened_at_idx` index on `(closes_at,
+opened_at)`. It supports filtering active windows before recent-opening
+  ordering without changing authorization, session lifecycle, or response
+  shape. Migration `0054_elite_polaris` and the hosted
+  `EXPLAIN (ANALYZE, BUFFERS)` follow-up are documented in
+  `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+
+## Iteration 67 — open attendance session index
+
+This iteration completed the next repository-owned Phase 4 slice:
+
+- Added `attendance_sessions_closes_at_opened_at_idx` on `(closes_at,
+opened_at)` for the existing student open-session query, which filters out
+  closed windows and orders active sessions by most recent opening.
+- Kept attendance authorization, session lifecycle, check-in idempotency, and
+  response shape unchanged. The index is additive and complements the existing
+  course-scoped `(course_id, closes_at)` index used by open/close mutations.
+- Extended the performance review and database README. Hosted verification now
+  covers ten indexed query shapes; the unbounded student assignment due-date
+  index remains evidence-gated until representative hosted data exists.
+
+Validation for this iteration: migration generation and replay, focused
+attendance integration coverage, formatting, `git diff --check`,
+`bun run docs:notion-check`, and `bun run quality:gate`. Hosted plan/timing
+evidence remains pending representative development data.
 
 ## Iteration 66 — teacher lesson assignment due-date index
 
