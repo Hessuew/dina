@@ -2513,3 +2513,65 @@ Validation passed: frozen install, post-change `bun audit --audit-level=high`
 Security maturity, and Maturity Tracking were synchronized; the protected
 Production Readiness template was left unchanged because no launch decision
 changed.
+
+## Iteration 88 — major dependency and build-tool refresh
+
+This iteration completed the requested major dependency refresh on the existing
+GNHRF implementation branch:
+
+- Upgraded the Vite toolchain to Vite `8.3.0`, Vitest `5.0.0`, the React Vite
+  plugin `6.1.1`, TanStack devtools Vite `0.8.5`, and the Vite 8 React Compiler
+  integration. The current lockfile resolves one Vite package; the root Vite
+  override is now `^8.3.0`.
+- Upgraded TanStack Table to `9.2.4` while using its legacy compatibility API
+  for the existing table behavior, and upgraded Supabase SSR/JS, Lucide, Motion,
+  jsdom, dotenv, coverage tooling, and the related lint/build packages.
+- Replaced the standalone Vite TypeScript-path plugin with Vite/Vitest native
+  `resolve.tsconfigPaths` support. TypeScript is `6.0.3`, the latest version
+  compatible with the current `typescript-eslint` parser; TypeScript 7 remains
+  pending upstream parser support.
+- Revalidated the existing security overrides. The old Vite 7 historical entry
+  above remains an iteration record; the current package and lockfile use Vite 8.
+  The remaining audit baseline is 7 high transitive findings and stays
+  report-only while those packages are triaged separately.
+
+Validation passed: `bun run quality:gate` with 1,953 unit tests,
+`bun run test:integration` with 379 tests, TypeScript, formatting, `git diff --check`,
+and the production build. Notion Dependency Security maturity and Maturity
+Tracking records were synchronized; the protected Production Readiness template
+was left unchanged because no launch decision changed.
+
+## Iteration 89 — transitive tooling audit follow-up
+
+This iteration followed up on the remaining high-severity dependency findings
+after the major dependency refresh:
+
+- Upgraded `@cloudflare/vite-plugin` to `1.54.7` and `wrangler` to `4.131.0`.
+  The refreshed Miniflare path resolves patched `sharp@0.35.4` and
+  `undici@7.29.0`, removing the previous sharp and Cloudflare-tooling undici
+  findings.
+- Added a compatible root Hono floor at `^4.13.7`, removing the prior Hono
+  finding without changing application runtime behavior.
+- The current audit reports four High findings across three transitive,
+  development-only packages: shadcn's `undici@7.28.0`, its MCP/Express/router
+  path's `path-to-regexp@8.3.0`, and two audit entries tied to the legacy
+  micromatch branch retaining `picomatch@2.3.1`. Their advisories cover cache-directive information
+  disclosure/parse-time crash, optional-group denial of service, and extglob
+  regular-expression denial of service, respectively.
+- These findings are not in the deployed Worker/browser runtime. A global
+  override is unsafe because Wrangler requires the path-to-regexp 6.x line and
+  modern Vite/Rolldown requires picomatch 4.x. Bun has no consumer-specific
+  nested override mechanism.
+- No patch files were added, per the task direction. A clean lockfile
+  regeneration can select patched nested versions but would also refresh many
+  unrelated compatible packages, so it was not taken in this scoped change.
+  The audit remains report-only for these four findings pending an upstream
+  release, nested-override support, or a separately reviewed patch-file change.
+
+Validation passed: the post-change audit reports exactly these four High
+findings; quality gate with 1,953 unit tests, integration with 379 tests,
+typecheck, formatting, `git diff --check`, production build, and
+`bun run docs:notion-check` all passed. The Dependency Security and Maturity
+Tracking Notion records were synchronized; Architecture Inventory, Service
+Catalog, and Production Readiness targets were skipped because this follow-up
+changed dependency/tooling state but no service shape or launch decision.

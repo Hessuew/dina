@@ -1,8 +1,8 @@
 # Security Baseline
 
 **Status:** In progress — the direct browser PDF, nested Vite, shell-quote,
-brace-expansion, Browserslist, PostCSS, Nanoid, fast-uri, flatted, js-yaml, and
-ip-address dependencies are remediated; the reviewed
+brace-expansion, Browserslist, PostCSS, Nanoid, fast-uri, flatted, js-yaml,
+ip-address, sharp, and Hono dependencies are remediated; the reviewed
 server-function authorization gaps, secret-inventory contract, and threat-model baseline are documented incrementally,
 while remaining transitive advisories and hosted security verification are pending
 **Phase:** Engineering Roadmap Phase 5: Security
@@ -22,8 +22,9 @@ update pull requests with `dependencies` and `security`.
 The advisory workflow is intentionally report-only while the remaining baseline is
 triaged. The current dependency tree still has high/critical transitive findings,
 but the direct browser-used `pdfjs-dist` advisory is remediated at `^6.2.108`.
-After the ip-address remediation below, the local high-severity audit reports
-8 remaining high findings; all are currently transitive development-tool dependencies.
+After the ip-address remediation, major toolchain refresh, and parent-package
+upgrades below, the local high-severity audit reports 4 remaining high findings
+across three transitive development-tool packages.
 Do not suppress an advisory solely to make the workflow green. For each finding,
 decide whether to upgrade, replace, isolate, or accept it with a documented owner
 and review date.
@@ -57,16 +58,16 @@ behavior changes.
 
 The Bun lockfile previously retained a second `vite@7.3.1` under the
 `vitest@3.2.7` → `vite-node@3.2.4` development chain, even though the repository's
-direct Vite dependency already resolved to `7.3.6`. The root `overrides` entry now
-pins every Vite resolution to `^7.3.6`, so the lockfile has one patched Vite version
-and no nested `vite-node/vite` package.
+direct Vite dependency already resolved to `7.3.6`. The repository now uses Vite 8
+with Vitest 5, and the root `overrides` entry pins every Vite resolution to `^8.3.0`,
+so the lockfile has one current Vite version and no nested `vite-node/vite` package.
 
 This covers the high-severity Vite advisories reported for the nested `7.3.1`
 package, including [GHSA-v2wj-q39q-566r](https://github.com/vitejs/vite/security/advisories/GHSA-v2wj-q39q-566r),
 [GHSA-p9ff-h696-f583](https://github.com/advisories/GHSA-p9ff-h696-f583), and
 [GHSA-fx2h-pf6j-xcff](https://github.com/advisories/GHSA-fx2h-pf6j-xcff).
 Vite's first two advisories are patched in `7.3.2`, and the Windows alternate-path
-advisory is patched in `7.3.5`; `7.3.6` satisfies all three. This remains a
+advisory was patched in `7.3.5`; the Vite 8 resolution is beyond all three. This remains a
 development-tooling remediation: Vite is not part of the deployed Worker/browser
 runtime, but exposed network dev servers must still be kept on a patched release.
 
@@ -181,6 +182,43 @@ This is a development-only shadcn/Model Context Protocol remediation; the
 package is not bundled into the deployed Worker/browser runtime. The local
 high-severity audit baseline decreased from 9 to 8 findings; the residual
 findings remain report-only pending separate reachability or upgrade decisions.
+
+## Transitive tooling findings after parent upgrades
+
+The major toolchain refresh upgraded `@cloudflare/vite-plugin` to `1.54.7` and
+`wrangler` to `4.131.0`. Their refreshed Miniflare path now resolves patched
+`sharp@0.35.4` and `undici@7.29.0`, so the previous sharp and Cloudflare-tooling
+`undici` findings are remediated. A root override floors the compatible Hono
+consumer chain at `^4.13.7`, remediating the prior Hono finding as well.
+
+The current `bun audit --audit-level=high` result is four findings across three
+packages. All are High severity and reachable only through development/build
+tooling; none is in the deployed Worker/browser runtime:
+
+- `undici` `>=7.0.0 <7.29.0`: shadcn's nested chain still resolves
+  `undici@7.28.0`. The advisory describes cross-user information disclosure and
+  a parse-time crash through degenerate private cache directives. Other branches
+  already use patched `undici` versions (`7.29.0` and `8.x`), but Bun currently
+  retains the separate shadcn branch.
+- `path-to-regexp` `>=8.0.0 <8.4.0`: shadcn → Model Context Protocol SDK →
+  Express → router resolves `8.3.0`; the advisory is a denial of service through
+  sequential optional groups. Wrangler independently requires the incompatible
+  major-6 line, so one global override cannot safely cover both branches.
+- `picomatch` `<2.3.2`: two audit entries are tied to the legacy micromatch
+  branch at `picomatch@2.3.1`; the advisory is regular-expression denial of service through
+  extglob quantifiers. Modern Vite/Rolldown paths require picomatch 4.x, so one
+  global override cannot safely cover both branches.
+
+The current [Bun override mechanism](https://bun.sh/docs/pm/overrides) supports
+top-level package overrides but does not provide consumer-specific nested
+overrides. A clean lockfile regeneration
+can select patched nested versions, but it also refreshes many unrelated
+compatible packages and would create broad lockfile churn; that option was not
+taken in this scoped change. No patch files were added. The remaining narrow
+options are an upstream release that widens the affected consumer range, future
+nested-override support, or a separately reviewed patch-file change. Until one
+of those becomes appropriate, these four findings remain explicitly documented
+and report-only.
 
 ## Review order
 

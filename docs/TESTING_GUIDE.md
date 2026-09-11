@@ -137,7 +137,7 @@ deployment origin and does not replace authenticated journey checks.
   and `@/env` → `test/integration/env.ts`. Aliasing is the whole seam: production
   `src/db/index.ts` and `src/env.ts` are untouched, and their `cloudflare:workers`
   import never enters the test graph. (`@/db/schema` and every other `@/` path
-  still resolve normally via `vite-tsconfig-paths`.)
+  still resolve normally via Vite's native `resolve.tsconfigPaths` support.)
 - **`db.ts`** — boots one `PGlite`, wraps it with `drizzle(client, { schema })`
   from `drizzle-orm/pglite`, and exports `getDb()` (the shared instance every
   repository's `import { getDb } from '@/db'` now hits), plus a `truncateAll()`

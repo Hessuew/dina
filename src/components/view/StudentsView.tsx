@@ -1,5 +1,5 @@
-import { createColumnHelper } from '@tanstack/react-table'
-import type { ColumnDef } from '@tanstack/react-table'
+import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-table/legacy'
+import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
 import type { StudentWithStats } from '@/types/student'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'

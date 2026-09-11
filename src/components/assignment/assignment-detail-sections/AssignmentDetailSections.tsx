@@ -4,7 +4,7 @@ import {
   buildSubmissionHeaderViewModel,
   buildSubmissionStatusViewModel,
 } from './assignment-detail-sections.domain'
-import type { ColumnDef } from '@tanstack/react-table'
+import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
 import type { SubmissionStatusVariant } from '@/utils/assignments/domain/assignment-detail.domain'
 import { Button } from '@/components/ui/button'
 import { StatusChip } from '@/components/ui/status-chip'

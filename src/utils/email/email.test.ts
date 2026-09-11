@@ -11,7 +11,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@react-email/render', () => ({ render: mocks.render }))
 vi.mock('resend', () => ({
-  Resend: vi.fn(() => ({ emails: { send: mocks.send } })),
+  Resend: vi.fn(function ResendMock() {
+    return { emails: { send: mocks.send } }
+  }),
 }))
 
 vi.mock('@/emails/InvitationEmail', () => ({
