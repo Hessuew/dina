@@ -218,6 +218,7 @@ describe('completeLessonService (integration)', () => {
       lessonId,
       completed: true,
       alreadyCompleted: false,
+      courseCompleted: true,
     })
     expect(await findLessonProgress(studentId, lessonId)).toMatchObject({
       studentId,
@@ -245,12 +246,34 @@ describe('completeLessonService (integration)', () => {
     const result = await completeLessonService({ lessonId }, studentId)
 
     expect(result.alreadyCompleted).toBe(true)
+    expect(result.courseCompleted).toBe(false)
     expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
       event: 'lesson_completion_ignored',
       status: 'ignored',
       alreadyCompleted: true,
     })
     infoSpy.mockRestore()
+  })
+
+  it('reports course completion only after the final published lesson', async () => {
+    const { courseId, lessonId: firstLessonId } = await seedCourseWithTeacher()
+    const secondLessonId = await seedLesson({
+      courseId,
+      isPublished: true,
+    })
+    const studentId = await seedProfile({ role: 'student' })
+
+    const firstResult = await completeLessonService(
+      { lessonId: firstLessonId },
+      studentId,
+    )
+    const finalResult = await completeLessonService(
+      { lessonId: secondLessonId },
+      studentId,
+    )
+
+    expect(firstResult.courseCompleted).toBe(false)
+    expect(finalResult.courseCompleted).toBe(true)
   })
 
   it('rejects unpublished lessons and non-student callers', async () => {

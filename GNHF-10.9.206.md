@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 49
-**Scope:** add a reliable lesson-completion action and privacy-safe product telemetry.
+**Iteration:** 50
+**Scope:** complete the privacy-safe course-completion product-analytics milestone.
 
 ## Executive summary
 
@@ -64,6 +64,11 @@ The repository already has the first production-fundamentals slice:
   Operational events are redacted `lesson_completed`,
   `lesson_completion_ignored`, and `lesson_completion_failed` events; lesson
   content remains excluded.
+- After a first successful completion, the server function now determines
+  whether every published lesson in that course is complete. The response
+  exposes a transition-only `courseCompleted` flag, and the browser emits
+  PostHog `course_completed` once with only the stable course ID. Repeated
+  completion requests do not emit duplicate course-completion analytics.
 - Post and comment reaction toggles now emit redacted success events with
   request correlation, actor and target IDs, reaction action, emoji, status,
   and duration. Unexpected persistence failures use stable post/comment
@@ -153,6 +158,10 @@ The repository already has the first production-fundamentals slice:
 - A successful teacher grading mutation now emits
   `teacher_review_completed` with stable assignment and submission IDs only;
   grade and feedback content remain outside analytics.
+- A student's first successful completion of the final published lesson now
+  emits `course_completed` with only the stable course ID. The server checks
+  published lessons and the student's completed progress rows; no course title,
+  lesson content, or progress timestamps leave the application.
 - Added `docs/observability-runbook.md` with Better Stack, Cloudflare, Supabase,
   and PostHog alert response steps; severity and role-based escalation;
   first-check and mitigation procedures; incident tracking; recovery; and
@@ -1608,3 +1617,24 @@ The query must return zero rows before migration. If it returns rows, reconcile
 the duplicate records in a reviewed SQL change while preserving the completed
 record and its earliest completion timestamp, then rerun the query. The
 migration intentionally fails closed instead of silently deleting progress.
+
+## Iteration 50 — course completion product analytics
+
+This iteration completed the next independently verifiable PostHog journey
+slice now that lesson completion has a reliable persisted boundary:
+
+- Added `isCourseCompleted(studentId, courseId)` to compare all published
+  lessons with the student's completed progress rows.
+- `completeLessonService` returns `courseCompleted=true` only when the current
+  request completes the final published lesson; repeated completion requests
+  return `courseCompleted=false`.
+- Added `trackCourseCompleted(courseId)` to the typed browser analytics boundary.
+  The lesson route emits `course_completed` only after a first successful
+  completion and sends only the stable course ID.
+- Added unit and integration coverage for the event contract, one-lesson
+  courses, multi-lesson finalization, and duplicate suppression.
+
+Validation: focused analytics tests and the course integration suite passed.
+Full quality-gate verification and the external PostHog project/dashboard
+verification remain follow-up work. Better Stack account setup remains
+documented above and is unaffected by this product-analytics event.

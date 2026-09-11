@@ -116,7 +116,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     function only for published lessons. Completion uses an idempotent
     `(studentId, lessonId)` upsert and emits redacted `lesson_completed`,
     `lesson_completion_ignored`, or `lesson_completion_failed` events without
-    lesson content.
+    lesson content. The response includes a transition-only `courseCompleted`
+    flag when the request completes every published lesson in the course.
   - Assignment authoring emits redacted `assignment_created`,
     `assignment_updated`, and `assignment_deleted` events with request
     correlation, server-function path, actor/course/lesson/assignment IDs,
@@ -188,8 +189,9 @@ This folder is primarily where TanStack Start server functions live (via `create
 - **Product analytics**
   - `analytics.ts`: optional browser-only PostHog boundary with an allow-listed
     LMS event-name union, stable user-ID/role identification, logout reset, and
-    disabled autocapture/session recording by default. No event leaves the
-    browser until `VITE_POSTHOG_KEY` is configured.
+    disabled autocapture/session recording by default. It exposes privacy-safe
+    helpers for lesson and course completion; no event leaves the browser until
+    `VITE_POSTHOG_KEY` is configured.
 
 - **Supabase utilities**
   - `supabase.ts`: server client (`@supabase/ssr`) and admin client.

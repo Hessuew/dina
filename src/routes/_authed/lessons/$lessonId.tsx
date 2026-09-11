@@ -14,7 +14,7 @@ import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { LessonDetailSections } from '@/components/lesson/LessonDetailSections'
 import { useMutation } from '@/hooks/useMutation'
-import { trackLessonCompleted } from '@/utils/analytics'
+import { trackCourseCompleted, trackLessonCompleted } from '@/utils/analytics'
 import { ViewerDateTime } from '@/components/ui/viewer-date-time'
 import {
   buildLessonBackNavigation,
@@ -281,21 +281,32 @@ function useAssignmentDeleteDialog(assignmentDialog: AssignmentDialogState) {
   return { closeAssignmentDialog, handleDeleteAssignmentClick, submissionCount }
 }
 
-function LessonDetailComponent() {
-  const loaderData = Route.useLoaderData()
-  const search = Route.useSearch()
+function useLessonCompletionMutation(lessonId: string, courseId: string) {
   const router = useRouter()
-  const { lesson, role, permissions } = loaderData
-  const lessonDialog = useDialogState()
-  const assignmentDialog = useDialogState<Assignment>()
-  const completeLessonMutation = useMutation({
+
+  return useMutation({
     fn: completeLesson,
     onSuccess: async ({ data }) => {
-      if (!data.alreadyCompleted) trackLessonCompleted(lesson.id)
+      if (!data.alreadyCompleted) {
+        trackLessonCompleted(lessonId)
+        if (data.courseCompleted) trackCourseCompleted(courseId)
+      }
       toast.success('Lesson marked complete')
       await router.invalidate()
     },
   })
+}
+
+function LessonDetailComponent() {
+  const loaderData = Route.useLoaderData()
+  const search = Route.useSearch()
+  const { lesson, role, permissions } = loaderData
+  const lessonDialog = useDialogState()
+  const assignmentDialog = useDialogState<Assignment>()
+  const completeLessonMutation = useLessonCompletionMutation(
+    lesson.id,
+    lesson.course.id,
+  )
   const isPublished = resolveLessonPublished(lesson.isPublished)
   const showContent = shouldShowLessonContent(isPublished, permissions.canEdit)
   const { goBack, handleOpenAssignment } = useLessonNavigation({

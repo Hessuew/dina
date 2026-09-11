@@ -213,8 +213,9 @@ published lesson from a course detail page now emits `course_started` with only
 the course ID. A successful teacher grading mutation emits
 `teacher_review_completed` with only assignment and submission IDs; grade and
 feedback content remain excluded. Published lesson completion now emits the
-privacy-safe `lesson_completed` event after persistence; course completion
-and later milestones remain pending.
+privacy-safe `lesson_completed` event after persistence. The final published
+lesson now also emits the privacy-safe `course_completed` event once, with only
+the stable course ID; later milestone work remains pending.
 
 #### 1.3 Set Up Slack Workspace
 

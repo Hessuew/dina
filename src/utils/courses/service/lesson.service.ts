@@ -17,6 +17,7 @@ import {
   findLessonProgress,
   findUpcomingLessons,
   insertLesson,
+  isCourseCompleted,
   updateLessonById,
 } from '@/utils/courses/repository'
 import { buildCourseCalendarEvents } from '@/utils/courses/domain/course.domain'
@@ -183,16 +184,23 @@ export async function completeLessonService(
   try {
     const updatedProgress = await completeLessonProgress(userId, lesson.id)
     const alreadyCompleted = Boolean(progress?.completed)
+    const courseCompleted =
+      !alreadyCompleted && (await isCourseCompleted(userId, lesson.courseId))
     logLessonMutationEvent(
       'info',
       alreadyCompleted ? 'lesson_completion_ignored' : 'lesson_completed',
       context,
-      { status: alreadyCompleted ? 'ignored' : 'success', alreadyCompleted },
+      {
+        status: alreadyCompleted ? 'ignored' : 'success',
+        alreadyCompleted,
+        courseCompleted,
+      },
     )
     return {
       lessonId: lesson.id,
       completed: true,
       alreadyCompleted,
+      courseCompleted,
       progress: updatedProgress,
     }
   } catch (error) {

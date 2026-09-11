@@ -1,6 +1,6 @@
 # PostHog Product Analytics
 
-**Status:** Foundation implemented; enrollment, assignment submission, course start, lesson completion, and teacher review instrumented
+**Status:** Foundation implemented; enrollment, assignment submission, course start, lesson completion, course completion, and teacher review instrumented
 
 ## Purpose
 
@@ -48,5 +48,8 @@ ID. A successful teacher grading mutation now emits
 grade and feedback content remain outside analytics. A student can now mark a
 published lesson complete from its detail page; the resulting
 `lesson_completed` event carries only the stable lesson ID and fires only after
-the persistence mutation succeeds. Course completion and verification in the
-configured PostHog project remain pending.
+the persistence mutation succeeds. After a first successful completion of the
+final published lesson, the same route emits `course_completed` with only the
+stable course ID. Repeated lesson-completion requests do not emit duplicate
+course-completion events because the server returns a transition-only flag.
+Verification in the configured PostHog project remains pending.
