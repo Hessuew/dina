@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 83
+**Iteration:** 84
 **Scope:** remediate the next compatible transitive Phase 5 dependency
-advisories after the Browserslist remediation in iteration 82.
+advisories after the PostCSS/Nanoid remediation in iteration 83.
 
 ## Executive summary
 
@@ -342,6 +342,27 @@ Validation for this iteration: `bun install`, post-change
 `bun audit --audit-level=high`, targeted lockfile resolution checks, and the
 repository quality/integration/build gates. The audit remains report-only while
 the remaining transitive packages are triaged.
+
+## Iteration 84 — fast-uri transitive dependency remediation
+
+This iteration completed the next bounded Phase 5 dependency remediation:
+
+- Added the root Bun/npm override `fast-uri: ^3.1.6` for the shadcn Model
+  Context Protocol toolchain, which previously resolved `fast-uri@3.1.0`
+  through `ajv` and `ajv-formats`.
+- The lockfile now resolves `fast-uri@3.1.7`, covering seven high-severity
+  URL normalization, SSRF, host-confusion, and path-traversal advisories in
+  the vulnerable `3.0.x` range. The affected package remains a development-only
+  JSON-schema/tooling dependency and is not bundled into the deployed Worker or
+  browser runtime.
+- The high-severity Bun audit baseline decreased from 20 to 13 findings. The
+  residual findings remain report-only while the next transitive package is
+  reviewed separately.
+
+Validation for this iteration: `bun install`, targeted lockfile and dependency
+resolution checks, post-change `bun audit --audit-level=high` (expected exit 1
+with 13 residual high findings), the repository quality/integration/build gates,
+and documentation/Notion synchronization.
 
 ## Iteration 82 — Browserslist transitive dependency remediation
 

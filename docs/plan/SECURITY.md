@@ -1,7 +1,7 @@
 # Security Baseline
 
 **Status:** In progress — the direct browser PDF, nested Vite, shell-quote,
-brace-expansion, Browserslist, PostCSS, and Nanoid dependencies are remediated; the reviewed
+brace-expansion, Browserslist, PostCSS, Nanoid, and fast-uri dependencies are remediated; the reviewed
 server-function authorization gaps, secret-inventory contract, and threat-model baseline are documented incrementally,
 while remaining transitive advisories and hosted security verification are pending
 **Phase:** Engineering Roadmap Phase 5: Security
@@ -21,8 +21,8 @@ update pull requests with `dependencies` and `security`.
 The advisory workflow is intentionally report-only while the remaining baseline is
 triaged. The current dependency tree still has high/critical transitive findings,
 but the direct browser-used `pdfjs-dist` advisory is remediated at `^6.2.108`.
-After the PostCSS remediation below, the local high-severity audit reports
-20 remaining high findings; all are currently transitive development-tool dependencies.
+After the fast-uri remediation below, the local high-severity audit reports
+13 remaining high findings; all are currently transitive development-tool dependencies.
 Do not suppress an advisory solely to make the workflow green. For each finding,
 decide whether to upgrade, replace, isolate, or accept it with a documented owner
 and review date.
@@ -119,6 +119,23 @@ Both packages are reachable only through development/build tooling in the
 current audit tree and are not bundled as deployed Worker runtime code. The
 local high-severity audit baseline decreased from 25 to 20 findings; the
 remaining findings stay report-only until separately triaged.
+
+## Fast-URI transitive dependency remediation
+
+The shadcn Model Context Protocol toolchain previously resolved `fast-uri@3.1.0`
+through `ajv@8.18.0` and `ajv-formats@3.0.1`. That version was affected by
+seven high-severity URL normalization, SSRF, host-confusion, and path-traversal
+advisories, including
+[GHSA-f65p-4m7j-42xc](https://github.com/advisories/GHSA-f65p-4m7j-42xc),
+[GHSA-jqff-g426-hqxp](https://github.com/advisories/GHSA-jqff-g426-hqxp), and
+[GHSA-q3j6-qgpj-74h6](https://github.com/advisories/GHSA-q3j6-qgpj-74h6).
+
+The root Bun/npm `overrides` entry now pins compatible `fast-uri` paths to
+`^3.1.6`; the lockfile resolves `fast-uri@3.1.7`, outside every affected
+range. This is a development-only shadcn/JSON-schema tooling remediation;
+`fast-uri` is not bundled into the deployed Worker/browser runtime. The local
+high-severity audit baseline decreased from 20 to 13 findings; the residual
+findings remain report-only pending separate reachability or upgrade decisions.
 
 ## Review order
 
