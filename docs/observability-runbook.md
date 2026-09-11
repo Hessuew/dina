@@ -54,7 +54,13 @@ that gap as follow-up work.
    the linked Better Stack, Cloudflare, Supabase, and deployment surfaces.
 3. Check the latest deployment/release and the affected environment. Compare
    the first failure time with the deployment time.
-4. Run read-only health checks when the public endpoint is reachable:
+4. Run the repository smoke check when the public endpoint is reachable:
+   ```sh
+   bun run smoke:health -- https://<deployment-origin>
+   ```
+   It checks both `/healthz` and `/readyz`, requires HTTP 200 and a healthy
+   database dependency, and does not send credentials. If Bun is unavailable,
+   use the equivalent read-only curl checks:
    ```sh
    curl -i https://christ-dina.org/healthz
    curl -i https://christ-dina.org/readyz

@@ -102,6 +102,7 @@ dialect as production. See ADR 0009 for the rationale.
 ```bash
 bun run test:integration   # integration suite only (PGlite)
 bun run test:all           # unit suite + integration suite (the full signal)
+bun run smoke:health -- https://<deployment-origin>  # post-deploy health/readiness smoke
 ```
 
 `bun run test` / `test:coverage` stay unit-only: the unit config excludes
@@ -125,7 +126,8 @@ Safe documentation-only diffs run only the static lane. Pull requests use the st
 check `Fast quality gate` and cancel superseded runs for the same PR. Pushes to `main` run one
 complete `Main release gate` at a time without cancelling older pushes, then migrate and seed
 the development database only when `drizzle/**` changed. Credentialed Playwright E2E stays
-manual and implementation-scoped.
+manual and implementation-scoped. The health smoke command is safe to run against a public
+deployment origin and does not replace authenticated journey checks.
 
 ### How the harness works (`test/integration/`)
 

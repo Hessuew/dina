@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 57
-**Scope:** document and operationalize the Phase 3 safe-delivery migration and rollback procedure.
+**Iteration:** 58
+**Scope:** add an executable credential-free post-deploy health/readiness smoke check for Phase 3 safe delivery.
 
 ## Executive summary
 
@@ -198,6 +198,27 @@ The repository already has the first production-fundamentals slice:
   expand/contract schema changes, release evidence, and application-versus-
   database rollback decisions. Hosted rehearsal and external branch,
   Cloudflare, Better Stack, and Notion controls remain pending.
+- Phase 3 now has an executable `bun run smoke:health -- <deployment-origin>`
+  check for post-deploy liveness and database readiness. It validates both
+  `/healthz` and `/readyz` without authentication, credentials, or private
+  provider URLs; use `SMOKE_BASE_URL` for CI/deployment shells.
+
+## Iteration 58 — executable health/readiness smoke check
+
+This iteration completed the next repository-owned Phase 3 slice:
+
+- Added `scripts/health-smoke.ts` and a `bun run smoke:health` command that
+  checks `/healthz` and `/readyz` concurrently after deployment.
+- The check requires HTTP 200, the `christ-dina` service identity, a non-empty
+  request ID, and an `ok` database readiness result. It uses a bounded timeout,
+  rejects credential/query/hash-bearing URLs, and never prints the deployment
+  origin or response body.
+- Documented positional and `SMOKE_BASE_URL` usage in the safe-delivery plan,
+  observability runbook, and testing guide. Authenticated Playwright journey
+  checks remain separate and manual.
+
+Validation for this iteration: focused health-smoke domain tests, formatting,
+`bun run quality:gate`, `git diff --check`, and `bun run docs:notion-check`.
 
 ## Iteration 57 — safe delivery migration and rollback procedure
 

@@ -33,6 +33,12 @@ account URLs remain external configuration and must never be committed.
 - The repository integration harness replays the committed Drizzle migration
   journal against PGlite. It is the fast migration-chain check, not proof that
   a hosted restore or provider migration has succeeded.
+- The credential-free health smoke command checks both public operational
+  endpoints after a deployment:
+  `bun run smoke:health -- https://<deployment-origin>`.
+  It requires HTTP 200, a healthy `christ-dina` payload, and database readiness
+  on `/readyz`; use `SMOKE_BASE_URL` instead of the positional URL in CI or a
+  deployment shell. It never logs the base URL or sends credentials.
 
 ## Required promotion order
 
@@ -41,7 +47,8 @@ account URLs remain external configuration and must never be committed.
 1. Open a pull request and wait for the pull-request quality gate.
 2. Merge to `main` and wait for the serialized main release gate.
 3. Deploy the reviewed commit with the normal Cloudflare deployment path.
-4. Run the post-deploy smoke checks in the observability runbook.
+4. Run `bun run smoke:health -- https://<deployment-origin>` and the affected
+   journey smoke checks in the observability runbook.
 5. Watch Better Stack Errors, Logs & Traces, Uptime, and Cloudflare for the
    first release window. Record the release and environment when investigating
    a regression.
@@ -65,7 +72,9 @@ account URLs remain external configuration and must never be committed.
    expand/contract plan explicitly requires a backward-compatible application
    deploy before the migration. The old and new application versions must both
    work with the intermediate schema.
-8. Run production `/healthz`, `/readyz`, and the affected journey smoke checks.
+8. Run `bun run smoke:health -- https://<production-origin>` and the affected
+   journey smoke checks. Confirm production `/healthz` and `/readyz` are both
+   healthy before closing the rollout.
    Confirm the new release is visible in Better Stack with symbolicated source
    maps before closing the rollout.
 
