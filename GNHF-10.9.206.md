@@ -1308,3 +1308,25 @@ formatting, static checks, and `git diff --check` also passed; only existing
 deprecation, lint, Fallow, and large-chunk warnings remain. External Better
 Stack destination, dashboard, alert, Uptime, source-map, Slack, and
 named-owner verification remains account-specific setup work described above.
+
+## Iteration 39 — enrollment lifecycle structured telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Admin enrollment status updates, special-case toggles, and deletions now emit
+  redacted `enrollment_status_updated`,
+  `enrollment_special_case_updated`, and `enrollment_deleted` events.
+- Events carry request correlation, server-function path, actor/enrollment IDs,
+  safe status or boolean outcome metadata where relevant, and duration. Raw
+  enrollment content, database details, and provider messages are excluded.
+- Unexpected persistence failures emit stable
+  `enrollment_status_persistence`, `enrollment_special_case_persistence`, or
+  `enrollment_delete_persistence` categories; expected authorization behavior
+  remains outside noisy operational telemetry.
+- Integration coverage verifies all three success event shapes, persistence
+  behavior, duration fields, stable failure categories, and exclusion of raw
+  database details.
+
+Validation: focused enrollment integration passed all 32 tests. Full quality
+and external Better Stack/Cloudflare verification remain the standard final
+checks and account-specific setup described above.

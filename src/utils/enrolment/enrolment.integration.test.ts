@@ -1,17 +1,21 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
 import {
+  deleteEnrollmentService,
   getEnrollmentEmailsService,
   getEnrollmentsService,
   searchEnrollmentContactsByNamesService,
   sendInvitationForEnrollmentService,
+  setEnrollmentSpecialCaseService,
   setEvaluationAdmissionCategoryService,
   setEvaluationNoteService,
   setEvaluationScoreService,
   substituteTeacherService,
+  updateEnrollmentStatusService,
 } from '@/utils/enrolment/service/enrolment.service'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
+import * as enrollmentRepository from '@/utils/enrolment/repository/enrolment.repository'
 import {
   findEnrollmentById,
   findEnrollmentContactLookupCandidates,
@@ -228,6 +232,148 @@ describe('setEvaluationScoreService (integration)', () => {
       'note',
     ])
     expect(JSON.stringify(events)).not.toContain('private mentorship details')
+  })
+})
+
+describe('enrollment lifecycle mutation telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs a redacted status update event', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const enrollmentId = await seedEnrollment({ status: 'pending' })
+
+    await updateEnrollmentStatusService(
+      { enrollmentId, status: 'approved' },
+      adminId,
+    )
+
+    expect((await findEnrollmentById(enrollmentId))?.status).toBe('approved')
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'enrollment_status_updated')
+
+    expect(event).toMatchObject({
+      event: 'enrollment_status_updated',
+      path: 'serverFn:updateEnrollmentStatus',
+      status: 'success',
+      actorId: adminId,
+      enrollmentId,
+      enrollmentStatus: 'approved',
+    })
+    expect(event?.durationMs).toEqual(expect.any(Number))
+  })
+
+  it('logs special-case changes without enrollment content', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const enrollmentId = await seedEnrollment()
+
+    await setEnrollmentSpecialCaseService(
+      { enrollmentId, specialCase: true },
+      adminId,
+    )
+
+    expect((await findEnrollmentById(enrollmentId))?.specialCase).toBe(true)
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'enrollment_special_case_updated')
+
+    expect(event).toMatchObject({
+      event: 'enrollment_special_case_updated',
+      path: 'serverFn:setEnrollmentSpecialCase',
+      status: 'success',
+      enrollmentId,
+      specialCase: true,
+    })
+    expect(JSON.stringify(event)).not.toContain('fullLegalName')
+    expect(event?.durationMs).toEqual(expect.any(Number))
+  })
+
+  it('logs enrollment deletion after persistence succeeds', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const enrollmentId = await seedEnrollment()
+
+    await deleteEnrollmentService({ enrollmentId }, adminId)
+
+    expect(await findEnrollmentById(enrollmentId)).toBeUndefined()
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'enrollment_deleted')
+
+    expect(event).toMatchObject({
+      event: 'enrollment_deleted',
+      path: 'serverFn:deleteEnrollment',
+      status: 'success',
+      actorId: adminId,
+      enrollmentId,
+    })
+    expect(event?.durationMs).toEqual(expect.any(Number))
+  })
+
+  it('logs stable persistence categories without raw database details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const statusId = await seedEnrollment()
+    const specialCaseId = await seedEnrollment()
+    const deleteId = await seedEnrollment()
+
+    vi.spyOn(
+      enrollmentRepository,
+      'updateEnrollmentStatusById',
+    ).mockRejectedValueOnce(new Error('status database secret'))
+    await expect(
+      updateEnrollmentStatusService(
+        { enrollmentId: statusId, status: 'approved' },
+        adminId,
+      ),
+    ).rejects.toThrow('status database secret')
+
+    vi.spyOn(
+      enrollmentRepository,
+      'updateEnrollmentSpecialCaseById',
+    ).mockRejectedValueOnce(new Error('special-case database secret'))
+    await expect(
+      setEnrollmentSpecialCaseService(
+        { enrollmentId: specialCaseId, specialCase: true },
+        adminId,
+      ),
+    ).rejects.toThrow('special-case database secret')
+
+    vi.spyOn(
+      enrollmentRepository,
+      'deleteEnrollmentById',
+    ).mockRejectedValueOnce(new Error('delete database secret'))
+    await expect(
+      deleteEnrollmentService({ enrollmentId: deleteId }, adminId),
+    ).rejects.toThrow('delete database secret')
+
+    const events = errorSpy.mock.calls.map(([line]) => {
+      const serialized = String(line)
+      return {
+        event: JSON.parse(serialized) as Record<string, unknown>,
+        serialized,
+      }
+    })
+    expect(events.map(({ event }) => event.errorCategory)).toEqual([
+      'enrollment_status_persistence',
+      'enrollment_special_case_persistence',
+      'enrollment_delete_persistence',
+    ])
+    expect(events.map(({ event }) => event.status)).toEqual([
+      'failure',
+      'failure',
+      'failure',
+    ])
+    expect(
+      events.every(({ event }) => typeof event.durationMs === 'number'),
+    ).toBe(true)
+    expect(
+      events.every(({ serialized }) => !serialized.includes('secret')),
+    ).toBe(true)
   })
 })
 

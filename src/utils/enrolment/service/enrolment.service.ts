@@ -90,6 +90,33 @@ import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 type EvaluationField = 'score' | 'admission_category' | 'note'
 
+type EnrollmentMutationAction =
+  'updateEnrollmentStatus' | 'setEnrollmentSpecialCase' | 'deleteEnrollment'
+
+type EnrollmentMutationContext = {
+  action: EnrollmentMutationAction
+  actorId: string
+  enrollmentId: string
+  startedAt: number
+}
+
+function logEnrollmentMutation(
+  level: 'info' | 'error',
+  event: string,
+  context: EnrollmentMutationContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    enrollmentId: context.enrollmentId,
+    ...fields,
+  })
+}
+
 function logEvaluationUpdated(
   field: EvaluationField,
   action: string,
@@ -422,7 +449,23 @@ export async function updateEnrollmentStatusService(
 ) {
   await authz(userId).hasRole('admin')
 
-  await updateEnrollmentStatusById(data.enrollmentId, data.status)
+  const context: EnrollmentMutationContext = {
+    action: 'updateEnrollmentStatus',
+    actorId: userId,
+    enrollmentId: data.enrollmentId,
+    startedAt: performance.now(),
+  }
+  try {
+    await updateEnrollmentStatusById(data.enrollmentId, data.status)
+    logEnrollmentMutation('info', 'enrollment_status_updated', context, {
+      enrollmentStatus: data.status,
+    })
+  } catch (error) {
+    logEnrollmentMutation('error', 'enrollment_status_update_failed', context, {
+      errorCategory: 'enrollment_status_persistence',
+    })
+    throw error
+  }
 
   return
 }
@@ -433,7 +476,26 @@ export async function setEnrollmentSpecialCaseService(
 ) {
   await authz(userId).hasRole('admin')
 
-  await updateEnrollmentSpecialCaseById(data.enrollmentId, data.specialCase)
+  const context: EnrollmentMutationContext = {
+    action: 'setEnrollmentSpecialCase',
+    actorId: userId,
+    enrollmentId: data.enrollmentId,
+    startedAt: performance.now(),
+  }
+  try {
+    await updateEnrollmentSpecialCaseById(data.enrollmentId, data.specialCase)
+    logEnrollmentMutation('info', 'enrollment_special_case_updated', context, {
+      specialCase: data.specialCase,
+    })
+  } catch (error) {
+    logEnrollmentMutation(
+      'error',
+      'enrollment_special_case_update_failed',
+      context,
+      { errorCategory: 'enrollment_special_case_persistence' },
+    )
+    throw error
+  }
 
   return
 }
@@ -444,7 +506,21 @@ export async function deleteEnrollmentService(
 ) {
   await authz(userId).hasRole('admin')
 
-  await deleteEnrollmentById(data.enrollmentId)
+  const context: EnrollmentMutationContext = {
+    action: 'deleteEnrollment',
+    actorId: userId,
+    enrollmentId: data.enrollmentId,
+    startedAt: performance.now(),
+  }
+  try {
+    await deleteEnrollmentById(data.enrollmentId)
+    logEnrollmentMutation('info', 'enrollment_deleted', context)
+  } catch (error) {
+    logEnrollmentMutation('error', 'enrollment_delete_failed', context, {
+      errorCategory: 'enrollment_delete_persistence',
+    })
+    throw error
+  }
 
   return
 }

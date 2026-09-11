@@ -49,6 +49,9 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   request-correlated events with safe grader/attempt/exam/question metadata;
   awarded points, aggregate scores, answer text, and raw persistence details
   are excluded.
+  Admin enrollment status, special-case, and deletion mutations also emit
+  redacted request-correlated events with safe actor/enrollment metadata and
+  stable persistence-failure categories.
 
 - **Cloudflare Workers:** Basic observability
   - Logs enabled (100% sampling)

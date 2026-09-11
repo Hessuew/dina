@@ -56,6 +56,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     `enrollment_evaluation_updated` events with request correlation, action,
     status, duration, evaluator/enrollment IDs, and the updated field type;
     scores, admission values, and note text are not logged.
+  - Admin enrollment status, special-case, and deletion mutations emit
+    redacted `enrollment_status_updated`,
+    `enrollment_special_case_updated`, and `enrollment_deleted` events with
+    request correlation, actor/enrollment IDs, safe outcome metadata, and
+    duration; unexpected persistence failures use stable categories without
+    enrollment content or raw database details.
   - Avatar and course-thumbnail upload actions emit request-correlated
     `image_upload_completed` / `image_upload_failed` events; signed-URL and
     old-object cleanup failures use stable warning categories without storage

@@ -38,6 +38,14 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    failure events with request correlation, user ID, status, duration, and
    stable persistence/provider categories; email addresses, verification
    tokens, and provider messages are excluded.
+   Admin enrollment status, special-case, and deletion mutations now emit
+   redacted `enrollment_status_updated`,
+   `enrollment_special_case_updated`, and `enrollment_deleted` events with
+   request correlation, server-function path, actor/enrollment IDs, safe
+   outcome metadata, and duration. Unexpected persistence failures use stable
+   `enrollment_status_persistence`, `enrollment_special_case_persistence`, or
+   `enrollment_delete_persistence` categories; enrollment content and raw
+   database details remain excluded.
    Admin staff-privilege grants and revokes now emit redacted
    `staff_privilege_updated` audit events with request correlation, actor and
    target IDs, privilege, grant direction, status, and duration; persistence
