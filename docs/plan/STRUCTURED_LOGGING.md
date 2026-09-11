@@ -141,6 +141,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    question type, status, and duration. Awarded points, aggregate scores,
    answer text, and raw persistence details remain excluded; unexpected
    failures use the stable `exam_grading_persistence` category.
+   Assignment create, update, and delete mutations now emit redacted
+   `assignment_created`, `assignment_updated`, and `assignment_deleted` events
+   with request correlation, server-function path, actor/course/lesson/
+   assignment IDs, safe assignment status, and duration. Assignment titles,
+   descriptions, due dates, and raw persistence details remain excluded;
+   unexpected failures use the stable `assignment_persistence` category.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

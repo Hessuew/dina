@@ -55,6 +55,7 @@ const past = () => new Date(Date.now() - 24 * 60 * 60 * 1000)
 
 describe('createAssignmentService (integration)', () => {
   it('course teacher creates a draft assignment defaulting maxGrade to 100', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { teacherId, lessonId } = await seedCourseWithTeacher()
 
     const { assignment } = await createAssignmentService(
@@ -65,6 +66,22 @@ describe('createAssignmentService (integration)', () => {
     expect(assignment.status).toBe('draft')
     expect(assignment.maxGrade).toBe(100)
     expect(assignment.lessonId).toBe(lessonId)
+
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'assignment_created')
+    expect(event).toMatchObject({
+      level: 'info',
+      event: 'assignment_created',
+      path: 'serverFn:createAssignment',
+      status: 'success',
+      actorId: teacherId,
+      assignmentId: assignment.id,
+      lessonId,
+    })
+    expect(event?.durationMs).toEqual(expect.any(Number))
+    expect(JSON.stringify(event)).not.toContain('A1')
+    infoSpy.mockRestore()
   })
 
   it('throws when the lesson does not exist', async () => {
@@ -94,6 +111,7 @@ describe('createAssignmentService (integration)', () => {
 
 describe('updateAssignmentService (integration)', () => {
   it('course teacher publishes a draft assignment', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { teacherId, lessonId } = await seedCourseWithTeacher()
     const assignmentId = await seedAssignment({ lessonId, status: 'draft' })
 
@@ -109,6 +127,23 @@ describe('updateAssignmentService (integration)', () => {
 
     expect(assignment.status).toBe('published')
     expect(assignment.title).toBe('Updated')
+
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'assignment_updated')
+    expect(event).toMatchObject({
+      level: 'info',
+      event: 'assignment_updated',
+      path: 'serverFn:updateAssignment',
+      status: 'success',
+      actorId: teacherId,
+      assignmentId,
+      lessonId,
+      assignmentStatus: 'published',
+    })
+    expect(event?.durationMs).toEqual(expect.any(Number))
+    expect(JSON.stringify(event)).not.toContain('Updated')
+    infoSpy.mockRestore()
   })
 
   it('throws when the assignment does not exist', async () => {
@@ -129,12 +164,23 @@ describe('updateAssignmentService (integration)', () => {
 
 describe('deleteAssignmentService (integration)', () => {
   it('deletes an assignment that has no submissions', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { teacherId, lessonId } = await seedCourseWithTeacher()
     const assignmentId = await seedAssignment({ lessonId })
 
     await deleteAssignmentService({ assignmentId }, teacherId)
 
     expect(await findAssignmentById(assignmentId)).toBeUndefined()
+    expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
+      level: 'info',
+      event: 'assignment_deleted',
+      path: 'serverFn:deleteAssignment',
+      status: 'success',
+      actorId: teacherId,
+      assignmentId,
+      lessonId,
+    })
+    infoSpy.mockRestore()
   })
 
   it('refuses to delete an assignment with submissions', async () => {

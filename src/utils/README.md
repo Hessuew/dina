@@ -92,6 +92,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     `lesson_updated`, and `lesson_deleted` events with request correlation,
     actor/course/lesson IDs, status, and duration; persistence failures use
     the stable `lesson_persistence` category.
+  - Assignment authoring emits redacted `assignment_created`,
+    `assignment_updated`, and `assignment_deleted` events with request
+    correlation, server-function path, actor/course/lesson/assignment IDs,
+    safe assignment status, and duration; titles, descriptions, due dates,
+    and raw persistence details remain excluded, with failures categorized as
+    `assignment_persistence`.
   - Course create, update, and delete mutations emit redacted
     `course_created`, `course_updated`, and `course_deleted` events with
     request correlation, actor/course IDs, status, duration, and publication

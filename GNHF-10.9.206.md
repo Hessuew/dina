@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 37
-**Scope:** add redacted structured telemetry to exam-taking start/resume and answer-save mutations.
+**Iteration:** 41
+**Scope:** add redacted structured telemetry to assignment authoring mutations.
 
 ## Executive summary
 
@@ -72,6 +72,12 @@ The repository already has the first production-fundamentals slice:
   correlation, server-function path, actor/course/lesson IDs, status, and
   duration. Persistence failures emit stable `lesson_persistence` categories;
   lesson content, titles, and provider/database messages are excluded.
+- Assignment create, update, and delete mutations now emit redacted
+  `assignment_created`, `assignment_updated`, and `assignment_deleted` events
+  with request correlation, server-function path, actor/course/lesson/
+  assignment IDs, status, and duration. Assignment titles, descriptions, due
+  dates, and raw persistence details remain excluded; unexpected failures use
+  the stable `assignment_persistence` category.
 - Calendar event creation, update, and deletion now emit redacted
   `calendar_event_created`, `calendar_event_updated`, and
   `calendar_event_deleted` events with request correlation, actor/event/course
@@ -1355,3 +1361,25 @@ External Better Stack destination, dashboard, alert, Uptime, source-map,
 Slack, and named-owner verification remains account-specific setup work. The
 repository handoff above remains the source for the required dashboard links,
 secrets, alert thresholds, and rollback procedure.
+
+## Iteration 41 — assignment-authoring structured telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Assignment create, update, and delete mutations now emit redacted
+  `assignment_created`, `assignment_updated`, and `assignment_deleted` events
+  with request correlation, server-function path, actor/course/lesson/
+  assignment IDs, safe assignment status, and duration.
+- Assignment titles, descriptions, due dates, and raw database/provider details
+  are excluded from Better Stack/Cloudflare telemetry. Unexpected persistence
+  failures use the stable `assignment_persistence` category; expected
+  authorization, not-found, and submission-count validation outcomes remain
+  ordinary user-facing results.
+- Integration coverage verifies all three success event shapes, duration
+  metadata, and the exclusion of assignment content from telemetry.
+
+The next in-repo structured-logging slice should target an uninstrumented
+mutating family such as remaining enrollment distribution/substitution or
+assignment-independent administration actions. Better Stack destinations,
+dashboards, alerts, Uptime, source maps, Slack routing, and named ownership
+remain account-specific external setup work.

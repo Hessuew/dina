@@ -9,6 +9,7 @@ import type {
   GradeSubmissionInput,
   UpdateAssignmentInput,
 } from '@/schemas/assignment.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import {
   calculateAssignmentStats,
   canDeleteAssignment,
@@ -53,6 +54,37 @@ import {
 } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+
+type AssignmentMutationAction =
+  'createAssignment' | 'updateAssignment' | 'deleteAssignment'
+
+type AssignmentMutationLogContext = {
+  action: AssignmentMutationAction
+  actorId: string
+  assignmentId?: string
+  lessonId: string
+  courseId: string
+  startedAt: number
+}
+
+function logAssignmentMutationEvent(
+  level: LogLevel,
+  event: string,
+  context: AssignmentMutationLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    assignmentId: context.assignmentId,
+    lessonId: context.lessonId,
+    courseId: context.courseId,
+    ...fields,
+  })
+}
 
 export async function getLessonService(data: GetLessonInput, userId: string) {
   const lesson = await findLessonWithDetail(data.lessonId)
@@ -200,6 +232,7 @@ export async function createAssignmentService(
   data: CreateAssignmentInput,
   userId: string,
 ) {
+  const startedAt = performance.now()
   const lesson = await findLessonById(data.lessonId)
   if (!lesson) {
     throw new NotFoundError('Lesson not found', {
@@ -210,22 +243,41 @@ export async function createAssignmentService(
 
   await authz(userId).perform('createLesson').on('course', lesson.courseId)
 
-  const assignment = await insertAssignment({
+  const context: AssignmentMutationLogContext = {
+    action: 'createAssignment',
+    actorId: userId,
     lessonId: data.lessonId,
-    title: data.title,
-    description: data.description || null,
-    dueDate: new Date(data.dueDate),
-    maxGrade: data.maxGrade || 100,
-    status: 'draft',
-  })
+    courseId: lesson.courseId,
+    startedAt,
+  }
 
-  return { assignment }
+  try {
+    const assignment = await insertAssignment({
+      lessonId: data.lessonId,
+      title: data.title,
+      description: data.description || null,
+      dueDate: new Date(data.dueDate),
+      maxGrade: data.maxGrade || 100,
+      status: 'draft',
+    })
+    logAssignmentMutationEvent('info', 'assignment_created', context, {
+      assignmentId: assignment.id,
+      assignmentStatus: assignment.status,
+    })
+    return { assignment }
+  } catch (error) {
+    logAssignmentMutationEvent('error', 'assignment_create_failed', context, {
+      errorCategory: 'assignment_persistence',
+    })
+    throw error
+  }
 }
 
 export async function updateAssignmentService(
   data: UpdateAssignmentInput,
   userId: string,
 ) {
+  const startedAt = performance.now()
   const assignment = await findAssignmentWithLesson(data.assignmentId)
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
@@ -238,16 +290,34 @@ export async function updateAssignmentService(
     .perform('editLesson')
     .on('course', assignment.lesson.courseId)
 
-  const updated = await updateAssignmentById(data.assignmentId, {
-    title: data.title,
-    description: data.description || null,
-    dueDate: new Date(data.dueDate),
-    maxGrade: data.maxGrade || 100,
-    status: data.status,
-    updatedAt: new Date(),
-  })
+  const context: AssignmentMutationLogContext = {
+    action: 'updateAssignment',
+    actorId: userId,
+    assignmentId: data.assignmentId,
+    lessonId: assignment.lesson.id,
+    courseId: assignment.lesson.courseId,
+    startedAt,
+  }
 
-  return { assignment: updated }
+  try {
+    const updated = await updateAssignmentById(data.assignmentId, {
+      title: data.title,
+      description: data.description || null,
+      dueDate: new Date(data.dueDate),
+      maxGrade: data.maxGrade || 100,
+      status: data.status,
+      updatedAt: new Date(),
+    })
+    logAssignmentMutationEvent('info', 'assignment_updated', context, {
+      assignmentStatus: updated.status,
+    })
+    return { assignment: updated }
+  } catch (error) {
+    logAssignmentMutationEvent('error', 'assignment_update_failed', context, {
+      errorCategory: 'assignment_persistence',
+    })
+    throw error
+  }
 }
 
 export async function getAssignmentSubmissionCountService(
@@ -275,6 +345,7 @@ export async function deleteAssignmentService(
   data: DeleteAssignmentInput,
   userId: string,
 ) {
+  const startedAt = performance.now()
   const assignment = await findAssignmentWithLessonAndSubmissions(
     data.assignmentId,
   )
@@ -301,7 +372,24 @@ export async function deleteAssignmentService(
     )
   }
 
-  await deleteAssignmentById(data.assignmentId)
+  const context: AssignmentMutationLogContext = {
+    action: 'deleteAssignment',
+    actorId: userId,
+    assignmentId: data.assignmentId,
+    lessonId: assignment.lesson.id,
+    courseId: assignment.lesson.courseId,
+    startedAt,
+  }
+
+  try {
+    await deleteAssignmentById(data.assignmentId)
+    logAssignmentMutationEvent('info', 'assignment_deleted', context)
+  } catch (error) {
+    logAssignmentMutationEvent('error', 'assignment_delete_failed', context, {
+      errorCategory: 'assignment_persistence',
+    })
+    throw error
+  }
 }
 
 async function persistSubmission(
