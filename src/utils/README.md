@@ -97,6 +97,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     actor/course/teacher IDs, status, and duration; unexpected replacement
     failures use `course_teacher_assignment_persistence` without raw database
     details.
+  - Post and comment create, update, and delete mutations emit redacted
+    `post_*` / `comment_*` events with request correlation, actor/post/comment/
+    course IDs, status, and duration; content and raw persistence details are
+    excluded.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is

@@ -1103,3 +1103,27 @@ Focused verification passed: the discipleship integration suite (7 tests),
 full integration (327 tests), typecheck, formatting, and quality:gate. Better
 Stack destination, dashboard, alert, Uptime, source-map, Slack, and named-owner
 setup remains pending external account configuration.
+
+## Iteration 31 — post and comment mutation telemetry
+
+This iteration completed the next high-value structured-logging slice for the
+community post/comment workflow:
+
+- Post and comment create, update, and delete mutations now emit redacted
+  `post_created`, `post_updated`, `post_deleted`, `comment_created`,
+  `comment_updated`, and `comment_deleted` events.
+- Events include request correlation, server-function path, actor ID,
+  post/comment/course IDs where available, success status, and duration. Post
+  and comment content, author profile data, and raw persistence/provider
+  details are excluded.
+- Unexpected persistence failures use stable `post_persistence` or
+  `comment_persistence` categories. Expected not-found and authorization
+  outcomes remain ordinary user-facing failures and do not create noisy error
+  telemetry.
+- Integration coverage verifies all six success event shapes, duration fields,
+  content exclusion, and suppression of an expected missing-post failure.
+
+The next repository-owned structured-logging candidates are reaction mutations
+and post-notification read-state mutations. Better Stack destination,
+dashboard, alert, Uptime, source-map, Slack, and named-owner setup remains
+account-specific external work described above.

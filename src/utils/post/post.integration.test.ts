@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createCommentBaseService,
   createPostBaseService,
@@ -89,6 +89,10 @@ describe('getPostByIdService (integration)', () => {
 })
 
 describe('createPostBaseService (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('grants moderation to a teacher', async () => {
     const teacherId = await seedProfile({ role: 'teacher' })
 
@@ -111,9 +115,101 @@ describe('createPostBaseService (integration)', () => {
 
     expect(canModerate).toBe(false)
   })
+
+  it('emits redacted post and comment mutation events', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const authorId = await seedProfile({ role: 'student' })
+    const courseId = await seedCourse()
+    const postResult = await createPostBaseService(
+      { courseId, content: 'Private post body' },
+      authorId,
+    )
+    const postId = postResult.post.id
+
+    await updatePostService(
+      { postId, content: 'Updated private post body' },
+      authorId,
+    )
+
+    const commentResult = await createCommentBaseService(
+      { postId, content: 'Private comment body' },
+      authorId,
+    )
+    const commentId = commentResult.comment.id
+    await updateCommentService(
+      { commentId, content: 'Updated private comment body' },
+      authorId,
+    )
+    await deleteCommentService({ commentId }, authorId)
+    await deletePostService({ postId }, authorId)
+
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'post_created',
+          path: 'serverFn:createPost',
+          actorId: authorId,
+          postId,
+          courseId,
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'post_updated',
+          path: 'serverFn:updatePost',
+          actorId: authorId,
+          postId,
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'post_deleted',
+          path: 'serverFn:deletePost',
+          actorId: authorId,
+          postId,
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'comment_created',
+          path: 'serverFn:createComment',
+          actorId: authorId,
+          postId,
+          commentId,
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'comment_updated',
+          path: 'serverFn:updateComment',
+          actorId: authorId,
+          postId,
+          commentId,
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'comment_deleted',
+          path: 'serverFn:deleteComment',
+          actorId: authorId,
+          postId,
+          commentId,
+          status: 'success',
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(lines.join('\n')).not.toContain('Private post body')
+    expect(lines.join('\n')).not.toContain('Updated private post body')
+    expect(lines.join('\n')).not.toContain('Private comment body')
+    expect(lines.join('\n')).not.toContain('Updated private comment body')
+  })
 })
 
 describe('updatePostService (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('lets the author edit their post', async () => {
     const authorId = await seedProfile({ role: 'student' })
     const postId = await seedPost({ authorId, content: 'old' })
@@ -132,6 +228,19 @@ describe('updatePostService (integration)', () => {
     await expect(
       updatePostService({ postId: randomUUID(), content: 'x' }, authorId),
     ).rejects.toMatchObject({ code: 'POST_NOT_FOUND', status: 404 })
+  })
+
+  it('does not log an expected missing-post failure', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const authorId = await seedProfile({ role: 'student' })
+
+    await expect(
+      updatePostService({ postId: randomUUID(), content: 'x' }, authorId),
+    ).rejects.toMatchObject({ code: 'POST_NOT_FOUND', status: 404 })
+
+    expect(infoSpy).not.toHaveBeenCalled()
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })
 

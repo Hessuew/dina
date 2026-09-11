@@ -27,7 +27,8 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 - **Structured application telemetry:** Shared redacted JSON logging covers health/readiness plus high-value assignment, auth, enrollment, course-authoring, storage, exam, attendance, notification, profile, discipleship, and Admin workflows. See [`STRUCTURED_LOGGING.md`](./STRUCTURED_LOGGING.md).
   Calendar event create/update/delete mutations also emit redacted,
   request-correlated operational events; event content and meeting links are
-  excluded from telemetry.
+  excluded from telemetry. Post and comment create/update/delete mutations now
+  emit redacted request-correlated events; post/comment content is excluded.
 
 - **Cloudflare Workers:** Basic observability
   - Logs enabled (100% sampling)

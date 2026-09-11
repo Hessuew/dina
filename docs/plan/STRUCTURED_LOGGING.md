@@ -76,6 +76,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    IDs, category, status, and duration. Unexpected persistence failures use
    the stable `calendar_event_persistence` category; titles, descriptions,
    locations, meeting links, and timestamps remain excluded.
+   Post and comment create, update, and delete mutations now emit redacted
+   `post_created`, `post_updated`, `post_deleted`, `comment_created`,
+   `comment_updated`, and `comment_deleted` events with request correlation,
+   actor/post/comment/course IDs, status, and duration. Unexpected persistence
+   failures use `post_persistence` or `comment_persistence`; post and comment
+   content remains excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

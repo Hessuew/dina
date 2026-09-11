@@ -11,6 +11,7 @@ import type {
   UpdateCommentInput,
   UpdatePostInput,
 } from '@/schemas/post.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import type {
   CommentWithAuthor,
   PostChannel,
@@ -46,9 +47,51 @@ import {
   updatePostContent,
   updatePostReaction,
 } from '@/utils/post/repository/post.repository'
-import { AuthorizationError, NotFoundError } from '@/utils/errors'
+import { AuthorizationError, NotFoundError, isAppError } from '@/utils/errors'
 import { authz } from '@/utils/authz'
 import { signPrivateStoragePaths } from '@/utils/storage/service/private-storage.service'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+
+type PostMutationAction =
+  | 'createPost'
+  | 'updatePost'
+  | 'deletePost'
+  | 'createComment'
+  | 'updateComment'
+  | 'deleteComment'
+
+type PostMutationLogContext = {
+  action: PostMutationAction
+  actorId: string
+  postId?: string
+  commentId?: string
+  courseId?: string | null
+  startedAt: number
+}
+
+function logPostMutationEvent(
+  level: LogLevel,
+  event: string,
+  context: PostMutationLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    postId: context.postId,
+    commentId: context.commentId,
+    courseId: context.courseId,
+    ...fields,
+  })
+}
+
+function shouldLogPostMutationFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
 
 async function signPostAvatars(
   posts: ReadonlyArray<PostWithDetails>,
@@ -162,23 +205,40 @@ export async function createPostBaseService(
     authz(userId).isAdmin(),
   ])
   const canModerate = isTeacher || isAdmin
-
-  const inserted = await insertPost({
-    authorId: userId,
+  const context: PostMutationLogContext = {
+    action: 'createPost',
+    actorId: userId,
     courseId: data.courseId ?? null,
-    content: data.content,
-  })
-
-  const full = await findPostById(inserted.id)
-  if (!full) {
-    throw new NotFoundError('Post not found after insert', {
-      code: 'POST_NOT_FOUND',
-      details: { postId: inserted.id },
-    })
+    startedAt: performance.now(),
   }
 
-  const [post] = await signPostAvatars([transformPostWithDetails(full, 0)])
-  return { post, canModerate }
+  try {
+    const inserted = await insertPost({
+      authorId: userId,
+      courseId: data.courseId ?? null,
+      content: data.content,
+    })
+    context.postId = inserted.id
+
+    const full = await findPostById(inserted.id)
+    if (!full) {
+      throw new NotFoundError('Post not found after insert', {
+        code: 'POST_NOT_FOUND',
+        details: { postId: inserted.id },
+      })
+    }
+
+    const [post] = await signPostAvatars([transformPostWithDetails(full, 0)])
+    logPostMutationEvent('info', 'post_created', context)
+    return { post, canModerate }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'post_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function updatePostService(
@@ -197,8 +257,26 @@ export async function updatePostService(
     await authz(userId).perform('editPost').on('post', data.postId)
   }
 
-  const post = await updatePostContent(data.postId, data.content)
-  return { post }
+  const context: PostMutationLogContext = {
+    action: 'updatePost',
+    actorId: userId,
+    postId: data.postId,
+    courseId: existing.courseId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const post = await updatePostContent(data.postId, data.content)
+    logPostMutationEvent('info', 'post_updated', context)
+    return { post }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'post_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function deletePostService(
@@ -217,8 +295,26 @@ export async function deletePostService(
     await authz(userId).perform('deletePost').on('post', data.postId)
   }
 
-  await softDeletePost(data.postId, userId)
-  return { success: true }
+  const context: PostMutationLogContext = {
+    action: 'deletePost',
+    actorId: userId,
+    postId: data.postId,
+    courseId: existing.courseId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    await softDeletePost(data.postId, userId)
+    logPostMutationEvent('info', 'post_deleted', context)
+    return { success: true }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'post_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function getCommentsService(data: GetCommentsInput): Promise<{
@@ -261,24 +357,44 @@ export async function createCommentBaseService(
     })
   }
 
-  const inserted = await insertComment({
+  const context: PostMutationLogContext = {
+    action: 'createComment',
+    actorId: userId,
     postId: data.postId,
-    authorId: userId,
-    content: data.content,
-  })
-
-  const full = await findCommentWithAuthor(inserted.id)
-  if (!full) {
-    throw new NotFoundError('Comment not found after insert', {
-      code: 'COMMENT_NOT_FOUND',
-      details: { commentId: inserted.id },
-    })
+    startedAt: performance.now(),
   }
 
-  const [comment] = await signCommentAvatars([transformCommentWithAuthor(full)])
-  return {
-    comment,
-    postAuthorId: post.authorId,
+  try {
+    const inserted = await insertComment({
+      postId: data.postId,
+      authorId: userId,
+      content: data.content,
+    })
+    context.commentId = inserted.id
+
+    const full = await findCommentWithAuthor(inserted.id)
+    if (!full) {
+      throw new NotFoundError('Comment not found after insert', {
+        code: 'COMMENT_NOT_FOUND',
+        details: { commentId: inserted.id },
+      })
+    }
+
+    const [comment] = await signCommentAvatars([
+      transformCommentWithAuthor(full),
+    ])
+    logPostMutationEvent('info', 'comment_created', context)
+    return {
+      comment,
+      postAuthorId: post.authorId,
+    }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'comment_persistence',
+      })
+    }
+    throw error
   }
 }
 
@@ -301,8 +417,26 @@ export async function updateCommentService(
     })
   }
 
-  const comment = await updateCommentContent(data.commentId, data.content)
-  return { comment }
+  const context: PostMutationLogContext = {
+    action: 'updateComment',
+    actorId: userId,
+    commentId: data.commentId,
+    postId: existing.postId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const comment = await updateCommentContent(data.commentId, data.content)
+    logPostMutationEvent('info', 'comment_updated', context)
+    return { comment }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'comment_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function deleteCommentService(
@@ -321,8 +455,26 @@ export async function deleteCommentService(
     await authz(userId).perform('deleteComment').on('comment', data.commentId)
   }
 
-  await softDeleteComment(data.commentId, userId)
-  return { success: true }
+  const context: PostMutationLogContext = {
+    action: 'deleteComment',
+    actorId: userId,
+    commentId: data.commentId,
+    postId: existing.postId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    await softDeleteComment(data.commentId, userId)
+    logPostMutationEvent('info', 'comment_deleted', context)
+    return { success: true }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'comment_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function togglePostReactionService(
