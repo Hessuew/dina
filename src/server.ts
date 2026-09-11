@@ -9,10 +9,13 @@ import {
   isOperationalPath,
 } from '@/utils/health'
 import { resolveObservabilityIdentity } from '@/utils/observability/domain/identity.domain'
+import { resolveObservabilityDsn } from '@/utils/observability/domain/dsn.domain'
 import { addActiveTraceContext } from '@/utils/observability/trace-context'
 
 type HandlerOptions = Parameters<typeof handler.fetch>[1]
 type WorkerObservabilityEnv = Env & {
+  BETTER_STACK_DSN?: string
+  SENTRY_DSN?: string
   SENTRY_ENVIRONMENT?: string
   SENTRY_RELEASE?: string
 }
@@ -55,7 +58,10 @@ export default import.meta.env.PROD
       )
 
       return {
-        dsn: env.SENTRY_DSN,
+        dsn: resolveObservabilityDsn(
+          workerEnv.BETTER_STACK_DSN,
+          workerEnv.SENTRY_DSN,
+        ),
         environment: identity.environment,
         release: identity.release,
         beforeSend: (event, hint) => {

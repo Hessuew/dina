@@ -5,6 +5,7 @@ import { DefaultCatchBoundary } from './components/navigation/DefaultCatchBounda
 import { NotFound } from './components/navigation/NotFound'
 import { shouldSuppressFromSentry } from '@/utils/errors'
 import { resolveObservabilityIdentity } from '@/utils/observability/domain/identity.domain'
+import { resolveObservabilityDsn } from '@/utils/observability/domain/dsn.domain'
 import { addActiveTraceContext } from '@/utils/observability/trace-context'
 
 export function getRouter() {
@@ -24,7 +25,10 @@ export function getRouter() {
     )
 
     Sentry.init({
-      dsn: import.meta.env.VITE_SENTRY_DSN,
+      dsn: resolveObservabilityDsn(
+        import.meta.env.VITE_BETTER_STACK_DSN,
+        import.meta.env.VITE_SENTRY_DSN,
+      ),
       environment: identity.environment,
       release: identity.release,
       // Only capture errors with at least one frame from our JS bundle.

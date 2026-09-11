@@ -43,7 +43,7 @@ Each endpoint writes one structured JSON log event:
 - `readiness_check` for `/readyz`.
 - `level`, `requestId`, `path`, `status`, `durationMs`, and `errorCategory` when applicable.
 
-Cloudflare logs and traces are the first operational surface for these events. Sentry should capture unexpected application exceptions through the existing Worker wrapper; readiness polling failures are returned as `503` and logged to avoid noisy issue creation.
+Cloudflare logs and traces are the first operational surface for these events. Better Stack should capture unexpected application exceptions through the existing Sentry-compatible Worker wrapper; readiness polling failures are returned as `503` and logged to avoid noisy issue creation.
 
 ## Verification
 

@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 54
-**Scope:** correlate Sentry-compatible Better Stack error events with active OpenTelemetry traces.
+**Iteration:** 55
+**Scope:** make Better Stack the canonical application error destination configuration.
 
 ## Executive summary
 
@@ -19,6 +19,10 @@ The repository already has the first production-fundamentals slice:
 - Browser and Worker error events now include active OpenTelemetry trace and
   span identifiers when available, allowing Better Stack Errors to link into
   Cloudflare Logs & Traces.
+- Better Stack is now the canonical error DSN configuration: the browser reads
+  `VITE_BETTER_STACK_DSN` and the Worker reads the `BETTER_STACK_DSN` secret.
+  The old Sentry-named DSNs remain explicit rollback fallbacks only, and no
+  provider DSN is committed in `wrangler.jsonc`.
 - Assignment submission saves now emit structured Better Stack/Cloudflare-ready
   outcome events with request ID, status, duration, and stable error category.
 - Enrollment distribution and teacher substitution mutations now emit
@@ -184,6 +188,27 @@ The repository already has the first production-fundamentals slice:
   availability/error-rate/restore-confidence budgets, breach responses, and
   review rules. The policy is deliberately non-blocking until Better Stack,
   Cloudflare, Uptime, and restore-drill evidence are verified.
+
+## Iteration 55 — canonical Better Stack DSN configuration
+
+This iteration completed the next repository-owned cutover slice:
+
+- Added `resolveObservabilityDsn`, a tested resolver that prefers the canonical
+  Better Stack DSN and falls back to the legacy Sentry-compatible DSN only when
+  the former is unset. Blank values are treated as unconfigured.
+- Browser initialization now reads `VITE_BETTER_STACK_DSN`; Worker
+  initialization reads `BETTER_STACK_DSN`. The old names remain available only
+  as a reversible rollback path.
+- Removed the previously committed Sentry DSN from `wrangler.jsonc`. Set the
+  Worker secret with `wrangler secret put BETTER_STACK_DSN`; set the browser
+  build variable in the deployment environment.
+- Updated the environment example and Better Stack error-tracking plan with
+  the canonical variables and safe setup instructions.
+
+Validation: focused DSN tests passed (3 tests), TypeScript passed, Wrangler
+runtime types regenerated without the committed DSN, and formatting passed.
+The external Better Stack source, ingestion, release/source-map, dashboard,
+alert, Uptime, Slack, and named-owner checks remain account-specific follow-up.
 
 ## Iteration 54 — Better Stack error/trace correlation
 
@@ -900,18 +925,18 @@ In Better Stack Errors:
 5. Open `Errors → Applications → christ-dina → Ingest` and copy the DSN.
 
 The DSN is the value that makes the current Sentry-compatible SDK send to
-Better Stack. During the first cutover, replace the values of the existing
-bindings rather than changing every import at once:
+Better Stack. Use the canonical bindings for new deployments:
 
-| Existing binding  | Value after cutover                         |
-| ----------------- | ------------------------------------------- |
-| `VITE_SENTRY_DSN` | Better Stack Errors browser/application DSN |
-| `SENTRY_DSN`      | Better Stack Errors Worker/application DSN  |
+| Binding                 | Value                                             |
+| ----------------------- | ------------------------------------------------- |
+| `VITE_BETTER_STACK_DSN` | Better Stack Errors browser/application DSN       |
+| `BETTER_STACK_DSN`      | Better Stack Errors Worker/application DSN secret |
 
-The code still says `Sentry` during this compatibility phase because the
-Better Stack Errors ingestion endpoint accepts the Sentry SDK format. A later
-cleanup may rename the bindings and wrapper helpers after the cutover has been
-observed in production.
+The old `VITE_SENTRY_DSN` and `SENTRY_DSN` names are accepted only as
+fallbacks for rollback. The code still says `Sentry` during this compatibility
+phase because the Better Stack Errors ingestion endpoint accepts the Sentry SDK
+format. A later cleanup may rename the wrapper helpers after the cutover has
+been observed in production.
 
 Use distinct environments in the SDK configuration: `local`, `preview`, and
 `production`. Use the deployed commit SHA as the release identifier when the
@@ -1119,7 +1144,7 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                                                   | Verify `/healthz` and `/readyz` after deployment                                             |
 | Structured logging    | Shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, and Admin workflows                              | Migrate remaining high-value server-function families one at a time                          |
-| Error tracking        | Sentry-compatible SDK wiring now emits explicit environment/release identity; Better Stack provider cutover is pending                                                                   | Create Better Stack DSN, configure deployment secrets, and verify ingestion/source maps      |
+| Error tracking        | Better Stack is the canonical DSN configuration with Sentry-compatible SDK wiring and explicit environment/release identity; provider verification is pending                            | Set `VITE_BETTER_STACK_DSN` and `BETTER_STACK_DSN`, then verify ingestion/source maps        |
 | Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                                                  | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
 | Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                                                 | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
 | Alerting              | No verified production alert set                                                                                                                                                         | Configure Uptime, error-rate, readiness, and latency alerts; test them                       |

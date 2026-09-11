@@ -1,6 +1,6 @@
 # Error Tracking With Better Stack
 
-**Status:** Sentry-compatible baseline and release identity implemented; Better Stack cutover pending
+**Status:** Better Stack DSN configuration implemented; account ingestion and source-map verification pending
 
 ## Current Baseline
 
@@ -17,14 +17,19 @@
 - When an OpenTelemetry span is active, `beforeSend` adds its `trace_id` and
   `span_id` to the event context so Better Stack Errors can link the exception
   to Cloudflare Logs & Traces.
+- Better Stack is now the canonical DSN configuration: the browser reads
+  `VITE_BETTER_STACK_DSN` and the Worker reads the secret `BETTER_STACK_DSN`.
+  The old `VITE_SENTRY_DSN` / `SENTRY_DSN` names remain fallback-only for
+  rollback during the transition.
 - User identity attachment is documented in ADR 0013. Better Stack accepts the
   existing SDK event format, so the provider cutover can happen by changing
   the DSN and validating ingestion before renaming code symbols.
 
 ## Hardening Work
 
-- Create the Better Stack Errors application and replace the existing browser
-  and Worker DSNs with the Better Stack DSN.
+- Create the Better Stack Errors application, set `VITE_BETTER_STACK_DSN` in
+  the build environment, and set the Worker secret with
+  `wrangler secret put BETTER_STACK_DSN`.
 - Confirm production, preview, and local environments produce distinguishable
   Better Stack environments.
 - Confirm Better Stack releases/source maps are attached for deployed builds
