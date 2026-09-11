@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 52
-**Scope:** complete the privacy-safe PostHog enrollment funnel entry event.
+**Iteration:** 53
+**Scope:** define the Phase 2 reliability error-budget policy against the existing SLO drafts.
 
 ## Executive summary
 
@@ -177,6 +177,25 @@ The repository already has the first production-fundamentals slice:
   same-project restore guidance. The database restore-confidence SLO remains
   unverified until an external drill produces dated evidence; Storage object
   recovery is a separate concern.
+- Added `docs/plan/ERROR_BUDGET_POLICY.md` with activation gates, initial
+  availability/error-rate/restore-confidence budgets, breach responses, and
+  review rules. The policy is deliberately non-blocking until Better Stack,
+  Cloudflare, Uptime, and restore-drill evidence are verified.
+
+## Iteration 53 — Phase 2 error-budget policy
+
+This iteration completed the next repository-owned reliability slice:
+
+- Documented the initial policy for the existing 28-day availability and
+  application-error SLOs plus the 30-day database restore-confidence cadence.
+- Defined the activation gate so `Needs data` SLOs are measured but do not
+  block releases before provider ingestion, Uptime, ownership, and restore
+  evidence are real.
+- Defined 50%, 75%, and 100% budget-consumption responses, including the
+  exception for security, data-protection, incident-mitigation, and recovery
+  work.
+- Linked the policy from the production-fundamentals plan; external dashboard,
+  alert, ownership, and restore-drill setup remains documented follow-up.
 
 ## Iteration 52 — enrollment started product analytics
 

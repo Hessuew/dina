@@ -15,6 +15,10 @@ Production fundamentals is intentionally split into small implementation parts:
 5. [PostHog Product Analytics](./PRODUCT_ANALYTICS_POSTHOG.md)
 6. [Notion Operations Hub](./OPERATIONS_HUB_NOTION.md)
 
+Phase 2 reliability policy: [Error-Budget Policy](./ERROR_BUDGET_POLICY.md).
+The policy is drafted now but remains non-blocking until production telemetry
+and restore evidence satisfy its activation gate.
+
 ## Platform Direction
 
 Keep the current stack for this phase:
