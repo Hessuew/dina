@@ -1456,3 +1456,24 @@ This iteration completed the next repository-owned structured-logging slice:
 Validation: focused login integration tests pass. Better Stack destinations,
 dashboards, alerts, Uptime, source maps, Slack routing, and named ownership
 remain account-specific external setup work.
+
+## Iteration 45 — logout structured telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Supabase sign-out now runs through `src/utils/auth/logout.ts` and emits
+  redacted `logout_succeeded` / `logout_failed` events with request
+  correlation, server-function path, outcome status, duration, and the stable
+  `auth_sign_out` error category plus provider code when Supabase returns an
+  error.
+- Provider messages, tokens, connection strings, email addresses, and thrown
+  exception text remain outside structured telemetry. Existing sign-out return
+  behavior and redirect behavior are unchanged.
+- Integration coverage verifies successful sign-out metadata, returned
+  provider-error redaction/message preservation, and thrown-provider-error
+  redaction.
+
+Validation: focused logout integration tests (3), targeted Prettier, `git diff
+--check`, and `bun run quality:gate` passed with 1,933 unit tests. Better Stack
+destinations, dashboards, alerts, Uptime, source maps, Slack routing, and named
+ownership remain account-specific external setup work.

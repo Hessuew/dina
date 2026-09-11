@@ -25,6 +25,11 @@ Centralizes authentication and authorization helpers used by server functions an
     plus a stable error category on rejection. Email, password, and provider
     messages are never logged.
 
+- `logoutService()`
+  - Signs out through Supabase and emits redacted `logout_succeeded` /
+    `logout_failed` telemetry with request correlation, outcome, duration, and
+    stable provider error fields. Provider messages are never logged.
+
 - `getCurrentUser()`
   - Uses `getSupabaseServerClient()` to fetch the current Supabase user.
   - Throws when not authenticated.
