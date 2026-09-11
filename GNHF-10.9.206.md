@@ -2473,3 +2473,22 @@ Validation: focused analytics tests and the course integration suite passed.
 Full quality-gate verification and the external PostHog project/dashboard
 verification remain follow-up work. Better Stack account setup remains
 documented above and is unaffected by this product-analytics event.
+
+## Iteration 86 — js-yaml dependency remediation
+
+This iteration completed the next isolated Phase 5 dependency-security slice:
+
+- Added a root Bun/npm override resolving the ESLint, shadcn, and TanStack Start
+  development-tool chains to patched `js-yaml@4.3.x` instead of vulnerable
+  `4.1.1`.
+- This covers the three high-severity quadratic-CPU YAML merge-key advisories
+  without changing application runtime behavior; all current consumers declare
+  compatible `4.x` ranges.
+- Updated `docs/plan/SECURITY.md` with the advisory links, reachability,
+  remediation evidence, and the reduced residual baseline.
+
+Validation passed: frozen install, post-change audit, formatting, diff checks,
+quality gate with 1,953 unit tests, 379 integration tests, and production build.
+Notion Engineering Roadmap, Dependency Security maturity, and Maturity Tracking
+were synchronized; the protected Production Readiness template was left
+unchanged because no launch decision changed.

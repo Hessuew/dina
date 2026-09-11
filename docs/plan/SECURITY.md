@@ -1,7 +1,7 @@
 # Security Baseline
 
 **Status:** In progress — the direct browser PDF, nested Vite, shell-quote,
-brace-expansion, Browserslist, PostCSS, Nanoid, fast-uri, and flatted dependencies are remediated; the reviewed
+brace-expansion, Browserslist, PostCSS, Nanoid, fast-uri, flatted, and js-yaml dependencies are remediated; the reviewed
 server-function authorization gaps, secret-inventory contract, and threat-model baseline are documented incrementally,
 while remaining transitive advisories and hosted security verification are pending
 **Phase:** Engineering Roadmap Phase 5: Security
@@ -21,8 +21,8 @@ update pull requests with `dependencies` and `security`.
 The advisory workflow is intentionally report-only while the remaining baseline is
 triaged. The current dependency tree still has high/critical transitive findings,
 but the direct browser-used `pdfjs-dist` advisory is remediated at `^6.2.108`.
-After the flatted remediation below, the local high-severity audit reports
-12 remaining high findings; all are currently transitive development-tool dependencies.
+After the js-yaml remediation below, the local high-severity audit reports
+9 remaining high findings; all are currently transitive development-tool dependencies.
 Do not suppress an advisory solely to make the workflow green. For each finding,
 decide whether to upgrade, replace, isolate, or accept it with a documented owner
 and review date.
@@ -149,6 +149,22 @@ package remains a development-only ESLint dependency and is not bundled into
 the deployed Worker/browser runtime. The local high-severity audit baseline
 decreased from 13 to 12 findings; the residual findings remain report-only
 pending separate reachability or upgrade decisions.
+
+## js-yaml transitive dependency remediation
+
+The ESLint, shadcn, and TanStack Start development-tool chains previously
+resolved `js-yaml@4.1.1`, which was affected by the three high-severity
+quadratic-CPU merge-key advisories [GHSA-52cp-r559-cp3m](https://github.com/advisories/GHSA-52cp-r559-cp3m),
+[GHSA-5p4m-2wfm-xmqj](https://github.com/advisories/GHSA-5p4m-2wfm-xmqj), and
+[GHSA-2883-xcg3-v3hh](https://github.com/advisories/GHSA-2883-xcg3-v3hh).
+The root Bun/npm `overrides` entry now floors compatible `js-yaml` paths at
+`^4.3.0`, outside the affected `<4.3.0` range.
+
+All current consumers declare compatible `4.x` ranges, so this targeted
+development-tooling remediation does not change application runtime behavior.
+The local high-severity audit baseline decreased from 12 to 9 findings; the
+residual findings remain report-only pending separate reachability or upgrade
+decisions.
 
 ## Review order
 
