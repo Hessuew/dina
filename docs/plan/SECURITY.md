@@ -1,7 +1,7 @@
 # Security Baseline
 
-**Status:** In progress — the direct browser PDF and shell-quote dependencies are
-remediated; remaining transitive advisories and the application security review are pending
+**Status:** In progress — the direct browser PDF, nested Vite, and shell-quote dependencies
+are remediated; remaining transitive advisories and the application security review are pending
 **Phase:** Engineering Roadmap Phase 5: Security
 
 ## Dependency scanning
@@ -19,6 +19,8 @@ update pull requests with `dependencies` and `security`.
 The advisory workflow is intentionally report-only while the remaining baseline is
 triaged. The current dependency tree still has high/critical transitive findings,
 but the direct browser-used `pdfjs-dist` advisory is remediated at `^6.2.108`.
+After the Vite remediation below, the local high-severity audit reports 36 remaining
+high findings; all are currently transitive development-tool dependencies.
 Do not suppress an advisory solely to make the workflow green. For each finding,
 decide whether to upgrade, replace, isolate, or accept it with a documented owner
 and review date.
@@ -47,6 +49,23 @@ command-injection and parser denial-of-service advisories
 [GHSA-395f-4hp3-45gv](https://github.com/advisories/GHSA-395f-4hp3-45gv).
 This is a build/development-tooling remediation; no application API or runtime
 behavior changes.
+
+## Nested Vite development-tool dependency remediation
+
+The Bun lockfile previously retained a second `vite@7.3.1` under the
+`vitest@3.2.7` → `vite-node@3.2.4` development chain, even though the repository's
+direct Vite dependency already resolved to `7.3.6`. The root `overrides` entry now
+pins every Vite resolution to `^7.3.6`, so the lockfile has one patched Vite version
+and no nested `vite-node/vite` package.
+
+This covers the high-severity Vite advisories reported for the nested `7.3.1`
+package, including [GHSA-v2wj-q39q-566r](https://github.com/vitejs/vite/security/advisories/GHSA-v2wj-q39q-566r),
+[GHSA-p9ff-h696-f583](https://github.com/advisories/GHSA-p9ff-h696-f583), and
+[GHSA-fx2h-pf6j-xcff](https://github.com/advisories/GHSA-fx2h-pf6j-xcff).
+Vite's first two advisories are patched in `7.3.2`, and the Windows alternate-path
+advisory is patched in `7.3.5`; `7.3.6` satisfies all three. This remains a
+development-tooling remediation: Vite is not part of the deployed Worker/browser
+runtime, but exposed network dev servers must still be kept on a patched release.
 
 ## Review order
 

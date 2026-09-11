@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 71
+**Iteration:** 72
 **Scope:** remediate the next reachable Phase 5 dependency-security finding after
-the direct browser PDF dependency fix.
+the shell-quote transitive dependency fix.
 
 ## Executive summary
 
@@ -272,6 +272,33 @@ opened_at)`. It supports filtering active windows before recent-opening
   vulnerable `shell-quote@1.8.3`: a root `package.json` override pins
   `shell-quote` to `^1.10.0`, covering its command-injection and parser
   denial-of-service advisories without changing application runtime behavior.
+- The `vitest` → `vite-node` development chain no longer resolves vulnerable
+  `vite@7.3.1`: a root `package.json` override pins every Vite resolution to
+  `^7.3.6`, removing the nested package while keeping the existing direct Vite
+  version and build behavior unchanged.
+
+## Iteration 72 — nested Vite dependency remediation
+
+This iteration completed the next bounded Phase 5 dependency remediation:
+
+- Added a top-level Bun/npm `overrides` entry that resolves all Vite dependency
+  paths to `^7.3.6`. Before the change, the direct dependency was already
+  `vite@7.3.6`, but `vite-node@3.2.4` retained a nested `vite@7.3.1`.
+- The nested package triggered the high-severity Vite advisories for query-based
+  `server.fs.deny` bypasses, Vite dev-server WebSocket arbitrary file reads, and
+  Windows alternate path handling. The selected `7.3.6` release is beyond the
+  patched `7.3.2` / `7.3.5` thresholds documented by the Vite advisories.
+- Bun installation removed the nested `vite-node/vite` lockfile entry and the
+  corresponding duplicate esbuild tree. The post-change high-severity audit
+  dropped from 39 to 36 findings; the remaining findings are transitive
+  development-tool packages and stay report-only while triage continues.
+
+Validation for this iteration: `bun install`, targeted package-resolution checks,
+`bun audit --audit-level=high` (expected exit 1 with 36 residual high transitive
+findings), frozen install, `bun run quality:gate` (1,953 unit tests),
+`bun run test:integration` (370 tests), `bun run build`, scoped Prettier, and
+`git diff --check` all passed. The audit remains report-only while residual
+transitive packages are triaged.
 
 ## Iteration 71 — shell-quote transitive dependency remediation
 
