@@ -288,6 +288,13 @@ course data. The server-function adapters pass the authenticated actor ID into
 the service boundary, and integration coverage verifies that direct student
 service calls fail before the sensitive read begins.
 
+### Calendar event mutation service boundary
+
+Calendar event listing and create/update/delete services now share the same
+teacher-or-Admin check. The route still provides the browser redirect, but the
+service boundary rejects direct student calls before querying or mutating
+calendar events. Integration coverage verifies denial for each mutation path.
+
 ## Secret inventory and rotation contract
 
 The repository-owned secret inventory in
@@ -321,8 +328,9 @@ measured RBAC/RLS migration plan.
 
 - Continue reviewing RBAC and database/RLS defense-in-depth against the current
   app-level authorization model. The staff-only event-management listing, the
-  authenticated calendar overview, and post/comment moderation now enforce
-  server-side identity/ownership and staff role where required; the active
+  authenticated calendar overview, calendar event mutations, and post/comment
+  moderation now enforce server-side identity/ownership and staff role where
+  required; the active
   substitution lookup now has the same Admin-only service boundary, the
   teacher-directory read requires a persisted caller profile, and the student
   directory list/detail services require a teacher or Admin actor.

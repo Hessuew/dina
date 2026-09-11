@@ -2598,3 +2598,22 @@ This iteration closed the next concrete Phase 5 RBAC service-boundary gap:
 Validation passed: the focused student integration suite (9 tests). The full
 quality gate and Notion security/roadmap synchronization remain part of final
 handoff validation.
+
+## Iteration 91 — calendar-event mutation authorization hardening
+
+This iteration closed the next concrete Phase 5 RBAC service-boundary gap:
+
+- Calendar event listing and create/update/delete services now share a
+  teacher-or-Admin authorization check. The browser route remains a UX guard,
+  while direct service/server-function calls are rejected before event reads or
+  writes.
+- Added integration coverage proving student denial for create, update, and
+  delete while preserving the existing teacher/Admin behavior and redacted
+  calendar-event telemetry.
+- Updated `docs/plan/SECURITY.md`, `docs/plan/THREAT_MODEL.md`, and the
+  `src/utils` boundary documentation.
+
+Validation passed: focused event integration (4 tests), full integration (382
+tests), quality gate (1,953 unit tests), formatting, typecheck, and production
+build. Notion security/roadmap synchronization completed after local
+verification; the protected production-readiness template was left unchanged.

@@ -39,6 +39,34 @@ describe('calendar event mutation telemetry (integration)', () => {
     })
   })
 
+  it('keeps event mutations restricted to teachers and admins', async () => {
+    const studentId = await seedProfile({ role: 'student' })
+    const eventId = await seedCalendarEvent({ title: 'Protected event' })
+
+    await expect(
+      createEventService(
+        {
+          title: 'Student event',
+          startTime: new Date('2026-09-11T09:00:00Z'),
+        },
+        studentId,
+      ),
+    ).rejects.toBeInstanceOf(AuthorizationError)
+    await expect(
+      updateEventService(
+        {
+          eventId,
+          title: 'Student update',
+          startTime: new Date('2026-09-11T10:00:00Z'),
+        },
+        studentId,
+      ),
+    ).rejects.toBeInstanceOf(AuthorizationError)
+    await expect(
+      deleteEventService({ eventId }, studentId),
+    ).rejects.toBeInstanceOf(AuthorizationError)
+  })
+
   it('logs redacted create, update, and delete outcomes', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const actorId = await seedProfile({ role: 'teacher' })

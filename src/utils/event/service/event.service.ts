@@ -13,11 +13,15 @@ import { AuthorizationError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
-export async function getEventsService(actorId: string) {
+async function requireEventManager(actorId: string): Promise<void> {
   const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(actorId)
   if (!isAdmin && !isTeacher) {
     throw new AuthorizationError('Teacher access required')
   }
+}
+
+export async function getEventsService(actorId: string) {
+  await requireEventManager(actorId)
 
   const db = await getDb()
   const rows = await db
@@ -84,6 +88,7 @@ export async function createEventService(
   data: CreateEventInput,
   actorId: string,
 ) {
+  await requireEventManager(actorId)
   const context: CalendarEventMutationContext = {
     action: 'createEvent',
     actorId,
@@ -113,6 +118,7 @@ export async function updateEventService(
   data: UpdateEventInput,
   actorId: string,
 ) {
+  await requireEventManager(actorId)
   const context: CalendarEventMutationContext = {
     action: 'updateEvent',
     actorId,
@@ -145,6 +151,7 @@ export async function deleteEventService(
   data: DeleteEventInput,
   actorId: string,
 ): Promise<void> {
+  await requireEventManager(actorId)
   const context: CalendarEventMutationContext = {
     action: 'deleteEvent',
     actorId,

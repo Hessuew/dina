@@ -93,6 +93,13 @@ and restore evidence belong in the external systems and the linked runbooks.
 | TM-13 | RLS policies drift from application authorization and provide false confidence or unexpected denial                         | Exam, attendance, invitation, evaluation, staff-privilege, storage-related, and other newer tables have explicit migration policies; the database README and security plan identify app authz as active boundary                                                                                                | Inventory current table/policy state in each Supabase branch, model request identity propagation, then migrate legacy tables only with an executable policy/test plan    |
 | TM-14 | Better Stack, Cloudflare, PostHog, Supabase, or GitHub configuration is incomplete while the repository appears healthy     | Repository-owned handoff and runbooks name required URLs, monitors, dashboards, owners, smoke checks, and rollback steps                                                                                                                                                                                        | Complete account setup, controlled error/trace/analytics checks, alert delivery checks, named ownership, and Notion status updates                                       |
 
+### Calendar event mutation boundary
+
+The event-management route redirects students, and the event service now
+enforces the same teacher/Admin boundary for listing and create/update/delete
+operations. The negative integration test calls each mutation directly and
+confirms authorization fails before persistence.
+
 ## Existing control map
 
 | Control                | Repository evidence                                                                   | Verification boundary                                   |
