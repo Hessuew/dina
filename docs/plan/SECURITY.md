@@ -1,7 +1,8 @@
 # Security Baseline
 
 **Status:** In progress — the direct browser PDF, nested Vite, shell-quote,
-brace-expansion, Browserslist, PostCSS, Nanoid, fast-uri, flatted, and js-yaml dependencies are remediated; the reviewed
+brace-expansion, Browserslist, PostCSS, Nanoid, fast-uri, flatted, js-yaml, and
+ip-address dependencies are remediated; the reviewed
 server-function authorization gaps, secret-inventory contract, and threat-model baseline are documented incrementally,
 while remaining transitive advisories and hosted security verification are pending
 **Phase:** Engineering Roadmap Phase 5: Security
@@ -21,8 +22,8 @@ update pull requests with `dependencies` and `security`.
 The advisory workflow is intentionally report-only while the remaining baseline is
 triaged. The current dependency tree still has high/critical transitive findings,
 but the direct browser-used `pdfjs-dist` advisory is remediated at `^6.2.108`.
-After the js-yaml remediation below, the local high-severity audit reports
-9 remaining high findings; all are currently transitive development-tool dependencies.
+After the ip-address remediation below, the local high-severity audit reports
+8 remaining high findings; all are currently transitive development-tool dependencies.
 Do not suppress an advisory solely to make the workflow green. For each finding,
 decide whether to upgrade, replace, isolate, or accept it with a documented owner
 and review date.
@@ -165,6 +166,21 @@ development-tooling remediation does not change application runtime behavior.
 The local high-severity audit baseline decreased from 12 to 9 findings; the
 residual findings remain report-only pending separate reachability or upgrade
 decisions.
+
+## ip-address transitive dependency remediation
+
+The shadcn Model Context Protocol toolchain previously resolved
+`express-rate-limit@8.3.1` to `ip-address@10.1.0`, which is affected by the
+leading-zero IPv4 parsing and SSRF/trust-boundary bypass advisory
+[GHSA-mwp4-54f8-5fhr](https://github.com/advisories/GHSA-mwp4-54f8-5fhr).
+The root Bun/npm `overrides` entry now floors compatible `ip-address` paths at
+`^10.3.1`, the first release beyond the affected `<=10.3.0` range; the lockfile
+currently resolves `ip-address@10.7.0`.
+
+This is a development-only shadcn/Model Context Protocol remediation; the
+package is not bundled into the deployed Worker/browser runtime. The local
+high-severity audit baseline decreased from 9 to 8 findings; the residual
+findings remain report-only pending separate reachability or upgrade decisions.
 
 ## Review order
 

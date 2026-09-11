@@ -2492,3 +2492,24 @@ quality gate with 1,953 unit tests, 379 integration tests, and production build.
 Notion Engineering Roadmap, Dependency Security maturity, and Maturity Tracking
 were synchronized; the protected Production Readiness template was left
 unchanged because no launch decision changed.
+
+## Iteration 87 — ip-address dependency remediation
+
+This iteration completed the next isolated Phase 5 dependency-security slice:
+
+- Added a root Bun/npm override resolving shadcn's Model Context Protocol and
+  express-rate-limit development-tool chain to patched `ip-address@10.7.0`
+  (with a `^10.3.1` floor) instead of vulnerable `10.1.0`.
+- This covers [GHSA-mwp4-54f8-5fhr](https://github.com/advisories/GHSA-mwp4-54f8-5fhr),
+  which affects `ip-address` through `10.3.0`; the compatible override does not
+  change application runtime behavior.
+- Updated `docs/plan/SECURITY.md` with the advisory, reachability, remediation
+  evidence, and reduced residual baseline.
+
+Validation passed: frozen install, post-change `bun audit --audit-level=high`
+(expected exit 1 with 8 residual high findings), formatting, `git diff --check`,
+`bun run quality:gate` with 1,953 unit tests, `bun run test:integration` with
+379 tests, and production build. Notion Engineering Roadmap, Dependency
+Security maturity, and Maturity Tracking were synchronized; the protected
+Production Readiness template was left unchanged because no launch decision
+changed.
