@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 59
-**Scope:** expose the credential-free post-deploy health/readiness smoke check through GitHub Actions for Phase 3 safe delivery.
+**Iteration:** 60
+**Scope:** add measured, additive indexes for the existing community and notification read paths as the first Phase 4 performance slice.
 
 ## Executive summary
 
@@ -206,6 +206,32 @@ The repository already has the first production-fundamentals slice:
   reusable GitHub Actions entry point for the same credential-free check. It
   accepts only a public deployment origin, passes it through `SMOKE_BASE_URL`,
   and can be called by a future Cloudflare deployment workflow.
+- Phase 4 now has an initial query/index review for the bounded community feed,
+  post comments, and notification inbox. Migration `0047_abnormal_firelord`
+  adds additive indexes for their existing filter/order shapes without
+  changing application behavior. The review and measurement plan lives in
+  `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+
+## Iteration 60 — community and notification query indexes
+
+This iteration completed the next repository-owned Phase 4 slice:
+
+- Added `posts_course_created_at_idx` for course/global feed filtering and
+  cursor ordering.
+- Added `post_comments_post_created_at_idx` for bounded comment pagination.
+- Added `post_notifications_user_read_created_at_idx` for per-user inbox and
+  unread read-state queries.
+- Added migration `drizzle/0047_abnormal_firelord.sql` and documented the
+  measured hosted `EXPLAIN` follow-up in
+  `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+
+This is an additive schema change: no query, response, authorization, or
+retention behavior changed. Hosted plan/timing evidence remains pending until
+the controlled development database contains representative data.
+
+Validation for this iteration: migration replay, focused community and
+notification integration tests, formatting, `git diff --check`,
+`bun run docs:notion-check`, and `bun run quality:gate`.
 
 ## Iteration 59 — GitHub post-deploy health smoke workflow
 
@@ -1272,9 +1298,10 @@ Validate and document the release path after observability cutover:
 
 ### Phase 4 — Performance and scale
 
-Still requires production data. Prioritize query/index review, request latency
-charts, connection pressure, pagination/rate-limit review, caching, load
-tests, and a background-job decision.
+Initial query/index review is implemented for the community feed, comments,
+and notification inbox; hosted `EXPLAIN` evidence is still pending. Prioritize
+request latency charts, connection pressure, pagination/rate-limit review,
+caching, load tests, and a background-job decision from production data.
 
 ### Phase 5 — Security
 

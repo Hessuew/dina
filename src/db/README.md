@@ -54,6 +54,12 @@ Database access layer and schema definitions.
     - `post_notifications`
       - Stores post-related notifications (new teacher/admin posts, comments on your posts).
       - Used to power the in-app notifications dropdown and unread badge.
+      - Indexed by user/read state/recent activity for the inbox summary and
+        mark-read paths; the migration is `0047_abnormal_firelord`.
+    - `posts` / `post_comments`
+      - Feed and comment reads use cursor pagination ordered by creation time
+        and ID; additive course/post ordering indexes support those bounded
+        queries.
     - `zoom_links`
       - Stores academy-wide General Zoom Links and links owned by a Teacher-user or Admin.
       - General rows have no `teacher_id`; teacher rows require one and cascade on owner deletion.
