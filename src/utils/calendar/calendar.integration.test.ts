@@ -4,14 +4,22 @@ import {
   seedCalendarEvent,
   seedCourse,
   seedLesson,
+  seedProfile,
 } from 'test/integration/seed'
 import { getCalendarEventsService } from './service/calendar.service'
 
 async function getCalendarEventsForSeededViewer() {
-  return getCalendarEventsService()
+  const viewerId = await seedProfile()
+  return getCalendarEventsService(viewerId)
 }
 
 describe('getCalendarEventsService', () => {
+  it('requires a persisted profile before reading calendar data', async () => {
+    await expect(
+      getCalendarEventsService('00000000-0000-4000-8000-000000000001'),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
   it('maps a published, scheduled lesson with its course join', async () => {
     const courseId = await seedCourse({ title: 'Foundations' })
     const scheduledTime = new Date('2026-01-10T09:00:00Z')

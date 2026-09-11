@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 73
-**Scope:** close the next bounded Phase 5 authorization gap after the nested Vite
-dependency remediation.
+**Iteration:** 74
+**Scope:** close the next bounded Phase 5 authorization gap after calendar event
+listing hardening.
 
 ## Executive summary
 
@@ -280,6 +280,28 @@ opened_at)`. It supports filtering active windows before recent-opening
   server-side service. Students can no longer bypass the `/events` route guard
   by invoking the `getEvents` server function directly; teachers and admins
   retain the existing event-management view.
+- The authenticated calendar overview now authenticates its server-function
+  caller and requires a persisted profile before reading published lessons,
+  assignments, or special events. All authenticated roles retain the existing
+  calendar payload; direct unauthenticated invocation is rejected.
+
+## Iteration 74 — authenticated calendar overview hardening
+
+This iteration closed the next concrete Phase 5 server-function boundary gap:
+
+- Updated `getCalendarEvents` to call `getCurrentUser()` before delegating to
+  the calendar service.
+- Updated `getCalendarEventsService(userId)` to require an existing profile
+  before any calendar query executes, keeping the lower-level service safe for
+  direct callers as well as the route loader.
+- Added integration coverage for the profile prerequisite while preserving the
+  existing published lesson/assignment filtering, special-event mapping, sort
+  order, and response shape.
+
+Validation for this iteration: focused calendar integration tests, full
+integration tests, `bun run quality:gate`, typecheck, formatting, production
+build, and `git diff --check` passed. The Notion Architecture Inventory and
+Engineering Roadmap records were synchronized.
 
 ## Iteration 73 — calendar event listing authorization hardening
 

@@ -93,10 +93,20 @@ access. Apply this same server-side check-first pattern when reviewing other
 route loaders that expose staff-only data; a route guard is a user-experience
 boundary, not an API authorization boundary.
 
+The authenticated `/calendar` route had the same class of boundary gap: its
+`getCalendarEvents` server function relied on the `_authed` route guard and
+queried the calendar without first establishing a server-side identity. The
+server-function adapter now calls `getCurrentUser()`, and the calendar service
+requires an existing profile before reading published lessons, assignments, or
+special events. All authenticated roles retain the existing calendar payload;
+the change only closes direct unauthenticated invocation.
+
 ## Remaining Phase 5 work
 
 - Review RBAC and database/RLS defense-in-depth against the current app-level
-  authorization model.
+  authorization model. The staff-only event-management listing and the
+  authenticated calendar overview now both enforce server-side identity (and
+  staff role where required).
 - Continue hardening admin access and review authentication/session boundaries;
   the calendar event listing is now covered by a server-side teacher/admin
   check.
