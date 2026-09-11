@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 77
-**Scope:** close the next bounded Phase 5 service authorization gap after
-active-substitution lookup hardening.
+**Iteration:** 78
+**Scope:** document the bounded Phase 5 runtime and CI secret inventory after
+teacher-directory authorization hardening.
 
 ## Executive summary
 
@@ -297,6 +297,35 @@ opened_at)`. It supports filtering active windows before recent-opening
   Zoom-link owner-options path passes its authenticated actor through instead of
   invoking the directory without context. Teacher-directory payloads and
   Admin-only privilege metadata are unchanged.
+- The runtime and CI secret inventory is now documented in
+  `docs/plan/SECRET_INVENTORY.md`: server-secret classification, public
+  `VITE_*` boundaries, Cloudflare Worker and GitHub environment storage,
+  role-based rotation, Better Stack acceptance checks, and redacted evidence
+  requirements are explicit. Named account owners, live values, and the first
+  controlled rotation remain external setup work.
+
+## Iteration 78 — runtime and CI secret inventory
+
+This iteration completed the repository-owned portion of the remaining Phase 5
+secret-management work:
+
+- Added `docs/plan/SECRET_INVENTORY.md` with the complete server, browser,
+  local, build, and CI variable classification.
+- Mapped restricted values to Cloudflare Worker secrets, GitHub `development`
+  and `production` environments, or ignored local `.env` storage; public
+  configuration remains explicitly separated from credentials.
+- Added role-based rotation, Better Stack DSN acceptance, Cloudflare dashboard
+  navigation, rollback, and redacted evidence procedures without recording any
+  credential values.
+- Linked the contract from `docs/plan/SECURITY.md`; the remaining work is
+  account-level owner assignment, live-value verification, and one controlled
+  rotation.
+
+Validation for this iteration: the documentation diff was checked for
+formatting and secret-value absence; `bun run docs:notion-check` and
+`bun run quality:gate` passed with 1,953 unit tests. Notion Security, Maturity
+Tracking, and Engineering Roadmap records were synchronized. Production
+Readiness Reviews were skipped because no launch decision changed.
 
 ## Iteration 77 — teacher directory service authorization hardening
 

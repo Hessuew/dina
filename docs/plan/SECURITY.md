@@ -1,8 +1,9 @@
 # Security Baseline
 
 **Status:** In progress — the direct browser PDF, nested Vite, and shell-quote dependencies
-are remediated; the reviewed server-function authorization gaps are being closed incrementally,
-while remaining transitive advisories and the application security review are pending
+are remediated; the reviewed server-function authorization gaps and secret-inventory contract
+are being closed incrementally, while remaining transitive advisories and the application
+security review are pending
 **Phase:** Engineering Roadmap Phase 5: Security
 
 ## Dependency scanning
@@ -128,6 +129,20 @@ passes its already-validated actor ID through. This preserves the teacher
 directory payload and Admin-only staff-privilege metadata while preventing direct
 service calls from reading teacher records without an application profile.
 
+## Secret inventory and rotation contract
+
+The repository-owned secret inventory in
+[`docs/plan/SECRET_INVENTORY.md`](./SECRET_INVENTORY.md) classifies runtime,
+browser, local, and CI variables; maps them to Cloudflare Worker secrets,
+GitHub environments, or public build configuration; and defines role-based
+rotation, verification, rollback, and evidence rules. It also records the
+Better Stack DSN acceptance checks and keeps the temporary Sentry-compatible
+names explicit without treating them as the operator destination.
+
+No credential values are stored in the repository or Notion. Named owners,
+live provider values, protected production environments, and the first
+controlled rotation remain external follow-up work.
+
 ## Remaining Phase 5 work
 
 - Continue reviewing RBAC and database/RLS defense-in-depth against the current
@@ -140,7 +155,9 @@ service calls from reading teacher records without an application profile.
   the calendar event listing is now covered by a server-side teacher/admin
   check; the teacher directory now also requires a persisted caller profile.
 - Inventory runtime and CI secrets, including Better Stack and Cloudflare
-  credentials, with rotation owners outside the repository.
+  credentials, with named rotation owners outside the repository. The
+  repository inventory and rotation contract are now documented in
+  `docs/plan/SECRET_INVENTORY.md`.
 - Verify security-sensitive audit events in Better Stack without exporting PII or
   raw provider errors.
 - Complete threat modeling for public enrollment, authentication, admin workflows,
