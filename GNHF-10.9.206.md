@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 35
-**Scope:** add redacted structured telemetry to media-library CRUD mutations.
+**Iteration:** 36
+**Scope:** add redacted structured telemetry to exam-authoring mutations.
 
 ## Executive summary
 
@@ -93,6 +93,11 @@ The repository already has the first production-fundamentals slice:
   Titles, descriptions, URLs, private storage paths, and raw persistence
   details remain excluded; unexpected failures use the stable
   `media_persistence` category.
+- Exam create, save, and publish mutations now emit redacted
+  `exam_created`, `exam_updated`, and `exam_published` events with request
+  correlation, actor/exam IDs, exam status, question counts, duration, and
+  stable persistence failure categories. Exam titles, dates, question
+  prompts, option labels, and raw persistence details remain excluded.
 - The optional PostHog browser foundation now initializes from the root route
   when `VITE_POSTHOG_KEY` is configured. It identifies users by stable ID and
   role only, allow-lists the initial LMS journey event names, disables
@@ -1227,5 +1232,26 @@ This iteration completed the next repository-owned structured-logging slice:
   failures.
 
 Validation: focused library integration passed all 20 tests. Better Stack
+destination, dashboard, alert, Uptime, source-map, Slack, and named-owner
+setup remains account-specific external work described above.
+
+## Iteration 36 — exam-authoring structured telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Exam create, save, and publish mutations now emit redacted
+  `exam_created`, `exam_updated`, and `exam_published` events.
+- Events carry request correlation, server-function path, actor/exam IDs,
+  draft/published status, safe question counters, and duration. Exam titles,
+  open/close dates, question prompts, option labels, and raw persistence
+  details remain excluded.
+- Unexpected repository failures use the stable `exam_persistence` category;
+  expected authorization, validation, not-found, and conflict outcomes remain
+  outside noisy error telemetry.
+- Integration coverage verifies the three success event shapes, safe metadata,
+  duration fields, and privacy exclusions while preserving the existing exam
+  authoring behavior.
+
+Validation: focused exam integration passed all 16 tests. Better Stack
 destination, dashboard, alert, Uptime, source-map, Slack, and named-owner
 setup remains account-specific external work described above.

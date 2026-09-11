@@ -105,6 +105,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    status, and duration. Media titles, descriptions, external URLs, private
    storage paths, and raw persistence details remain excluded; unexpected
    failures use the stable `media_persistence` category.
+   Exam create, save, and publish mutations now emit redacted
+   `exam_created`, `exam_updated`, and `exam_published` events with request
+   correlation, actor/exam IDs, exam status, safe question counters, and
+   duration. Exam titles, dates, question prompts, option labels, and raw
+   persistence details remain excluded; unexpected failures use the stable
+   `exam_persistence` category.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

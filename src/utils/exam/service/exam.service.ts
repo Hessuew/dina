@@ -83,6 +83,15 @@ type ExamAttemptLogContext = {
   startedAt: number
 }
 
+type ExamMutationAction = 'createExam' | 'saveExamChanges' | 'publishExam'
+
+type ExamMutationLogContext = {
+  action: ExamMutationAction
+  actorId: string
+  examId?: string
+  startedAt: number
+}
+
 function logExamAttemptEvent(
   level: LogLevel,
   event: string,
@@ -96,6 +105,27 @@ function logExamAttemptEvent(
     durationMs: elapsedMs(context.startedAt),
     ...fields,
   })
+}
+
+function logExamMutationEvent(
+  level: LogLevel,
+  event: string,
+  context: ExamMutationLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    examId: context.examId,
+    ...fields,
+  })
+}
+
+function shouldLogExamFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
 }
 
 async function assertTeacherOrAdmin(userId: string): Promise<{
@@ -139,48 +169,88 @@ export async function createExamService(
   data: CreateExamInput,
   userId: string,
 ): Promise<ExamRow> {
+  const context: ExamMutationLogContext = {
+    action: 'createExam',
+    actorId: userId,
+    startedAt: performance.now(),
+  }
   await assertTeacherOrAdmin(userId)
   const opensAt = new Date(data.opensAt)
   const closesAt = new Date(data.closesAt)
   if (closesAt.getTime() <= opensAt.getTime()) {
     throw new ValidationError('Close date must be after open date')
   }
-  return insertExam({
-    title: data.title,
-    ...(data.durationMinutes !== undefined
-      ? { durationMinutes: data.durationMinutes }
-      : {}),
-    opensAt,
-    closesAt,
-    createdBy: userId,
-  })
+  try {
+    const exam = await insertExam({
+      title: data.title,
+      ...(data.durationMinutes !== undefined
+        ? { durationMinutes: data.durationMinutes }
+        : {}),
+      opensAt,
+      closesAt,
+      createdBy: userId,
+    })
+    context.examId = exam.id
+    logExamMutationEvent('info', 'exam_created', context, {
+      examStatus: exam.status,
+      durationMinutes: exam.durationMinutes,
+    })
+    return exam
+  } catch (error) {
+    if (shouldLogExamFailure(error)) {
+      logExamMutationEvent('error', 'exam_create_failed', context, {
+        errorCategory: 'exam_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function saveExamChangesService(
   data: SaveExamChangesInput,
   userId: string,
 ): Promise<void> {
-  const exam = await loadEditableExam(data.examId, userId)
-  const opensAt = new Date(data.opensAt)
-  const closesAt = new Date(data.closesAt)
-  if (closesAt.getTime() <= opensAt.getTime()) {
-    throw new ValidationError('Close date must be after open date')
+  const context: ExamMutationLogContext = {
+    action: 'saveExamChanges',
+    actorId: userId,
+    examId: data.examId,
+    startedAt: performance.now(),
   }
-  const result = await saveExamChanges({
-    examId: exam.id,
-    title: data.title,
-    durationMinutes: data.durationMinutes,
-    opensAt,
-    closesAt,
-    questions: data.questions.map((question) => ({
-      ...question,
-      points: question.points ?? 1,
-      options: question.options ?? [],
-    })),
-    deletedQuestionIds: data.deletedQuestionIds,
-  })
-  if (result.missingQuestionId) {
-    throw new NotFoundError('Question not found')
+  try {
+    const exam = await loadEditableExam(data.examId, userId)
+    const opensAt = new Date(data.opensAt)
+    const closesAt = new Date(data.closesAt)
+    if (closesAt.getTime() <= opensAt.getTime()) {
+      throw new ValidationError('Close date must be after open date')
+    }
+    const result = await saveExamChanges({
+      examId: exam.id,
+      title: data.title,
+      durationMinutes: data.durationMinutes,
+      opensAt,
+      closesAt,
+      questions: data.questions.map((question) => ({
+        ...question,
+        points: question.points ?? 1,
+        options: question.options ?? [],
+      })),
+      deletedQuestionIds: data.deletedQuestionIds,
+    })
+    if (result.missingQuestionId) {
+      throw new NotFoundError('Question not found')
+    }
+    logExamMutationEvent('info', 'exam_updated', context, {
+      examStatus: exam.status,
+      questionCount: data.questions.length,
+      deletedQuestionCount: data.deletedQuestionIds.length,
+    })
+  } catch (error) {
+    if (shouldLogExamFailure(error)) {
+      logExamMutationEvent('error', 'exam_update_failed', context, {
+        errorCategory: 'exam_persistence',
+      })
+    }
+    throw error
   }
 }
 
@@ -188,22 +258,41 @@ export async function publishExamService(
   data: PublishExamInput,
   userId: string,
 ): Promise<void> {
-  const exam = await loadEditableExam(data.examId, userId)
-  if (exam.status === 'published') {
-    throw new ConflictError('Exam is already published')
+  const context: ExamMutationLogContext = {
+    action: 'publishExam',
+    actorId: userId,
+    examId: data.examId,
+    startedAt: performance.now(),
   }
-  const { questions, options } = await findQuestionsWithOptions(data.examId)
-  const optionsByQuestion = new Map<string, Array<{ isCorrect: boolean }>>()
-  for (const option of options) {
-    const list = optionsByQuestion.get(option.questionId) ?? []
-    list.push(option)
-    optionsByQuestion.set(option.questionId, list)
+  try {
+    const exam = await loadEditableExam(data.examId, userId)
+    if (exam.status === 'published') {
+      throw new ConflictError('Exam is already published')
+    }
+    const { questions, options } = await findQuestionsWithOptions(data.examId)
+    const optionsByQuestion = new Map<string, Array<{ isCorrect: boolean }>>()
+    for (const option of options) {
+      const list = optionsByQuestion.get(option.questionId) ?? []
+      list.push(option)
+      optionsByQuestion.set(option.questionId, list)
+    }
+    const errors = validateForPublish(questions, optionsByQuestion)
+    if (errors.length > 0) {
+      throw new ValidationError(errors.join('; '))
+    }
+    await setExamStatus(data.examId, 'published')
+    logExamMutationEvent('info', 'exam_published', context, {
+      examStatus: 'published',
+      questionCount: questions.length,
+    })
+  } catch (error) {
+    if (shouldLogExamFailure(error)) {
+      logExamMutationEvent('error', 'exam_publish_failed', context, {
+        errorCategory: 'exam_persistence',
+      })
+    }
+    throw error
   }
-  const errors = validateForPublish(questions, optionsByQuestion)
-  if (errors.length > 0) {
-    throw new ValidationError(errors.join('; '))
-  }
-  await setExamStatus(data.examId, 'published')
 }
 
 export async function getExamForAuthorService(

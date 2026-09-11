@@ -38,6 +38,10 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   create/update/delete mutations emit redacted request-correlated events with
   safe actor/media metadata; titles, descriptions, URLs, and private storage
   paths are excluded.
+  Exam create/save/publish mutations emit redacted request-correlated events
+  with safe actor/exam metadata, exam state, question counters, and stable
+  persistence-failure categories; titles, dates, prompts, option labels, and
+  raw persistence details are excluded.
 
 - **Cloudflare Workers:** Basic observability
   - Logs enabled (100% sampling)
