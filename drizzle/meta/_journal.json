@@ -351,6 +351,13 @@
       "when": 1789107420768,
       "tag": "0052_chief_the_fallen",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1789107774373,
+      "tag": "0053_youthful_rafael_vega",
+      "breakpoints": true
     }
   ]
 }

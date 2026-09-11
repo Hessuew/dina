@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 65
-**Scope:** add a measured, additive index for student submission reads as the next Phase 4 performance slice.
+**Iteration:** 66
+**Scope:** add a measured, additive index for teacher lesson assignment reads as the next Phase 4 performance slice.
 
 ## Executive summary
 
@@ -235,6 +235,33 @@ The repository already has the first production-fundamentals slice:
   response shape, or grading behavior. Migration `0052_chief_the_fallen` and
   the hosted `EXPLAIN (ANALYZE, BUFFERS)` follow-up are documented in
   `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+- Teacher lesson assignment reads now have the additive
+  `assignments_lesson_due_date_idx` index on `(lesson_id, due_date)`. It
+  supports the existing managed-lesson filter and ascending due-date order
+  without changing authorization, response shape, or publication behavior.
+  Migration `0053_youthful_rafael_vega` and the hosted
+  `EXPLAIN (ANALYZE, BUFFERS)` follow-up are documented in
+  `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+
+## Iteration 66 — teacher lesson assignment due-date index
+
+This iteration completed the next repository-owned Phase 4 slice:
+
+- Added `assignments_lesson_due_date_idx` on `(lesson_id, due_date)` for the
+  existing teacher lesson assignment read that scopes assignments to managed
+  lessons and orders them by due date.
+- Kept authorization, response shape, publication behavior, and the separate
+  assignment-catalog status query unchanged. The index is additive and
+  complements `assignments_lesson_status_idx`.
+- Extended the performance review and database README. Hosted verification
+  now covers nine indexed query shapes; the unbounded student assignment
+  due-date index remains evidence-gated until representative hosted data
+  exists.
+
+Validation for this iteration: migration generation and replay, focused
+assignment/course integration coverage, formatting, `git diff --check`,
+`bun run docs:notion-check`, and `bun run quality:gate`. Hosted plan/timing
+evidence remains pending representative development data.
 
 ## Iteration 65 — student submission lookup index
 

@@ -1,0 +1,1 @@
+CREATE INDEX "assignments_lesson_due_date_idx" ON "assignments" USING btree ("lesson_id","due_date");

@@ -88,6 +88,9 @@ Database access layer and schema definitions.
       - Teacher catalog reads that scope assignments to managed lessons and
         status use `(lesson_id, status)`; the Phase 4 performance migration
         `0050_calm_william_stryker` adds `assignments_lesson_status_idx`.
+      - Teacher lesson assignment reads that scope by lesson and order by due
+        date use `(lesson_id, due_date)`; the Phase 4 performance migration
+        `0053_youthful_rafael_vega` adds `assignments_lesson_due_date_idx`.
     - `course_teachers`
       - Course-team reads that filter by `course_id` and order by assignment
         creation use `(course_id, created_at)`; the Phase 4 performance
