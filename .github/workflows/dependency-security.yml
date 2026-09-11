@@ -1,0 +1,53 @@
+name: Dependency security audit
+
+on:
+  pull_request:
+    paths:
+      - package.json
+      - bun.lock
+      - .github/dependabot.yml
+      - .github/workflows/dependency-security.yml
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - bun.lock
+      - .github/dependabot.yml
+      - .github/workflows/dependency-security.yml
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Audit Bun dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+      - run: bun install --frozen-lockfile
+      - name: Run high-severity dependency audit
+        id: audit
+        shell: bash
+        run: |
+          set +e
+          bun audit --audit-level=high --json > bun-audit.json
+          audit_status=$?
+          if [ "$audit_status" -ne 0 ]; then
+            echo "::warning::bun audit reported high or critical vulnerabilities; review bun-audit.json and open remediation work."
+          fi
+          exit 0
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bun-dependency-audit
+          path: bun-audit.json
+          if-no-files-found: error
+          retention-days: 14

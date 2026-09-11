@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 68
-**Scope:** add a measured, additive index for teacher exam-grading attempt reads as the next Phase 4 performance slice.
+**Iteration:** 69
+**Scope:** add the first repository-owned Phase 5 dependency-security baseline.
 
 ## Executive summary
 
@@ -256,6 +256,32 @@ opened_at)`. It supports filtering active windows before recent-opening
   shape. Migration `0055_motionless_jazinda` and the hosted
   `EXPLAIN (ANALYZE, BUFFERS)` follow-up are documented in
   `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+- Phase 5 now has a repository-owned dependency-security baseline: the weekly,
+  pull-request, main-branch, and manual GitHub audit workflow runs
+  `bun audit --audit-level=high`, uploads its JSON report, and warns while the
+  known advisory baseline is triaged. Dependabot checks the Bun-compatible
+  manifest and lockfile weekly. The review policy and remaining RBAC, secret,
+  audit, and threat-model work are documented in `docs/plan/SECURITY.md`.
+
+## Iteration 69 — dependency-security baseline
+
+This iteration completed the first repository-owned Phase 5 security slice:
+
+- Added `.github/workflows/dependency-security.yml` for pull-request,
+  main-branch, weekly, and manual `bun audit --audit-level=high` reporting.
+- The workflow uploads a 14-day JSON audit artifact and warns without blocking
+  while the known high/critical baseline is triaged; it does not suppress or
+  hide advisory output.
+- Added weekly Dependabot checks for the Bun-compatible npm manifest and
+  lockfile, with `dependencies` and `security` labels.
+- Added `docs/plan/SECURITY.md` with vulnerability reachability order,
+  remediation expectations, and remaining RBAC/RLS, admin-hardening, secret
+  inventory, audit-verification, and threat-model work.
+
+Validation for this iteration: local high-severity Bun audit, Prettier, YAML
+inspection, `git diff --check`, and the repository quality gate. The audit
+currently reports known high/critical findings; remediation is intentionally a
+separate bounded dependency-update slice.
 
 ## Iteration 68 — exam grading attempt index
 
@@ -1502,10 +1528,13 @@ caching, load tests, and a background-job decision from production data.
 
 ### Phase 5 — Security
 
-Still requires an RBAC/RLS review, admin access hardening, secret inventory,
-audit logging, dependency scanning, and threat modeling. Better Stack must not
-receive passwords, tokens, cookies, service-role keys, connection strings,
-raw submission text, or private mentorship content.
+Dependency audit reporting is implemented in `.github/workflows/dependency-security.yml`
+and weekly Dependabot checks are enabled; remediation is currently report-only
+because the baseline contains known advisories. The remaining work is an RBAC/RLS
+review, admin access hardening, secret inventory, Better Stack audit-event
+verification, and threat modeling. Better Stack must not receive passwords,
+tokens, cookies, service-role keys, connection strings, raw submission text, or
+private mentorship content. See `docs/plan/SECURITY.md`.
 
 ### Phase 6 — Long-term architecture
 
