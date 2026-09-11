@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 60
-**Scope:** add measured, additive indexes for the existing community and notification read paths as the first Phase 4 performance slice.
+**Iteration:** 61
+**Scope:** add a measured, additive index for ordered course lesson reads as the next Phase 4 performance slice.
 
 ## Executive summary
 
@@ -211,6 +211,29 @@ The repository already has the first production-fundamentals slice:
   adds additive indexes for their existing filter/order shapes without
   changing application behavior. The review and measurement plan lives in
   `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+- Phase 4 course lesson reads now have the additive
+  `lessons_course_order_idx` index on `(course_id, order_index, id)`. It
+  supports ordered course detail, authoring, attendance, and completion reads
+  without changing query or response behavior. Migration
+  `0048_blue_golden_guardian` and the hosted `EXPLAIN (ANALYZE, BUFFERS)`
+  follow-up are documented in `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+
+## Iteration 61 — ordered course lesson query index
+
+This iteration completed the next repository-owned Phase 4 slice:
+
+- Added `lessons_course_order_idx` for the existing course-scoped lesson
+  reads that filter by `course_id` and order by `order_index`.
+- Added migration `drizzle/0048_blue_golden_guardian.sql` and updated the
+  database README plus the performance review plan.
+- Kept publication filtering, pagination, response shape, authorization, and
+  retention behavior unchanged. The index is additive and compatible with the
+  safe-delivery expand/contract procedure.
+
+Validation for this iteration: migration generation and replay, focused course
+integration coverage, formatting, `git diff --check`,
+`bun run docs:notion-check`, and `bun run quality:gate`. Hosted plan/timing
+evidence remains pending representative development data.
 
 ## Iteration 60 — community and notification query indexes
 

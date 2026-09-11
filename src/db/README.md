@@ -76,6 +76,9 @@ Database access layer and schema definitions.
       - Stores student completion state for lessons.
       - Enforces one progress row per `(student_id, lesson_id)` so completion
         writes can use an idempotent upsert.
+    - `lessons`
+      - Course lesson reads are indexed by `(course_id, order_index, id)` for
+        ordered course detail, authoring, attendance, and completion queries.
     - `staff_privileges`
       - Named Staff Privilege grants on Teacher-users (`user_id`, `privilege`).
       - Unique `(user_id, privilege)`. Admin insert/delete. Not a fourth Role (ADR 0023).

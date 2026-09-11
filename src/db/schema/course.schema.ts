@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   pgPolicy,
   pgTable,
@@ -144,7 +145,12 @@ export const lessons = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
+    index('lessons_course_order_idx').on(
+      table.courseId,
+      table.orderIndex,
+      table.id,
+    ),
     // All authenticated users can view lessons
     pgPolicy('authenticated_view_lessons', {
       for: 'select',
