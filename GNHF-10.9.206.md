@@ -1,10 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 82
-**Scope:** remediate the next transitive Phase 5 dependency advisory after
-the Browserslist-only attempt in iteration 81 left nested vulnerable copies
-unchanged.
+**Iteration:** 83
+**Scope:** remediate the next compatible transitive Phase 5 dependency
+advisories after the Browserslist remediation in iteration 82.
 
 ## Executive summary
 
@@ -320,6 +319,29 @@ brace-expansion` refreshes their compatible 1.x lockfile branches to
   override to patched `browserslist@4.28.9`, covering the two high-severity
   Browserslist advisories without promoting a separate direct dependency or
   changing application runtime behavior.
+
+## Iteration 83 — PostCSS and Nanoid transitive dependency remediation
+
+This iteration completed the next bounded Phase 5 dependency remediation:
+
+- Added a top-level Bun/npm `overrides` entry that resolves all compatible
+  `postcss` dependency paths to `^8.5.28`. The vulnerable paths were the Vite
+  and shadcn build-tool chains, which previously retained `postcss@8.5.8`.
+- The patched PostCSS release covers the arbitrary file-read and source-map
+  path-traversal advisories [GHSA-6g55-p6wh-862q](https://github.com/advisories/GHSA-6g55-p6wh-862q)
+  and [GHSA-r28c-9q8g-f849](https://github.com/advisories/GHSA-r28c-9q8g-f849).
+  Its compatible `nanoid` refresh to `3.3.19` also removes the three Nanoid
+  advisories from the same audit tree.
+- The lockfile now resolves `postcss@8.5.28` and `nanoid@3.3.19`. Both remain
+  development/build dependencies and are not bundled into the deployed Worker
+  runtime. The high-severity audit baseline decreased from 25 to 20 findings;
+  residual findings remain report-only pending separate reachability or upgrade
+  decisions.
+
+Validation for this iteration: `bun install`, post-change
+`bun audit --audit-level=high`, targeted lockfile resolution checks, and the
+repository quality/integration/build gates. The audit remains report-only while
+the remaining transitive packages are triaged.
 
 ## Iteration 82 — Browserslist transitive dependency remediation
 

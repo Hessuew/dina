@@ -1,7 +1,7 @@
 # Security Baseline
 
 **Status:** In progress — the direct browser PDF, nested Vite, shell-quote,
-brace-expansion, and Browserslist dependencies are remediated; the reviewed
+brace-expansion, Browserslist, PostCSS, and Nanoid dependencies are remediated; the reviewed
 server-function authorization gaps, secret-inventory contract, and threat-model baseline are documented incrementally,
 while remaining transitive advisories and hosted security verification are pending
 **Phase:** Engineering Roadmap Phase 5: Security
@@ -21,8 +21,8 @@ update pull requests with `dependencies` and `security`.
 The advisory workflow is intentionally report-only while the remaining baseline is
 triaged. The current dependency tree still has high/critical transitive findings,
 but the direct browser-used `pdfjs-dist` advisory is remediated at `^6.2.108`.
-After the Browserslist remediation below, the local high-severity audit reports
-25 remaining high findings; all are currently transitive development-tool dependencies.
+After the PostCSS remediation below, the local high-severity audit reports
+20 remaining high findings; all are currently transitive development-tool dependencies.
 Do not suppress an advisory solely to make the workflow green. For each finding,
 decide whether to upgrade, replace, isolate, or accept it with a documented owner
 and review date.
@@ -99,6 +99,26 @@ copies. Browserslist is used by the build/development dependency paths shown by
 the audit tree and is not bundled as application runtime code. The local audit
 baseline decreased from 27 to 25 high findings; the remaining findings stay
 report-only until separately triaged.
+
+## PostCSS and Nanoid transitive dependency remediation
+
+The Vite and shadcn build-tool paths previously resolved `postcss@8.5.8`, which
+was affected by arbitrary file-read and source-map path-traversal advisories
+[GHSA-6g55-p6wh-862q](https://github.com/advisories/GHSA-6g55-p6wh-862q) and
+[GHSA-r28c-9q8g-f849](https://github.com/advisories/GHSA-r28c-9q8g-f849).
+The root `overrides` entry now pins all compatible PostCSS resolutions to
+`^8.5.28`, beyond the vulnerable `<=8.5.11` range.
+
+The patched PostCSS release also refreshes its compatible `nanoid` dependency
+from `3.3.11` to `3.3.19`, removing the three audit findings for negative-size,
+zero-size, and integer-overflow generator behavior:
+[GHSA-28wg-ghj8-5hjv](https://github.com/advisories/GHSA-28wg-ghj8-5hjv),
+[GHSA-2v37-7h3g-55p8](https://github.com/advisories/GHSA-2v37-7h3g-55p8), and
+[GHSA-xwg4-73v4-xw9w](https://github.com/advisories/GHSA-xwg4-73v4-xw9w).
+Both packages are reachable only through development/build tooling in the
+current audit tree and are not bundled as deployed Worker runtime code. The
+local high-severity audit baseline decreased from 25 to 20 findings; the
+remaining findings stay report-only until separately triaged.
 
 ## Review order
 
