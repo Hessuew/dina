@@ -44,6 +44,12 @@ The repository already has the first production-fundamentals slice:
   request correlation, actor and target IDs, reaction action, emoji, status,
   and duration. Unexpected persistence failures use stable post/comment
   reaction categories without raw database details.
+- Post-notification group and mark-all read-state mutations now emit redacted
+  `notification_group_marked_read` / `notifications_marked_read` events with
+  request correlation, actor/target metadata, read scope, status, and duration.
+  Unexpected persistence failures use the stable
+  `notification_read_state_persistence` category without notification content
+  or raw database details.
 - Student attendance check-ins now emit redacted completed, idempotent-retry,
   and unexpected-failure events with request correlation, safe
   course/session/lesson/student identifiers, status, duration, and a stable
@@ -1127,10 +1133,10 @@ community post/comment workflow:
 - Integration coverage verifies all six success event shapes, duration fields,
   content exclusion, and suppression of an expected missing-post failure.
 
-The next repository-owned structured-logging candidate is post-notification
-read-state mutations. Better Stack destination, dashboard, alert, Uptime,
-source-map, Slack, and named-owner setup remains account-specific external work
-described above.
+The next repository-owned structured-logging candidate after this iteration is
+the next uninstrumented server-function family. Better Stack destination,
+dashboard, alert, Uptime, source-map, Slack, and named-owner setup remains
+account-specific external work described above.
 
 ## Iteration 32 — post and comment reaction telemetry
 
@@ -1157,3 +1163,26 @@ generation, formatting, and `git diff --check` also passed; only existing
 deprecation, lint, Fallow, and large-chunk warnings remain. External Better
 Stack destination, dashboard, alert, Uptime, source-map, Slack, and named-owner
 setup remains account-specific work described above.
+
+## Iteration 33 — post-notification read-state telemetry
+
+This iteration completed the next repository-owned structured-logging slice for
+the notification inbox:
+
+- Group and mark-all read-state mutations now emit redacted
+  `notification_group_marked_read` and `notifications_marked_read` success
+  events. Events include request correlation, server-function path, actor ID,
+  target/event metadata where applicable, read scope, status, and duration.
+- Unexpected read-state persistence failures emit
+  `notification_read_state_failed` with the stable
+  `notification_read_state_persistence` category. Notification content and raw
+  database details remain excluded.
+- Existing optimistic UI, authorization boundary, and read-state behavior are
+  unchanged. Integration coverage verifies both success event shapes and the
+  stable redacted failure category.
+
+Validation: focused notification integration passed all 8 tests, full integration
+passed all 336 tests, `bun run quality:gate` passed with 1,933 unit tests, and
+the production build passed. External Better Stack destination, dashboard,
+alert, Uptime, source-map, Slack, and named-owner setup remains
+account-specific work described above.

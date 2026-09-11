@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   getPostNotificationsSummaryService,
   markAllPostNotificationsReadService,
@@ -76,6 +76,10 @@ describe('getPostNotificationsSummaryService (integration)', () => {
 })
 
 describe('markPostNotificationGroupReadService (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('marks only the matching event+post group as read', async () => {
     const userId = await seedProfile({ role: 'student' })
     const authorId = await seedProfile({ role: 'teacher' })
@@ -93,9 +97,40 @@ describe('markPostNotificationGroupReadService (integration)', () => {
     const remaining = result.groups.find((g) => g.unreadCount > 0)
     expect(remaining?.event).toBe('comment_created')
   })
+
+  it('logs a redacted success event with request and target metadata', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+    const authorId = await seedProfile({ role: 'teacher' })
+    const postId = await seedPost({ authorId })
+
+    await markPostNotificationGroupReadService(
+      { event: 'post_created', postId },
+      userId,
+    )
+
+    const [line] = infoSpy.mock.calls.map(([entry]) => String(entry))
+    const event = JSON.parse(line)
+    expect(event).toEqual(
+      expect.objectContaining({
+        event: 'notification_group_marked_read',
+        path: 'serverFn:markPostNotificationGroupRead',
+        actorId: userId,
+        postId,
+        notificationEvent: 'post_created',
+        status: 'success',
+      }),
+    )
+    expect(event.requestId).toBe('unknown')
+    expect(typeof event.durationMs).toBe('number')
+  })
 })
 
 describe('markAllPostNotificationsReadService (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('marks every notification for the user as read', async () => {
     const userId = await seedProfile({ role: 'student' })
     const authorId = await seedProfile({ role: 'teacher' })
@@ -107,5 +142,55 @@ describe('markAllPostNotificationsReadService (integration)', () => {
 
     const result = await getPostNotificationsSummaryService({}, userId)
     expect(result.unreadGroupCount).toBe(0)
+  })
+
+  it('logs a success event for marking every notification read', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+
+    await markAllPostNotificationsReadService(userId)
+
+    const [line] = infoSpy.mock.calls.map(([entry]) => String(entry))
+    const event = JSON.parse(line)
+    expect(event).toEqual(
+      expect.objectContaining({
+        event: 'notifications_marked_read',
+        path: 'serverFn:markAllPostNotificationsRead',
+        actorId: userId,
+        readScope: 'all',
+        status: 'success',
+      }),
+    )
+    expect(typeof event.durationMs).toBe('number')
+  })
+
+  it('logs a stable persistence category without raw database details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+    const postId = await seedPost({ authorId: userId })
+
+    await expect(
+      markPostNotificationGroupReadService(
+        { event: 'invalid' as never, postId },
+        userId,
+      ),
+    ).rejects.toBeDefined()
+
+    const lines = errorSpy.mock.calls.map(([entry]) => String(entry))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'notification_read_state_failed',
+          path: 'serverFn:markPostNotificationGroupRead',
+          actorId: userId,
+          postId,
+          readScope: 'group',
+          errorCategory: 'notification_read_state_persistence',
+          status: 'failure',
+        }),
+      ]),
+    )
+    expect(lines.join('\n')).not.toContain('invalid input value')
   })
 })

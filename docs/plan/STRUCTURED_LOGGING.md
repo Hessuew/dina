@@ -87,6 +87,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    correlation, actor/target IDs, reaction action, emoji, status, and duration.
    Unexpected reaction persistence failures use stable
    `post_reaction_persistence` or `comment_reaction_persistence` categories.
+   Post-notification group and mark-all read-state mutations now emit redacted
+   `notification_group_marked_read` / `notifications_marked_read` events with
+   request correlation, actor/target metadata, scope, status, and duration.
+   Unexpected read-state persistence failures use the stable
+   `notification_read_state_persistence` category; notification content and
+   raw database details remain excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a
