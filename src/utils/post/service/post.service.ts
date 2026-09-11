@@ -96,6 +96,10 @@ function shouldLogPostMutationFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
 }
 
+async function requirePostActor(userId: string) {
+  return getUserProfile(userId)
+}
+
 async function signPostAvatars(
   posts: ReadonlyArray<PostWithDetails>,
 ): Promise<Array<PostWithDetails>> {
@@ -212,11 +216,8 @@ export async function createPostBaseService(
   data: CreatePostInput,
   userId: string,
 ): Promise<{ post: PostWithDetails; canModerate: boolean }> {
-  const [isTeacher, isAdmin] = await Promise.all([
-    authz(userId).isRole('teacher'),
-    authz(userId).isAdmin(),
-  ])
-  const canModerate = isTeacher || isAdmin
+  const profile = await requirePostActor(userId)
+  const canModerate = profile.role === 'teacher' || profile.role === 'admin'
   const context: PostMutationLogContext = {
     action: 'createPost',
     actorId: userId,
@@ -257,6 +258,7 @@ export async function updatePostService(
   data: UpdatePostInput,
   userId: string,
 ): Promise<{ post: { id: string; content: string; updatedAt: Date } }> {
+  await requirePostActor(userId)
   const existing = await findPostForWrite(data.postId)
 
   if (!existing) {
@@ -295,6 +297,7 @@ export async function deletePostService(
   data: DeletePostInput,
   userId: string,
 ): Promise<{ success: true }> {
+  await requirePostActor(userId)
   const existing = await findPostForWrite(data.postId)
 
   if (!existing) {
@@ -365,6 +368,7 @@ export async function createCommentBaseService(
   data: CreateCommentInput,
   userId: string,
 ): Promise<{ comment: CommentWithAuthor; postAuthorId: string }> {
+  await requirePostActor(userId)
   const post = await findPostForWrite(data.postId)
   if (!post) {
     throw new NotFoundError('Post not found', {
@@ -418,6 +422,7 @@ export async function updateCommentService(
   data: UpdateCommentInput,
   userId: string,
 ): Promise<{ comment: { id: string; content: string; updatedAt: Date } }> {
+  await requirePostActor(userId)
   const existing = await findCommentForWrite(data.commentId)
 
   if (!existing) {
@@ -459,6 +464,7 @@ export async function deleteCommentService(
   data: DeleteCommentInput,
   userId: string,
 ): Promise<{ success: true }> {
+  await requirePostActor(userId)
   const existing = await findCommentForWrite(data.commentId)
 
   if (!existing) {
@@ -497,6 +503,7 @@ export async function togglePostReactionService(
   data: ToggleReactionInput,
   userId: string,
 ): Promise<{ action: ReactionAction }> {
+  await requirePostActor(userId)
   const context: PostMutationLogContext = {
     action: 'toggleReaction',
     actorId: userId,
@@ -543,6 +550,7 @@ export async function toggleCommentReactionService(
   data: ToggleCommentReactionInput,
   userId: string,
 ): Promise<{ action: ReactionAction }> {
+  await requirePostActor(userId)
   const context: PostMutationLogContext = {
     action: 'toggleCommentReaction',
     actorId: userId,

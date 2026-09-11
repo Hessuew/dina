@@ -114,6 +114,12 @@ describe('createPostBaseService (integration)', () => {
     vi.restoreAllMocks()
   })
 
+  it('requires a persisted profile before creating a post', async () => {
+    await expect(
+      createPostBaseService({ content: 'x' }, randomUUID()),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
   it('grants moderation to a teacher', async () => {
     const teacherId = await seedProfile({ role: 'teacher' })
 
@@ -231,6 +237,12 @@ describe('updatePostService (integration)', () => {
     vi.restoreAllMocks()
   })
 
+  it('requires a persisted profile before editing a post', async () => {
+    await expect(
+      updatePostService({ postId: randomUUID(), content: 'x' }, randomUUID()),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
   it('lets the author edit their post', async () => {
     const authorId = await seedProfile({ role: 'student' })
     const postId = await seedPost({ authorId, content: 'old' })
@@ -276,6 +288,12 @@ describe('updatePostService (integration)', () => {
 })
 
 describe('deletePostService (integration)', () => {
+  it('requires a persisted profile before deleting a post', async () => {
+    await expect(
+      deletePostService({ postId: randomUUID() }, randomUUID()),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
   it('soft-deletes the author’s post so it can no longer be fetched', async () => {
     const authorId = await seedProfile({ role: 'student' })
     const postId = await seedPost({ authorId })
@@ -347,6 +365,15 @@ describe('getCommentsService (integration)', () => {
 })
 
 describe('createCommentBaseService (integration)', () => {
+  it('requires a persisted profile before creating a comment', async () => {
+    await expect(
+      createCommentBaseService(
+        { postId: randomUUID(), content: 'x' },
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
   it('returns the new comment and the post author id', async () => {
     const postAuthorId = await seedProfile({ role: 'student' })
     const commenterId = await seedProfile({ role: 'student' })
@@ -372,6 +399,15 @@ describe('createCommentBaseService (integration)', () => {
 })
 
 describe('updateCommentService (integration)', () => {
+  it('requires a persisted profile before editing a comment', async () => {
+    await expect(
+      updateCommentService(
+        { commentId: randomUUID(), content: 'x' },
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
   it('lets the author edit their comment', async () => {
     const authorId = await seedProfile({ role: 'student' })
     const postId = await seedPost({ authorId })
@@ -406,6 +442,12 @@ describe('updateCommentService (integration)', () => {
 })
 
 describe('deleteCommentService (integration)', () => {
+  it('requires a persisted profile before deleting a comment', async () => {
+    await expect(
+      deleteCommentService({ commentId: randomUUID() }, randomUUID()),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
   it('lets the author soft-delete their comment', async () => {
     const authorId = await seedProfile({ role: 'student' })
     const postId = await seedPost({ authorId })
@@ -448,6 +490,15 @@ describe('deleteCommentService (integration)', () => {
 })
 
 describe('togglePostReactionService (integration)', () => {
+  it('requires a persisted profile before changing a reaction', async () => {
+    await expect(
+      togglePostReactionService(
+        { postId: randomUUID(), emoji: '👍' },
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
   it('adds a reaction when none exists', async () => {
     const userId = await seedProfile({ role: 'student' })
     const postId = await seedPost({ authorId: userId })
@@ -488,6 +539,15 @@ describe('togglePostReactionService (integration)', () => {
 })
 
 describe('toggleCommentReactionService (integration)', () => {
+  it('requires a persisted profile before changing a reaction', async () => {
+    await expect(
+      toggleCommentReactionService(
+        { commentId: randomUUID(), emoji: '👍' },
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
   it('adds then removes a comment reaction across toggles', async () => {
     const userId = await seedProfile({ role: 'student' })
     const postId = await seedPost({ authorId: userId })

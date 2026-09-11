@@ -107,6 +107,14 @@ and comment services now require the authenticated actor's persisted profile
 before querying community data. Integration coverage calls each service with an
 unknown actor and confirms the read is rejected before the repository path.
 
+### Post mutation boundary
+
+Post and comment create, update, delete, and reaction services now require the
+actor's persisted profile before any community read or write. Ownership and
+Teacher/Admin moderation checks remain in place after that identity check.
+Integration coverage confirms unknown actors are rejected before mutation
+repository calls.
+
 ### Lesson read boundary
 
 The lesson detail service now rejects unpublished lessons for students and

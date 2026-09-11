@@ -2663,3 +2663,22 @@ Notion. Service Catalog and the protected Production Readiness template were
 left unchanged because ownership, SLOs, and launch decisions did not change;
 the Engineering Roadmap received no append because its phase status and core
 work list remain unchanged.
+
+## Iteration 94 — post mutation service authorization hardening
+
+This iteration closed the next concrete Phase 5 service-boundary gap:
+
+- Post and comment create, update, and delete services plus post/comment
+  reaction services now require the caller's persisted profile before reading
+  or changing community data. Post moderation capability is derived from that
+  persisted role; existing ownership and Teacher/Admin moderation checks are
+  unchanged.
+- Added integration regressions proving unknown actors are rejected before
+  post, comment, and reaction mutation paths can proceed.
+- Updated `docs/plan/SECURITY.md`, `docs/plan/THREAT_MODEL.md`, and the
+  `src/utils` service-boundary inventory.
+
+Validation: focused post integration tests (45), full integration (397),
+`bun run quality:gate`, and the production build passed. Better Stack/Cloudflare
+provider acceptance, hosted RLS verification, and the remaining public-abuse
+controls remain external follow-up work.

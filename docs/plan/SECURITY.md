@@ -304,6 +304,15 @@ cannot bypass the authentication boundary before reading community content.
 All persisted roles retain the existing post, channel, and comment response
 shapes.
 
+### Post mutation service boundary
+
+Post and comment creates, edits, deletes, and reaction toggles now require a
+persisted caller profile before reading or changing community data. The create
+post path derives its moderation flag from that profile, while existing
+ownership and Teacher/Admin moderation checks remain unchanged. Focused
+integration coverage proves direct calls with an unknown actor fail before the
+post, comment, or reaction repository operation.
+
 ### Lesson read service boundary
 
 Lesson detail reads now apply the same manager-only draft rule as assignment
@@ -352,7 +361,8 @@ measured RBAC/RLS migration plan.
   substitution lookup now has the same Admin-only service boundary, the
   teacher-directory read requires a persisted caller profile, and the student
   directory list/detail services require a teacher or Admin actor. Post
-  channel/feed/post/comment reads also require a persisted caller profile.
+  channel/feed/post/comment reads and community mutations now require a
+  persisted caller profile.
 - Continue hardening admin access and review authentication/session boundaries;
   the calendar event listing is now covered by a server-side teacher/admin
   check; the teacher directory now also requires a persisted caller profile,
