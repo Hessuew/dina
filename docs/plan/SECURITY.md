@@ -1,9 +1,9 @@
 # Security Baseline
 
 **Status:** In progress — the direct browser PDF, nested Vite, and shell-quote dependencies
-are remediated; the reviewed server-function authorization gaps and secret-inventory contract
-are being closed incrementally, while remaining transitive advisories and the application
-security review are pending
+are remediated; the reviewed server-function authorization gaps, secret-inventory contract,
+and threat-model baseline are documented incrementally, while remaining transitive advisories
+and hosted security verification are pending
 **Phase:** Engineering Roadmap Phase 5: Security
 
 ## Dependency scanning
@@ -143,6 +143,21 @@ No credential values are stored in the repository or Notion. Named owners,
 live provider values, protected production environments, and the first
 controlled rotation remain external follow-up work.
 
+## Threat-model baseline
+
+The repository-owned threat-model baseline is documented in
+[docs/plan/THREAT_MODEL.md](./THREAT_MODEL.md). It maps actors, sensitive
+assets, Worker/Auth/Database/Storage/provider/CI trust boundaries, and fourteen
+threats covering authorization drift, public-endpoint abuse, secret exposure,
+telemetry privacy, storage access, CSRF, delivery retries, dependencies,
+rollback/recovery, capacity, RLS, and incomplete provider configuration.
+
+The baseline records current controls and evidence without treating application
+authorization as a substitute for a future request-identity-aware RLS design.
+Remaining work is live provider acceptance, the first hosted restore and
+rollback rehearsals, public-endpoint abuse controls, dependency triage, and a
+measured RBAC/RLS migration plan.
+
 ## Remaining Phase 5 work
 
 - Continue reviewing RBAC and database/RLS defense-in-depth against the current
@@ -160,5 +175,7 @@ controlled rotation remain external follow-up work.
   `docs/plan/SECRET_INVENTORY.md`.
 - Verify security-sensitive audit events in Better Stack without exporting PII or
   raw provider errors.
-- Complete threat modeling for public enrollment, authentication, admin workflows,
-  private storage, and external integrations.
+- Revisit the threat model for every new public endpoint, role, database/storage
+  boundary, external integration, or telemetry event; complete the external
+  verification actions listed in
+  [docs/plan/THREAT_MODEL.md](./THREAT_MODEL.md).

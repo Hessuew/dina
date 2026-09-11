@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 78
-**Scope:** document the bounded Phase 5 runtime and CI secret inventory after
-teacher-directory authorization hardening.
+**Iteration:** 79
+**Scope:** add the repository-owned Phase 5 threat-model baseline after
+documenting the runtime and CI secret inventory.
 
 ## Executive summary
 
@@ -303,6 +303,32 @@ opened_at)`. It supports filtering active windows before recent-opening
   role-based rotation, Better Stack acceptance checks, and redacted evidence
   requirements are explicit. Named account owners, live values, and the first
   controlled rotation remain external setup work.
+- The repository-owned Phase 5 threat-model baseline is now documented in
+  `docs/plan/THREAT_MODEL.md`. It maps actors, restricted assets, trust
+  boundaries, and fourteen threats across authentication, authorization,
+  public abuse, secrets, telemetry, storage, CSRF, integrations, dependencies,
+  recovery, capacity, RLS, and provider configuration. Each row names the
+  current repository control and the remaining external or evidence-gated
+  action.
+
+## Iteration 79 — Phase 5 threat-model baseline
+
+This iteration completed the next repository-owned Phase 5 security slice:
+
+- Added `docs/plan/THREAT_MODEL.md` with the DINA actors, sensitive assets,
+  seven trust boundaries, fourteen threat-register entries, current control
+  evidence, review contract, and prioritized follow-up actions.
+- Explicitly documented the security boundary between server-side application
+  authorization and the current direct Postgres/RLS state; no RLS policy or
+  production rate-limit behavior was changed without request-identity evidence.
+- Linked the threat model from `docs/plan/SECURITY.md` and kept hosted Better
+  Stack, Cloudflare, PostHog, restore, rollback, and secret-rotation work as
+  external verification rather than inventing account-specific values.
+
+Validation for this iteration: Markdown formatting, docs:notion-check, and the
+quality gate passed. Notion Security, Engineering Maturity, Maturity Tracking,
+and Engineering Roadmap records were synchronized; Production Readiness was
+skipped because this is a security baseline, not a launch decision.
 
 ## Iteration 78 — runtime and CI secret inventory
 
