@@ -436,3 +436,86 @@ describe('toggleCommentReactionService (integration)', () => {
     expect(action).toBe('updated')
   })
 })
+
+describe('reaction telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs redacted success events for post and comment toggles', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+    const postId = await seedPost({ authorId: userId })
+    const commentId = await seedComment({ postId, authorId: userId })
+
+    await togglePostReactionService({ postId, emoji: '👍' }, userId)
+    await toggleCommentReactionService({ commentId, emoji: '🎉' }, userId)
+
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'post_reaction_toggled',
+          path: 'serverFn:toggleReaction',
+          actorId: userId,
+          postId,
+          reactionAction: 'added',
+          emoji: '👍',
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'comment_reaction_toggled',
+          path: 'serverFn:toggleCommentReaction',
+          actorId: userId,
+          commentId,
+          reactionAction: 'added',
+          emoji: '🎉',
+          status: 'success',
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+  })
+
+  it('logs stable failure categories without raw persistence details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+    const missingPostId = randomUUID()
+    const missingCommentId = randomUUID()
+
+    await expect(
+      togglePostReactionService({ postId: missingPostId, emoji: '👍' }, userId),
+    ).rejects.toBeDefined()
+    await expect(
+      toggleCommentReactionService(
+        { commentId: missingCommentId, emoji: '🎉' },
+        userId,
+      ),
+    ).rejects.toBeDefined()
+
+    const lines = errorSpy.mock.calls.map(([line]) => String(line))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'post_mutation_failed',
+          path: 'serverFn:toggleReaction',
+          postId: missingPostId,
+          errorCategory: 'post_reaction_persistence',
+          status: 'failure',
+        }),
+        expect.objectContaining({
+          event: 'post_mutation_failed',
+          path: 'serverFn:toggleCommentReaction',
+          commentId: missingCommentId,
+          errorCategory: 'comment_reaction_persistence',
+          status: 'failure',
+        }),
+      ]),
+    )
+    expect(lines.join('\n')).not.toContain('foreign key')
+  })
+})

@@ -60,6 +60,8 @@ type PostMutationAction =
   | 'createComment'
   | 'updateComment'
   | 'deleteComment'
+  | 'toggleReaction'
+  | 'toggleCommentReaction'
 
 type PostMutationLogContext = {
   action: PostMutationAction
@@ -481,50 +483,90 @@ export async function togglePostReactionService(
   data: ToggleReactionInput,
   userId: string,
 ): Promise<{ action: ReactionAction }> {
-  const existing = await findPostReaction(data.postId, userId)
-  const action = determineReactionAction(existing, data.emoji)
-
-  switch (action) {
-    case 'added':
-      await insertPostReaction({
-        postId: data.postId,
-        userId,
-        emoji: data.emoji,
-      })
-      break
-    case 'removed':
-      if (existing) await deletePostReaction(existing.id)
-      break
-    case 'updated':
-      if (existing) await updatePostReaction(existing.id, data.emoji)
-      break
+  const context: PostMutationLogContext = {
+    action: 'toggleReaction',
+    actorId: userId,
+    postId: data.postId,
+    startedAt: performance.now(),
   }
 
-  return { action }
+  try {
+    const existing = await findPostReaction(data.postId, userId)
+    const action = determineReactionAction(existing, data.emoji)
+
+    switch (action) {
+      case 'added':
+        await insertPostReaction({
+          postId: data.postId,
+          userId,
+          emoji: data.emoji,
+        })
+        break
+      case 'removed':
+        if (existing) await deletePostReaction(existing.id)
+        break
+      case 'updated':
+        if (existing) await updatePostReaction(existing.id, data.emoji)
+        break
+    }
+
+    logPostMutationEvent('info', 'post_reaction_toggled', context, {
+      reactionAction: action,
+      emoji: data.emoji,
+    })
+    return { action }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'post_reaction_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function toggleCommentReactionService(
   data: ToggleCommentReactionInput,
   userId: string,
 ): Promise<{ action: ReactionAction }> {
-  const existing = await findCommentReaction(data.commentId, userId)
-  const action = determineReactionAction(existing, data.emoji)
-
-  switch (action) {
-    case 'added':
-      await insertCommentReaction({
-        commentId: data.commentId,
-        userId,
-        emoji: data.emoji,
-      })
-      break
-    case 'removed':
-      if (existing) await deleteCommentReaction(existing.id)
-      break
-    case 'updated':
-      if (existing) await updateCommentReaction(existing.id, data.emoji)
-      break
+  const context: PostMutationLogContext = {
+    action: 'toggleCommentReaction',
+    actorId: userId,
+    commentId: data.commentId,
+    startedAt: performance.now(),
   }
 
-  return { action }
+  try {
+    const existing = await findCommentReaction(data.commentId, userId)
+    const action = determineReactionAction(existing, data.emoji)
+
+    switch (action) {
+      case 'added':
+        await insertCommentReaction({
+          commentId: data.commentId,
+          userId,
+          emoji: data.emoji,
+        })
+        break
+      case 'removed':
+        if (existing) await deleteCommentReaction(existing.id)
+        break
+      case 'updated':
+        if (existing) await updateCommentReaction(existing.id, data.emoji)
+        break
+    }
+
+    logPostMutationEvent('info', 'comment_reaction_toggled', context, {
+      reactionAction: action,
+      emoji: data.emoji,
+    })
+    return { action }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'comment_reaction_persistence',
+      })
+    }
+    throw error
+  }
 }

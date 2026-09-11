@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 30
-**Scope:** add redacted structured telemetry to calendar event mutations.
+**Iteration:** 32
+**Scope:** add redacted structured telemetry to post and comment reaction mutations.
 
 ## Executive summary
 
@@ -40,6 +40,10 @@ The repository already has the first production-fundamentals slice:
   `notification_delivery_failed` event with request correlation, notification
   type, recipient count, duration, and a stable error category. Best-effort
   delivery semantics are unchanged.
+- Post and comment reaction toggles now emit redacted success events with
+  request correlation, actor and target IDs, reaction action, emoji, status,
+  and duration. Unexpected persistence failures use stable post/comment
+  reaction categories without raw database details.
 - Student attendance check-ins now emit redacted completed, idempotent-retry,
   and unexpected-failure events with request correlation, safe
   course/session/lesson/student identifiers, status, duration, and a stable
@@ -1123,7 +1127,33 @@ community post/comment workflow:
 - Integration coverage verifies all six success event shapes, duration fields,
   content exclusion, and suppression of an expected missing-post failure.
 
-The next repository-owned structured-logging candidates are reaction mutations
-and post-notification read-state mutations. Better Stack destination,
-dashboard, alert, Uptime, source-map, Slack, and named-owner setup remains
-account-specific external work described above.
+The next repository-owned structured-logging candidate is post-notification
+read-state mutations. Better Stack destination, dashboard, alert, Uptime,
+source-map, Slack, and named-owner setup remains account-specific external work
+described above.
+
+## Iteration 32 — post and comment reaction telemetry
+
+This iteration completed the next repository-owned structured-logging slice for
+community reactions:
+
+- Post and comment reaction toggles now emit redacted
+  `post_reaction_toggled` and `comment_reaction_toggled` success events.
+- Events include request correlation, server-function path, actor ID, target
+  ID, reaction action (`added`, `removed`, or `updated`), emoji, status, and
+  duration. Reaction content is allow-listed input; no post/comment bodies or
+  raw persistence details are logged.
+- Unexpected reaction persistence failures emit the shared
+  `post_mutation_failed` event with stable `post_reaction_persistence` or
+  `comment_reaction_persistence` categories. Existing toggle behavior and
+  expected error propagation are unchanged.
+- Integration coverage verifies both success event shapes, redacted stable
+  failure categories, target IDs, action fields, and duration metadata.
+
+Validation: the focused post integration suite passed with 28 tests, the full
+integration suite passed with 333 tests, `bun run quality:gate` passed with
+1,933 unit tests, and the production build passed. TypeScript, Cloudflare type
+generation, formatting, and `git diff --check` also passed; only existing
+deprecation, lint, Fallow, and large-chunk warnings remain. External Better
+Stack destination, dashboard, alert, Uptime, source-map, Slack, and named-owner
+setup remains account-specific work described above.

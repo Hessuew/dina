@@ -82,6 +82,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    actor/post/comment/course IDs, status, and duration. Unexpected persistence
    failures use `post_persistence` or `comment_persistence`; post and comment
    content remains excluded.
+   Post and comment reaction toggles now emit redacted
+   `post_reaction_toggled` / `comment_reaction_toggled` events with request
+   correlation, actor/target IDs, reaction action, emoji, status, and duration.
+   Unexpected reaction persistence failures use stable
+   `post_reaction_persistence` or `comment_reaction_persistence` categories.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

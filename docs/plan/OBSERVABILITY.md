@@ -29,6 +29,8 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   request-correlated operational events; event content and meeting links are
   excluded from telemetry. Post and comment create/update/delete mutations now
   emit redacted request-correlated events; post/comment content is excluded.
+  Post and comment reaction toggles also emit redacted request-correlated
+  events with safe actor/target IDs, action, emoji, status, and duration.
 
 - **Cloudflare Workers:** Basic observability
   - Logs enabled (100% sampling)

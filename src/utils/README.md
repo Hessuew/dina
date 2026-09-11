@@ -101,6 +101,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     `post_*` / `comment_*` events with request correlation, actor/post/comment/
     course IDs, status, and duration; content and raw persistence details are
     excluded.
+  - Post and comment reaction toggles emit redacted
+    `post_reaction_toggled` / `comment_reaction_toggled` events with request
+    correlation, actor/target IDs, action, emoji, status, and duration;
+    unexpected persistence failures use stable reaction categories.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is
