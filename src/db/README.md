@@ -95,6 +95,10 @@ Database access layer and schema definitions.
       - Student open-session reads filter by `closes_at` and order by recent
         `opened_at`; the Phase 4 performance migration
         `0054_elite_polaris` adds `attendance_sessions_closes_at_opened_at_idx`.
+    - `exam_attempts`
+      - Teacher grading reads filter by `exam_id` and order by the earliest
+        `started_at`; the Phase 4 performance migration
+        `0055_motionless_jazinda` adds `exam_attempts_exam_started_at_idx`.
     - `course_teachers`
       - Course-team reads that filter by `course_id` and order by assignment
         creation use `(course_id, created_at)`; the Phase 4 performance

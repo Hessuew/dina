@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 67
-**Scope:** add a measured, additive index for student open-attendance-session reads as the next Phase 4 performance slice.
+**Iteration:** 68
+**Scope:** add a measured, additive index for teacher exam-grading attempt reads as the next Phase 4 performance slice.
 
 ## Executive summary
 
@@ -249,6 +249,32 @@ opened_at)`. It supports filtering active windows before recent-opening
   shape. Migration `0054_elite_polaris` and the hosted
   `EXPLAIN (ANALYZE, BUFFERS)` follow-up are documented in
   `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+- Teacher exam-grading reads now have the additive
+  `exam_attempts_exam_started_at_idx` index on `(exam_id, started_at)`. It
+  supports filtering attempts for one exam before earliest-start ordering
+  without changing grading authorization, attempt lifecycle, or response
+  shape. Migration `0055_motionless_jazinda` and the hosted
+  `EXPLAIN (ANALYZE, BUFFERS)` follow-up are documented in
+  `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+
+## Iteration 68 — exam grading attempt index
+
+This iteration completed the next repository-owned Phase 4 slice:
+
+- Added `exam_attempts_exam_started_at_idx` on `(exam_id, started_at)` for the
+  existing teacher grading query, which filters attempts to one exam and orders
+  them by earliest start time.
+- Kept grading authorization, attempt state transitions, response shape, and
+  student attempt history unchanged. The index is additive and complements
+  the existing `(exam_id, status)` and `(exam_id, student_id)` indexes.
+- Extended the performance review and database README. Hosted verification now
+  covers eleven indexed query shapes; the student-wide attempt history query
+  remains evidence-gated until representative hosted data exists.
+
+Validation for this iteration: migration generation and replay, focused exam
+integration coverage, formatting, `git diff --check`, `bun run docs:notion-check`,
+`bun run quality:gate`, and `bun run build`. Hosted plan/timing evidence
+remains pending representative development data.
 
 ## Iteration 67 — open attendance session index
 

@@ -191,6 +191,10 @@ export const examAttempts = pgTable(
       table.studentId,
     ),
     index('exam_attempts_exam_status_idx').on(table.examId, table.status),
+    index('exam_attempts_exam_started_at_idx').on(
+      table.examId,
+      table.startedAt,
+    ),
     pgPolicy('students_view_own_exam_attempts', {
       for: 'select',
       to: authenticatedRole,

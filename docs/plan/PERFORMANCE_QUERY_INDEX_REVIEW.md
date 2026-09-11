@@ -20,6 +20,7 @@ order by stable columns:
 | Course-team reads          | `course_id` membership plus oldest-first `created_at`              | `course_teachers_course_created_at_idx`       |
 | Student submission reads   | `student_id` lookup for assignment and teacher/student views       | `submissions_student_id_idx`                  |
 | Open attendance sessions   | active `closes_at` plus newest-first `opened_at`                   | `attendance_sessions_closes_at_opened_at_idx` |
+| Exam grading attempts      | `exam_id` plus ascending `started_at`                              | `exam_attempts_exam_started_at_idx`           |
 
 These indexes support the existing cursor pagination, unread read-state,
 ordered/upcoming lesson, assignment catalog, teacher lesson assignment,
@@ -32,9 +33,9 @@ procedure.
 - The migration is replayed by `bun run test:integration`.
 - The affected post, notification, and course integration suites must remain
   green.
-- After hosted data exists, capture `EXPLAIN (ANALYZE, BUFFERS)` for the ten
+- After hosted data exists, capture `EXPLAIN (ANALYZE, BUFFERS)` for the eleven
   query shapes in a controlled development environment and record only plan
-  summaries and timings in the performance review record for the ten
+  summaries and timings in the performance review record for the eleven
   indexed query shapes.
 - Revisit index usefulness after production traffic is available; remove or
   refine indexes only through a later measured migration.
@@ -88,3 +89,16 @@ opened_at)` for the existing student open-session read, which filters out
 - Hosted verification now covers ten `EXPLAIN (ANALYZE, BUFFERS)` shapes; the
   unbounded student assignment list still needs representative hosted data
   before a due-date-only index is considered.
+
+## Iteration 68 — exam grading attempt index
+
+This iteration completed the next repository-owned Phase 4 slice:
+
+- Added `exam_attempts_exam_started_at_idx` on `(exam_id, started_at)` for the
+  existing teacher grading list, which filters attempts to one exam and orders
+  them by the earliest submission start.
+- Kept grading authorization, attempt state transitions, response shape, and
+  student attempt history unchanged. The index is additive and complements
+  the existing `(exam_id, status)` and `(exam_id, student_id)` indexes.
+- Hosted verification now covers eleven `EXPLAIN (ANALYZE, BUFFERS)` shapes;
+  student-wide attempt history remains a separate evidence-gated query.
