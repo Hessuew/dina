@@ -92,6 +92,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     state where relevant; unexpected persistence failures use the stable
     `course_persistence` category while expected conflicts and validation
     outcomes remain outside noisy error logs.
+  - Direct Admin course-teacher assignment emits redacted
+    `course_teachers_updated` telemetry with request correlation,
+    actor/course/teacher IDs, status, and duration; unexpected replacement
+    failures use `course_teacher_assignment_persistence` without raw database
+    details.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is

@@ -763,6 +763,7 @@ describe('getCourseTeachersService (integration)', () => {
 
 describe('updateCourseTeachersService (integration)', () => {
   it('admin assigns a teacher pair', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const courseId = await seedCourse()
     const t1 = await seedProfile({ role: 'teacher' })
@@ -775,6 +776,15 @@ describe('updateCourseTeachersService (integration)', () => {
 
     expect(result).toEqual({ success: true })
     expect(await findCourseTeachers(courseId)).toHaveLength(2)
+    expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
+      event: 'course_teachers_updated',
+      path: 'serverFn:updateCourseTeachers',
+      status: 'success',
+      actorId: adminId,
+      courseId,
+      teacher1Id: t1,
+      teacher2Id: t2,
+    })
   })
 
   it('rejects a non-admin caller', async () => {
@@ -792,6 +802,8 @@ describe('updateCourseTeachersService (integration)', () => {
   })
 
   it('throws when the course does not exist', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const t1 = await seedProfile({ role: 'teacher' })
     const t2 = await seedProfile({ role: 'teacher' })
@@ -802,5 +814,7 @@ describe('updateCourseTeachersService (integration)', () => {
         adminId,
       ),
     ).rejects.toMatchObject({ code: 'COURSE_NOT_FOUND', status: 404 })
+    expect(infoSpy).not.toHaveBeenCalled()
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })

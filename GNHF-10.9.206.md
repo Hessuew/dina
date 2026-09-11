@@ -1036,3 +1036,21 @@ Validation for this iteration: targeted Markdown formatting,
 `bun run docs:notion-check --json`, and `bun run quality:gate` passed with
 1,933 unit tests. The gate reported only pre-existing lint/Fallow warnings;
 no runtime behavior changed.
+
+## Iteration 28 — course-teacher assignment telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- The direct Admin `updateCourseTeachers` server function now emits a redacted
+  `course_teachers_updated` event with `requestId`, server-function path,
+  status, duration, actor/course IDs, and both assigned teacher IDs.
+- Unexpected assignment-replacement failures emit the stable
+  `course_teacher_assignment_persistence` category without raw database or
+  provider details. Expected authorization, validation, conflict, and
+  not-found outcomes remain ordinary user-facing failures and are not logged
+  as noisy operational errors.
+- Integration coverage verifies the successful event shape and that a missing
+  course does not generate an operational error event.
+
+The broader Better Stack destination, dashboard, alert, Uptime, source-map,
+Slack, and named-owner setup remains account-specific work documented above.

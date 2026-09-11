@@ -58,6 +58,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    unexpected persistence failures use the stable `course_persistence`
    category while expected authorization, validation, and teacher-conflict
    outcomes remain out of noisy error logs.
+   The direct Admin course-teacher assignment mutation now emits a redacted
+   `course_teachers_updated` event with request correlation, actor/course/
+   teacher IDs, status, and duration; unexpected replacement failures use the
+   stable `course_teacher_assignment_persistence` category while expected
+   authorization, validation, conflict, and not-found outcomes remain out of
+   noisy error logs.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a
