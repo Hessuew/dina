@@ -19,6 +19,14 @@ export async function insertLesson(values: {
   return lesson
 }
 
+export async function findLessonForCompletion(lessonId: string) {
+  const db = await getDb()
+  return db.query.lessons.findFirst({
+    where: eq(lessons.id, lessonId),
+    columns: { id: true, courseId: true, isPublished: true },
+  })
+}
+
 export async function updateLessonById(
   lessonId: string,
   values: {

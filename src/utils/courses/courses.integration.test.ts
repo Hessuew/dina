@@ -8,6 +8,7 @@ import {
   updateCourseService,
 } from '@/utils/courses/service/course.service'
 import {
+  completeLessonService,
   createLessonService,
   deleteLessonService,
   getCalendarEventsService,
@@ -24,6 +25,7 @@ import {
   findAllCourses,
   findCourseById,
   findCourseTeachers,
+  findLessonProgress,
   insertCourse,
 } from '@/utils/courses/repository'
 import {
@@ -67,6 +69,14 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
 })
+
+async function seedCourseWithTeacher() {
+  const teacherId = await seedProfile({ role: 'teacher' })
+  const courseId = await seedCourse()
+  await seedCourseTeacher(courseId, teacherId)
+  const lessonId = await seedLesson({ courseId, isPublished: true })
+  return { teacherId, courseId, lessonId }
+}
 
 describe('getCoursesService (integration)', () => {
   it('admin sees unpublished lessons', async () => {
@@ -193,6 +203,71 @@ describe('getCourseService (integration)', () => {
       submittedCount: 0,
       gradedCount: 1,
     })
+  })
+})
+
+describe('completeLessonService (integration)', () => {
+  it('marks a published lesson complete and emits safe telemetry', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { courseId, lessonId } = await seedCourseWithTeacher()
+    const studentId = await seedProfile({ role: 'student' })
+
+    const result = await completeLessonService({ lessonId }, studentId)
+
+    expect(result).toMatchObject({
+      lessonId,
+      completed: true,
+      alreadyCompleted: false,
+    })
+    expect(await findLessonProgress(studentId, lessonId)).toMatchObject({
+      studentId,
+      lessonId,
+      completed: true,
+    })
+    expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
+      event: 'lesson_completed',
+      path: 'serverFn:completeLesson',
+      status: 'success',
+      actorId: studentId,
+      courseId,
+      lessonId,
+      alreadyCompleted: false,
+    })
+    infoSpy.mockRestore()
+  })
+
+  it('keeps repeated completion idempotent', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { lessonId } = await seedCourseWithTeacher()
+    const studentId = await seedProfile({ role: 'student' })
+
+    await completeLessonService({ lessonId }, studentId)
+    const result = await completeLessonService({ lessonId }, studentId)
+
+    expect(result.alreadyCompleted).toBe(true)
+    expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
+      event: 'lesson_completion_ignored',
+      status: 'ignored',
+      alreadyCompleted: true,
+    })
+    infoSpy.mockRestore()
+  })
+
+  it('rejects unpublished lessons and non-student callers', async () => {
+    const { courseId, lessonId } = await seedCourseWithTeacher()
+    const unpublishedLessonId = await seedLesson({
+      courseId,
+      isPublished: false,
+    })
+    const studentId = await seedProfile({ role: 'student' })
+    const teacherId = await seedProfile({ role: 'teacher' })
+
+    await expect(
+      completeLessonService({ lessonId: unpublishedLessonId }, studentId),
+    ).rejects.toMatchObject({ code: 'AUTHORIZATION_FAILED', status: 403 })
+    await expect(
+      completeLessonService({ lessonId }, teacherId),
+    ).rejects.toMatchObject({ code: 'ROLE_REQUIRED', status: 403 })
   })
 })
 

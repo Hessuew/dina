@@ -189,6 +189,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    duration, and stable delivery or persistence categories. Recipient email
    addresses, invitation tokens, provider errors, and expected user-facing
    authorization/conflict/not-found outcomes remain excluded.
+   Student completion of published lessons now persists through an idempotent
+   progress upsert and emits redacted `lesson_completed` on first completion,
+   `lesson_completion_ignored` on repeat requests, and
+   `lesson_completion_failed` for unexpected persistence errors. Events carry
+   request correlation, actor/course/lesson IDs, status, duration, and stable
+   persistence categories; lesson content remains excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

@@ -1,6 +1,6 @@
 # PostHog Product Analytics
 
-**Status:** Foundation implemented; enrollment, assignment submission, course start, and teacher review instrumented
+**Status:** Foundation implemented; enrollment, assignment submission, course start, lesson completion, and teacher review instrumented
 
 ## Purpose
 
@@ -45,5 +45,8 @@ stable assignment ID. A student opening the first unfinished published lesson
 from a course detail page now emits `course_started` with only the stable course
 ID. A successful teacher grading mutation now emits
 `teacher_review_completed` with only stable assignment and submission IDs;
-grade and feedback content remain outside analytics. Lesson completion, course
-completion, and verification in the configured PostHog project remain pending.
+grade and feedback content remain outside analytics. A student can now mark a
+published lesson complete from its detail page; the resulting
+`lesson_completed` event carries only the stable lesson ID and fires only after
+the persistence mutation succeeds. Course completion and verification in the
+configured PostHog project remain pending.

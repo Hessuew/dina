@@ -1,4 +1,5 @@
 import type {
+  CompleteLessonInput,
   CreateLessonInput,
   DeleteLessonInput,
   UpdateLessonInput,
@@ -7,10 +8,13 @@ import type { LogLevel } from '@/utils/observability/logger'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
+  completeLessonProgress,
   deleteLessonById,
   findAllCourseIds,
   findAssignmentCalendarEvents,
   findLessonCalendarEvents,
+  findLessonForCompletion,
+  findLessonProgress,
   findUpcomingLessons,
   insertLesson,
   updateLessonById,
@@ -18,13 +22,15 @@ import {
 import { buildCourseCalendarEvents } from '@/utils/courses/domain/course.domain'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
+import { AuthorizationError, NotFoundError } from '@/utils/errors'
 
-type LessonMutationAction = 'createLesson' | 'updateLesson' | 'deleteLesson'
+type LessonMutationAction =
+  'createLesson' | 'updateLesson' | 'deleteLesson' | 'completeLesson'
 
 type LessonMutationLogContext = {
   action: LessonMutationAction
   actorId: string
-  courseId: string
+  courseId?: string
   lessonId?: string
   startedAt: number
 }
@@ -144,6 +150,57 @@ export async function deleteLessonService(
   }
 
   return { success: true, lessonId: data.lessonId }
+}
+
+export async function completeLessonService(
+  data: CompleteLessonInput,
+  userId: string,
+) {
+  const context: LessonMutationLogContext = {
+    action: 'completeLesson',
+    actorId: userId,
+    lessonId: data.lessonId,
+    startedAt: performance.now(),
+  }
+  await authz(userId).hasRole('student')
+
+  const lesson = await findLessonForCompletion(data.lessonId)
+  if (!lesson) {
+    throw new NotFoundError('Lesson not found', {
+      code: 'LESSON_NOT_FOUND',
+      details: { lessonId: data.lessonId },
+    })
+  }
+  if (!lesson.isPublished) {
+    throw new AuthorizationError('Lesson not available', {
+      details: { lessonId: data.lessonId },
+    })
+  }
+
+  const progress = await findLessonProgress(userId, lesson.id)
+  context.courseId = lesson.courseId
+
+  try {
+    const updatedProgress = await completeLessonProgress(userId, lesson.id)
+    const alreadyCompleted = Boolean(progress?.completed)
+    logLessonMutationEvent(
+      'info',
+      alreadyCompleted ? 'lesson_completion_ignored' : 'lesson_completed',
+      context,
+      { status: alreadyCompleted ? 'ignored' : 'success', alreadyCompleted },
+    )
+    return {
+      lessonId: lesson.id,
+      completed: true,
+      alreadyCompleted,
+      progress: updatedProgress,
+    }
+  } catch (error) {
+    logLessonMutationEvent('error', 'lesson_completion_failed', context, {
+      errorCategory: 'lesson_progress_persistence',
+    })
+    throw error
+  }
 }
 
 export async function getUpcomingLessonsService(userId: string) {

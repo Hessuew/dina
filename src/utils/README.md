@@ -112,6 +112,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     `lesson_updated`, and `lesson_deleted` events with request correlation,
     actor/course/lesson IDs, status, and duration; persistence failures use
     the stable `lesson_persistence` category.
+  - Student lesson completion is persisted through the `completeLesson` server
+    function only for published lessons. Completion uses an idempotent
+    `(studentId, lessonId)` upsert and emits redacted `lesson_completed`,
+    `lesson_completion_ignored`, or `lesson_completion_failed` events without
+    lesson content.
   - Assignment authoring emits redacted `assignment_created`,
     `assignment_updated`, and `assignment_deleted` events with request
     correlation, server-function path, actor/course/lesson/assignment IDs,

@@ -80,6 +80,11 @@ export function trackCourseStarted(courseId: string): boolean {
   return trackAnalyticsEvent('course_started', { courseId })
 }
 
+/** Captures a first lesson completion without including lesson content. */
+export function trackLessonCompleted(lessonId: string): boolean {
+  return trackAnalyticsEvent('lesson_completed', { lessonId })
+}
+
 /** Captures a completed teacher review without including grade or feedback. */
 export function trackTeacherReviewCompleted(
   assignmentId: string,

@@ -209,7 +209,11 @@ export const lessonProgress = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
+    uniqueIndex('lesson_progress_student_lesson_unique').on(
+      table.studentId,
+      table.lessonId,
+    ),
     // Students can view their own progress
     pgPolicy('students_view_own_progress', {
       for: 'select',

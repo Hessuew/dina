@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import z from 'zod'
 import { getAssignmentSubmissionCount, getLesson } from '@/utils/assignments'
+import { completeLesson } from '@/utils/courses'
 import { AssignmentDialog } from '@/components/dialog/assignment-dialog/AssignmentDialog'
 import { LessonDialog } from '@/components/dialog/lesson-dialog/LessonDialog'
 import { useDialogState } from '@/hooks/useDialogState'
@@ -12,6 +13,8 @@ import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { LessonDetailSections } from '@/components/lesson/LessonDetailSections'
+import { useMutation } from '@/hooks/useMutation'
+import { trackLessonCompleted } from '@/utils/analytics'
 import { ViewerDateTime } from '@/components/ui/viewer-date-time'
 import {
   buildLessonBackNavigation,
@@ -135,17 +138,23 @@ function LessonSections({
   role,
   permissions,
   showContent,
+  isCompleted,
+  isCompleting,
   assignmentDialog,
   onDeleteAssignment,
   onOpenAssignment,
+  onComplete,
 }: {
   lesson: Lesson
   role: LessonRole
   permissions: LessonPermissions
   showContent: boolean
+  isCompleted: boolean
+  isCompleting: boolean
   assignmentDialog: AssignmentDialogState
   onDeleteAssignment: (assignment: Assignment) => void
   onOpenAssignment: (assignmentId: string) => void
+  onComplete: () => void
 }) {
   return (
     <LessonDetailSections
@@ -153,12 +162,15 @@ function LessonSections({
       role={role}
       permissions={permissions}
       showContent={showContent}
+      isCompleted={isCompleted}
+      isCompleting={isCompleting}
       onCreateAssignment={() => assignmentDialog.openDialog('create')}
       onEditAssignment={(assignment) =>
         assignmentDialog.openDialog('edit', assignment)
       }
       onDeleteAssignment={onDeleteAssignment}
       onOpenAssignment={onOpenAssignment}
+      onComplete={onComplete}
     />
   )
 }
@@ -272,9 +284,18 @@ function useAssignmentDeleteDialog(assignmentDialog: AssignmentDialogState) {
 function LessonDetailComponent() {
   const loaderData = Route.useLoaderData()
   const search = Route.useSearch()
+  const router = useRouter()
   const { lesson, role, permissions } = loaderData
   const lessonDialog = useDialogState()
   const assignmentDialog = useDialogState<Assignment>()
+  const completeLessonMutation = useMutation({
+    fn: completeLesson,
+    onSuccess: async ({ data }) => {
+      if (!data.alreadyCompleted) trackLessonCompleted(lesson.id)
+      toast.success('Lesson marked complete')
+      await router.invalidate()
+    },
+  })
   const isPublished = resolveLessonPublished(lesson.isPublished)
   const showContent = shouldShowLessonContent(isPublished, permissions.canEdit)
   const { goBack, handleOpenAssignment } = useLessonNavigation({
@@ -302,8 +323,13 @@ function LessonDetailComponent() {
         role={role}
         permissions={permissions}
         showContent={showContent}
+        isCompleted={loaderData.isCompleted}
+        isCompleting={completeLessonMutation.isPending}
         onDeleteAssignment={handleDeleteAssignmentClick}
         onOpenAssignment={handleOpenAssignment}
+        onComplete={() => {
+          void completeLessonMutation.mutate({ data: { lessonId: lesson.id } })
+        }}
         assignmentDialog={assignmentDialog}
       />
 

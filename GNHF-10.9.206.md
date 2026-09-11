@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 48
-**Scope:** add redacted structured telemetry to manual enrollment invitations.
+**Iteration:** 49
+**Scope:** add a reliable lesson-completion action and privacy-safe product telemetry.
 
 ## Executive summary
 
@@ -58,6 +58,12 @@ The repository already has the first production-fundamentals slice:
   new-versus-resend mode, status, duration, and stable delivery or persistence
   categories; recipient email addresses, invitation tokens, and provider
   errors remain excluded.
+- Students can now mark published lessons complete from the lesson detail page.
+  The existing `lesson_progress` table has a unique `(student_id, lesson_id)`
+  constraint, and the completion server function uses an idempotent upsert.
+  Operational events are redacted `lesson_completed`,
+  `lesson_completion_ignored`, and `lesson_completion_failed` events; lesson
+  content remains excluded.
 - Post and comment reaction toggles now emit redacted success events with
   request correlation, actor and target IDs, reaction action, emoji, status,
   and duration. Unexpected persistence failures use stable post/comment
@@ -1014,7 +1020,7 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 | Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                     | Create Better Stack/Cloudflare dashboard and extract stable log metrics                              |
 | Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                    | Create external dashboards, set the admin hub URL variables, and update existing Notion rows         |
 | Alerting              | No verified production alert set                                                                                                                            | Configure Uptime, error-rate, readiness, and latency alerts; test them                               |
-| Product analytics     | Enrollment, assignment submission, and course-start events are instrumented; project verification and later milestones remain pending                       | Verify events in PostHog, then instrument lesson completion when a reliable completion action exists |
+| Product analytics     | Enrollment, assignment submission, course-start, and lesson-completion events are instrumented; project verification and course completion remain pending   | Verify events in PostHog, then instrument course completion when its completion boundary is reliable |
 
 ### Phase 2 — Reliability
 
@@ -1555,3 +1561,50 @@ This iteration completed the next repository-owned structured-logging slice:
 Validation: focused enrollment integration tests (43) passed. Better Stack
 destinations, dashboards, alerts, Uptime monitors, source maps, Slack routing,
 and named ownership remain account-specific external setup work.
+
+## Iteration 49 — lesson completion and product analytics
+
+This iteration completed the previously deferred lesson-completion slice by
+adding a real student action backed by the existing progress table:
+
+- Added `completeLesson` with UUID validation, authenticated student-only
+  access, and a published-lesson check. Expected authorization/not-found
+  outcomes remain ordinary user-facing errors.
+- Added a unique `(student_id, lesson_id)` database index and an idempotent
+  progress upsert. Repeated requests return `alreadyCompleted=true` and do not
+  create duplicate progress rows.
+- The lesson detail page now returns the student's current completion state and
+  shows a design-system completion control only to students viewing published
+  content. Teachers and Admins retain their existing lesson-content view.
+- Added redacted `lesson_completed`, `lesson_completion_ignored`, and
+  `lesson_completion_failed` structured events with request correlation,
+  actor/course/lesson IDs, status, duration, and stable persistence categories.
+  Lesson titles, content, and raw database details are excluded.
+- Added the allow-listed PostHog `lesson_completed` event. It sends only the
+  stable lesson ID and is captured only after the first persistence mutation
+  succeeds, so refreshes and repeat requests do not inflate completion counts.
+- Added integration coverage for success, idempotency, privacy-safe logging,
+  published-lesson authorization, analytics capture, and the new unique index.
+
+Validation: focused analytics tests (2), focused course integration tests (49),
+TypeScript typecheck, migration generation, targeted formatting, and the
+production-quality checks for the changed paths passed. The generated migration
+is `drizzle/0046_skinny_korath.sql`.
+
+### Migration preflight for hosted databases
+
+Before applying migration `0046` to an existing Supabase environment, open the
+Supabase SQL Editor and confirm that the new unique index will not encounter
+legacy duplicate progress rows:
+
+```sql
+SELECT student_id, lesson_id, COUNT(*) AS row_count
+FROM lesson_progress
+GROUP BY student_id, lesson_id
+HAVING COUNT(*) > 1;
+```
+
+The query must return zero rows before migration. If it returns rows, reconcile
+the duplicate records in a reviewed SQL change while preserving the completed
+record and its earliest completion timestamp, then rerun the query. The
+migration intentionally fails closed instead of silently deleting progress.

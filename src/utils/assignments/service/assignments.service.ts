@@ -35,6 +35,7 @@ import {
   findLessonIdsByCourseIds,
   findLessonWithDetail,
 } from '@/utils/assignments/repository/lessons.repository'
+import { findLessonProgress } from '@/utils/courses/repository'
 import {
   findSubmissionByAssignmentAndStudent,
   findSubmissionById,
@@ -97,6 +98,10 @@ export async function getLessonService(data: GetLessonInput, userId: string) {
   }
 
   const profile = await getUserProfile(userId)
+  const progress =
+    profile.role === 'student'
+      ? await findLessonProgress(userId, data.lessonId)
+      : null
 
   const courseWithTeachers = {
     id: lesson.course.id,
@@ -117,6 +122,7 @@ export async function getLessonService(data: GetLessonInput, userId: string) {
     lesson: { ...lesson, course: courseWithTeachers },
     role: profile.role,
     permissions,
+    isCompleted: Boolean(progress?.completed),
   }
 }
 

@@ -34,7 +34,12 @@ export const getLessonSchema = z.object({
   lessonId: z.uuid('Invalid lesson ID'),
 })
 
+export const completeLessonSchema = z.object({
+  lessonId: z.uuid('Invalid lesson ID'),
+})
+
 export type CreateLessonInput = z.infer<typeof createLessonSchema>
 export type UpdateLessonInput = z.infer<typeof updateLessonSchema>
 export type DeleteLessonInput = z.infer<typeof deleteLessonSchema>
 export type GetLessonInput = z.infer<typeof getLessonSchema>
+export type CompleteLessonInput = z.infer<typeof completeLessonSchema>
