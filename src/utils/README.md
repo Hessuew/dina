@@ -212,6 +212,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `posts.ts` - Authenticated community post/channel/comment reads and
     mutations; the service boundary requires a persisted profile and carries
     the actor through every read/write call.
+  - `postNotifications.ts` - Authenticated notification summary and
+    mark-read operations; the service boundary requires a persisted profile
+    before notification reads or read-state updates.
   - Lesson detail reads require a persisted profile and expose unpublished
     lessons/draft assignments only to course teachers or admins; non-managers
     receive published lesson/assignment data only.

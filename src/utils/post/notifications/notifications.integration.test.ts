@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   getPostNotificationsSummaryService,
   markAllPostNotificationsReadService,
   markPostNotificationGroupReadService,
 } from '@/utils/post/notifications/service/notification.service'
+import { NotFoundError } from '@/utils/errors'
 import {
   seedPost,
   seedPostNotification,
@@ -16,6 +18,22 @@ import {
 // See docs/TESTING_GUIDE.md / ADR 0009.
 
 describe('getPostNotificationsSummaryService (integration)', () => {
+  it('requires a persisted profile for every notification operation', async () => {
+    const userId = randomUUID()
+    await expect(
+      getPostNotificationsSummaryService({}, userId),
+    ).rejects.toBeInstanceOf(NotFoundError)
+    await expect(
+      markPostNotificationGroupReadService(
+        { event: 'post_created', postId: randomUUID() },
+        userId,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundError)
+    await expect(
+      markAllPostNotificationsReadService(userId),
+    ).rejects.toBeInstanceOf(NotFoundError)
+  })
+
   it('returns empty results when the user has no notifications', async () => {
     const userId = await seedProfile({ role: 'student' })
 

@@ -8,6 +8,7 @@ import type {
   PostNotificationGroup,
 } from '@/utils/post/notifications/domain/notification.domain'
 import { buildPostExcerpt } from '@/utils/post/notifications/domain/notification.domain'
+import { getUserProfile } from '@/utils/auth/auth'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
@@ -24,6 +25,10 @@ type NotificationReadLogContext = {
   postId?: string
   notificationEvent?: string
   startedAt: number
+}
+
+async function requireNotificationActor(userId: string): Promise<void> {
+  await getUserProfile(userId)
 }
 
 function logNotificationReadEvent(
@@ -51,6 +56,7 @@ export async function getPostNotificationsSummaryService(
   groups: Array<PostNotificationGroup>
   unreadGroupCount: number
 }> {
+  await requireNotificationActor(userId)
   const limit = data.limit ?? 25
   const [grouped, unreadGroupCount] = await Promise.all([
     findNotificationGroups(userId, limit),
@@ -104,6 +110,7 @@ export async function markPostNotificationGroupReadService(
   data: MarkPostNotificationGroupReadInput,
   userId: string,
 ): Promise<{ success: true }> {
+  await requireNotificationActor(userId)
   const context: NotificationReadLogContext = {
     action: 'markPostNotificationGroupRead',
     actorId: userId,
@@ -133,6 +140,7 @@ export async function markPostNotificationGroupReadService(
 export async function markAllPostNotificationsReadService(
   userId: string,
 ): Promise<{ success: true }> {
+  await requireNotificationActor(userId)
   const context: NotificationReadLogContext = {
     action: 'markAllPostNotificationsRead',
     actorId: userId,

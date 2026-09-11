@@ -115,6 +115,13 @@ Teacher/Admin moderation checks remain in place after that identity check.
 Integration coverage confirms unknown actors are rejected before mutation
 repository calls.
 
+### Post-notification boundary
+
+The notification summary and mark-read services now require the actor's
+persisted profile before reading notification groups or changing read state.
+Integration coverage calls all three service operations with an unknown actor
+and confirms they fail before notification queries or updates.
+
 ### Lesson read boundary
 
 The lesson detail service now rejects unpublished lessons for students and

@@ -2682,3 +2682,24 @@ Validation: focused post integration tests (45), full integration (397),
 `bun run quality:gate`, and the production build passed. Better Stack/Cloudflare
 provider acceptance, hosted RLS verification, and the remaining public-abuse
 controls remain external follow-up work.
+
+## Iteration 95 — post-notification service authorization hardening
+
+This iteration closed the next small Phase 5 service-boundary gap:
+
+- Notification summary reads and group/all mark-read mutations now require a
+  persisted caller profile inside `notification.service.ts`. Unknown direct
+  callers can no longer receive an empty notification summary or get a
+  successful no-op read-state response.
+- The existing server-function authentication, per-user notification queries,
+  read-state semantics, telemetry fields, and response shapes for valid users
+  remain unchanged.
+- Added integration coverage that calls all three notification service
+  operations with an unknown actor and verifies `NotFoundError` before the
+  repository path.
+
+Validation: the focused notification integration suite passed all 9 tests;
+full integration passed all 398 tests, `bun run quality:gate` passed with 1,953
+unit tests, the production build passed, and the Architecture Inventory plus
+Engineering Roadmap were synchronized in Notion. Production Readiness was
+skipped because the database contains only its protected template row.

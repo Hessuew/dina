@@ -313,6 +313,14 @@ ownership and Teacher/Admin moderation checks remain unchanged. Focused
 integration coverage proves direct calls with an unknown actor fail before the
 post, comment, or reaction repository operation.
 
+### Post-notification service boundary
+
+Notification summary reads and group/all mark-read mutations now require the
+caller's persisted profile inside the notification service. The server-function
+authentication remains the transport boundary, while the service check prevents
+unknown direct callers from receiving an empty summary or silently reporting a
+successful read-state mutation.
+
 ### Lesson read service boundary
 
 Lesson detail reads now apply the same manager-only draft rule as assignment
