@@ -1,8 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 69
-**Scope:** add the first repository-owned Phase 5 dependency-security baseline.
+**Iteration:** 70
+**Scope:** remediate the direct browser PDF dependency identified by the Phase 5
+dependency-security baseline.
 
 ## Executive summary
 
@@ -262,6 +263,29 @@ opened_at)`. It supports filtering active windows before recent-opening
   known advisory baseline is triaged. Dependabot checks the Bun-compatible
   manifest and lockfile weekly. The review policy and remaining RBAC, secret,
   audit, and threat-model work are documented in `docs/plan/SECURITY.md`.
+- The direct browser-used `pdfjs-dist` high-severity advisory is remediated by
+  upgrading from `5.7.284` to `^6.2.108`. The private PDF viewer and local eBook
+  importer use only PDF.js parsing/canvas APIs and do not instantiate the
+  annotation/viewer scripting layer. Remaining high/critical findings are
+  transitive and continue through the report-only audit triage process.
+
+## Iteration 70 — direct PDF dependency remediation
+
+This iteration completed the first remediation slice from the Phase 5 audit:
+
+- Upgraded `pdfjs-dist` from `5.7.284` to `^6.2.108` (resolved locally to
+  `6.3.289`), which contains the upstream fix for
+  [GHSA-hq66-cqwq-w95j](https://github.com/mozilla/pdf.js/security/advisories/GHSA-hq66-cqwq-w95j).
+- Confirmed both PDF.js consumers stay on parsing/canvas APIs and do not create
+  an annotation/viewer scripting layer; future annotation integration must set
+  `enableScripting: false` explicitly.
+- Kept the audit workflow report-only because the remaining high/critical
+  findings are transitive and require separate reachability or upgrade slices.
+
+Validation for this iteration: targeted formatting, TypeScript, the full unit
+suite, production build, and a post-change high-severity Bun audit. The audit
+still reports transitive findings for follow-up; the direct `pdfjs-dist` finding
+is no longer present.
 
 ## Iteration 69 — dependency-security baseline
 

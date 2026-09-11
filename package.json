@@ -61,7 +61,7 @@
     "libphonenumber-js": "^1.13.9",
     "lucide-react": "^0.561.0",
     "motion": "^12.42.2",
-    "pdfjs-dist": "^5.7.284",
+    "pdfjs-dist": "^6.2.108",
     "posthog-js": "^1.429.5",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
