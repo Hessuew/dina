@@ -101,12 +101,22 @@ requires an existing profile before reading published lessons, assignments, or
 special events. All authenticated roles retain the existing calendar payload;
 the change only closes direct unauthenticated invocation.
 
+### Post and comment moderation authorization
+
+Post and comment mutation services allow authors to edit or delete their own
+content and delegate non-author moderation to the shared authorization adapter.
+That adapter now loads the persisted owner before allowing `editPost`,
+`deletePost`, `editComment`, or `deleteComment`. A non-owner must be a Teacher
+or Admin; other students receive the typed authorization failure before any
+write executes. This matches the existing Supabase policies that allow staff
+to update any post or comment while preserving owner-only student writes.
+
 ## Remaining Phase 5 work
 
-- Review RBAC and database/RLS defense-in-depth against the current app-level
-  authorization model. The staff-only event-management listing and the
-  authenticated calendar overview now both enforce server-side identity (and
-  staff role where required).
+- Continue reviewing RBAC and database/RLS defense-in-depth against the current
+  app-level authorization model. The staff-only event-management listing, the
+  authenticated calendar overview, and post/comment moderation now enforce
+  server-side identity/ownership and staff role where required.
 - Continue hardening admin access and review authentication/session boundaries;
   the calendar event listing is now covered by a server-side teacher/admin
   check.

@@ -24,9 +24,8 @@ import {
 } from '@/../test/integration/seed'
 
 // Post services have no external IO. The DB is real (PGlite via the `@/db`
-// alias); post/comment authz is currently permissive (see default-adapter
-// canAccessPost/canAccessComment TODOs), so role checks resolve from seeded
-// profiles. See docs/TESTING_GUIDE.md / ADR 0009.
+// alias); post/comment authorization resolves ownership and staff roles from
+// seeded profiles. See docs/TESTING_GUIDE.md / ADR 0009.
 
 describe('getPostChannelsService (integration)', () => {
   it('returns the general channel plus a channel per course', async () => {
@@ -230,6 +229,16 @@ describe('updatePostService (integration)', () => {
     ).rejects.toMatchObject({ code: 'POST_NOT_FOUND', status: 404 })
   })
 
+  it('rejects a non-author student editor', async () => {
+    const authorId = await seedProfile({ role: 'student' })
+    const otherStudentId = await seedProfile({ role: 'student' })
+    const postId = await seedPost({ authorId, content: 'old' })
+
+    await expect(
+      updatePostService({ postId, content: 'tampered' }, otherStudentId),
+    ).rejects.toMatchObject({ code: 'ACTION_NOT_ALLOWED', status: 403 })
+  })
+
   it('does not log an expected missing-post failure', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -263,6 +272,26 @@ describe('deletePostService (integration)', () => {
     await expect(
       deletePostService({ postId: randomUUID() }, authorId),
     ).rejects.toMatchObject({ code: 'POST_NOT_FOUND', status: 404 })
+  })
+
+  it('rejects a non-author student deleter', async () => {
+    const authorId = await seedProfile({ role: 'student' })
+    const otherStudentId = await seedProfile({ role: 'student' })
+    const postId = await seedPost({ authorId })
+
+    await expect(
+      deletePostService({ postId }, otherStudentId),
+    ).rejects.toMatchObject({ code: 'ACTION_NOT_ALLOWED', status: 403 })
+  })
+
+  it('allows a teacher to moderate another user’s post', async () => {
+    const authorId = await seedProfile({ role: 'student' })
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const postId = await seedPost({ authorId })
+
+    await expect(deletePostService({ postId }, teacherId)).resolves.toEqual({
+      success: true,
+    })
   })
 })
 
@@ -360,6 +389,28 @@ describe('deleteCommentService (integration)', () => {
     await expect(
       deleteCommentService({ commentId: randomUUID() }, authorId),
     ).rejects.toMatchObject({ code: 'COMMENT_NOT_FOUND', status: 404 })
+  })
+
+  it('rejects a non-author student deleter', async () => {
+    const authorId = await seedProfile({ role: 'student' })
+    const otherStudentId = await seedProfile({ role: 'student' })
+    const postId = await seedPost({ authorId })
+    const commentId = await seedComment({ postId, authorId })
+
+    await expect(
+      deleteCommentService({ commentId }, otherStudentId),
+    ).rejects.toMatchObject({ code: 'ACTION_NOT_ALLOWED', status: 403 })
+  })
+
+  it('allows a teacher to moderate another user’s comment', async () => {
+    const authorId = await seedProfile({ role: 'student' })
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const postId = await seedPost({ authorId })
+    const commentId = await seedComment({ postId, authorId })
+
+    await expect(
+      deleteCommentService({ commentId }, teacherId),
+    ).resolves.toEqual({ success: true })
   })
 })
 

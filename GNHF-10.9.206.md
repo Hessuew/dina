@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 74
-**Scope:** close the next bounded Phase 5 authorization gap after calendar event
-listing hardening.
+**Iteration:** 75
+**Scope:** close the next bounded Phase 5 authorization gap after authenticated
+calendar hardening.
 
 ## Executive summary
 
@@ -284,6 +284,30 @@ opened_at)`. It supports filtering active windows before recent-opening
   caller and requires a persisted profile before reading published lessons,
   assignments, or special events. All authenticated roles retain the existing
   calendar payload; direct unauthenticated invocation is rejected.
+- Post and comment moderation now resolves persisted ownership in the shared
+  authorization adapter. Authors retain their own edit/delete access, while
+  non-author moderation requires Teacher or Admin access; non-owner students
+  are rejected before writes. This aligns the application boundary with the
+  existing Supabase staff-update policies.
+
+## Iteration 75 — post/comment moderation authorization hardening
+
+This iteration closed the next concrete Phase 5 RBAC gap from the application
+security review:
+
+- Replaced the permissive `canAccessPost` and `canAccessComment` placeholders
+  with ownership-aware checks for edit/delete actions.
+- Preserved author self-service and staff moderation, while rejecting
+  non-author students with the existing typed authorization error before any
+  mutation executes.
+- Added integration coverage for student denial and Teacher moderation of
+  posts and comments. Existing content shapes, soft-delete behavior, and
+  telemetry remain unchanged.
+
+Validation for this iteration: focused post integration tests, full integration
+tests, `bun run quality:gate`, typecheck, formatting, production build, and
+`git diff --check` passed. The Notion Architecture Inventory, Security, and
+Engineering Roadmap records were synchronized.
 
 ## Iteration 74 — authenticated calendar overview hardening
 
