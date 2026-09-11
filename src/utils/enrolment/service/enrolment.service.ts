@@ -93,6 +93,15 @@ type EvaluationField = 'score' | 'admission_category' | 'note'
 type EnrollmentMutationAction =
   'updateEnrollmentStatus' | 'setEnrollmentSpecialCase' | 'deleteEnrollment'
 
+type EnrollmentAssignmentMutationAction =
+  'distributeEnrollments' | 'substituteTeacher' | 'endSubstitution'
+
+type EnrollmentAssignmentMutationContext = {
+  action: EnrollmentAssignmentMutationAction
+  actorId: string
+  startedAt: number
+}
+
 type EnrollmentMutationContext = {
   action: EnrollmentMutationAction
   actorId: string
@@ -115,6 +124,36 @@ function logEnrollmentMutation(
     enrollmentId: context.enrollmentId,
     ...fields,
   })
+}
+
+function logEnrollmentAssignmentMutation(
+  level: 'info' | 'error',
+  event: string,
+  context: EnrollmentAssignmentMutationContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    ...fields,
+  })
+}
+
+function logEnrollmentDistributionCompleted(
+  context: EnrollmentAssignmentMutationContext,
+  assignedCount: number,
+  unassignedCount: number,
+  reviewerCount: number,
+): void {
+  logEnrollmentAssignmentMutation(
+    'info',
+    'enrollment_distribution_completed',
+    context,
+    { assignedCount, unassignedCount, reviewerCount },
+  )
 }
 
 function logEvaluationUpdated(
@@ -742,11 +781,22 @@ export async function setEvaluationNoteService(
 
 export async function distributeEnrollmentsService(userId: string) {
   await authz(userId).hasRole('admin')
+  const context = {
+    action: 'distributeEnrollments' as const,
+    actorId: userId,
+    startedAt: performance.now(),
+  }
   const [unassignedIds, teacherIds] = await Promise.all([
     findUnassignedEnrollmentIds(),
     findAllTeacherIds(),
   ])
   if (teacherIds.length === 0 || unassignedIds.length === 0) {
+    logEnrollmentDistributionCompleted(
+      context,
+      0,
+      unassignedIds.length,
+      teacherIds.length,
+    )
     return { assigned: 0 }
   }
   const assignments = buildEnrollmentAssignments(unassignedIds, teacherIds)
@@ -763,6 +813,12 @@ export async function distributeEnrollmentsService(userId: string) {
   try {
     await bulkAssignEnrollments(enriched)
   } catch (error) {
+    logEnrollmentAssignmentMutation(
+      'error',
+      'enrollment_distribution_failed',
+      context,
+      { errorCategory: 'enrollment_distribution_persistence' },
+    )
     throw new AppError({
       code: 'DISTRIBUTION_FAILED',
       status: 500,
@@ -772,6 +828,12 @@ export async function distributeEnrollmentsService(userId: string) {
         error instanceof Error ? error.message : 'bulkAssignEnrollments failed',
     })
   }
+  logEnrollmentDistributionCompleted(
+    context,
+    assignments.length,
+    unassignedIds.length,
+    teacherIds.length,
+  )
   return { assigned: assignments.length }
 }
 
@@ -785,6 +847,11 @@ export async function substituteTeacherService(
   adminUserId: string,
 ): Promise<{ reassigned: number }> {
   await authz(adminUserId).hasRole('admin')
+  const context = {
+    action: 'substituteTeacher' as const,
+    actorId: adminUserId,
+    startedAt: performance.now(),
+  }
 
   const courseId = await findCourseIdByTeacherId(data.absentTeacherId)
   if (!courseId) {
@@ -794,11 +861,38 @@ export async function substituteTeacherService(
     })
   }
 
-  return insertSubstituteWithReassignment(
-    courseId,
-    data.substituteTeacherId,
-    data.absentTeacherId,
-  )
+  try {
+    const result = await insertSubstituteWithReassignment(
+      courseId,
+      data.substituteTeacherId,
+      data.absentTeacherId,
+    )
+    logEnrollmentAssignmentMutation(
+      'info',
+      'enrollment_substitution_completed',
+      context,
+      {
+        absentTeacherId: data.absentTeacherId,
+        substituteTeacherId: data.substituteTeacherId,
+        courseId,
+        reassignedCount: result.reassigned,
+      },
+    )
+    return result
+  } catch (error) {
+    logEnrollmentAssignmentMutation(
+      'error',
+      'enrollment_substitution_failed',
+      context,
+      {
+        absentTeacherId: data.absentTeacherId,
+        substituteTeacherId: data.substituteTeacherId,
+        courseId,
+        errorCategory: 'enrollment_substitution_persistence',
+      },
+    )
+    throw error
+  }
 }
 
 /**
@@ -810,13 +904,38 @@ export async function endSubstitutionService(
   adminUserId: string,
 ): Promise<void> {
   await authz(adminUserId).hasRole('admin')
-  const deleted = await deleteCourseSubstituteByAbsent(data.absentTeacherId)
+  const context = {
+    action: 'endSubstitution' as const,
+    actorId: adminUserId,
+    startedAt: performance.now(),
+  }
+  let deleted: number
+  try {
+    deleted = await deleteCourseSubstituteByAbsent(data.absentTeacherId)
+  } catch (error) {
+    logEnrollmentAssignmentMutation(
+      'error',
+      'enrollment_substitution_end_failed',
+      context,
+      {
+        absentTeacherId: data.absentTeacherId,
+        errorCategory: 'enrollment_substitution_end_persistence',
+      },
+    )
+    throw error
+  }
   if (deleted === 0) {
     throw new NotFoundError('No active substitution found for this teacher', {
       code: 'NOT_FOUND',
       details: { absentTeacherId: data.absentTeacherId },
     })
   }
+  logEnrollmentAssignmentMutation(
+    'info',
+    'enrollment_substitution_ended',
+    context,
+    { absentTeacherId: data.absentTeacherId, removedCount: deleted },
+  )
 }
 
 async function requireEnrollmentContactExport(userId: string) {

@@ -147,6 +147,14 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    assignment IDs, safe assignment status, and duration. Assignment titles,
    descriptions, due dates, and raw persistence details remain excluded;
    unexpected failures use the stable `assignment_persistence` category.
+   Enrollment distribution and teacher substitution mutations now emit
+   redacted completion events with request correlation, actor and safe
+   teacher/course identifiers, assignment/reassignment counters, and duration.
+   Unexpected repository failures use stable
+   `enrollment_distribution_persistence`,
+   `enrollment_substitution_persistence`, and
+   `enrollment_substitution_end_persistence` categories; applicant content and
+   raw database details remain excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

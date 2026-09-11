@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 41
-**Scope:** add redacted structured telemetry to assignment authoring mutations.
+**Iteration:** 42
+**Scope:** add redacted structured telemetry to enrollment distribution and teacher substitution mutations.
 
 ## Executive summary
 
@@ -18,6 +18,10 @@ The repository already has the first production-fundamentals slice:
   browser and Worker.
 - Assignment submission saves now emit structured Better Stack/Cloudflare-ready
   outcome events with request ID, status, duration, and stable error category.
+- Enrollment distribution and teacher substitution mutations now emit
+  structured Better Stack/Cloudflare-ready completion and failure events with
+  safe actor/teacher/course identifiers, assignment counters, request ID,
+  status, duration, and stable error categories.
 - Signup and OTP flows now emit the same safe event shape for delivery,
   provisioning, rollback, verification, auto-login, and resend outcomes.
 - The admin invitation-email campaign now emits safe per-invitation delivery
@@ -1383,3 +1387,33 @@ mutating family such as remaining enrollment distribution/substitution or
 assignment-independent administration actions. Better Stack destinations,
 dashboards, alerts, Uptime, source maps, Slack routing, and named ownership
 remain account-specific external setup work.
+
+## Iteration 42 — enrollment distribution and teacher substitution telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Enrollment distribution now emits redacted
+  `enrollment_distribution_completed` events for both assigned and no-op
+  runs. Events carry request correlation, actor ID, assigned/unassigned/reviewer
+  counters, status, and duration.
+- Teacher substitution activation now emits
+  `enrollment_substitution_completed` with actor, absent/substitute teacher,
+  course, reassignment count, status, and duration. Ending a substitution emits
+  `enrollment_substitution_ended` with the actor, absent teacher, removed-row
+  count, status, and duration.
+- Unexpected repository failures emit stable
+  `enrollment_distribution_persistence`,
+  `enrollment_substitution_persistence`, or
+  `enrollment_substitution_end_persistence` categories. Applicant content,
+  timestamps, and raw database/provider details remain excluded; expected
+  authorization and not-found outcomes remain ordinary user-facing results.
+- Integration coverage verifies completion event shapes, safe counters and
+  identifiers, redaction, duration metadata, and all three stable failure
+  categories.
+
+Validation: the focused enrollment integration suite passed all 35 tests.
+The next in-repo structured-logging slice should target another uninstrumented
+mutating family, such as bulk enrollment grading or assignment-independent
+administration actions. Better Stack destinations, dashboards, alerts, Uptime,
+source maps, Slack routing, and named ownership remain account-specific
+external setup work.

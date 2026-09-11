@@ -98,6 +98,13 @@ This folder is primarily where TanStack Start server functions live (via `create
     safe assignment status, and duration; titles, descriptions, due dates,
     and raw persistence details remain excluded, with failures categorized as
     `assignment_persistence`.
+  - Enrollment distribution and teacher substitution mutations emit redacted
+    `enrollment_distribution_completed`,
+    `enrollment_substitution_completed`, and
+    `enrollment_substitution_ended` events with request correlation, actor and
+    safe teacher/course identifiers, outcome counters, and duration;
+    unexpected persistence failures use stable categories without applicant
+    content or raw database details.
   - Course create, update, and delete mutations emit redacted
     `course_created`, `course_updated`, and `course_deleted` events with
     request correlation, actor/course IDs, status, duration, and publication

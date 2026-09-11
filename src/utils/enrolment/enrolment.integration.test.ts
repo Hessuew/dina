@@ -3,6 +3,8 @@ import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
 import {
   deleteEnrollmentService,
+  distributeEnrollmentsService,
+  endSubstitutionService,
   getEnrollmentEmailsService,
   getEnrollmentsService,
   searchEnrollmentContactsByNamesService,
@@ -466,6 +468,159 @@ describe('teacher substitution — Review heading peer resolution (integration)'
     expect(row?.reviewHeading.reviewerFirstName).toBe('Subby')
     expect(row?.reviewHeading.reviewerHasEvaluated).toBe(true)
     expect(row?.reviewHeading.peerFirstName).toBe('Bella')
+  })
+})
+
+describe('enrollment distribution and substitution telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs a redacted distribution completion event with safe counters', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    await seedProfile({ role: 'teacher' })
+    await seedEnrollment({ fullLegalName: 'Private Applicant One' })
+    await seedEnrollment({ fullLegalName: 'Private Applicant Two' })
+
+    const result = await distributeEnrollmentsService(adminId)
+
+    expect(result).toEqual({ assigned: 2 })
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'enrollment_distribution_completed')
+
+    expect(event).toMatchObject({
+      event: 'enrollment_distribution_completed',
+      path: 'serverFn:distributeEnrollments',
+      status: 'success',
+      actorId: adminId,
+      assignedCount: 2,
+      unassignedCount: 2,
+      reviewerCount: 2,
+    })
+    expect(event?.durationMs).toEqual(expect.any(Number))
+    expect(JSON.stringify(event)).not.toContain('Private Applicant')
+  })
+
+  it('logs substitution completion and end events with safe identifiers', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const absentTeacherId = await seedProfile({ role: 'teacher' })
+    const substituteTeacherId = await seedProfile({ role: 'teacher' })
+    const courseId = await seedCourse()
+    await seedCourseTeacher(courseId, absentTeacherId)
+    const enrollmentId = await seedEnrollment({
+      fullLegalName: 'Private Applicant Three',
+    })
+    await seedReviewerAssignment(enrollmentId, absentTeacherId, courseId)
+
+    const result = await substituteTeacherService(
+      { absentTeacherId, substituteTeacherId },
+      adminId,
+    )
+    await endSubstitutionService({ absentTeacherId }, adminId)
+
+    expect(result).toEqual({ reassigned: 1 })
+    const events = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) =>
+        [
+          'enrollment_substitution_completed',
+          'enrollment_substitution_ended',
+        ].includes(String(entry.event)),
+      )
+
+    expect(events).toHaveLength(2)
+    expect(events[0]).toMatchObject({
+      event: 'enrollment_substitution_completed',
+      path: 'serverFn:substituteTeacher',
+      status: 'success',
+      actorId: adminId,
+      absentTeacherId,
+      substituteTeacherId,
+      courseId,
+      reassignedCount: 1,
+    })
+    expect(events[1]).toMatchObject({
+      event: 'enrollment_substitution_ended',
+      path: 'serverFn:endSubstitution',
+      status: 'success',
+      actorId: adminId,
+      absentTeacherId,
+      removedCount: 1,
+    })
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(JSON.stringify(events)).not.toContain('Private Applicant')
+  })
+
+  it('logs stable persistence categories without raw database details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const absentTeacherId = await seedProfile({ role: 'teacher' })
+    const substituteTeacherId = await seedProfile({ role: 'teacher' })
+    const courseId = await seedCourse()
+    await seedCourseTeacher(courseId, absentTeacherId)
+    await seedEnrollment()
+    const substitutionEnrollmentId = await seedEnrollment()
+    await seedReviewerAssignment(
+      substitutionEnrollmentId,
+      absentTeacherId,
+      courseId,
+    )
+
+    vi.spyOn(
+      enrollmentRepository,
+      'bulkAssignEnrollments',
+    ).mockRejectedValueOnce(new Error('distribution database secret'))
+    await expect(distributeEnrollmentsService(adminId)).rejects.toThrow(
+      'Failed to distribute enrollments',
+    )
+
+    vi.spyOn(
+      enrollmentRepository,
+      'insertSubstituteWithReassignment',
+    ).mockRejectedValueOnce(new Error('substitution database secret'))
+    await expect(
+      substituteTeacherService(
+        { absentTeacherId, substituteTeacherId },
+        adminId,
+      ),
+    ).rejects.toThrow('substitution database secret')
+
+    vi.spyOn(
+      enrollmentRepository,
+      'deleteCourseSubstituteByAbsent',
+    ).mockRejectedValueOnce(new Error('substitution end database secret'))
+    await expect(
+      endSubstitutionService({ absentTeacherId }, adminId),
+    ).rejects.toThrow('substitution end database secret')
+
+    const events = errorSpy.mock.calls.map(([line]) => {
+      const serialized = String(line)
+      return {
+        event: JSON.parse(serialized) as Record<string, unknown>,
+        serialized,
+      }
+    })
+    expect(events.map(({ event }) => event.errorCategory)).toEqual([
+      'enrollment_distribution_persistence',
+      'enrollment_substitution_persistence',
+      'enrollment_substitution_end_persistence',
+    ])
+    expect(events.map(({ event }) => event.status)).toEqual([
+      'failure',
+      'failure',
+      'failure',
+    ])
+    expect(
+      events.every(({ event }) => typeof event.durationMs === 'number'),
+    ).toBe(true)
+    expect(
+      events.every(({ serialized }) => !serialized.includes('secret')),
+    ).toBe(true)
   })
 })
 
