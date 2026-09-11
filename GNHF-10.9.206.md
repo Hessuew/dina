@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 58
-**Scope:** add an executable credential-free post-deploy health/readiness smoke check for Phase 3 safe delivery.
+**Iteration:** 59
+**Scope:** expose the credential-free post-deploy health/readiness smoke check through GitHub Actions for Phase 3 safe delivery.
 
 ## Executive summary
 
@@ -202,6 +202,29 @@ The repository already has the first production-fundamentals slice:
   check for post-deploy liveness and database readiness. It validates both
   `/healthz` and `/readyz` without authentication, credentials, or private
   provider URLs; use `SMOKE_BASE_URL` for CI/deployment shells.
+- Phase 3 now has `.github/workflows/post-deploy-smoke.yml`, a manual and
+  reusable GitHub Actions entry point for the same credential-free check. It
+  accepts only a public deployment origin, passes it through `SMOKE_BASE_URL`,
+  and can be called by a future Cloudflare deployment workflow.
+
+## Iteration 59 — GitHub post-deploy health smoke workflow
+
+This iteration completed the next repository-owned Phase 3 slice:
+
+- Added `.github/workflows/post-deploy-smoke.yml` with both `workflow_dispatch`
+  for an operator-run check and `workflow_call` for a deployment workflow to
+  invoke after Cloudflare reports readiness.
+- The workflow installs the pinned Bun toolchain and runs the existing
+  `bun run smoke:health` command through `SMOKE_BASE_URL`. It keeps the origin
+  out of the shell command and grants only read access to repository contents;
+  no deployment, provider, or database credentials are needed.
+- Updated `docs/plan/SAFE_DELIVERY.md` with the manual Actions path, reusable
+  workflow contract, and promotion checklist wording. Cloudflare deployment
+  wiring, branch protection, and hosted rollback rehearsal remain external
+  controls.
+
+Validation for this iteration: targeted Markdown/YAML formatting, `git diff
+--check`, `bun run docs:notion-check`, and `bun run quality:gate`.
 
 ## Iteration 58 — executable health/readiness smoke check
 
