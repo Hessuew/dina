@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 27
-**Scope:** implement the repository-owned observability and incident-response runbook.
+**Iteration:** 30
+**Scope:** add redacted structured telemetry to calendar event mutations.
 
 ## Executive summary
 
@@ -62,6 +62,11 @@ The repository already has the first production-fundamentals slice:
   correlation, server-function path, actor/course/lesson IDs, status, and
   duration. Persistence failures emit stable `lesson_persistence` categories;
   lesson content, titles, and provider/database messages are excluded.
+- Calendar event creation, update, and deletion now emit redacted
+  `calendar_event_created`, `calendar_event_updated`, and
+  `calendar_event_deleted` events with request correlation, actor/event/course
+  IDs, category, status, and duration. Event titles, descriptions, locations,
+  meeting links, and timestamps remain excluded.
 - Course creation, update, and deletion now emit redacted `course_created`,
   `course_updated`, and `course_deleted` events with request correlation,
   server-function path, actor/course IDs, status, duration, and publication
@@ -95,6 +100,31 @@ The repository already has the first production-fundamentals slice:
   first-check and mitigation procedures; incident tracking; recovery; and
   closure guidance. It intentionally uses role-based owners until account
   owners and Slack escalation targets are configured externally.
+
+## Iteration 30 — calendar event structured telemetry
+
+This iteration completed the next independently verifiable structured-logging
+slice:
+
+- Moved calendar event create/update/delete persistence behind
+  `src/utils/event/service/event.service.ts`.
+- Added authenticated actor correlation and stable
+  `calendar_event_created`, `calendar_event_updated`, and
+  `calendar_event_deleted` events plus stable persistence-failure categories.
+- Kept event titles, descriptions, locations, meeting URLs, and timestamps out
+  of telemetry; missing update targets remain quiet and preserve existing
+  behavior.
+- Added integration coverage for success events, safe fields, duration/request
+  shape, privacy exclusions, and missing-update behavior.
+- Updated `docs/plan/STRUCTURED_LOGGING.md`,
+  `docs/plan/OBSERVABILITY.md`, and `src/utils/README.md`.
+
+Validation: focused domain tests (4), focused integration tests (2), full
+integration (329 tests), TypeScript typecheck, `bun run quality:gate`, and
+production build passed. The next local structured-logging slice can target
+the post/comment mutation family; Better Stack destinations, dashboards,
+alerts, Uptime monitors, Slack routing, source maps, and named ownership still
+require external account configuration described below.
 
 ## Iteration 26 — teacher review product analytics
 

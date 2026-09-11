@@ -70,6 +70,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    IDs, operation type, status, and duration; schedule timestamps and raw
    persistence details are excluded, and expected authorization, not-found,
    and pairing-conflict outcomes remain out of noisy error logs.
+   Calendar event create, update, and delete mutations now emit redacted
+   `calendar_event_created`, `calendar_event_updated`, and
+   `calendar_event_deleted` events with request correlation, actor/event/course
+   IDs, category, status, and duration. Unexpected persistence failures use
+   the stable `calendar_event_persistence` category; titles, descriptions,
+   locations, meeting links, and timestamps remain excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a
