@@ -1,6 +1,6 @@
 # PostHog Product Analytics
 
-**Status:** Foundation implemented; enrollment, assignment submission, course start, lesson completion, course completion, and teacher review instrumented
+**Status:** Foundation implemented; enrollment start/submission, assignment submission, course start, lesson completion, course completion, and teacher review instrumented
 
 ## Purpose
 
@@ -35,10 +35,11 @@ captured accidentally. Authenticated users are identified by stable user ID and
 role; email, names, and free-form content are excluded.
 
 The typed event boundary currently allow-lists the initial journey events. The
-public enrollment form now emits `enrollment_submitted` only after the server
-mutation succeeds. The event carries only the stable
-`source=public_enrollment_form` discriminator; applicant identity, contact
-details, demographic values, and application text are never sent. The student
+public enrollment form now emits `enrollment_started` once per form visit and
+`enrollment_submitted` only after the server mutation succeeds. Both events
+carry only the stable `source=public_enrollment_form` discriminator; applicant
+identity, contact details, demographic values, and application text are never
+sent. The student
 assignment detail route now emits `assignment_submitted` only after a successful
 submit mutation; draft saves do not emit it, and the event carries only the
 stable assignment ID. A student opening the first unfinished published lesson

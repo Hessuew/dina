@@ -66,7 +66,9 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 - **PostHog foundation:** optional browser-only initialization is wired from the
   root route with stable user-ID/role identification. Enrollment, assignment
   submission, course start, teacher review, lesson completion, and course
-  completion events are instrumented; project verification remains pending.
+  completion events are instrumented. The public enrollment form also emits a
+  privacy-safe `enrollment_started` event once per form visit; project
+  verification remains pending.
   Autocapture and session recording remain disabled by default.
 
 ### Not Yet Implemented ❌
@@ -386,7 +388,7 @@ Implementation is successful when:
 
 1. **PostHog Integration:**
    - [ ] PostHog installed and receiving events
-   - [ ] At least 3 key events tracked
+   - [x] At least 3 key events tracked
    - [ ] Basic funnel dashboard created in PostHog
 
 2. **Alerting:**

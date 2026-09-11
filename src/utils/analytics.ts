@@ -75,6 +75,13 @@ export function trackAssignmentSubmitted(assignmentId: string): boolean {
   return trackAnalyticsEvent('assignment_submitted', { assignmentId })
 }
 
+/** Captures a public enrollment form start without including applicant data. */
+export function trackEnrollmentStarted(): boolean {
+  return trackAnalyticsEvent('enrollment_started', {
+    source: 'public_enrollment_form',
+  })
+}
+
 /** Captures the first lesson start without including lesson content. */
 export function trackCourseStarted(courseId: string): boolean {
   return trackAnalyticsEvent('course_started', { courseId })

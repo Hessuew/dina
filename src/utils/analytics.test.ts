@@ -39,6 +39,7 @@ describe('analytics boundary', () => {
       resetAnalyticsUser,
       trackCourseStarted,
       trackCourseCompleted,
+      trackEnrollmentStarted,
       trackLessonCompleted,
       trackAnalyticsEvent,
       trackAssignmentSubmitted,
@@ -52,6 +53,7 @@ describe('analytics boundary', () => {
     expect(trackCourseCompleted('course-1')).toBe(true)
     expect(trackLessonCompleted('lesson-1')).toBe(true)
     expect(trackAssignmentSubmitted('assignment-1')).toBe(true)
+    expect(trackEnrollmentStarted()).toBe(true)
     expect(trackTeacherReviewCompleted('assignment-1', 'submission-1')).toBe(
       true,
     )
@@ -75,6 +77,9 @@ describe('analytics boundary', () => {
     })
     expect(posthog.capture).toHaveBeenCalledWith('assignment_submitted', {
       assignmentId: 'assignment-1',
+    })
+    expect(posthog.capture).toHaveBeenCalledWith('enrollment_started', {
+      source: 'public_enrollment_form',
     })
     expect(posthog.capture).toHaveBeenCalledWith('course_started', {
       courseId: 'course-1',

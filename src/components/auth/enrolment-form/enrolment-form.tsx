@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useRouter } from '@tanstack/react-router'
 import { CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { FieldDescription, FieldGroup } from '@/components/ui/field'
 import { SelectItem } from '@/components/ui/select'
 import { useAppForm, withForm } from '@/hooks/form'
-import { trackAnalyticsEvent } from '@/utils/analytics'
+import { trackAnalyticsEvent, trackEnrollmentStarted } from '@/utils/analytics'
 import { createEnrollment } from '@/utils/enrolment/enrollments'
 import { env } from '@/env'
 import {
@@ -599,6 +599,13 @@ const EnrolmentFormBody = withForm({
 export function EnrolmentForm({ success }: EnrolmentFormProps) {
   const router = useRouter()
   const [submitted, setSubmitted] = useState(success === true)
+  const enrollmentStarted = useRef(false)
+
+  useEffect(() => {
+    if (success || enrollmentStarted.current) return
+    enrollmentStarted.current = true
+    trackEnrollmentStarted()
+  }, [success])
 
   useEffect(() => {
     runEnrolmentSuccessEffects({

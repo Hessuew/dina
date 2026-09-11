@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 51
-**Scope:** document and operationalize the Supabase database backup/restore validation path.
+**Iteration:** 52
+**Scope:** complete the privacy-safe PostHog enrollment funnel entry event.
 
 ## Executive summary
 
@@ -144,6 +144,10 @@ The repository already has the first production-fundamentals slice:
   when `VITE_POSTHOG_KEY` is configured. It identifies users by stable ID and
   role only, allow-lists the initial LMS journey event names, disables
   autocapture and session recording, and resets identity on logout.
+- The public enrollment form now emits `enrollment_started` once per form
+  visit, before any applicant data is submitted. The event carries only the
+  stable `source=public_enrollment_form` discriminator and is suppressed on the
+  success-only confirmation view.
 - The public enrollment form now emits `enrollment_submitted` after the
   enrollment server mutation succeeds. Its only property is the stable
   `source=public_enrollment_form` discriminator; applicant identity, contact
@@ -173,6 +177,25 @@ The repository already has the first production-fundamentals slice:
   same-project restore guidance. The database restore-confidence SLO remains
   unverified until an external drill produces dated evidence; Storage object
   recovery is a separate concern.
+
+## Iteration 52 — enrollment started product analytics
+
+This iteration completed the remaining repository-owned entry event for the
+initial enrollment funnel:
+
+- Added a typed `trackEnrollmentStarted` PostHog helper that sends only the
+  stable public-form source discriminator.
+- The enrollment form captures one start event per mounted form visit and does
+  not capture the success-only confirmation view.
+- PostHog remains optional; no event leaves the browser until
+  `VITE_POSTHOG_KEY` is configured. The form is currently intentionally gated
+  while the 2026 enrollment window is closed, so hosted verification remains an
+  external follow-up when the route is reopened.
+
+Validation: focused analytics tests, `bun run quality:gate` (1,933 unit tests),
+typecheck, and the production build pass. Existing TanStack
+`inputValidator()` deprecation and large-chunk warnings remain; no new warning
+was introduced by this slice.
 
 ## Iteration 51 — database backup and restore validation runbook
 
@@ -1048,15 +1071,15 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 
 ### Phase 1 — Production fundamentals
 
-| Roadmap item          | Current state                                                                                                                                                           | Next smallest verifiable slice                                                               |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                                  | Verify `/healthz` and `/readyz` after deployment                                             |
-| Structured logging    | Shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, and Admin workflows             | Migrate remaining high-value server-function families one at a time                          |
-| Error tracking        | Sentry-compatible SDK wiring now emits explicit environment/release identity; Better Stack provider cutover is pending                                                  | Create Better Stack DSN, configure deployment secrets, and verify ingestion/source maps      |
-| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                                 | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
-| Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                                | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
-| Alerting              | No verified production alert set                                                                                                                                        | Configure Uptime, error-rate, readiness, and latency alerts; test them                       |
-| Product analytics     | Enrollment, assignment submission, course-start, teacher-review, lesson-completion, and course-completion events are instrumented; project verification remains pending | Verify events and create the initial funnel in PostHog                                       |
+| Roadmap item          | Current state                                                                                                                                                                            | Next smallest verifiable slice                                                               |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                                                   | Verify `/healthz` and `/readyz` after deployment                                             |
+| Structured logging    | Shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, and Admin workflows                              | Migrate remaining high-value server-function families one at a time                          |
+| Error tracking        | Sentry-compatible SDK wiring now emits explicit environment/release identity; Better Stack provider cutover is pending                                                                   | Create Better Stack DSN, configure deployment secrets, and verify ingestion/source maps      |
+| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                                                  | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
+| Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                                                 | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
+| Alerting              | No verified production alert set                                                                                                                                                         | Configure Uptime, error-rate, readiness, and latency alerts; test them                       |
+| Product analytics     | Enrollment start/submission, assignment submission, course-start, teacher-review, lesson-completion, and course-completion events are instrumented; project verification remains pending | Verify events and create the initial funnel in PostHog                                       |
 
 ### Phase 2 — Reliability
 
