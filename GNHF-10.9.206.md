@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-11
-**Iteration:** 46
-**Scope:** add redacted structured telemetry to authenticated password changes.
+**Iteration:** 47
+**Scope:** add redacted structured telemetry to public enrollment persistence.
 
 ## Executive summary
 
@@ -48,6 +48,10 @@ The repository already has the first production-fundamentals slice:
   `password_updated` / `password_update_failed` events with request
   correlation, user ID, status, duration, stable error category, and provider
   code; password values and provider messages remain excluded.
+- Public enrollment persistence now emits redacted `enrollment_created` /
+  `enrollment_create_failed` events with request correlation, source, status,
+  duration, and the persisted enrollment ID on success; applicant identity,
+  contact details, application text, and raw database errors remain excluded.
 - Post and comment reaction toggles now emit redacted success events with
   request correlation, actor and target IDs, reaction action, emoji, status,
   and duration. Unexpected persistence failures use stable post/comment
@@ -1502,3 +1506,23 @@ This iteration completed the next repository-owned auth structured-logging slice
 Validation: focused profile integration tests (12) and TypeScript typecheck
 passed. Better Stack destinations, dashboards, alerts, Uptime, source maps,
 Slack routing, and named ownership remain account-specific external setup work.
+
+## Iteration 47 — public enrollment persistence telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- Public enrollment persistence now emits `enrollment_created` after the
+  enrollment row is written and `enrollment_create_failed` when persistence
+  fails.
+- Events carry request correlation, `serverFn:createEnrollment`, the stable
+  `public_enrollment_form` source, outcome status, duration, and the generated
+  enrollment ID only after success.
+- Applicant names, email addresses, phone numbers, demographic fields,
+  application responses, and raw database/provider errors remain outside
+  structured telemetry. Existing enrollment-closed behavior is unchanged.
+- Integration coverage verifies request correlation, success/failure event
+  shape, duration, and privacy-safe failure logging.
+
+Validation: focused enrollment integration tests (40) passed. Better Stack
+destinations, dashboards, alerts, Uptime monitors, source maps, Slack routing,
+and named ownership remain account-specific external setup work.

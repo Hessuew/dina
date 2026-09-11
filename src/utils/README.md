@@ -86,6 +86,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     emit `password_updated` / `password_update_failed` with the same safe
     fields and stable `password_update` category; password values and provider
     messages are excluded.
+  - Public enrollment persistence emits redacted `enrollment_created` /
+    `enrollment_create_failed` events with request correlation,
+    `serverFn:createEnrollment`, a stable public-form source, status, duration,
+    and the generated enrollment ID only on success; applicant identity,
+    contact details, application responses, and raw persistence errors are
+    excluded.
   - Admin staff-privilege grants and revokes emit redacted
     `staff_privilege_updated` audit events with request correlation, actor and
     target IDs, privilege, grant direction, status, and duration; persistence

@@ -3,6 +3,7 @@ import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
 import {
   bulkGradeEnrollmentsService,
+  createEnrollmentService,
   deleteEnrollmentService,
   distributeEnrollmentsService,
   endSubstitutionService,
@@ -36,6 +37,7 @@ import {
 } from '@/../test/integration/seed'
 import { setEmailSender } from '@/utils/email'
 import { emailMessages } from '@/db/schema'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 // Seeds a pending enrollment with an assigned reviewer plus a peer evaluator.
 // Both teachers share the same course, making peerId a valid peer evaluator.
@@ -64,6 +66,79 @@ function installFakeEmailSender() {
   setEmailSender(sender)
   return calls
 }
+
+const PUBLIC_ENROLLMENT_INPUT = {
+  fullLegalName: 'Private Applicant',
+  preferredName: 'Applicant',
+  email: 'private-applicant@test.dev',
+  yearOfBirth: 1995,
+  gender: 'female' as const,
+  nationalityCitizenship: 'Private Country',
+  phoneWhatsApp: '+15555550123',
+  currentCity: 'Private City',
+  currentCountry: 'Private Country',
+  churchAffiliations: 'Private Church',
+  aboutYourself: 'Private application details',
+  expectationsAlignment: 'Private expectations details',
+}
+
+describe('createEnrollmentService telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs a redacted success event after public enrollment persistence', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+
+    const result = await withObservabilityRequest(
+      new Request('https://christ-dina.org/enrolment', {
+        headers: { 'x-request-id': 'enrollment-request-1' },
+      }),
+      () => createEnrollmentService(PUBLIC_ENROLLMENT_INPUT),
+    )
+
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'enrollment_created')
+
+    expect(event).toMatchObject({
+      event: 'enrollment_created',
+      path: 'serverFn:createEnrollment',
+      requestId: 'enrollment-request-1',
+      source: 'public_enrollment_form',
+      status: 'success',
+      enrollmentId: result.enrollment.id,
+    })
+    expect(event?.durationMs).toEqual(expect.any(Number))
+    expect(JSON.stringify(event)).not.toContain('Private Applicant')
+    expect(JSON.stringify(event)).not.toContain('private-applicant@test.dev')
+    expect(JSON.stringify(event)).not.toContain('Private application details')
+  })
+
+  it('logs a stable persistence failure without applicant data', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(enrollmentRepository, 'insertEnrollment').mockRejectedValueOnce(
+      new Error('enrollment database secret'),
+    )
+
+    await expect(
+      createEnrollmentService(PUBLIC_ENROLLMENT_INPUT),
+    ).rejects.toThrow('enrollment database secret')
+
+    const serialized = String(errorSpy.mock.calls[0][0])
+    const event = JSON.parse(serialized) as Record<string, unknown>
+    expect(event).toMatchObject({
+      errorCategory: 'enrollment_persistence',
+      event: 'enrollment_create_failed',
+      path: 'serverFn:createEnrollment',
+      source: 'public_enrollment_form',
+      status: 'failure',
+    })
+    expect(event.durationMs).toEqual(expect.any(Number))
+    expect(serialized).not.toContain('enrollment database secret')
+    expect(serialized).not.toContain('private-applicant@test.dev')
+  })
+})
 
 describe('setEvaluationScoreService (integration)', () => {
   describe("assigned Reviewer's score auto-derives status (ADR 0008 rev 1)", () => {

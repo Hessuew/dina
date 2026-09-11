@@ -412,22 +412,42 @@ export async function setEvaluationScoreService(
 }
 
 export async function createEnrollmentService(data: CreateEnrollmentInput) {
-  const enrollment = await insertEnrollment({
-    fullLegalName: data.fullLegalName,
-    preferredName: data.preferredName,
-    email: data.email,
-    yearOfBirth: data.yearOfBirth,
-    gender: data.gender,
-    nationalityCitizenship: data.nationalityCitizenship,
-    phoneWhatsApp: data.phoneWhatsApp,
-    currentCity: data.currentCity,
-    currentCountry: data.currentCountry,
-    churchAffiliations: data.churchAffiliations,
-    aboutYourself: data.aboutYourself,
-    expectationsAlignment: data.expectationsAlignment,
-  })
-
-  return { enrollment }
+  const startedAt = performance.now()
+  try {
+    const enrollment = await insertEnrollment({
+      fullLegalName: data.fullLegalName,
+      preferredName: data.preferredName,
+      email: data.email,
+      yearOfBirth: data.yearOfBirth,
+      gender: data.gender,
+      nationalityCitizenship: data.nationalityCitizenship,
+      phoneWhatsApp: data.phoneWhatsApp,
+      currentCity: data.currentCity,
+      currentCountry: data.currentCountry,
+      churchAffiliations: data.churchAffiliations,
+      aboutYourself: data.aboutYourself,
+      expectationsAlignment: data.expectationsAlignment,
+    })
+    logServerEvent('info', 'enrollment_created', {
+      requestId: getRequestId(),
+      path: 'serverFn:createEnrollment',
+      status: 'success',
+      durationMs: elapsedMs(startedAt),
+      source: 'public_enrollment_form',
+      enrollmentId: enrollment.id,
+    })
+    return { enrollment }
+  } catch (error) {
+    logServerEvent('error', 'enrollment_create_failed', {
+      requestId: getRequestId(),
+      path: 'serverFn:createEnrollment',
+      status: 'failure',
+      durationMs: elapsedMs(startedAt),
+      source: 'public_enrollment_form',
+      errorCategory: 'enrollment_persistence',
+    })
+    throw error
+  }
 }
 
 export async function getEnrollmentsService(

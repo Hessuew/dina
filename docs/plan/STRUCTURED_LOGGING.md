@@ -175,6 +175,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    outcome, duration, stable `password_update` error categorization, and
    provider code when available; password values and provider messages remain
    excluded.
+   Public enrollment persistence now emits redacted `enrollment_created` and
+   `enrollment_create_failed` events with request correlation,
+   `serverFn:createEnrollment`, the stable `public_enrollment_form` source,
+   status, duration, and the generated enrollment ID on success. Applicant
+   identity, contact details, application responses, and raw persistence
+   errors remain excluded; the existing enrollment-closed behavior is
+   unchanged.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a
