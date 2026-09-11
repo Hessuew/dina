@@ -304,6 +304,15 @@ cannot bypass the authentication boundary before reading community content.
 All persisted roles retain the existing post, channel, and comment response
 shapes.
 
+### Lesson read service boundary
+
+Lesson detail reads now apply the same manager-only draft rule as assignment
+detail reads. Students and teachers who are not assigned to the course can
+only load published lessons, and their response contains published assignments
+only. Course teachers and admins retain draft lesson content and assignment
+authoring data. This check lives in `getLessonService`, so direct server-function
+or service calls cannot bypass the route's UI filtering.
+
 ## Secret inventory and rotation contract
 
 The repository-owned secret inventory in

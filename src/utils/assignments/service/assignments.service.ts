@@ -118,8 +118,25 @@ export async function getLessonService(data: GetLessonInput, userId: string) {
     userId,
   )
 
+  if (!lesson.isPublished && !permissions.canManage) {
+    throw new AuthorizationError('Lesson not available', {
+      internalMessage: `Non-manager attempted to access unpublished lesson: ${data.lessonId}`,
+      details: { lessonId: data.lessonId },
+    })
+  }
+
+  const visibleAssignments = permissions.canManage
+    ? lesson.assignments
+    : lesson.assignments.filter(
+        (assignment) => assignment.status === 'published',
+      )
+
   return {
-    lesson: { ...lesson, course: courseWithTeachers },
+    lesson: {
+      ...lesson,
+      assignments: visibleAssignments,
+      course: courseWithTeachers,
+    },
     role: profile.role,
     permissions,
     isCompleted: Boolean(progress?.completed),

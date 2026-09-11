@@ -107,6 +107,14 @@ and comment services now require the authenticated actor's persisted profile
 before querying community data. Integration coverage calls each service with an
 unknown actor and confirms the read is rejected before the repository path.
 
+### Lesson read boundary
+
+The lesson detail service now rejects unpublished lessons for students and
+teachers who do not manage the course. For published lessons, non-managers
+receive only published assignments; course teachers and admins retain the full
+authoring view. Integration coverage verifies student denial, server-side
+assignment filtering, and course-teacher draft access.
+
 ## Existing control map
 
 | Control                | Repository evidence                                                                   | Verification boundary                                   |

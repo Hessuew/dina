@@ -2641,3 +2641,25 @@ Validation passed: focused post integration (37 tests), formatting, and
 security/roadmap synchronization remain final handoff checks for this slice;
 the protected production-readiness template remains unchanged because no
 launch decision changed.
+
+## Iteration 93 — lesson read authorization hardening
+
+This iteration closed the next concrete Phase 5 RBAC service-boundary gap:
+
+- Lesson detail reads now reject unpublished lessons for students and teachers
+  who do not manage the course.
+- Published lesson responses filter out draft/closed assignments for
+  non-managers, while course teachers and admins retain the full authoring
+  view.
+- Added integration coverage for student assignment filtering, student draft
+  denial, and course-teacher draft access.
+- Updated `docs/plan/SECURITY.md`, `docs/plan/THREAT_MODEL.md`, and the
+  `src/utils` boundary documentation.
+
+Validation passed: focused assignment integration, full integration, the
+quality gate, formatting, typecheck, and production build. The existing
+Assignments and submissions Architecture Inventory row was synchronized in
+Notion. Service Catalog and the protected Production Readiness template were
+left unchanged because ownership, SLOs, and launch decisions did not change;
+the Engineering Roadmap received no append because its phase status and core
+work list remain unchanged.

@@ -13,6 +13,7 @@ import {
   getAssignmentService,
   getAssignmentSubmissionCountService,
   getAssignmentSubmissionsService,
+  getLessonService,
   gradeSubmissionService,
   updateAssignmentService,
 } from '@/utils/assignments/service/assignments.service'
@@ -254,6 +255,48 @@ describe('getAssignmentService (integration)', () => {
     await expect(
       getAssignmentService({ assignmentId: randomUUID() }, studentId),
     ).rejects.toMatchObject({ code: 'ASSIGNMENT_NOT_FOUND', status: 404 })
+  })
+})
+
+describe('getLessonService (integration)', () => {
+  it('returns only published assignments to a student', async () => {
+    const { courseId } = await seedCourseWithTeacher()
+    const lessonId = await seedLesson({
+      courseId,
+      isPublished: true,
+      content: 'Published lesson content',
+    })
+    await seedAssignment({ lessonId, status: 'published' })
+    await seedAssignment({ lessonId, status: 'draft' })
+    const studentId = await seedProfile({ role: 'student' })
+
+    const result = await getLessonService({ lessonId }, studentId)
+
+    expect(result.lesson.content).toBe('Published lesson content')
+    expect(result.lesson.assignments).toHaveLength(1)
+    expect(result.lesson.assignments[0]?.status).toBe('published')
+  })
+
+  it('hides an unpublished lesson from a student', async () => {
+    const { courseId } = await seedCourseWithTeacher()
+    const lessonId = await seedLesson({ courseId, isPublished: false })
+    const studentId = await seedProfile({ role: 'student' })
+
+    await expect(
+      getLessonService({ lessonId }, studentId),
+    ).rejects.toMatchObject({ code: 'AUTHORIZATION_FAILED', status: 403 })
+  })
+
+  it('lets the course teacher open an unpublished lesson with draft assignments', async () => {
+    const { teacherId, courseId } = await seedCourseWithTeacher()
+    const lessonId = await seedLesson({ courseId, isPublished: false })
+    await seedAssignment({ lessonId, status: 'draft' })
+
+    const result = await getLessonService({ lessonId }, teacherId)
+
+    expect(result.lesson.isPublished).toBe(false)
+    expect(result.lesson.assignments).toHaveLength(1)
+    expect(result.permissions.canManage).toBe(true)
   })
 })
 

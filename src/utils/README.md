@@ -212,6 +212,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `posts.ts` - Authenticated community post/channel/comment reads; the service
     boundary requires a persisted profile and carries the actor through read
     calls.
+  - Lesson detail reads require a persisted profile and expose unpublished
+    lessons/draft assignments only to course teachers or admins; non-managers
+    receive published lesson/assignment data only.
   - Calendar event listing and mutations use `event/service/event.service.ts`
     for the shared database adapter, teacher/Admin service boundary, and
     redacted `calendar_event_*` operational events.
