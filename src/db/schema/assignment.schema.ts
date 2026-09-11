@@ -1,4 +1,5 @@
 import {
+  index,
   integer,
   pgPolicy,
   pgTable,
@@ -28,7 +29,8 @@ export const assignments = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
+    index('assignments_lesson_status_idx').on(table.lessonId, table.status),
     // All authenticated users can view assignments
     pgPolicy('authenticated_view_assignments', {
       for: 'select',

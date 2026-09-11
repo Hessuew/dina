@@ -82,6 +82,10 @@ Database access layer and schema definitions.
       - Published upcoming-lesson reads are indexed by
         `(is_published, scheduled_time)` for the dashboard's future lesson
         query; migration `0049_legal_absorbing_man` adds this index.
+    - `assignments`
+      - Teacher catalog reads that scope assignments to managed lessons and
+        status use `(lesson_id, status)`; the Phase 4 performance migration
+        `0050_calm_william_stryker` adds `assignments_lesson_status_idx`.
     - `staff_privileges`
       - Named Staff Privilege grants on Teacher-users (`user_id`, `privilege`).
       - Unique `(user_id, privilege)`. Admin insert/delete. Not a fourth Role (ADR 0023).

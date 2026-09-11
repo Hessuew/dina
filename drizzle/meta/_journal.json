@@ -330,6 +330,13 @@
       "when": 1789106156730,
       "tag": "0049_legal_absorbing_man",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1789106614619,
+      "tag": "0050_calm_william_stryker",
+      "breakpoints": true
     }
   ]
 }

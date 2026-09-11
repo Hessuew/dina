@@ -224,6 +224,26 @@ The repository already has the first production-fundamentals slice:
   `0049_legal_absorbing_man` and the hosted `EXPLAIN (ANALYZE, BUFFERS)`
   follow-up are documented in `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
 
+## Iteration 63 — assignment catalog query index
+
+This iteration completed the next repository-owned Phase 4 slice:
+
+- Added `assignments_lesson_status_idx` on `(lesson_id, status)` for teacher
+  assignment catalog reads that scope assignments to managed lessons and
+  published/draft status.
+- Kept assignment query behavior, response shape, authorization, ordering, and
+  publication semantics unchanged. The index is additive and compatible with
+  the safe-delivery expand/contract procedure.
+- Extended the performance review and database README. Hosted verification now
+  covers six `EXPLAIN (ANALYZE, BUFFERS)` shapes; a due-date index for the
+  unbounded student assignment list remains evidence-gated.
+- Added migration `drizzle/0050_calm_william_stryker.sql`.
+
+Validation for this iteration: migration generation and replay, focused
+assignment/course integration coverage, formatting, `git diff --check`,
+`bun run docs:notion-check`, and `bun run quality:gate`. Hosted plan/timing
+evidence remains pending representative development data.
+
 ## Iteration 62 — published upcoming-lesson query index
 
 This iteration completed the next repository-owned Phase 4 slice:
