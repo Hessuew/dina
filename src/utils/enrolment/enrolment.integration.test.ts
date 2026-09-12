@@ -1012,6 +1012,67 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
     )
     expect(emails).toEqual(['registered@test.dev'])
   })
+
+  it('logs safe export telemetry without contact values', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    await seedEnrollment({
+      email: 'private-export@test.dev',
+      status: 'approved',
+    })
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org', {
+        headers: { 'x-request-id': 'enrollment-contact-export-request' },
+      }),
+      () => getEnrollmentEmailsService({ group: 'approved' }, adminId),
+    )
+
+    const serialized = infoSpy.mock.calls
+      .map(([line]) => String(line))
+      .find((line) => line.includes('enrollment_contact_exported'))
+    expect(serialized).toBeDefined()
+    expect(serialized).not.toContain('private-export@test.dev')
+    expect(JSON.parse(serialized!)).toMatchObject({
+      event: 'enrollment_contact_exported',
+      path: 'serverFn:getEnrollmentEmails',
+      requestId: 'enrollment-contact-export-request',
+      actorId: adminId,
+      group: 'approved',
+      contactCount: 1,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+  })
+
+  it('logs stable persistence failures and preserves the repository error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const repositoryError = new Error(
+      'connectionString=secret; email=private-export@test.dev',
+    )
+    vi.spyOn(
+      enrollmentRepository,
+      'findEnrollmentEmailsByGroup',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      getEnrollmentEmailsService({ group: 'all' }, adminId),
+    ).rejects.toBe(repositoryError)
+
+    const serialized = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(serialized).not.toContain('connectionString')
+    expect(serialized).not.toContain('private-export@test.dev')
+    expect(JSON.parse(serialized)).toMatchObject({
+      event: 'enrollment_contact_export_failed',
+      path: 'serverFn:getEnrollmentEmails',
+      actorId: adminId,
+      group: 'all',
+      status: 'failure',
+      errorCategory: 'enrollment_contact_export_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
 })
 
 describe('enrollment contact lookup by name (integration)', () => {

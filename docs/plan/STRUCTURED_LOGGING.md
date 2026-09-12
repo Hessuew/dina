@@ -76,6 +76,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    invitation counts, duration, and the stable
    `invitation_read_persistence` failure category. Invitation emails, inviter
    details, tokens, and raw persistence errors remain excluded.
+   Privileged enrollment contact exports now emit redacted
+   `enrollment_contact_exported` / `enrollment_contact_export_failed` events
+   with request correlation, actor ID, cohort, safe contact count, duration,
+   and the stable `enrollment_contact_export_persistence` failure category.
+   Email addresses, names, phone numbers, and raw persistence errors remain
+   excluded.
    Course-teacher lesson authoring now emits redacted
    `lesson_created`, `lesson_updated`, and `lesson_deleted` events with
    request correlation, server-function path, actor/course/lesson IDs,

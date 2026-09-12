@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 129
-**Scope:** add redacted Better Stack-ready telemetry for the Admin invitation-list
-read and record the remaining hosted observability evidence gate.
+**Iteration:** 130
+**Scope:** add redacted Better Stack-ready telemetry for privileged enrollment
+contact exports and record the remaining hosted observability evidence gate.
 
 ## Executive summary
 
@@ -177,6 +177,12 @@ shadcn@latest` intentionally.
   result counts, duration, and the stable `invitation_read_persistence`
   failure category. Invitation emails, inviter details, tokens, and raw
   persistence errors remain excluded.
+- Privileged enrollment contact exports now emit redacted
+  `enrollment_contact_exported` / `enrollment_contact_export_failed` events
+  with request correlation, actor ID, cohort, safe contact count, duration,
+  and the stable `enrollment_contact_export_persistence` category. Email
+  addresses, names, phone numbers, and raw persistence errors remain outside
+  Better Stack/Cloudflare telemetry.
 - Course-teacher lesson creation, update, and deletion now emit redacted
   `lesson_created`, `lesson_updated`, and `lesson_deleted` events with request
   correlation, server-function path, actor/course/lesson IDs, status, and
@@ -3533,3 +3539,23 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
 
 Hosted Better Stack / Cloudflare ingestion, dashboards, alerts, Uptime
 monitors, and source-map verification remain external follow-up.
+
+## Iteration 130 — privileged enrollment contact-export telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Privileged enrollment contact exports now emit redacted
+  `enrollment_contact_exported` / `enrollment_contact_export_failed` events
+  with request correlation, actor ID, cohort, safe contact count, duration,
+  and the stable `enrollment_contact_export_persistence` failure category.
+- Email addresses, names, phone numbers, and raw persistence errors remain
+  outside Better Stack/Cloudflare telemetry. Existing Admin/staff-privilege
+  authorization and export response behavior remain unchanged.
+- Added integration coverage for safe success metadata, request correlation,
+  contact-value exclusion, persistence-failure categorization, and original
+  error preservation.
+
+Validation: focused enrollment integration tests, formatting, typecheck,
+`bun run quality:gate`, and the production build pass. Hosted Better Stack /
+Cloudflare ingestion, dashboards, alerts, Uptime monitors, and source-map
+verification remain external follow-up.

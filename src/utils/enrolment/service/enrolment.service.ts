@@ -138,6 +138,12 @@ type EnrollmentReadLogContext = {
   startedAt: number
 }
 
+type EnrollmentContactExportContext = {
+  actorId: string
+  group: GetEnrollmentEmailsInput['group']
+  startedAt: number
+}
+
 function logEnrollmentReadEvent(
   level: LogLevel,
   event: string,
@@ -157,6 +163,23 @@ function logEnrollmentReadEvent(
 
 function shouldLogEnrollmentReadFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
+}
+
+function logEnrollmentContactExportEvent(
+  level: LogLevel,
+  event: string,
+  context: EnrollmentContactExportContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:getEnrollmentEmails',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    group: context.group,
+    ...fields,
+  })
 }
 
 async function withEnrollmentReadTelemetry<T>(args: {
@@ -1277,8 +1300,30 @@ export async function getEnrollmentEmailsService(
   userId: string,
 ): Promise<{ emails: Array<string> }> {
   await requireEnrollmentContactExport(userId)
-  const emails = await findEnrollmentEmailsByGroup(data.group)
-  return { emails }
+  const context: EnrollmentContactExportContext = {
+    actorId: userId,
+    group: data.group,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const emails = await findEnrollmentEmailsByGroup(data.group)
+    logEnrollmentContactExportEvent(
+      'info',
+      'enrollment_contact_exported',
+      context,
+      { contactCount: emails.length },
+    )
+    return { emails }
+  } catch (error) {
+    logEnrollmentContactExportEvent(
+      'error',
+      'enrollment_contact_export_failed',
+      context,
+      { errorCategory: 'enrollment_contact_export_persistence' },
+    )
+    throw error
+  }
 }
 
 /**

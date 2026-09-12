@@ -120,6 +120,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     result counts, duration, and the stable `invitation_read_persistence`
     category; invitation emails, inviter details, tokens, and raw persistence
     errors remain excluded.
+  - Privileged enrollment contact exports emit redacted
+    `enrollment_contact_exported` / `enrollment_contact_export_failed` events
+    with request correlation, actor ID, cohort, safe contact count, duration,
+    and the stable `enrollment_contact_export_persistence` category; email
+    addresses, names, phone numbers, and raw persistence errors remain
+    excluded.
   - Course-teacher lesson authoring emits redacted `lesson_created`,
     `lesson_updated`, and `lesson_deleted` events with request correlation,
     actor/course/lesson IDs, status, and duration; persistence failures use
