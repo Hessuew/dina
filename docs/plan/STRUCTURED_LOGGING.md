@@ -122,6 +122,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    status, and duration. Media titles, descriptions, external URLs, private
    storage paths, and raw persistence details remain excluded; unexpected
    failures use the stable `media_persistence` category.
+   Thumbnail-upload completion now emits redacted `media_thumbnail_uploaded`
+   and `media_thumbnail_upload_failed` events with actor/media IDs, replacement
+   and signing outcomes, request correlation, status, duration, and the stable
+   `media_thumbnail_persistence` failure category; thumbnail paths and provider
+   error text remain excluded.
    Exam create, save, and publish mutations now emit redacted
    `exam_created`, `exam_updated`, and `exam_published` events with request
    correlation, actor/exam IDs, exam status, safe question counters, and

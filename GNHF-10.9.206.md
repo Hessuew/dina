@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 112
-**Scope:** close the Phase 5 course-catalog authorization gap and record the
-remaining hosted security evidence gate.
+**Iteration:** 113
+**Scope:** add redacted Better Stack-ready telemetry for media-thumbnail
+completion and record the remaining hosted observability evidence gate.
 
 ## Executive summary
 
@@ -67,6 +67,11 @@ shadcn@latest` intentionally.
   `notification_delivery_failed` event with request correlation, notification
   type, recipient count, duration, and a stable error category. Best-effort
   delivery semantics are unchanged.
+- Media-thumbnail completion now emits redacted
+  `media_thumbnail_uploaded` / `media_thumbnail_upload_failed` events with
+  request correlation, actor/media IDs, replacement and signing outcomes,
+  status, duration, and the stable `media_thumbnail_persistence` category;
+  thumbnail paths and provider error text are excluded.
 - Authenticated profile password changes now emit redacted
   `password_updated` / `password_update_failed` events with request
   correlation, user ID, status, duration, stable error category, and provider
@@ -3112,3 +3117,56 @@ Validation: `bun install`, dependency-tree inspection, and post-change
 `bun audit --json` passed with the expected below-threshold findings. Full
 quality, integration, and production-build validation remains required before
 final handoff.
+
+## Iteration 111 — assignment due-date query index
+
+This iteration added the next bounded Phase 4 performance slice:
+
+- Created migration `drizzle/0057_assignments_status_due_date_idx.sql` with
+  `assignments_status_due_date_idx` for published assignments ordered by due
+  date.
+- Updated the performance and database documentation and synchronized the
+  corresponding Notion Data Management, Architecture Inventory, and Roadmap
+  records.
+
+Validation: quality gate, 1,953 unit tests, 409 integration tests, production
+build, formatting, and type checks passed. Hosted EXPLAIN timing remains
+pending representative production data.
+
+## Iteration 112 — course-catalog authorization hardening
+
+This iteration closed a Phase 5 draft-content disclosure gap:
+
+- Unpublished lessons and media in course catalog/detail reads are now visible
+  to admins and assigned course teachers, while other teachers receive only
+  published content.
+- Added regression coverage and updated security, threat-model, utility, and
+  GNHF documentation. Notion Architecture Inventory and Roadmap records were
+  synchronized; Service Catalog and Production Readiness remained unchanged.
+
+Validation: focused course tests, 409 integration tests, quality gate with
+1,953 unit tests, formatting, type checks, and production build passed.
+
+## Iteration 113 — media-thumbnail completion telemetry
+
+This iteration completed the next bounded Phase 1/observability unit:
+
+- `uploadMediaThumbnailService` now emits `media_thumbnail_uploaded` after the
+  thumbnail path is persisted, any replaced object is removed, and the signed
+  result is produced.
+- Unexpected persistence, cleanup, or signing failures emit
+  `media_thumbnail_upload_failed` with the stable
+  `media_thumbnail_persistence` category before the original error is
+  rethrown. Validation and authorization behavior are unchanged.
+- Telemetry contains request correlation, actor/media IDs, replacement and
+  signing outcomes, status, and duration; raw thumbnail paths and provider
+  error text are excluded. This is ready for the existing Better Stack/Sentry
+  transport during the staged provider cutover.
+- Added integration coverage for success telemetry and failure redaction, and
+  updated the structured-logging and utility documentation.
+
+Validation for this iteration: focused library integration passed all 22 tests.
+Run the full quality gate, integration suite, formatting, and production build
+before final handoff. Better Stack account-specific DSN, source-map, Cloudflare
+destination, dashboard, and alert verification remains external follow-up;
+the current browser profile is not authenticated to the Better Stack console.

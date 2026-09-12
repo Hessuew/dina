@@ -60,7 +60,10 @@ import {
 } from '@/utils/storage/service/private-storage.service'
 
 type LibraryMutationAction =
-  'createLibraryMedia' | 'updateLibraryMedia' | 'deleteLibraryMedia'
+  | 'createLibraryMedia'
+  | 'updateLibraryMedia'
+  | 'deleteLibraryMedia'
+  | 'uploadMediaThumbnail'
 
 type LibraryMutationContext = {
   action: LibraryMutationAction
@@ -429,11 +432,34 @@ export async function uploadMediaThumbnailService(
   if (!path || !isOwnedStoragePath(path, userId)) {
     throw new ValidationError('Thumbnail path is not owned by this user')
   }
-  await updateMediaThumbnailPath(data.mediaId, path)
-  if (existing.thumbnailUrl && existing.thumbnailUrl !== path) {
-    await deleteStorageObject('media-thumbnails', existing.thumbnailUrl)
+
+  const context: LibraryMutationContext = {
+    action: 'uploadMediaThumbnail',
+    actorId: userId,
+    mediaId: data.mediaId,
+    startedAt: performance.now(),
   }
-  return {
-    thumbnailUrl: await signPrivateStoragePath('media-thumbnails', path),
+
+  try {
+    await updateMediaThumbnailPath(data.mediaId, path)
+    const previousThumbnail = existing.thumbnailUrl
+    const replacedThumbnail =
+      previousThumbnail != null && previousThumbnail !== path
+    if (replacedThumbnail) {
+      await deleteStorageObject('media-thumbnails', previousThumbnail)
+    }
+    const thumbnailUrl = await signPrivateStoragePath('media-thumbnails', path)
+    logLibraryMutation('info', 'media_thumbnail_uploaded', context, {
+      replacedThumbnail,
+      signed: thumbnailUrl != null,
+    })
+    return { thumbnailUrl }
+  } catch (error) {
+    if (shouldLogLibraryMutationFailure(error)) {
+      logLibraryMutation('error', 'media_thumbnail_upload_failed', context, {
+        errorCategory: 'media_thumbnail_persistence',
+      })
+    }
+    throw error
   }
 }

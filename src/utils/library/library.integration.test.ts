@@ -422,6 +422,7 @@ describe('media thumbnail completion', () => {
   })
 
   it('persists path, signs response, and removes prior thumbnail', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const ownerId = await seedProfile({ role: 'teacher' })
     const mediaId = await seedMedia({
       uploaderId: ownerId,
@@ -437,6 +438,55 @@ describe('media thumbnail completion', () => {
       'media-thumbnails',
       `${ownerId}/old.png`,
     )
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const event = lines
+      .map((line) => JSON.parse(line))
+      .find((entry) => entry.event === 'media_thumbnail_uploaded')
+    expect(event).toMatchObject({
+      event: 'media_thumbnail_uploaded',
+      path: 'serverFn:uploadMediaThumbnail',
+      actorId: ownerId,
+      mediaId,
+      status: 'success',
+      replacedThumbnail: true,
+      signed: true,
+    })
+    expect(event.durationMs).toEqual(expect.any(Number))
+    expect(lines.join('\n')).not.toContain(`${ownerId}/old.png`)
+    expect(lines.join('\n')).not.toContain(path)
+    infoSpy.mockRestore()
+  })
+
+  it('logs stable thumbnail failures without storage paths', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const mediaId = await seedMedia({
+      uploaderId: ownerId,
+      thumbnailUrl: `${ownerId}/old.png`,
+    })
+    const path = `${ownerId}/new.png`
+    mocks.removeStorageObject.mockRejectedValueOnce(
+      new Error('thumbnail storage provider failure'),
+    )
+
+    await expect(
+      uploadMediaThumbnailService({ mediaId, path }, ownerId),
+    ).rejects.toThrow('thumbnail storage provider failure')
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    const event = JSON.parse(line)
+    expect(event).toMatchObject({
+      event: 'media_thumbnail_upload_failed',
+      path: 'serverFn:uploadMediaThumbnail',
+      actorId: ownerId,
+      mediaId,
+      status: 'failure',
+      errorCategory: 'media_thumbnail_persistence',
+    })
+    expect(line).not.toContain('thumbnail storage provider failure')
+    expect(line).not.toContain(`${ownerId}/old.png`)
+    expect(line).not.toContain(path)
+    errorSpy.mockRestore()
   })
 
   it('rejects foreign completion path', async () => {

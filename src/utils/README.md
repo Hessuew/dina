@@ -170,6 +170,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     correlation, actor/media IDs, media kind, course ID where applicable,
     status, and duration; titles, descriptions, URLs, private storage paths,
     and raw persistence details remain excluded.
+  - Media-thumbnail completion emits redacted
+    `media_thumbnail_uploaded` / `media_thumbnail_upload_failed` events with
+    request correlation, actor/media IDs, replacement/signing outcomes, status,
+    duration, and a stable persistence category; thumbnail paths and provider
+    error text remain excluded.
   - Student exam-taking start/resume and answer-save mutations emit redacted
     `exam_attempt_started`, `exam_attempt_resumed`, and `exam_answer_saved`
     events with request correlation, student/attempt/exam IDs, attempt or
