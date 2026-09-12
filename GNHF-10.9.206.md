@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 147
+**Iteration:** 149
 **Scope:** finalize the repository-side Phase 1 observability handoff and
 record the remaining hosted evidence gates.
 
@@ -3999,3 +3999,22 @@ another one-at-a-time telemetry change:
 Validation: documentation checks and `git diff --check` passed. The full build
 and full integration suite were not run because this iteration only finalized
 documentation and external-status records.
+
+## Iteration 149 — final roadmap disposition
+
+This iteration closed the local roadmap status so the repository and Notion
+handoff use the same evidence boundary:
+
+- Production fundamentals and observability are repository-implemented through
+  the latest batched telemetry and the Admin observability hub.
+- Hosted Better Stack/Cloudflare ingestion, dashboards, alert routing, Uptime
+  monitors, source maps, PostHog project verification, and backup/restore
+  evidence remain external gates; no provider or SLO status is promoted without
+  dated hosted evidence.
+- The Engineering Roadmap and Observability hub receive a final dated snapshot;
+  existing dashboard and SLI/SLO rows remain Planned or Needs data.
+
+Validation: Markdown formatting, `bun run docs:notion-check --json`, and
+`git diff --check` passed. The full build and full integration suite were not
+run because this iteration only aligned documentation and external-status
+records.
