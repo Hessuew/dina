@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 154
-**Scope:** publish the final evidence-aware disposition of the engineering
-roadmap phases and make the remaining hosted closure gates self-contained.
+**Iteration:** 155
+**Scope:** synchronize the self-contained evidence-aware roadmap disposition
+with the live Engineering Roadmap and make the final closure state auditable.
 
 ## Final roadmap disposition
 
@@ -4143,3 +4143,19 @@ Engineering Roadmap; no phase, dashboard, alert, SLO, readiness, or hosted
 status was promoted. Validation: Markdown formatting and `git diff --check`
 passed. The full build and full integration suite were not run for this
 documentation-only handoff clarification.
+
+## Iteration 155 — final live-roadmap synchronization
+
+This iteration synchronized the self-contained repository handoff with the
+live Engineering Roadmap:
+
+- The Roadmap now carries the same six-phase disposition and explicit hosted
+  closure checklist as this handoff, including the evidence boundary for
+  dashboards, alerts, SLOs, readiness, source maps, PostHog, and restore drills.
+- No phase, dashboard, alert, SLO, readiness, or hosted status was promoted;
+  remaining work is still gated on dated external evidence.
+
+Validation: the live Roadmap was read back after the append, `bun run
+docs:notion-check --json` returned no changed-file targets, and `git diff
+--check` passed. The full build and full integration suite were not run for
+this documentation-only synchronization.
