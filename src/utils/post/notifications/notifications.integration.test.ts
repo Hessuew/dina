@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { randomUUID } from 'node:crypto'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   getPostNotificationsSummaryService,
   markAllPostNotificationsReadService,
   markPostNotificationGroupReadService,
 } from '@/utils/post/notifications/service/notification.service'
+import { NotFoundError } from '@/utils/errors'
+import * as notificationRepository from '@/utils/post/notifications/repository/notification.repository'
 import {
   seedPost,
   seedPostNotification,
@@ -16,6 +19,26 @@ import {
 // See docs/TESTING_GUIDE.md / ADR 0009.
 
 describe('getPostNotificationsSummaryService (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('requires a persisted profile for every notification operation', async () => {
+    const userId = randomUUID()
+    await expect(
+      getPostNotificationsSummaryService({}, userId),
+    ).rejects.toBeInstanceOf(NotFoundError)
+    await expect(
+      markPostNotificationGroupReadService(
+        { event: 'post_created', postId: randomUUID() },
+        userId,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundError)
+    await expect(
+      markAllPostNotificationsReadService(userId),
+    ).rejects.toBeInstanceOf(NotFoundError)
+  })
+
   it('returns empty results when the user has no notifications', async () => {
     const userId = await seedProfile({ role: 'student' })
 
@@ -23,6 +46,45 @@ describe('getPostNotificationsSummaryService (integration)', () => {
 
     expect(result.groups).toEqual([])
     expect(result.unreadGroupCount).toBe(0)
+  })
+
+  it('stays silent on successful polled summary reads', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+
+    await getPostNotificationsSummaryService({ limit: 10 }, userId)
+
+    const events = infoSpy.mock.calls
+      .map(([line]) => String(line))
+      .filter((line) => line.includes('notification_summary'))
+    expect(events).toEqual([])
+  })
+
+  it('logs stable persistence failures without notification content', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+    const repositoryError = new Error('notification body secret')
+    vi.spyOn(
+      notificationRepository,
+      'findNotificationGroups',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(getPostNotificationsSummaryService({}, userId)).rejects.toBe(
+      repositoryError,
+    )
+
+    const [line] = errorSpy.mock.calls.map(([entry]) => String(entry))
+    const event = JSON.parse(line)
+    expect(event).toEqual(
+      expect.objectContaining({
+        event: 'notification_summary_load_failed',
+        path: 'serverFn:getPostNotificationsSummary',
+        actorId: userId,
+        errorCategory: 'notification_summary_read_persistence',
+        status: 'failure',
+      }),
+    )
+    expect(line).not.toContain('notification body secret')
   })
 
   it('groups notifications by event and post with unread counts and an excerpt', async () => {
@@ -76,6 +138,10 @@ describe('getPostNotificationsSummaryService (integration)', () => {
 })
 
 describe('markPostNotificationGroupReadService (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('marks only the matching event+post group as read', async () => {
     const userId = await seedProfile({ role: 'student' })
     const authorId = await seedProfile({ role: 'teacher' })
@@ -93,9 +159,40 @@ describe('markPostNotificationGroupReadService (integration)', () => {
     const remaining = result.groups.find((g) => g.unreadCount > 0)
     expect(remaining?.event).toBe('comment_created')
   })
+
+  it('logs a redacted success event with request and target metadata', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+    const authorId = await seedProfile({ role: 'teacher' })
+    const postId = await seedPost({ authorId })
+
+    await markPostNotificationGroupReadService(
+      { event: 'post_created', postId },
+      userId,
+    )
+
+    const [line] = infoSpy.mock.calls.map(([entry]) => String(entry))
+    const event = JSON.parse(line)
+    expect(event).toEqual(
+      expect.objectContaining({
+        event: 'notification_group_marked_read',
+        path: 'serverFn:markPostNotificationGroupRead',
+        actorId: userId,
+        postId,
+        notificationEvent: 'post_created',
+        status: 'success',
+      }),
+    )
+    expect(event.requestId).toBe('unknown')
+    expect(typeof event.durationMs).toBe('number')
+  })
 })
 
 describe('markAllPostNotificationsReadService (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('marks every notification for the user as read', async () => {
     const userId = await seedProfile({ role: 'student' })
     const authorId = await seedProfile({ role: 'teacher' })
@@ -107,5 +204,55 @@ describe('markAllPostNotificationsReadService (integration)', () => {
 
     const result = await getPostNotificationsSummaryService({}, userId)
     expect(result.unreadGroupCount).toBe(0)
+  })
+
+  it('logs a success event for marking every notification read', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+
+    await markAllPostNotificationsReadService(userId)
+
+    const [line] = infoSpy.mock.calls.map(([entry]) => String(entry))
+    const event = JSON.parse(line)
+    expect(event).toEqual(
+      expect.objectContaining({
+        event: 'notifications_marked_read',
+        path: 'serverFn:markAllPostNotificationsRead',
+        actorId: userId,
+        readScope: 'all',
+        status: 'success',
+      }),
+    )
+    expect(typeof event.durationMs).toBe('number')
+  })
+
+  it('logs a stable persistence category without raw database details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+    const postId = await seedPost({ authorId: userId })
+
+    await expect(
+      markPostNotificationGroupReadService(
+        { event: 'invalid' as never, postId },
+        userId,
+      ),
+    ).rejects.toBeDefined()
+
+    const lines = errorSpy.mock.calls.map(([entry]) => String(entry))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'notification_read_state_failed',
+          path: 'serverFn:markPostNotificationGroupRead',
+          actorId: userId,
+          postId,
+          readScope: 'group',
+          errorCategory: 'notification_read_state_persistence',
+          status: 'failure',
+        }),
+      ]),
+    )
+    expect(lines.join('\n')).not.toContain('invalid input value')
   })
 })

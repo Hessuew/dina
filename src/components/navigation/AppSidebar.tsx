@@ -1,5 +1,7 @@
 import * as React from 'react'
 import { Link, useRouter, useRouterState } from '@tanstack/react-router'
+import { Activity } from 'lucide-react'
+
 import { NotificationsMenu } from '@/components/navigation/notifications-menu'
 import { NavUser } from '@/components/navigation/nav-user/NavUser'
 import {
@@ -125,6 +127,11 @@ const adminNavItems: Array<NavItem> = [
     title: 'User Management',
     url: '/invitations',
     icon: List,
+  },
+  {
+    title: 'Observability',
+    url: '/admin/observability',
+    icon: Activity,
   },
 ]
 

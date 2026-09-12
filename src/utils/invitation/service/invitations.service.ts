@@ -29,9 +29,68 @@ import {
   AuthorizationError,
   ConflictError,
   NotFoundError,
+  isAppError,
 } from '@/utils/errors'
 import { env } from '@/env'
 import { sendInvitationEmail } from '@/utils/email'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+
+type InvitationAction =
+  | 'createInvitation'
+  | 'getInvitations'
+  | 'resendInvitation'
+  | 'revokeInvitation'
+  | 'deleteInvitation'
+
+type InvitationLogContext = {
+  action: InvitationAction
+  actorId: string
+  invitationId?: string
+  role?: 'student' | 'teacher'
+  startedAt: number
+}
+
+type InvitationTokenLogContext = {
+  startedAt: number
+}
+
+function logInvitationEvent(
+  level: 'info' | 'error',
+  event: string,
+  context: InvitationLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    invitationId: context.invitationId,
+    role: context.role,
+    ...fields,
+  })
+}
+
+function logInvitationTokenEvent(
+  level: 'info' | 'error',
+  event: string,
+  context: InvitationTokenLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:getInvitationByToken',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    ...fields,
+  })
+}
+
+function shouldLogInvitationReadFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
 
 async function sendInvitationEmailOrThrow(input: {
   to: string
@@ -56,10 +115,64 @@ async function sendInvitationEmailOrThrow(input: {
   }
 }
 
+async function insertInvitationOrLogFailure(input: {
+  data: CreateInvitationInput
+  token: string
+  expiresAt: Date
+  userId: string
+  context: InvitationLogContext
+}) {
+  try {
+    return await insertInvitation({
+      email: input.data.email,
+      role: input.data.role,
+      token: input.token,
+      expiresAt: input.expiresAt,
+      status: 'pending',
+      invitedBy: input.userId,
+    })
+  } catch (error) {
+    logInvitationEvent('error', 'invitation_create_failed', input.context, {
+      errorCategory: 'invitation_persistence',
+    })
+    throw error
+  }
+}
+
+async function sendCreatedInvitationOrRollback(input: {
+  data: CreateInvitationInput
+  profile: Awaited<ReturnType<typeof getUserProfile>>
+  token: string
+  invitationId: string
+  context: InvitationLogContext
+}) {
+  try {
+    await sendInvitationEmailOrThrow({
+      to: input.data.email,
+      invitedByName: input.profile.fullName || input.profile.email,
+      role: input.data.role,
+      token: input.token,
+      lecturerTitle: input.profile.lecturerTitle,
+    })
+  } catch (error) {
+    logInvitationEvent('error', 'invitation_create_failed', input.context, {
+      errorCategory: 'invitation_email_delivery',
+    })
+    await deleteInvitationById(input.invitationId)
+    throw error
+  }
+}
+
 export async function createInvitationService(
   data: CreateInvitationInput,
   userId: string,
 ) {
+  const context: InvitationLogContext = {
+    action: 'createInvitation',
+    actorId: userId,
+    role: data.role,
+    startedAt: performance.now(),
+  }
   const profile = await getUserProfile(userId)
 
   if (profile.role !== 'admin') {
@@ -88,29 +201,22 @@ export async function createInvitationService(
 
   const token = generateSecureToken()
   const expiresAt = calculateInvitationExpiry(new Date())
-
-  const invitation = await insertInvitation({
-    email: data.email,
-    role: data.role,
+  const invitation = await insertInvitationOrLogFailure({
+    data,
     token,
     expiresAt,
-    status: 'pending',
-    invitedBy: userId,
+    userId,
+    context,
   })
-
-  try {
-    await sendInvitationEmailOrThrow({
-      to: data.email,
-      invitedByName: profile.fullName || profile.email,
-      role: data.role,
-      token,
-      lecturerTitle: profile.lecturerTitle,
-    })
-  } catch (error) {
-    await deleteInvitationById(invitation.id)
-    throw error
-  }
-
+  context.invitationId = invitation.id
+  await sendCreatedInvitationOrRollback({
+    data,
+    profile,
+    token,
+    invitationId: invitation.id,
+    context,
+  })
+  logInvitationEvent('info', 'invitation_created', context)
   return { invitation }
 }
 
@@ -133,13 +239,31 @@ export async function checkInvitationByEmailService(
 export async function getInvitationByTokenService(
   data: GetInvitationByTokenInput,
 ) {
+  const context: InvitationTokenLogContext = {
+    startedAt: performance.now(),
+  }
   if (!data.token) {
     throw new NotFoundError('No token provided', {
       details: { token: data.token },
     })
   }
 
-  const invitation = await findInvitationByToken(data.token)
+  let invitation
+  try {
+    invitation = await findInvitationByToken(data.token)
+  } catch (error) {
+    if (shouldLogInvitationReadFailure(error)) {
+      logInvitationTokenEvent(
+        'error',
+        'invitation_token_lookup_failed',
+        context,
+        {
+          errorCategory: 'invitation_token_read_persistence',
+        },
+      )
+    }
+    throw error
+  }
 
   if (!invitation) {
     throw new NotFoundError('Invalid invitation token', {
@@ -148,6 +272,11 @@ export async function getInvitationByTokenService(
   }
 
   validateInvitationActive(invitation, new Date())
+
+  logInvitationTokenEvent('info', 'invitation_token_validated', context, {
+    invitationId: invitation.id,
+    role: invitation.role,
+  })
 
   return { invitation: { email: invitation.email, role: invitation.role } }
 }
@@ -163,8 +292,26 @@ export async function getInvitationsService(userId: string) {
     })
   }
 
-  const allInvitations = await findAllInvitationsWithInviter()
-  return { invitations: allInvitations }
+  const context: InvitationLogContext = {
+    action: 'getInvitations',
+    actorId: userId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const allInvitations = await findAllInvitationsWithInviter()
+    logInvitationEvent('info', 'invitations_loaded', context, {
+      invitationCount: allInvitations.length,
+    })
+    return { invitations: allInvitations }
+  } catch (error) {
+    if (shouldLogInvitationReadFailure(error)) {
+      logInvitationEvent('error', 'invitations_load_failed', context, {
+        errorCategory: 'invitation_read_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function getInvitationByEmailService(
@@ -185,6 +332,12 @@ export async function revokeInvitationService(
   data: RevokeInvitationInput,
   userId: string,
 ) {
+  const context: InvitationLogContext = {
+    action: 'revokeInvitation',
+    actorId: userId,
+    invitationId: data.id,
+    startedAt: performance.now(),
+  }
   const profile = await getUserProfile(userId)
 
   if (profile.role !== 'admin') {
@@ -195,13 +348,27 @@ export async function revokeInvitationService(
     })
   }
 
-  await revokeInvitationById(data.id)
+  try {
+    await revokeInvitationById(data.id)
+  } catch (error) {
+    logInvitationEvent('error', 'invitation_revoke_failed', context, {
+      errorCategory: 'invitation_persistence',
+    })
+    throw error
+  }
+  logInvitationEvent('info', 'invitation_revoked', context)
 }
 
 export async function deleteInvitationService(
   data: DeleteInvitationInput,
   userId: string,
 ) {
+  const context: InvitationLogContext = {
+    action: 'deleteInvitation',
+    actorId: userId,
+    invitationId: data.id,
+    startedAt: performance.now(),
+  }
   const profile = await getUserProfile(userId)
 
   if (profile.role !== 'admin') {
@@ -212,13 +379,27 @@ export async function deleteInvitationService(
     })
   }
 
-  await deleteInvitationById(data.id)
+  try {
+    await deleteInvitationById(data.id)
+  } catch (error) {
+    logInvitationEvent('error', 'invitation_delete_failed', context, {
+      errorCategory: 'invitation_persistence',
+    })
+    throw error
+  }
+  logInvitationEvent('info', 'invitation_deleted', context)
 }
 
 export async function resendInvitationService(
   data: ResendInvitationInput,
   userId: string,
 ) {
+  const context: InvitationLogContext = {
+    action: 'resendInvitation',
+    actorId: userId,
+    invitationId: data.id,
+    startedAt: performance.now(),
+  }
   const profile = await getUserProfile(userId)
 
   if (profile.role !== 'admin') {
@@ -238,6 +419,7 @@ export async function resendInvitationService(
   }
 
   validateInvitationPending(invitation)
+  context.role = invitation.role as 'student' | 'teacher'
 
   const oldToken = invitation.token
   const oldExpiresAt = invitation.expiresAt
@@ -261,6 +443,9 @@ export async function resendInvitationService(
       lecturerTitle: profile.lecturerTitle,
     })
   } catch (error) {
+    logInvitationEvent('error', 'invitation_resend_failed', context, {
+      errorCategory: 'invitation_email_delivery',
+    })
     await updateInvitationById(data.id, {
       email: invitation.email,
       token: oldToken,
@@ -269,4 +454,6 @@ export async function resendInvitationService(
     })
     throw error
   }
+
+  logInvitationEvent('info', 'invitation_resent', context)
 }

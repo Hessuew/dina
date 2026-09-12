@@ -1,17 +1,65 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   seedAssignment,
   seedCalendarEvent,
   seedCourse,
   seedLesson,
+  seedProfile,
 } from 'test/integration/seed'
 import { getCalendarEventsService } from './service/calendar.service'
 
 async function getCalendarEventsForSeededViewer() {
-  return getCalendarEventsService()
+  const viewerId = await seedProfile()
+  return getCalendarEventsService(viewerId)
 }
 
 describe('getCalendarEventsService', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('requires a persisted profile before reading calendar data', async () => {
+    await expect(
+      getCalendarEventsService('00000000-0000-4000-8000-000000000001'),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('logs a redacted read outcome with safe event counts', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const courseId = await seedCourse()
+    const lessonId = await seedLesson({
+      courseId,
+      isPublished: true,
+      scheduledTime: new Date('2026-01-10T09:00:00Z'),
+    })
+    await seedAssignment({ lessonId, status: 'published' })
+    await seedCalendarEvent({ title: 'Private calendar title' })
+
+    const viewerId = await seedProfile({ role: 'student' })
+    await getCalendarEventsService(viewerId)
+
+    const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'calendar_events_loaded',
+          actorId: viewerId,
+          eventCount: 3,
+          lessonCount: 1,
+          assignmentCount: 1,
+          specialEventCount: 1,
+          status: 'success',
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(infoSpy.mock.calls.flat().join('\n')).not.toContain(
+      'Private calendar title',
+    )
+  })
+
   it('maps a published, scheduled lesson with its course join', async () => {
     const courseId = await seedCourse({ title: 'Foundations' })
     const scheduledTime = new Date('2026-01-10T09:00:00Z')

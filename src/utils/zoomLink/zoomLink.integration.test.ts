@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getDb } from 'test/integration/db'
 import type { CreateZoomLinkInput } from '@/schemas/zoomLink.schema'
 import {
@@ -16,6 +16,8 @@ import {
   seedDiscipleshipAssignment,
   seedProfile,
 } from '@/../test/integration/seed'
+import * as zoomLinkRepository from '@/utils/zoomLink/repository'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 const makeGeneralInput = (
   overrides: Partial<CreateZoomLinkInput> = {},
@@ -57,6 +59,144 @@ async function seedOwners() {
 }
 
 describe('zoomLink service (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs redacted Admin CRUD telemetry with safe ownership fields', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const created = await createZoomLinkService(
+      makeTeacherInput(teacherId, {
+        title: 'Private Zoom title',
+        zoomUrl: 'https://private.test/meeting',
+        passcode: 'private-passcode',
+      }),
+      adminId,
+    )
+
+    await updateZoomLinkService(
+      {
+        ...makeTeacherInput(teacherId, { title: 'Updated private title' }),
+        zoomLinkId: created.link.id,
+      },
+      adminId,
+    )
+    await deleteZoomLinkService({ zoomLinkId: created.link.id }, adminId)
+
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'zoom_link_created',
+          path: 'serverFn:createZoomLink',
+          actorId: adminId,
+          zoomLinkId: created.link.id,
+          section: 'teacher',
+          teacherId,
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'zoom_link_updated',
+          path: 'serverFn:updateZoomLink',
+          actorId: adminId,
+          zoomLinkId: created.link.id,
+          section: 'teacher',
+          teacherId,
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'zoom_link_deleted',
+          path: 'serverFn:deleteZoomLink',
+          actorId: adminId,
+          zoomLinkId: created.link.id,
+          status: 'success',
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(lines.join('\n')).not.toContain('Private Zoom title')
+    expect(lines.join('\n')).not.toContain('private.test')
+    expect(lines.join('\n')).not.toContain('private-passcode')
+  })
+
+  it('logs redacted read telemetry with safe counts', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const teacherId = await seedProfile({ role: 'teacher' })
+    await createZoomLinkService(
+      makeTeacherInput(teacherId, {
+        title: 'Private Zoom title',
+        zoomUrl: 'https://private.test/meeting',
+        passcode: 'private-passcode',
+      }),
+      adminId,
+    )
+    infoSpy.mockClear()
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org/zoom-links', {
+        headers: { 'x-request-id': 'zoom-links-read' },
+      }),
+      () => getZoomLinksService(adminId),
+    )
+
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const event = JSON.parse(
+      lines.find((line) => line.includes('"zoom_links_loaded"')) as string,
+    )
+    expect(event).toMatchObject({
+      event: 'zoom_links_loaded',
+      path: 'serverFn:getZoomLinks',
+      requestId: 'zoom-links-read',
+      actorId: adminId,
+      role: 'admin',
+      linkCount: 1,
+      teacherOptionCount: 2,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+    expect(lines.join('\n')).not.toContain('Private Zoom title')
+    expect(lines.join('\n')).not.toContain('private.test')
+    expect(lines.join('\n')).not.toContain('private-passcode')
+  })
+
+  it('logs stable read failures without raw repository errors', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const repositoryError = new Error('zoom passcode database secret')
+    vi.spyOn(
+      zoomLinkRepository,
+      'findZoomLinksWithTeachers',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/zoom-links', {
+          headers: { 'x-request-id': 'zoom-links-read-failure' },
+        }),
+        () => getZoomLinksService(adminId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'zoom_links_load_failed',
+      path: 'serverFn:getZoomLinks',
+      requestId: 'zoom-links-read-failure',
+      actorId: adminId,
+      role: 'admin',
+      status: 'failure',
+      errorCategory: 'zoom_links_read_persistence',
+      durationMs: expect.any(Number),
+    })
+    expect(line).not.toContain('zoom passcode database secret')
+  })
+
   it('database rejects invalid section-owner combinations', async () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const db = getDb()

@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { randomUUID } from 'node:crypto'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { getDb } from 'test/integration/db'
 import {
@@ -20,7 +21,9 @@ import {
   finalizeGradingService,
   getAttemptForGradingService,
   getAttemptForTakingService,
+  getExamForAuthorService,
   getExamsForStudentService,
+  getExamsForTeacherService,
   gradeOpenAnswerService,
   listAttemptsForGradingService,
   publishExamService,
@@ -29,6 +32,7 @@ import {
   startAttemptService,
   submitAttemptService,
 } from '@/utils/exam/service/exam.service'
+import * as examRepository from '@/utils/exam/repository/exam.repository'
 import {
   AuthorizationError,
   ConflictError,
@@ -84,7 +88,12 @@ async function seedPublishedMcExam(teacherId: string) {
 }
 
 describe('exam authoring (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('creates a draft, adds questions, publishes; drafts stay hidden from students', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const teacherId = await seedProfile({ role: 'teacher' })
     const studentId = await seedProfile({ role: 'student' })
     const exam = await createExamService(
@@ -188,6 +197,45 @@ describe('exam authoring (integration)', () => {
       .where(eq(exams.id, exam.id))
     expect(updatedExam.title).toBe('Admin Fixed Title')
     expect(updatedQuestion.prompt).toBe('Pick A (fixed typo)')
+
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'exam_created',
+          path: 'serverFn:createExam',
+          actorId: teacherId,
+          examId: exam.id,
+          examStatus: 'draft',
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'exam_updated',
+          path: 'serverFn:saveExamChanges',
+          actorId: teacherId,
+          examId: exam.id,
+          examStatus: 'draft',
+          questionCount: 1,
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'exam_published',
+          path: 'serverFn:publishExam',
+          actorId: teacherId,
+          examId: exam.id,
+          examStatus: 'published',
+          questionCount: 1,
+          status: 'success',
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(lines.join('\n')).not.toContain('Midterm')
+    expect(lines.join('\n')).not.toContain('Pick A')
+    expect(lines.join('\n')).not.toContain('Admin Fixed Title')
   })
 
   it('rejects publishing invalid multiple choice and edits by non-creator teachers', async () => {
@@ -231,6 +279,34 @@ describe('exam authoring (integration)', () => {
     const db = await getDb()
     const [updated] = await db.select().from(exams).where(eq(exams.id, examId))
     expect(updated.title).toBe('Admin edit')
+  })
+
+  it('logs stable authoring persistence failures without raw database details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const examId = await seedExam({ createdBy: teacherId })
+    const questionId = await seedExamQuestion({ examId, orderIndex: 0 })
+    await seedExamOption({ questionId, orderIndex: 0, isCorrect: true })
+    await seedExamOption({ questionId, orderIndex: 1 })
+    vi.spyOn(examRepository, 'setExamStatus').mockRejectedValueOnce(
+      new Error('database connection secret'),
+    )
+
+    await expect(publishExamService({ examId }, teacherId)).rejects.toThrow(
+      'database connection secret',
+    )
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    const event = JSON.parse(line)
+    expect(event).toMatchObject({
+      event: 'exam_publish_failed',
+      path: 'serverFn:publishExam',
+      actorId: teacherId,
+      examId,
+      status: 'failure',
+      errorCategory: 'exam_persistence',
+    })
+    expect(line).not.toContain('database connection secret')
   })
 
   it('saves exam details, question edits, additions, and deletions together', async () => {
@@ -312,8 +388,133 @@ describe('exam authoring (integration)', () => {
   })
 })
 
+describe('exam reads (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs safe telemetry for author, catalog, and attempt reads', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
+    const { examId } = await seedPublishedMcExam(teacherId)
+
+    await getExamForAuthorService({ examId }, teacherId)
+    await getExamsForTeacherService(teacherId)
+    await getExamsForStudentService(studentId)
+    const taking = await startAttemptService({ examId }, studentId)
+    await getAttemptForTakingService({ examId }, studentId)
+    await listAttemptsForGradingService({ examId }, teacherId)
+    await getAttemptForGradingService(
+      { attemptId: taking.attempt.id },
+      teacherId,
+    )
+
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const events = lines
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .filter((event) => event.event === 'exam_read_loaded')
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: 'serverFn:getExamForAuthor',
+          actorId: teacherId,
+          examId,
+          role: 'teacher',
+          examStatus: 'published',
+          questionCount: 2,
+          optionCount: 2,
+          attemptCount: 0,
+          canEdit: false,
+        }),
+        expect.objectContaining({
+          path: 'serverFn:getExamsForTeacher',
+          actorId: teacherId,
+          role: 'teacher',
+          examCount: 1,
+        }),
+        expect.objectContaining({
+          path: 'serverFn:getExamsForStudent',
+          actorId: studentId,
+          role: 'student',
+          examCount: 1,
+          attemptedCount: 0,
+        }),
+        expect.objectContaining({
+          path: 'serverFn:getExamAttemptForTaking',
+          actorId: studentId,
+          examId,
+          attemptId: taking.attempt.id,
+          role: 'student',
+          attemptStatus: 'in_progress',
+          questionCount: 2,
+          answerCount: 0,
+        }),
+        expect.objectContaining({
+          path: 'serverFn:listExamAttemptsForGrading',
+          actorId: teacherId,
+          examId,
+          role: 'teacher',
+          attemptCount: 1,
+        }),
+        expect.objectContaining({
+          path: 'serverFn:getExamAttemptForGrading',
+          actorId: teacherId,
+          examId,
+          attemptId: taking.attempt.id,
+          role: 'teacher',
+          attemptStatus: 'in_progress',
+          questionCount: 2,
+          optionCount: 2,
+          answerCount: 0,
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(lines.join('\n')).not.toContain('Test Exam')
+    expect(lines.join('\n')).not.toContain('Test question?')
+    expect(lines.join('\n')).not.toContain('Option 1')
+  })
+
+  it('logs stable read failures without raw persistence details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const examId = await seedExam({
+      createdBy: teacherId,
+      title: 'Private exam title',
+      status: 'published',
+    })
+    vi.spyOn(examRepository, 'findQuestionsWithOptions').mockRejectedValueOnce(
+      new Error('exam prompt database secret'),
+    )
+
+    await expect(
+      getExamForAuthorService({ examId }, teacherId),
+    ).rejects.toThrow('exam prompt database secret')
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'exam_read_failed',
+      path: 'serverFn:getExamForAuthor',
+      actorId: teacherId,
+      examId,
+      role: 'teacher',
+      status: 'failure',
+      errorCategory: 'exam_read_persistence',
+    })
+    expect(line).not.toContain('exam prompt database secret')
+  })
+})
+
 describe('exam taking (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('starts within the window with a correct deadline; restart resumes the same attempt', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const teacherId = await seedProfile({ role: 'teacher' })
     const studentId = await seedProfile({ role: 'student' })
     const { examId } = await seedPublishedMcExam(teacherId)
@@ -327,6 +528,39 @@ describe('exam taking (integration)', () => {
 
     const again = await startAttemptService({ examId }, studentId)
     expect(again.attempt.id).toBe(payload.attempt.id)
+
+    const events = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) =>
+        ['exam_attempt_started', 'exam_attempt_resumed'].includes(
+          String(entry.event),
+        ),
+      )
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'exam_attempt_started',
+          path: 'serverFn:startExamAttempt',
+          studentId,
+          examId,
+          attemptId: payload.attempt.id,
+          status: 'started',
+          attemptStatus: 'in_progress',
+        }),
+        expect.objectContaining({
+          event: 'exam_attempt_resumed',
+          path: 'serverFn:startExamAttempt',
+          studentId,
+          examId,
+          attemptId: payload.attempt.id,
+          status: 'resumed',
+          attemptStatus: 'in_progress',
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
   })
 
   it('rejects starting outside the window and starting as a teacher', async () => {
@@ -346,6 +580,19 @@ describe('exam taking (integration)', () => {
     await expect(startAttemptService({ examId }, teacherId)).rejects.toThrow(
       AuthorizationError,
     )
+  })
+
+  it('rejects unknown callers from student exam surfaces', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const { examId } = await seedPublishedMcExam(teacherId)
+    const unknownCallerId = randomUUID()
+
+    await expect(getExamsForStudentService(unknownCallerId)).rejects.toThrow(
+      AuthorizationError,
+    )
+    await expect(
+      startAttemptService({ examId }, unknownCallerId),
+    ).rejects.toThrow(AuthorizationError)
   })
 
   it('upserts autosaved answers and never leaks isCorrect to students', async () => {
@@ -379,6 +626,81 @@ describe('exam taking (integration)', () => {
       .where(eq(examAnswers.attemptId, payload.attempt.id))
     expect(rows).toHaveLength(1)
     expect(rows[0].selectedOptionId).toBe(correctOptionId)
+  })
+
+  it('logs answer saves without answer values and redacts persistence failures', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
+    const { examId, mcQuestionId, correctOptionId, openQuestionId } =
+      await seedPublishedMcExam(teacherId)
+    const payload = await startAttemptService({ examId }, studentId)
+
+    await saveAnswerService(
+      {
+        attemptId: payload.attempt.id,
+        questionId: mcQuestionId,
+        selectedOptionId: correctOptionId,
+      },
+      studentId,
+    )
+    await saveAnswerService(
+      {
+        attemptId: payload.attempt.id,
+        questionId: openQuestionId,
+        textAnswer: 'private exam response',
+      },
+      studentId,
+    )
+    const answerEvents = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) => entry.event === 'exam_answer_saved')
+    expect(answerEvents).toHaveLength(2)
+    expect(answerEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: 'serverFn:saveExamAnswer',
+          studentId,
+          attemptId: payload.attempt.id,
+          examId,
+          questionId: mcQuestionId,
+          questionType: 'multiple_choice',
+          status: 'saved',
+        }),
+        expect.objectContaining({
+          questionId: openQuestionId,
+          questionType: 'open_ended',
+        }),
+      ]),
+    )
+    expect(JSON.stringify(answerEvents)).not.toContain(correctOptionId)
+    expect(JSON.stringify(answerEvents)).not.toContain('private exam response')
+
+    vi.spyOn(examRepository, 'upsertAnswer').mockRejectedValueOnce(
+      new Error('answer database secret'),
+    )
+    await expect(
+      saveAnswerService(
+        {
+          attemptId: payload.attempt.id,
+          questionId: mcQuestionId,
+          selectedOptionId: correctOptionId,
+        },
+        studentId,
+      ),
+    ).rejects.toThrow('answer database secret')
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'exam_answer_save_failed',
+      path: 'serverFn:saveExamAnswer',
+      studentId,
+      attemptId: payload.attempt.id,
+      examId,
+      status: 'failure',
+      errorCategory: 'exam_answer_persistence',
+    })
+    expect(line).not.toContain('answer database secret')
   })
 
   it('rejects mismatched answer shapes and foreign options', async () => {
@@ -457,6 +779,7 @@ describe('exam taking (integration)', () => {
   })
 
   it('submit auto-grades multiple choice and double submit is idempotent', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const teacherId = await seedProfile({ role: 'teacher' })
     const studentId = await seedProfile({ role: 'student' })
     const { examId, mcQuestionId, correctOptionId, openQuestionId } =
@@ -493,6 +816,41 @@ describe('exam taking (integration)', () => {
       .from(examAttempts)
       .where(eq(examAttempts.id, payload.attempt.id))
     expect(row.autoScore).toBe(2)
+
+    const events = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) =>
+        [
+          'exam_attempt_submitted',
+          'exam_attempt_submission_ignored',
+          'exam_attempt_submission_failed',
+        ].includes(String(entry.event)),
+      )
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'exam_attempt_submitted',
+          path: 'serverFn:submitExamAttempt',
+          status: 'submitted',
+          attemptId: payload.attempt.id,
+          examId,
+          studentId,
+          submissionMode: 'manual',
+        }),
+        expect.objectContaining({
+          event: 'exam_attempt_submission_ignored',
+          path: 'serverFn:submitExamAttempt',
+          status: 'already_finalized',
+          attemptId: payload.attempt.id,
+          examId,
+          studentId,
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(events.every((event) => !('textAnswer' in event))).toBe(true)
   })
 })
 
@@ -540,6 +898,7 @@ describe('exam grading (integration)', () => {
   })
 
   it('grades open answers, blocks finalize until done, then reveals scores to the student', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const teacherId = await seedProfile({ role: 'teacher' })
     const {
       examId,
@@ -585,6 +944,50 @@ describe('exam grading (integration)', () => {
     )
     await finalizeGradingService({ attemptId }, teacherId)
 
+    const gradingEvents = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) =>
+        ['exam_open_answer_graded', 'exam_grading_finalized'].includes(
+          String(entry.event),
+        ),
+      )
+    expect(gradingEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'exam_open_answer_graded',
+          path: 'serverFn:gradeOpenAnswer',
+          graderId: teacherId,
+          answerId: openAnswer!.id,
+          attemptId,
+          examId,
+          questionId: openQuestionId,
+          questionType: 'open_ended',
+          status: 'graded',
+        }),
+        expect.objectContaining({
+          event: 'exam_grading_finalized',
+          path: 'serverFn:finalizeGrading',
+          graderId: teacherId,
+          attemptId,
+          examId,
+          status: 'graded',
+        }),
+      ]),
+    )
+    expect(
+      gradingEvents.every((event) => typeof event.durationMs === 'number'),
+    ).toBe(true)
+    expect(
+      gradingEvents.every(
+        (event) =>
+          !('awardedPoints' in event) &&
+          !('autoScore' in event) &&
+          !('manualScore' in event) &&
+          !('totalScore' in event) &&
+          !('textAnswer' in event),
+      ),
+    ).toBe(true)
+
     const result = await getAttemptForTakingService({ examId }, studentId)
     expect(result.attempt.status).toBe('graded')
     expect(result.attempt.autoScore).toBe(2)
@@ -596,6 +999,65 @@ describe('exam grading (integration)', () => {
     expect(
       result.answers.find((answer) => answer.questionId === mcQuestionId),
     ).toMatchObject({ isCorrect: true, awardedPoints: 2 })
+  })
+
+  it('logs grading persistence failures without scores or raw errors', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const { examId, attemptId, openQuestionId } =
+      await submitFullAttempt(teacherId)
+    const grading = await getAttemptForGradingService({ attemptId }, teacherId)
+    const openAnswer = grading.answers.find(
+      (answer) => answer.questionId === openQuestionId,
+    )
+    expect(openAnswer).toBeDefined()
+
+    vi.spyOn(examRepository, 'updateAnswerGrade').mockRejectedValueOnce(
+      new Error('grading database secret'),
+    )
+    await expect(
+      gradeOpenAnswerService(
+        { answerId: openAnswer!.id, awardedPoints: 4 },
+        teacherId,
+      ),
+    ).rejects.toThrow('grading database secret')
+
+    const gradeFailureLine = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(gradeFailureLine)).toMatchObject({
+      event: 'exam_open_answer_grade_failed',
+      path: 'serverFn:gradeOpenAnswer',
+      graderId: teacherId,
+      answerId: openAnswer!.id,
+      attemptId,
+      examId,
+      questionId: openQuestionId,
+      status: 'failure',
+      errorCategory: 'exam_grading_persistence',
+    })
+    expect(gradeFailureLine).not.toContain('grading database secret')
+
+    await gradeOpenAnswerService(
+      { answerId: openAnswer!.id, awardedPoints: 4 },
+      teacherId,
+    )
+    vi.spyOn(examRepository, 'markAttemptGraded').mockRejectedValueOnce(
+      new Error('finalize database secret'),
+    )
+    await expect(
+      finalizeGradingService({ attemptId }, teacherId),
+    ).rejects.toThrow('finalize database secret')
+
+    const finalizeFailureLine = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(finalizeFailureLine)).toMatchObject({
+      event: 'exam_grading_finalize_failed',
+      path: 'serverFn:finalizeGrading',
+      graderId: teacherId,
+      attemptId,
+      examId,
+      status: 'failure',
+      errorCategory: 'exam_grading_persistence',
+    })
+    expect(finalizeFailureLine).not.toContain('finalize database secret')
   })
 
   it('rejects grading a multiple-choice answer manually and double finalize', async () => {

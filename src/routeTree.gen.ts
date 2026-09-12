@@ -27,6 +27,7 @@ import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
 import { Route as AuthedTeachersRouteImport } from './routes/_authed/teachers'
 import { Route as AuthedZoomRouteImport } from './routes/_authed/zoom'
 import { Route as ApiUploadImageRouteImport } from './routes/api.upload-image'
+import { Route as AuthedAdminObservabilityRouteImport } from './routes/_authed/admin/observability'
 import { Route as AuthedAssignmentsIndexRouteImport } from './routes/_authed/assignments/index'
 import { Route as AuthedAssignmentsAssignmentIdRouteImport } from './routes/_authed/assignments/$assignmentId'
 import { Route as AuthedCoursesIndexRouteImport } from './routes/_authed/courses/index'
@@ -133,6 +134,12 @@ const ApiUploadImageRoute = ApiUploadImageRouteImport.update({
   path: '/api/upload-image',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedAdminObservabilityRoute =
+  AuthedAdminObservabilityRouteImport.update({
+    id: '/admin/observability',
+    path: '/admin/observability',
+    getParentRoute: () => AuthedRoute,
+  } as any)
 const AuthedAssignmentsIndexRoute = AuthedAssignmentsIndexRouteImport.update({
   id: '/assignments/',
   path: '/assignments/',
@@ -236,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/teachers': typeof AuthedTeachersRoute
   '/zoom': typeof AuthedZoomRoute
   '/api/upload-image': typeof ApiUploadImageRoute
+  '/admin/observability': typeof AuthedAdminObservabilityRoute
   '/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/enrollments/$enrollmentId': typeof AuthedEnrollmentsEnrollmentIdRoute
@@ -271,6 +279,7 @@ export interface FileRoutesByTo {
   '/teachers': typeof AuthedTeachersRoute
   '/zoom': typeof AuthedZoomRoute
   '/api/upload-image': typeof ApiUploadImageRoute
+  '/admin/observability': typeof AuthedAdminObservabilityRoute
   '/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/enrollments/$enrollmentId': typeof AuthedEnrollmentsEnrollmentIdRoute
@@ -308,6 +317,7 @@ export interface FileRoutesById {
   '/_authed/teachers': typeof AuthedTeachersRoute
   '/_authed/zoom': typeof AuthedZoomRoute
   '/api/upload-image': typeof ApiUploadImageRoute
+  '/_authed/admin/observability': typeof AuthedAdminObservabilityRoute
   '/_authed/assignments/$assignmentId': typeof AuthedAssignmentsAssignmentIdRoute
   '/_authed/courses/$courseId': typeof AuthedCoursesCourseIdRoute
   '/_authed/enrollments/$enrollmentId': typeof AuthedEnrollmentsEnrollmentIdRoute
@@ -345,6 +355,7 @@ export interface FileRouteTypes {
     | '/teachers'
     | '/zoom'
     | '/api/upload-image'
+    | '/admin/observability'
     | '/assignments/$assignmentId'
     | '/courses/$courseId'
     | '/enrollments/$enrollmentId'
@@ -380,6 +391,7 @@ export interface FileRouteTypes {
     | '/teachers'
     | '/zoom'
     | '/api/upload-image'
+    | '/admin/observability'
     | '/assignments/$assignmentId'
     | '/courses/$courseId'
     | '/enrollments/$enrollmentId'
@@ -416,6 +428,7 @@ export interface FileRouteTypes {
     | '/_authed/teachers'
     | '/_authed/zoom'
     | '/api/upload-image'
+    | '/_authed/admin/observability'
     | '/_authed/assignments/$assignmentId'
     | '/_authed/courses/$courseId'
     | '/_authed/enrollments/$enrollmentId'
@@ -575,6 +588,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiUploadImageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/admin/observability': {
+      id: '/_authed/admin/observability'
+      path: '/admin/observability'
+      fullPath: '/admin/observability'
+      preLoaderRoute: typeof AuthedAdminObservabilityRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/assignments/': {
       id: '/_authed/assignments/'
       path: '/assignments'
@@ -699,6 +719,7 @@ interface AuthedRouteChildren {
   AuthedPostsRoute: typeof AuthedPostsRoute
   AuthedTeachersRoute: typeof AuthedTeachersRoute
   AuthedZoomRoute: typeof AuthedZoomRoute
+  AuthedAdminObservabilityRoute: typeof AuthedAdminObservabilityRoute
   AuthedAssignmentsAssignmentIdRoute: typeof AuthedAssignmentsAssignmentIdRoute
   AuthedCoursesCourseIdRoute: typeof AuthedCoursesCourseIdRoute
   AuthedEnrollmentsEnrollmentIdRoute: typeof AuthedEnrollmentsEnrollmentIdRoute
@@ -726,6 +747,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedPostsRoute: AuthedPostsRoute,
   AuthedTeachersRoute: AuthedTeachersRoute,
   AuthedZoomRoute: AuthedZoomRoute,
+  AuthedAdminObservabilityRoute: AuthedAdminObservabilityRoute,
   AuthedAssignmentsAssignmentIdRoute: AuthedAssignmentsAssignmentIdRoute,
   AuthedCoursesCourseIdRoute: AuthedCoursesCourseIdRoute,
   AuthedEnrollmentsEnrollmentIdRoute: AuthedEnrollmentsEnrollmentIdRoute,

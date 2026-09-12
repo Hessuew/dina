@@ -11,6 +11,8 @@ import {
   assignments,
   courseTeachers,
   lessons,
+  postComments,
+  posts,
   profiles,
   submissions,
 } from '@/db/schema'
@@ -207,21 +209,39 @@ export class DefaultAuthorizationService implements AuthorizationService {
     )
   }
 
-  private canAccessPost(
-    _userId: string,
-    _postId: string,
-    _action: Action,
-  ): boolean {
-    // TODO: Implement post authorization logic
-    return true
+  private async canAccessPost(
+    userId: string,
+    postId: string,
+    action: Action,
+  ): Promise<boolean> {
+    if (action !== 'editPost' && action !== 'deletePost') return false
+
+    const db = await getDb()
+    const post = await db.query.posts.findFirst({
+      where: eq(posts.id, postId),
+      columns: { authorId: true },
+    })
+
+    if (!post) return false
+    if (post.authorId === userId) return true
+    return this.isRole(userId, 'teacher')
   }
 
-  private canAccessComment(
-    _userId: string,
-    _commentId: string,
-    _action: Action,
-  ): boolean {
-    // TODO: Implement comment authorization logic
-    return true
+  private async canAccessComment(
+    userId: string,
+    commentId: string,
+    action: Action,
+  ): Promise<boolean> {
+    if (action !== 'editComment' && action !== 'deleteComment') return false
+
+    const db = await getDb()
+    const comment = await db.query.postComments.findFirst({
+      where: eq(postComments.id, commentId),
+      columns: { authorId: true },
+    })
+
+    if (!comment) return false
+    if (comment.authorId === userId) return true
+    return this.isRole(userId, 'teacher')
   }
 }

@@ -11,6 +11,7 @@ import type {
   UpdateCommentInput,
   UpdatePostInput,
 } from '@/schemas/post.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import type {
   CommentWithAuthor,
   PostChannel,
@@ -46,9 +47,119 @@ import {
   updatePostContent,
   updatePostReaction,
 } from '@/utils/post/repository/post.repository'
-import { AuthorizationError, NotFoundError } from '@/utils/errors'
+import { AuthorizationError, NotFoundError, isAppError } from '@/utils/errors'
 import { authz } from '@/utils/authz'
+import { getUserProfile } from '@/utils/auth/auth'
 import { signPrivateStoragePaths } from '@/utils/storage/service/private-storage.service'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+
+type PostMutationAction =
+  | 'createPost'
+  | 'updatePost'
+  | 'deletePost'
+  | 'createComment'
+  | 'updateComment'
+  | 'deleteComment'
+  | 'toggleReaction'
+  | 'toggleCommentReaction'
+
+type PostMutationLogContext = {
+  action: PostMutationAction
+  actorId: string
+  postId?: string
+  commentId?: string
+  courseId?: string | null
+  startedAt: number
+}
+
+type PostReadScope = 'channels' | 'feed' | 'detail' | 'comments'
+
+type PostReadAction =
+  'getPostChannels' | 'getPosts' | 'getPostById' | 'getComments'
+
+type PostReadLogContext = {
+  action: PostReadAction
+  scope: PostReadScope
+  actorId: string
+  postId?: string
+  courseId?: string
+  startedAt: number
+}
+
+function logPostMutationEvent(
+  level: LogLevel,
+  event: string,
+  context: PostMutationLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    postId: context.postId,
+    commentId: context.commentId,
+    courseId: context.courseId,
+    ...fields,
+  })
+}
+
+function logPostReadEvent(
+  level: LogLevel,
+  event: string,
+  context: PostReadLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    postId: context.postId,
+    courseId: context.courseId,
+    readScope: context.scope,
+    ...fields,
+  })
+}
+
+function shouldLogPostReadFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function withPostReadTelemetry<T>(args: {
+  context: PostReadLogContext
+  read: () => Promise<T>
+  fields: (result: T) => Record<string, unknown>
+}): Promise<T> {
+  try {
+    const result = await args.read()
+    logPostReadEvent(
+      'info',
+      'post_read_loaded',
+      args.context,
+      args.fields(result),
+    )
+    return result
+  } catch (error) {
+    if (shouldLogPostReadFailure(error)) {
+      logPostReadEvent('error', 'post_read_failed', args.context, {
+        errorCategory: 'post_read_persistence',
+      })
+    }
+    throw error
+  }
+}
+
+function shouldLogPostMutationFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function requirePostActor(userId: string) {
+  return getUserProfile(userId)
+}
 
 async function signPostAvatars(
   posts: ReadonlyArray<PostWithDetails>,
@@ -90,101 +201,175 @@ async function signCommentAvatars(
   }))
 }
 
-export async function getPostChannelsService(): Promise<{
+export async function getPostChannelsService(actorId: string): Promise<{
   channels: Array<PostChannel>
 }> {
-  const rows = await findChannels()
-  const channels: Array<PostChannel> = [
-    { id: 'general', name: 'General', courseId: null },
-    ...rows.map((c) => ({
-      id: c.id,
-      name: c.title,
-      courseId: c.id,
-    })),
-  ]
-  return { channels }
+  const profile = await getUserProfile(actorId)
+  return withPostReadTelemetry({
+    context: {
+      action: 'getPostChannels',
+      scope: 'channels',
+      actorId,
+      startedAt: performance.now(),
+    },
+    read: async () => {
+      const rows = await findChannels()
+      const visibleRows =
+        profile.role === 'admin'
+          ? rows
+          : rows.filter(
+              (c) =>
+                c.isPublished ||
+                c.courseTeachers.some((t) => t.teacherId === actorId),
+            )
+      const channels: Array<PostChannel> = [
+        { id: 'general', name: 'General', courseId: null },
+        ...visibleRows.map((c) => ({
+          id: c.id,
+          name: c.title,
+          courseId: c.id,
+        })),
+      ]
+      return { channels }
+    },
+    fields: ({ channels }) => ({ resultCount: channels.length }),
+  })
 }
 
-export async function getPostsService(data: GetPostsInput): Promise<{
+export async function getPostsService(
+  data: GetPostsInput,
+  actorId: string,
+): Promise<{
   posts: Array<PostWithDetails>
   nextCursor?: { createdAt: string; id: string }
 }> {
-  const limit = data.limit
-  const rows = await findPosts({
-    courseId: data.courseId,
-    cursor: data.cursor,
-    limit,
+  await getUserProfile(actorId)
+  return withPostReadTelemetry({
+    context: {
+      action: 'getPosts',
+      scope: 'feed',
+      actorId,
+      courseId: data.courseId ?? undefined,
+      startedAt: performance.now(),
+    },
+    read: async () => {
+      const limit = data.limit
+      const rows = await findPosts({
+        courseId: data.courseId,
+        cursor: data.cursor,
+        limit,
+      })
+
+      const hasMore = rows.length > limit
+      const postsSlice = hasMore ? rows.slice(0, limit) : rows
+      const postIds = postsSlice.map((p) => p.id)
+      const commentCounts = await calculateCommentCounts(postIds)
+
+      const transformed = postsSlice.map((p) =>
+        transformPostWithDetails(p, commentCounts[p.id] ?? 0),
+      )
+      const result = await signPostAvatars(transformed)
+
+      const lastPost = postsSlice[postsSlice.length - 1]
+      const nextCursor = hasMore
+        ? { createdAt: lastPost.createdAt.toISOString(), id: lastPost.id }
+        : undefined
+
+      return { posts: result, nextCursor }
+    },
+    fields: ({ posts, nextCursor }) => ({
+      resultCount: posts.length,
+      pageSize: data.limit,
+      hasNextPage: Boolean(nextCursor),
+    }),
   })
-
-  const hasMore = rows.length > limit
-  const postsSlice = hasMore ? rows.slice(0, limit) : rows
-  const postIds = postsSlice.map((p) => p.id)
-  const commentCounts = await calculateCommentCounts(postIds)
-
-  const transformed = postsSlice.map((p) =>
-    transformPostWithDetails(p, commentCounts[p.id] ?? 0),
-  )
-  const result = await signPostAvatars(transformed)
-
-  const lastPost = postsSlice[postsSlice.length - 1]
-  const nextCursor = hasMore
-    ? { createdAt: lastPost.createdAt.toISOString(), id: lastPost.id }
-    : undefined
-
-  return { posts: result, nextCursor }
 }
 
-export async function getPostByIdService(data: GetPostByIdInput): Promise<{
+export async function getPostByIdService(
+  data: GetPostByIdInput,
+  actorId: string,
+): Promise<{
   post: PostWithDetails
 }> {
-  const row = await findPostById(data.postId)
+  await getUserProfile(actorId)
+  return withPostReadTelemetry({
+    context: {
+      action: 'getPostById',
+      scope: 'detail',
+      actorId,
+      postId: data.postId,
+      startedAt: performance.now(),
+    },
+    read: async () => {
+      const row = await findPostById(data.postId)
 
-  if (!row) {
-    throw new NotFoundError('Post not found', {
-      code: 'POST_NOT_FOUND',
-      details: { postId: data.postId },
-    })
-  }
+      if (!row) {
+        throw new NotFoundError('Post not found', {
+          code: 'POST_NOT_FOUND',
+          details: { postId: data.postId },
+        })
+      }
 
-  const commentCounts = await calculateCommentCounts([row.id])
-  const [post] = await signPostAvatars([
-    transformPostWithDetails(row, commentCounts[row.id] ?? 0),
-  ])
-  return { post }
+      const commentCounts = await calculateCommentCounts([row.id])
+      const [post] = await signPostAvatars([
+        transformPostWithDetails(row, commentCounts[row.id] ?? 0),
+      ])
+      return { post }
+    },
+    fields: ({ post }) => ({
+      resultCount: 1,
+      commentCount: post.commentCount,
+    }),
+  })
 }
 
 export async function createPostBaseService(
   data: CreatePostInput,
   userId: string,
 ): Promise<{ post: PostWithDetails; canModerate: boolean }> {
-  const [isTeacher, isAdmin] = await Promise.all([
-    authz(userId).isRole('teacher'),
-    authz(userId).isAdmin(),
-  ])
-  const canModerate = isTeacher || isAdmin
-
-  const inserted = await insertPost({
-    authorId: userId,
+  const profile = await requirePostActor(userId)
+  const canModerate = profile.role === 'teacher' || profile.role === 'admin'
+  const context: PostMutationLogContext = {
+    action: 'createPost',
+    actorId: userId,
     courseId: data.courseId ?? null,
-    content: data.content,
-  })
-
-  const full = await findPostById(inserted.id)
-  if (!full) {
-    throw new NotFoundError('Post not found after insert', {
-      code: 'POST_NOT_FOUND',
-      details: { postId: inserted.id },
-    })
+    startedAt: performance.now(),
   }
 
-  const [post] = await signPostAvatars([transformPostWithDetails(full, 0)])
-  return { post, canModerate }
+  try {
+    const inserted = await insertPost({
+      authorId: userId,
+      courseId: data.courseId ?? null,
+      content: data.content,
+    })
+    context.postId = inserted.id
+
+    const full = await findPostById(inserted.id)
+    if (!full) {
+      throw new NotFoundError('Post not found after insert', {
+        code: 'POST_NOT_FOUND',
+        details: { postId: inserted.id },
+      })
+    }
+
+    const [post] = await signPostAvatars([transformPostWithDetails(full, 0)])
+    logPostMutationEvent('info', 'post_created', context)
+    return { post, canModerate }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'post_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function updatePostService(
   data: UpdatePostInput,
   userId: string,
 ): Promise<{ post: { id: string; content: string; updatedAt: Date } }> {
+  await requirePostActor(userId)
   const existing = await findPostForWrite(data.postId)
 
   if (!existing) {
@@ -197,14 +382,33 @@ export async function updatePostService(
     await authz(userId).perform('editPost').on('post', data.postId)
   }
 
-  const post = await updatePostContent(data.postId, data.content)
-  return { post }
+  const context: PostMutationLogContext = {
+    action: 'updatePost',
+    actorId: userId,
+    postId: data.postId,
+    courseId: existing.courseId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const post = await updatePostContent(data.postId, data.content)
+    logPostMutationEvent('info', 'post_updated', context)
+    return { post }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'post_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function deletePostService(
   data: DeletePostInput,
   userId: string,
 ): Promise<{ success: true }> {
+  await requirePostActor(userId)
   const existing = await findPostForWrite(data.postId)
 
   if (!existing) {
@@ -217,42 +421,81 @@ export async function deletePostService(
     await authz(userId).perform('deletePost').on('post', data.postId)
   }
 
-  await softDeletePost(data.postId, userId)
-  return { success: true }
+  const context: PostMutationLogContext = {
+    action: 'deletePost',
+    actorId: userId,
+    postId: data.postId,
+    courseId: existing.courseId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    await softDeletePost(data.postId, userId)
+    logPostMutationEvent('info', 'post_deleted', context)
+    return { success: true }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'post_persistence',
+      })
+    }
+    throw error
+  }
 }
 
-export async function getCommentsService(data: GetCommentsInput): Promise<{
+export async function getCommentsService(
+  data: GetCommentsInput,
+  actorId: string,
+): Promise<{
   comments: Array<CommentWithAuthor>
   nextCursor?: { createdAt: string; id: string }
 }> {
-  const limit = data.limit
-  const rows = await findComments({
-    postId: data.postId,
-    cursor: data.cursor,
-    limit,
+  await getUserProfile(actorId)
+  return withPostReadTelemetry({
+    context: {
+      action: 'getComments',
+      scope: 'comments',
+      actorId,
+      postId: data.postId,
+      startedAt: performance.now(),
+    },
+    read: async () => {
+      const limit = data.limit
+      const rows = await findComments({
+        postId: data.postId,
+        cursor: data.cursor,
+        limit,
+      })
+
+      const hasMore = rows.length > limit
+      const commentsSlice = hasMore ? rows.slice(0, limit) : rows
+
+      const transformed = commentsSlice
+        .slice()
+        .reverse()
+        .map((c) => transformCommentWithAuthor(c))
+      const result = await signCommentAvatars(transformed)
+
+      const lastRow = commentsSlice[commentsSlice.length - 1]
+      const nextCursor = hasMore
+        ? { createdAt: lastRow.createdAt.toISOString(), id: lastRow.id }
+        : undefined
+
+      return { comments: result, nextCursor }
+    },
+    fields: ({ comments, nextCursor }) => ({
+      resultCount: comments.length,
+      pageSize: data.limit,
+      hasNextPage: Boolean(nextCursor),
+    }),
   })
-
-  const hasMore = rows.length > limit
-  const commentsSlice = hasMore ? rows.slice(0, limit) : rows
-
-  const transformed = commentsSlice
-    .slice()
-    .reverse()
-    .map((c) => transformCommentWithAuthor(c))
-  const result = await signCommentAvatars(transformed)
-
-  const lastRow = commentsSlice[commentsSlice.length - 1]
-  const nextCursor = hasMore
-    ? { createdAt: lastRow.createdAt.toISOString(), id: lastRow.id }
-    : undefined
-
-  return { comments: result, nextCursor }
 }
 
 export async function createCommentBaseService(
   data: CreateCommentInput,
   userId: string,
 ): Promise<{ comment: CommentWithAuthor; postAuthorId: string }> {
+  await requirePostActor(userId)
   const post = await findPostForWrite(data.postId)
   if (!post) {
     throw new NotFoundError('Post not found', {
@@ -261,24 +504,44 @@ export async function createCommentBaseService(
     })
   }
 
-  const inserted = await insertComment({
+  const context: PostMutationLogContext = {
+    action: 'createComment',
+    actorId: userId,
     postId: data.postId,
-    authorId: userId,
-    content: data.content,
-  })
-
-  const full = await findCommentWithAuthor(inserted.id)
-  if (!full) {
-    throw new NotFoundError('Comment not found after insert', {
-      code: 'COMMENT_NOT_FOUND',
-      details: { commentId: inserted.id },
-    })
+    startedAt: performance.now(),
   }
 
-  const [comment] = await signCommentAvatars([transformCommentWithAuthor(full)])
-  return {
-    comment,
-    postAuthorId: post.authorId,
+  try {
+    const inserted = await insertComment({
+      postId: data.postId,
+      authorId: userId,
+      content: data.content,
+    })
+    context.commentId = inserted.id
+
+    const full = await findCommentWithAuthor(inserted.id)
+    if (!full) {
+      throw new NotFoundError('Comment not found after insert', {
+        code: 'COMMENT_NOT_FOUND',
+        details: { commentId: inserted.id },
+      })
+    }
+
+    const [comment] = await signCommentAvatars([
+      transformCommentWithAuthor(full),
+    ])
+    logPostMutationEvent('info', 'comment_created', context)
+    return {
+      comment,
+      postAuthorId: post.authorId,
+    }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'comment_persistence',
+      })
+    }
+    throw error
   }
 }
 
@@ -286,6 +549,7 @@ export async function updateCommentService(
   data: UpdateCommentInput,
   userId: string,
 ): Promise<{ comment: { id: string; content: string; updatedAt: Date } }> {
+  await requirePostActor(userId)
   const existing = await findCommentForWrite(data.commentId)
 
   if (!existing) {
@@ -301,14 +565,33 @@ export async function updateCommentService(
     })
   }
 
-  const comment = await updateCommentContent(data.commentId, data.content)
-  return { comment }
+  const context: PostMutationLogContext = {
+    action: 'updateComment',
+    actorId: userId,
+    commentId: data.commentId,
+    postId: existing.postId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const comment = await updateCommentContent(data.commentId, data.content)
+    logPostMutationEvent('info', 'comment_updated', context)
+    return { comment }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'comment_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function deleteCommentService(
   data: DeleteCommentInput,
   userId: string,
 ): Promise<{ success: true }> {
+  await requirePostActor(userId)
   const existing = await findCommentForWrite(data.commentId)
 
   if (!existing) {
@@ -321,58 +604,118 @@ export async function deleteCommentService(
     await authz(userId).perform('deleteComment').on('comment', data.commentId)
   }
 
-  await softDeleteComment(data.commentId, userId)
-  return { success: true }
+  const context: PostMutationLogContext = {
+    action: 'deleteComment',
+    actorId: userId,
+    commentId: data.commentId,
+    postId: existing.postId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    await softDeleteComment(data.commentId, userId)
+    logPostMutationEvent('info', 'comment_deleted', context)
+    return { success: true }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'comment_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function togglePostReactionService(
   data: ToggleReactionInput,
   userId: string,
 ): Promise<{ action: ReactionAction }> {
-  const existing = await findPostReaction(data.postId, userId)
-  const action = determineReactionAction(existing, data.emoji)
-
-  switch (action) {
-    case 'added':
-      await insertPostReaction({
-        postId: data.postId,
-        userId,
-        emoji: data.emoji,
-      })
-      break
-    case 'removed':
-      if (existing) await deletePostReaction(existing.id)
-      break
-    case 'updated':
-      if (existing) await updatePostReaction(existing.id, data.emoji)
-      break
+  await requirePostActor(userId)
+  const context: PostMutationLogContext = {
+    action: 'toggleReaction',
+    actorId: userId,
+    postId: data.postId,
+    startedAt: performance.now(),
   }
 
-  return { action }
+  try {
+    const existing = await findPostReaction(data.postId, userId)
+    const action = determineReactionAction(existing, data.emoji)
+
+    switch (action) {
+      case 'added':
+        await insertPostReaction({
+          postId: data.postId,
+          userId,
+          emoji: data.emoji,
+        })
+        break
+      case 'removed':
+        if (existing) await deletePostReaction(existing.id)
+        break
+      case 'updated':
+        if (existing) await updatePostReaction(existing.id, data.emoji)
+        break
+    }
+
+    logPostMutationEvent('info', 'post_reaction_toggled', context, {
+      reactionAction: action,
+      emoji: data.emoji,
+    })
+    return { action }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'post_reaction_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function toggleCommentReactionService(
   data: ToggleCommentReactionInput,
   userId: string,
 ): Promise<{ action: ReactionAction }> {
-  const existing = await findCommentReaction(data.commentId, userId)
-  const action = determineReactionAction(existing, data.emoji)
-
-  switch (action) {
-    case 'added':
-      await insertCommentReaction({
-        commentId: data.commentId,
-        userId,
-        emoji: data.emoji,
-      })
-      break
-    case 'removed':
-      if (existing) await deleteCommentReaction(existing.id)
-      break
-    case 'updated':
-      if (existing) await updateCommentReaction(existing.id, data.emoji)
-      break
+  await requirePostActor(userId)
+  const context: PostMutationLogContext = {
+    action: 'toggleCommentReaction',
+    actorId: userId,
+    commentId: data.commentId,
+    startedAt: performance.now(),
   }
 
-  return { action }
+  try {
+    const existing = await findCommentReaction(data.commentId, userId)
+    const action = determineReactionAction(existing, data.emoji)
+
+    switch (action) {
+      case 'added':
+        await insertCommentReaction({
+          commentId: data.commentId,
+          userId,
+          emoji: data.emoji,
+        })
+        break
+      case 'removed':
+        if (existing) await deleteCommentReaction(existing.id)
+        break
+      case 'updated':
+        if (existing) await updateCommentReaction(existing.id, data.emoji)
+        break
+    }
+
+    logPostMutationEvent('info', 'comment_reaction_toggled', context, {
+      reactionAction: action,
+      emoji: data.emoji,
+    })
+    return { action }
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', context, {
+        errorCategory: 'comment_reaction_persistence',
+      })
+    }
+    throw error
+  }
 }

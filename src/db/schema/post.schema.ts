@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   pgPolicy,
   pgTable,
   text,
@@ -29,7 +30,12 @@ export const posts = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
+    index('posts_course_created_at_idx').on(
+      table.courseId,
+      table.createdAt,
+      table.id,
+    ),
     pgPolicy('authenticated_view_posts', {
       for: 'select',
       to: authenticatedRole,
@@ -70,7 +76,12 @@ export const postComments = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
+    index('post_comments_post_created_at_idx').on(
+      table.postId,
+      table.createdAt,
+      table.id,
+    ),
     pgPolicy('authenticated_view_post_comments', {
       for: 'select',
       to: authenticatedRole,
@@ -113,7 +124,12 @@ export const postNotifications = pgTable(
     isRead: boolean('is_read').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
+    index('post_notifications_user_read_created_at_idx').on(
+      table.userId,
+      table.isRead,
+      table.createdAt,
+    ),
     pgPolicy('users_view_own_post_notifications', {
       for: 'select',
       to: authenticatedRole,

@@ -41,6 +41,10 @@ export const attendanceSessions = pgTable(
       table.courseId,
       table.closesAt,
     ),
+    index('attendance_sessions_closes_at_opened_at_idx').on(
+      table.closesAt,
+      table.openedAt,
+    ),
     pgPolicy('authenticated_view_attendance_sessions', {
       for: 'select',
       to: authenticatedRole,

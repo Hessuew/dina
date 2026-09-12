@@ -1,0 +1,1 @@
+CREATE INDEX "assignments_status_due_date_idx" ON "assignments" USING btree ("status","due_date");

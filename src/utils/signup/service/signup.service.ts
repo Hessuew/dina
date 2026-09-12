@@ -4,6 +4,7 @@ import type {
   signupSchema,
   verifyOtpSchema,
 } from '@/schemas/auth.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import { sendTransactionalEmail } from '@/utils/email'
 import {
   getSupabaseAdminClient,
@@ -26,8 +27,32 @@ import {
   markInvitationAccepted,
   updateInvitationOtp,
 } from '@/utils/signup/repository'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 /* v8 ignore start */
+type SignupAction = 'signup' | 'verify_otp' | 'resend_otp'
+
+type SignupLogContext = {
+  action: SignupAction
+  startedAt: number
+}
+
+function logSignupEvent(
+  level: LogLevel,
+  event: string,
+  context: SignupLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    ...fields,
+  })
+}
+
 async function sendOtpEmail(
   email: string,
   otp: string,
@@ -53,6 +78,10 @@ export async function signupService(
   email?: string
   message: string
 }> {
+  const context: SignupLogContext = {
+    action: 'signup',
+    startedAt: performance.now(),
+  }
   const invitation = await findInvitationByToken(data.token)
 
   if (!invitation) {
@@ -74,11 +103,17 @@ export async function signupService(
 
   const { error: emailError } = await sendOtpEmail(data.email, otp)
   if (emailError) {
-    console.error('Failed to send OTP email:', emailError)
+    logSignupEvent('error', 'signup_otp_email_failed', context, {
+      errorCategory: 'otp_email_delivery',
+      invitationId: invitation.id,
+    })
     try {
       await clearInvitationOtp(invitation.id)
-    } catch (clearErr) {
-      console.error('Failed to clear stale OTP after email failure:', clearErr)
+    } catch {
+      logSignupEvent('error', 'signup_otp_cleanup_failed', context, {
+        errorCategory: 'otp_cleanup',
+        invitationId: invitation.id,
+      })
     }
     return {
       error: true,
@@ -86,6 +121,9 @@ export async function signupService(
     }
   }
 
+  logSignupEvent('info', 'signup_otp_sent', context, {
+    invitationId: invitation.id,
+  })
   return {
     error: false,
     requiresOtp: true,
@@ -99,10 +137,14 @@ export async function signupService(
 async function confirmExistingUser(
   email: string,
   cause: { code?: string; message: string },
+  context: SignupLogContext,
 ): Promise<{ ok: true; userId: string } | { ok: false; message: string }> {
   const existing = await findProfileByEmail(email)
   if (!existing) {
-    console.error('Duplicate email but no profile found:', cause)
+    logSignupEvent('error', 'signup_duplicate_profile_missing', context, {
+      errorCategory: 'duplicate_profile_missing',
+      providerCode: cause.code ?? 'unknown',
+    })
     return {
       ok: false,
       message: 'This email is already registered. Please log in.',
@@ -113,7 +155,16 @@ async function confirmExistingUser(
       email_confirm: true,
     })
   if (updateError) {
-    console.error('Failed to confirm existing user:', updateError)
+    logSignupEvent(
+      'error',
+      'signup_existing_user_confirmation_failed',
+      context,
+      {
+        errorCategory: 'duplicate_user_confirmation',
+        providerCode: updateError.code ?? 'unknown',
+        userId: existing.id,
+      },
+    )
     return {
       ok: false,
       message:
@@ -129,6 +180,7 @@ async function confirmExistingUser(
 async function resolveAuthUser(
   email: string,
   password: string,
+  context: SignupLogContext,
 ): Promise<
   { ok: true; userId: string; isNew: boolean } | { ok: false; message: string }
 > {
@@ -144,14 +196,17 @@ async function resolveAuthUser(
     created.error.code === 'email_exists' ||
     created.error.code === 'user_already_exists'
   if (!isDuplicate) {
-    console.error('createUser failed with non-duplicate error:', created.error)
+    logSignupEvent('error', 'signup_user_creation_failed', context, {
+      errorCategory: 'auth_user_creation',
+      providerCode: created.error.code ?? 'unknown',
+    })
     return {
       ok: false,
       message:
         'Unable to create your account. Please try again or contact support.',
     }
   }
-  const confirmed = await confirmExistingUser(email, created.error)
+  const confirmed = await confirmExistingUser(email, created.error, context)
   return confirmed.ok ? { ...confirmed, isNew: false } : confirmed
 }
 
@@ -162,8 +217,13 @@ async function provisionVerifiedAccount(input: {
   password: string
   fullName?: string
   role: Parameters<typeof insertProfileOnConflict>[0]['role']
+  context: SignupLogContext
 }): Promise<{ ok: true; userId: string } | { ok: false; message: string }> {
-  const resolved = await resolveAuthUser(input.email, input.password)
+  const resolved = await resolveAuthUser(
+    input.email,
+    input.password,
+    input.context,
+  )
   if (!resolved.ok) return resolved
 
   try {
@@ -174,13 +234,19 @@ async function provisionVerifiedAccount(input: {
       role: input.role,
     })
     return { ok: true, userId: resolved.userId }
-  } catch (err) {
-    console.error('Profile insert failed after user creation:', err)
+  } catch {
+    logSignupEvent('error', 'signup_profile_insert_failed', input.context, {
+      errorCategory: 'profile_persistence',
+      userId: resolved.userId,
+    })
     if (resolved.isNew) {
       try {
         await getSupabaseAdminClient().auth.admin.deleteUser(resolved.userId)
-      } catch (deleteError) {
-        console.error('Failed to rollback user creation:', deleteError)
+      } catch {
+        logSignupEvent('error', 'signup_user_rollback_failed', input.context, {
+          errorCategory: 'auth_user_rollback',
+          userId: resolved.userId,
+        })
       }
     }
     return {
@@ -191,9 +257,53 @@ async function provisionVerifiedAccount(input: {
   }
 }
 
+async function completeVerifiedSignup(input: {
+  invitationId: string
+  email: string
+  password: string
+  userId: string
+  context: SignupLogContext
+}): Promise<{ success: boolean; loginFailed?: boolean; message: string }> {
+  await markInvitationAccepted(input.invitationId)
+  await clearInvitationOtp(input.invitationId)
+
+  const { error: loginError } =
+    await getSupabaseServerClient().auth.signInWithPassword({
+      email: input.email,
+      password: input.password,
+    })
+
+  if (loginError) {
+    logSignupEvent('error', 'signup_auto_login_failed', input.context, {
+      errorCategory: 'auto_login',
+      invitationId: input.invitationId,
+      status: 'partial_failure',
+    })
+    return {
+      success: true,
+      loginFailed: true,
+      message: 'Email verified! Please log in to continue.',
+    }
+  }
+
+  logSignupEvent('info', 'signup_verified', input.context, {
+    invitationId: input.invitationId,
+    userId: input.userId,
+  })
+  return {
+    success: true,
+    loginFailed: false,
+    message: 'Email verified successfully!',
+  }
+}
+
 export async function verifyOtpService(
   data: z.infer<typeof verifyOtpSchema>,
 ): Promise<{ success: boolean; loginFailed?: boolean; message: string }> {
+  const context: SignupLogContext = {
+    action: 'verify_otp',
+    startedAt: performance.now(),
+  }
   const invitation = await findInvitationByToken(data.invitationToken)
 
   if (!invitation) {
@@ -227,39 +337,28 @@ export async function verifyOtpService(
     password: data.password,
     fullName: data.fullName,
     role: invitation.role,
+    context,
   })
   if (!provision.ok) {
     return { success: false, message: provision.message }
   }
 
-  await markInvitationAccepted(invitation.id)
-  await clearInvitationOtp(invitation.id)
-
-  const { error: loginError } =
-    await getSupabaseServerClient().auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-    })
-
-  if (loginError) {
-    console.error('Auto-login failed after OTP verification:', loginError)
-    return {
-      success: true,
-      loginFailed: true,
-      message: 'Email verified! Please log in to continue.',
-    }
-  }
-
-  return {
-    success: true,
-    loginFailed: false,
-    message: 'Email verified successfully!',
-  }
+  return completeVerifiedSignup({
+    invitationId: invitation.id,
+    email: data.email,
+    password: data.password,
+    userId: provision.userId,
+    context,
+  })
 }
 
 export async function resendOtpService(
   data: z.infer<typeof resendOtpSchema>,
 ): Promise<{ success: boolean; message: string }> {
+  const context: SignupLogContext = {
+    action: 'resend_otp',
+    startedAt: performance.now(),
+  }
   const invitation = await findInvitationByToken(data.invitationToken)
 
   if (!invitation) {
@@ -290,13 +389,19 @@ export async function resendOtpService(
 
   const { error: emailError } = await sendOtpEmail(invitation.email, otp)
   if (emailError) {
-    console.error('Failed to send OTP email:', emailError)
+    logSignupEvent('error', 'signup_otp_resend_failed', context, {
+      errorCategory: 'otp_resend_delivery',
+      invitationId: invitation.id,
+    })
     return {
       success: false,
       message: 'Failed to send verification code. Please try again.',
     }
   }
 
+  logSignupEvent('info', 'signup_otp_resent', context, {
+    invitationId: invitation.id,
+  })
   return { success: true, message: 'New verification code sent!' }
 }
 /* v8 ignore end */

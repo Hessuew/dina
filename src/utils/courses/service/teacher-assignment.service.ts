@@ -2,6 +2,7 @@ import type {
   GetCourseTeachersInput,
   UpdateCourseTeachersInput,
 } from '@/schemas/course.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import {
   validateSameTeacher,
   validateTeacherRoles,
@@ -15,8 +16,91 @@ import {
 } from '@/utils/courses/repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
-import { ConflictError, NotFoundError } from '@/utils/errors'
+import { ConflictError, NotFoundError, isAppError } from '@/utils/errors'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
+
+type CourseTeacherAssignmentLogContext = {
+  actorId: string
+  courseId: string
+  teacher1Id: string
+  teacher2Id: string
+  startedAt: number
+}
+
+type CourseTeacherReadContext = {
+  actorId: string
+  courseId: string
+  startedAt: number
+}
+
+function logCourseTeacherAssignmentEvent(
+  level: LogLevel,
+  event: string,
+  context: CourseTeacherAssignmentLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:updateCourseTeachers',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    courseId: context.courseId,
+    teacher1Id: context.teacher1Id,
+    teacher2Id: context.teacher2Id,
+    ...fields,
+  })
+}
+
+function shouldLogCourseTeacherAssignmentFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+function logCourseTeacherReadEvent(
+  level: LogLevel,
+  event: string,
+  context: CourseTeacherReadContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:getCourseTeachers',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    courseId: context.courseId,
+    ...fields,
+  })
+}
+
+async function withCourseTeacherReadTelemetry<T>(
+  context: CourseTeacherReadContext,
+  read: () => Promise<T>,
+  fields: (result: T) => Record<string, unknown>,
+): Promise<T> {
+  try {
+    const result = await read()
+    logCourseTeacherReadEvent(
+      'info',
+      'course_teachers_loaded',
+      context,
+      fields(result),
+    )
+    return result
+  } catch (error) {
+    if (!isAppError(error) || error.status >= 500) {
+      logCourseTeacherReadEvent(
+        'error',
+        'course_teachers_load_failed',
+        context,
+        { errorCategory: 'course_teacher_read_persistence' },
+      )
+    }
+    throw error
+  }
+}
 
 export async function validateTeacherPair(
   teacher1Id: string,
@@ -59,10 +143,24 @@ export async function getCourseTeachersService(
   userId: string,
 ) {
   await getUserProfile(userId)
-  const courseTeachersList = await findCourseTeachers(data.courseId)
-  return {
-    teachers: await signAvatarRows(courseTeachersList.map((ct) => ct.teacher)),
+  const context: CourseTeacherReadContext = {
+    actorId: userId,
+    courseId: data.courseId,
+    startedAt: performance.now(),
   }
+
+  return withCourseTeacherReadTelemetry(
+    context,
+    async () => {
+      const courseTeachersList = await findCourseTeachers(data.courseId)
+      return {
+        teachers: await signAvatarRows(
+          courseTeachersList.map((ct) => ct.teacher),
+        ),
+      }
+    },
+    (result) => ({ teacherCount: result.teachers.length }),
+  )
 }
 
 export async function updateCourseTeachersService(
@@ -70,16 +168,40 @@ export async function updateCourseTeachersService(
   userId: string,
 ) {
   await authz(userId).hasRole('admin')
-
-  const course = await findCourseById(data.courseId)
-  if (!course) {
-    throw new NotFoundError('Course not found', {
-      code: 'COURSE_NOT_FOUND',
-      details: { courseId: data.courseId },
-    })
+  const context: CourseTeacherAssignmentLogContext = {
+    actorId: userId,
+    courseId: data.courseId,
+    teacher1Id: data.teacher1Id,
+    teacher2Id: data.teacher2Id,
+    startedAt: performance.now(),
   }
 
-  await assignTeachersToCourse(data.courseId, data.teacher1Id, data.teacher2Id)
+  try {
+    const course = await findCourseById(data.courseId)
+    if (!course) {
+      throw new NotFoundError('Course not found', {
+        code: 'COURSE_NOT_FOUND',
+        details: { courseId: data.courseId },
+      })
+    }
 
-  return { success: true }
+    await assignTeachersToCourse(
+      data.courseId,
+      data.teacher1Id,
+      data.teacher2Id,
+    )
+    logCourseTeacherAssignmentEvent('info', 'course_teachers_updated', context)
+
+    return { success: true }
+  } catch (error) {
+    if (shouldLogCourseTeacherAssignmentFailure(error)) {
+      logCourseTeacherAssignmentEvent(
+        'error',
+        'course_teachers_update_failed',
+        context,
+        { errorCategory: 'course_teacher_assignment_persistence' },
+      )
+    }
+    throw error
+  }
 }

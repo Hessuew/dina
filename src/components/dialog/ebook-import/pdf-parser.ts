@@ -10,7 +10,6 @@ export const parsePdfWithoutRendering: PdfParser = async (data) => {
   try {
     const document = await task.promise
     const result = { numPages: document.numPages }
-    await document.destroy()
     return result
   } finally {
     await task.destroy()

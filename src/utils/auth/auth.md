@@ -17,6 +17,19 @@ Centralizes authentication and authorization helpers used by server functions an
 
 ## Key Exports
 
+- `loginService(data)`
+  - Performs Supabase password sign-in and returns the provider message on a
+    rejected login for the existing UI error mapper.
+  - Emits redacted `login_succeeded` / `login_failed` telemetry with request
+    correlation, outcome, duration, safe user ID on success, and provider code
+    plus a stable error category on rejection. Email, password, and provider
+    messages are never logged.
+
+- `logoutService()`
+  - Signs out through Supabase and emits redacted `logout_succeeded` /
+    `logout_failed` telemetry with request correlation, outcome, duration, and
+    stable provider error fields. Provider messages are never logged.
+
 - `getCurrentUser()`
   - Uses `getSupabaseServerClient()` to fetch the current Supabase user.
   - Throws when not authenticated.

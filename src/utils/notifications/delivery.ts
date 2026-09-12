@@ -1,11 +1,13 @@
+import { buildNotificationRows } from './domain/notification-rows.domain'
 import type {
   CommentCreatedEvent,
   DeliveryAdapter,
   PostCreatedEvent,
 } from './types'
-import { buildNotificationRows } from './domain/notification-rows.domain'
 import { getDb } from '@/db'
 import { postNotifications } from '@/db/schema'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 export class DatabaseDeliveryAdapter implements DeliveryAdapter {
   async deliver(
@@ -21,15 +23,21 @@ export class DatabaseDeliveryAdapter implements DeliveryAdapter {
       return
     }
 
-    const db = await getDb()
+    const startedAt = performance.now()
 
     try {
+      const db = await getDb()
       await db.insert(postNotifications).values(rows)
-    } catch (error) {
-      console.error(
-        `Notification delivery failed for event ${event.type} to ${recipientIds.length} recipients:`,
-        error,
-      )
+    } catch {
+      logServerEvent('error', 'notification_delivery_failed', {
+        requestId: getRequestId(),
+        path: 'notifications:deliver',
+        status: 'failure',
+        durationMs: elapsedMs(startedAt),
+        notificationType: event.type,
+        recipientCount: rows.length,
+        errorCategory: 'notification_delivery',
+      })
     }
   }
 }

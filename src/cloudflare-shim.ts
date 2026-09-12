@@ -8,5 +8,6 @@ export const env: Record<string, any> = {
   WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
   WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
   WHATSAPP_API_VERSION: process.env.WHATSAPP_API_VERSION,
+  BETTER_STACK_DSN: process.env.BETTER_STACK_DSN,
   HYPERDRIVE: undefined,
 }

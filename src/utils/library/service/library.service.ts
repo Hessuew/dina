@@ -7,6 +7,7 @@ import type {
   UpdateMediaInput,
   UploadMediaThumbnailInput,
 } from '@/schemas/media.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import type { Role } from '@/utils/authz'
 import type {
@@ -14,6 +15,8 @@ import type {
   MediaRecordWithCourse,
 } from '@/utils/library/repository/library.repository'
 import type { SignedUpload } from '@/utils/storage/service/private-storage.service'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+import { logServerEvent } from '@/utils/observability/logger'
 import {
   canManageMedia,
   needsSignedViewerUrl,
@@ -36,7 +39,9 @@ import {
   AuthorizationError,
   NotFoundError,
   ValidationError,
+  isAppError,
 } from '@/utils/errors'
+import { getUserProfile } from '@/utils/auth/auth'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
 import {
   resolveFileExtension,
@@ -54,13 +59,106 @@ import {
   signPrivateStoragePaths,
 } from '@/utils/storage/service/private-storage.service'
 
-function requireStaff(role: Role, action: string): void {
+type LibraryMutationAction =
+  | 'createLibraryMedia'
+  | 'updateLibraryMedia'
+  | 'deleteLibraryMedia'
+  | 'uploadMediaThumbnail'
+
+type LibraryMutationContext = {
+  action: LibraryMutationAction
+  actorId: string
+  mediaId?: string
+  startedAt: number
+}
+
+type LibraryReadAction = 'getLibraryMedia' | 'getLibraryMediaItem'
+
+type LibraryReadContext = {
+  action: LibraryReadAction
+  actorId: string
+  mediaId?: string
+  startedAt: number
+}
+
+function logLibraryMutation(
+  level: LogLevel,
+  event: string,
+  context: LibraryMutationContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    mediaId: context.mediaId,
+    ...fields,
+  })
+}
+
+function logLibraryRead(
+  level: LogLevel,
+  event: string,
+  context: LibraryReadContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    mediaId: context.mediaId,
+    ...fields,
+  })
+}
+
+function shouldLogLibraryMutationFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+function shouldLogLibraryReadFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function withLibraryReadTelemetry<T>(
+  context: LibraryReadContext,
+  read: () => Promise<T>,
+  fields: (result: T) => Record<string, unknown>,
+): Promise<T> {
+  try {
+    const result = await read()
+    logLibraryRead('info', 'library_media_loaded', context, fields(result))
+    return result
+  } catch (error) {
+    if (shouldLogLibraryReadFailure(error)) {
+      logLibraryRead('error', 'library_media_load_failed', context, {
+        errorCategory: 'library_media_read_persistence',
+      })
+    }
+    throw error
+  }
+}
+
+function requireStaffRole(role: Role, action: string): void {
   if (role !== 'student') return
   throw new AuthorizationError('Teacher access required', {
     code: 'ROLE_REQUIRED',
     internalMessage: `Student attempted to ${action}`,
     details: { role },
   })
+}
+
+async function getUserRole(userId: string): Promise<Role> {
+  return (await getUserProfile(userId)).role
+}
+
+async function requireStaff(userId: string, action: string): Promise<Role> {
+  const role = await getUserRole(userId)
+  requireStaffRole(role, action)
+  return role
 }
 
 function mediaFilePathOrThrow(
@@ -135,85 +233,138 @@ async function serializeMediaRecord(
   return media
 }
 
-export async function getLibraryMediaService(
-  userId: string,
-  role: Role,
-): Promise<{
+export async function getLibraryMediaService(userId: string): Promise<{
   media: Array<MediaLibraryRow>
   viewer: { id: string; role: Role }
 }> {
-  const rows = await findAllMedia(role === 'student')
-  return {
-    media: await serializeMediaRecords(rows),
-    viewer: { id: userId, role },
+  const context: LibraryReadContext = {
+    action: 'getLibraryMedia',
+    actorId: userId,
+    startedAt: performance.now(),
   }
+
+  return withLibraryReadTelemetry(
+    context,
+    async () => {
+      const role = await getUserRole(userId)
+      const rows = await findAllMedia(role === 'student')
+      return {
+        media: await serializeMediaRecords(rows),
+        viewer: { id: userId, role },
+      }
+    },
+    (result) => ({
+      role: result.viewer.role,
+      mediaCount: result.media.length,
+      publishedOnly: result.viewer.role === 'student',
+    }),
+  )
 }
 
 export async function getLibraryMediaItemService(
   data: GetMediaInput,
   userId: string,
-  role: Role,
 ) {
-  const row = await findMediaById(data.mediaId)
-  if (!row) {
-    throw new NotFoundError('Media not found', {
-      details: { mediaId: data.mediaId },
-    })
-  }
-  if (role === 'student' && !row.isPublished) {
-    throw new AuthorizationError('Media not available', {
-      internalMessage: `Student attempted to view unpublished media: ${data.mediaId}`,
-      details: { mediaId: data.mediaId },
-    })
+  const context: LibraryReadContext = {
+    action: 'getLibraryMediaItem',
+    actorId: userId,
+    mediaId: data.mediaId,
+    startedAt: performance.now(),
   }
 
-  const media = await serializeMediaRecord(row)
-  const permissions = calculateEntityPermissions(
-    role,
-    { teacher1Id: row.uploaderId, teacher2Id: null },
-    userId,
+  return withLibraryReadTelemetry(
+    context,
+    async () => {
+      const role = await getUserRole(userId)
+      const row = await findMediaById(data.mediaId)
+      if (!row) {
+        throw new NotFoundError('Media not found', {
+          details: { mediaId: data.mediaId },
+        })
+      }
+      if (role === 'student' && !row.isPublished) {
+        throw new AuthorizationError('Media not available', {
+          internalMessage: `Student attempted to view unpublished media: ${data.mediaId}`,
+          details: { mediaId: data.mediaId },
+        })
+      }
+
+      const media = await serializeMediaRecord(row)
+      const permissions = calculateEntityPermissions(
+        role,
+        { teacher1Id: row.uploaderId, teacher2Id: null },
+        userId,
+      )
+      return {
+        media,
+        viewerUrl: needsSignedViewerUrl(row.fileType)
+          ? media.fileUrl || null
+          : null,
+        permissions,
+        viewer: { id: userId, role },
+      }
+    },
+    (result) => ({
+      role: result.viewer.role,
+      mediaPublished: result.media.isPublished,
+      fileType: result.media.fileType,
+      canManage: result.permissions.canManage,
+      hasViewerUrl: result.viewerUrl !== null,
+    }),
   )
-  return {
-    media,
-    viewerUrl: needsSignedViewerUrl(row.fileType)
-      ? media.fileUrl || null
-      : null,
-    permissions,
-    viewer: { id: userId, role },
-  }
 }
 
 export async function createLibraryMediaService(
   data: CreateMediaInput,
   userId: string,
-  role: Role,
 ): Promise<{ media: MediaLibraryRow }> {
-  requireStaff(role, 'create library media')
+  await requireStaff(userId, 'create library media')
   const source = mediaSource(data, userId)
-  const media = await insertMedia({
-    uploaderId: userId,
-    courseId: data.courseId ?? null,
-    title: data.title,
-    category: data.category,
-    description: data.description ?? null,
-    ...source,
-    fileType: toFileType(data.kind),
-    fileSize: data.fileSize ?? null,
-    isPublished: data.isPublished,
-    allowsDownload: resolveAllowsDownload(data.kind, data.allowsDownload),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  })
-  return { media: await serializeMediaRecord(media) }
+  const context: LibraryMutationContext = {
+    action: 'createLibraryMedia',
+    actorId: userId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const media = await insertMedia({
+      uploaderId: userId,
+      courseId: data.courseId ?? null,
+      title: data.title,
+      category: data.category,
+      description: data.description ?? null,
+      ...source,
+      fileType: toFileType(data.kind),
+      fileSize: data.fileSize ?? null,
+      isPublished: data.isPublished,
+      allowsDownload: resolveAllowsDownload(data.kind, data.allowsDownload),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    context.mediaId = media.id
+    const serialized = await serializeMediaRecord(media)
+    logLibraryMutation('info', 'media_created', context, {
+      mediaKind: data.kind,
+      courseId: data.courseId ?? null,
+    })
+    return { media: serialized }
+  } catch (error) {
+    if (shouldLogLibraryMutationFailure(error)) {
+      logLibraryMutation('error', 'media_mutation_failed', context, {
+        errorCategory: 'media_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 async function requireManagedMedia(
   mediaId: string,
   userId: string,
-  role: Role,
   action: string,
 ): Promise<MediaRecord> {
-  requireStaff(role, `${action} library media`)
+  const role = await getUserRole(userId)
+  requireStaffRole(role, `${action} library media`)
   const existing = await findMediaById(mediaId)
   if (!existing) {
     throw new NotFoundError('Media not found', { details: { mediaId } })
@@ -237,46 +388,77 @@ async function removeReplacedMediaFile(
 export async function updateLibraryMediaService(
   data: UpdateMediaInput,
   userId: string,
-  role: Role,
 ): Promise<{ media: MediaLibraryRow }> {
-  const existing = await requireManagedMedia(data.mediaId, userId, role, 'edit')
+  const existing = await requireManagedMedia(data.mediaId, userId, 'edit')
   const source = mediaSource(data, userId, existing.filePath)
-  const media = await updateMedia(data.mediaId, {
-    title: data.title,
-    category: data.category,
-    description: data.description ?? null,
-    ...source,
-    fileType: toFileType(data.kind),
-    fileSize: data.fileSize ?? existing.fileSize ?? null,
-    isPublished: data.isPublished,
-    allowsDownload: resolveAllowsDownload(data.kind, data.allowsDownload),
-    updatedAt: new Date(),
-  })
-  await removeReplacedMediaFile(existing, source.filePath)
-  return { media: await serializeMediaRecord(media) }
+  const context: LibraryMutationContext = {
+    action: 'updateLibraryMedia',
+    actorId: userId,
+    mediaId: data.mediaId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const media = await updateMedia(data.mediaId, {
+      title: data.title,
+      category: data.category,
+      description: data.description ?? null,
+      ...source,
+      fileType: toFileType(data.kind),
+      fileSize: data.fileSize ?? existing.fileSize ?? null,
+      isPublished: data.isPublished,
+      allowsDownload: resolveAllowsDownload(data.kind, data.allowsDownload),
+      updatedAt: new Date(),
+    })
+    await removeReplacedMediaFile(existing, source.filePath)
+    const serialized = await serializeMediaRecord(media)
+    logLibraryMutation('info', 'media_updated', context, {
+      mediaKind: data.kind,
+      courseId: data.courseId ?? null,
+    })
+    return { media: serialized }
+  } catch (error) {
+    if (shouldLogLibraryMutationFailure(error)) {
+      logLibraryMutation('error', 'media_mutation_failed', context, {
+        errorCategory: 'media_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function deleteLibraryMediaService(
   data: DeleteMediaInput,
   userId: string,
-  role: Role,
 ): Promise<{ success: true }> {
-  const existing = await requireManagedMedia(
-    data.mediaId,
-    userId,
-    role,
-    'delete',
-  )
-  await deleteMedia(data.mediaId)
-  await Promise.all([
-    existing.filePath
-      ? deleteStorageObject('media-library', existing.filePath)
-      : Promise.resolve(),
-    existing.thumbnailUrl
-      ? deleteStorageObject('media-thumbnails', existing.thumbnailUrl)
-      : Promise.resolve(),
-  ])
-  return { success: true }
+  const existing = await requireManagedMedia(data.mediaId, userId, 'delete')
+  const context: LibraryMutationContext = {
+    action: 'deleteLibraryMedia',
+    actorId: userId,
+    mediaId: data.mediaId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    await deleteMedia(data.mediaId)
+    await Promise.all([
+      existing.filePath
+        ? deleteStorageObject('media-library', existing.filePath)
+        : Promise.resolve(),
+      existing.thumbnailUrl
+        ? deleteStorageObject('media-thumbnails', existing.thumbnailUrl)
+        : Promise.resolve(),
+    ])
+    logLibraryMutation('info', 'media_deleted', context)
+    return { success: true }
+  } catch (error) {
+    if (shouldLogLibraryMutationFailure(error)) {
+      logLibraryMutation('error', 'media_mutation_failed', context, {
+        errorCategory: 'media_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 function resolveDocumentExtension(fileType: string): string {
@@ -288,9 +470,8 @@ function resolveDocumentExtension(fileType: string): string {
 export async function requestMediaFileUploadService(
   data: RequestMediaFileUploadInput,
   userId: string,
-  role: Role,
 ): Promise<SignedUpload> {
-  requireStaff(role, 'request library file upload')
+  await requireStaff(userId, 'request library file upload')
   let extension: string
   if (data.kind === 'video-file') {
     validateVideoUpload(data.fileSize, data.fileType, data.fileName)
@@ -313,9 +494,8 @@ export async function requestMediaFileUploadService(
 export async function requestMediaThumbnailUploadService(
   data: RequestMediaThumbnailUploadInput,
   userId: string,
-  role: Role,
 ): Promise<SignedUpload> {
-  await requireManagedMedia(data.mediaId, userId, role, 'edit')
+  await requireManagedMedia(data.mediaId, userId, 'edit')
   validateImageUpload(data.fileSize, data.fileType)
   const extension = resolveFileExtension(data.fileType, data.fileName)
   const path = buildOwnedStoragePath(
@@ -330,18 +510,40 @@ export async function requestMediaThumbnailUploadService(
 export async function uploadMediaThumbnailService(
   data: UploadMediaThumbnailInput,
   userId: string,
-  role: Role,
 ): Promise<{ thumbnailUrl: string | null }> {
-  const existing = await requireManagedMedia(data.mediaId, userId, role, 'edit')
+  const existing = await requireManagedMedia(data.mediaId, userId, 'edit')
   const path = extractPrivateStoragePath(data.path, 'media-thumbnails')
   if (!path || !isOwnedStoragePath(path, userId)) {
     throw new ValidationError('Thumbnail path is not owned by this user')
   }
-  await updateMediaThumbnailPath(data.mediaId, path)
-  if (existing.thumbnailUrl && existing.thumbnailUrl !== path) {
-    await deleteStorageObject('media-thumbnails', existing.thumbnailUrl)
+
+  const context: LibraryMutationContext = {
+    action: 'uploadMediaThumbnail',
+    actorId: userId,
+    mediaId: data.mediaId,
+    startedAt: performance.now(),
   }
-  return {
-    thumbnailUrl: await signPrivateStoragePath('media-thumbnails', path),
+
+  try {
+    await updateMediaThumbnailPath(data.mediaId, path)
+    const previousThumbnail = existing.thumbnailUrl
+    const replacedThumbnail =
+      previousThumbnail != null && previousThumbnail !== path
+    if (replacedThumbnail) {
+      await deleteStorageObject('media-thumbnails', previousThumbnail)
+    }
+    const thumbnailUrl = await signPrivateStoragePath('media-thumbnails', path)
+    logLibraryMutation('info', 'media_thumbnail_uploaded', context, {
+      replacedThumbnail,
+      signed: thumbnailUrl != null,
+    })
+    return { thumbnailUrl }
+  } catch (error) {
+    if (shouldLogLibraryMutationFailure(error)) {
+      logLibraryMutation('error', 'media_thumbnail_upload_failed', context, {
+        errorCategory: 'media_thumbnail_persistence',
+      })
+    }
+    throw error
   }
 }

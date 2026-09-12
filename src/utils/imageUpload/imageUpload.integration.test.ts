@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { getDb } from '../../../test/integration/db'
 import { seedCourse, seedProfile } from '../../../test/integration/seed'
@@ -48,19 +48,78 @@ beforeEach(() => {
     .mockResolvedValue({ data: [{ name: 'removed' }], error: null })
 })
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 describe('avatar signed upload', () => {
   it('validates metadata and returns an actor-owned signed upload', async () => {
-    const result = await requestAvatarUploadService(imageInput, 'user-1')
+    const userId = await seedProfile()
+    const result = await requestAvatarUploadService(imageInput, userId)
 
-    expect(result.path).toMatch(/^user-1\/\d+-[\w-]+\.png$/)
+    expect(result.path).toMatch(new RegExp(`^${userId}\\/\\d+-[\\w-]+\\.png$`))
     expect(result.signedUrl).toBe('https://signed-upload')
   })
 
+  it('emits a request-correlated completion event', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const userId = await seedProfile()
+
+    await requestAvatarUploadService(imageInput, userId)
+
+    const entry = JSON.parse(
+      infoSpy.mock.calls[infoSpy.mock.calls.length - 1]?.[0] as string,
+    )
+    expect(entry).toMatchObject({
+      event: 'image_upload_completed',
+      path: 'serverFn:request_avatar_upload',
+      requestId: 'unknown',
+      status: 'success',
+      bucket: 'avatars',
+      userId,
+    })
+  })
+
+  it('rejects an unknown actor before issuing a signed upload', async () => {
+    const userId = '00000000-0000-4000-8000-000000000001'
+
+    await expect(
+      requestAvatarUploadService(imageInput, userId),
+    ).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    })
+    expect(mocks.createSignedUploadUrl).not.toHaveBeenCalled()
+  })
+
+  it('logs provider failures without exposing the provider message', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const userId = await seedProfile()
+    mocks.createSignedUploadUrl.mockResolvedValue({
+      data: null,
+      error: { message: 'provider secret' },
+    })
+
+    await expect(
+      requestAvatarUploadService(imageInput, userId),
+    ).rejects.toMatchObject({ code: 'STORAGE_UPLOAD_FAILED' })
+
+    const entry = JSON.parse(
+      errorSpy.mock.calls[errorSpy.mock.calls.length - 1]?.[0] as string,
+    )
+    expect(entry).toMatchObject({
+      event: 'image_upload_failed',
+      path: 'serverFn:request_avatar_upload',
+      errorCategory: 'STORAGE_UPLOAD_FAILED',
+    })
+    expect(entry).not.toHaveProperty('message')
+  })
+
   it('rejects oversized metadata before signing', async () => {
+    const userId = await seedProfile()
     await expect(
       requestAvatarUploadService(
         { ...imageInput, fileSize: 3 * 1024 * 1024 },
-        'user-1',
+        userId,
       ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' })
     expect(mocks.createSignedUploadUrl).not.toHaveBeenCalled()
@@ -78,6 +137,15 @@ describe('avatar signed upload', () => {
       where: eq(profiles.id, id),
     })
     expect(row?.avatarUrl).toBe(path)
+  })
+
+  it('rejects avatar completion for an unknown actor before persistence', async () => {
+    const userId = '00000000-0000-4000-8000-000000000002'
+
+    await expect(
+      uploadAvatarService({ path: `${userId}/123.png` }, userId),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    expect(mocks.createSignedUrls).not.toHaveBeenCalled()
   })
 
   it('rejects a foreign completion path', async () => {
@@ -98,6 +166,34 @@ describe('avatar signed upload', () => {
     await uploadAvatarService({ path: `${id}/new.png` }, id)
 
     expect(mocks.remove).toHaveBeenCalledWith([`${id}/old.png`])
+  })
+
+  it('emits a redacted warning when old-object cleanup fails', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const id = await seedProfile()
+    const db = await getDb()
+    await db
+      .update(profiles)
+      .set({ avatarUrl: `${id}/old.png` })
+      .where(eq(profiles.id, id))
+    mocks.remove.mockResolvedValue({
+      data: [],
+      error: { message: 'provider secret' },
+    })
+
+    await uploadAvatarService({ path: `${id}/new.png` }, id)
+
+    const entry = JSON.parse(
+      warnSpy.mock.calls[warnSpy.mock.calls.length - 1]?.[0] as string,
+    )
+    expect(entry).toMatchObject({
+      event: 'storage_object_cleanup_failed',
+      path: 'storage:delete_object',
+      bucket: 'avatars',
+      errorCategory: 'storage_delete',
+    })
+    expect(entry).not.toHaveProperty('objectPath')
+    expect(entry).not.toHaveProperty('message')
   })
 })
 

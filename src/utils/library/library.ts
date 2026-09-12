@@ -8,7 +8,7 @@ import {
   updateMediaSchema,
   uploadMediaThumbnailSchema,
 } from '@/schemas/media.schema'
-import { getCurrentUser, getUserProfile } from '@/utils/auth/auth'
+import { getCurrentUser } from '@/utils/auth/auth'
 import {
   createLibraryMediaService,
   deleteLibraryMediaService,
@@ -42,8 +42,7 @@ export type MediaLibraryRow = {
 export const getLibraryMedia = createServerFn({ method: 'POST' }).handler(
   async () => {
     const user = await getCurrentUser()
-    const profile = await getUserProfile(user.id)
-    return getLibraryMediaService(user.id, profile.role)
+    return getLibraryMediaService(user.id)
   },
 )
 
@@ -51,54 +50,47 @@ export const getLibraryMediaItem = createServerFn({ method: 'POST' })
   .inputValidator(getMediaSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const profile = await getUserProfile(user.id)
-    return getLibraryMediaItemService(data, user.id, profile.role)
+    return getLibraryMediaItemService(data, user.id)
   })
 
 export const createLibraryMedia = createServerFn({ method: 'POST' })
   .inputValidator(createMediaSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const profile = await getUserProfile(user.id)
-    return createLibraryMediaService(data, user.id, profile.role)
+    return createLibraryMediaService(data, user.id)
   })
 
 export const updateLibraryMedia = createServerFn({ method: 'POST' })
   .inputValidator(updateMediaSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const profile = await getUserProfile(user.id)
-    return updateLibraryMediaService(data, user.id, profile.role)
+    return updateLibraryMediaService(data, user.id)
   })
 
 export const deleteLibraryMedia = createServerFn({ method: 'POST' })
   .inputValidator(deleteMediaSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const profile = await getUserProfile(user.id)
-    return deleteLibraryMediaService(data, user.id, profile.role)
+    return deleteLibraryMediaService(data, user.id)
   })
 
 export const requestMediaFileUploadFn = createServerFn({ method: 'POST' })
   .inputValidator(requestMediaFileUploadSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const profile = await getUserProfile(user.id)
-    return requestMediaFileUploadService(data, user.id, profile.role)
+    return requestMediaFileUploadService(data, user.id)
   })
 
 export const requestMediaThumbnailUploadFn = createServerFn({ method: 'POST' })
   .inputValidator(requestMediaThumbnailUploadSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const profile = await getUserProfile(user.id)
-    return requestMediaThumbnailUploadService(data, user.id, profile.role)
+    return requestMediaThumbnailUploadService(data, user.id)
   })
 
 export const uploadMediaThumbnailFn = createServerFn({ method: 'POST' })
   .inputValidator(uploadMediaThumbnailSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    const profile = await getUserProfile(user.id)
-    return uploadMediaThumbnailService(data, user.id, profile.role)
+    return uploadMediaThumbnailService(data, user.id)
   })

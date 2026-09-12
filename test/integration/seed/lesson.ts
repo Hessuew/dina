@@ -17,9 +17,7 @@ export async function seedLesson(overrides: {
     id,
     courseId: overrides.courseId,
     title: overrides.title ?? 'Test Lesson',
-    ...(overrides.isPublished !== undefined
-      ? { isPublished: overrides.isPublished }
-      : {}),
+    isPublished: overrides.isPublished ?? true,
     ...(overrides.scheduledTime !== undefined
       ? { scheduledTime: overrides.scheduledTime }
       : {}),

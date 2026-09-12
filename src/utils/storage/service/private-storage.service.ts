@@ -1,6 +1,8 @@
 import type { PrivateStorageBucket } from '@/utils/storage/domain/private-storage.domain'
 import { SIGNED_VIEW_TTL_SECONDS } from '@/utils/storage/domain/private-storage.domain'
 import { AppError } from '@/utils/errors'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { getSupabaseAdminClient } from '@/utils/supabase'
 
 export type SignedUpload = {
@@ -42,6 +44,7 @@ export async function signPrivateStoragePaths(
   bucket: PrivateStorageBucket,
   paths: ReadonlyArray<string | null | undefined>,
 ): Promise<Map<string, string | null>> {
+  const startedAt = performance.now()
   const unique = Array.from(
     new Set(paths.filter((path): path is string => !!path)),
   )
@@ -54,9 +57,14 @@ export async function signPrivateStoragePaths(
     .createSignedUrls(unique, SIGNED_VIEW_TTL_SECONDS)
 
   if (error) {
-    console.error('Failed to create signed storage URLs', {
+    logServerEvent('warn', 'private_storage_url_signing_failed', {
+      requestId: getRequestId(),
+      path: 'storage:sign_private_paths',
+      status: 'failure',
+      durationMs: elapsedMs(startedAt),
       bucket,
-      error: error.message,
+      pathCount: unique.length,
+      errorCategory: 'storage_signed_url_generation',
     })
     for (const path of unique) result.set(path, null)
     return result

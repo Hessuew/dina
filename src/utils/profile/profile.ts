@@ -1,12 +1,11 @@
 import { createServerFn } from '@tanstack/react-start'
-import { AppError } from '@/utils/errors'
 import { getCurrentUser } from '@/utils/auth/auth'
-import { getSupabaseServerClient } from '@/utils/supabase'
 import {
   updatePasswordSchema,
   updateProfileSchema,
 } from '@/schemas/profile.schema'
 import {
+  updatePasswordService,
   updateProfileBasicService,
   updateProfileWithEmailChangeService,
   verifyEmailChangeService,
@@ -27,20 +26,8 @@ export const updateProfileFn = createServerFn({ method: 'POST' })
 export const updatePasswordFn = createServerFn({ method: 'POST' })
   .inputValidator(updatePasswordSchema)
   .handler(async ({ data }) => {
-    const supabase = getSupabaseServerClient()
-
-    const { error } = await supabase.auth.updateUser({
-      password: data.newPassword,
-    })
-
-    if (error) {
-      throw new AppError({
-        code: 'PASSWORD_UPDATE_FAILED',
-        status: 400,
-        userMessage: error.message,
-        internalMessage: `Supabase auth error: ${error.message}`,
-      })
-    }
+    const user = await getCurrentUser()
+    await updatePasswordService(data.newPassword, user.id)
   })
 
 export const verifyEmailChangeFn = createServerFn({ method: 'POST' })

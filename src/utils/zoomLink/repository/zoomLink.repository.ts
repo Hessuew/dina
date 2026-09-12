@@ -68,7 +68,7 @@ export async function insertZoomLink(
 export async function updateZoomLinkById(
   zoomLinkId: string,
   values: ReturnType<typeof buildUpdateZoomLinkValues>,
-) {
+): Promise<{ link: typeof zoomLinks.$inferSelect | undefined }> {
   const db = await getDb()
   const [link] = await db
     .update(zoomLinks)

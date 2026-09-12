@@ -37,9 +37,15 @@ Database access layer and schema definitions.
   - Notable tables:
     - `profiles`
       - Stores authenticated user profile data, including optional `lecturer_title` metadata for teacher/lecturer display surfaces.
+      - Role changes are protected by the `profiles_prevent_role_escalation`
+        trigger from migration `0056_profile_role_guard`; authenticated
+        Supabase requests need a persisted Admin identity, while trusted
+        server provisioning remains supported.
     - `submissions`
       - Stores text answers and grading data; no attachment or URL field.
       - Enforces one row per `(assignment_id, student_id)`; assignment saves use conflict-safe upsert behavior.
+      - Student-scoped assignment and grading reads use the additive
+        `submissions_student_id_idx` index from migration `0052_chief_the_fallen`.
     - `media_library`
       - Stores org-wide library materials (YouTube links, PDFs, etc.).
       - Draft gating is modeled via `is_published`.
@@ -54,6 +60,12 @@ Database access layer and schema definitions.
     - `post_notifications`
       - Stores post-related notifications (new teacher/admin posts, comments on your posts).
       - Used to power the in-app notifications dropdown and unread badge.
+      - Indexed by user/read state/recent activity for the inbox summary and
+        mark-read paths; the migration is `0047_abnormal_firelord`.
+    - `posts` / `post_comments`
+      - Feed and comment reads use cursor pagination ordered by creation time
+        and ID; additive course/post ordering indexes support those bounded
+        queries.
     - `zoom_links`
       - Stores academy-wide General Zoom Links and links owned by a Teacher-user or Admin.
       - General rows have no `teacher_id`; teacher rows require one and cascade on owner deletion.
@@ -66,6 +78,38 @@ Database access layer and schema definitions.
     - `email_messages` / `email_campaign_locks`
       - Audit/failure logging and per-campaign locking for admin bulk email campaigns.
       - `email_messages` logs bulk campaign attempts only; one-off invitation emails are not backfilled.
+    - `lesson_progress`
+      - Stores student completion state for lessons.
+      - Enforces one progress row per `(student_id, lesson_id)` so completion
+        writes can use an idempotent upsert.
+    - `lessons`
+      - Course lesson reads are indexed by `(course_id, order_index, id)` for
+        ordered course detail, authoring, attendance, and completion queries.
+      - Published upcoming-lesson reads are indexed by
+        `(is_published, scheduled_time)` for the dashboard's future lesson
+        query; migration `0049_legal_absorbing_man` adds this index.
+    - `assignments`
+      - Teacher catalog reads that scope assignments to managed lessons and
+        status use `(lesson_id, status)`; the Phase 4 performance migration
+        `0050_calm_william_stryker` adds `assignments_lesson_status_idx`.
+      - Teacher lesson assignment reads that scope by lesson and order by due
+        date use `(lesson_id, due_date)`; the Phase 4 performance migration
+        `0053_youthful_rafael_vega` adds `assignments_lesson_due_date_idx`.
+      - Student assignment lists filter published rows and order by due date;
+        the Phase 4 performance migration `0057_thin_mandrill` adds
+        `assignments_status_due_date_idx`.
+    - `attendance_sessions`
+      - Student open-session reads filter by `closes_at` and order by recent
+        `opened_at`; the Phase 4 performance migration
+        `0054_elite_polaris` adds `attendance_sessions_closes_at_opened_at_idx`.
+    - `exam_attempts`
+      - Teacher grading reads filter by `exam_id` and order by the earliest
+        `started_at`; the Phase 4 performance migration
+        `0055_motionless_jazinda` adds `exam_attempts_exam_started_at_idx`.
+    - `course_teachers`
+      - Course-team reads that filter by `course_id` and order by assignment
+        creation use `(course_id, created_at)`; the Phase 4 performance
+        migration adds `course_teachers_course_created_at_idx`.
     - `staff_privileges`
       - Named Staff Privilege grants on Teacher-users (`user_id`, `privilege`).
       - Unique `(user_id, privilege)`. Admin insert/delete. Not a fourth Role (ADR 0023).

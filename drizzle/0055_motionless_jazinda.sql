@@ -1,0 +1,1 @@
+CREATE INDEX "exam_attempts_exam_started_at_idx" ON "exam_attempts" USING btree ("exam_id","started_at");

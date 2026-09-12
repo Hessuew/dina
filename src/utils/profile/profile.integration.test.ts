@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { seedProfile } from '../../../test/integration/seed'
 import { getDb } from '../../../test/integration/db'
@@ -8,6 +8,7 @@ import type { UpdateProfileInput } from '@/schemas/profile.schema'
 import type { EmailSender } from '@/utils/email/types'
 import { setEmailSender } from '@/utils/email'
 import {
+  updatePasswordService,
   updateProfileBasicService,
   updateProfileWithEmailChangeService,
   verifyEmailChangeService,
@@ -15,9 +16,13 @@ import {
 import { accountSecurity, profiles } from '@/db/schema'
 
 const sendEmail = vi.hoisted(() => vi.fn())
+const updateUser = vi.hoisted(() => vi.fn())
 const updateUserById = vi.hoisted(() => vi.fn())
 
 vi.mock('@/utils/supabase', () => ({
+  getSupabaseServerClient: () => ({
+    auth: { updateUser },
+  }),
   getSupabaseAdminClient: () => ({
     auth: { admin: { updateUserById } },
   }),
@@ -48,13 +53,19 @@ const findSecurity = async (id: string) => {
 
 beforeEach(() => {
   sendEmail.mockReset().mockResolvedValue({ providerMessageId: 'email.test' })
+  updateUser.mockReset().mockResolvedValue({ error: null })
   const sender: EmailSender = { send: sendEmail }
   setEmailSender(sender)
   updateUserById.mockReset().mockResolvedValue({ error: null })
 })
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 describe('updateProfileBasicService (integration)', () => {
   it('persists fullName and bio and reports no email change', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const id = await seedProfile({ fullName: 'Old', bio: 'Old bio' })
 
     const result = await updateProfileBasicService(
@@ -70,6 +81,19 @@ describe('updateProfileBasicService (integration)', () => {
     expect(row?.fullName).toBe('Updated')
     expect(row?.bio).toBe('Updated bio')
     expect(row?.updatedAt).toBeInstanceOf(Date)
+    expect(
+      infoSpy.mock.calls.map(([line]) => JSON.parse(String(line))),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'profile_updated',
+          path: 'serverFn:updateProfile',
+          status: 'success',
+          updateType: 'basic',
+          userId: id,
+        }),
+      ]),
+    )
   })
 
   it('stores undefined bio as null', async () => {
@@ -84,6 +108,7 @@ describe('updateProfileBasicService (integration)', () => {
 
 describe('updateProfileWithEmailChangeService (integration)', () => {
   it('persists pending email + token and sends the verification email', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const id = await seedProfile({ email: 'old@test.dev' })
 
     const result = await updateProfileWithEmailChangeService(
@@ -114,6 +139,18 @@ describe('updateProfileWithEmailChangeService (integration)', () => {
     )
     expect(security?.emailChangeTokenAttempts).toBe(0)
     expect(security?.lastEmailChangeRequestAt).toBeInstanceOf(Date)
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'email_change_requested')
+    expect(event).toMatchObject({
+      event: 'email_change_requested',
+      path: 'serverFn:updateProfile',
+      status: 'success',
+      userId: id,
+    })
+    expect(String(infoSpy.mock.calls.at(-1)?.[0])).not.toContain(
+      'pending@test.dev',
+    )
   })
 
   it('rejects when rate limited and does not send an email', async () => {
@@ -135,6 +172,7 @@ describe('updateProfileWithEmailChangeService (integration)', () => {
   })
 
   it('clears tokens when sending the verification email fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const id = await seedProfile({ email: 'old@test.dev' })
     sendEmail.mockRejectedValue(new Error('provider unavailable'))
 
@@ -149,6 +187,98 @@ describe('updateProfileWithEmailChangeService (integration)', () => {
     expect(security?.pendingEmail).toBeNull()
     expect(security?.emailChangeTokenHash).toBeNull()
     expect(security?.emailChangeTokenExpiresAt).toBeNull()
+    const event = errorSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'email_change_request_failed')
+    expect(event).toMatchObject({
+      event: 'email_change_request_failed',
+      path: 'serverFn:updateProfile',
+      status: 'failure',
+      errorCategory: 'email_change_email_delivery',
+      userId: id,
+    })
+    expect(String(errorSpy.mock.calls.at(-1)?.[0])).not.toContain(
+      'provider unavailable',
+    )
+  })
+})
+
+describe('updatePasswordService (integration)', () => {
+  it('updates the authenticated password and emits safe success telemetry', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const id = await seedProfile()
+
+    await updatePasswordService('new-password-value', id)
+
+    expect(updateUser).toHaveBeenCalledWith({ password: 'new-password-value' })
+    const event = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'password_updated')
+    expect(event).toMatchObject({
+      event: 'password_updated',
+      path: 'serverFn:updatePassword',
+      status: 'success',
+      userId: id,
+    })
+    expect(String(infoSpy.mock.calls.at(-1)?.[0])).not.toContain(
+      'new-password-value',
+    )
+  })
+
+  it('reports provider errors without logging the provider message', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const id = await seedProfile()
+    updateUser.mockResolvedValue({
+      error: { code: 'password_weak', message: 'private provider detail' },
+    })
+
+    await expect(
+      updatePasswordService('new-password-value', id),
+    ).rejects.toMatchObject({
+      code: 'PASSWORD_UPDATE_FAILED',
+      status: 400,
+      message: 'private provider detail',
+    })
+
+    const event = errorSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'password_update_failed')
+    expect(event).toMatchObject({
+      event: 'password_update_failed',
+      path: 'serverFn:updatePassword',
+      status: 'failure',
+      errorCategory: 'password_update',
+      providerCode: 'password_weak',
+      userId: id,
+    })
+    expect(String(errorSpy.mock.calls.at(-1)?.[0])).not.toContain(
+      'private provider detail',
+    )
+  })
+
+  it('logs and rethrows unexpected provider exceptions', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const id = await seedProfile()
+    const providerError = new Error('private thrown provider detail')
+    updateUser.mockRejectedValue(providerError)
+
+    await expect(updatePasswordService('new-password-value', id)).rejects.toBe(
+      providerError,
+    )
+
+    const event = errorSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === 'password_update_failed')
+    expect(event).toMatchObject({
+      event: 'password_update_failed',
+      path: 'serverFn:updatePassword',
+      status: 'failure',
+      errorCategory: 'password_update',
+      userId: id,
+    })
+    expect(String(errorSpy.mock.calls.at(-1)?.[0])).not.toContain(
+      'private thrown provider detail',
+    )
   })
 })
 
@@ -160,6 +290,7 @@ describe('verifyEmailChangeService (integration)', () => {
   }
 
   it('completes the email change for a valid token', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { token, tokenHash } = makeToken()
     const id = await seedProfile({
       email: 'old@test.dev',
@@ -179,6 +310,16 @@ describe('verifyEmailChangeService (integration)', () => {
     const security = await findSecurity(id)
     expect(security?.pendingEmail).toBeNull()
     expect(security?.emailChangeTokenHash).toBeNull()
+    expect(
+      infoSpy.mock.calls
+        .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+        .find((entry) => entry.event === 'email_change_completed'),
+    ).toMatchObject({
+      event: 'email_change_completed',
+      path: 'serverFn:verifyEmailChange',
+      status: 'success',
+      userId: id,
+    })
   })
 
   it('returns failure for an unknown token without calling Supabase', async () => {
@@ -205,6 +346,7 @@ describe('verifyEmailChangeService (integration)', () => {
   })
 
   it('increments attempts when the Supabase update fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { token, tokenHash } = makeToken()
     const id = await seedProfile({
       pendingEmail: 'pending@test.dev',
@@ -220,5 +362,18 @@ describe('verifyEmailChangeService (integration)', () => {
     expect(row?.email).not.toBe('pending@test.dev')
     const security = await findSecurity(id)
     expect(security?.emailChangeTokenAttempts).toBe(1)
+    expect(
+      errorSpy.mock.calls
+        .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+        .find((entry) => entry.event === 'email_change_update_failed'),
+    ).toMatchObject({
+      event: 'email_change_update_failed',
+      path: 'serverFn:verifyEmailChange',
+      status: 'failure',
+      errorCategory: 'email_change_auth_update',
+      providerCode: 'unknown',
+      userId: id,
+    })
+    expect(String(errorSpy.mock.calls.at(-1)?.[0])).not.toContain('boom')
   })
 })

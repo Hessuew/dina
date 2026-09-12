@@ -21,7 +21,9 @@ import {
   handleDialogDismiss,
   isDialogModeActive,
   shouldShowMaterials,
+  shouldTrackCourseStarted,
 } from '@/utils/courses/domain/course-detail.domain'
+import { trackCourseStarted, trackStudentActivated } from '@/utils/analytics'
 
 export const Route = createFileRoute('/_authed/courses/$courseId')({
   loader: async ({ params }) => {
@@ -61,8 +63,9 @@ type MaterialDialogState = ReturnType<typeof useDialogState<MediaLibraryRow>>
 
 function CourseDetailComponent() {
   const loaderData = Route.useLoaderData()
+  const { user } = Route.useRouteContext()
   const router = useRouter()
-  const { course, permissions } = loaderData
+  const { course, role, permissions } = loaderData
 
   const courseDialog = useDialogState<CourseEditData>()
   const lessonDialog = useDialogState<Lesson>()
@@ -74,6 +77,21 @@ function CourseDetailComponent() {
       toast.success('Course deleted successfully!')
     },
   })
+
+  const handleOpenLesson = (lessonId: string) => {
+    if (
+      shouldTrackCourseStarted({
+        role,
+        firstLessonId: course.lessons[0]?.id,
+        lessonId,
+        completedLessonIds: loaderData.completedLessonIds,
+      })
+    ) {
+      trackCourseStarted(course.id)
+      if (user) trackStudentActivated(user.id, course.id)
+    }
+    router.navigate({ to: '/lessons/$lessonId', params: { lessonId } })
+  }
 
   return (
     <PageLayout>
@@ -87,9 +105,7 @@ function CourseDetailComponent() {
         data={loaderData}
         lessonDialog={lessonDialog}
         materialDialog={materialDialog}
-        onOpenLesson={(lessonId) =>
-          router.navigate({ to: '/lessons/$lessonId', params: { lessonId } })
-        }
+        onOpenLesson={handleOpenLesson}
       />
       <CourseEditDeleteDialogs
         isAdmin={permissions.isAdmin}

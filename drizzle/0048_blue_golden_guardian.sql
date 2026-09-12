@@ -1,0 +1,1 @@
+CREATE INDEX "lessons_course_order_idx" ON "lessons" USING btree ("course_id","order_index","id");

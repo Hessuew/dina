@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   pgPolicy,
   pgTable,
@@ -90,6 +91,10 @@ export const courseTeachers = pgTable(
   (table) => [
     // One course per teacher — uniquely constrained (ADR 0007 rev 2).
     uniqueIndex('course_teachers_teacher_id_unique').on(table.teacherId),
+    index('course_teachers_course_created_at_idx').on(
+      table.courseId,
+      table.createdAt,
+    ),
     // Teachers can view their own course assignments
     pgPolicy('teachers_view_own_assignments', {
       for: 'select',
@@ -144,7 +149,16 @@ export const lessons = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
+    index('lessons_course_order_idx').on(
+      table.courseId,
+      table.orderIndex,
+      table.id,
+    ),
+    index('lessons_published_scheduled_idx').on(
+      table.isPublished,
+      table.scheduledTime,
+    ),
     // All authenticated users can view lessons
     pgPolicy('authenticated_view_lessons', {
       for: 'select',
@@ -209,7 +223,11 @@ export const lessonProgress = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
+    uniqueIndex('lesson_progress_student_lesson_unique').on(
+      table.studentId,
+      table.lessonId,
+    ),
     // Students can view their own progress
     pgPolicy('students_view_own_progress', {
       for: 'select',

@@ -18,6 +18,7 @@ This folder contains feature areas implemented as route files:
 - **Calendar**: `calendar.tsx`
 - **Events**: `events.tsx`
 - **Invitations**: `invitations.tsx`
+- **Observability**: `admin/observability.tsx` (Admin-only links to Better Stack, Cloudflare, Supabase, and Notion operations surfaces)
 - **Teachers**: `teachers.tsx` (Admin-only Staff Privilege toggles live in TeacherModal; catalog stays privilege-free for non-admins)
 - **Posts**: `posts.tsx`
 - **Library**: `library/index.tsx`, `library/$mediaId.tsx`

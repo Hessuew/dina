@@ -2,14 +2,11 @@ import { createServerFn } from '@tanstack/react-start'
 import { getCurrentUser } from '@/utils/auth/auth'
 import { sendEmailCampaignSchema } from '@/schemas/email-campaign.schema'
 import {
+  getEmailCampaignLocksService,
   previewEmailCampaignService,
+  releaseEmailCampaignService,
   sendEmailCampaignService,
 } from '@/utils/email/service/email-campaign.service'
-import {
-  getLockedEmailCampaigns,
-  releaseEmailCampaignLock,
-} from '@/utils/email/repository/email-campaign.repository'
-import { authz } from '@/utils/authz'
 
 export const previewEmailCampaign = createServerFn({ method: 'POST' })
   .inputValidator(sendEmailCampaignSchema)
@@ -29,13 +26,12 @@ export const getEmailCampaignLocks = createServerFn({
   method: 'GET',
 }).handler(async () => {
   const user = await getCurrentUser()
-  await authz(user.id).hasRole('admin')
-  return getLockedEmailCampaigns()
+  return getEmailCampaignLocksService(user.id)
 })
 
 export const releaseEmailCampaign = createServerFn({ method: 'POST' })
   .inputValidator(sendEmailCampaignSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
-    await releaseEmailCampaignLock(data.campaign, user.id)
+    await releaseEmailCampaignService(data, user.id)
   })

@@ -8,21 +8,23 @@ import {
   Loader2,
   Search,
 } from 'lucide-react'
+import { flexRender } from '@tanstack/react-table'
 import {
-  createColumnHelper,
-  flexRender,
+  legacyCreateColumnHelper as createColumnHelper,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table'
+  useLegacyTable as useReactTable,
+} from '@tanstack/react-table/legacy'
 import type {
-  ColumnDef,
+  LegacyColumnDef as ColumnDef,
+  LegacyReactTable as TanstackTable,
+} from '@tanstack/react-table/legacy'
+import type {
   OnChangeFn,
   PaginationState,
   SortingState,
-  Table as TanstackTable,
 } from '@tanstack/react-table'
 import type { ComponentType, RefObject } from 'react'
 import type { LinkProps } from '@tanstack/react-router'
@@ -60,7 +62,9 @@ import {
   DATA_TABLE_STICKY_HEADER_CELL_CLASS,
 } from '@/components/table/data-table.styles'
 
-type ButtonConfig<TData> = {
+type TableRow = Record<string, unknown>
+
+type ButtonConfig<TData extends TableRow> = {
   icon: ComponentType<{ className?: string }>
   label: string
   onClick?: (row: TData) => void
@@ -77,7 +81,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 const ROW_HEIGHT_PX = 58
 const HEADER_HEIGHT_PX = 46
 
-type DataTableProps<TData> = {
+type DataTableProps<TData extends TableRow> = {
   columns: Array<ColumnDef<TData, any>>
   data: Array<TData>
   pageSize?: number
@@ -100,7 +104,7 @@ type DataTableProps<TData> = {
   rowClassName?: (row: TData) => string
 }
 
-export function createButtonColumn<TData>(
+export function createButtonColumn<TData extends TableRow>(
   buttons: Array<ButtonConfig<TData>>,
 ): ColumnDef<TData, any> {
   const columnHelper = createColumnHelper<TData>()
@@ -150,7 +154,7 @@ function buildPageWindow(current: number, total: number): Array<number | '…'> 
 }
 
 // Table-option fragments that differ between server-side and client-side modes.
-function serverModeOptions(
+function serverModeOptions<TData extends TableRow>(
   isServerMode: boolean,
   rowCount: number | undefined,
 ) {
@@ -162,8 +166,8 @@ function serverModeOptions(
         rowCount,
       }
     : {
-        getFilteredRowModel: getFilteredRowModel(),
-        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel<TData>(),
+        getSortedRowModel: getSortedRowModel<TData>(),
       }
 }
 
@@ -181,7 +185,7 @@ function emitSorting(
 // Derives the pagination display values (counts, page window, size options)
 // from the current table state. Plain data derivation, not a component or
 // hook, so it is not a React Compiler memoization target.
-function derivePaginationInfo<TData>(
+function derivePaginationInfo<TData extends TableRow>(
   table: TanstackTable<TData>,
   rowCount: number | undefined,
 ) {
@@ -236,7 +240,7 @@ function SearchBar({
   )
 }
 
-function DataTableHead<TData>({
+function DataTableHead<TData extends TableRow>({
   table,
   maxRows,
 }: {
@@ -290,7 +294,7 @@ function DataTableHead<TData>({
   )
 }
 
-function DataTableRows<TData>({
+function DataTableRows<TData extends TableRow>({
   table,
   columnCount,
   emptyMessage,
@@ -339,7 +343,7 @@ function DataTableRows<TData>({
   )
 }
 
-function DataTableContent<TData>({
+function DataTableContent<TData extends TableRow>({
   table,
   columnCount,
   maxRows,
@@ -387,7 +391,7 @@ function DataTableContent<TData>({
   )
 }
 
-function PaginationSummaryRow<TData>({
+function PaginationSummaryRow<TData extends TableRow>({
   table,
   pageSize,
   sizeOptions,
@@ -441,13 +445,13 @@ function PaginationSummaryRow<TData>({
   )
 }
 
-type PaginationNavRowProps<TData> = {
+type PaginationNavRowProps<TData extends TableRow> = {
   table: TanstackTable<TData>
   pageIndex: number
   pageWindow: Array<number | '…'>
 }
 
-function PaginationPageItems<TData>({
+function PaginationPageItems<TData extends TableRow>({
   table,
   pageIndex,
   pageWindow,
@@ -479,7 +483,9 @@ function PaginationPageItems<TData>({
   )
 }
 
-function PaginationNavRow<TData>(props: PaginationNavRowProps<TData>) {
+function PaginationNavRow<TData extends TableRow>(
+  props: PaginationNavRowProps<TData>,
+) {
   // React Compiler must not memoize this: it reads live `table` state
   // (getCanPreviousPage/getCanNextPage) off a stable `table` ref.
   'use no memo'
@@ -529,7 +535,7 @@ function PaginationNavRow<TData>(props: PaginationNavRowProps<TData>) {
   )
 }
 
-function PaginationFooter<TData>({
+function PaginationFooter<TData extends TableRow>({
   table,
   pageIndex,
   pageSize,
@@ -570,7 +576,7 @@ function PaginationFooter<TData>({
   )
 }
 
-type UseDataTableStateArgs<TData> = {
+type UseDataTableStateArgs<TData extends TableRow> = {
   columns: Array<ColumnDef<TData, any>>
   data: Array<TData>
   rowCount: number | undefined
@@ -587,7 +593,7 @@ type UseDataTableStateArgs<TData> = {
 }
 
 type UseDataTableSyncedStateArgs = Pick<
-  UseDataTableStateArgs<unknown>,
+  UseDataTableStateArgs<TableRow>,
   | 'initialSearch'
   | 'initialPage'
   | 'initialPageSize'
@@ -720,7 +726,7 @@ function useDataTableChangeHandlers({
 
 // Owns DataTable's sorting/filter/pagination state, the prop-sync effects,
 // and builds the live useReactTable instance wired to their change handlers.
-function useDataTableState<TData>({
+function useDataTableState<TData extends TableRow>({
   columns,
   data,
   rowCount,
@@ -759,9 +765,9 @@ function useDataTableState<TData>({
   const table = useReactTable({
     columns,
     data,
-    ...serverModeOptions(isServerMode, rowCount),
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    ...serverModeOptions<TData>(isServerMode, rowCount),
+    getCoreRowModel: getCoreRowModel<TData>(),
+    getPaginationRowModel: getPaginationRowModel<TData>(),
     globalFilterFn: 'includesString',
     onGlobalFilterChange: handleGlobalFilterChange,
     onPaginationChange: handlePaginationChange,
@@ -782,7 +788,7 @@ function useDataTableState<TData>({
 
 type PaginationDisplayInfo = ReturnType<typeof derivePaginationInfo>
 
-type DataTableFrameProps<TData> = {
+type DataTableFrameProps<TData extends TableRow> = {
   tableTopRef: RefObject<HTMLDivElement | null>
   isLoading: boolean
   globalFilter: string
@@ -799,7 +805,7 @@ type DataTableFrameProps<TData> = {
 
 // Renders the search bar, table content, and pagination footer around the
 // live table instance. Split out so DataTable's own body stays orchestration.
-function DataTableFrame<TData>({
+function DataTableFrame<TData extends TableRow>({
   tableTopRef,
   isLoading,
   globalFilter,
@@ -847,7 +853,7 @@ function DataTableFrame<TData>({
   )
 }
 
-export function DataTable<TData>({
+export function DataTable<TData extends TableRow>({
   columns,
   data,
   pageSize: initialPageSize = 10,

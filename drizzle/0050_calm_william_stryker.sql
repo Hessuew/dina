@@ -1,0 +1,1 @@
+CREATE INDEX "assignments_lesson_status_idx" ON "assignments" USING btree ("lesson_id","status");

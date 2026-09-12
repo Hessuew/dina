@@ -19,6 +19,14 @@ export async function insertLesson(values: {
   return lesson
 }
 
+export async function findLessonForCompletion(lessonId: string) {
+  const db = await getDb()
+  return db.query.lessons.findFirst({
+    where: eq(lessons.id, lessonId),
+    columns: { id: true, courseId: true, isPublished: true },
+  })
+}
+
 export async function updateLessonById(
   lessonId: string,
   values: {
@@ -61,7 +69,13 @@ export async function findUpcomingLessons(now: Date) {
     })
     .from(lessons)
     .innerJoin(courses, eq(lessons.courseId, courses.id))
-    .where(and(gt(lessons.scheduledTime, now), eq(lessons.isPublished, true)))
+    .where(
+      and(
+        gt(lessons.scheduledTime, now),
+        eq(lessons.isPublished, true),
+        eq(courses.isPublished, true),
+      ),
+    )
     .orderBy(lessons.scheduledTime)
     .limit(5)
 }

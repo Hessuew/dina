@@ -1,3 +1,7 @@
+import { resolveObservabilityIdentity } from '@/utils/observability/domain/identity.domain'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, readRequestId } from '@/utils/observability/request-context'
+
 export type HealthStatus = 'ok' | 'error'
 
 export type DependencyResult = {
@@ -46,9 +50,7 @@ type HealthOptions = {
   requestId?: string
 }
 
-type LogEntry = {
-  level: 'info' | 'warn'
-  event: 'health_check' | 'readiness_check'
+type HealthLogFields = {
   requestId: string
   path: string
   status: HealthStatus
@@ -70,7 +72,7 @@ export function handleHealthRequest(
   const context = buildRequestContext(request, options)
   const body = buildHealthPayload(context, 'ok')
 
-  writeStructuredLog(buildLogEntry(context, 'health_check', body.status))
+  logServerEvent('info', 'health_check', buildLogFields(context, body.status))
 
   return jsonResponse(body, 200)
 }
@@ -90,8 +92,10 @@ export async function handleReadinessRequest(
     dependencies: { database },
   }
 
-  writeStructuredLog(
-    buildLogEntry(context, 'readiness_check', status, database.error?.category),
+  logServerEvent(
+    status === 'ok' ? 'info' : 'warn',
+    'readiness_check',
+    buildLogFields(context, status, database.error?.category),
   )
 
   return jsonResponse(body, status === 'ok' ? 200 : 503)
@@ -105,7 +109,12 @@ function buildRequestContext(
   const url = new URL(request.url)
 
   return {
-    environment: options.environment ?? import.meta.env.MODE,
+    environment:
+      options.environment ??
+      resolveObservabilityIdentity(
+        import.meta.env.MODE,
+        import.meta.env.VITE_SENTRY_ENVIRONMENT,
+      ).environment,
     release: options.release ?? readRelease(),
     requestId: options.requestId ?? readRequestId(request),
     startedAt: performance.now(),
@@ -175,32 +184,18 @@ function withTimeout<T>(
   })
 }
 
-function buildLogEntry(
+function buildLogFields(
   context: RequestContext,
-  event: LogEntry['event'],
   status: HealthStatus,
   errorCategory?: string,
-): LogEntry {
+): HealthLogFields {
   return {
-    level: status === 'ok' ? 'info' : 'warn',
-    event,
     requestId: context.requestId,
     path: context.pathname,
     status,
     durationMs: elapsedMs(context.startedAt),
     ...(errorCategory ? { errorCategory } : {}),
   }
-}
-
-function writeStructuredLog(entry: LogEntry): void {
-  const line = JSON.stringify(entry)
-
-  if (entry.level === 'warn') {
-    console.warn(line)
-    return
-  }
-
-  console.info(line)
 }
 
 function jsonResponse(body: HealthPayload | ReadinessPayload, status: number) {
@@ -213,24 +208,10 @@ function jsonResponse(body: HealthPayload | ReadinessPayload, status: number) {
   })
 }
 
-function readRequestId(request: Request): string {
-  return (
-    request.headers.get('cf-ray') ??
-    request.headers.get('x-request-id') ??
-    crypto.randomUUID()
-  )
-}
-
 function readRelease(): string | null {
-  return (
-    import.meta.env.VITE_SENTRY_RELEASE ??
-    import.meta.env.VITE_APP_VERSION ??
-    null
-  )
-}
-
-function elapsedMs(startedAt: number): number {
-  return Math.max(0, Math.round(performance.now() - startedAt))
+  const release =
+    import.meta.env.VITE_SENTRY_RELEASE ?? import.meta.env.VITE_APP_VERSION
+  return release?.trim() || null
 }
 
 async function noopCheck(_signal?: AbortSignal): Promise<void> {}

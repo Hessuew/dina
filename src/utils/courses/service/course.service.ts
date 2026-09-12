@@ -4,6 +4,7 @@ import type {
   GetCourseInput,
   UpdateCourseInput,
 } from '@/schemas/course.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import {
   assignTeachersToCourse,
   validateNewCourseTeacherPair,
@@ -36,8 +37,11 @@ import {
   ConflictError,
   NotFoundError,
   ValidationError,
+  isAppError,
 } from '@/utils/errors'
 import { deleteStorageObjectStrict } from '@/utils/imageUpload/service/imageUpload.service'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { extractPrivateStoragePath } from '@/utils/storage/domain/private-storage.domain'
 import {
   signCourseThumbnailRows,
@@ -46,6 +50,84 @@ import {
 import { serializeMediaRecords } from '@/utils/library/service/library.service'
 
 type CourseAssetRow = Awaited<ReturnType<typeof findAllCourses>>[number]
+type CourseDetail = NonNullable<
+  Awaited<ReturnType<typeof findCourseWithDetails>>
+>
+
+type CourseReadAction = 'getCourses' | 'getCourse'
+
+type CourseReadLogContext = {
+  action: CourseReadAction
+  actorId: string
+  courseId?: string
+  startedAt: number
+}
+
+function logCourseReadEvent(
+  level: LogLevel,
+  event: string,
+  context: CourseReadLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    courseId: context.courseId,
+    ...fields,
+  })
+}
+
+async function withCourseReadTelemetry<T>(
+  context: CourseReadLogContext,
+  read: () => Promise<T>,
+  fields: (result: T) => Record<string, unknown>,
+): Promise<T> {
+  try {
+    const result = await read()
+    logCourseReadEvent('info', 'course_read_loaded', context, fields(result))
+    return result
+  } catch (error) {
+    if (shouldLogCourseFailure(error)) {
+      logCourseReadEvent('error', 'course_read_failed', context, {
+        errorCategory: 'course_read_persistence',
+      })
+    }
+    throw error
+  }
+}
+
+type CourseMutationAction = 'createCourse' | 'updateCourse' | 'deleteCourse'
+
+type CourseMutationLogContext = {
+  action: CourseMutationAction
+  actorId: string
+  courseId?: string
+  startedAt: number
+}
+
+function logCourseMutationEvent(
+  level: LogLevel,
+  event: string,
+  context: CourseMutationLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    courseId: context.courseId,
+    ...fields,
+  })
+}
+
+function shouldLogCourseFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
 
 async function signCourseAssets<T extends CourseAssetRow>(
   rows: ReadonlyArray<T>,
@@ -78,42 +160,55 @@ function courseThumbnailPath(value: string | null | undefined): string | null {
   return path
 }
 
-export async function getCoursesService(userId: string) {
-  const profile = await getUserProfile(userId)
-  const isStudentView = profile.role === 'student'
-  const allCourses = await findAllCourses(!isStudentView)
-
-  if (!isStudentView) {
-    return {
-      courses: await signCourseAssets(allCourses),
-      role: profile.role,
-    }
-  }
-
-  const allLessonIds = allCourses.flatMap((course) =>
-    course.lessons.map((l) => l.id),
-  )
-  const allAssignments = await findPublishedAssignmentsByLessonIds(allLessonIds)
-  const allAssignmentIds = allAssignments.map((a) => a.id)
-  const allSubmissions = await findStudentSubmissions(userId, allAssignmentIds)
-
-  const coursesWithProgress = buildCoursesWithProgress(
-    allCourses,
-    allAssignments,
-    allSubmissions,
-  )
-
+function restrictCourseToPublishedContent(course: CourseDetail): CourseDetail {
   return {
-    courses: await signCourseAssets(coursesWithProgress),
-    role: profile.role,
+    ...course,
+    lessons: course.lessons.filter((lesson) => lesson.isPublished),
+    mediaFiles: course.mediaFiles.filter((media) => media.isPublished),
   }
 }
 
-export async function getCourseService(data: GetCourseInput, userId: string) {
-  const profile = await getUserProfile(userId)
+function restrictCourseListForViewer(
+  courses: ReadonlyArray<CourseAssetRow>,
+  teacherId: string,
+): Array<CourseAssetRow> {
+  return courses.flatMap((course) => {
+    const managesCourse = course.courseTeachers.some(
+      (teacher) => teacher.teacherId === teacherId,
+    )
+    if (managesCourse) return [course]
+    if (!course.isPublished) return []
+    return [
+      {
+        ...course,
+        lessons: course.lessons.filter((lesson) => lesson.isPublished),
+      },
+    ]
+  })
+}
 
-  const isTeacherOrAdmin = profile.role !== 'student'
-  const course = await findCourseWithDetails(data.courseId, isTeacherOrAdmin)
+async function loadStudentCourseData(userId: string, course: CourseDetail) {
+  const progress = await findCompletedLessonProgress(userId)
+  const lessonIds = course.lessons.map((lesson) => lesson.id)
+  const courseAssignments = await findPublishedAssignmentsByLessonIds(lessonIds)
+  const assignmentIds = courseAssignments.map((assignment) => assignment.id)
+  const studentSubmissions = await findStudentSubmissions(userId, assignmentIds)
+
+  return {
+    progress,
+    assignmentData: buildAssignmentStats(courseAssignments, studentSubmissions),
+  }
+}
+
+async function loadCourse(
+  data: GetCourseInput,
+  userId: string,
+  profile: Awaited<ReturnType<typeof getUserProfile>>,
+) {
+  const course = await findCourseWithDetails(
+    data.courseId,
+    profile.role !== 'student',
+  )
 
   if (!course) {
     throw new NotFoundError('Course not found', {
@@ -122,52 +217,142 @@ export async function getCourseService(data: GetCourseInput, userId: string) {
     })
   }
 
-  let progress: Array<{ lessonId: string }> = []
-  let assignmentData = {
-    totalAssignments: 0,
-    submittedCount: 0,
-    gradedCount: 0,
-  }
-
-  if (profile.role === 'student') {
-    progress = await findCompletedLessonProgress(userId)
-    const lessonIds = course.lessons.map((lesson) => lesson.id)
-    const courseAssignments =
-      await findPublishedAssignmentsByLessonIds(lessonIds)
-    const assignmentIds = courseAssignments.map((assignment) => assignment.id)
-    const studentSubmissions = await findStudentSubmissions(
-      userId,
-      assignmentIds,
-    )
-    assignmentData = buildAssignmentStats(courseAssignments, studentSubmissions)
-  }
-
-  const completedLessonIds = new Set(progress.map((item) => item.lessonId))
-  const [signedCourse] = await signCourseAssets([course])
-  const courseWithTeachers = {
-    ...signedCourse,
-    mediaFiles: await serializeMediaRecords(course.mediaFiles),
-    ...extractTeacherIds(course.courseTeachers),
-  }
+  const teacherRefs = extractTeacherIds(course.courseTeachers)
   const permissions = calculateEntityPermissions(
     profile.role,
-    courseWithTeachers,
+    teacherRefs,
     userId,
   )
+
+  if (!course.isPublished && !permissions.canManage) {
+    throw new AuthorizationError('Course not available', {
+      internalMessage: `Non-manager attempted to access unpublished course: ${data.courseId}`,
+      details: { courseId: data.courseId },
+    })
+  }
+
+  const visibleCourse = permissions.canManage
+    ? course
+    : restrictCourseToPublishedContent(course)
+  const courseData =
+    profile.role === 'student'
+      ? await loadStudentCourseData(userId, visibleCourse)
+      : {
+          progress: [],
+          assignmentData: {
+            totalAssignments: 0,
+            submittedCount: 0,
+            gradedCount: 0,
+          },
+        }
+
+  const completedLessonIds = new Set(
+    courseData.progress.map((item) => item.lessonId),
+  )
+  const [signedCourse] = await signCourseAssets([visibleCourse])
+  const courseWithTeachers = {
+    ...signedCourse,
+    mediaFiles: await serializeMediaRecords(visibleCourse.mediaFiles),
+    ...teacherRefs,
+  }
 
   return {
     course: courseWithTeachers,
     role: profile.role,
     completedLessonIds: Array.from(completedLessonIds),
-    assignmentData,
+    assignmentData: courseData.assignmentData,
     permissions,
   }
+}
+
+export async function getCoursesService(userId: string) {
+  const profile = await getUserProfile(userId)
+  const context: CourseReadLogContext = {
+    action: 'getCourses',
+    actorId: userId,
+    startedAt: performance.now(),
+  }
+
+  return withCourseReadTelemetry(
+    context,
+    async () => {
+      const isStudentView = profile.role === 'student'
+      const allCourses = await findAllCourses(!isStudentView)
+      const visibleCourses = isStudentView
+        ? allCourses.filter((course) => course.isPublished)
+        : profile.role === 'teacher'
+          ? restrictCourseListForViewer(allCourses, userId)
+          : allCourses
+
+      if (!isStudentView) {
+        return {
+          courses: await signCourseAssets(visibleCourses),
+          role: profile.role,
+        }
+      }
+
+      const allLessonIds = visibleCourses.flatMap((course) =>
+        course.lessons.map((l) => l.id),
+      )
+      const allAssignments =
+        await findPublishedAssignmentsByLessonIds(allLessonIds)
+      const allAssignmentIds = allAssignments.map((a) => a.id)
+      const allSubmissions = await findStudentSubmissions(
+        userId,
+        allAssignmentIds,
+      )
+
+      const coursesWithProgress = buildCoursesWithProgress(
+        visibleCourses,
+        allAssignments,
+        allSubmissions,
+      )
+
+      return {
+        courses: await signCourseAssets(coursesWithProgress),
+        role: profile.role,
+      }
+    },
+    (result) => ({
+      role: result.role,
+      courseCount: result.courses.length,
+      lessonCount: result.courses.reduce(
+        (count, course) => count + course.lessons.length,
+        0,
+      ),
+    }),
+  )
+}
+
+export async function getCourseService(data: GetCourseInput, userId: string) {
+  const profile = await getUserProfile(userId)
+  const context: CourseReadLogContext = {
+    action: 'getCourse',
+    actorId: userId,
+    courseId: data.courseId,
+    startedAt: performance.now(),
+  }
+
+  return withCourseReadTelemetry(
+    context,
+    () => loadCourse(data, userId, profile),
+    (result) => ({
+      role: result.role,
+      lessonCount: result.course.lessons.length,
+      mediaCount: result.course.mediaFiles.length,
+    }),
+  )
 }
 
 export async function createCourseService(
   data: CreateCourseInput,
   userId: string,
 ) {
+  const context: CourseMutationLogContext = {
+    action: 'createCourse',
+    actorId: userId,
+    startedAt: performance.now(),
+  }
   const profile = await getUserProfile(userId)
   if (profile.role !== 'admin') {
     throw new AuthorizationError('Only admins can create courses', {
@@ -185,9 +370,8 @@ export async function createCourseService(
     await validateNewCourseTeacherPair(...teacherIds)
   }
 
-  let course
   try {
-    course = await insertCourse(
+    const course = await insertCourse(
       {
         title: data.title,
         description: data.description,
@@ -197,87 +381,133 @@ export async function createCourseService(
       },
       teacherIds,
     )
+    const [signedCourse] = await signCourseThumbnailRows([course])
+    logCourseMutationEvent('info', 'course_created', context, {
+      courseId: course.id,
+      published: false,
+    })
+    return { course: signedCourse }
   } catch (error) {
     if (isTeacherAssignmentConflict(error)) {
+      logCourseMutationEvent('warn', 'course_create_rejected', context, {
+        status: 'conflict',
+        errorCategory: 'teacher_assignment_conflict',
+      })
       throw new ConflictError(
         'One or both selected teachers are already assigned to another course',
       )
     }
+    if (shouldLogCourseFailure(error)) {
+      logCourseMutationEvent('error', 'course_create_failed', context, {
+        errorCategory: 'course_persistence',
+      })
+    }
     throw error
   }
-
-  const [signedCourse] = await signCourseThumbnailRows([course])
-  return { course: signedCourse }
 }
 
 export async function updateCourseService(
   data: UpdateCourseInput,
   userId: string,
 ) {
+  const context: CourseMutationLogContext = {
+    action: 'updateCourse',
+    actorId: userId,
+    courseId: data.courseId,
+    startedAt: performance.now(),
+  }
   const isUserAdmin = await authz(userId).isAdmin()
   if (!isUserAdmin) {
     await authz(userId).perform('editCourse').on('course', data.courseId)
   }
 
-  const course = await updateCourseById(data.courseId, {
-    title: data.title,
-    description: data.description,
-    thumbnailUrl: courseThumbnailPath(data.thumbnailUrl),
-    isPublished: data.isPublished,
-    orderIndex: data.orderIndex,
-    updatedAt: new Date(),
-  })
+  try {
+    const course = await updateCourseById(data.courseId, {
+      title: data.title,
+      description: data.description,
+      thumbnailUrl: courseThumbnailPath(data.thumbnailUrl),
+      isPublished: data.isPublished,
+      orderIndex: data.orderIndex,
+      updatedAt: new Date(),
+    })
 
-  if (isUserAdmin) {
-    if (data.teacher1Id && data.teacher2Id) {
-      await assignTeachersToCourse(
-        data.courseId,
-        data.teacher1Id,
-        data.teacher2Id,
-        true,
-      )
-    } else if (data.teacher1Id || data.teacher2Id) {
-      throw new ValidationError(
-        'Please assign either both teachers or neither',
-        {
-          code: 'TEACHER_PAIR_INVALID',
-          details: {
-            teacher1Id: data.teacher1Id,
-            teacher2Id: data.teacher2Id,
+    if (isUserAdmin) {
+      if (data.teacher1Id && data.teacher2Id) {
+        await assignTeachersToCourse(
+          data.courseId,
+          data.teacher1Id,
+          data.teacher2Id,
+          true,
+        )
+      } else if (data.teacher1Id || data.teacher2Id) {
+        throw new ValidationError(
+          'Please assign either both teachers or neither',
+          {
+            code: 'TEACHER_PAIR_INVALID',
+            details: {
+              teacher1Id: data.teacher1Id,
+              teacher2Id: data.teacher2Id,
+            },
           },
-        },
-      )
+        )
+      }
     }
-  }
 
-  const [signedCourse] = await signCourseThumbnailRows([course])
-  return { course: signedCourse }
+    const [signedCourse] = await signCourseThumbnailRows([course])
+    logCourseMutationEvent('info', 'course_updated', context, {
+      published: data.isPublished ?? false,
+    })
+    return { course: signedCourse }
+  } catch (error) {
+    if (shouldLogCourseFailure(error)) {
+      logCourseMutationEvent('error', 'course_update_failed', context, {
+        errorCategory: 'course_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function deleteCourseService(
   data: DeleteCourseInput,
   userId: string,
 ) {
+  const context: CourseMutationLogContext = {
+    action: 'deleteCourse',
+    actorId: userId,
+    courseId: data.courseId,
+    startedAt: performance.now(),
+  }
   const isUserAdmin = await authz(userId).isAdmin()
   if (!isUserAdmin) {
     await authz(userId).perform('deleteCourse').on('course', data.courseId)
   }
 
-  const course = await findCourseById(data.courseId)
-  if (!course) {
-    throw new NotFoundError('Course not found', {
-      code: 'COURSE_NOT_FOUND',
-      details: { courseId: data.courseId },
-    })
-  }
+  try {
+    const course = await findCourseById(data.courseId)
+    if (!course) {
+      throw new NotFoundError('Course not found', {
+        code: 'COURSE_NOT_FOUND',
+        details: { courseId: data.courseId },
+      })
+    }
 
-  if (course.thumbnailUrl) {
-    await deleteStorageObjectStrict(
-      'course-thumbnails',
-      course.thumbnailUrl,
-      'Failed to delete course thumbnail',
-    )
-  }
+    if (course.thumbnailUrl) {
+      await deleteStorageObjectStrict(
+        'course-thumbnails',
+        course.thumbnailUrl,
+        'Failed to delete course thumbnail',
+      )
+    }
 
-  await deleteCourseById(data.courseId)
+    await deleteCourseById(data.courseId)
+    logCourseMutationEvent('info', 'course_deleted', context)
+  } catch (error) {
+    if (shouldLogCourseFailure(error)) {
+      logCourseMutationEvent('error', 'course_delete_failed', context, {
+        errorCategory: 'course_persistence',
+      })
+    }
+    throw error
+  }
 }

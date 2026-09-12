@@ -302,6 +302,90 @@
       "when": 1789027855460,
       "tag": "0045_productive_quasar",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1789098642885,
+      "tag": "0046_skinny_korath",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1789105341416,
+      "tag": "0047_abnormal_firelord",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1789105749037,
+      "tag": "0048_blue_golden_guardian",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1789106156730,
+      "tag": "0049_legal_absorbing_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1789106614619,
+      "tag": "0050_calm_william_stryker",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1789107029957,
+      "tag": "0051_handy_exiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1789107420768,
+      "tag": "0052_chief_the_fallen",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1789107774373,
+      "tag": "0053_youthful_rafael_vega",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1789108223171,
+      "tag": "0054_elite_polaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1789108666643,
+      "tag": "0055_motionless_jazinda",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1789175169000,
+      "tag": "0056_profile_role_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1789179535799,
+      "tag": "0057_thin_mandrill",
+      "breakpoints": true
     }
   ]
 }

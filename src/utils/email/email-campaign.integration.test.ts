@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
@@ -10,15 +10,18 @@ import {
 import { emailCampaignLocks, emailMessages, enrollments } from '@/db/schema'
 import { setEmailSender } from '@/utils/email'
 import {
+  getEmailCampaignLocksService,
   previewEmailCampaignService,
+  releaseEmailCampaignService,
   sendEmailCampaignService,
 } from '@/utils/email/service/email-campaign.service'
-import {
-  getLockedEmailCampaigns,
-  releaseEmailCampaignLock,
-} from '@/utils/email/repository/email-campaign.repository'
 import { findInvitationByEmail } from '@/utils/invitation/repository/invitations.repository'
 import { AuthorizationError } from '@/utils/errors'
+import * as emailCampaignRepository from '@/utils/email/repository/email-campaign.repository'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 function installFakeSender(failFor: Array<string> = []) {
   const calls: Array<InvitationEmailMessage> = []
@@ -269,6 +272,37 @@ describe('sendEmailCampaignService (integration)', () => {
     expect((await findLogRows(okId))[0].status).toBe('sent')
   })
 
+  it('emits a redacted structured event for provider failure', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const adminId = await seedProfile({ role: 'admin' })
+      installFakeSender(['structured-failure@test.dev'])
+      await seedEnrollment({
+        status: 'approved',
+        email: 'structured-failure@test.dev',
+      })
+
+      await previewThenSend(adminId)
+
+      const event = errorSpy.mock.calls
+        .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+        .find((entry) => entry.event === 'email_campaign_invitation_failed')
+      expect(event).toMatchObject({
+        level: 'error',
+        event: 'email_campaign_invitation_failed',
+        path: 'serverFn:send_email_campaign',
+        status: 'failed',
+        errorCategory: 'invitation_email_delivery',
+        userId: adminId,
+      })
+      expect(String(errorSpy.mock.calls[0]?.[0])).not.toContain(
+        'provider rejected email',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
   it('restores a rotated invitation when the provider fails', async () => {
     const adminId = await seedProfile({ role: 'admin' })
     installFakeSender(['expired-fail@test.dev'])
@@ -336,8 +370,93 @@ describe('email campaign lock (integration)', () => {
     const adminId = await seedProfile({ role: 'admin' })
     await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
 
-    expect(await getLockedEmailCampaigns()).toEqual(['invitation'])
-    await releaseEmailCampaignLock('invitation', adminId)
-    expect(await getLockedEmailCampaigns()).toEqual([])
+    expect(await getEmailCampaignLocksService(adminId)).toEqual(['invitation'])
+    await releaseEmailCampaignService({ campaign: 'invitation' }, adminId)
+    expect(await getEmailCampaignLocksService(adminId)).toEqual([])
+  })
+
+  it('logs safe lock inspection and explicit release telemetry', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
+    infoSpy.mockClear()
+
+    await getEmailCampaignLocksService(adminId)
+    await releaseEmailCampaignService({ campaign: 'invitation' }, adminId)
+
+    const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'email_campaign_locks_loaded',
+          path: 'serverFn:getEmailCampaignLocks',
+          lockCount: 1,
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'email_campaign_lock_released',
+          path: 'serverFn:releaseEmailCampaign',
+          campaign: 'invitation',
+          userId: adminId,
+          status: 'success',
+        }),
+      ]),
+    )
+  })
+
+  it('categorizes lock repository failures without raw errors', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const readError = new Error('private email lock database detail')
+    vi.spyOn(
+      emailCampaignRepository,
+      'getLockedEmailCampaigns',
+    ).mockRejectedValueOnce(readError)
+
+    await expect(getEmailCampaignLocksService(adminId)).rejects.toBe(readError)
+
+    const releaseError = new Error('private email release database detail')
+    vi.spyOn(
+      emailCampaignRepository,
+      'releaseEmailCampaignLock',
+    ).mockRejectedValueOnce(releaseError)
+    await expect(
+      releaseEmailCampaignService({ campaign: 'invitation' }, adminId),
+    ).rejects.toBe(releaseError)
+
+    const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+    const events = serialized.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'email_campaign_locks_load_failed',
+          path: 'serverFn:getEmailCampaignLocks',
+          errorCategory: 'campaign_lock_read',
+        }),
+        expect.objectContaining({
+          event: 'email_campaign_lock_release_failed',
+          path: 'serverFn:releaseEmailCampaign',
+          campaign: 'invitation',
+          errorCategory: 'campaign_lock_release',
+        }),
+      ]),
+    )
+    expect(serialized.join('\n')).not.toContain(
+      'private email lock database detail',
+    )
+    expect(serialized.join('\n')).not.toContain(
+      'private email release database detail',
+    )
+  })
+
+  it('requires admin role for lock inspection and explicit release', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+
+    await expect(getEmailCampaignLocksService(teacherId)).rejects.toThrow(
+      AuthorizationError,
+    )
+    await expect(
+      releaseEmailCampaignService({ campaign: 'invitation' }, teacherId),
+    ).rejects.toThrow(AuthorizationError)
   })
 })

@@ -8,8 +8,8 @@ import {
   PlusIcon,
   UserIcon,
 } from 'lucide-react'
-import { createColumnHelper } from '@tanstack/react-table'
-import type { ColumnDef } from '@tanstack/react-table'
+import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-table/legacy'
+import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
 import type { CalendarEventRow } from '@/utils/event'
 import { useDialogState } from '@/hooks/useDialogState'
 import { EventDialog } from '@/components/dialog/event-dialog/EventDialog'

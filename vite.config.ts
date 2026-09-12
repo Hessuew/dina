@@ -1,10 +1,10 @@
 import { URL, fileURLToPath } from 'node:url'
 import { createLogger, defineConfig, loadEnv } from 'vite'
+import babel from '@rolldown/plugin-babel'
 import { devtools } from '@tanstack/devtools-vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { sentryTanstackStart } from '@sentry/tanstackstart-react/vite'
-import viteReact from '@vitejs/plugin-react'
-import viteTsConfigPaths from 'vite-tsconfig-paths'
+import viteReact, { reactCompilerPreset } from '@vitejs/plugin-react'
 
 import tailwindcss from '@tailwindcss/vite'
 import { cloudflare } from '@cloudflare/vite-plugin'
@@ -13,11 +13,14 @@ import {
   buildResolveAlias,
   isCloudflareMode,
   resolveCloudflareClientShim,
+  resolveSentryBuildConfig,
 } from './scripts/vite-config.domain.ts'
 
 const config = defineConfig(({ mode }) => {
   const isCloudflare = isCloudflareMode(mode)
-  const sentryAuthToken = loadEnv(mode, process.cwd(), '').SENTRY_AUTH_TOKEN
+  const sentryBuildConfig = resolveSentryBuildConfig(
+    loadEnv(mode, process.cwd(), ''),
+  )
 
   const shimPath = fileURLToPath(
     new URL('./src/cloudflare-shim.ts', import.meta.url),
@@ -35,6 +38,7 @@ const config = defineConfig(({ mode }) => {
   return {
     customLogger: logger,
     resolve: {
+      tsconfigPaths: true,
       alias: buildResolveAlias(
         fileURLToPath(new URL('./src', import.meta.url)),
         shimPath,
@@ -55,26 +59,11 @@ const config = defineConfig(({ mode }) => {
           return resolveCloudflareClientShim(id, opts.ssr, shimPath)
         },
       },
-      // this is the plugin that enables path aliases
-      viteTsConfigPaths({
-        projects: ['./tsconfig.json'],
-      }),
       tailwindcss(),
       tanstackStart(),
-      ...(sentryAuthToken
-        ? [
-            sentryTanstackStart({
-              org: 'cherubim-it',
-              project: 'dina',
-              authToken: sentryAuthToken,
-            }),
-          ]
-        : []),
-      viteReact({
-        babel: {
-          plugins: ['babel-plugin-react-compiler'],
-        },
-      }),
+      ...(sentryBuildConfig ? [sentryTanstackStart(sentryBuildConfig)] : []),
+      viteReact(),
+      babel({ presets: [reactCompilerPreset()] }),
     ].filter(Boolean),
   }
 })

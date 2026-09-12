@@ -1,13 +1,12 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
-import viteTsConfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
-  plugins: [viteTsConfigPaths()],
   resolve: {
+    tsconfigPaths: true,
     // Exact `@/db` -> PGlite test double, `@/env` -> dummy config (keeps the
     // `cloudflare:workers` import + t3-env validation out of the test graph).
-    // `@/db/schema` and every other `@/` path still resolve via viteTsConfigPaths.
+    // `@/db/schema` and every other `@/` path still resolve via Vite's tsconfig path support.
     alias: [
       {
         find: /^@\/db$/,

@@ -1,4 +1,5 @@
 import {
+  index,
   integer,
   pgPolicy,
   pgTable,
@@ -28,7 +29,10 @@ export const assignments = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
+    index('assignments_lesson_status_idx').on(table.lessonId, table.status),
+    index('assignments_lesson_due_date_idx').on(table.lessonId, table.dueDate),
+    index('assignments_status_due_date_idx').on(table.status, table.dueDate),
     // All authenticated users can view assignments
     pgPolicy('authenticated_view_assignments', {
       for: 'select',
@@ -101,6 +105,7 @@ export const submissions = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (table) => [
+    index('submissions_student_id_idx').on(table.studentId),
     uniqueIndex('submissions_assignment_student_unique').on(
       table.assignmentId,
       table.studentId,

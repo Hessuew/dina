@@ -4,9 +4,8 @@
   "compatibility_date": "2026-04-23",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
-  "vars": {
-    "SENTRY_DSN": "https://429db766cd86c172967761f1c4b44804@o4506933534457856.ingest.us.sentry.io/4511601611964416",
-  },
+  // Keep the Better Stack Errors DSN in a Worker secret, not in source.
+  // Configure it with: wrangler secret put BETTER_STACK_DSN
   "observability": {
     "enabled": true,
     "logs": {

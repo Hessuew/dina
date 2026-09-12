@@ -5,6 +5,7 @@ import type {
   SetStudentPresentInput,
   StartAttendanceInput,
 } from '@/schemas/attendance.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import {
   clearPresentOverrideAtomically,
   closeAttendanceSessionAtomically,
@@ -33,7 +34,121 @@ import {
   ConflictError,
   NotFoundError,
   ValidationError,
+  isAppError,
 } from '@/utils/errors'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+
+type AttendanceCheckInLogContext = {
+  courseId: string
+  studentId: string
+  startedAt: number
+}
+
+type AttendanceManagementContext = {
+  action: 'startOrReopenAttendance' | 'closeAttendance' | 'setStudentPresent'
+  actorId: string
+  courseId: string
+  lessonId?: string
+  targetStudentId?: string
+  failureEvent: string
+  failureCategory: string
+  startedAt: number
+}
+
+type AttendanceReadAction =
+  'getCourseAttendanceState' | 'listOpenAttendanceForStudent'
+
+type AttendanceReadContext = {
+  action: AttendanceReadAction
+  actorId: string
+  courseId?: string
+  startedAt: number
+}
+
+function logAttendanceReadEvent(
+  level: LogLevel,
+  event: string,
+  context: AttendanceReadContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    courseId: context.courseId,
+    ...fields,
+  })
+}
+
+function shouldLogAttendanceReadFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+// Read callers are client-polled, so only failures emit log events; logging
+// every successful poll would flood the pipeline with per-user heartbeat noise.
+async function withAttendanceReadTelemetry<T>(args: {
+  context: AttendanceReadContext
+  read: () => Promise<T>
+  failureEvent: string
+}): Promise<T> {
+  try {
+    return await args.read()
+  } catch (error) {
+    if (shouldLogAttendanceReadFailure(error)) {
+      logAttendanceReadEvent('error', args.failureEvent, args.context, {
+        errorCategory: 'attendance_read_persistence',
+      })
+    }
+    throw error
+  }
+}
+
+function logAttendanceCheckInEvent(
+  level: 'info' | 'error',
+  event: string,
+  context: AttendanceCheckInLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:markPresent',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    courseId: context.courseId,
+    studentId: context.studentId,
+    ...fields,
+  })
+}
+
+function logAttendanceManagementEvent(
+  level: 'info' | 'error',
+  event: string,
+  context: AttendanceManagementContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    courseId: context.courseId,
+    lessonId: context.lessonId,
+    targetStudentId: context.targetStudentId,
+    ...fields,
+  })
+}
+
+function logAttendanceManagementFailure(
+  context: AttendanceManagementContext,
+): void {
+  logAttendanceManagementEvent('error', context.failureEvent, context, {
+    errorCategory: context.failureCategory,
+  })
+}
 
 async function requireCourseManage(userId: string, courseId: string) {
   const profile = await getUserProfile(userId)
@@ -101,9 +216,11 @@ function mapOpenSession(
   }
 }
 
-async function mapLessonsWithSessions(courseId: string, now: Date) {
-  const lessons = await findLessonsWithSessionsByCourseId(courseId)
-  return lessons.map((lesson) => ({
+function mapLessonsWithSessions(
+  lessonRows: Awaited<ReturnType<typeof findLessonsWithSessionsByCourseId>>,
+  now: Date,
+) {
+  return lessonRows.map((lesson) => ({
     lessonId: lesson.id,
     lessonTitle: lesson.title,
     orderIndex: lesson.orderIndex,
@@ -112,25 +229,40 @@ async function mapLessonsWithSessions(courseId: string, now: Date) {
   }))
 }
 
-export async function getCourseAttendanceStateService(
-  data: CourseIdInput,
-  userId: string,
-) {
+async function loadCourseAttendanceState(data: CourseIdInput, userId: string) {
   const profile = await getUserProfile(userId)
   const now = new Date()
-  const [openSession, lessons] = await Promise.all([
+  const [openSession, lessonRows, courseTeachers] = await Promise.all([
     findOpenSessionOnCourse(data.courseId, now),
-    mapLessonsWithSessions(data.courseId, now),
+    findLessonsWithSessionsByCourseId(data.courseId),
+    findCourseTeachers(data.courseId),
   ])
+
+  const { canManage } = calculateEntityPermissions(
+    profile.role,
+    { teacherIds: courseTeachers.map((t) => t.teacherId) },
+    userId,
+  )
+  const lessons = mapLessonsWithSessions(
+    canManage ? lessonRows : lessonRows.filter((lesson) => lesson.isPublished),
+    now,
+  )
+
+  // Hide a live session when its lesson is not visible to the viewer.
+  const visibleOpenSession =
+    openSession &&
+    (canManage || lessons.some((l) => l.lessonId === openSession.lessonId))
+      ? openSession
+      : null
 
   let alreadyPresent = false
   let lessonTitle: string | undefined
-  if (openSession) {
+  if (visibleOpenSession) {
     lessonTitle =
-      lessons.find((l) => l.lessonId === openSession.lessonId)?.lessonTitle ??
-      undefined
+      lessons.find((l) => l.lessonId === visibleOpenSession.lessonId)
+        ?.lessonTitle ?? undefined
     if (profile.role === 'student') {
-      const present = await findPresent(openSession.id, userId)
+      const present = await findPresent(visibleOpenSession.id, userId)
       alreadyPresent = present !== null
     }
   }
@@ -138,11 +270,32 @@ export async function getCourseAttendanceStateService(
   return {
     role: profile.role,
     serverNow: now,
-    openSession: openSession
-      ? mapOpenSession(openSession, now, { lessonTitle, alreadyPresent })
+    openSession: visibleOpenSession
+      ? mapOpenSession(visibleOpenSession, now, {
+          lessonTitle,
+          alreadyPresent,
+        })
       : null,
     lessons,
   }
+}
+
+export async function getCourseAttendanceStateService(
+  data: CourseIdInput,
+  userId: string,
+) {
+  const context: AttendanceReadContext = {
+    action: 'getCourseAttendanceState',
+    actorId: userId,
+    courseId: data.courseId,
+    startedAt: performance.now(),
+  }
+
+  return withAttendanceReadTelemetry({
+    context,
+    read: () => loadCourseAttendanceState(data, userId),
+    failureEvent: 'attendance_state_load_failed',
+  })
 }
 
 export async function startOrReopenAttendanceService(
@@ -158,11 +311,26 @@ export async function startOrReopenAttendanceService(
     })
   }
 
-  const result = await openAttendanceSessionAtomically({
+  const context: AttendanceManagementContext = {
+    action: 'startOrReopenAttendance',
+    actorId: userId,
     courseId: data.courseId,
     lessonId: data.lessonId,
-    openedBy: userId,
-  })
+    failureEvent: 'attendance_session_open_failed',
+    failureCategory: 'attendance_session_open_persistence',
+    startedAt: performance.now(),
+  }
+  let result: Awaited<ReturnType<typeof openAttendanceSessionAtomically>>
+  try {
+    result = await openAttendanceSessionAtomically({
+      courseId: data.courseId,
+      lessonId: data.lessonId,
+      openedBy: userId,
+    })
+  } catch (error) {
+    logAttendanceManagementFailure(context)
+    throw error
+  }
   const now = new Date()
   if (result.kind === 'conflict') {
     assertCanOpenSession({
@@ -173,6 +341,10 @@ export async function startOrReopenAttendanceService(
     })
     throw new ConflictError('Attendance session changed; try again')
   }
+  logAttendanceManagementEvent('info', 'attendance_session_opened', context, {
+    sessionId: result.session.id,
+    attendanceStatus: 'open',
+  })
   return {
     session: mapOpenSession(result.session, now, { lessonTitle: lesson.title }),
   }
@@ -183,29 +355,145 @@ export async function closeAttendanceService(
   userId: string,
 ) {
   await requireCourseManage(userId, data.courseId)
-  const closed = await closeAttendanceSessionAtomically(data.courseId)
+  const context: AttendanceManagementContext = {
+    action: 'closeAttendance',
+    actorId: userId,
+    courseId: data.courseId,
+    failureEvent: 'attendance_session_close_failed',
+    failureCategory: 'attendance_session_close_persistence',
+    startedAt: performance.now(),
+  }
+  let closed: Awaited<ReturnType<typeof closeAttendanceSessionAtomically>>
+  try {
+    closed = await closeAttendanceSessionAtomically(data.courseId)
+  } catch (error) {
+    logAttendanceManagementFailure(context)
+    throw error
+  }
   if (!closed) {
     throw new ConflictError('No open attendance window on this course')
   }
+  logAttendanceManagementEvent('info', 'attendance_session_closed', context, {
+    sessionId: closed.id,
+    attendanceStatus: 'closed',
+  })
   return { session: mapOpenSession(closed, new Date()) }
+}
+
+async function setPresentOverride(
+  data: SetStudentPresentInput,
+  actorId: string,
+  context: AttendanceManagementContext,
+) {
+  try {
+    const result = await setPresentOverrideAtomically({
+      courseId: data.courseId,
+      lessonId: data.lessonId,
+      studentId: data.studentId,
+      openedBy: actorId,
+    })
+    logAttendanceManagementEvent(
+      'info',
+      'attendance_override_updated',
+      context,
+      {
+        attendanceStatus: 'present',
+        present: true,
+        created: result.created,
+        sessionId: result.session.id,
+      },
+    )
+    return {
+      present: true as const,
+      created: result.created,
+      cleared: false as const,
+      checkedInAt: result.present.checkedInAt,
+      sessionId: result.session.id,
+      lessonId: result.session.lessonId,
+    }
+  } catch (error) {
+    logAttendanceManagementFailure(context)
+    throw error
+  }
+}
+
+async function clearPresentOverride(
+  data: SetStudentPresentInput,
+  context: AttendanceManagementContext,
+) {
+  try {
+    const cleared = await clearPresentOverrideAtomically({
+      courseId: data.courseId,
+      lessonId: data.lessonId,
+      studentId: data.studentId,
+    })
+    logAttendanceManagementEvent(
+      'info',
+      'attendance_override_updated',
+      context,
+      {
+        attendanceStatus: 'absent',
+        present: false,
+        cleared: cleared.cleared,
+        sessionId: cleared.session?.id ?? null,
+      },
+    )
+    return {
+      present: false as const,
+      created: false as const,
+      cleared: cleared.cleared,
+      checkedInAt: null,
+      sessionId: cleared.session?.id ?? null,
+      lessonId: data.lessonId,
+    }
+  } catch (error) {
+    logAttendanceManagementFailure(context)
+    throw error
+  }
 }
 
 export async function markPresentService(
   data: MarkPresentInput,
   userId: string,
 ) {
+  const context: AttendanceCheckInLogContext = {
+    courseId: data.courseId,
+    studentId: userId,
+    startedAt: performance.now(),
+  }
   const profile = await getUserProfile(userId)
   if (profile.role !== 'student') {
     throw new AuthorizationError('Only students can mark attendance')
   }
 
-  const result = await markPresentAtomically({
-    courseId: data.courseId,
-    studentId: userId,
-  })
+  let result: Awaited<ReturnType<typeof markPresentAtomically>>
+  try {
+    result = await markPresentAtomically({
+      courseId: data.courseId,
+      studentId: userId,
+    })
+  } catch (error) {
+    logAttendanceCheckInEvent('error', 'attendance_check_in_failed', context, {
+      errorCategory: 'attendance_check_in',
+    })
+    throw error
+  }
   if (!result) {
     throw new ValidationError('Attendance window is closed')
   }
+
+  logAttendanceCheckInEvent(
+    'info',
+    result.created
+      ? 'attendance_check_in_completed'
+      : 'attendance_check_in_ignored',
+    context,
+    {
+      status: result.created ? 'checked_in' : 'already_present',
+      sessionId: result.session.id,
+      lessonId: result.session.lessonId,
+    },
+  )
 
   return {
     present: true,
@@ -216,10 +504,11 @@ export async function markPresentService(
   }
 }
 
-export async function listOpenAttendanceForStudentService(userId: string) {
+async function loadOpenAttendanceForStudent(userId: string) {
   const profile = await getUserProfile(userId)
   if (profile.role !== 'student') {
     return {
+      role: profile.role,
       sessions: [] as Array<
         ReturnType<typeof mapOpenSession> & { courseTitle: string }
       >,
@@ -235,7 +524,22 @@ export async function listOpenAttendanceForStudentService(userId: string) {
     }),
     courseTitle: row.courseTitle,
   }))
-  return { sessions, serverNow: now }
+  return { role: profile.role, sessions, serverNow: now }
+}
+
+export async function listOpenAttendanceForStudentService(userId: string) {
+  const context: AttendanceReadContext = {
+    action: 'listOpenAttendanceForStudent',
+    actorId: userId,
+    startedAt: performance.now(),
+  }
+  const result = await withAttendanceReadTelemetry({
+    context,
+    read: () => loadOpenAttendanceForStudent(userId),
+    failureEvent: 'attendance_open_sessions_load_failed',
+  })
+  const { role: _role, ...response } = result
+  return response
 }
 
 export async function setStudentPresentService(
@@ -260,34 +564,17 @@ export async function setStudentPresentService(
     })
   }
 
-  if (data.present) {
-    const result = await setPresentOverrideAtomically({
-      courseId: data.courseId,
-      lessonId: data.lessonId,
-      studentId: data.studentId,
-      openedBy: actorId,
-    })
-    return {
-      present: true as const,
-      created: result.created,
-      cleared: false as const,
-      checkedInAt: result.present.checkedInAt,
-      sessionId: result.session.id,
-      lessonId: result.session.lessonId,
-    }
-  }
-
-  const cleared = await clearPresentOverrideAtomically({
+  const context: AttendanceManagementContext = {
+    action: 'setStudentPresent',
+    actorId,
     courseId: data.courseId,
     lessonId: data.lessonId,
-    studentId: data.studentId,
-  })
-  return {
-    present: false as const,
-    created: false as const,
-    cleared: cleared.cleared,
-    checkedInAt: null,
-    sessionId: cleared.session?.id ?? null,
-    lessonId: data.lessonId,
+    targetStudentId: data.studentId,
+    failureEvent: 'attendance_override_failed',
+    failureCategory: 'attendance_override_persistence',
+    startedAt: performance.now(),
   }
+  return data.present
+    ? setPresentOverride(data, actorId, context)
+    : clearPresentOverride(data, context)
 }

@@ -67,15 +67,105 @@ beforeEach(() => {
 })
 
 describe('library reads', () => {
+  it('logs redacted list and detail read telemetry', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const mediaId = await seedMedia({
+      uploaderId: ownerId,
+      title: 'Private media title',
+      description: 'Private media description',
+      fileType: 'document',
+      fileUrl: `${ownerId}/private.pdf`,
+      thumbnailUrl: `${ownerId}/private.png`,
+      isPublished: true,
+    })
+
+    await getLibraryMediaService(ownerId)
+    await getLibraryMediaItemService({ mediaId }, ownerId)
+
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'library_media_loaded',
+          path: 'serverFn:getLibraryMedia',
+          actorId: ownerId,
+          role: 'teacher',
+          mediaCount: 1,
+          publishedOnly: false,
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'library_media_loaded',
+          path: 'serverFn:getLibraryMediaItem',
+          actorId: ownerId,
+          mediaId,
+          role: 'teacher',
+          mediaPublished: true,
+          fileType: 'document',
+          canManage: true,
+          hasViewerUrl: true,
+          status: 'success',
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(lines.join('\n')).not.toContain('Private media title')
+    expect(lines.join('\n')).not.toContain('Private media description')
+    expect(lines.join('\n')).not.toContain(`${ownerId}/private.pdf`)
+    expect(lines.join('\n')).not.toContain(`${ownerId}/private.png`)
+    infoSpy.mockRestore()
+  })
+
+  it('logs stable read failures without raw storage details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ownerId = await seedProfile({ role: 'teacher' })
+    await seedMedia({
+      uploaderId: ownerId,
+      fileType: 'document',
+      fileUrl: `${ownerId}/private.pdf`,
+    })
+    mocks.createSignedUrls.mockRejectedValueOnce(
+      new Error('private storage signing failure'),
+    )
+
+    await expect(getLibraryMediaService(ownerId)).rejects.toThrow(
+      'private storage signing failure',
+    )
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    const event = JSON.parse(line)
+    expect(event).toMatchObject({
+      event: 'library_media_load_failed',
+      path: 'serverFn:getLibraryMedia',
+      actorId: ownerId,
+      status: 'failure',
+      errorCategory: 'library_media_read_persistence',
+    })
+    expect(line).not.toContain('private storage signing failure')
+    expect(line).not.toContain(`${ownerId}/private.pdf`)
+    errorSpy.mockRestore()
+  })
+
   it('filters unpublished rows for students', async () => {
     const uploaderId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
     await seedMedia({ uploaderId, isPublished: true })
     await seedMedia({ uploaderId, isPublished: false })
 
-    const result = await getLibraryMediaService('student-1', 'student')
+    const result = await getLibraryMediaService(studentId)
 
     expect(result.media).toHaveLength(1)
-    expect(result.viewer).toEqual({ id: 'student-1', role: 'student' })
+    expect(result.viewer).toEqual({ id: studentId, role: 'student' })
+  })
+
+  it('rejects unknown actors before reading media', async () => {
+    await expect(
+      getLibraryMediaService('00000000-0000-4000-8000-000000000099'),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 
   it('signs private file and thumbnail paths in response DTOs', async () => {
@@ -88,7 +178,7 @@ describe('library reads', () => {
       isPublished: true,
     })
 
-    const result = await getLibraryMediaService(uploaderId, 'teacher')
+    const result = await getLibraryMediaService(uploaderId)
 
     expect(result.media[0].fileUrl).toBe(`https://signed/${uploaderId}/doc.pdf`)
     expect(result.media[0].thumbnailUrl).toBe(
@@ -105,11 +195,7 @@ describe('library reads', () => {
       isPublished: true,
     })
 
-    const result = await getLibraryMediaItemService(
-      { mediaId },
-      uploaderId,
-      'teacher',
-    )
+    const result = await getLibraryMediaItemService({ mediaId }, uploaderId)
 
     expect(result.viewerUrl).toBe(`https://signed/${uploaderId}/talk.mp4`)
     expect(result.permissions.canManage).toBe(true)
@@ -117,20 +203,111 @@ describe('library reads', () => {
 
   it('blocks students from unpublished media', async () => {
     const uploaderId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
     const mediaId = await seedMedia({ uploaderId, isPublished: false })
     await expect(
-      getLibraryMediaItemService({ mediaId }, 'student-1', 'student'),
+      getLibraryMediaItemService({ mediaId }, studentId),
     ).rejects.toMatchObject({ code: 'AUTHORIZATION_FAILED' })
   })
 })
 
 describe('library persistence', () => {
+  it('logs redacted CRUD telemetry with stable media fields', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const created = await createLibraryMediaService(
+      makeCreateInput({
+        title: 'Private media title',
+        description: 'Private media description',
+        url: 'https://private.example/media',
+      }),
+      ownerId,
+    )
+
+    await updateLibraryMediaService(
+      {
+        ...makeCreateInput({
+          title: 'Updated private media title',
+          description: 'Updated private media description',
+          url: 'https://private.example/updated',
+        }),
+        mediaId: created.media.id,
+      },
+      ownerId,
+    )
+    await deleteLibraryMediaService({ mediaId: created.media.id }, ownerId)
+
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'media_created',
+          path: 'serverFn:createLibraryMedia',
+          actorId: ownerId,
+          mediaId: created.media.id,
+          mediaKind: 'youtube',
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'media_updated',
+          path: 'serverFn:updateLibraryMedia',
+          actorId: ownerId,
+          mediaId: created.media.id,
+          mediaKind: 'youtube',
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'media_deleted',
+          path: 'serverFn:deleteLibraryMedia',
+          actorId: ownerId,
+          mediaId: created.media.id,
+          status: 'success',
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(lines.join('\n')).not.toContain('Private media title')
+    expect(lines.join('\n')).not.toContain('private.example')
+    expect(lines.join('\n')).not.toContain('Private media description')
+  })
+
+  it('logs stable persistence failures without raw storage details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const mediaId = await seedMedia({
+      uploaderId: ownerId,
+      fileType: 'document',
+      fileUrl: `${ownerId}/private.pdf`,
+    })
+    mocks.removeStorageObject.mockRejectedValueOnce(
+      new Error('private storage provider failure'),
+    )
+
+    await expect(
+      deleteLibraryMediaService({ mediaId }, ownerId),
+    ).rejects.toThrow('private storage provider failure')
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    const event = JSON.parse(line)
+    expect(event).toMatchObject({
+      event: 'media_mutation_failed',
+      path: 'serverFn:deleteLibraryMedia',
+      actorId: ownerId,
+      mediaId,
+      status: 'failure',
+      errorCategory: 'media_persistence',
+    })
+    expect(line).not.toContain('private storage provider failure')
+  })
+
   it('stores YouTube URL separately from private file path', async () => {
     const uploaderId = await seedProfile({ role: 'teacher' })
     const result = await createLibraryMediaService(
       makeCreateInput(),
       uploaderId,
-      'teacher',
     )
 
     const row = await findMedia(result.media.id)
@@ -144,7 +321,6 @@ describe('library persistence', () => {
     const result = await createLibraryMediaService(
       makeCreateInput({ kind: 'video-file', url: path, fileSize: 1024 }),
       uploaderId,
-      'teacher',
     )
 
     const row = await findMedia(result.media.id)
@@ -161,7 +337,6 @@ describe('library persistence', () => {
     const result = await createLibraryMediaService(
       makeCreateInput({ kind: 'video-file', url: signed }),
       uploaderId,
-      'teacher',
     )
 
     expect((await findMedia(result.media.id))?.filePath).toBe(
@@ -175,7 +350,6 @@ describe('library persistence', () => {
       createLibraryMediaService(
         makeCreateInput({ kind: 'video-file', url: 'other/talk.mp4' }),
         uploaderId,
-        'teacher',
       ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' })
   })
@@ -196,7 +370,6 @@ describe('library persistence', () => {
         mediaId,
       },
       ownerId,
-      'teacher',
     )
 
     expect((await findMedia(mediaId))?.fileSize).toBe(4096)
@@ -220,7 +393,6 @@ describe('library persistence', () => {
         mediaId,
       },
       ownerId,
-      'teacher',
     )
 
     expect(mocks.removeStorageObject).toHaveBeenCalledWith(
@@ -238,7 +410,7 @@ describe('library persistence', () => {
       thumbnailUrl: `${ownerId}/thumb.png`,
     })
 
-    await deleteLibraryMediaService({ mediaId }, ownerId, 'teacher')
+    await deleteLibraryMediaService({ mediaId }, ownerId)
 
     expect(mocks.removeStorageObject).toHaveBeenCalledWith(
       'media-library',
@@ -253,6 +425,7 @@ describe('library persistence', () => {
 
 describe('signed file upload requests', () => {
   it('rejects students', async () => {
+    const studentId = await seedProfile({ role: 'student' })
     await expect(
       requestMediaFileUploadService(
         {
@@ -261,13 +434,13 @@ describe('signed file upload requests', () => {
           fileType: 'video/mp4',
           fileSize: 1024,
         },
-        'student-1',
-        'student',
+        studentId,
       ),
     ).rejects.toMatchObject({ code: 'ROLE_REQUIRED' })
   })
 
   it('validates and signs video uploads', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
     const result = await requestMediaFileUploadService(
       {
         kind: 'video-file',
@@ -275,15 +448,15 @@ describe('signed file upload requests', () => {
         fileType: 'video/mp4',
         fileSize: 1024,
       },
-      'teacher-1',
-      'teacher',
+      teacherId,
     )
 
-    expect(result.path).toMatch(/^teacher-1\/\d+-[\w-]+\.mp4$/)
+    expect(result.path).toMatch(new RegExp(`^${teacherId}/\\d+-[\\w-]+\\.mp4$`))
     expect(result.signedUrl).toBe('https://signed-upload')
   })
 
   it('validates and signs document uploads', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
     const result = await requestMediaFileUploadService(
       {
         kind: 'document',
@@ -291,14 +464,14 @@ describe('signed file upload requests', () => {
         fileType: 'application/pdf',
         fileSize: 1024,
       },
-      'teacher-1',
-      'teacher',
+      teacherId,
     )
 
-    expect(result.path).toMatch(/^teacher-1\/\d+-[\w-]+\.pdf$/)
+    expect(result.path).toMatch(new RegExp(`^${teacherId}/\\d+-[\\w-]+\\.pdf$`))
   })
 
   it('rejects disallowed document MIME', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
     await expect(
       requestMediaFileUploadService(
         {
@@ -307,8 +480,7 @@ describe('signed file upload requests', () => {
           fileType: 'image/png',
           fileSize: 1024,
         },
-        'teacher-1',
-        'teacher',
+        teacherId,
       ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' })
   })
@@ -327,13 +499,13 @@ describe('media thumbnail completion', () => {
         fileSize: 1024,
       },
       ownerId,
-      'teacher',
     )
 
     expect(result.path).toMatch(new RegExp(`^${ownerId}/\\d+-[\\w-]+\\.png$`))
   })
 
   it('persists path, signs response, and removes prior thumbnail', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const ownerId = await seedProfile({ role: 'teacher' })
     const mediaId = await seedMedia({
       uploaderId: ownerId,
@@ -341,11 +513,7 @@ describe('media thumbnail completion', () => {
     })
     const path = `${ownerId}/new.png`
 
-    const result = await uploadMediaThumbnailService(
-      { mediaId, path },
-      ownerId,
-      'teacher',
-    )
+    const result = await uploadMediaThumbnailService({ mediaId, path }, ownerId)
 
     expect(result).toEqual({ thumbnailUrl: `https://signed/${path}` })
     expect((await findMedia(mediaId))?.thumbnailUrl).toBe(path)
@@ -353,6 +521,55 @@ describe('media thumbnail completion', () => {
       'media-thumbnails',
       `${ownerId}/old.png`,
     )
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const event = lines
+      .map((line) => JSON.parse(line))
+      .find((entry) => entry.event === 'media_thumbnail_uploaded')
+    expect(event).toMatchObject({
+      event: 'media_thumbnail_uploaded',
+      path: 'serverFn:uploadMediaThumbnail',
+      actorId: ownerId,
+      mediaId,
+      status: 'success',
+      replacedThumbnail: true,
+      signed: true,
+    })
+    expect(event.durationMs).toEqual(expect.any(Number))
+    expect(lines.join('\n')).not.toContain(`${ownerId}/old.png`)
+    expect(lines.join('\n')).not.toContain(path)
+    infoSpy.mockRestore()
+  })
+
+  it('logs stable thumbnail failures without storage paths', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const mediaId = await seedMedia({
+      uploaderId: ownerId,
+      thumbnailUrl: `${ownerId}/old.png`,
+    })
+    const path = `${ownerId}/new.png`
+    mocks.removeStorageObject.mockRejectedValueOnce(
+      new Error('thumbnail storage provider failure'),
+    )
+
+    await expect(
+      uploadMediaThumbnailService({ mediaId, path }, ownerId),
+    ).rejects.toThrow('thumbnail storage provider failure')
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    const event = JSON.parse(line)
+    expect(event).toMatchObject({
+      event: 'media_thumbnail_upload_failed',
+      path: 'serverFn:uploadMediaThumbnail',
+      actorId: ownerId,
+      mediaId,
+      status: 'failure',
+      errorCategory: 'media_thumbnail_persistence',
+    })
+    expect(line).not.toContain('thumbnail storage provider failure')
+    expect(line).not.toContain(`${ownerId}/old.png`)
+    expect(line).not.toContain(path)
+    errorSpy.mockRestore()
   })
 
   it('rejects foreign completion path', async () => {
@@ -362,7 +579,6 @@ describe('media thumbnail completion', () => {
       uploadMediaThumbnailService(
         { mediaId, path: 'other/thumb.png' },
         ownerId,
-        'teacher',
       ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' })
   })

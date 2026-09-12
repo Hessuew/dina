@@ -1,0 +1,1 @@
+CREATE INDEX "lessons_published_scheduled_idx" ON "lessons" USING btree ("is_published","scheduled_time");

@@ -7,6 +7,7 @@ import {
   handleDialogDismiss,
   isDialogModeActive,
   shouldShowMaterials,
+  shouldTrackCourseStarted,
 } from './course-detail.domain'
 
 describe('buildCourseEditData', () => {
@@ -106,6 +107,43 @@ describe('getCourseStatus', () => {
   it('is "draft" when not published or unknown', () => {
     expect(getCourseStatus(false)).toBe('draft')
     expect(getCourseStatus(null)).toBe('draft')
+  })
+})
+
+describe('shouldTrackCourseStarted', () => {
+  const baseInput = {
+    role: 'student' as const,
+    firstLessonId: 'lesson-1',
+    lessonId: 'lesson-1',
+    completedLessonIds: [],
+  }
+
+  it('tracks an unfinished first lesson for students', () => {
+    expect(shouldTrackCourseStarted(baseInput)).toBe(true)
+  })
+
+  it('does not track completed or later lessons', () => {
+    expect(
+      shouldTrackCourseStarted({
+        ...baseInput,
+        completedLessonIds: ['lesson-1'],
+      }),
+    ).toBe(false)
+    expect(
+      shouldTrackCourseStarted({
+        ...baseInput,
+        lessonId: 'lesson-2',
+      }),
+    ).toBe(false)
+  })
+
+  it('does not track staff lesson navigation', () => {
+    expect(shouldTrackCourseStarted({ ...baseInput, role: 'teacher' })).toBe(
+      false,
+    )
+    expect(shouldTrackCourseStarted({ ...baseInput, role: 'admin' })).toBe(
+      false,
+    )
   })
 })
 

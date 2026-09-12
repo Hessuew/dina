@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import {
   seedCourse,
@@ -9,6 +9,7 @@ import {
 import {
   closeAttendanceService,
   getCourseAttendanceStateService,
+  listOpenAttendanceForStudentService,
   markPresentService,
   setStudentPresentService,
   startOrReopenAttendanceService,
@@ -17,11 +18,17 @@ import { findPresentsForStudent } from '@/utils/attendance/repository/attendance
 import { getDb } from '@/db'
 import { attendanceSessions } from '@/db/schema'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
+import * as attendanceRepository from '@/utils/attendance/repository/attendance.repository'
 import {
   AuthorizationError,
   ConflictError,
   ValidationError,
 } from '@/utils/errors'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 async function seedManagedCourse() {
   const teacherId = await seedProfile({ role: 'teacher' })
@@ -141,8 +148,83 @@ describe('attendance open / re-open / close (integration)', () => {
   })
 })
 
+describe('attendance management telemetry (integration)', () => {
+  it('logs redacted session and override outcomes with safe metadata', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { teacherId, studentId, courseId, lesson1 } =
+      await seedManagedCourse()
+
+    const opened = await startOrReopenAttendanceService(
+      { courseId, lessonId: lesson1 },
+      teacherId,
+    )
+    await closeAttendanceService({ courseId }, teacherId)
+    await setStudentPresentService(
+      { studentId, courseId, lessonId: lesson1, present: true },
+      teacherId,
+    )
+    await setStudentPresentService(
+      { studentId, courseId, lessonId: lesson1, present: false },
+      teacherId,
+    )
+
+    const events = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) =>
+        [
+          'attendance_session_opened',
+          'attendance_session_closed',
+          'attendance_override_updated',
+        ].includes(String(entry.event)),
+      )
+
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'attendance_session_opened',
+          path: 'serverFn:startOrReopenAttendance',
+          actorId: teacherId,
+          courseId,
+          lessonId: lesson1,
+          sessionId: opened.session.id,
+          attendanceStatus: 'open',
+        }),
+        expect.objectContaining({
+          event: 'attendance_session_closed',
+          path: 'serverFn:closeAttendance',
+          actorId: teacherId,
+          courseId,
+          sessionId: opened.session.id,
+          attendanceStatus: 'closed',
+        }),
+        expect.objectContaining({
+          event: 'attendance_override_updated',
+          path: 'serverFn:setStudentPresent',
+          actorId: teacherId,
+          targetStudentId: studentId,
+          attendanceStatus: 'present',
+          present: true,
+        }),
+        expect.objectContaining({
+          event: 'attendance_override_updated',
+          path: 'serverFn:setStudentPresent',
+          actorId: teacherId,
+          targetStudentId: studentId,
+          attendanceStatus: 'absent',
+          present: false,
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    infoSpy.mockRestore()
+  })
+})
+
 describe('attendance mark present (integration)', () => {
   it('student marks present once; second press is idempotent', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { teacherId, studentId, courseId, lesson1 } =
       await seedManagedCourse()
     await startOrReopenAttendanceService(
@@ -154,6 +236,41 @@ describe('attendance mark present (integration)', () => {
     expect(a.created).toBe(true)
     expect(b.created).toBe(false)
     expect(b.checkedInAt).toEqual(a.checkedInAt)
+
+    const events = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((entry) =>
+        [
+          'attendance_check_in_completed',
+          'attendance_check_in_ignored',
+        ].includes(String(entry.event)),
+      )
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'attendance_check_in_completed',
+          path: 'serverFn:markPresent',
+          status: 'checked_in',
+          courseId,
+          studentId,
+          sessionId: a.sessionId,
+          lessonId: lesson1,
+        }),
+        expect.objectContaining({
+          event: 'attendance_check_in_ignored',
+          path: 'serverFn:markPresent',
+          status: 'already_present',
+          courseId,
+          studentId,
+          sessionId: b.sessionId,
+          lessonId: lesson1,
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    infoSpy.mockRestore()
   })
 
   it('teacher cannot mark present', async () => {
@@ -184,6 +301,109 @@ describe('attendance mark present (integration)', () => {
     await markPresentService({ courseId }, studentId)
     const state = await getCourseAttendanceStateService({ courseId }, studentId)
     expect(state.openSession?.alreadyPresent).toBe(true)
+  })
+
+  it('hides unpublished lessons and their sessions from non-managers', async () => {
+    const { teacherId, outsiderId, studentId, courseId, lesson1, lesson2 } =
+      await seedManagedCourse()
+    const draftLesson = await seedLesson({
+      courseId,
+      title: 'Draft lesson',
+      isPublished: false,
+    })
+    await startOrReopenAttendanceService(
+      { courseId, lessonId: draftLesson },
+      teacherId,
+    )
+
+    const studentState = await getCourseAttendanceStateService(
+      { courseId },
+      studentId,
+    )
+    expect(studentState.lessons.map((l) => l.lessonId)).toEqual([
+      lesson1,
+      lesson2,
+    ])
+    expect(studentState.openSession).toBeNull()
+
+    const outsiderState = await getCourseAttendanceStateService(
+      { courseId },
+      outsiderId,
+    )
+    expect(outsiderState.lessons.map((l) => l.lessonId)).toEqual([
+      lesson1,
+      lesson2,
+    ])
+    expect(outsiderState.openSession).toBeNull()
+
+    const teacherState = await getCourseAttendanceStateService(
+      { courseId },
+      teacherId,
+    )
+    expect(teacherState.lessons).toHaveLength(3)
+    expect(teacherState.openSession?.lessonId).toBe(draftLesson)
+  })
+})
+
+describe('attendance read telemetry (integration)', () => {
+  it('stays silent on successful polled reads', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { teacherId, studentId, courseId, lesson1 } =
+      await seedManagedCourse()
+    await startOrReopenAttendanceService(
+      { courseId, lessonId: lesson1 },
+      teacherId,
+    )
+    infoSpy.mockClear()
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org/attendance/state', {
+        headers: { 'x-request-id': 'attendance-state-read' },
+      }),
+      () => getCourseAttendanceStateService({ courseId }, studentId),
+    )
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org/attendance/open', {
+        headers: { 'x-request-id': 'attendance-open-read' },
+      }),
+      () => listOpenAttendanceForStudentService(studentId),
+    )
+
+    const events = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((event) => String(event.event).startsWith('attendance_'))
+    expect(events).toEqual([])
+  })
+
+  it('logs stable persistence categories without raw read errors', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { studentId } = await seedManagedCourse()
+    const repositoryError = new Error('attendance database secret')
+    vi.spyOn(
+      attendanceRepository,
+      'findOpenSessionsForStudent',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/attendance/open', {
+          headers: { 'x-request-id': 'attendance-open-failure' },
+        }),
+        () => listOpenAttendanceForStudentService(studentId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const serialized = String(errorSpy.mock.calls[0]?.[0])
+    expect(JSON.parse(serialized)).toMatchObject({
+      event: 'attendance_open_sessions_load_failed',
+      path: 'serverFn:listOpenAttendanceForStudent',
+      requestId: 'attendance-open-failure',
+      actorId: studentId,
+      errorCategory: 'attendance_read_persistence',
+      status: 'failure',
+      durationMs: expect.any(Number),
+    })
+    expect(serialized).not.toContain('attendance database secret')
   })
 })
 

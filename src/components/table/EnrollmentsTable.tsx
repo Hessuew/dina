@@ -3,8 +3,8 @@ import { format } from 'date-fns'
 import { Check, Eye, Mail, MoreHorizontal, Star, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
-import { createColumnHelper } from '@tanstack/react-table'
-import type { ColumnDef } from '@tanstack/react-table'
+import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-table/legacy'
+import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
 import type {
   EnrollmentStatus,
   EnrollmentWithEvaluation,
