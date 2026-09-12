@@ -116,6 +116,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    Unexpected read-state persistence failures use the stable
    `notification_read_state_persistence` category; notification content and
    raw database details remain excluded.
+   Notification summary reads now emit redacted
+   `notification_summary_loaded` / `notification_summary_load_failed` events
+   with request correlation, actor ID, requested limit, safe group counts,
+   status, and duration. Notification content, post excerpts, author details,
+   and raw persistence details remain excluded; unexpected read failures use
+   the stable `notification_summary_read_persistence` category.
    Admin Zoom-link create, update, and delete mutations now emit redacted
    `zoom_link_created`, `zoom_link_updated`, and `zoom_link_deleted` events
    with request correlation, actor/link IDs, section, teacher ownership,

@@ -3391,3 +3391,24 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
 - Focused post integration coverage passes 48 tests. Hosted Better Stack /
   Cloudflare ingestion, dashboards, alerts, Uptime monitors, and source-map
   verification remain external setup work.
+
+## Iteration 124 — notification-summary telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Notification inbox summary reads now emit redacted
+  `notification_summary_loaded` / `notification_summary_load_failed` events
+  with request correlation, actor ID, requested limit, safe group counts,
+  status, and duration.
+- Notification content, post excerpts, author details, and raw persistence
+  details remain excluded. Expected persisted-profile authorization failures
+  stay quiet; unexpected repository failures use the stable
+  `notification_summary_read_persistence` category and preserve the original
+  error.
+- Repository evidence: `src/utils/post/notifications/service/notification.service.ts`,
+  `src/utils/post/notifications/notifications.integration.test.ts`,
+  `docs/plan/STRUCTURED_LOGGING.md`, and `src/utils/README.md`.
+- Focused notification integration coverage includes summary success and
+  failure redaction checks. Hosted Better Stack / Cloudflare ingestion,
+  dashboards, alerts, Uptime monitors, and source-map verification remain
+  external setup work.

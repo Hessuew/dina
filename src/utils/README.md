@@ -195,6 +195,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     request correlation, actor/target metadata, read scope, status, and
     duration; unexpected persistence failures use the stable
     `notification_read_state_persistence` category.
+  - Notification summary reads emit redacted
+    `notification_summary_loaded` / `notification_summary_load_failed` events
+    with request correlation, actor ID, requested limit, safe group counts,
+    status, and duration; notification content, post excerpts, author details,
+    and raw persistence details remain excluded, while unexpected failures use
+    `notification_summary_read_persistence`.
   - Admin Zoom-link create, update, and delete mutations emit redacted
     `zoom_link_created`, `zoom_link_updated`, and `zoom_link_deleted` events
     with request correlation, actor/link IDs, ownership section, status, and

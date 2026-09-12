@@ -6,6 +6,7 @@ import {
   markPostNotificationGroupReadService,
 } from '@/utils/post/notifications/service/notification.service'
 import { NotFoundError } from '@/utils/errors'
+import * as notificationRepository from '@/utils/post/notifications/repository/notification.repository'
 import {
   seedPost,
   seedPostNotification,
@@ -18,6 +19,10 @@ import {
 // See docs/TESTING_GUIDE.md / ADR 0009.
 
 describe('getPostNotificationsSummaryService (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('requires a persisted profile for every notification operation', async () => {
     const userId = randomUUID()
     await expect(
@@ -41,6 +46,57 @@ describe('getPostNotificationsSummaryService (integration)', () => {
 
     expect(result.groups).toEqual([])
     expect(result.unreadGroupCount).toBe(0)
+  })
+
+  it('logs a redacted success event with safe summary metadata', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+
+    await getPostNotificationsSummaryService({ limit: 10 }, userId)
+
+    const [line] = infoSpy.mock.calls.map(([entry]) => String(entry))
+    const event = JSON.parse(line)
+    expect(event).toEqual(
+      expect.objectContaining({
+        event: 'notification_summary_loaded',
+        path: 'serverFn:getPostNotificationsSummary',
+        actorId: userId,
+        limit: 10,
+        groupCount: 0,
+        unreadGroupCount: 0,
+        status: 'success',
+      }),
+    )
+    expect(event.requestId).toBe('unknown')
+    expect(typeof event.durationMs).toBe('number')
+    expect(JSON.stringify(event)).not.toContain('content')
+  })
+
+  it('logs stable persistence failures without notification content', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+    const repositoryError = new Error('notification body secret')
+    vi.spyOn(
+      notificationRepository,
+      'findNotificationGroups',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(getPostNotificationsSummaryService({}, userId)).rejects.toBe(
+      repositoryError,
+    )
+
+    const [line] = errorSpy.mock.calls.map(([entry]) => String(entry))
+    const event = JSON.parse(line)
+    expect(event).toEqual(
+      expect.objectContaining({
+        event: 'notification_summary_load_failed',
+        path: 'serverFn:getPostNotificationsSummary',
+        actorId: userId,
+        errorCategory: 'notification_summary_read_persistence',
+        status: 'failure',
+      }),
+    )
+    expect(line).not.toContain('notification body secret')
   })
 
   it('groups notifications by event and post with unread counts and an excerpt', async () => {

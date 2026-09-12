@@ -9,6 +9,7 @@ import type {
 } from '@/utils/post/notifications/domain/notification.domain'
 import { buildPostExcerpt } from '@/utils/post/notifications/domain/notification.domain'
 import { getUserProfile } from '@/utils/auth/auth'
+import { isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
@@ -25,6 +26,18 @@ type NotificationReadLogContext = {
   postId?: string
   notificationEvent?: string
   startedAt: number
+}
+
+type NotificationSummaryLogContext = {
+  action: 'getPostNotificationsSummary'
+  actorId: string
+  limit: number
+  startedAt: number
+}
+
+type NotificationSummaryResult = {
+  groups: Array<PostNotificationGroup>
+  unreadGroupCount: number
 }
 
 async function requireNotificationActor(userId: string): Promise<void> {
@@ -49,15 +62,58 @@ function logNotificationReadEvent(
   })
 }
 
-export async function getPostNotificationsSummaryService(
-  data: GetPostNotificationsSummaryInput,
+function logNotificationSummaryEvent(
+  level: LogLevel,
+  event: string,
+  context: NotificationSummaryLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    limit: context.limit,
+    ...fields,
+  })
+}
+
+function shouldLogNotificationSummaryFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function withNotificationSummaryTelemetry<T>(args: {
+  context: NotificationSummaryLogContext
+  read: () => Promise<T>
+  fields: (result: T) => Record<string, unknown>
+}): Promise<T> {
+  try {
+    const result = await args.read()
+    logNotificationSummaryEvent(
+      'info',
+      'notification_summary_loaded',
+      args.context,
+      args.fields(result),
+    )
+    return result
+  } catch (error) {
+    if (shouldLogNotificationSummaryFailure(error)) {
+      logNotificationSummaryEvent(
+        'error',
+        'notification_summary_load_failed',
+        args.context,
+        { errorCategory: 'notification_summary_read_persistence' },
+      )
+    }
+    throw error
+  }
+}
+
+async function readNotificationSummary(
   userId: string,
-): Promise<{
-  groups: Array<PostNotificationGroup>
-  unreadGroupCount: number
-}> {
-  await requireNotificationActor(userId)
-  const limit = data.limit ?? 25
+  limit: number,
+): Promise<NotificationSummaryResult> {
   const [grouped, unreadGroupCount] = await Promise.all([
     findNotificationGroups(userId, limit),
     findUnreadGroupCount(userId),
@@ -104,6 +160,29 @@ export async function getPostNotificationsSummaryService(
     .filter((g): g is PostNotificationGroup => Boolean(g))
 
   return { groups, unreadGroupCount }
+}
+
+export async function getPostNotificationsSummaryService(
+  data: GetPostNotificationsSummaryInput,
+  userId: string,
+): Promise<NotificationSummaryResult> {
+  await requireNotificationActor(userId)
+  const limit = data.limit ?? 25
+  const context: NotificationSummaryLogContext = {
+    action: 'getPostNotificationsSummary',
+    actorId: userId,
+    limit,
+    startedAt: performance.now(),
+  }
+
+  return withNotificationSummaryTelemetry({
+    context,
+    read: () => readNotificationSummary(userId, limit),
+    fields: (result) => ({
+      groupCount: result.groups.length,
+      unreadGroupCount: result.unreadGroupCount,
+    }),
+  })
 }
 
 export async function markPostNotificationGroupReadService(
