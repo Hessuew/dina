@@ -208,6 +208,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `calendar_events_load_failed` with the stable
    `calendar_read_persistence` category; calendar titles, descriptions,
    locations, links, and timestamps remain excluded.
+   Student-directory list and detail reads now emit redacted
+   `student_directory_loaded` / `student_directory_load_failed` events with
+   request correlation, actor and target IDs where applicable, safe result
+   counts, duration, and the stable `student_directory_read_persistence`
+   failure category; names, emails, bios, and assignment content remain
+   excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 114
-**Scope:** add redacted Better Stack-ready telemetry for calendar overview
-reads and record the remaining hosted observability evidence gate.
+**Iteration:** 115
+**Scope:** add redacted Better Stack-ready telemetry for student-directory
+list/detail reads and record the remaining hosted observability evidence gate.
 
 ## Executive summary
 
@@ -78,6 +78,12 @@ shadcn@latest` intentionally.
   `calendar_events_load_failed` with the stable
   `calendar_read_persistence` category; calendar content, locations, links,
   and timestamps are excluded.
+- Student-directory list and detail reads now emit redacted
+  `student_directory_loaded` / `student_directory_load_failed` events with
+  request correlation, actor and target IDs where applicable, safe result
+  counts, duration, and the stable `student_directory_read_persistence`
+  failure category; student names, emails, bios, and assignment content remain
+  excluded.
 - Authenticated profile password changes now emit redacted
   `password_updated` / `password_update_failed` events with request
   correlation, user ID, status, duration, stable error category, and provider
@@ -3196,3 +3202,22 @@ Run the full quality gate, integration suite, formatting, and production build
 before final handoff. Better Stack account-specific DSN, source-map, Cloudflare
 destination, dashboard, and alert verification remains external follow-up;
 the current browser profile is not authenticated to the Better Stack console.
+
+## Iteration 115 — student-directory telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Student-directory list and detail reads now emit redacted
+  `student_directory_loaded` / `student_directory_load_failed` events with
+  request correlation, actor and target IDs where applicable, safe result
+  counts, duration, and a stable persistence category.
+- Names, emails, bios, assignment content, and other student payload fields
+  remain excluded from Better Stack/Cloudflare telemetry. Existing persisted
+  teacher/Admin authorization and response shapes are unchanged.
+- Repository evidence: `src/utils/student/service/student.service.ts`,
+  `src/utils/student/student.integration.test.ts`,
+  `docs/plan/STRUCTURED_LOGGING.md`, and `src/utils/README.md`.
+- Focused student integration coverage passes (11 tests), and the full
+  integration suite passes 413 tests; hosted Better Stack/Cloudflare ingestion,
+  dashboards, alerts, Uptime, and source-map verification remain external
+  follow-up.
