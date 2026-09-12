@@ -33,6 +33,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    duration; unexpected persistence failures emit
    `attendance_check_in_failed` with a stable error category. Closed-window
    validation remains an expected user-facing outcome.
+   Password-reset request lookup/persistence failures and valid token checks
+   now emit `password_reset_request_failed`, `password_reset_token_validated`,
+   and `password_reset_token_lookup_failed` events with request correlation,
+   safe user IDs when known, duration, and stable read/write persistence
+   categories; email addresses, reset tokens, passwords, and provider/database
+   details remain excluded, and anonymous, cooldown, invalid, and expired-token
+   outcomes stay quiet.
    Course attendance state and student open-session reads now emit redacted
    `attendance_state_loaded` / `attendance_state_load_failed` and
    `attendance_open_sessions_loaded` / `attendance_open_sessions_load_failed`

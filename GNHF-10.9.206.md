@@ -112,6 +112,13 @@ shadcn@latest` intentionally.
   `password_updated` / `password_update_failed` events with request
   correlation, user ID, status, duration, stable error category, and provider
   code; password values and provider messages remain excluded.
+- Password-reset request lookup/persistence failures and valid token checks now
+  emit redacted `password_reset_request_failed`,
+  `password_reset_token_validated`, and `password_reset_token_lookup_failed`
+  events with request correlation, safe user IDs when known, duration, and
+  stable read/write persistence categories. Email addresses, reset tokens,
+  passwords, and provider/database details remain excluded; anonymous,
+  cooldown, invalid, and expired-token outcomes stay quiet.
 - Public enrollment persistence now emits redacted `enrollment_created` /
   `enrollment_create_failed` events with request correlation, source, status,
   duration, and the persisted enrollment ID on success; applicant identity,
@@ -3739,3 +3746,26 @@ and diff checks passed. Per the iterative telemetry workflow, the full build
 and full integration suite were not run. Hosted Better Stack/Cloudflare
 ingestion, dashboards, alerts, Uptime monitors, and source-map verification
 remain external follow-up.
+
+## Iteration 138 — password-reset validation telemetry
+
+This iteration completed a batched Phase 1 auth-observability slice:
+
+- Password-reset request profile lookup and reset-state persistence failures
+  now emit `password_reset_request_failed` with request correlation, a safe user
+  ID when known, duration, and stable read/write persistence categories while
+  preserving the original repository error.
+- Valid reset-token checks now emit `password_reset_token_validated`; unexpected
+  token lookups emit `password_reset_token_lookup_failed` with a stable
+  persistence category. Anonymous, cooldown, invalid, and expired-token
+  outcomes remain quiet.
+- Added focused integration coverage for safe success metadata, request
+  correlation, persistence categories, original-error preservation, and raw
+  detail exclusion.
+
+Validation: the focused password-reset integration suite passed 9 tests;
+formatting, typecheck, `bun run quality:static`, and `bun run quality:gate` also
+passed. The full build and full integration suite were not run per the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, and source-map verification remain
+external follow-up.

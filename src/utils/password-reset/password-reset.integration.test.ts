@@ -8,7 +8,9 @@ import { setEmailSender } from '@/utils/email'
 import {
   requestPasswordResetService,
   resetPasswordService,
+  validateResetTokenService,
 } from '@/utils/password-reset/service/password-reset.service'
+import * as passwordResetRepository from '@/utils/password-reset/repository'
 import { seedProfile } from '@/../test/integration/seed'
 import { getDb } from '@/../test/integration/db'
 import { accountSecurity } from '@/db/schema'
@@ -110,6 +112,135 @@ describe('requestPasswordResetService (integration)', () => {
       'provider unavailable',
     )
     errorSpy.mockRestore()
+  })
+
+  it('logs safe telemetry when a reset token validates', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const email = 'valid-token@test.dev'
+    await seedProfile({ email })
+    await requestPasswordResetService(email)
+    const message = mocks.sendEmail.mock
+      .calls[0][0] as PasswordResetEmailMessage
+    const token = new URL(message.resetLink).searchParams.get('token')
+
+    try {
+      await expect(
+        validateResetTokenService(token ?? undefined),
+      ).resolves.toEqual({ valid: true, message: 'Token is valid' })
+
+      const serialized = infoSpy.mock.calls.map(([line]) => String(line))
+      const event = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === 'password_reset_token_validated')
+      expect(event).toMatchObject({
+        level: 'info',
+        event: 'password_reset_token_validated',
+        path: 'serverFn:validate_reset_token',
+        status: 'success',
+      })
+      expect(serialized.join('\n')).not.toContain(token ?? '')
+    } finally {
+      infoSpy.mockRestore()
+    }
+  })
+
+  it('categorizes reset-token lookup failures without raw repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const repositoryError = new Error('password reset token database detail')
+    vi.spyOn(
+      passwordResetRepository,
+      'findProfileByResetTokenHash',
+    ).mockRejectedValueOnce(repositoryError)
+
+    try {
+      await expect(validateResetTokenService('token-value')).rejects.toBe(
+        repositoryError,
+      )
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const event = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === 'password_reset_token_lookup_failed')
+      expect(event).toMatchObject({
+        level: 'error',
+        event: 'password_reset_token_lookup_failed',
+        path: 'serverFn:validate_reset_token',
+        status: 'failure',
+        errorCategory: 'password_reset_token_read_persistence',
+      })
+      expect(serialized.join('\n')).not.toContain(
+        'password reset token database detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('categorizes reset-request lookup failures and preserves the original error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const repositoryError = new Error('password reset profile database detail')
+    vi.spyOn(
+      passwordResetRepository,
+      'findProfileByEmail',
+    ).mockRejectedValueOnce(repositoryError)
+
+    try {
+      await expect(
+        requestPasswordResetService('lookup-failure@test.dev'),
+      ).rejects.toBe(repositoryError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const event = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === 'password_reset_request_failed')
+      expect(event).toMatchObject({
+        level: 'error',
+        event: 'password_reset_request_failed',
+        path: 'serverFn:request_password_reset',
+        status: 'failure',
+        errorCategory: 'password_reset_read_persistence',
+      })
+      expect(serialized.join('\n')).not.toContain(
+        'password reset profile database detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('categorizes reset-request persistence failures with the safe user id', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const email = 'persistence-failure@test.dev'
+    const profileId = await seedProfile({ email })
+    const repositoryError = new Error('password reset write database detail')
+    vi.spyOn(
+      passwordResetRepository,
+      'updateProfileResetToken',
+    ).mockRejectedValueOnce(repositoryError)
+
+    try {
+      await expect(requestPasswordResetService(email)).rejects.toBe(
+        repositoryError,
+      )
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const event = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === 'password_reset_request_failed')
+      expect(event).toMatchObject({
+        level: 'error',
+        event: 'password_reset_request_failed',
+        path: 'serverFn:request_password_reset',
+        status: 'failure',
+        errorCategory: 'password_reset_write_persistence',
+        userId: profileId,
+      })
+      expect(serialized.join('\n')).not.toContain(
+        'password reset write database detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 
   it('updates the password, clears reset state, and logs completion', async () => {

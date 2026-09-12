@@ -93,6 +93,13 @@ This folder is primarily where TanStack Start server functions live (via `create
     emit `password_updated` / `password_update_failed` with the same safe
     fields and stable `password_update` category; password values and provider
     messages are excluded.
+  - Password-reset requests and token validation emit redacted
+    `password_reset_request_failed`, `password_reset_token_validated`, and
+    `password_reset_token_lookup_failed` events with request correlation,
+    safe user IDs when known, duration, and stable read/write persistence
+    categories. Email addresses, reset tokens, passwords, and provider or
+    database details remain excluded; anonymous, cooldown, invalid, and
+    expired-token outcomes stay quiet.
   - Public enrollment persistence emits redacted `enrollment_created` /
     `enrollment_create_failed` events with request correlation,
     `serverFn:createEnrollment`, a stable public-form source, status, duration,
