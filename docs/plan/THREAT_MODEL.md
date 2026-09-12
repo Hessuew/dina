@@ -93,6 +93,24 @@ and restore evidence belong in the external systems and the linked runbooks.
 | TM-13 | RLS policies drift from application authorization and provide false confidence or unexpected denial                         | Exam, attendance, invitation, evaluation, staff-privilege, storage-related, and other newer tables have explicit migration policies; the database README and security plan identify app authz as active boundary                                                                                                                                                           | Inventory current table/policy state in each Supabase branch, model request identity propagation, then migrate legacy tables only with an executable policy/test plan    |
 | TM-14 | Better Stack, Cloudflare, PostHog, Supabase, or GitHub configuration is incomplete while the repository appears healthy     | Repository-owned handoff and runbooks name required URLs, monitors, dashboards, owners, smoke checks, and rollback steps                                                                                                                                                                                                                                                   | Complete account setup, controlled error/trace/analytics checks, alert delivery checks, named ownership, and Notion status updates                                       |
 
+### Public-endpoint abuse controls (Cloudflare WAF)
+
+The application keeps enrollment closed (`ENROLLMENT_OPEN = false`) until the
+public-flow controls are verified. The public surfaces that need an edge policy
+are the signup/OTP flow, password-reset flow, invitation-token and invitation
+email checks, email-change verification, and any future enrollment opening.
+The TanStack server-function names are not assumed to be URI paths: operators
+must first use Cloudflare Security Analytics and the `serverFn:*` structured
+events to map the browser action to the actual request path.
+
+The repository-owned execution recipe is in
+[`GNHF-10.9.206.md`](../../GNHF-10.9.206.md#iteration-100--cloudflare-waf-public-endpoint-abuse-control-runbook).
+It covers the `christ-dina.org` zone, `/healthz` and `/readyz` exclusions,
+log-first rollout, IP-based characteristics for public traffic, generic 429
+responses, Better Stack alert evidence, synthetic verification, and reversible
+rule rollback. This is an external Cloudflare configuration change; this slice
+does not commit a Cloudflare API token, rule ID, or Wrangler application code.
+
 ### Calendar event mutation boundary
 
 The event-management route redirects students, and the event service now
@@ -200,8 +218,9 @@ procedure.
 2. Run the first hosted restore and non-production rollback rehearsals.
 3. Finish the remaining RBAC/RLS review with a request-identity-aware policy
    plan before enabling policies on legacy tables.
-4. Configure public-endpoint abuse controls and verify them with synthetic
-   requests.
+4. Apply the Cloudflare WAF public-endpoint recipe in
+   `GNHF-10.9.206.md`, then verify the staged policy with synthetic requests and
+   record the rule IDs, thresholds, exclusions, and alert evidence.
 5. Triage and assign the remaining dependency advisories.
 
 Related repository procedures:

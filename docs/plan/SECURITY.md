@@ -396,6 +396,27 @@ Remaining work is live provider acceptance, the first hosted restore and
 rollback rehearsals, public-endpoint abuse controls, dependency triage, and a
 measured RBAC/RLS migration plan.
 
+## Public-endpoint abuse controls (Cloudflare WAF)
+
+Enrollment remains closed until the public-flow rate-limit policy is verified.
+The repository-owned Cloudflare procedure is in
+[`GNHF-10.9.206.md`](../../GNHF-10.9.206.md#iteration-100--cloudflare-waf-public-endpoint-abuse-control-runbook)
+and covers signup/OTP, password reset, invitation-token and email checks,
+email-change verification, and any future enrollment opening.
+
+The operator must map each browser action to the actual request path in
+Cloudflare Security Analytics before creating a rule; TanStack server-function
+names must not be guessed as edge paths. Exclude `/healthz` and `/readyz`,
+start new rules in Log mode, use a public-traffic characteristic such as the
+client IP, and move to Block or Managed Challenge only after a controlled
+synthetic rehearsal. If the plan supports a custom response, use a generic 429
+without account or token details. Connect the resulting 429/mitigation signal
+to the Better Stack alert path, record rule IDs and thresholds in the Notion
+security/risk record, and keep the rule disable path as the rollback.
+
+No Cloudflare rule IDs, API tokens, or production thresholds are committed in
+this repository; the remaining step is operator execution and evidence capture.
+
 ## Remaining Phase 5 work
 
 - Continue reviewing RBAC and database/RLS defense-in-depth against the current

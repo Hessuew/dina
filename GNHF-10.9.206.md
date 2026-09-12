@@ -1,9 +1,10 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 97
-**Scope:** close the next Phase 5 media-library service authorization boundary
-after the private avatar storage hardening in iteration 96.
+**Iteration:** 100
+**Scope:** define the next external Phase 5 security control: staged Cloudflare
+WAF rate limits for public authentication, invitation, verification, reset, and
+future enrollment flows.
 
 ## Executive summary
 
@@ -2777,3 +2778,111 @@ This iteration closed the next small Phase 5 service-boundary gap:
 - Updated `docs/plan/SECURITY.md`, `docs/plan/THREAT_MODEL.md`, and the
   `src/utils` boundary inventory. Better Stack/Cloudflare acceptance, hosted
   RLS verification, and public-abuse controls remain external follow-up work.
+
+## Iteration 100 — Cloudflare WAF public endpoint abuse-control runbook
+
+This iteration turns the remaining public-endpoint abuse item into an
+individually executable external procedure. No application code, Wrangler
+configuration, Cloudflare API token, or production rule ID is changed here.
+The repository continues to keep enrollment closed until the external control
+is verified.
+
+The Notion readiness-roadmap checker matched the Engineering Roadmap and the
+Production Readiness Reviews database. The database still contains only its
+protected template row, and the live roadmap phase status and core work list
+remain unchanged (`Planned`), so no Notion row or roadmap append was made for
+this documentation-only external setup slice.
+
+### Scope and endpoint inventory
+
+The public flows requiring protection are:
+
+- signup, OTP verification, and OTP resend (`signupFn`, `verifyOtpFn`, and
+  `resendOtpFn`);
+- password-reset request, token validation, and password update
+  (`requestPasswordResetFn`, `validateResetTokenFn`, and `resetPasswordFn`);
+- invitation-token lookup and invitation-email checks
+  (`getInvitationByToken` and `checkInvitationByEmail`);
+- email-change verification (`verifyEmailChangeFn`); and
+- future enrollment opening (`createEnrollment`), which is currently blocked by
+  `ENROLLMENT_OPEN = false`.
+
+These names are application actions, not guaranteed URI paths. Before creating
+a rule, use Cloudflare Security Analytics to identify the real request path and
+method for each browser action. Confirm the match with the existing redacted
+`serverFn:*` structured event, and do not create a broad rule for the whole
+Worker merely because several handlers share TanStack server-function
+transport.
+
+### Cloudflare dashboard procedure
+
+For the `christ-dina.org` zone:
+
+1. Open **Cloudflare dashboard → Security → WAF → Security rules → Create rule
+   → Rate limiting rules**. Cloudflare’s current dashboard procedure and field
+   definitions are documented in the [zone dashboard rate-limiting
+   guide](https://developers.cloudflare.com/waf/rate-limiting-rules/create-zone-dashboard/).
+2. Start with a narrow expression for the measured public request path and
+   method. Exclude `/healthz` and `/readyz` explicitly so availability and
+   readiness monitors are never counted or blocked by an abuse rule.
+3. Select the client IP as the initial characteristic for unauthenticated
+   public traffic. Do not key an authenticated policy only by IP: shared NAT
+   addresses can make unrelated users collide. If a public flow needs a
+   different identity key, document the field and privacy impact before using
+   it.
+4. Set the period and requests-per-period from observed normal traffic plus the
+   approved synthetic rehearsal. Do not copy a threshold from this handoff or
+   enable enforcement before the false-positive review.
+5. Deploy the first version with **Log** action. Review matched requests,
+   excluded health checks, response codes, and whether the rule distinguishes
+   the intended public action from authenticated traffic.
+6. After the review, change the rule to **Block** or **Managed Challenge** as
+   appropriate. Where the Cloudflare plan supports a custom response, return a
+   generic `429 Too Many Requests` body with no account, email, token, or
+   provider detail. Cloudflare documents staged Log-first rollout and rule
+   parameters in its [rate-limiting best-practices
+   guide](https://developers.cloudflare.com/waf/rate-limiting-rules/best-practices/).
+
+Keep the public-flow rules separate from any future authenticated traffic
+policy. If Security Analytics shows that TanStack transport exposes only one
+shared path for all handlers, stop before using a broad edge rule and record an
+application-level action-key design as follow-up work.
+
+### Better Stack signal and evidence
+
+After the existing Cloudflare-to-Better-Stack log destination is operational:
+
+1. Create or update a Better Stack dashboard panel for rate-limit matches,
+   blocked/challenged requests, and HTTP 429 responses, preserving the existing
+   redaction policy.
+2. Add an alert for a sustained rate-limit or 429 spike with the owner,
+   dashboard link, first action, and rollback link required by the observability
+   runbook. Do not alert on a single synthetic request.
+3. Record the Cloudflare rule ID, expression, method, characteristic, period,
+   threshold, action, health exclusions, Better Stack query/alert URL, operator,
+   and review date in the Notion Security/Risk record. Record only redacted
+   request IDs and timestamps as rehearsal evidence.
+
+### Safe verification and rollback
+
+Use a preview/staging hostname or an approved test IP first. Send a controlled,
+low-volume sequence to the exact public action while the rule is in Log mode,
+then repeat only the minimum requests needed after enforcement. Never run a
+burst loop against production and never use applicant data.
+
+The acceptance evidence is:
+
+- the intended public action is logged and, after enforcement, returns the
+  configured 429/block/challenge response;
+- `/healthz` and `/readyz` continue to return their normal successful response;
+- authenticated traffic is not unintentionally matched by a public-only rule;
+- Better Stack shows the redacted rate-limit signal and the test alert routes to
+  the agreed escalation target; and
+- the rule can be disabled or reverted immediately, with no application deploy.
+
+If false positives, telemetry gaps, or health-check matches appear, disable the
+new rule, keep the evidence, and return to Log mode after correcting the
+expression or threshold. Keep the rule ID and rollback timestamp in the
+operator record.
+
+Official reference: [Cloudflare rate-limiting rules](https://developers.cloudflare.com/waf/rate-limiting-rules/).
