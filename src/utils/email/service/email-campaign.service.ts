@@ -18,6 +18,7 @@ import {
   checkEmailCampaignLockHeldBy,
   deleteCampaignInvitation,
   findEmailCampaignRecipients,
+  getLockedEmailCampaigns,
   insertCampaignInvitation,
   insertEmailMessage,
   markCampaignEnrollmentInvited,
@@ -44,6 +45,21 @@ export type EmailCampaignSendSummary = {
   sent: number
   failed: number
   skipped: SkipSummary
+}
+
+export async function getEmailCampaignLocksService(
+  userId: string,
+): Promise<Array<SendEmailCampaignInput['campaign']>> {
+  await authz(userId).hasRole('admin')
+  return getLockedEmailCampaigns()
+}
+
+export async function releaseEmailCampaignService(
+  data: SendEmailCampaignInput,
+  userId: string,
+): Promise<void> {
+  await authz(userId).hasRole('admin')
+  await releaseEmailCampaignLock(data.campaign, userId)
 }
 
 const SEND_INTERVAL_MS = 600

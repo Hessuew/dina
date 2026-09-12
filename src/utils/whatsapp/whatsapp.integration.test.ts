@@ -15,7 +15,9 @@ import {
 import { whatsappCampaignLocks, whatsappMessages } from '@/db/schema'
 import { setWhatsAppSender } from '@/utils/whatsapp'
 import {
+  getWhatsAppCampaignLocksService,
   previewWhatsAppCampaignService,
+  releaseWhatsAppCampaignService,
   sendWhatsAppCampaignService,
 } from '@/utils/whatsapp/service/whatsapp.service'
 import { AuthorizationError } from '@/utils/errors'
@@ -366,5 +368,36 @@ describe('campaign lock (integration)', () => {
     await expect(
       sendWhatsAppCampaignService({ campaign: 'congratulations' }, adminId),
     ).rejects.toMatchObject({ code: 'CAMPAIGN_LOCKED' })
+  })
+
+  it('requires admin role for lock inspection and explicit release', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+
+    await expect(getWhatsAppCampaignLocksService(teacherId)).rejects.toThrow(
+      AuthorizationError,
+    )
+    await expect(
+      releaseWhatsAppCampaignService(
+        { campaign: 'congratulations' },
+        teacherId,
+      ),
+    ).rejects.toThrow(AuthorizationError)
+  })
+
+  it('allows an admin to inspect and release a held campaign lock', async () => {
+    const adminId = await seedProfile({ role: 'admin' })
+    await previewWhatsAppCampaignService(
+      { campaign: 'congratulations' },
+      adminId,
+    )
+
+    expect(await getWhatsAppCampaignLocksService(adminId)).toEqual([
+      'congratulations',
+    ])
+    await releaseWhatsAppCampaignService(
+      { campaign: 'congratulations' },
+      adminId,
+    )
+    expect(await getWhatsAppCampaignLocksService(adminId)).toEqual([])
   })
 })

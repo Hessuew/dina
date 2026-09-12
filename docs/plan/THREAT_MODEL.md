@@ -146,6 +146,14 @@ bypass unpublished-media filtering or staff/ownership checks. Integration
 coverage rejects unknown actors before media reads and preserves persisted
 student/teacher behavior.
 
+### Campaign lock service boundary
+
+Email and WhatsApp campaign lock inspection and explicit release now run
+through Admin-guarded services instead of calling repositories directly from
+the server-function adapters. This keeps lock cleanup under the same role
+boundary as campaign preview and send; integration coverage rejects teacher
+callers and verifies Admin cleanup behavior.
+
 ## Existing control map
 
 | Control                | Repository evidence                                                                   | Verification boundary                                   |

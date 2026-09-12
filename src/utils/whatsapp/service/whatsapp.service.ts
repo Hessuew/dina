@@ -5,7 +5,10 @@ import type {
   PlannedSend,
   SkipSummary,
 } from '@/utils/whatsapp/domain/bulk-send.domain'
-import type { WhatsAppTemplateName } from '@/utils/whatsapp/domain/templates.domain'
+import type {
+  CampaignType,
+  WhatsAppTemplateName,
+} from '@/utils/whatsapp/domain/templates.domain'
 import {
   planBulkSend,
   summarizeSkips,
@@ -17,6 +20,7 @@ import {
   checkWhatsAppCampaignLockHeldBy,
   findEnrollmentRecipientsByCampaign,
   findSentEnrollmentIdsByTemplate,
+  getLockedCampaigns,
   insertWhatsAppMessage,
   releaseWhatsAppCampaignLock,
 } from '@/utils/whatsapp/repository/whatsapp.repository'
@@ -34,6 +38,21 @@ export type CampaignSendSummary = {
   sent: number
   failed: number
   skipped: SkipSummary
+}
+
+export async function getWhatsAppCampaignLocksService(
+  userId: string,
+): Promise<Array<CampaignType>> {
+  await authz(userId).hasRole('admin')
+  return getLockedCampaigns()
+}
+
+export async function releaseWhatsAppCampaignService(
+  data: SendWhatsAppCampaignInput,
+  userId: string,
+): Promise<void> {
+  await authz(userId).hasRole('admin')
+  await releaseWhatsAppCampaignLock(data.campaign, userId)
 }
 
 // Inter-send pause: stays polite to the Cloud API rate limits without a queue.

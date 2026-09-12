@@ -2744,3 +2744,21 @@ Validation: focused library integration passed all 21 tests. Full integration,
 the quality gate, production build, formatting, and Notion synchronization are
 the remaining handoff checks for this slice; Better Stack/Cloudflare acceptance
 and hosted storage-policy verification remain external follow-up work.
+
+## Iteration 98 — campaign lock service authorization hardening
+
+This iteration closed the next small Phase 5 admin service-boundary gap:
+
+- Email and WhatsApp campaign lock inspection and explicit release now delegate
+  to Admin-guarded services instead of calling repositories directly from the
+  server-function adapters.
+- Campaign preview/send behavior and per-user lock ownership are unchanged;
+  direct teacher callers now receive the same typed authorization failure as
+  other campaign operations.
+- Added integration coverage proving teacher denial and Admin inspection/release
+  behavior for both campaign families.
+
+Validation: focused email and WhatsApp integration passed all 32 tests. The full
+integration suite, quality gate, production build, formatting, and Notion
+synchronization remain final handoff checks for this slice; Better Stack
+acceptance and provider rehearsal remain external follow-up work.

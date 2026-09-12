@@ -349,6 +349,15 @@ publication filtering or staff/ownership checks. Integration coverage verifies
 unknown actors are rejected before media reads, while persisted student and
 teacher roles retain their existing behavior.
 
+### Campaign lock service boundary
+
+The email and WhatsApp campaign server functions now delegate lock inspection
+and explicit lock release to Admin-guarded services. Previously, the release
+adapters authenticated the session but called the repository directly, so a
+direct server-function caller could attempt campaign-lock cleanup without the
+same role check used by preview and send. Integration coverage verifies that
+teachers are rejected and Admins can inspect and release their own held lock.
+
 ## Secret inventory and rotation contract
 
 The repository-owned secret inventory in

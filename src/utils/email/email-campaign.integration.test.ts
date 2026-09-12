@@ -10,13 +10,11 @@ import {
 import { emailCampaignLocks, emailMessages, enrollments } from '@/db/schema'
 import { setEmailSender } from '@/utils/email'
 import {
+  getEmailCampaignLocksService,
   previewEmailCampaignService,
+  releaseEmailCampaignService,
   sendEmailCampaignService,
 } from '@/utils/email/service/email-campaign.service'
-import {
-  getLockedEmailCampaigns,
-  releaseEmailCampaignLock,
-} from '@/utils/email/repository/email-campaign.repository'
 import { findInvitationByEmail } from '@/utils/invitation/repository/invitations.repository'
 import { AuthorizationError } from '@/utils/errors'
 
@@ -367,8 +365,19 @@ describe('email campaign lock (integration)', () => {
     const adminId = await seedProfile({ role: 'admin' })
     await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
 
-    expect(await getLockedEmailCampaigns()).toEqual(['invitation'])
-    await releaseEmailCampaignLock('invitation', adminId)
-    expect(await getLockedEmailCampaigns()).toEqual([])
+    expect(await getEmailCampaignLocksService(adminId)).toEqual(['invitation'])
+    await releaseEmailCampaignService({ campaign: 'invitation' }, adminId)
+    expect(await getEmailCampaignLocksService(adminId)).toEqual([])
+  })
+
+  it('requires admin role for lock inspection and explicit release', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+
+    await expect(getEmailCampaignLocksService(teacherId)).rejects.toThrow(
+      AuthorizationError,
+    )
+    await expect(
+      releaseEmailCampaignService({ campaign: 'invitation' }, teacherId),
+    ).rejects.toThrow(AuthorizationError)
   })
 })
