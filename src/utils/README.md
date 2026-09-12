@@ -42,6 +42,13 @@ This folder is primarily where TanStack Start server functions live (via `create
     stable error-level logging for unexpected provider exceptions.
   - `auth/logout.ts`: Supabase sign-out adapter with redacted,
     request-correlated `logout_succeeded` / `logout_failed` telemetry.
+  - Signup and OTP verification emit redacted delivery, provisioning, rollback,
+    auto-login, resend, and persistence-failure events. Invitation/profile
+    lookup, OTP update/attempt, invitation acceptance, and verified-OTP cleanup
+    failures carry request correlation, safe invitation IDs where applicable,
+    stable persistence categories, and preserve the original error; tokens,
+    email addresses, passwords, provider messages, and raw database details
+    remain excluded.
 
 - **Error utilities**
   - `errors.ts`: typed `AppError` hierarchy for expected server-function failures.

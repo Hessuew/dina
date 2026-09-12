@@ -53,6 +53,89 @@ function logSignupEvent(
   })
 }
 
+async function readSignupInvitation(token: string, context: SignupLogContext) {
+  try {
+    return await findInvitationByToken(token)
+  } catch (error) {
+    logSignupEvent('error', 'signup_invitation_lookup_failed', context, {
+      errorCategory: 'signup_invitation_read_persistence',
+    })
+    throw error
+  }
+}
+
+async function readSignupProfile(email: string, context: SignupLogContext) {
+  try {
+    return await findProfileByEmail(email)
+  } catch (error) {
+    logSignupEvent('error', 'signup_profile_lookup_failed', context, {
+      errorCategory: 'signup_profile_read_persistence',
+    })
+    throw error
+  }
+}
+
+async function updateSignupOtp(
+  invitationId: string,
+  values: Parameters<typeof updateInvitationOtp>[1],
+  context: SignupLogContext,
+): Promise<void> {
+  try {
+    await updateInvitationOtp(invitationId, values)
+  } catch (error) {
+    logSignupEvent('error', 'signup_otp_update_failed', context, {
+      errorCategory: 'signup_otp_persistence',
+      invitationId,
+    })
+    throw error
+  }
+}
+
+async function incrementSignupOtpAttempts(
+  invitationId: string,
+  context: SignupLogContext,
+): Promise<void> {
+  try {
+    await incrementOtpAttempts(invitationId)
+  } catch (error) {
+    logSignupEvent('error', 'signup_otp_attempt_update_failed', context, {
+      errorCategory: 'signup_otp_attempt_persistence',
+      invitationId,
+    })
+    throw error
+  }
+}
+
+async function acceptSignupInvitation(
+  invitationId: string,
+  context: SignupLogContext,
+): Promise<void> {
+  try {
+    await markInvitationAccepted(invitationId)
+  } catch (error) {
+    logSignupEvent('error', 'signup_invitation_acceptance_failed', context, {
+      errorCategory: 'signup_invitation_acceptance_persistence',
+      invitationId,
+    })
+    throw error
+  }
+}
+
+async function clearVerifiedSignupOtp(
+  invitationId: string,
+  context: SignupLogContext,
+): Promise<void> {
+  try {
+    await clearInvitationOtp(invitationId)
+  } catch (error) {
+    logSignupEvent('error', 'signup_otp_cleanup_failed', context, {
+      errorCategory: 'signup_otp_cleanup_persistence',
+      invitationId,
+    })
+    throw error
+  }
+}
+
 async function sendOtpEmail(
   email: string,
   otp: string,
@@ -82,7 +165,7 @@ export async function signupService(
     action: 'signup',
     startedAt: performance.now(),
   }
-  const invitation = await findInvitationByToken(data.token)
+  const invitation = await readSignupInvitation(data.token, context)
 
   if (!invitation) {
     return { error: true, message: 'Invalid invitation token' }
@@ -94,12 +177,16 @@ export async function signupService(
   }
 
   const otp = generateOTP()
-  await updateInvitationOtp(invitation.id, {
-    otpHash: hashValue(otp),
-    otpExpiresAt: calculateOtpExpiry(new Date()),
-    otpAttempts: 0,
-    updatedAt: new Date(),
-  })
+  await updateSignupOtp(
+    invitation.id,
+    {
+      otpHash: hashValue(otp),
+      otpExpiresAt: calculateOtpExpiry(new Date()),
+      otpAttempts: 0,
+      updatedAt: new Date(),
+    },
+    context,
+  )
 
   const { error: emailError } = await sendOtpEmail(data.email, otp)
   if (emailError) {
@@ -139,7 +226,7 @@ async function confirmExistingUser(
   cause: { code?: string; message: string },
   context: SignupLogContext,
 ): Promise<{ ok: true; userId: string } | { ok: false; message: string }> {
-  const existing = await findProfileByEmail(email)
+  const existing = await readSignupProfile(email, context)
   if (!existing) {
     logSignupEvent('error', 'signup_duplicate_profile_missing', context, {
       errorCategory: 'duplicate_profile_missing',
@@ -264,8 +351,8 @@ async function completeVerifiedSignup(input: {
   userId: string
   context: SignupLogContext
 }): Promise<{ success: boolean; loginFailed?: boolean; message: string }> {
-  await markInvitationAccepted(input.invitationId)
-  await clearInvitationOtp(input.invitationId)
+  await acceptSignupInvitation(input.invitationId, input.context)
+  await clearVerifiedSignupOtp(input.invitationId, input.context)
 
   const { error: loginError } =
     await getSupabaseServerClient().auth.signInWithPassword({
@@ -304,7 +391,7 @@ export async function verifyOtpService(
     action: 'verify_otp',
     startedAt: performance.now(),
   }
-  const invitation = await findInvitationByToken(data.invitationToken)
+  const invitation = await readSignupInvitation(data.invitationToken, context)
 
   if (!invitation) {
     return { success: false, message: 'Invalid invitation' }
@@ -324,7 +411,7 @@ export async function verifyOtpService(
 
   const submittedHash = hashValue(data.otp)
   if (submittedHash !== invitation.otpHash) {
-    await incrementOtpAttempts(invitation.id)
+    await incrementSignupOtpAttempts(invitation.id, context)
     const attemptsLeft = 5 - (invitation.otpAttempts + 1)
     return {
       success: false,
@@ -359,7 +446,7 @@ export async function resendOtpService(
     action: 'resend_otp',
     startedAt: performance.now(),
   }
-  const invitation = await findInvitationByToken(data.invitationToken)
+  const invitation = await readSignupInvitation(data.invitationToken, context)
 
   if (!invitation) {
     return { success: false, message: 'Invalid invitation' }
@@ -380,12 +467,16 @@ export async function resendOtpService(
   const otpHash = hashValue(otp)
   const otpExpiresAt = calculateOtpExpiry(new Date())
 
-  await updateInvitationOtp(invitation.id, {
-    otpHash,
-    otpExpiresAt,
-    otpAttempts: 0,
-    updatedAt: new Date(),
-  })
+  await updateSignupOtp(
+    invitation.id,
+    {
+      otpHash,
+      otpExpiresAt,
+      otpAttempts: 0,
+      updatedAt: new Date(),
+    },
+    context,
+  )
 
   const { error: emailError } = await sendOtpEmail(invitation.email, otp)
   if (emailError) {

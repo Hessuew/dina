@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 155
-**Scope:** synchronize the self-contained evidence-aware roadmap disposition
-with the live Engineering Roadmap and make the final closure state auditable.
+**Iteration:** 156
+**Scope:** record the batched signup/OTP persistence telemetry slice while
+keeping the evidence-aware roadmap closure auditable.
 
 ## Final roadmap disposition
 
@@ -69,7 +69,8 @@ shadcn@latest` intentionally.
   safe actor/teacher/course identifiers, assignment counters, request ID,
   status, duration, and stable error categories.
 - Signup and OTP flows now emit the same safe event shape for delivery,
-  provisioning, rollback, verification, auto-login, and resend outcomes.
+  provisioning, rollback, verification, auto-login, resend, and invitation/
+  profile/OTP persistence failure outcomes.
 - The admin invitation-email campaign now emits safe per-invitation delivery
   outcomes, campaign completion summaries, and lock-release failures with
   request correlation and stable error categories.
@@ -4159,3 +4160,30 @@ Validation: the live Roadmap was read back after the append, `bun run
 docs:notion-check --json` returned no changed-file targets, and `git diff
 --check` passed. The full build and full integration suite were not run for
 this documentation-only synchronization.
+
+## Iteration 156 — signup and OTP persistence telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for the signup flow:
+
+- Invitation and duplicate-profile lookup failures now emit redacted
+  `signup_invitation_lookup_failed` and `signup_profile_lookup_failed` events
+  with request correlation and stable read-persistence categories.
+- OTP issuance/resend writes and failed-attempt accounting now emit
+  `signup_otp_update_failed` and `signup_otp_attempt_update_failed` events
+  with safe invitation IDs and stable persistence categories.
+- Verified signup invitation acceptance and OTP cleanup now emit
+  `signup_invitation_acceptance_failed` and `signup_otp_cleanup_failed` events
+  when their persistence boundaries fail; original errors remain unchanged.
+- Tokens, email addresses, passwords, provider messages, and raw database
+  details remain outside structured telemetry. Expected invalid, expired,
+  cooldown, and OTP-validation outcomes remain quiet.
+- Added six focused integration regressions covering request correlation,
+  redaction, stable categories, and original-error preservation across the
+  new failure boundaries.
+
+Validation: the focused signup integration suite passed 22 tests and targeted
+Prettier formatting passed. The full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
