@@ -314,6 +314,96 @@ describe('setEvaluationScoreService (integration)', () => {
     ])
     expect(JSON.stringify(events)).not.toContain('private mentorship details')
   })
+
+  it('logs stable persistence failures for all evaluation fields', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { reviewerId, enrollmentId } = await seedPeerReviewScenario()
+    const repositoryError = new Error('evaluation database secret')
+    const upsertSpy = vi
+      .spyOn(enrollmentRepository, 'upsertEvaluation')
+      .mockRejectedValue(repositoryError)
+
+    const requests = [
+      {
+        action: 'setEvaluationScore',
+        run: () =>
+          setEvaluationScoreService({ enrollmentId, score: 4 }, reviewerId),
+      },
+      {
+        action: 'setEvaluationAdmissionCategory',
+        run: () =>
+          setEvaluationAdmissionCategoryService(
+            { enrollmentId, score: 4, admissionCategory: 'new' },
+            reviewerId,
+          ),
+      },
+      {
+        action: 'setEvaluationNote',
+        run: () =>
+          setEvaluationNoteService(
+            { enrollmentId, note: 'private evaluation note' },
+            reviewerId,
+          ),
+      },
+    ]
+
+    for (const { action, run } of requests) {
+      await expect(
+        withObservabilityRequest(
+          new Request(`https://christ-dina.org/${action}`, {
+            headers: { 'x-request-id': `${action}-failure` },
+          }),
+          run,
+        ),
+      ).rejects.toBe(repositoryError)
+    }
+
+    expect(upsertSpy).toHaveBeenCalledTimes(3)
+    const events = errorSpy.mock.calls.map(([line]) => {
+      const serialized = String(line)
+      return {
+        event: JSON.parse(serialized) as Record<string, unknown>,
+        serialized,
+      }
+    })
+    expect(events.map(({ event }) => event.event)).toEqual([
+      'enrollment_evaluation_update_failed',
+      'enrollment_evaluation_update_failed',
+      'enrollment_evaluation_update_failed',
+    ])
+    expect(events.map(({ event }) => event.evaluationField)).toEqual([
+      'score',
+      'admission_category',
+      'note',
+    ])
+    expect(events.map(({ event }) => event.errorCategory)).toEqual([
+      'enrollment_evaluation_persistence',
+      'enrollment_evaluation_persistence',
+      'enrollment_evaluation_persistence',
+    ])
+    expect(events.map(({ event }) => event.requestId)).toEqual([
+      'setEvaluationScore-failure',
+      'setEvaluationAdmissionCategory-failure',
+      'setEvaluationNote-failure',
+    ])
+    expect(
+      events.every(
+        ({ event }) =>
+          event.status === 'failure' &&
+          event.enrollmentId === enrollmentId &&
+          event.evaluatorId === reviewerId &&
+          typeof event.durationMs === 'number',
+      ),
+    ).toBe(true)
+    expect(
+      events.every(({ serialized }) => !serialized.includes('secret')),
+    ).toBe(true)
+    expect(
+      events.every(
+        ({ serialized }) => !serialized.includes('private evaluation note'),
+      ),
+    ).toBe(true)
+  })
 })
 
 describe('enrollment lifecycle mutation telemetry (integration)', () => {

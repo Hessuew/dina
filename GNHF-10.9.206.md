@@ -3933,3 +3933,26 @@ tests. The full build and full integration suite were intentionally skipped for
 the iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
 dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
 restore evidence remain pending.
+
+## Iteration 146 — enrollment evaluation persistence telemetry
+
+This iteration completed the next batched Phase 1 structured-logging slice:
+
+- Enrollment evaluation score, admission-category, and note mutations now emit
+  redacted `enrollment_evaluation_update_failed` events when authorization-boundary
+  reads or evaluation persistence fails unexpectedly.
+- Failure events carry request correlation, evaluator/enrollment IDs, field type,
+  status, duration, and the stable `enrollment_evaluation_persistence` category;
+  scores, admission values, note text, and raw repository details remain excluded.
+- Expected authorization and validation outcomes remain quiet, and original
+  repository errors are preserved for the existing error boundary.
+- Added one batched integration regression covering all three evaluation fields,
+  request correlation, stable categories, redaction, and error preservation.
+
+Validation: focused enrollment integration passed 53 tests; typecheck, formatting,
+static checks, `git diff --check`, Cloudflare type generation, and
+`bun run quality:gate` passed with 1,953 unit tests. The full build and full
+integration suite remain intentionally skipped for the iterative telemetry
+workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.

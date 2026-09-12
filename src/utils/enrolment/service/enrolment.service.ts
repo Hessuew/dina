@@ -353,6 +353,29 @@ function logEvaluationUpdated(
   })
 }
 
+function shouldLogEvaluationFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+function logEvaluationFailure(
+  field: EvaluationField,
+  action: string,
+  enrollmentId: string,
+  userId: string,
+  startedAt: number,
+): void {
+  logServerEvent('error', 'enrollment_evaluation_update_failed', {
+    requestId: getRequestId(),
+    path: `serverFn:${action}`,
+    status: 'failure',
+    durationMs: elapsedMs(startedAt),
+    enrollmentId,
+    evaluatorId: userId,
+    evaluationField: field,
+    errorCategory: 'enrollment_evaluation_persistence',
+  })
+}
+
 /**
  * Throws if a non-admin user is not authorized to evaluate the given enrollment.
  * Eligible callers: the assigned Reviewer, or a course team member (peer / substitute).
@@ -533,7 +556,20 @@ export async function setEvaluationScoreService(
   userId: string,
 ) {
   const startedAt = performance.now()
-  await setEvaluationScoreWithAccess(data, userId)
+  try {
+    await setEvaluationScoreWithAccess(data, userId)
+  } catch (error) {
+    if (shouldLogEvaluationFailure(error)) {
+      logEvaluationFailure(
+        'score',
+        'setEvaluationScore',
+        data.enrollmentId,
+        userId,
+        startedAt,
+      )
+    }
+    throw error
+  }
   logEvaluationUpdated(
     'score',
     'setEvaluationScore',
@@ -1090,19 +1126,32 @@ export async function setEvaluationAdmissionCategoryService(
   userId: string,
 ) {
   const startedAt = performance.now()
-  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-  if (!isAdmin && !isTeacher) {
-    throw new AuthorizationError('admin or teacher access required', {
-      code: 'ROLE_REQUIRED',
-      details: {},
+  try {
+    const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+    if (!isAdmin && !isTeacher) {
+      throw new AuthorizationError('admin or teacher access required', {
+        code: 'ROLE_REQUIRED',
+        details: {},
+      })
+    }
+
+    await assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin)
+
+    await upsertEvaluation(data.enrollmentId, userId, {
+      admissionCategory: data.admissionCategory,
     })
+  } catch (error) {
+    if (shouldLogEvaluationFailure(error)) {
+      logEvaluationFailure(
+        'admission_category',
+        'setEvaluationAdmissionCategory',
+        data.enrollmentId,
+        userId,
+        startedAt,
+      )
+    }
+    throw error
   }
-
-  await assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin)
-
-  await upsertEvaluation(data.enrollmentId, userId, {
-    admissionCategory: data.admissionCategory,
-  })
 
   logEvaluationUpdated(
     'admission_category',
@@ -1118,17 +1167,30 @@ export async function setEvaluationNoteService(
   userId: string,
 ) {
   const startedAt = performance.now()
-  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-  if (!isAdmin && !isTeacher) {
-    throw new AuthorizationError('admin or teacher access required', {
-      code: 'ROLE_REQUIRED',
-      details: {},
-    })
+  try {
+    const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+    if (!isAdmin && !isTeacher) {
+      throw new AuthorizationError('admin or teacher access required', {
+        code: 'ROLE_REQUIRED',
+        details: {},
+      })
+    }
+
+    await assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin)
+
+    await upsertEvaluation(data.enrollmentId, userId, { note: data.note })
+  } catch (error) {
+    if (shouldLogEvaluationFailure(error)) {
+      logEvaluationFailure(
+        'note',
+        'setEvaluationNote',
+        data.enrollmentId,
+        userId,
+        startedAt,
+      )
+    }
+    throw error
   }
-
-  await assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin)
-
-  await upsertEvaluation(data.enrollmentId, userId, { note: data.note })
 
   logEvaluationUpdated(
     'note',
