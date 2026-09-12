@@ -202,6 +202,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `courseCompleted`, and stable persistence categories; lesson content remains
    excluded. The course-completion flag is true only for the request that
    completes the final published lesson.
+   Calendar overview reads now emit redacted `calendar_events_loaded` events
+   with request correlation, actor ID, source counts, total event count,
+   status, and duration. Unexpected read failures emit
+   `calendar_events_load_failed` with the stable
+   `calendar_read_persistence` category; calendar titles, descriptions,
+   locations, links, and timestamps remain excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

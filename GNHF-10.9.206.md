@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 113
-**Scope:** add redacted Better Stack-ready telemetry for media-thumbnail
-completion and record the remaining hosted observability evidence gate.
+**Iteration:** 114
+**Scope:** add redacted Better Stack-ready telemetry for calendar overview
+reads and record the remaining hosted observability evidence gate.
 
 ## Executive summary
 
@@ -72,6 +72,12 @@ shadcn@latest` intentionally.
   request correlation, actor/media IDs, replacement and signing outcomes,
   status, duration, and the stable `media_thumbnail_persistence` category;
   thumbnail paths and provider error text are excluded.
+- Calendar overview reads now emit redacted `calendar_events_loaded` events
+  with request correlation, actor ID, source counts, total event count,
+  status, and duration. Unexpected read failures emit
+  `calendar_events_load_failed` with the stable
+  `calendar_read_persistence` category; calendar content, locations, links,
+  and timestamps are excluded.
 - Authenticated profile password changes now emit redacted
   `password_updated` / `password_update_failed` events with request
   correlation, user ID, status, duration, stable error category, and provider
@@ -380,6 +386,26 @@ brace-expansion` refreshes their compatible 1.x lockfile branches to
   paths at `^3.4.2`, and the lockfile resolves `flatted@3.4.4`. This removes
   the prototype-pollution advisory without changing application runtime
   behavior.
+
+## Iteration 114 — calendar overview telemetry
+
+This iteration completed the next repository-owned structured-logging slice:
+
+- The authenticated calendar overview service now emits a redacted
+  `calendar_events_loaded` event with request correlation, actor ID, safe lesson,
+  assignment, special-event, and total counts, status, and duration.
+- Unexpected calendar read failures emit `calendar_events_load_failed` with the
+  stable `calendar_read_persistence` category. Calendar titles, descriptions,
+  locations, meeting links, and timestamps remain outside telemetry.
+- Added integration coverage for the event contract and redaction. Focused and
+  full integration tests passed (411 tests), as did `bun run quality:gate` with
+  1,953 unit tests, formatting, typecheck, `git diff --check`, and
+  `bun run build`. Existing TanStack `inputValidator` deprecation and large
+  chunk warnings remain unrelated.
+- Notion Architecture Inventory, Observability, SLI/SLO, Operational
+  Dashboards, and Engineering Roadmap records were synchronized. Better Stack
+  ingestion, Cloudflare destinations, dashboards, alerts, source maps, and
+  hosted evidence remain external setup work.
 
 ## Iteration 111 — student assignment list index
 

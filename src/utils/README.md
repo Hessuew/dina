@@ -118,6 +118,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     `lesson_completion_ignored`, or `lesson_completion_failed` events without
     lesson content. The response includes a transition-only `courseCompleted`
     flag when the request completes every published lesson in the course.
+  - Calendar overview reads emit redacted `calendar_events_loaded` events with
+    request correlation, actor ID, source counts, total event count, status,
+    and duration. Unexpected read failures use the stable
+    `calendar_read_persistence` category without calendar content or links.
   - Assignment authoring emits redacted `assignment_created`,
     `assignment_updated`, and `assignment_deleted` events with request
     correlation, server-function path, actor/course/lesson/assignment IDs,
