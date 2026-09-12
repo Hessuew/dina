@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getDb } from '@/db'
 import { submissions as submissionsTable } from '@/db/schema'
 import { upsertSubmission } from '@/utils/assignments/repository/submissions.repository'
@@ -18,6 +18,7 @@ import {
   updateAssignmentService,
 } from '@/utils/assignments/service/assignments.service'
 import { findAssignmentById } from '@/utils/assignments/repository/assignments.repository'
+import * as assignmentsRepository from '@/utils/assignments/repository/assignments.repository'
 import {
   seedAssignment,
   seedCourse,
@@ -26,6 +27,11 @@ import {
   seedProfile,
   seedSubmission,
 } from '@/../test/integration/seed'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 // Assignment services have no external IO — the DB (real PGlite via the `@/db`
 // alias) covers repository SQL + domain logic, and authz resolves from real
@@ -197,6 +203,34 @@ describe('deleteAssignmentService (integration)', () => {
 })
 
 describe('getAssignmentService (integration)', () => {
+  it('logs a redacted detail-read event with safe metadata', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { assignmentId, studentId } =
+      await seedPublishedAssignmentWithSubmission()
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org', {
+        headers: { 'x-request-id': 'assignment-detail-request' },
+      }),
+      () => getAssignmentService({ assignmentId }, studentId),
+    )
+
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'assignment_read_loaded',
+      path: 'serverFn:getAssignment',
+      requestId: 'assignment-detail-request',
+      actorId: studentId,
+      assignmentId,
+      role: 'student',
+      assignmentStatus: 'published',
+      submissionPresent: true,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+    expect(line).not.toContain('A1')
+  })
+
   it('returns a published assignment and the student’s submission', async () => {
     const { assignmentId, studentId } =
       await seedPublishedAssignmentWithSubmission()
@@ -259,6 +293,41 @@ describe('getAssignmentService (integration)', () => {
 })
 
 describe('getLessonService (integration)', () => {
+  it('logs a redacted lesson-read event with safe counts', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { courseId } = await seedCourseWithTeacher()
+    const lessonId = await seedLesson({
+      courseId,
+      isPublished: true,
+      content: 'Private lesson content',
+    })
+    await seedAssignment({ lessonId, status: 'published' })
+    const studentId = await seedProfile({ role: 'student' })
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org', {
+        headers: { 'x-request-id': 'lesson-detail-request' },
+      }),
+      () => getLessonService({ lessonId }, studentId),
+    )
+
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'assignment_read_loaded',
+      path: 'serverFn:getLesson',
+      requestId: 'lesson-detail-request',
+      actorId: studentId,
+      lessonId,
+      courseId,
+      role: 'student',
+      assignmentCount: 1,
+      lessonPublished: true,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+    expect(line).not.toContain('Private lesson content')
+  })
+
   it('returns only published assignments to a student', async () => {
     const { courseId } = await seedCourseWithTeacher()
     const lessonId = await seedLesson({
@@ -507,6 +576,73 @@ describe('createOrUpdateSubmissionService (integration)', () => {
 })
 
 describe('getAllAssignmentsForStudentService (integration)', () => {
+  it('logs a redacted student-list read event with safe counts', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({
+      lessonId,
+      status: 'published',
+      title: 'Private assignment title',
+    })
+    const studentId = await seedProfile({ role: 'student' })
+    await seedSubmission({ assignmentId, studentId, status: 'submitted' })
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org', {
+        headers: { 'x-request-id': 'assignment-student-list-request' },
+      }),
+      () => getAllAssignmentsForStudentService(studentId),
+    )
+
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'assignment_read_loaded',
+      path: 'serverFn:getAllAssignmentsForStudent',
+      requestId: 'assignment-student-list-request',
+      actorId: studentId,
+      role: 'student',
+      assignmentCount: 1,
+      submittedCount: 1,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+    expect(line).not.toContain('Private assignment title')
+  })
+
+  it('logs stable failure metadata and preserves repository errors', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const studentId = await seedProfile({ role: 'student' })
+    const repositoryError = new Error(
+      'connectionString=secret; content=private submission',
+    )
+    vi.spyOn(
+      assignmentsRepository,
+      'findPublishedAssignmentsForStudent',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'assignment-list-failure-request' },
+        }),
+        () => getAllAssignmentsForStudentService(studentId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('private submission')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'assignment_read_failed',
+      path: 'serverFn:getAllAssignmentsForStudent',
+      requestId: 'assignment-list-failure-request',
+      actorId: studentId,
+      status: 'failure',
+      errorCategory: 'assignment_read_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
+
   it('returns published assignments for a student', async () => {
     const { lessonId } = await seedCourseWithTeacher()
     await seedAssignment({ lessonId, status: 'published' })
@@ -528,6 +664,48 @@ describe('getAllAssignmentsForStudentService (integration)', () => {
 })
 
 describe('getAllAssignmentsForTeacherService (integration)', () => {
+  it('logs the teacher-list read scope with safe result counts', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { teacherId } = await seedPublishedAssignmentWithSubmission()
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org', {
+        headers: { 'x-request-id': 'assignment-teacher-owned-request' },
+      }),
+      () => getAllAssignmentsForTeacherService(teacherId, 'owned'),
+    )
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org', {
+        headers: { 'x-request-id': 'assignment-teacher-catalog-request' },
+      }),
+      () => getAllAssignmentsForTeacherService(teacherId, 'catalog'),
+    )
+
+    const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'assignment_read_loaded',
+          path: 'serverFn:getAllAssignmentsForTeacher',
+          requestId: 'assignment-teacher-owned-request',
+          actorId: teacherId,
+          role: 'teacher',
+          scope: 'owned',
+          assignmentCount: 1,
+        }),
+        expect.objectContaining({
+          event: 'assignment_read_loaded',
+          path: 'serverFn:getAllAssignmentsForTeacher',
+          requestId: 'assignment-teacher-catalog-request',
+          actorId: teacherId,
+          role: 'teacher',
+          scope: 'catalog',
+          assignmentCount: 1,
+        }),
+      ]),
+    )
+  })
+
   it('returns the teacher’s owned assignments with submission stats', async () => {
     const { teacherId } = await seedPublishedAssignmentWithSubmission()
 
@@ -592,6 +770,48 @@ describe('getAllAssignmentsForTeacherService (integration)', () => {
 })
 
 describe('getAssignmentSubmissionsService (integration)', () => {
+  it('logs safe submission-read counts for list and count paths', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { teacherId, assignmentId, studentId } =
+      await seedPublishedAssignmentWithSubmission()
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org', {
+        headers: { 'x-request-id': 'assignment-count-request' },
+      }),
+      () => getAssignmentSubmissionCountService({ assignmentId }, teacherId),
+    )
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org', {
+        headers: { 'x-request-id': 'assignment-submissions-request' },
+      }),
+      () => getAssignmentSubmissionsService({ assignmentId }, teacherId),
+    )
+
+    const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'assignment_read_loaded',
+          path: 'serverFn:getAssignmentSubmissionCount',
+          requestId: 'assignment-count-request',
+          actorId: teacherId,
+          assignmentId,
+          submissionCount: 1,
+        }),
+        expect.objectContaining({
+          event: 'assignment_read_loaded',
+          path: 'serverFn:getAssignmentSubmissions',
+          requestId: 'assignment-submissions-request',
+          actorId: teacherId,
+          assignmentId,
+          submissionCount: 1,
+        }),
+      ]),
+    )
+    expect(JSON.stringify(events)).not.toContain(studentId)
+  })
+
   it('returns submissions with student detail for a course teacher', async () => {
     const { teacherId, assignmentId } =
       await seedPublishedAssignmentWithSubmission()

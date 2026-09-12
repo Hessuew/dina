@@ -1,9 +1,10 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 116
-**Scope:** add redacted Better Stack-ready telemetry for teacher-directory
-list reads and record the remaining hosted observability evidence gate.
+**Iteration:** 118
+**Scope:** add redacted Better Stack-ready telemetry for assignment lesson,
+detail, list, and submission reads and record the remaining hosted observability
+evidence gate.
 
 ## Executive summary
 
@@ -89,6 +90,14 @@ shadcn@latest` intentionally.
   request correlation, actor ID, safe result counts, duration, and the stable
   `teacher_directory_read_persistence` failure category; teacher names, email
   addresses, bios, and privilege details remain excluded.
+- Assignment lesson/detail, student/teacher list, submission-count, and
+  submission-list reads now emit redacted `assignment_read_loaded` /
+  `assignment_read_failed` events with request correlation, actor IDs, safe
+  lesson/assignment IDs, role/scope, publication/status metadata, and result
+  counts. Assignment titles, lesson content, student identity, submission
+  text, grades, feedback, and raw persistence details remain excluded;
+  unexpected failures use the stable `assignment_read_persistence` category
+  while expected authorization and not-found outcomes remain quiet.
 - Authenticated profile password changes now emit redacted
   `password_updated` / `password_update_failed` events with request
   correlation, user ID, status, duration, stable error category, and provider
@@ -3264,5 +3273,27 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
   `docs/plan/STRUCTURED_LOGGING.md`, and `src/utils/README.md`.
 
 Focused course integration coverage passes (55 tests). Hosted Better Stack /
+Cloudflare ingestion, dashboards, alerts, Uptime, and source-map verification
+remain external follow-up.
+
+## Iteration 118 — assignment-read telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Assignment lesson/detail, student/teacher list, submission-count, and
+  submission-list reads now emit redacted `assignment_read_loaded` /
+  `assignment_read_failed` events with request correlation, actor IDs, safe
+  lesson/assignment IDs, role/scope, publication/status metadata, and result
+  counts.
+- Assignment titles, lesson content, student identity, submission text,
+  grades, feedback, and raw persistence details remain excluded. Expected
+  authorization and not-found outcomes do not create noisy failure logs;
+  unexpected repository errors use the stable
+  `assignment_read_persistence` category and preserve the original error.
+- Repository evidence: `src/utils/assignments/service/assignments.service.ts`,
+  `src/utils/assignments/assignments.integration.test.ts`,
+  `docs/plan/STRUCTURED_LOGGING.md`, and `src/utils/README.md`.
+
+Focused assignment integration coverage passes (46 tests). Hosted Better Stack /
 Cloudflare ingestion, dashboards, alerts, Uptime, and source-map verification
 remain external follow-up.

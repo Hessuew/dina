@@ -52,6 +52,7 @@ import {
   NotFoundError,
   UNEXPECTED_ERROR_MESSAGE,
   ValidationError,
+  isAppError,
 } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
@@ -87,9 +88,70 @@ function logAssignmentMutationEvent(
   })
 }
 
-export async function getLessonService(data: GetLessonInput, userId: string) {
-  const lesson = await findLessonWithDetail(data.lessonId)
+type AssignmentReadAction =
+  | 'getLesson'
+  | 'getAssignment'
+  | 'getAssignmentSubmissionCount'
+  | 'getAllAssignmentsForStudent'
+  | 'getAllAssignmentsForTeacher'
+  | 'getAssignmentSubmissions'
 
+type AssignmentReadLogContext = {
+  action: AssignmentReadAction
+  actorId: string
+  lessonId?: string
+  assignmentId?: string
+  startedAt: number
+}
+
+function logAssignmentReadEvent(
+  level: LogLevel,
+  event: string,
+  context: AssignmentReadLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    lessonId: context.lessonId,
+    assignmentId: context.assignmentId,
+    ...fields,
+  })
+}
+
+function shouldLogAssignmentReadFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function withAssignmentReadTelemetry<T>(
+  context: AssignmentReadLogContext,
+  read: () => Promise<T>,
+  fields: (result: T) => Record<string, unknown>,
+): Promise<T> {
+  try {
+    const result = await read()
+    logAssignmentReadEvent(
+      'info',
+      'assignment_read_loaded',
+      context,
+      fields(result),
+    )
+    return result
+  } catch (error) {
+    if (shouldLogAssignmentReadFailure(error)) {
+      logAssignmentReadEvent('error', 'assignment_read_failed', context, {
+        errorCategory: 'assignment_read_persistence',
+      })
+    }
+    throw error
+  }
+}
+
+async function loadLessonForViewer(data: GetLessonInput, userId: string) {
+  const lesson = await findLessonWithDetail(data.lessonId)
   if (!lesson) {
     throw new NotFoundError('Lesson not found', {
       code: 'LESSON_NOT_FOUND',
@@ -102,7 +164,6 @@ export async function getLessonService(data: GetLessonInput, userId: string) {
     profile.role === 'student'
       ? await findLessonProgress(userId, data.lessonId)
       : null
-
   const courseWithTeachers = {
     id: lesson.course.id,
     teacherIds: lesson.course.courseTeachers.map(
@@ -111,7 +172,6 @@ export async function getLessonService(data: GetLessonInput, userId: string) {
     teacher1Id: lesson.course.courseTeachers[0]?.teacherId ?? null,
     teacher2Id: lesson.course.courseTeachers[1]?.teacherId ?? null,
   }
-
   const permissions = calculateEntityPermissions(
     profile.role,
     courseWithTeachers,
@@ -143,12 +203,31 @@ export async function getLessonService(data: GetLessonInput, userId: string) {
   }
 }
 
-export async function getAssignmentService(
+export async function getLessonService(data: GetLessonInput, userId: string) {
+  const context: AssignmentReadLogContext = {
+    action: 'getLesson',
+    actorId: userId,
+    lessonId: data.lessonId,
+    startedAt: performance.now(),
+  }
+
+  return withAssignmentReadTelemetry(
+    context,
+    () => loadLessonForViewer(data, userId),
+    (result) => ({
+      courseId: result.lesson.course.id,
+      role: result.role,
+      assignmentCount: result.lesson.assignments.length,
+      lessonPublished: result.lesson.isPublished,
+    }),
+  )
+}
+
+async function loadAssignmentForViewer(
   data: GetAssignmentInput,
   userId: string,
 ) {
   const assignment = await findAssignmentWithFullDetail(data.assignmentId)
-
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
       code: 'ASSIGNMENT_NOT_FOUND',
@@ -157,7 +236,6 @@ export async function getAssignmentService(
   }
 
   const profile = await getUserProfile(userId)
-
   const courseWithTeachers = {
     id: assignment.lesson.course.id,
     title: assignment.lesson.course.title,
@@ -167,7 +245,6 @@ export async function getAssignmentService(
     teacher1Id: assignment.lesson.course.courseTeachers[0]?.teacherId ?? null,
     teacher2Id: assignment.lesson.course.courseTeachers[1]?.teacherId ?? null,
   }
-
   const permissions = calculateEntityPermissions(
     profile.role,
     courseWithTeachers,
@@ -187,13 +264,10 @@ export async function getAssignmentService(
     })
   }
 
-  let submission = null
-  if (profile.role === 'student') {
-    submission = await findSubmissionByAssignmentAndStudent(
-      data.assignmentId,
-      userId,
-    )
-  }
+  const submission =
+    profile.role === 'student'
+      ? await findSubmissionByAssignmentAndStudent(data.assignmentId, userId)
+      : null
 
   return {
     assignment: {
@@ -204,6 +278,30 @@ export async function getAssignmentService(
     role: profile.role,
     permissions,
   }
+}
+
+export async function getAssignmentService(
+  data: GetAssignmentInput,
+  userId: string,
+) {
+  const context: AssignmentReadLogContext = {
+    action: 'getAssignment',
+    actorId: userId,
+    assignmentId: data.assignmentId,
+    startedAt: performance.now(),
+  }
+
+  return withAssignmentReadTelemetry(
+    context,
+    () => loadAssignmentForViewer(data, userId),
+    (result) => ({
+      lessonId: result.assignment.lesson.id,
+      courseId: result.assignment.lesson.course.id,
+      role: result.role,
+      assignmentStatus: result.assignment.status,
+      submissionPresent: result.submission !== null,
+    }),
+  )
 }
 
 export type TeacherAssignmentListScope = 'owned' | 'catalog'
@@ -347,21 +445,34 @@ export async function getAssignmentSubmissionCountService(
   data: GetAssignmentSubmissionCountInput,
   userId: string,
 ) {
-  const assignment = await findAssignmentWithLessonAndSubmissions(
-    data.assignmentId,
-  )
-  if (!assignment) {
-    throw new NotFoundError('Assignment not found', {
-      code: 'ASSIGNMENT_NOT_FOUND',
-      details: { assignmentId: data.assignmentId },
-    })
+  const context: AssignmentReadLogContext = {
+    action: 'getAssignmentSubmissionCount',
+    actorId: userId,
+    assignmentId: data.assignmentId,
+    startedAt: performance.now(),
   }
 
-  await authz(userId)
-    .perform('editLesson')
-    .on('course', assignment.lesson.courseId)
+  return withAssignmentReadTelemetry(
+    context,
+    async () => {
+      const assignment = await findAssignmentWithLessonAndSubmissions(
+        data.assignmentId,
+      )
+      if (!assignment) {
+        throw new NotFoundError('Assignment not found', {
+          code: 'ASSIGNMENT_NOT_FOUND',
+          details: { assignmentId: data.assignmentId },
+        })
+      }
 
-  return { count: assignment.submissions.length }
+      await authz(userId)
+        .perform('editLesson')
+        .on('course', assignment.lesson.courseId)
+
+      return { count: assignment.submissions.length }
+    },
+    (result) => ({ submissionCount: result.count }),
+  )
 }
 
 export async function deleteAssignmentService(
@@ -533,31 +644,48 @@ export async function createOrUpdateSubmissionService(
 
 export async function getAllAssignmentsForStudentService(userId: string) {
   const profile = await getUserProfile(userId)
-
-  if (profile.role !== 'student') {
-    throw new AuthorizationError('Only students can access this endpoint', {
-      code: 'ROLE_REQUIRED',
-      internalMessage: 'Non-student attempted to access student endpoint',
-      details: { role: profile.role },
-    })
+  const context: AssignmentReadLogContext = {
+    action: 'getAllAssignmentsForStudent',
+    actorId: userId,
+    startedAt: performance.now(),
   }
 
-  const allAssignments = await findPublishedAssignmentsForStudent(userId)
+  return withAssignmentReadTelemetry(
+    context,
+    async () => {
+      if (profile.role !== 'student') {
+        throw new AuthorizationError('Only students can access this endpoint', {
+          code: 'ROLE_REQUIRED',
+          internalMessage: 'Non-student attempted to access student endpoint',
+          details: { role: profile.role },
+        })
+      }
 
-  const assignmentsWithSubmission = allAssignments.map((assignment) => ({
-    ...assignment,
-    lesson: {
-      ...assignment.lesson,
-      course: {
-        ...assignment.lesson.course,
-        startDate: assignment.lesson.scheduledTime || null,
-      },
+      const allAssignments = await findPublishedAssignmentsForStudent(userId)
+
+      const assignmentsWithSubmission = allAssignments.map((assignment) => ({
+        ...assignment,
+        lesson: {
+          ...assignment.lesson,
+          course: {
+            ...assignment.lesson.course,
+            startDate: assignment.lesson.scheduledTime || null,
+          },
+        },
+        submission: assignment.submissions[0] || null,
+        submissions: undefined,
+      }))
+
+      return { assignments: assignmentsWithSubmission }
     },
-    submission: assignment.submissions[0] || null,
-    submissions: undefined,
-  }))
-
-  return { assignments: assignmentsWithSubmission }
+    (result) => ({
+      role: profile.role,
+      assignmentCount: result.assignments.length,
+      submittedCount: result.assignments.filter((assignment) =>
+        Boolean(assignment.submission),
+      ).length,
+    }),
+  )
 }
 
 export async function getAllAssignmentsForTeacherService(
@@ -565,24 +693,39 @@ export async function getAllAssignmentsForTeacherService(
   scope: TeacherAssignmentListScope = 'owned',
 ) {
   const profile = await getUserProfile(userId)
-
-  if (profile.role !== 'teacher' && profile.role !== 'admin') {
-    throw new AuthorizationError(
-      'Only teachers and admins can access this endpoint',
-      {
-        code: 'ROLE_REQUIRED',
-        internalMessage:
-          'Non-teacher/non-admin attempted to access teacher endpoint',
-        details: { role: profile.role },
-      },
-    )
+  const context: AssignmentReadLogContext = {
+    action: 'getAllAssignmentsForTeacher',
+    actorId: userId,
+    startedAt: performance.now(),
   }
 
-  if (scope === 'catalog') {
-    return getTeacherCatalogAssignments(userId, profile.role)
-  }
+  return withAssignmentReadTelemetry(
+    context,
+    async () => {
+      if (profile.role !== 'teacher' && profile.role !== 'admin') {
+        throw new AuthorizationError(
+          'Only teachers and admins can access this endpoint',
+          {
+            code: 'ROLE_REQUIRED',
+            internalMessage:
+              'Non-teacher/non-admin attempted to access teacher endpoint',
+            details: { role: profile.role },
+          },
+        )
+      }
 
-  return getTeacherOwnedAssignments(userId, profile.role)
+      if (scope === 'catalog') {
+        return getTeacherCatalogAssignments(userId, profile.role)
+      }
+
+      return getTeacherOwnedAssignments(userId, profile.role)
+    },
+    (result) => ({
+      role: profile.role,
+      scope,
+      assignmentCount: result.assignments.length,
+    }),
+  )
 }
 
 async function getTeacherOwnedAssignments(
@@ -633,22 +776,35 @@ export async function getAssignmentSubmissionsService(
   data: GetAssignmentSubmissionsInput,
   userId: string,
 ) {
-  const assignment = await findAssignmentWithLesson(data.assignmentId)
-  if (!assignment) {
-    throw new NotFoundError('Assignment not found', {
-      code: 'ASSIGNMENT_NOT_FOUND',
-      details: { assignmentId: data.assignmentId },
-    })
+  const context: AssignmentReadLogContext = {
+    action: 'getAssignmentSubmissions',
+    actorId: userId,
+    assignmentId: data.assignmentId,
+    startedAt: performance.now(),
   }
 
-  await authz(userId)
-    .perform('editLesson')
-    .on('course', assignment.lesson.courseId)
+  return withAssignmentReadTelemetry(
+    context,
+    async () => {
+      const assignment = await findAssignmentWithLesson(data.assignmentId)
+      if (!assignment) {
+        throw new NotFoundError('Assignment not found', {
+          code: 'ASSIGNMENT_NOT_FOUND',
+          details: { assignmentId: data.assignmentId },
+        })
+      }
 
-  const allSubmissions = await findAssignmentSubmissionsWithStudent(
-    data.assignmentId,
+      await authz(userId)
+        .perform('editLesson')
+        .on('course', assignment.lesson.courseId)
+
+      const submissions = await findAssignmentSubmissionsWithStudent(
+        data.assignmentId,
+      )
+      return { submissions }
+    },
+    (result) => ({ submissionCount: result.submissions.length }),
   )
-  return { submissions: allSubmissions }
 }
 
 export async function gradeSubmissionService(

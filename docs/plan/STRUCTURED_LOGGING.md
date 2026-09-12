@@ -225,6 +225,14 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    request correlation, actor ID, safe result counts, duration, and the stable
    `teacher_directory_read_persistence` failure category; teacher names,
    emails, bios, and privilege details remain excluded.
+   Assignment lesson/detail, student/teacher list, submission-count, and
+   submission-list reads now emit redacted `assignment_read_loaded` /
+   `assignment_read_failed` events with request correlation, actor IDs, safe
+   lesson/assignment IDs, role/scope, publication/status metadata, and result
+   counts. Assignment titles, lesson content, student identity, submission
+   text, grades, feedback, and raw persistence details remain excluded;
+   unexpected failures use the stable `assignment_read_persistence` category
+   while expected authorization and not-found outcomes remain quiet.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a
