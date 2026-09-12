@@ -308,7 +308,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     course teachers or admins; other teachers receive published lessons only.
   - Calendar event listing and mutations use `event/service/event.service.ts`
     for the shared database adapter, teacher/Admin service boundary, and
-    redacted `calendar_event_*` operational events.
+    redacted `calendar_event_*` operational events. Event-list reads emit safe
+    count metadata and stable `calendar_event_read_persistence` failure
+    categories; titles, descriptions, locations, meeting links, and timestamps
+    remain excluded.
   - `attendance/` — live Attendance Session open/close, student self check-in (`markPresent`), and Course Teacher/Admin/privileged-teacher override (`setStudentPresent`) from student detail. Session and override mutations emit redacted request-correlated Better Stack-ready telemetry with stable persistence categories.
   - `staff-privilege/` — Staff Privilege grants (ADR 0023): domain live-check, Admin grant/revoke, `hasStaffPrivilege` used by attendance override and enrolment contact export.
   - `exam/` — Timed exam authoring, attempt lifecycle, autosave, lazy finalization, and grading (ADR 0017). Student listing/taking services require the caller's persisted `student` role; teacher/Admin services use the staff boundary.

@@ -106,6 +106,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    IDs, category, status, and duration. Unexpected persistence failures use
    the stable `calendar_event_persistence` category; titles, descriptions,
    locations, meeting links, and timestamps remain excluded.
+   Calendar event-management list reads now emit redacted
+   `calendar_event_list_loaded` / `calendar_event_list_load_failed` events
+   with request correlation, actor ID, safe total/linked counts, status, and
+   duration. Event content, locations, meeting links, timestamps, and raw
+   persistence details remain excluded; unexpected failures use the stable
+   `calendar_event_read_persistence` category.
    Post and comment create, update, and delete mutations now emit redacted
    `post_created`, `post_updated`, `post_deleted`, `comment_created`,
    `comment_updated`, and `comment_deleted` events with request correlation,

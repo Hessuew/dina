@@ -20,34 +20,71 @@ async function requireEventManager(actorId: string): Promise<void> {
   }
 }
 
+type CalendarEventReadContext = {
+  actorId: string
+  startedAt: number
+}
+
+function logCalendarEventRead(
+  level: LogLevel,
+  event: string,
+  context: CalendarEventReadContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:getEvents',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    ...fields,
+  })
+}
+
 export async function getEventsService(actorId: string) {
   await requireEventManager(actorId)
+  const context: CalendarEventReadContext = {
+    actorId,
+    startedAt: performance.now(),
+  }
 
-  const db = await getDb()
-  const rows = await db
-    .select({
-      id: calendarEvents.id,
-      title: calendarEvents.title,
-      description: calendarEvents.description,
-      startTime: calendarEvents.startTime,
-      endTime: calendarEvents.endTime,
-      location: calendarEvents.location,
-      zoomLink: calendarEvents.zoomLink,
-      category: calendarEvents.category,
-      courseId: calendarEvents.courseId,
-      courseName: courses.title,
-      createdAt: calendarEvents.createdAt,
-      updatedAt: calendarEvents.updatedAt,
-    })
-    .from(calendarEvents)
-    .leftJoin(courses, eq(calendarEvents.courseId, courses.id))
-    .orderBy(asc(calendarEvents.startTime))
+  try {
+    const db = await getDb()
+    const rows = await db
+      .select({
+        id: calendarEvents.id,
+        title: calendarEvents.title,
+        description: calendarEvents.description,
+        startTime: calendarEvents.startTime,
+        endTime: calendarEvents.endTime,
+        location: calendarEvents.location,
+        zoomLink: calendarEvents.zoomLink,
+        category: calendarEvents.category,
+        courseId: calendarEvents.courseId,
+        courseName: courses.title,
+        createdAt: calendarEvents.createdAt,
+        updatedAt: calendarEvents.updatedAt,
+      })
+      .from(calendarEvents)
+      .leftJoin(courses, eq(calendarEvents.courseId, courses.id))
+      .orderBy(asc(calendarEvents.startTime))
 
-  return {
-    events: rows.map((row) => ({
+    const events = rows.map((row) => ({
       ...row,
       courseName: row.courseName ?? null,
-    })),
+    }))
+    logCalendarEventRead('info', 'calendar_event_list_loaded', context, {
+      eventCount: events.length,
+      linkedEventCount: events.filter((event) => event.courseId !== null)
+        .length,
+    })
+
+    return { events }
+  } catch (error) {
+    logCalendarEventRead('error', 'calendar_event_list_load_failed', context, {
+      errorCategory: 'calendar_event_read_persistence',
+    })
+    throw error
   }
 }
 

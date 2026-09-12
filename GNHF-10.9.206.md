@@ -1,10 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 125
-**Scope:** add redacted Better Stack-ready telemetry for course attendance state
-and student open-session reads and record the remaining hosted observability
-evidence gate.
+**Iteration:** 126
+**Scope:** add redacted Better Stack-ready telemetry for calendar event-management
+list reads and record the remaining hosted observability evidence gate.
 
 ## Executive summary
 
@@ -150,6 +149,12 @@ shadcn@latest` intentionally.
   lesson counts, open-session flags, and duration. Attendance titles,
   timestamps, and raw persistence details remain excluded; unexpected read
   failures use the stable `attendance_read_persistence` category.
+- Calendar event-management list reads now emit redacted
+  `calendar_event_list_loaded` / `calendar_event_list_load_failed` events with
+  request correlation, actor ID, safe total/linked event counts, status, and
+  duration. Event titles, descriptions, locations, meeting links, timestamps,
+  and raw persistence details remain excluded; unexpected failures use the
+  stable `calendar_event_read_persistence` category.
 - Profile updates and email-change verification now emit redacted success and
   failure events with request correlation, user ID, status, duration, and
   stable persistence/provider categories. Email addresses, verification tokens,
@@ -3441,3 +3446,24 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
 Validation for this iteration: the focused attendance integration suite passes
 20 tests. Hosted Better Stack / Cloudflare ingestion, dashboards, alerts,
 Uptime monitors, and source-map verification remain external setup work.
+
+## Iteration 126 — calendar event-list telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Teacher/Admin calendar event-management list reads now emit redacted
+  `calendar_event_list_loaded` / `calendar_event_list_load_failed` events with
+  request correlation, actor ID, safe total and course-linked event counts,
+  status, duration, and the stable
+  `calendar_event_read_persistence` failure category.
+- Event titles, descriptions, locations, meeting links, timestamps, and raw
+  persistence details remain outside Better Stack/Cloudflare telemetry; the
+  existing teacher/Admin authorization and response shape are unchanged.
+- Added integration coverage for request correlation, safe counts, and content
+  redaction. Hosted Better Stack / Cloudflare ingestion, dashboards, alerts,
+  Uptime monitors, and source-map verification remain external follow-up.
+
+Validation: focused event integration passed 6 tests; the full integration suite
+passed 442 tests; `bun run quality:gate` passed with 1,953 unit tests; formatting,
+type checks, `git diff --check`, and the production build passed. Existing build
+deprecation and bundle-size warnings remain unrelated.
