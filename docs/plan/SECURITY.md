@@ -456,6 +456,10 @@ this repository; the remaining step is operator execution and evidence capture.
   `student` role rather than merely excluding staff roles. The profile role
   mutation boundary now also blocks direct authenticated Supabase role changes
   unless the JWT subject is an Admin.
+  The request-identity-aware RLS migration gate and policy-family matrix are
+  documented in [`RLS_REQUEST_IDENTITY.md`](./RLS_REQUEST_IDENTITY.md); no
+  legacy policy should be enabled or tightened until its hosted identity,
+  pooling, and relationship checks pass.
 - Continue hardening admin access and review authentication/session boundaries;
   the calendar event listing is now covered by a server-side teacher/admin
   check; the teacher directory now also requires a persisted caller profile,

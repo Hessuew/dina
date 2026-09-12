@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 101
-**Scope:** close the Phase 5 course-detail authorization gap for unpublished
-lessons and private media.
+**Iteration:** 103
+**Scope:** define the request-identity-aware RLS migration gate and policy-family
+matrix for the remaining Phase 5 RBAC/RLS review.
 
 ## Executive summary
 
@@ -2935,3 +2935,24 @@ trigger blocks legitimate provisioning, stop the rollout and use the database
 rollback/forward-fix procedure rather than editing the applied migration.
 Hosted Supabase JWT-claim verification, the first restore/rollback rehearsal,
 and Better Stack/Cloudflare acceptance remain external follow-up work.
+
+## Iteration 103 — request-identity-aware RLS migration plan
+
+This iteration completed the next repository-owned Phase 5 security unit:
+
+- Added [`docs/plan/RLS_REQUEST_IDENTITY.md`](docs/plan/RLS_REQUEST_IDENTITY.md),
+  documenting why the current Hyperdrive/Drizzle connection cannot be assumed
+  to carry Supabase `auth.uid()` claims, the invariants for transaction-local
+  identity propagation, the policy-family matrix, and the hosted evidence gate.
+- Defined the stop conditions that prevent enabling legacy RLS policies before
+  verifying JWT subject propagation, pooled-connection isolation, role
+  attributes, and trusted provisioning behavior.
+- Linked the plan from the Security Baseline and Threat Model priority list.
+  The first candidate is the profile/role boundary; course, assignment,
+  enrollment, community, and other legacy policy families remain evidence-gated.
+
+This is intentionally a documentation-only security slice. It does not change
+hosted policies, database roles, connection behavior, or application
+authorization. Operator follow-up is to run the read-only Supabase inventory
+and synthetic JWT checks in a non-production branch, then record redacted
+evidence in the Notion Security/Risk and Engineering Roadmap records.

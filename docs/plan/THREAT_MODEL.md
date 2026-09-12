@@ -235,9 +235,11 @@ procedure.
 1. Complete the live Better Stack/Cloudflare/PostHog acceptance checks and
    record redacted evidence.
 2. Run the first hosted restore and non-production rollback rehearsals.
-3. Finish the remaining RBAC/RLS review with a request-identity-aware policy
-   plan before enabling policies on legacy tables, and verify the profile role
-   trigger with hosted Supabase JWT claims.
+3. Follow the request-identity-aware policy plan in
+   [`RLS_REQUEST_IDENTITY.md`](./RLS_REQUEST_IDENTITY.md): inventory hosted
+   roles/policies, verify Supabase JWT propagation and pooled-connection
+   isolation, then migrate one policy family at a time. Verify the profile role
+   trigger with hosted Supabase JWT claims before production rollout.
 4. Apply the Cloudflare WAF public-endpoint recipe in
    `GNHF-10.9.206.md`, then verify the staged policy with synthetic requests and
    record the rule IDs, thresholds, exclusions, and alert evidence.
