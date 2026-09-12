@@ -376,6 +376,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `*_campaign_preview_failed` with the stable
    `campaign_preview_persistence` category; expected authorization and lock
    conflicts remain quiet.
+   Unexpected Supabase session lookup exceptions now emit redacted
+   `auth_session_lookup_failed` events, and persisted-profile lookup failures
+   emit `auth_profile_lookup_failed` events with request correlation, safe user
+   identity where available, duration, and stable auth/persistence categories.
+   Expected unauthenticated and missing-profile outcomes remain ordinary auth
+   boundary results, and provider/database exception details remain excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

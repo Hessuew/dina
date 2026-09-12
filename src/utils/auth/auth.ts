@@ -3,6 +3,8 @@ import * as Sentry from '@sentry/tanstackstart-react'
 import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 import { AuthenticationError, NotFoundError } from '@/utils/errors'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 /**
@@ -12,9 +14,23 @@ import { getSupabaseServerClient } from '@/utils/supabase'
  */
 export async function getCurrentUser() {
   const supabase = getSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const startedAt = performance.now()
+  let authResult: Awaited<ReturnType<typeof supabase.auth.getUser>>
+
+  try {
+    authResult = await supabase.auth.getUser()
+  } catch (error) {
+    logServerEvent('error', 'auth_session_lookup_failed', {
+      requestId: getRequestId(),
+      path: 'auth:getCurrentUser',
+      status: 'failure',
+      durationMs: elapsedMs(startedAt),
+      errorCategory: 'auth_session_lookup',
+    })
+    throw error
+  }
+
+  const { user } = authResult.data
 
   if (!user) {
     throw new AuthenticationError('Not authenticated')
@@ -33,10 +49,25 @@ export async function getCurrentUser() {
  * @param userId - The Supabase user ID (UUID)
  */
 export async function getUserProfile(userId: string) {
-  const db = await getDb()
-  const user = await db.query.profiles.findFirst({
-    where: eq(profiles.id, userId),
-  })
+  const startedAt = performance.now()
+  const user = await (async () => {
+    try {
+      const db = await getDb()
+      return await db.query.profiles.findFirst({
+        where: eq(profiles.id, userId),
+      })
+    } catch (error) {
+      logServerEvent('error', 'auth_profile_lookup_failed', {
+        requestId: getRequestId(),
+        path: 'auth:getUserProfile',
+        status: 'failure',
+        durationMs: elapsedMs(startedAt),
+        userId,
+        errorCategory: 'auth_profile_read_persistence',
+      })
+      throw error
+    }
+  })()
 
   if (!user) {
     throw new NotFoundError('User profile not found', {

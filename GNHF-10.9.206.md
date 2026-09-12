@@ -3832,3 +3832,26 @@ typecheck, `bun run quality:static`, and `git diff --check` passed. The full
 build and full integration suite were not run per the iterative telemetry
 workflow. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts,
 Uptime monitors, source maps, and restore evidence remain external follow-up.
+
+## Iteration 142 — shared auth-boundary failure telemetry
+
+This iteration completed a batched Phase 1 auth-boundary slice:
+
+- Unexpected Supabase session lookup exceptions now emit redacted
+  `auth_session_lookup_failed` events with request correlation, duration, and
+  the stable `auth_session_lookup` category while preserving the original
+  provider exception for the caller.
+- Unexpected persisted-profile lookup failures now emit redacted
+  `auth_profile_lookup_failed` events with request correlation, safe user ID,
+  duration, and the stable `auth_profile_read_persistence` category while
+  preserving the original repository error.
+- Expected unauthenticated and missing-profile outcomes remain unchanged;
+  provider/database exception details, credentials, and session material stay
+  outside telemetry. Added focused integration coverage for both failure paths.
+
+Validation: focused auth/profile integration passed 20 tests; formatting,
+typecheck, static checks, `git diff --check`, and `bun run quality:gate` passed
+with 1,953 unit tests. The full build and full integration suite were not run
+per the iterative telemetry workflow. Hosted Better Stack/Cloudflare
+ingestion, dashboards, alerts, Uptime monitors, source maps, PostHog
+verification, and restore evidence remain pending.

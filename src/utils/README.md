@@ -32,6 +32,11 @@ This folder is primarily where TanStack Start server functions live (via `create
 
 - **Auth utilities**
   - `auth.ts`: current user lookup and role/access helpers (legacy, migrate to authz).
+    Unexpected Supabase session and persisted-profile lookup failures emit
+    redacted `auth_session_lookup_failed` / `auth_profile_lookup_failed`
+    telemetry with request correlation, duration, safe identity where
+    available, and stable error categories; expected unauthenticated and
+    missing-profile results remain ordinary auth outcomes.
   - `auth/login.ts`: Supabase password sign-in adapter with redacted,
     request-correlated `login_succeeded` / `login_failed` telemetry, including
     stable error-level logging for unexpected provider exceptions.
@@ -57,6 +62,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `observability/logger.ts`: emits JSON server events at `info`, `warn`, or
     `error` level and recursively redacts sensitive fields before writing to
     the Worker console.
+  - Shared auth boundaries emit redacted session/profile lookup failure events
+    with request correlation, duration, and stable categories; provider,
+    database, and exception details remain outside telemetry.
   - Enrollment evaluation mutations emit redacted
     `enrollment_evaluation_updated` events with request correlation, action,
     status, duration, evaluator/enrollment IDs, and the updated field type;

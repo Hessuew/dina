@@ -32,7 +32,15 @@ Centralizes authentication and authorization helpers used by server functions an
 
 - `getCurrentUser()`
   - Uses `getSupabaseServerClient()` to fetch the current Supabase user.
-  - Throws when not authenticated.
+  - Throws when not authenticated; unexpected provider exceptions emit a
+    redacted `auth_session_lookup_failed` event with request correlation,
+    duration, and the stable `auth_session_lookup` category.
+
+- `getUserProfile(userId)`
+  - Loads the persisted profile used as the role source of truth.
+  - Unexpected database failures emit a redacted
+    `auth_profile_lookup_failed` event with request correlation, the safe user
+    ID, duration, and the stable `auth_profile_read_persistence` category.
 
 - `requireAuth(userId)`
   - Assertion helper to ensure an ID is present.
