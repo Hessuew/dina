@@ -3855,3 +3855,25 @@ with 1,953 unit tests. The full build and full integration suite were not run
 per the iterative telemetry workflow. Hosted Better Stack/Cloudflare
 ingestion, dashboards, alerts, Uptime monitors, source maps, PostHog
 verification, and restore evidence remain pending.
+
+## Iteration 143 — profile email-change persistence telemetry
+
+This iteration completed the next batched Phase 1 auth-observability slice:
+
+- Email-change request lookup, verification-token lookup, failed-attempt
+  accounting, and delivery-cleanup persistence failures now emit redacted
+  request-correlated events with safe user IDs where known, duration, and
+  stable persistence categories while preserving the original repository
+  errors.
+- Email addresses, verification tokens, provider messages, and raw repository
+  details remain outside operational telemetry; existing rate-limit,
+  invalid-token, and provider-failure user-facing behavior is unchanged.
+- Added four focused integration tests covering the new failure boundaries and
+  secret-free event payloads.
+
+Validation: focused profile integration passed 16 tests; formatting, static
+checks, typecheck, `git diff --check`, and `bun run quality:gate` passed with
+1,953 unit tests. The full build and full integration suite were intentionally
+skipped for the iterative telemetry workflow. Hosted Better Stack/Cloudflare
+ingestion, dashboards, alerts, Uptime monitors, source maps, PostHog
+verification, and restore evidence remain pending.

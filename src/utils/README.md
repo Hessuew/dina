@@ -98,10 +98,13 @@ This folder is primarily where TanStack Start server functions live (via `create
     `profile_updated`, `email_change_requested`, `email_change_completed`, and
     failure events with request correlation, user ID, status, duration, and
     stable persistence/provider categories; email addresses, verification
-    tokens, and provider messages are excluded. Authenticated password changes
-    emit `password_updated` / `password_update_failed` with the same safe
-    fields and stable `password_update` category; password values and provider
-    messages are excluded.
+    tokens, and provider messages are excluded. Email-change request lookup,
+    verification-token lookup, failed-attempt accounting, and delivery cleanup
+    failures use stable persistence categories without raw repository details.
+    Authenticated password changes emit `password_updated` /
+    `password_update_failed` with the same safe fields and stable
+    `password_update` category; password values and provider messages are
+    excluded.
   - Password-reset requests and token validation emit redacted
     `password_reset_request_failed`, `password_reset_token_validated`, and
     `password_reset_token_lookup_failed` events with request correlation,

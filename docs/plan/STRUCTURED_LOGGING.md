@@ -61,7 +61,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `profile_updated`, `email_change_requested`, `email_change_completed`, and
    failure events with request correlation, user ID, status, duration, and
    stable persistence/provider categories; email addresses, verification
-   tokens, and provider messages are excluded.
+   tokens, and provider messages are excluded. Email-change request lookup,
+   verification-token lookup, failed-attempt accounting, and delivery cleanup
+   failures use stable `email_change_read_persistence`,
+   `email_change_token_read_persistence`,
+   `email_change_attempt_persistence`, and
+   `email_change_cleanup_persistence` categories without raw repository
+   details.
    Admin enrollment status, special-case, and deletion mutations now emit
    redacted `enrollment_status_updated`,
    `enrollment_special_case_updated`, and `enrollment_deleted` events with
