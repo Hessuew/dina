@@ -3810,3 +3810,25 @@ The full build and full integration suite were not run per the iterative
 telemetry workflow. Hosted Better Stack/Cloudflare ingestion, dashboards,
 alerts, Uptime monitors, source maps, and restore evidence remain external
 follow-up.
+
+## Iteration 141 — password-reset completion failure telemetry
+
+This iteration completed a batched password-reset completion slice:
+
+- Reset completion token lookups now emit the existing redacted
+  `password_reset_token_lookup_failed` event with the stable
+  `password_reset_token_read_persistence` category.
+- Reset-attempt accounting failures emit
+  `password_reset_attempt_increment_failed`, and successful-provider cleanup
+  failures emit `password_reset_cleanup_failed`; both include request
+  correlation, safe user IDs, duration, and stable persistence categories
+  while preserving the original repository errors.
+- Added focused integration coverage for all three completion failure paths;
+  reset tokens, passwords, provider messages, and raw repository details stay
+  outside telemetry.
+
+Validation: the focused password-reset integration suite passed; formatting,
+typecheck, `bun run quality:static`, and `git diff --check` passed. The full
+build and full integration suite were not run per the iterative telemetry
+workflow. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts,
+Uptime monitors, source maps, and restore evidence remain external follow-up.

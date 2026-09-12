@@ -79,6 +79,58 @@ async function persistPasswordResetState(
   }
 }
 
+async function findPasswordResetUserForCompletion(
+  tokenHash: string,
+  context: PasswordResetLogContext,
+) {
+  try {
+    return await findProfileByResetTokenHash(tokenHash)
+  } catch (error) {
+    logPasswordResetEvent(
+      'error',
+      'password_reset_token_lookup_failed',
+      context,
+      { errorCategory: 'password_reset_token_read_persistence' },
+    )
+    throw error
+  }
+}
+
+async function incrementResetAttemptsWithTelemetry(
+  userId: string,
+  context: PasswordResetLogContext,
+): Promise<void> {
+  try {
+    await incrementResetTokenAttempts(userId)
+  } catch (error) {
+    logPasswordResetEvent(
+      'error',
+      'password_reset_attempt_increment_failed',
+      context,
+      {
+        errorCategory: 'password_reset_attempt_persistence',
+        userId,
+      },
+    )
+    throw error
+  }
+}
+
+async function clearPasswordResetStateWithTelemetry(
+  userId: string,
+  context: PasswordResetLogContext,
+): Promise<void> {
+  try {
+    await clearProfileResetToken(userId)
+  } catch (error) {
+    logPasswordResetEvent('error', 'password_reset_cleanup_failed', context, {
+      errorCategory: 'password_reset_cleanup_persistence',
+      userId,
+    })
+    throw error
+  }
+}
+
 export async function requestPasswordResetService(
   email: string,
 ): Promise<{ success: boolean; message: string }> {
@@ -200,7 +252,7 @@ export async function resetPasswordService(
     .createHash('sha256')
     .update(input.token)
     .digest('hex')
-  const user = await findProfileByResetTokenHash(tokenHash)
+  const user = await findPasswordResetUserForCompletion(tokenHash, context)
 
   const resolved = resolveValidResetUser(user, new Date())
   if (!resolved.ok) {
@@ -221,14 +273,14 @@ export async function resetPasswordService(
       providerCode: updateError.code ?? 'unknown',
       userId: resolved.user.id,
     })
-    await incrementResetTokenAttempts(resolved.user.id)
+    await incrementResetAttemptsWithTelemetry(resolved.user.id, context)
     return {
       success: false,
       message: 'Failed to reset password. Please try again.',
     }
   }
 
-  await clearProfileResetToken(resolved.user.id)
+  await clearPasswordResetStateWithTelemetry(resolved.user.id, context)
 
   logPasswordResetEvent('info', 'password_reset_completed', context, {
     userId: resolved.user.id,
