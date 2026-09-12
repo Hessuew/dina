@@ -191,15 +191,10 @@ The major toolchain refresh upgraded `@cloudflare/vite-plugin` to `1.54.7` and
 `undici` findings are remediated. A root override floors the compatible Hono
 consumer chain at `^4.13.7`, remediating the prior Hono finding as well.
 
-The current `bun audit --audit-level=high` result is four findings across three
+The current `bun audit --audit-level=high` result is three findings across two
 packages. All are High severity and reachable only through development/build
 tooling; none is in the deployed Worker/browser runtime:
 
-- `undici` `>=7.0.0 <7.29.0`: shadcn's nested chain still resolves
-  `undici@7.28.0`. The advisory describes cross-user information disclosure and
-  a parse-time crash through degenerate private cache directives. Other branches
-  already use patched `undici` versions (`7.29.0` and `8.x`), but Bun currently
-  retains the separate shadcn branch.
 - `path-to-regexp` `>=8.0.0 <8.4.0`: shadcn → Model Context Protocol SDK →
   Express → router resolves `8.3.0`; the advisory is a denial of service through
   sequential optional groups. Wrangler independently requires the incompatible
@@ -211,14 +206,26 @@ tooling; none is in the deployed Worker/browser runtime:
 
 The current [Bun override mechanism](https://bun.sh/docs/pm/overrides) supports
 top-level package overrides but does not provide consumer-specific nested
-overrides. A clean lockfile regeneration
-can select patched nested versions, but it also refreshes many unrelated
-compatible packages and would create broad lockfile churn; that option was not
-taken in this scoped change. No patch files were added. The remaining narrow
+overrides. No patch files or root override were added. The remaining narrow
 options are an upstream release that widens the affected consumer range, future
 nested-override support, or a separately reviewed patch-file change. Until one
-of those becomes appropriate, these four findings remain explicitly documented
+of those becomes appropriate, these three findings remain explicitly documented
 and report-only.
+
+## Nested shadcn undici remediation
+
+The shadcn Model Context Protocol toolchain previously retained
+`undici@7.28.0`, which was affected by the high-severity private-cache-directive
+advisory. A lockfile-only dependency refresh now resolves only the compatible
+shadcn branch to `undici@7.29.0`. The Cloudflare Miniflare branch already used
+`7.29.0`, while jsdom retains its separate `undici@8.10.2` branch, so no
+incompatible global override is needed.
+
+This is a development-only tooling remediation and does not change application
+runtime behavior. The local high-severity audit baseline decreased from four to
+three findings; the remaining path-to-regexp and picomatch findings stay
+report-only while their incompatible dependency branches are separately
+reviewed.
 
 ## Review order
 

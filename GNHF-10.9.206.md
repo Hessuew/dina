@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 103
-**Scope:** define the request-identity-aware RLS migration gate and policy-family
-matrix for the remaining Phase 5 RBAC/RLS review.
+**Iteration:** 105
+**Scope:** remediate the shadcn development-tool undici advisory through a
+compatible nested lockfile refresh while preserving jsdom's undici 8.x branch.
 
 ## Executive summary
 
@@ -287,6 +287,11 @@ opened_at)`. It supports filtering active windows before recent-opening
   vulnerable `shell-quote@1.8.3`: a root `package.json` override pins
   `shell-quote` to `^1.10.0`, covering its command-injection and parser
   denial-of-service advisories without changing application runtime behavior.
+- The shadcn Model Context Protocol development-tool chain no longer resolves
+  vulnerable `undici@7.28.0`: a lockfile-only refresh resolves its compatible
+  nested branch to `undici@7.29.0`, while jsdom keeps its separate undici 8.x
+  branch. The high-severity audit baseline is now three findings across the
+  remaining path-to-regexp and picomatch branches.
 - The `vitest` → `vite-node` development chain no longer resolves vulnerable
   `vite@7.3.1`: a root `package.json` override pins every Vite resolution to
   `^7.3.6`, removing the nested package while keeping the existing direct Vite
@@ -2956,3 +2961,23 @@ hosted policies, database roles, connection behavior, or application
 authorization. Operator follow-up is to run the read-only Supabase inventory
 and synthetic JWT checks in a non-production branch, then record redacted
 evidence in the Notion Security/Risk and Engineering Roadmap records.
+
+## Iteration 105 — nested shadcn undici remediation
+
+This iteration completed the next bounded Phase 5 dependency-security unit:
+
+- Refreshed the lockfile-only compatible shadcn dependency branch from
+  `undici@7.28.0` to patched `undici@7.29.0`, removing the high-severity
+  private-cache-directive advisory.
+- Preserved jsdom's separate `undici@8.10.2` branch and the Cloudflare
+  Miniflare `undici@7.29.0` branch; no incompatible root override or patch file
+  was introduced.
+- The high-severity audit baseline decreased from four findings across three
+  packages to three findings across the remaining path-to-regexp and picomatch
+  branches. Those residual findings remain report-only pending compatible
+  upstream or nested-resolution options.
+
+Validation for this iteration: lockfile-only install, frozen install, targeted
+dependency-tree inspection, post-change `bun audit --audit-level=high --json`,
+the quality gate with 1,953 unit tests, 408 integration tests, formatting,
+typecheck, `git diff --check`, and production build.
