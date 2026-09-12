@@ -1,10 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 100
-**Scope:** define the next external Phase 5 security control: staged Cloudflare
-WAF rate limits for public authentication, invitation, verification, reset, and
-future enrollment flows.
+**Iteration:** 101
+**Scope:** close the Phase 5 course-detail authorization gap for unpublished
+lessons and private media.
 
 ## Executive summary
 
@@ -147,6 +146,11 @@ The repository already has the first production-fundamentals slice:
   function adapters pass only the authenticated user ID, preventing direct
   callers from forging a role to bypass unpublished-media or staff/ownership
   checks.
+- Course detail reads now derive the viewer's course-management permission from
+  persisted role and assigned course teachers before returning content.
+  Assigned course teachers and admins retain unpublished lessons and media;
+  other teachers receive published content only, preventing draft disclosure
+  and signed URLs for unpublished private media.
 - Exam create, save, and publish mutations now emit redacted
   `exam_created`, `exam_updated`, and `exam_published` events with request
   correlation, actor/exam IDs, exam status, question counts, duration, and
@@ -2886,3 +2890,22 @@ expression or threshold. Keep the rule ID and rollback timestamp in the
 operator record.
 
 Official reference: [Cloudflare rate-limiting rules](https://developers.cloudflare.com/waf/rate-limiting-rules/).
+
+## Iteration 101 — course-detail authorization hardening
+
+This iteration closed a Phase 5 object-level content disclosure gap:
+
+- `getCourseService` previously loaded and returned unpublished lessons and
+  media to every teacher because it used the viewer's broad staff role as the
+  draft-content switch.
+- The service now derives `canManage` from the persisted role and assigned
+  course teachers, then filters both lessons and media to published rows for
+  non-managing teachers. Admins and assigned course teachers retain the
+  authoring view.
+- Added an integration regression covering an outsider teacher and both
+  unpublished lessons and media; the existing assigned-teacher and student
+  behavior remains covered.
+
+Validation: the focused course integration suite passed all 51 tests. Run the
+full quality gate, integration suite, formatting, and production build before
+the final handoff.

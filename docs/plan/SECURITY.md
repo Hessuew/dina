@@ -367,6 +367,16 @@ roles, so an unknown direct service caller could be treated as a student and
 reach the published-exam read path. Integration coverage confirms unknown
 callers fail before exam reads or attempt creation.
 
+### Course-detail content boundary
+
+Course detail reads now derive `canManage` from the persisted viewer role and
+the course's assigned teachers before building the response. Assigned course
+teachers and admins retain unpublished lessons and media for authoring; other
+teachers receive published lessons and media only. This prevents a teacher
+from using a course-detail request for another course to obtain draft content
+or signed URLs for unpublished private media. Integration coverage verifies
+the outsider-teacher response while preserving the assigned-teacher path.
+
 ## Secret inventory and rotation contract
 
 The repository-owned secret inventory in

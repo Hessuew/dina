@@ -50,6 +50,9 @@ import {
 import { serializeMediaRecords } from '@/utils/library/service/library.service'
 
 type CourseAssetRow = Awaited<ReturnType<typeof findAllCourses>>[number]
+type CourseDetail = NonNullable<
+  Awaited<ReturnType<typeof findCourseWithDetails>>
+>
 
 type CourseMutationAction = 'createCourse' | 'updateCourse' | 'deleteCourse'
 
@@ -112,6 +115,14 @@ function courseThumbnailPath(value: string | null | undefined): string | null {
   return path
 }
 
+function restrictCourseToPublishedContent(course: CourseDetail): CourseDetail {
+  return {
+    ...course,
+    lessons: course.lessons.filter((lesson) => lesson.isPublished),
+    mediaFiles: course.mediaFiles.filter((media) => media.isPublished),
+  }
+}
+
 export async function getCoursesService(userId: string) {
   const profile = await getUserProfile(userId)
   const isStudentView = profile.role === 'student'
@@ -146,8 +157,10 @@ export async function getCoursesService(userId: string) {
 export async function getCourseService(data: GetCourseInput, userId: string) {
   const profile = await getUserProfile(userId)
 
-  const isTeacherOrAdmin = profile.role !== 'student'
-  const course = await findCourseWithDetails(data.courseId, isTeacherOrAdmin)
+  const course = await findCourseWithDetails(
+    data.courseId,
+    profile.role !== 'student',
+  )
 
   if (!course) {
     throw new NotFoundError('Course not found', {
@@ -155,6 +168,16 @@ export async function getCourseService(data: GetCourseInput, userId: string) {
       details: { courseId: data.courseId },
     })
   }
+
+  const teacherRefs = extractTeacherIds(course.courseTeachers)
+  const permissions = calculateEntityPermissions(
+    profile.role,
+    teacherRefs,
+    userId,
+  )
+  const visibleCourse = permissions.canManage
+    ? course
+    : restrictCourseToPublishedContent(course)
 
   let progress: Array<{ lessonId: string }> = []
   let assignmentData = {
@@ -165,7 +188,7 @@ export async function getCourseService(data: GetCourseInput, userId: string) {
 
   if (profile.role === 'student') {
     progress = await findCompletedLessonProgress(userId)
-    const lessonIds = course.lessons.map((lesson) => lesson.id)
+    const lessonIds = visibleCourse.lessons.map((lesson) => lesson.id)
     const courseAssignments =
       await findPublishedAssignmentsByLessonIds(lessonIds)
     const assignmentIds = courseAssignments.map((assignment) => assignment.id)
@@ -177,17 +200,12 @@ export async function getCourseService(data: GetCourseInput, userId: string) {
   }
 
   const completedLessonIds = new Set(progress.map((item) => item.lessonId))
-  const [signedCourse] = await signCourseAssets([course])
+  const [signedCourse] = await signCourseAssets([visibleCourse])
   const courseWithTeachers = {
     ...signedCourse,
-    mediaFiles: await serializeMediaRecords(course.mediaFiles),
-    ...extractTeacherIds(course.courseTeachers),
+    mediaFiles: await serializeMediaRecords(visibleCourse.mediaFiles),
+    ...teacherRefs,
   }
-  const permissions = calculateEntityPermissions(
-    profile.role,
-    courseWithTeachers,
-    userId,
-  )
 
   return {
     course: courseWithTeachers,

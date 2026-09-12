@@ -34,6 +34,7 @@ import {
   seedCourseTeacher,
   seedLesson,
   seedLessonProgress,
+  seedMedia,
   seedProfile,
   seedSubmission,
 } from '@/../test/integration/seed'
@@ -158,6 +159,35 @@ describe('getCourseService (integration)', () => {
     expect(result.course.lessons).toHaveLength(2)
     expect(result.permissions.canManage).toBe(true)
     expect(result.completedLessonIds).toEqual([])
+  })
+
+  it('unassigned teacher sees only published course content', async () => {
+    const assignedTeacherId = await seedProfile({ role: 'teacher' })
+    const outsiderTeacherId = await seedProfile({ role: 'teacher' })
+    const courseId = await seedCourse()
+    await seedCourseTeacher(courseId, assignedTeacherId)
+    await seedLesson({ courseId, isPublished: true })
+    await seedLesson({ courseId, isPublished: false })
+    await seedMedia({
+      uploaderId: assignedTeacherId,
+      courseId,
+      isPublished: true,
+    })
+    await seedMedia({
+      uploaderId: assignedTeacherId,
+      courseId,
+      isPublished: false,
+    })
+
+    const result = await getCourseService({ courseId }, outsiderTeacherId)
+
+    expect(result.course.lessons).toHaveLength(1)
+    expect(result.course.mediaFiles).toHaveLength(1)
+    expect(result.course.mediaFiles[0].isPublished).toBe(true)
+    expect(result.permissions).toMatchObject({
+      isCourseTeacher: false,
+      canManage: false,
+    })
   })
 
   it('student sees only published lessons and their completed-lesson ids', async () => {

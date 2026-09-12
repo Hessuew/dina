@@ -180,6 +180,16 @@ writing attempt state. The authorization check rejects unknown direct callers
 as well as teacher/Admin users; integration coverage exercises the student
 listing and attempt-start boundaries.
 
+### Course-detail content boundary
+
+Course detail requests still allow authenticated roles to view the published
+course catalog, but unpublished lessons and media are authoring content. The
+service now derives the viewer's course-management permission from persisted
+role and course-teacher membership, then filters both collections for
+non-managing teachers. Assigned course teachers and admins retain draft access;
+integration coverage confirms an outsider teacher cannot receive unpublished
+lesson data or private-media response records.
+
 ## Existing control map
 
 | Control                | Repository evidence                                                                   | Verification boundary                                   |
