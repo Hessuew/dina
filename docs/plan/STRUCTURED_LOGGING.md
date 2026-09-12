@@ -83,6 +83,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    the stable `invitation_token_read_persistence` category on failure; tokens,
    email addresses, and raw provider/database details remain excluded. Expected
    invalid, expired, and revoked-token outcomes stay quiet.
+   Public invitation-email validation now emits redacted
+   `invitation_email_validated` / `invitation_email_lookup_failed` events with
+   request correlation, role on success, duration, and the stable
+   `invitation_email_read_persistence` failure category. Email addresses and
+   raw provider/database details remain excluded; missing, expired, and revoked
+   invitation outcomes stay quiet.
    Privileged enrollment contact exports now emit redacted
    `enrollment_contact_exported` / `enrollment_contact_export_failed` events
    with request correlation, actor ID, cohort, safe contact count, duration,
@@ -311,6 +317,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    details remain excluded; expected authorization and not-found outcomes
    remain quiet, while unexpected failures use the stable
    `library_media_read_persistence` category.
+   Media-library file and thumbnail signed-upload requests now emit redacted
+   `media_upload_url_issued` / `media_upload_url_issue_failed` events with
+   request correlation, actor/media IDs where applicable, bucket, media kind,
+   status, duration, and the stable `media_upload_request_persistence`
+   failure category. Filenames, object paths, signed URLs, and raw provider
+   details remain excluded; expected authorization and validation outcomes stay
+   quiet.
    Discipleship board and student-view reads now emit redacted
    `discipleship_read_loaded` / `discipleship_read_failed` events with request
    correlation, actor/teacher IDs, scope, safe result counts, view kind, and

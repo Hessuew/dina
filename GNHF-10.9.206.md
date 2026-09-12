@@ -3683,3 +3683,29 @@ Validation: focused invitation integration tests, formatting, typecheck,
 `bun run quality:gate`, and the production build are required before final
 handoff. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime
 monitors, and source-map verification remain external follow-up.
+
+## Iteration 136 — invitation-email and media-upload-request telemetry
+
+This iteration completed a batched Phase 1 structured-logging slice:
+
+- Public invitation-email validation now emits redacted
+  `invitation_email_validated` / `invitation_email_lookup_failed` events with
+  request correlation, role on success, duration, and the stable
+  `invitation_email_read_persistence` failure category. Missing, expired, and
+  revoked invitations remain quiet; email addresses and raw persistence
+  details stay outside telemetry.
+- Media-library file and thumbnail signed-upload requests now emit redacted
+  `media_upload_url_issued` / `media_upload_url_issue_failed` events with
+  request correlation, actor/media IDs where applicable, bucket, media kind,
+  status, duration, and the stable `media_upload_request_persistence` category.
+  Filenames, object paths, signed URLs, and raw provider details remain
+  excluded; expected authorization and validation failures remain quiet.
+- Added focused integration coverage for safe request correlation, success
+  metadata, persistence-failure categorization, raw-error exclusion, and
+  original-error preservation across all three paths.
+
+Validation: focused invitation and library integration tests (53 tests),
+formatting, typecheck, and `bun run quality:static` passed. Per the iterative
+telemetry workflow, the full build and full integration suite were not run.
+Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors,
+and source-map verification remain external follow-up.

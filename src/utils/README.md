@@ -125,6 +125,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     with request correlation, invitation role/ID on success, and a stable
     persistence category on unexpected failure; tokens, email addresses, and
     raw persistence details remain excluded.
+  - Public invitation-email validation emits redacted
+    `invitation_email_validated` / `invitation_email_lookup_failed` events with
+    request correlation, role on success, duration, and the stable
+    `invitation_email_read_persistence` failure category. Email addresses and
+    raw provider/database details remain excluded; missing, expired, and
+    revoked invitation outcomes stay quiet.
   - Privileged enrollment contact exports emit redacted
     `enrollment_contact_exported` / `enrollment_contact_export_failed` events
     with request correlation, actor ID, cohort, safe contact count, duration,
@@ -177,6 +183,13 @@ This folder is primarily where TanStack Start server functions live (via `create
     external URLs, private storage paths, and raw persistence details remain
     excluded; unexpected failures use `library_media_read_persistence` while
     expected authorization and not-found outcomes remain quiet.
+  - Media-library file and thumbnail signed-upload requests emit redacted
+    `media_upload_url_issued` / `media_upload_url_issue_failed` events with
+    request correlation, actor/media IDs where applicable, bucket, media kind,
+    status, duration, and the stable `media_upload_request_persistence`
+    failure category. Filenames, object paths, signed URLs, and raw provider
+    details remain excluded; expected authorization and validation outcomes stay
+    quiet.
   - Assignment authoring emits redacted `assignment_created`,
     `assignment_updated`, and `assignment_deleted` events with request
     correlation, server-function path, actor/course/lesson/assignment IDs,

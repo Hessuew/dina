@@ -151,15 +151,31 @@ describe('createInvitationService (integration)', () => {
 })
 
 describe('checkInvitationByEmailService (integration)', () => {
-  it('returns email + role for an active invitation', async () => {
+  it('returns email + role and logs safe validation metadata', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { email } = await seedInvitation({
       role: 'teacher',
       status: 'pending',
     })
 
-    const result = await checkInvitationByEmailService({ email })
+    const result = await withObservabilityRequest(
+      new Request('https://christ-dina.org/signup', {
+        headers: { 'x-request-id': 'invitation-email-read' },
+      }),
+      () => checkInvitationByEmailService({ email }),
+    )
 
     expect(result.invitation).toEqual({ email, role: 'teacher' })
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain(email)
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_email_validated',
+      path: 'serverFn:checkInvitationByEmail',
+      requestId: 'invitation-email-read',
+      role: 'teacher',
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
   })
 
   it('throws when no invitation exists for the email', async () => {
@@ -185,6 +201,38 @@ describe('checkInvitationByEmailService (integration)', () => {
     await expect(
       checkInvitationByEmailService({ email }),
     ).rejects.toMatchObject({ code: 'INVITATION_EXPIRED', status: 400 })
+  })
+
+  it('logs unexpected lookup failures without email or provider details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const repositoryError = new Error(
+      'connectionString=secret while reading applicant@test.dev',
+    )
+    vi.spyOn(
+      invitationsRepository,
+      'findInvitationByEmail',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/signup', {
+          headers: { 'x-request-id': 'invitation-email-failure' },
+        }),
+        () => checkInvitationByEmailService({ email: 'applicant@test.dev' }),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('applicant@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_email_lookup_failed',
+      errorCategory: 'invitation_email_read_persistence',
+      path: 'serverFn:checkInvitationByEmail',
+      requestId: 'invitation-email-failure',
+      status: 'failure',
+      durationMs: expect.any(Number),
+    })
   })
 })
 

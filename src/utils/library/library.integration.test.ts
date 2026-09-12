@@ -4,6 +4,7 @@ import { getDb } from '../../../test/integration/db'
 import { seedMedia, seedProfile } from '../../../test/integration/seed'
 import { resetCreateSignedUrlsMock } from '../../../test/integration/storage-mocks'
 import type { CreateMediaInput } from '@/schemas/media.schema'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 import {
   createLibraryMediaService,
   deleteLibraryMediaService,
@@ -439,20 +440,41 @@ describe('signed file upload requests', () => {
     ).rejects.toMatchObject({ code: 'ROLE_REQUIRED' })
   })
 
-  it('validates and signs video uploads', async () => {
+  it('validates and signs video uploads with safe telemetry', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const teacherId = await seedProfile({ role: 'teacher' })
-    const result = await requestMediaFileUploadService(
-      {
-        kind: 'video-file',
-        fileName: 'talk.mp4',
-        fileType: 'video/mp4',
-        fileSize: 1024,
-      },
-      teacherId,
+    const result = await withObservabilityRequest(
+      new Request('https://christ-dina.org/library', {
+        headers: { 'x-request-id': 'media-file-upload-request' },
+      }),
+      () =>
+        requestMediaFileUploadService(
+          {
+            kind: 'video-file',
+            fileName: 'talk.mp4',
+            fileType: 'video/mp4',
+            fileSize: 1024,
+          },
+          teacherId,
+        ),
     )
 
     expect(result.path).toMatch(new RegExp(`^${teacherId}/\\d+-[\\w-]+\\.mp4$`))
     expect(result.signedUrl).toBe('https://signed-upload')
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('talk.mp4')
+    expect(line).not.toContain(result.path)
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'media_upload_url_issued',
+      path: 'serverFn:requestMediaFileUpload',
+      requestId: 'media-file-upload-request',
+      actorId: teacherId,
+      bucket: 'media-library',
+      mediaKind: 'video-file',
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+    infoSpy.mockRestore()
   })
 
   it('validates and signs document uploads', async () => {
@@ -484,24 +506,87 @@ describe('signed file upload requests', () => {
       ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' })
   })
+
+  it('logs stable signed-upload failures without storage details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    mocks.createSignedUploadUrl.mockRejectedValueOnce(
+      new Error('connectionString=secret while signing media path'),
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/library', {
+          headers: { 'x-request-id': 'media-file-upload-failure' },
+        }),
+        () =>
+          requestMediaFileUploadService(
+            {
+              kind: 'document',
+              fileName: 'private.pdf',
+              fileType: 'application/pdf',
+              fileSize: 1024,
+            },
+            teacherId,
+          ),
+      ),
+    ).rejects.toThrow('connectionString=secret while signing media path')
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('private.pdf')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'media_upload_url_issue_failed',
+      path: 'serverFn:requestMediaFileUpload',
+      requestId: 'media-file-upload-failure',
+      actorId: teacherId,
+      bucket: 'media-library',
+      mediaKind: 'document',
+      status: 'failure',
+      errorCategory: 'media_upload_request_persistence',
+      durationMs: expect.any(Number),
+    })
+    errorSpy.mockRestore()
+  })
 })
 
 describe('media thumbnail completion', () => {
-  it('signs request only for media owner', async () => {
+  it('signs request only for media owner with safe telemetry', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const ownerId = await seedProfile({ role: 'teacher' })
     const mediaId = await seedMedia({ uploaderId: ownerId })
 
-    const result = await requestMediaThumbnailUploadService(
-      {
-        mediaId,
-        fileName: 'thumb.png',
-        fileType: 'image/png',
-        fileSize: 1024,
-      },
-      ownerId,
+    const result = await withObservabilityRequest(
+      new Request('https://christ-dina.org/library', {
+        headers: { 'x-request-id': 'media-thumbnail-upload-request' },
+      }),
+      () =>
+        requestMediaThumbnailUploadService(
+          {
+            mediaId,
+            fileName: 'thumb.png',
+            fileType: 'image/png',
+            fileSize: 1024,
+          },
+          ownerId,
+        ),
     )
 
     expect(result.path).toMatch(new RegExp(`^${ownerId}/\\d+-[\\w-]+\\.png$`))
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('thumb.png')
+    expect(line).not.toContain(result.path)
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'media_upload_url_issued',
+      path: 'serverFn:requestMediaThumbnailUpload',
+      requestId: 'media-thumbnail-upload-request',
+      actorId: ownerId,
+      mediaId,
+      bucket: 'media-thumbnails',
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+    infoSpy.mockRestore()
   })
 
   it('persists path, signs response, and removes prior thumbnail', async () => {

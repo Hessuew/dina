@@ -55,6 +55,10 @@ type InvitationTokenLogContext = {
   startedAt: number
 }
 
+type InvitationEmailLogContext = {
+  startedAt: number
+}
+
 function logInvitationEvent(
   level: 'info' | 'error',
   event: string,
@@ -82,6 +86,21 @@ function logInvitationTokenEvent(
   logServerEvent(level, event, {
     requestId: getRequestId(),
     path: 'serverFn:getInvitationByToken',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    ...fields,
+  })
+}
+
+function logInvitationEmailEvent(
+  level: 'info' | 'error',
+  event: string,
+  context: InvitationEmailLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:checkInvitationByEmail',
     status: level === 'error' ? 'failure' : 'success',
     durationMs: elapsedMs(context.startedAt),
     ...fields,
@@ -223,7 +242,24 @@ export async function createInvitationService(
 export async function checkInvitationByEmailService(
   data: CheckInvitationByEmailInput,
 ) {
-  const invitation = await findInvitationByEmail(data.email)
+  const context: InvitationEmailLogContext = {
+    startedAt: performance.now(),
+  }
+
+  let invitation
+  try {
+    invitation = await findInvitationByEmail(data.email)
+  } catch (error) {
+    if (shouldLogInvitationReadFailure(error)) {
+      logInvitationEmailEvent(
+        'error',
+        'invitation_email_lookup_failed',
+        context,
+        { errorCategory: 'invitation_email_read_persistence' },
+      )
+    }
+    throw error
+  }
 
   if (!invitation) {
     throw new NotFoundError('No invitation found for this email', {
@@ -232,6 +268,10 @@ export async function checkInvitationByEmailService(
   }
 
   validateInvitationActive(invitation, new Date())
+
+  logInvitationEmailEvent('info', 'invitation_email_validated', context, {
+    role: invitation.role,
+  })
 
   return { invitation: { email: invitation.email, role: invitation.role } }
 }
