@@ -69,7 +69,7 @@ import {
   isOptionOfQuestion,
   validateAnswerShape,
 } from '@/utils/exam/domain/exam-answer.domain'
-import { resolveAdminOrTeacherAccess } from '@/utils/authz'
+import { authz, resolveAdminOrTeacherAccess } from '@/utils/authz'
 import {
   AuthorizationError,
   ConflictError,
@@ -180,10 +180,7 @@ async function assertTeacherOrAdmin(userId: string): Promise<{
 }
 
 async function assertStudent(userId: string): Promise<void> {
-  const access = await resolveAdminOrTeacherAccess(userId)
-  if (access.isAdmin || access.isTeacher) {
-    throw new AuthorizationError('Only students can take exams')
-  }
+  await authz(userId).hasRole('student')
 }
 
 /** Loads an exam and asserts the caller may edit it: creator or admin, draft only (or admin when published). */

@@ -358,6 +358,15 @@ direct server-function caller could attempt campaign-lock cleanup without the
 same role check used by preview and send. Integration coverage verifies that
 teachers are rejected and Admins can inspect and release their own held lock.
 
+### Exam-taking service boundary
+
+Student exam listing, attempt start/resume, answer autosave, and submission
+services now require the caller's persisted `student` role through the shared
+authorization service. Previously, the helper only rejected teacher and Admin
+roles, so an unknown direct service caller could be treated as a student and
+reach the published-exam read path. Integration coverage confirms unknown
+callers fail before exam reads or attempt creation.
+
 ## Secret inventory and rotation contract
 
 The repository-owned secret inventory in
@@ -398,7 +407,8 @@ measured RBAC/RLS migration plan.
   teacher-directory read requires a persisted caller profile, and the student
   directory list/detail services require a teacher or Admin actor. Post
   channel/feed/post/comment reads and community mutations now require a
-  persisted caller profile.
+  persisted caller profile; student exam surfaces now require the persisted
+  `student` role rather than merely excluding staff roles.
 - Continue hardening admin access and review authentication/session boundaries;
   the calendar event listing is now covered by a server-side teacher/admin
   check; the teacher directory now also requires a persisted caller profile,

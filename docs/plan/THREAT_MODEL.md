@@ -154,6 +154,14 @@ the server-function adapters. This keeps lock cleanup under the same role
 boundary as campaign preview and send; integration coverage rejects teacher
 callers and verifies Admin cleanup behavior.
 
+### Exam-taking service boundary
+
+Student exam listing, attempt lifecycle, answer autosave, and submission paths
+require the caller's persisted `student` role before reading published exams or
+writing attempt state. The authorization check rejects unknown direct callers
+as well as teacher/Admin users; integration coverage exercises the student
+listing and attempt-start boundaries.
+
 ## Existing control map
 
 | Control                | Repository evidence                                                                   | Verification boundary                                   |

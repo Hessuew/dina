@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { getDb } from 'test/integration/db'
@@ -457,6 +458,19 @@ describe('exam taking (integration)', () => {
     await expect(startAttemptService({ examId }, teacherId)).rejects.toThrow(
       AuthorizationError,
     )
+  })
+
+  it('rejects unknown callers from student exam surfaces', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const { examId } = await seedPublishedMcExam(teacherId)
+    const unknownCallerId = randomUUID()
+
+    await expect(getExamsForStudentService(unknownCallerId)).rejects.toThrow(
+      AuthorizationError,
+    )
+    await expect(
+      startAttemptService({ examId }, unknownCallerId),
+    ).rejects.toThrow(AuthorizationError)
   })
 
   it('upserts autosaved answers and never leaks isCorrect to students', async () => {

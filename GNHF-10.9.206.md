@@ -2762,3 +2762,18 @@ Validation: focused email and WhatsApp integration passed all 32 tests. The full
 integration suite, quality gate, production build, formatting, and Notion
 synchronization remain final handoff checks for this slice; Better Stack
 acceptance and provider rehearsal remain external follow-up work.
+
+## Iteration 99 — exam-taking service authorization hardening
+
+This iteration closed the next small Phase 5 service-boundary gap:
+
+- Student exam listing, attempt start/resume, answer autosave, and submission
+  services now require the caller's persisted `student` role through `authz`.
+  Unknown direct callers can no longer pass the former staff-only exclusion
+  check and reach the published-exam read or attempt lifecycle paths.
+- Added integration coverage for unknown callers against the student exam list
+  and attempt-start surfaces; authorized student behavior and teacher/Admin
+  grading boundaries remain unchanged.
+- Updated `docs/plan/SECURITY.md`, `docs/plan/THREAT_MODEL.md`, and the
+  `src/utils` boundary inventory. Better Stack/Cloudflare acceptance, hosted
+  RLS verification, and public-abuse controls remain external follow-up work.
