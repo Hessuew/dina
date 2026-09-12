@@ -29,6 +29,12 @@ type CourseTeacherAssignmentLogContext = {
   startedAt: number
 }
 
+type CourseTeacherReadContext = {
+  actorId: string
+  courseId: string
+  startedAt: number
+}
+
 function logCourseTeacherAssignmentEvent(
   level: LogLevel,
   event: string,
@@ -50,6 +56,50 @@ function logCourseTeacherAssignmentEvent(
 
 function shouldLogCourseTeacherAssignmentFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
+}
+
+function logCourseTeacherReadEvent(
+  level: LogLevel,
+  event: string,
+  context: CourseTeacherReadContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:getCourseTeachers',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    courseId: context.courseId,
+    ...fields,
+  })
+}
+
+async function withCourseTeacherReadTelemetry<T>(
+  context: CourseTeacherReadContext,
+  read: () => Promise<T>,
+  fields: (result: T) => Record<string, unknown>,
+): Promise<T> {
+  try {
+    const result = await read()
+    logCourseTeacherReadEvent(
+      'info',
+      'course_teachers_loaded',
+      context,
+      fields(result),
+    )
+    return result
+  } catch (error) {
+    if (!isAppError(error) || error.status >= 500) {
+      logCourseTeacherReadEvent(
+        'error',
+        'course_teachers_load_failed',
+        context,
+        { errorCategory: 'course_teacher_read_persistence' },
+      )
+    }
+    throw error
+  }
 }
 
 export async function validateTeacherPair(
@@ -93,10 +143,24 @@ export async function getCourseTeachersService(
   userId: string,
 ) {
   await getUserProfile(userId)
-  const courseTeachersList = await findCourseTeachers(data.courseId)
-  return {
-    teachers: await signAvatarRows(courseTeachersList.map((ct) => ct.teacher)),
+  const context: CourseTeacherReadContext = {
+    actorId: userId,
+    courseId: data.courseId,
+    startedAt: performance.now(),
   }
+
+  return withCourseTeacherReadTelemetry(
+    context,
+    async () => {
+      const courseTeachersList = await findCourseTeachers(data.courseId)
+      return {
+        teachers: await signAvatarRows(
+          courseTeachersList.map((ct) => ct.teacher),
+        ),
+      }
+    },
+    (result) => ({ teacherCount: result.teachers.length }),
+  )
 }
 
 export async function updateCourseTeachersService(

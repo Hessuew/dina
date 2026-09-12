@@ -3615,3 +3615,25 @@ Full quality-gate, integration, production-build, and Notion synchronization
 remain final handoff checks for this slice. Hosted Better Stack/Cloudflare
 ingestion, dashboards, alerts, Uptime monitors, and source-map verification
 remain external follow-up.
+
+## Iteration 133 — course-teacher read telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Authenticated course-teacher list reads now emit redacted
+  `course_teachers_loaded` / `course_teachers_load_failed` events with request
+  correlation, actor/course IDs, safe teacher counts, status, duration, and the
+  stable `course_teacher_read_persistence` failure category.
+- Teacher names, email addresses, profile fields, signed storage URLs, and raw
+  persistence/provider details remain outside Better Stack/Cloudflare
+  telemetry. Existing profile authentication and response behavior are
+  unchanged.
+- Added integration coverage for successful safe telemetry and persistence
+  failure redaction while preserving the original error.
+
+Validation: focused course integration passed 59 tests, full integration passed
+457 tests, `bun run quality:gate` passed with 1,953 unit tests, and the
+production build, formatting, static checks, and diff check passed. Notion
+evidence was synchronized for this slice. Hosted Better Stack/Cloudflare
+ingestion, dashboards, alerts, Uptime monitors, and source-map verification
+remain external follow-up.

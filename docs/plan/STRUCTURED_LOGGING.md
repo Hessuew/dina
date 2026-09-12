@@ -111,6 +111,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    stable `course_teacher_assignment_persistence` category while expected
    authorization, validation, conflict, and not-found outcomes remain out of
    noisy error logs.
+   Authenticated course-teacher list reads now emit redacted
+   `course_teachers_loaded` / `course_teachers_load_failed` events with request
+   correlation, actor/course IDs, safe teacher counts, status, duration, and
+   the stable `course_teacher_read_persistence` failure category. Teacher
+   profile fields, storage URLs, and raw persistence details remain excluded.
    Discipleship assignment, pairing, and schedule mutations now emit shared
    `discipleship_mutation_completed` / `discipleship_mutation_failed` events
    with request correlation, action path, actor and safe student/teacher/pair

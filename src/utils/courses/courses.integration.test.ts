@@ -1064,15 +1064,38 @@ describe('assignTeachersToCourse (integration)', () => {
 })
 
 describe('getCourseTeachersService (integration)', () => {
-  it('returns the assigned teachers', async () => {
+  it('returns assigned teachers and logs safe read telemetry', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const userId = await seedProfile({ role: 'student' })
     const courseId = await seedCourse()
-    const teacherId = await seedProfile({ role: 'teacher' })
+    const teacherId = await seedProfile({
+      role: 'teacher',
+      fullName: 'Private Teacher',
+      email: 'private.teacher@test.dev',
+    })
     await seedCourseTeacher(courseId, teacherId)
 
-    const { teachers } = await getCourseTeachersService({ courseId }, userId)
+    const { teachers } = await withObservabilityRequest(
+      new Request('https://christ-dina.org/course-teachers', {
+        headers: { 'x-request-id': 'course-teacher-read' },
+      }),
+      () => getCourseTeachersService({ courseId }, userId),
+    )
 
     expect(teachers.map((t) => t.id)).toContain(teacherId)
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('Private Teacher')
+    expect(line).not.toContain('private.teacher@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'course_teachers_loaded',
+      path: 'serverFn:getCourseTeachers',
+      requestId: 'course-teacher-read',
+      actorId: userId,
+      courseId,
+      teacherCount: 1,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
   })
 
   it('returns an empty list for a course with no teachers', async () => {
@@ -1082,6 +1105,38 @@ describe('getCourseTeachersService (integration)', () => {
     const { teachers } = await getCourseTeachersService({ courseId }, userId)
 
     expect(teachers).toEqual([])
+  })
+
+  it('logs stable persistence failures without raw errors', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+    const courseId = await seedCourse()
+    const repositoryError = new Error('course teacher database secret')
+    vi.spyOn(coursesRepository, 'findCourseTeachers').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/course-teachers', {
+          headers: { 'x-request-id': 'course-teacher-read-failure' },
+        }),
+        () => getCourseTeachersService({ courseId }, userId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('course teacher database secret')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'course_teachers_load_failed',
+      path: 'serverFn:getCourseTeachers',
+      requestId: 'course-teacher-read-failure',
+      actorId: userId,
+      courseId,
+      status: 'failure',
+      errorCategory: 'course_teacher_read_persistence',
+      durationMs: expect.any(Number),
+    })
   })
 })
 
