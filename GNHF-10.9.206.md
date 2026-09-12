@@ -4062,3 +4062,32 @@ evidence without promoting any hosted or operational claim:
 Validation: Markdown formatting, `bun run docs:notion-check --json`, and
 `git diff --check` passed. The full build and full integration suite were not
 run because this was a documentation and external-status alignment iteration.
+
+## Iteration 152 — Engineering Roadmap final handoff
+
+This iteration finalized the repository-to-Notion roadmap handoff across all
+six maturity phases:
+
+- Phase 1 is repository implementation complete; hosted observability,
+  dashboards, alert routing, Uptime, source maps, PostHog verification, and
+  restore evidence remain pending.
+- Phase 2 has repository reliability procedures drafted; production telemetry,
+  named ownership, and the first restore drill remain pending.
+- Phase 3 has the repository safe-delivery procedure implemented; protected
+  environment controls and a hosted rehearsal remain pending.
+- Phase 4 has the initial query/index review implemented; hosted query plans
+  and production measurements remain pending.
+- Phase 5 has the repository security baseline implemented; hosted verification
+  and remaining RBAC/RLS work remain pending.
+- Phase 6 remains Planned; ADR, domain-boundary, contract, and technical-debt
+  structure does not by itself establish maturity completion.
+
+The Engineering Roadmap now carries the matching final disposition note. No
+dashboard, alert, SLO, or hosted operational status is promoted without dated
+provider or restore-drill evidence. Future work should resume from those
+explicit external gates or a newly scoped Linear roadmap item, rather than
+adding isolated telemetry slices to this handoff.
+
+Validation: Markdown formatting, `bun run docs:notion-check --json`, and
+`git diff --check` passed. The full build and full integration suite were not
+run because this was a documentation-only roadmap handoff.
