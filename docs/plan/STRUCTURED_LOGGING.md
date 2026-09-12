@@ -254,6 +254,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    details remain excluded; expected authorization outcomes stay quiet while
    unexpected failures use the stable `discipleship_read_persistence`
    category.
+   Enrollment list and detail reads now emit redacted
+   `enrollment_read_loaded` / `enrollment_read_failed` events with request
+   correlation, actor/enrollment IDs, pagination and view metadata, safe
+   result counts, duration, and the stable `enrollment_read_persistence`
+   failure category. Applicant identity, contact details, application answers,
+   evaluation payloads, and raw persistence details remain excluded; expected
+   authorization and not-found outcomes stay quiet.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

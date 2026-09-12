@@ -80,6 +80,7 @@ import {
   ConflictError,
   NotFoundError,
   ValidationError,
+  isAppError,
 } from '@/utils/errors'
 import {
   buildEnrollmentContactLookupGroups,
@@ -126,6 +127,60 @@ type EnrollmentInvitationLogContext = {
   invitationId?: string
   invitationMode?: 'new' | 'resend'
   startedAt: number
+}
+
+type EnrollmentReadAction = 'getEnrollments' | 'getEnrollmentById'
+
+type EnrollmentReadLogContext = {
+  action: EnrollmentReadAction
+  actorId: string
+  enrollmentId?: string
+  startedAt: number
+}
+
+function logEnrollmentReadEvent(
+  level: LogLevel,
+  event: string,
+  context: EnrollmentReadLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    enrollmentId: context.enrollmentId,
+    ...fields,
+  })
+}
+
+function shouldLogEnrollmentReadFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function withEnrollmentReadTelemetry<T>(args: {
+  context: EnrollmentReadLogContext
+  read: () => Promise<T>
+  fields: (result: T) => Record<string, unknown>
+}): Promise<T> {
+  try {
+    const result = await args.read()
+    logEnrollmentReadEvent(
+      'info',
+      'enrollment_read_loaded',
+      args.context,
+      args.fields(result),
+    )
+    return result
+  } catch (error) {
+    if (shouldLogEnrollmentReadFailure(error)) {
+      logEnrollmentReadEvent('error', 'enrollment_read_failed', args.context, {
+        errorCategory: 'enrollment_read_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 function logEnrollmentMutation(
@@ -483,142 +538,189 @@ export async function getEnrollmentsService(
   data: GetEnrollmentsInput,
   userId: string,
 ) {
-  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-  if (!isAdmin && !isTeacher) {
-    throw new AuthorizationError('admin or teacher access required', {
-      code: 'ROLE_REQUIRED',
-      details: {},
-    })
+  const context: EnrollmentReadLogContext = {
+    action: 'getEnrollments',
+    actorId: userId,
+    startedAt: performance.now(),
   }
 
-  const reviewerFilter = data.viewAll ? undefined : userId
-  const requireReviewerAdmitted = !isAdmin && data.viewAll
+  return withEnrollmentReadTelemetry({
+    context,
+    read: async () => {
+      const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+      if (!isAdmin && !isTeacher) {
+        throw new AuthorizationError('admin or teacher access required', {
+          code: 'ROLE_REQUIRED',
+          details: {},
+        })
+      }
 
-  // Course IDs the viewer is on (as teacher or active substitute).
-  const viewerCourseIds =
-    reviewerFilter !== undefined ? await findCourseIdsForViewer(userId) : []
+      const reviewerFilter = data.viewAll ? undefined : userId
+      const requireReviewerAdmitted = !isAdmin && data.viewAll
 
-  const { rows, total } = await findEnrollmentsPage({
-    limit: data.pageSize,
-    offset: (data.page - 1) * data.pageSize,
-    search: data.search,
-    sortBy: data.sortBy,
-    sortDir: data.sortDir,
-    includeEmail: isAdmin,
-    reviewerFilter,
-    viewerCourseIds,
-    requireReviewerAdmitted,
+      // Course IDs the viewer is on (as teacher or active substitute).
+      const viewerCourseIds =
+        reviewerFilter !== undefined ? await findCourseIdsForViewer(userId) : []
+
+      const { rows, total } = await findEnrollmentsPage({
+        limit: data.pageSize,
+        offset: (data.page - 1) * data.pageSize,
+        search: data.search,
+        sortBy: data.sortBy,
+        sortDir: data.sortDir,
+        includeEmail: isAdmin,
+        reviewerFilter,
+        viewerCourseIds,
+        requireReviewerAdmitted,
+      })
+
+      const enrollmentIds = rows.map((row) => row.id)
+
+      // Fetch evaluations and reviewer assignments in parallel.
+      const [evaluations, rawAssignments, canExportContacts] =
+        await Promise.all([
+          findEvaluationsForEnrollments(enrollmentIds),
+          findReviewerAssignmentsForEnrollments(enrollmentIds),
+          hasStaffPrivilege(userId, 'enrollment_contact_export'),
+        ])
+
+      // Legacy rows may have courseId = null (created before ADR 0007 rev 2).
+      // Enrich them by falling back to the reviewer's course in course_teachers.
+      const nullReviewerIds = [
+        ...new Set(
+          rawAssignments
+            .filter((a) => a.courseId === null)
+            .map((a) => a.reviewerId),
+        ),
+      ]
+      const fallbackCourseByReviewer =
+        nullReviewerIds.length > 0
+          ? await findCourseIdsByTeacherIds(nullReviewerIds)
+          : new Map<string, string | null>()
+      const reviewerAssignments = rawAssignments.map((a) => ({
+        ...a,
+        courseId:
+          a.courseId ?? fallbackCourseByReviewer.get(a.reviewerId) ?? null,
+      }))
+
+      // Batch-fetch team members for all distinct course IDs on this page.
+      const uniqueCourseIds = [
+        ...new Set(
+          reviewerAssignments
+            .map((a) => a.courseId)
+            .filter((id): id is string => id !== null),
+        ),
+      ]
+      const peersForReviewers = await findPeersForReviewers(uniqueCourseIds)
+
+      const enrollmentsOut: Array<EnrollmentWithEvaluation> = rows.map(
+        (row) => {
+          const { evaluationSum, evaluationCount, ...enrollment } = row
+          const base = isAdmin
+            ? (enrollment as MaybeRedactedEnrollment)
+            : redactEnrollmentForTeacher(enrollment)
+          const reviewHeading = deriveReviewHeading(
+            row.id,
+            reviewerAssignments,
+            evaluations,
+            peersForReviewers,
+            !isAdmin,
+          )
+          const assignment = reviewerAssignments.find(
+            (a) => a.enrollmentId === row.id,
+          )
+          const reviewerEval = assignment
+            ? evaluations.find(
+                (e) =>
+                  e.enrollmentId === row.id &&
+                  e.evaluatorId === assignment.reviewerId,
+              )
+            : undefined
+          const reviewerAdmissionCategory =
+            reviewerEval?.admissionCategory ?? null
+          const canEvaluate = deriveCanEvaluate(
+            userId,
+            isAdmin,
+            assignment ?? null,
+            peersForReviewers,
+          )
+          return {
+            ...base,
+            evaluationSum,
+            evaluationCount,
+            reviewHeading,
+            reviewerAdmissionCategory,
+            canEvaluate,
+          }
+        },
+      )
+
+      return {
+        enrollments: enrollmentsOut,
+        total,
+        evaluations,
+        canExportContacts,
+      }
+    },
+    fields: (result) => ({
+      page: data.page,
+      pageSize: data.pageSize,
+      viewAll: data.viewAll,
+      hasSearch: data.search.trim().length > 0,
+      enrollmentCount: result.enrollments.length,
+      total: result.total,
+      evaluationCount: result.evaluations.length,
+      canExportContacts: result.canExportContacts,
+    }),
   })
-
-  const enrollmentIds = rows.map((row) => row.id)
-
-  // Fetch evaluations and reviewer assignments in parallel.
-  const [evaluations, rawAssignments, canExportContacts] = await Promise.all([
-    findEvaluationsForEnrollments(enrollmentIds),
-    findReviewerAssignmentsForEnrollments(enrollmentIds),
-    hasStaffPrivilege(userId, 'enrollment_contact_export'),
-  ])
-
-  // Legacy rows may have courseId = null (created before ADR 0007 rev 2).
-  // Enrich them by falling back to the reviewer's course in course_teachers.
-  const nullReviewerIds = [
-    ...new Set(
-      rawAssignments
-        .filter((a) => a.courseId === null)
-        .map((a) => a.reviewerId),
-    ),
-  ]
-  const fallbackCourseByReviewer =
-    nullReviewerIds.length > 0
-      ? await findCourseIdsByTeacherIds(nullReviewerIds)
-      : new Map<string, string | null>()
-  const reviewerAssignments = rawAssignments.map((a) => ({
-    ...a,
-    courseId: a.courseId ?? fallbackCourseByReviewer.get(a.reviewerId) ?? null,
-  }))
-
-  // Batch-fetch team members for all distinct course IDs on this page.
-  const uniqueCourseIds = [
-    ...new Set(
-      reviewerAssignments
-        .map((a) => a.courseId)
-        .filter((id): id is string => id !== null),
-    ),
-  ]
-  const peersForReviewers = await findPeersForReviewers(uniqueCourseIds)
-
-  const enrollmentsOut: Array<EnrollmentWithEvaluation> = rows.map((row) => {
-    const { evaluationSum, evaluationCount, ...enrollment } = row
-    const base = isAdmin
-      ? (enrollment as MaybeRedactedEnrollment)
-      : redactEnrollmentForTeacher(enrollment)
-    const reviewHeading = deriveReviewHeading(
-      row.id,
-      reviewerAssignments,
-      evaluations,
-      peersForReviewers,
-      !isAdmin,
-    )
-    const assignment = reviewerAssignments.find(
-      (a) => a.enrollmentId === row.id,
-    )
-    const reviewerEval = assignment
-      ? evaluations.find(
-          (e) =>
-            e.enrollmentId === row.id &&
-            e.evaluatorId === assignment.reviewerId,
-        )
-      : undefined
-    const reviewerAdmissionCategory = reviewerEval?.admissionCategory ?? null
-    const canEvaluate = deriveCanEvaluate(
-      userId,
-      isAdmin,
-      assignment ?? null,
-      peersForReviewers,
-    )
-    return {
-      ...base,
-      evaluationSum,
-      evaluationCount,
-      reviewHeading,
-      reviewerAdmissionCategory,
-      canEvaluate,
-    }
-  })
-
-  return { enrollments: enrollmentsOut, total, evaluations, canExportContacts }
 }
 
 export async function getEnrollmentByIdService(
   data: GetEnrollmentByIdInput,
   userId: string,
 ) {
-  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-  if (!isAdmin && !isTeacher) {
-    throw new AuthorizationError('admin or teacher access required', {
-      code: 'ROLE_REQUIRED',
-      details: {},
-    })
+  const context: EnrollmentReadLogContext = {
+    action: 'getEnrollmentById',
+    actorId: userId,
+    enrollmentId: data.enrollmentId,
+    startedAt: performance.now(),
   }
 
-  const enrollment = await findEnrollmentById(data.enrollmentId)
+  const result = await withEnrollmentReadTelemetry({
+    context,
+    read: async () => {
+      const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+      if (!isAdmin && !isTeacher) {
+        throw new AuthorizationError('admin or teacher access required', {
+          code: 'ROLE_REQUIRED',
+          details: {},
+        })
+      }
 
-  if (!enrollment) {
-    throw new NotFoundError('Enrollment not found', {
-      code: 'ENROLLMENT_NOT_FOUND',
-      details: { enrollmentId: data.enrollmentId },
-    })
-  }
+      const enrollment = await findEnrollmentById(data.enrollmentId)
 
-  if (!isAdmin) {
-    return {
-      enrollment: redactEnrollmentForTeacher(
-        enrollment,
-      ) as MaybeRedactedEnrollment,
-    }
-  }
+      if (!enrollment) {
+        throw new NotFoundError('Enrollment not found', {
+          code: 'ENROLLMENT_NOT_FOUND',
+          details: { enrollmentId: data.enrollmentId },
+        })
+      }
 
-  return { enrollment: enrollment as MaybeRedactedEnrollment }
+      return {
+        enrollment: (isAdmin
+          ? enrollment
+          : redactEnrollmentForTeacher(enrollment)) as MaybeRedactedEnrollment,
+        view: isAdmin ? 'admin' : 'teacher',
+      }
+    },
+    fields: (readResult) => ({
+      outcome: 'found',
+      view: readResult.view,
+      redacted: readResult.view === 'teacher',
+    }),
+  })
+
+  return { enrollment: result.enrollment }
 }
 
 export async function updateEnrollmentStatusService(

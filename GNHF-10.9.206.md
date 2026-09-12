@@ -3352,3 +3352,23 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
   `docs/plan/STRUCTURED_LOGGING.md`, and `src/utils/README.md`.
 - Hosted Better Stack / Cloudflare ingestion, dashboards, alerts, Uptime
   monitors, and source-map verification remain external setup work.
+
+## Iteration 122 — enrollment-read telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Enrollment list and detail reads now emit redacted
+  `enrollment_read_loaded` / `enrollment_read_failed` events with request
+  correlation, actor/enrollment IDs, pagination and view metadata, safe result
+  counts, duration, and the stable `enrollment_read_persistence` failure
+  category.
+- Applicant names, email addresses, phone numbers, application answers,
+  evaluation payloads, and raw persistence details remain excluded. Expected
+  authorization and not-found outcomes stay quiet, and response shapes are
+  unchanged.
+- Repository evidence: `src/utils/enrolment/service/enrolment.service.ts`,
+  `src/utils/enrolment/enrolment.integration.test.ts`,
+  `docs/plan/STRUCTURED_LOGGING.md`, and `src/utils/README.md`.
+- Focused enrollment integration coverage passes 46 tests. Hosted Better Stack
+  / Cloudflare ingestion, dashboards, alerts, Uptime monitors, and source-map
+  verification remain external setup work.

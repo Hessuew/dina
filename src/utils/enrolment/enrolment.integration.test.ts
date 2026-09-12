@@ -8,6 +8,7 @@ import {
   distributeEnrollmentsService,
   endSubstitutionService,
   getActiveSubstitutedTeacherIdsService,
+  getEnrollmentByIdService,
   getEnrollmentEmailsService,
   getEnrollmentsService,
   searchEnrollmentContactsByNamesService,
@@ -465,6 +466,101 @@ const LIST_INPUT = {
   sortDir: 'desc',
   viewAll: true,
 } as const
+
+describe('enrollment read telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs safe list and detail metadata without enrollment payloads', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const enrollmentId = await seedEnrollment({
+      fullLegalName: 'Private Applicant',
+      email: 'private-applicant@test.dev',
+    })
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org/enrollments', {
+        headers: { 'x-request-id': 'enrollment-list-read' },
+      }),
+      () => getEnrollmentsService(LIST_INPUT, adminId),
+    )
+    const listEvent = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((event) => event.event === 'enrollment_read_loaded')
+
+    expect(listEvent).toMatchObject({
+      event: 'enrollment_read_loaded',
+      path: 'serverFn:getEnrollments',
+      requestId: 'enrollment-list-read',
+      page: 1,
+      pageSize: 50,
+      viewAll: true,
+      hasSearch: false,
+      enrollmentCount: 1,
+      total: 1,
+      status: 'success',
+    })
+    expect(listEvent?.durationMs).toEqual(expect.any(Number))
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org/enrollments/detail', {
+        headers: { 'x-request-id': 'enrollment-detail-read' },
+      }),
+      () => getEnrollmentByIdService({ enrollmentId }, adminId),
+    )
+    const detailEvent = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((event) => event.requestId === 'enrollment-detail-read')
+
+    expect(detailEvent).toMatchObject({
+      event: 'enrollment_read_loaded',
+      path: 'serverFn:getEnrollmentById',
+      requestId: 'enrollment-detail-read',
+      actorId: adminId,
+      enrollmentId,
+      outcome: 'found',
+      view: 'admin',
+      redacted: false,
+      status: 'success',
+    })
+    expect(detailEvent?.durationMs).toEqual(expect.any(Number))
+
+    const serialized = infoSpy.mock.calls
+      .map(([line]) => String(line))
+      .join('\n')
+    expect(serialized).not.toContain('Private Applicant')
+    expect(serialized).not.toContain('private-applicant@test.dev')
+  })
+
+  it('logs unexpected enrollment read failures with a stable category', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    vi.spyOn(enrollmentRepository, 'findEnrollmentsPage').mockRejectedValueOnce(
+      new Error('enrollment database secret'),
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/enrollments', {
+          headers: { 'x-request-id': 'enrollment-read-failure' },
+        }),
+        () => getEnrollmentsService(LIST_INPUT, adminId),
+      ),
+    ).rejects.toThrow('enrollment database secret')
+
+    const serialized = String(errorSpy.mock.calls[0]?.[0])
+    expect(JSON.parse(serialized)).toMatchObject({
+      event: 'enrollment_read_failed',
+      path: 'serverFn:getEnrollments',
+      requestId: 'enrollment-read-failure',
+      status: 'failure',
+      errorCategory: 'enrollment_read_persistence',
+    })
+    expect(serialized).not.toContain('enrollment database secret')
+  })
+})
 
 // Course with peer teacher B and (to-be-)absent teacher C, plus substitute A.
 // Seeds one enrollment assigned to B (B's own queue) and one unscored enrollment
