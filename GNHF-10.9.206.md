@@ -1,10 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 107
-**Scope:** reduce development-tool attack surface by removing the unused local
-shadcn CLI and pinning all compatible picomatch 4.x resolutions to a patched
-release.
+**Iteration:** 108
+**Scope:** remediate the remaining moderate `srvx` development-tool advisory
+with a compatible root resolution and record the lower-severity audit baseline.
 
 ## Executive summary
 
@@ -33,6 +32,9 @@ shadcn@latest` intentionally.
 - The dependency-security GitHub workflow now blocks pull requests, main pushes,
   and scheduled/manual audits when `bun audit --audit-level=high` finds a high or
   critical advisory, while still uploading the JSON report for triage.
+- The remaining moderate `srvx` advisory is now resolved by a compatible root
+  `^0.11.13` override; the audit report retains only lower-severity findings for
+  routine review, and the high/critical CI threshold remains clear.
 - Assignment submission saves now emit structured Better Stack/Cloudflare-ready
   outcome events with request ID, status, duration, and stable error category.
 - Enrollment distribution and teacher substitution mutations now emit
@@ -283,15 +285,16 @@ opened_at)`. It supports filtering active windows before recent-opening
   `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
 - Phase 5 now has a repository-owned dependency-security baseline: the weekly,
   pull-request, main-branch, and manual GitHub audit workflow runs
-  `bun audit --audit-level=high`, uploads its JSON report, and warns while the
-  known advisory baseline is triaged. Dependabot checks the Bun-compatible
+  `bun audit --audit-level=high`, blocks high/critical findings, and uploads its
+  JSON report for lower-severity triage. Dependabot checks the Bun-compatible
   manifest and lockfile weekly. The review policy and remaining RBAC, secret,
   audit, and threat-model work are documented in `docs/plan/SECURITY.md`.
 - The direct browser-used `pdfjs-dist` high-severity advisory is remediated by
   upgrading from `5.7.284` to `^6.2.108`. The private PDF viewer and local eBook
   importer use only PDF.js parsing/canvas APIs and do not instantiate the
-  annotation/viewer scripting layer. Remaining high/critical findings are
-  transitive and continue through the report-only audit triage process.
+  annotation/viewer scripting layer. The current high/critical baseline is
+  clear; lower-severity development-tool findings remain visible in the audit
+  report for routine triage.
 - The dev-only `@tanstack/devtools-vite` dependency chain no longer resolves the
   vulnerable `shell-quote@1.8.3`: a root `package.json` override pins
   `shell-quote` to `^1.10.0`, covering its command-injection and parser
@@ -302,9 +305,9 @@ opened_at)`. It supports filtering active windows before recent-opening
   branch. The local audit baseline was subsequently cleared by removing the
   unused shadcn CLI dependency and pinning compatible picomatch 4.x paths.
 - The `vitest` → `vite-node` development chain no longer resolves vulnerable
-  `vite@7.3.1`: a root `package.json` override pins every Vite resolution to
-  `^7.3.6`, removing the nested package while keeping the existing direct Vite
-  version and build behavior unchanged.
+  `vite@7.3.1`: the current root `package.json` override pins every Vite
+  resolution to `^8.3.0`, removing the nested package while keeping the current
+  build behavior unchanged.
 - Calendar event listing now authenticates and authorizes the caller inside the
   server-side service. Students can no longer bypass the `/events` route guard
   by invoking the `getEvents` server function directly; teachers and admins
@@ -1929,11 +1932,12 @@ caching, load tests, and a background-job decision from production data.
 ### Phase 5 — Security
 
 Dependency audit reporting is implemented in `.github/workflows/dependency-security.yml`
-and weekly Dependabot checks are enabled; remediation is currently report-only
-because the baseline contains known advisories. Calendar event listing now has
-server-side teacher/admin enforcement in addition to the route guard. The
-remaining work is broader RBAC/RLS review, admin access hardening, secret inventory,
-Better Stack audit-event verification, and threat modeling. Better Stack must not receive passwords,
+and weekly Dependabot checks are enabled. The high/critical baseline is clear and
+the workflow blocks future high/critical findings while retaining lower-severity
+JSON reports for routine triage. Calendar event listing now has server-side
+teacher/admin enforcement in addition to the route guard. The remaining work is
+broader RBAC/RLS review, admin access hardening, secret inventory, Better Stack
+audit-event verification, and threat modeling. Better Stack must not receive passwords,
 tokens, cookies, service-role keys, connection strings, raw submission text, or
 private mentorship content. See `docs/plan/SECURITY.md`.
 
@@ -3008,3 +3012,25 @@ This iteration completed the next bounded Phase 5 dependency-security unit:
 - Enabled the same high/critical threshold as a blocking condition in
   `.github/workflows/dependency-security.yml`; the JSON audit artifact remains
   uploaded on failures for investigation.
+
+## Iteration 108 — srvx moderate advisory remediation
+
+This iteration completed the next bounded Phase 5 dependency-security unit:
+
+- Added a compatible root Bun/npm override for `srvx` at `^0.11.13`. The
+  TanStack Start plugin's `^0.11.9` range and H3's `^0.11.13` range both accept
+  the patched lockfile resolution, currently `srvx@0.11.22`.
+- This removes the moderate absolute-URI middleware-bypass advisory
+  [GHSA-p36q-q72m-gchr](https://github.com/advisories/GHSA-p36q-q72m-gchr)
+  from the development-tool dependency tree without changing deployed
+  Worker/browser behavior.
+- The post-change audit report contains only the low `@babel/core` advisory and
+  moderate `@humanfs/node`/`esbuild` development-tool findings. No high or
+  critical advisories are present, so the existing CI blocking threshold remains
+  green while lower-severity findings stay visible for routine review.
+
+Validation: `bun install`, dependency-tree inspection, and `git diff --check`
+passed. The post-change `bun audit --json` report was generated and inspected;
+it exits non-zero only for the three below-threshold findings listed above, with
+zero high or critical advisories. Full quality, integration, and
+production-build validation remains required before final handoff.

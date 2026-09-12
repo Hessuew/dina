@@ -2,7 +2,7 @@
 
 **Status:** In progress — the direct browser PDF, nested Vite, shell-quote,
 brace-expansion, Browserslist, PostCSS, Nanoid, fast-uri, flatted, js-yaml,
-ip-address, sharp, and Hono dependencies are remediated; the reviewed
+ip-address, sharp, Hono, and srvx dependencies are remediated; the reviewed
 server-function authorization gaps, secret-inventory contract, and threat-model baseline are documented incrementally,
 while hosted security verification and non-high transitive advisories remain pending
 **Phase:** Engineering Roadmap Phase 5: Security
@@ -19,11 +19,11 @@ is present; lower-severity findings remain visible in the uploaded report.
 Dependabot checks the Bun-compatible npm manifest and lockfile weekly and labels
 update pull requests with `dependencies` and `security`.
 
-The advisory workflow remains report-only while hosted security verification is
-completed. The direct browser-used `pdfjs-dist` advisory is remediated at
+The workflow blocks high and critical findings while hosted security verification
+is completed. The direct browser-used `pdfjs-dist` advisory is remediated at
 `^6.2.108`; the local audit report now contains no high or critical findings.
-Lower-severity development-tool advisories remain visible in
-the uploaded JSON report and are not part of the release-blocking baseline.
+Lower-severity development-tool advisories remain visible in the uploaded JSON
+report and are not part of the release-blocking baseline.
 Do not suppress an advisory solely to make the workflow green. For each finding,
 decide whether to upgrade, replace, isolate, or accept it with a documented owner
 and review date.
@@ -215,6 +215,22 @@ This is a development-only tooling remediation and does not change application
 runtime behavior. The local high-severity audit baseline is now clear; the
 remaining lower-severity advisories are still retained in the report-only JSON
 artifact for routine review.
+
+## srvx transitive development-tool dependency remediation
+
+The TanStack Start plugin path previously resolved `srvx@0.11.9`, which is
+affected by the absolute-URI middleware-bypass advisory
+[GHSA-p36q-q72m-gchr](https://github.com/advisories/GHSA-p36q-q72m-gchr).
+The compatible root `overrides` entry now floors `srvx` at `^0.11.13`, outside
+the affected `<0.11.13` range. Both the TanStack `^0.11.9` consumer and the H3
+`^0.11.13` consumer accept the patched resolution, which is currently
+`srvx@0.11.22`.
+
+This is a development/build-tooling remediation; `srvx` is not bundled into the
+deployed Worker/browser runtime. The moderate advisory is removed from the
+local audit report without changing application behavior. The report still
+contains lower-severity findings for `@babel/core`, `@humanfs/node`, and
+`esbuild`, which remain visible for separate routine review.
 
 ## Review order
 
