@@ -15,8 +15,10 @@ import {
   findInvitationByEmail,
   findInvitationById,
 } from '@/utils/invitation/repository/invitations.repository'
+import * as invitationsRepository from '@/utils/invitation/repository/invitations.repository'
 import { seedInvitation, seedProfile } from '@/../test/integration/seed'
 import { setEmailSender } from '@/utils/email'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
@@ -226,16 +228,35 @@ describe('getInvitationByEmailService (integration)', () => {
 })
 
 describe('getInvitationsService (integration)', () => {
-  it('admin lists all invitations with inviter details', async () => {
+  it('admin lists all invitations with inviter details and safe telemetry', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     await seedInvitation({ email: 'a@test.dev' })
     await seedInvitation({ email: 'b@test.dev' })
 
-    const { invitations } = await getInvitationsService(adminId)
+    const { invitations } = await withObservabilityRequest(
+      new Request('https://christ-dina.org/invitations', {
+        headers: { 'x-request-id': 'invitation-list-read' },
+      }),
+      () => getInvitationsService(adminId),
+    )
 
     expect(invitations.length).toBe(2)
     expect(invitations[0]).toHaveProperty('inviter')
     expect(invitations[0].inviter).toHaveProperty('email')
+
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('a@test.dev')
+    expect(line).not.toContain('b@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitations_loaded',
+      path: 'serverFn:getInvitations',
+      requestId: 'invitation-list-read',
+      actorId: adminId,
+      invitationCount: 2,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
   })
 
   it('rejects a non-admin caller', async () => {
@@ -244,6 +265,40 @@ describe('getInvitationsService (integration)', () => {
     await expect(getInvitationsService(studentId)).rejects.toMatchObject({
       code: 'ROLE_REQUIRED',
       status: 403,
+    })
+  })
+
+  it('logs stable persistence failures without invitation details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const repositoryError = new Error(
+      'database connectionString secret for invitee@test.dev',
+    )
+    vi.spyOn(
+      invitationsRepository,
+      'findAllInvitationsWithInviter',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/invitations', {
+          headers: { 'x-request-id': 'invitation-list-failure' },
+        }),
+        () => getInvitationsService(adminId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('invitee@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitations_load_failed',
+      path: 'serverFn:getInvitations',
+      requestId: 'invitation-list-failure',
+      actorId: adminId,
+      status: 'failure',
+      errorCategory: 'invitation_read_persistence',
+      durationMs: expect.any(Number),
     })
   })
 })

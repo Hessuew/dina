@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 128
-**Scope:** add redacted Better Stack-ready telemetry for dashboard upcoming-lesson
-reads and record the remaining hosted observability evidence gate.
+**Iteration:** 129
+**Scope:** add redacted Better Stack-ready telemetry for the Admin invitation-list
+read and record the remaining hosted observability evidence gate.
 
 ## Executive summary
 
@@ -172,6 +172,11 @@ shadcn@latest` intentionally.
   duration, and stable error categories. Revoke and delete operations emit the
   same audit shape, and invitation email addresses, tokens, and provider error
   text remain excluded.
+- Admin invitation-list reads now emit redacted `invitations_loaded` /
+  `invitations_load_failed` events with request correlation, actor ID, safe
+  result counts, duration, and the stable `invitation_read_persistence`
+  failure category. Invitation emails, inviter details, tokens, and raw
+  persistence errors remain excluded.
 - Course-teacher lesson creation, update, and deletion now emit redacted
   `lesson_created`, `lesson_updated`, and `lesson_deleted` events with request
   correlation, server-function path, actor/course/lesson IDs, status, and
@@ -3506,6 +3511,25 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
   preserve the original error.
 - Added integration coverage for profile enforcement, request correlation,
   safe success metadata, and persistence-error redaction.
+
+Hosted Better Stack / Cloudflare ingestion, dashboards, alerts, Uptime
+monitors, and source-map verification remain external follow-up.
+
+## Iteration 129 — Admin invitation-list read telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Admin invitation-list reads now emit redacted `invitations_loaded` /
+  `invitations_load_failed` events with request correlation, actor ID, safe
+  invitation counts, duration, and the stable `invitation_read_persistence`
+  failure category.
+- Invitation emails, inviter details, tokens, and raw persistence errors remain
+  outside Better Stack/Cloudflare telemetry. Existing Admin authorization and
+  response payloads remain unchanged; unexpected repository failures preserve
+  the original error.
+- Added integration coverage for safe success metadata, request correlation,
+  redaction, persistence-failure categorization, and original-error
+  preservation.
 
 Hosted Better Stack / Cloudflare ingestion, dashboards, alerts, Uptime
 monitors, and source-map verification remain external follow-up.

@@ -29,6 +29,7 @@ import {
   AuthorizationError,
   ConflictError,
   NotFoundError,
+  isAppError,
 } from '@/utils/errors'
 import { env } from '@/env'
 import { sendInvitationEmail } from '@/utils/email'
@@ -37,6 +38,7 @@ import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 type InvitationAction =
   | 'createInvitation'
+  | 'getInvitations'
   | 'resendInvitation'
   | 'revokeInvitation'
   | 'deleteInvitation'
@@ -65,6 +67,10 @@ function logInvitationEvent(
     role: context.role,
     ...fields,
   })
+}
+
+function shouldLogInvitationReadFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
 }
 
 async function sendInvitationEmailOrThrow(input: {
@@ -244,8 +250,26 @@ export async function getInvitationsService(userId: string) {
     })
   }
 
-  const allInvitations = await findAllInvitationsWithInviter()
-  return { invitations: allInvitations }
+  const context: InvitationLogContext = {
+    action: 'getInvitations',
+    actorId: userId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const allInvitations = await findAllInvitationsWithInviter()
+    logInvitationEvent('info', 'invitations_loaded', context, {
+      invitationCount: allInvitations.length,
+    })
+    return { invitations: allInvitations }
+  } catch (error) {
+    if (shouldLogInvitationReadFailure(error)) {
+      logInvitationEvent('error', 'invitations_load_failed', context, {
+        errorCategory: 'invitation_read_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 export async function getInvitationByEmailService(

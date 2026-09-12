@@ -115,6 +115,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     persistence failures; revoke and delete emit audit events. Actor and
     invitation IDs plus role are safe fields, while email addresses, tokens,
     and provider messages are excluded.
+  - Admin invitation-list reads emit redacted `invitations_loaded` /
+    `invitations_load_failed` events with request correlation, actor ID, safe
+    result counts, duration, and the stable `invitation_read_persistence`
+    category; invitation emails, inviter details, tokens, and raw persistence
+    errors remain excluded.
   - Course-teacher lesson authoring emits redacted `lesson_created`,
     `lesson_updated`, and `lesson_deleted` events with request correlation,
     actor/course/lesson IDs, status, and duration; persistence failures use
