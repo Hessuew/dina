@@ -82,6 +82,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    and the stable `enrollment_contact_export_persistence` failure category.
    Email addresses, names, phone numbers, and raw persistence errors remain
    excluded.
+   Manual enrollment contact lookups by pasted names now emit redacted
+   `enrollment_contact_lookup_completed` / `enrollment_contact_lookup_failed`
+   events with request correlation, actor ID, query/candidate/group counts,
+   matched-contact and suggestion counts, duration, and the stable
+   `enrollment_contact_lookup_persistence` failure category. Names, emails,
+   phone numbers, and raw persistence errors remain excluded.
    Course-teacher lesson authoring now emits redacted
    `lesson_created`, `lesson_updated`, and `lesson_deleted` events with
    request correlation, server-function path, actor/course/lesson IDs,

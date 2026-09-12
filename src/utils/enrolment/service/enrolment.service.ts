@@ -138,9 +138,13 @@ type EnrollmentReadLogContext = {
   startedAt: number
 }
 
-type EnrollmentContactExportContext = {
+type EnrollmentContactLogAction =
+  'getEnrollmentEmails' | 'searchEnrollmentContactsByNames'
+
+type EnrollmentContactLogContext = {
   actorId: string
-  group: GetEnrollmentEmailsInput['group']
+  action: EnrollmentContactLogAction
+  group?: GetEnrollmentEmailsInput['group']
   startedAt: number
 }
 
@@ -165,15 +169,15 @@ function shouldLogEnrollmentReadFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
 }
 
-function logEnrollmentContactExportEvent(
+function logEnrollmentContactEvent(
   level: LogLevel,
   event: string,
-  context: EnrollmentContactExportContext,
+  context: EnrollmentContactLogContext,
   fields: Record<string, unknown> = {},
 ): void {
   logServerEvent(level, event, {
     requestId: getRequestId(),
-    path: 'serverFn:getEnrollmentEmails',
+    path: `serverFn:${context.action}`,
     status: level === 'error' ? 'failure' : 'success',
     durationMs: elapsedMs(context.startedAt),
     actorId: context.actorId,
@@ -1300,23 +1304,21 @@ export async function getEnrollmentEmailsService(
   userId: string,
 ): Promise<{ emails: Array<string> }> {
   await requireEnrollmentContactExport(userId)
-  const context: EnrollmentContactExportContext = {
+  const context: EnrollmentContactLogContext = {
     actorId: userId,
+    action: 'getEnrollmentEmails',
     group: data.group,
     startedAt: performance.now(),
   }
 
   try {
     const emails = await findEnrollmentEmailsByGroup(data.group)
-    logEnrollmentContactExportEvent(
-      'info',
-      'enrollment_contact_exported',
-      context,
-      { contactCount: emails.length },
-    )
+    logEnrollmentContactEvent('info', 'enrollment_contact_exported', context, {
+      contactCount: emails.length,
+    })
     return { emails }
   } catch (error) {
-    logEnrollmentContactExportEvent(
+    logEnrollmentContactEvent(
       'error',
       'enrollment_contact_export_failed',
       context,
@@ -1341,9 +1343,42 @@ export async function searchEnrollmentContactsByNamesService(
     throw new ValidationError('Enter at least one name')
   }
 
-  const candidates = await findEnrollmentContactLookupCandidates(queries)
-  return {
-    groups: buildEnrollmentContactLookupGroups(queries, candidates),
+  const context: EnrollmentContactLogContext = {
+    actorId: userId,
+    action: 'searchEnrollmentContactsByNames',
+    startedAt: performance.now(),
+  }
+
+  try {
+    const candidates = await findEnrollmentContactLookupCandidates(queries)
+    const groups = buildEnrollmentContactLookupGroups(queries, candidates)
+    logEnrollmentContactEvent(
+      'info',
+      'enrollment_contact_lookup_completed',
+      context,
+      {
+        queryCount: queries.length,
+        candidateCount: candidates.length,
+        groupCount: groups.length,
+        matchedContactCount: groups.reduce(
+          (count, group) => count + group.matches.length,
+          0,
+        ),
+        suggestionCount: groups.reduce(
+          (count, group) => count + group.suggestions.length,
+          0,
+        ),
+      },
+    )
+    return { groups }
+  } catch (error) {
+    logEnrollmentContactEvent(
+      'error',
+      'enrollment_contact_lookup_failed',
+      context,
+      { errorCategory: 'enrollment_contact_lookup_persistence' },
+    )
+    throw error
   }
 }
 

@@ -1076,6 +1076,10 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
 })
 
 describe('enrollment contact lookup by name (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   async function seedLookupEnrollments() {
     await seedEnrollment({
       fullLegalName: 'Maria Santos',
@@ -1157,6 +1161,81 @@ describe('enrollment contact lookup by name (integration)', () => {
       teacherId,
     )
     expect(result.groups[0].matches[0]?.email).toBe('maria@test.dev')
+  })
+
+  it('logs safe lookup telemetry without names or contact values', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    await seedLookupEnrollments()
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org/enrollments/contact-lookup', {
+        headers: { 'x-request-id': 'enrollment-contact-lookup-request' },
+      }),
+      () =>
+        searchEnrollmentContactsByNamesService(
+          { names: 'Mia\nSmith\nUnknown Person' },
+          adminId,
+        ),
+    )
+
+    const serialized = infoSpy.mock.calls
+      .map(([line]) => String(line))
+      .find((line) => line.includes('enrollment_contact_lookup_completed'))
+    expect(serialized).toBeDefined()
+    expect(serialized).not.toContain('Maria Santos')
+    expect(serialized).not.toContain('maria@test.dev')
+    expect(serialized).not.toContain('+358 40 1234567')
+    expect(JSON.parse(serialized!)).toMatchObject({
+      event: 'enrollment_contact_lookup_completed',
+      path: 'serverFn:searchEnrollmentContactsByNames',
+      requestId: 'enrollment-contact-lookup-request',
+      actorId: adminId,
+      queryCount: 3,
+      candidateCount: 3,
+      groupCount: 3,
+      matchedContactCount: 3,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+  })
+
+  it('logs stable lookup persistence failures without raw repository errors', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const repositoryError = new Error(
+      'connectionString=secret; email=private-lookup@test.dev',
+    )
+    vi.spyOn(
+      enrollmentRepository,
+      'findEnrollmentContactLookupCandidates',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/enrollments/contact-lookup', {
+          headers: { 'x-request-id': 'enrollment-contact-lookup-failure' },
+        }),
+        () =>
+          searchEnrollmentContactsByNamesService(
+            { names: 'Private Applicant' },
+            adminId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const serialized = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(serialized).not.toContain('connectionString')
+    expect(serialized).not.toContain('private-lookup@test.dev')
+    expect(JSON.parse(serialized)).toMatchObject({
+      event: 'enrollment_contact_lookup_failed',
+      path: 'serverFn:searchEnrollmentContactsByNames',
+      requestId: 'enrollment-contact-lookup-failure',
+      actorId: adminId,
+      status: 'failure',
+      errorCategory: 'enrollment_contact_lookup_persistence',
+      durationMs: expect.any(Number),
+    })
   })
 })
 

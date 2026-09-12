@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 130
+**Iteration:** 131
 **Scope:** add redacted Better Stack-ready telemetry for privileged enrollment
-contact exports and record the remaining hosted observability evidence gate.
+contact lookups and record the remaining hosted observability evidence gate.
 
 ## Executive summary
 
@@ -183,6 +183,13 @@ shadcn@latest` intentionally.
   and the stable `enrollment_contact_export_persistence` category. Email
   addresses, names, phone numbers, and raw persistence errors remain outside
   Better Stack/Cloudflare telemetry.
+- Manual enrollment contact lookups by pasted names now emit redacted
+  `enrollment_contact_lookup_completed` /
+  `enrollment_contact_lookup_failed` events with request correlation, actor ID,
+  safe query/candidate/group/match counts, duration, and the stable
+  `enrollment_contact_lookup_persistence` category. Names, emails, phone
+  numbers, and raw persistence errors remain outside Better Stack/Cloudflare
+  telemetry.
 - Course-teacher lesson creation, update, and deletion now emit redacted
   `lesson_created`, `lesson_updated`, and `lesson_deleted` events with request
   correlation, server-function path, actor/course/lesson IDs, status, and
@@ -3559,3 +3566,26 @@ Validation: focused enrollment integration tests, formatting, typecheck,
 `bun run quality:gate`, and the production build pass. Hosted Better Stack /
 Cloudflare ingestion, dashboards, alerts, Uptime monitors, and source-map
 verification remain external follow-up.
+
+## Iteration 131 — privileged enrollment contact-lookup telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Manual Admin/staff-privileged enrollment contact lookup by pasted names now
+  emits `enrollment_contact_lookup_completed` and
+  `enrollment_contact_lookup_failed` events with request correlation, actor ID,
+  safe query/candidate/group/match counts, duration, and stable persistence
+  categorization.
+- Names, email addresses, phone numbers, and raw repository errors remain
+  outside Better Stack/Cloudflare telemetry. Expected authorization and input
+  validation failures remain ordinary user-facing outcomes.
+- Added integration coverage for safe success metadata, request correlation,
+  contact-value exclusion, persistence-failure categorization, and original
+  error preservation.
+
+Validation: the focused enrollment integration suite passes 50 tests, the full
+integration suite passes 452 tests, `bun run quality:gate` passes with 1,953
+unit tests, and typecheck, formatting, and the production build pass. Hosted
+Better Stack / Cloudflare ingestion, dashboards, alerts, Uptime monitors, and
+source-map verification remain external follow-up; Notion evidence is
+synchronized for this slice.
