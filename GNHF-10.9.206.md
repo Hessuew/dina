@@ -1,10 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 111
-**Scope:** implement the next repository-owned Phase 4 performance slice for
-the published student assignment list and record the remaining hosted evidence
-gate.
+**Iteration:** 112
+**Scope:** close the Phase 5 course-catalog authorization gap and record the
+remaining hosted security evidence gate.
 
 ## Executive summary
 
@@ -167,6 +166,9 @@ shadcn@latest` intentionally.
   Assigned course teachers and admins retain unpublished lessons and media;
   other teachers receive published content only, preventing draft disclosure
   and signed URLs for unpublished private media.
+- Course catalog reads now apply the same draft-content boundary before returning
+  dashboard and catalog payloads: assigned course teachers and admins retain
+  unpublished lessons, while other teachers receive published lessons only.
 - Exam create, save, and publish mutations now emit redacted
   `exam_created`, `exam_updated`, and `exam_published` events with request
   correlation, actor/exam IDs, exam status, question counts, duration, and
@@ -395,6 +397,27 @@ This iteration completed the next repository-owned Phase 4 performance slice:
   records were synchronized. Production Readiness was skipped because only
   the protected template row exists and this index does not change launch
   ownership, SLOs, or a production decision.
+
+## Iteration 112 — course-catalog authorization hardening
+
+This iteration closed the remaining parallel course-content read path:
+
+- `getCoursesService` previously returned unpublished lessons to every teacher
+  because the course-list query used the broad teacher role as its only switch.
+- The service now keeps draft lessons only for the Admin or the teacher assigned
+  to that course; other teachers receive the same published-only lesson view
+  used by course-detail reads.
+- Added integration coverage for an assigned teacher retaining drafts and an
+  outsider teacher receiving only published lessons. Course metadata, admin
+  access, student progress behavior, and response shapes remain unchanged.
+- Updated `src/utils/README.md`, `docs/plan/SECURITY.md`, and
+  `docs/plan/THREAT_MODEL.md`. Better Stack/Cloudflare acceptance, hosted RLS,
+  restore/rollback rehearsal, and public-abuse controls remain external
+  follow-up work.
+
+Validation: focused course integration tests passed (52 tests), the full
+integration suite passed (409 tests), the quality gate passed (1,953 unit
+tests), and formatting, typecheck, and the production build passed.
 
 ## Iteration 85 — flatted transitive dependency remediation
 

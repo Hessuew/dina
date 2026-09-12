@@ -93,6 +93,27 @@ describe('getCoursesService (integration)', () => {
     expect(courses[0].lessons).toHaveLength(2)
   })
 
+  it('teacher sees drafts only for courses they manage', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const assignedCourseId = await seedCourse({ title: 'Assigned course' })
+    const otherCourseId = await seedCourse({ title: 'Other course' })
+    await seedCourseTeacher(assignedCourseId, teacherId)
+    await seedLesson({ courseId: assignedCourseId, isPublished: true })
+    await seedLesson({ courseId: assignedCourseId, isPublished: false })
+    await seedLesson({ courseId: otherCourseId, isPublished: true })
+    await seedLesson({ courseId: otherCourseId, isPublished: false })
+
+    const { courses, role } = await getCoursesService(teacherId)
+
+    expect(role).toBe('teacher')
+    expect(
+      courses.find((course) => course.id === assignedCourseId)?.lessons,
+    ).toHaveLength(2)
+    expect(
+      courses.find((course) => course.id === otherCourseId)?.lessons,
+    ).toHaveLength(1)
+  })
+
   it('student sees only published lessons with progress fields', async () => {
     const studentId = await seedProfile({ role: 'student' })
     const courseId = await seedCourse()

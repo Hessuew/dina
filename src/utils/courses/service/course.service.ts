@@ -123,14 +123,34 @@ function restrictCourseToPublishedContent(course: CourseDetail): CourseDetail {
   }
 }
 
+function restrictCourseListToPublishedLessons(
+  courses: ReadonlyArray<CourseAssetRow>,
+  teacherId: string,
+): Array<CourseAssetRow> {
+  return courses.map((course) => {
+    const managesCourse = course.courseTeachers.some(
+      (teacher) => teacher.teacherId === teacherId,
+    )
+    if (managesCourse) return course
+    return {
+      ...course,
+      lessons: course.lessons.filter((lesson) => lesson.isPublished),
+    }
+  })
+}
+
 export async function getCoursesService(userId: string) {
   const profile = await getUserProfile(userId)
   const isStudentView = profile.role === 'student'
   const allCourses = await findAllCourses(!isStudentView)
+  const visibleCourses =
+    profile.role === 'teacher'
+      ? restrictCourseListToPublishedLessons(allCourses, userId)
+      : allCourses
 
   if (!isStudentView) {
     return {
-      courses: await signCourseAssets(allCourses),
+      courses: await signCourseAssets(visibleCourses),
       role: profile.role,
     }
   }

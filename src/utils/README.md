@@ -224,6 +224,8 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Course detail reads expose unpublished lessons and media only to the
     assigned course teachers or admins; other teachers receive published
     course content only.
+  - Course catalog reads expose unpublished lessons only to the assigned
+    course teachers or admins; other teachers receive published lessons only.
   - Calendar event listing and mutations use `event/service/event.service.ts`
     for the shared database adapter, teacher/Admin service boundary, and
     redacted `calendar_event_*` operational events.

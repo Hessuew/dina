@@ -404,6 +404,16 @@ from using a course-detail request for another course to obtain draft content
 or signed URLs for unpublished private media. Integration coverage verifies
 the outsider-teacher response while preserving the assigned-teacher path.
 
+### Course-catalog content boundary
+
+The course catalog service loads unpublished lesson rows for admins and
+assigned course teachers, but filters them to published lessons for other
+teachers before signing and returning the catalog payload. This keeps course
+list responses consistent with the course-detail boundary and prevents an
+outsider teacher from receiving draft lesson data through a dashboard or other
+catalog consumer. Integration coverage verifies assigned-teacher draft access
+and outsider-teacher publication filtering.
+
 ### Profile role mutation boundary
 
 The `profiles.role` column is not part of the self-service profile update
@@ -477,12 +487,13 @@ this repository; the remaining step is operator execution and evidence capture.
   required; the active
   substitution lookup now has the same Admin-only service boundary, the
   teacher-directory read requires a persisted caller profile, and the student
-  directory list/detail services require a teacher or Admin actor. Post
-  channel/feed/post/comment reads and community mutations now require a
-  persisted caller profile; student exam surfaces now require the persisted
-  `student` role rather than merely excluding staff roles. The profile role
-  mutation boundary now also blocks direct authenticated Supabase role changes
-  unless the JWT subject is an Admin.
+  directory list/detail services require a teacher or Admin actor. Course
+  detail and catalog reads now filter draft content to assigned course
+  teachers and Admins. Post channel/feed/post/comment reads and community
+  mutations now require a persisted caller profile; student exam surfaces now
+  require the persisted `student` role rather than merely excluding staff
+  roles. The profile role mutation boundary now also blocks direct
+  authenticated Supabase role changes unless the JWT subject is an Admin.
   The request-identity-aware RLS migration gate and policy-family matrix are
   documented in [`RLS_REQUEST_IDENTITY.md`](./RLS_REQUEST_IDENTITY.md); no
   legacy policy should be enabled or tightened until its hosted identity,
