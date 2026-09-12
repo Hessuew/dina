@@ -33,16 +33,43 @@ jobs:
           bun-version: 1.3.10
       - run: bun install --frozen-lockfile
       - name: Run high-severity dependency audit
-        id: audit
         shell: bash
         run: |
           set +e
           bun audit --audit-level=high --json > bun-audit.json
           audit_status=$?
-          if [ "$audit_status" -ne 0 ]; then
-            echo "::warning::bun audit reported high or critical vulnerabilities; review bun-audit.json and open remediation work."
+          set -e
+          if [ ! -s bun-audit.json ]; then
+            echo "Dependency audit did not produce a JSON report (exit $audit_status)."
+            exit 1
           fi
-          exit 0
+          AUDIT_STATUS="$audit_status" node --input-type=module -e '
+            import { readFileSync } from "node:fs"
+
+            const report = JSON.parse(readFileSync("bun-audit.json", "utf8"))
+            const findings = Object.entries(report).flatMap(([packageName, advisories]) =>
+              advisories.map((advisory) => ({ packageName, ...advisory })),
+            )
+            const blocking = findings.filter(
+              ({ severity }) => severity === "high" || severity === "critical",
+            )
+
+            if (blocking.length > 0) {
+              console.error(
+                `Dependency audit found ${blocking.length} high/critical advisory(s).`,
+              )
+              for (const finding of blocking) {
+                console.error(`- ${finding.packageName}: ${finding.title}`)
+              }
+              process.exit(1)
+            }
+
+            if (Number(process.env.AUDIT_STATUS) !== 0) {
+              console.log(
+                "bun audit returned non-zero for below-threshold findings; no high/critical advisories were found.",
+              )
+            }
+          '
       - name: Upload audit report
         if: always()
         uses: actions/upload-artifact@v4

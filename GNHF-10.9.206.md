@@ -1,9 +1,10 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 105
-**Scope:** remediate the shadcn development-tool undici advisory through a
-compatible nested lockfile refresh while preserving jsdom's undici 8.x branch.
+**Iteration:** 107
+**Scope:** reduce development-tool attack surface by removing the unused local
+shadcn CLI and pinning all compatible picomatch 4.x resolutions to a patched
+release.
 
 ## Executive summary
 
@@ -24,6 +25,14 @@ The repository already has the first production-fundamentals slice:
   `VITE_BETTER_STACK_DSN` and the Worker reads the `BETTER_STACK_DSN` secret.
   The old Sentry-named DSNs remain explicit rollback fallbacks only, and no
   provider DSN is committed in `wrangler.jsonc`.
+- The high-severity dependency-audit baseline is now clear: the unused local
+  `shadcn` CLI dependency was removed, and compatible `picomatch` 4.x branches
+  are pinned to `^4.0.7`. Generated `components.json` and checked-in UI sources
+  remain unchanged; future component generation can use `bunx --bun
+shadcn@latest` intentionally.
+- The dependency-security GitHub workflow now blocks pull requests, main pushes,
+  and scheduled/manual audits when `bun audit --audit-level=high` finds a high or
+  critical advisory, while still uploading the JSON report for triage.
 - Assignment submission saves now emit structured Better Stack/Cloudflare-ready
   outcome events with request ID, status, duration, and stable error category.
 - Enrollment distribution and teacher substitution mutations now emit
@@ -290,8 +299,8 @@ opened_at)`. It supports filtering active windows before recent-opening
 - The shadcn Model Context Protocol development-tool chain no longer resolves
   vulnerable `undici@7.28.0`: a lockfile-only refresh resolves its compatible
   nested branch to `undici@7.29.0`, while jsdom keeps its separate undici 8.x
-  branch. The high-severity audit baseline is now three findings across the
-  remaining path-to-regexp and picomatch branches.
+  branch. The local audit baseline was subsequently cleared by removing the
+  unused shadcn CLI dependency and pinning compatible picomatch 4.x paths.
 - The `vitest` → `vite-node` development chain no longer resolves vulnerable
   `vite@7.3.1`: a root `package.json` override pins every Vite resolution to
   `^7.3.6`, removing the nested package while keeping the existing direct Vite
@@ -2981,3 +2990,21 @@ Validation for this iteration: lockfile-only install, frozen install, targeted
 dependency-tree inspection, post-change `bun audit --audit-level=high --json`,
 the quality gate with 1,953 unit tests, 408 integration tests, formatting,
 typecheck, `git diff --check`, and production build.
+
+## Iteration 107 — remove unused shadcn CLI and clear high-severity audit baseline
+
+This iteration completed the next bounded Phase 5 dependency-security unit:
+
+- Removed the unused local `shadcn` CLI dependency. The repository keeps its
+  generated UI sources and `components.json`; future component generation is an
+  explicit ephemeral `bunx --bun shadcn@latest` action.
+- Added a compatible root `picomatch: ^4.0.7` override, moving all Vite/TanStack
+  4.x branches beyond the affected `<4.0.4` range while preserving Wrangler's
+  separate `path-to-regexp` 6.x branch.
+- The post-change `bun audit --audit-level=high --json` report contains no high
+  or critical advisories. Bun may still return non-zero for lower-severity
+  findings, so the CI workflow parses the report and blocks only high/critical
+  results; lower-severity tooling findings remain visible for routine review.
+- Enabled the same high/critical threshold as a blocking condition in
+  `.github/workflows/dependency-security.yml`; the JSON audit artifact remains
+  uploaded on failures for investigation.

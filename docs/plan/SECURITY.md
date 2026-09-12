@@ -4,7 +4,7 @@
 brace-expansion, Browserslist, PostCSS, Nanoid, fast-uri, flatted, js-yaml,
 ip-address, sharp, and Hono dependencies are remediated; the reviewed
 server-function authorization gaps, secret-inventory contract, and threat-model baseline are documented incrementally,
-while remaining transitive advisories and hosted security verification are pending
+while hosted security verification and non-high transitive advisories remain pending
 **Phase:** Engineering Roadmap Phase 5: Security
 
 ## Dependency scanning
@@ -13,25 +13,25 @@ The repository now runs a Bun dependency audit through
 `.github/workflows/dependency-security.yml` on dependency pull requests, pushes to
 `main`, a weekly schedule, and manual dispatch. The workflow scans for high and
 critical advisories, uploads the JSON result as a short-lived GitHub Actions
-artifact, and emits a warning without blocking merges while the current baseline is
-being triaged.
+artifact. The audit command now fails the workflow when a high or critical advisory
+is present; lower-severity findings remain visible in the uploaded report.
 
 Dependabot checks the Bun-compatible npm manifest and lockfile weekly and labels
 update pull requests with `dependencies` and `security`.
 
-The advisory workflow is intentionally report-only while the remaining baseline is
-triaged. The current dependency tree still has high/critical transitive findings,
-but the direct browser-used `pdfjs-dist` advisory is remediated at `^6.2.108`.
-After the ip-address remediation, major toolchain refresh, and parent-package
-upgrades below, the local high-severity audit reports 4 remaining high findings
-across three transitive development-tool packages.
+The advisory workflow remains report-only while hosted security verification is
+completed. The direct browser-used `pdfjs-dist` advisory is remediated at
+`^6.2.108`; the local audit report now contains no high or critical findings.
+Lower-severity development-tool advisories remain visible in
+the uploaded JSON report and are not part of the release-blocking baseline.
 Do not suppress an advisory solely to make the workflow green. For each finding,
 decide whether to upgrade, replace, isolate, or accept it with a documented owner
 and review date.
 
-Once the high/critical baseline is cleared or explicitly accepted, change the
-audit step to fail on the agreed severity. Until then, the uploaded report is the
-evidence artifact and the warning is the handoff signal.
+The high/critical baseline is now clear, so the workflow enforces the agreed
+blocking threshold. If a future advisory appears, the uploaded JSON artifact is
+available for triage and the dependency change must either remediate or explicitly
+review the finding before merge.
 
 ## Direct browser dependency remediation
 
@@ -191,26 +191,16 @@ The major toolchain refresh upgraded `@cloudflare/vite-plugin` to `1.54.7` and
 `undici` findings are remediated. A root override floors the compatible Hono
 consumer chain at `^4.13.7`, remediating the prior Hono finding as well.
 
-The current `bun audit --audit-level=high` result is three findings across two
-packages. All are High severity and reachable only through development/build
-tooling; none is in the deployed Worker/browser runtime:
+The previous remaining high findings were development-only `shadcn` transitive
+branches. The repository does not invoke the local `shadcn` binary and already
+commits generated UI components, so the unused CLI dependency was removed. The
+remaining Vite/TanStack `picomatch` 4.x branches are pinned through the compatible
+root override `picomatch: ^4.0.7`; Wrangler's independent `path-to-regexp` 6.x
+branch is unaffected. The post-change audit reports no high or critical findings.
 
-- `path-to-regexp` `>=8.0.0 <8.4.0`: shadcn → Model Context Protocol SDK →
-  Express → router resolves `8.3.0`; the advisory is a denial of service through
-  sequential optional groups. Wrangler independently requires the incompatible
-  major-6 line, so one global override cannot safely cover both branches.
-- `picomatch` `<2.3.2`: two audit entries are tied to the legacy micromatch
-  branch at `picomatch@2.3.1`; the advisory is regular-expression denial of service through
-  extglob quantifiers. Modern Vite/Rolldown paths require picomatch 4.x, so one
-  global override cannot safely cover both branches.
-
-The current [Bun override mechanism](https://bun.sh/docs/pm/overrides) supports
-top-level package overrides but does not provide consumer-specific nested
-overrides. No patch files or root override were added. The remaining narrow
-options are an upstream release that widens the affected consumer range, future
-nested-override support, or a separately reviewed patch-file change. Until one
-of those becomes appropriate, these three findings remain explicitly documented
-and report-only.
+The generated `components.json` configuration remains available. When a new
+shadcn component is intentionally added, invoke the CLI ephemerally with
+`bunx --bun shadcn@latest` and review the resulting source diff before committing.
 
 ## Nested shadcn undici remediation
 
@@ -222,10 +212,9 @@ shadcn branch to `undici@7.29.0`. The Cloudflare Miniflare branch already used
 incompatible global override is needed.
 
 This is a development-only tooling remediation and does not change application
-runtime behavior. The local high-severity audit baseline decreased from four to
-three findings; the remaining path-to-regexp and picomatch findings stay
-report-only while their incompatible dependency branches are separately
-reviewed.
+runtime behavior. The local high-severity audit baseline is now clear; the
+remaining lower-severity advisories are still retained in the report-only JSON
+artifact for routine review.
 
 ## Review order
 
