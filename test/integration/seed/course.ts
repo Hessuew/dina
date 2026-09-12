@@ -8,6 +8,7 @@ export async function seedCourse(
     title?: string
     thumbnailUrl?: string
     orderIndex?: number
+    isPublished?: boolean
   } = {},
 ): Promise<string> {
   const id = overrides.id ?? randomUUID()
@@ -15,6 +16,7 @@ export async function seedCourse(
   await db.insert(courses).values({
     id,
     title: overrides.title ?? 'Test Course',
+    isPublished: overrides.isPublished ?? true,
     ...(overrides.thumbnailUrl !== undefined
       ? { thumbnailUrl: overrides.thumbnailUrl }
       : {}),

@@ -188,6 +188,46 @@ describe('getCoursesService (integration)', () => {
     ).toHaveLength(1)
   })
 
+  it('hides unpublished courses from non-managers', async () => {
+    const studentId = await seedProfile({ role: 'student' })
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const draftId = await seedCourse({
+      title: 'Draft course',
+      isPublished: false,
+    })
+    const managedDraftId = await seedCourse({
+      title: 'Managed draft',
+      isPublished: false,
+    })
+    const publishedId = await seedCourse({
+      title: 'Published course',
+      isPublished: true,
+    })
+    await seedCourseTeacher(managedDraftId, teacherId)
+
+    const studentCourseIds = (await getCoursesService(studentId)).courses.map(
+      (course) => course.id,
+    )
+    expect(studentCourseIds).toContain(publishedId)
+    expect(studentCourseIds).not.toContain(draftId)
+    expect(studentCourseIds).not.toContain(managedDraftId)
+
+    const teacherCourseIds = (await getCoursesService(teacherId)).courses.map(
+      (course) => course.id,
+    )
+    expect(teacherCourseIds).toContain(publishedId)
+    expect(teacherCourseIds).toContain(managedDraftId)
+    expect(teacherCourseIds).not.toContain(draftId)
+
+    const adminCourseIds = (await getCoursesService(adminId)).courses.map(
+      (course) => course.id,
+    )
+    expect(adminCourseIds).toEqual(
+      expect.arrayContaining([publishedId, draftId, managedDraftId]),
+    )
+  })
+
   it('student sees only published lessons with progress fields', async () => {
     const studentId = await seedProfile({ role: 'student' })
     const courseId = await seedCourse()
@@ -292,6 +332,28 @@ describe('getCourseService (integration)', () => {
     expect(result.course.lessons).toHaveLength(2)
     expect(result.permissions.canManage).toBe(true)
     expect(result.completedLessonIds).toEqual([])
+  })
+
+  it('rejects unpublished courses for non-managers and allows managers', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const outsiderId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const courseId = await seedCourse({ isPublished: false })
+    await seedCourseTeacher(courseId, teacherId)
+
+    await expect(
+      getCourseService({ courseId }, studentId),
+    ).rejects.toMatchObject({ status: 403 })
+    await expect(
+      getCourseService({ courseId }, outsiderId),
+    ).rejects.toMatchObject({ status: 403 })
+
+    const managed = await getCourseService({ courseId }, teacherId)
+    expect(managed.permissions.canManage).toBe(true)
+
+    const admin = await getCourseService({ courseId }, adminId)
+    expect(admin.course.id).toBe(courseId)
   })
 
   it('unassigned teacher sees only published course content', async () => {

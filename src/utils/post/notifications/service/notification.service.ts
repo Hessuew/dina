@@ -83,20 +83,14 @@ function shouldLogNotificationSummaryFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
 }
 
+// The summary endpoint is client-polled, so only failures emit log events;
+// logging every successful poll would flood the pipeline with heartbeat noise.
 async function withNotificationSummaryTelemetry<T>(args: {
   context: NotificationSummaryLogContext
   read: () => Promise<T>
-  fields: (result: T) => Record<string, unknown>
 }): Promise<T> {
   try {
-    const result = await args.read()
-    logNotificationSummaryEvent(
-      'info',
-      'notification_summary_loaded',
-      args.context,
-      args.fields(result),
-    )
-    return result
+    return await args.read()
   } catch (error) {
     if (shouldLogNotificationSummaryFailure(error)) {
       logNotificationSummaryEvent(
@@ -178,10 +172,6 @@ export async function getPostNotificationsSummaryService(
   return withNotificationSummaryTelemetry({
     context,
     read: () => readNotificationSummary(userId, limit),
-    fields: (result) => ({
-      groupCount: result.groups.length,
-      unreadGroupCount: result.unreadGroupCount,
-    }),
   })
 }
 

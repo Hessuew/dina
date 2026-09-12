@@ -51,3 +51,22 @@ Cloudflare logs and traces are the first operational surface for these events. B
 - Call `/readyz` with a valid database binding and verify `200`.
 - Temporarily point the database binding/env to an invalid value in a non-production environment and verify `/readyz` returns `503` with no secret leakage.
 - Confirm Cloudflare logs contain structured events for both endpoints.
+
+### Production verification — 2026-09-12
+
+The repository smoke check was run against `https://christ-dina.org`:
+
+```text
+health smoke passed: /healthz
+health smoke passed: /readyz
+```
+
+Both endpoints returned HTTP `200` with `status: "ok"`, `service:
+"christ-dina"`, `environment: "production"`, and a request ID. `/readyz`
+also returned `dependencies.database.status: "ok"`. Responses were served
+through Cloudflare and included `cache-control: no-store`; no credentials or
+raw database errors were present.
+
+The live payload currently reports `release: null`. This does not block the
+health contract, but release injection remains a follow-up for deployment and
+incident correlation.

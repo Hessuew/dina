@@ -33,7 +33,7 @@
     "noUncheckedSideEffectImports": true,
     "paths": {
       "@/*": ["./src/*"],
-      "*": ["./*"]
+      "test/*": ["./test/*"]
     }
   }
 }

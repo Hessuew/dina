@@ -55,7 +55,13 @@ export async function findOpenSessionsForStudent(now: Date, studentId: string) {
         eq(attendancePresents.studentId, studentId),
       ),
     )
-    .where(gt(attendanceSessions.closesAt, now))
+    .where(
+      and(
+        gt(attendanceSessions.closesAt, now),
+        eq(courses.isPublished, true),
+        eq(lessons.isPublished, true),
+      ),
+    )
     .orderBy(desc(attendanceSessions.openedAt))
 }
 
@@ -67,6 +73,7 @@ export async function findLessonsWithSessionsByCourseId(courseId: string) {
       title: lessons.title,
       orderIndex: lessons.orderIndex,
       courseId: lessons.courseId,
+      isPublished: lessons.isPublished,
       sessionId: attendanceSessions.id,
       closesAt: attendanceSessions.closesAt,
     })

@@ -78,13 +78,13 @@ This folder is primarily where TanStack Start server functions live (via `create
     `attendance_check_in_completed` / `attendance_check_in_ignored` events
     with request correlation, course/session/lesson/student IDs, status, and
     duration; unexpected persistence failures use a stable category.
-  - Course attendance state and student open-session reads emit redacted
-    `attendance_state_loaded` / `attendance_state_load_failed` and
-    `attendance_open_sessions_loaded` / `attendance_open_sessions_load_failed`
-    events with request correlation, actor/course IDs, role, safe session and
-    lesson counts, open-session flags, and duration. Attendance titles,
-    timestamps, and raw persistence details remain excluded; unexpected read
-    failures use `attendance_read_persistence`.
+  - Course attendance state and student open-session reads are client-polled,
+    so only failures emit log events: redacted `attendance_state_load_failed`
+    and `attendance_open_sessions_load_failed` with request correlation,
+    actor/course IDs, and duration. Attendance titles, timestamps, and raw
+    persistence details remain excluded; unexpected read failures use
+    `attendance_read_persistence`. Non-manager viewers only see published
+    lessons and open sessions on published lessons.
   - Profile updates and email-change verification emit redacted
     `profile_updated`, `email_change_requested`, `email_change_completed`, and
     failure events with request correlation, user ID, status, duration, and
@@ -241,12 +241,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     request correlation, actor/target metadata, read scope, status, and
     duration; unexpected persistence failures use the stable
     `notification_read_state_persistence` category.
-  - Notification summary reads emit redacted
-    `notification_summary_loaded` / `notification_summary_load_failed` events
-    with request correlation, actor ID, requested limit, safe group counts,
-    status, and duration; notification content, post excerpts, author details,
-    and raw persistence details remain excluded, while unexpected failures use
-    `notification_summary_read_persistence`.
+  - Notification summary reads are client-polled, so only failures emit log
+    events: redacted `notification_summary_load_failed` with request
+    correlation, actor ID, requested limit, and duration; notification content,
+    post excerpts, author details, and raw persistence details remain excluded,
+    while unexpected failures use `notification_summary_read_persistence`.
   - Admin Zoom-link create, update, and delete mutations emit redacted
     `zoom_link_created`, `zoom_link_updated`, and `zoom_link_deleted` events
     with request correlation, actor/link IDs, ownership section, status, and

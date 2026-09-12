@@ -302,10 +302,51 @@ describe('attendance mark present (integration)', () => {
     const state = await getCourseAttendanceStateService({ courseId }, studentId)
     expect(state.openSession?.alreadyPresent).toBe(true)
   })
+
+  it('hides unpublished lessons and their sessions from non-managers', async () => {
+    const { teacherId, outsiderId, studentId, courseId, lesson1, lesson2 } =
+      await seedManagedCourse()
+    const draftLesson = await seedLesson({
+      courseId,
+      title: 'Draft lesson',
+      isPublished: false,
+    })
+    await startOrReopenAttendanceService(
+      { courseId, lessonId: draftLesson },
+      teacherId,
+    )
+
+    const studentState = await getCourseAttendanceStateService(
+      { courseId },
+      studentId,
+    )
+    expect(studentState.lessons.map((l) => l.lessonId)).toEqual([
+      lesson1,
+      lesson2,
+    ])
+    expect(studentState.openSession).toBeNull()
+
+    const outsiderState = await getCourseAttendanceStateService(
+      { courseId },
+      outsiderId,
+    )
+    expect(outsiderState.lessons.map((l) => l.lessonId)).toEqual([
+      lesson1,
+      lesson2,
+    ])
+    expect(outsiderState.openSession).toBeNull()
+
+    const teacherState = await getCourseAttendanceStateService(
+      { courseId },
+      teacherId,
+    )
+    expect(teacherState.lessons).toHaveLength(3)
+    expect(teacherState.openSession?.lessonId).toBe(draftLesson)
+  })
 })
 
 describe('attendance read telemetry (integration)', () => {
-  it('logs safe course-state and open-session metadata', async () => {
+  it('stays silent on successful polled reads', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { teacherId, studentId, courseId, lesson1 } =
       await seedManagedCourse()
@@ -313,6 +354,7 @@ describe('attendance read telemetry (integration)', () => {
       { courseId, lessonId: lesson1 },
       teacherId,
     )
+    infoSpy.mockClear()
 
     await withObservabilityRequest(
       new Request('https://christ-dina.org/attendance/state', {
@@ -330,38 +372,7 @@ describe('attendance read telemetry (integration)', () => {
     const events = infoSpy.mock.calls
       .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
       .filter((event) => String(event.event).startsWith('attendance_'))
-    expect(events).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          event: 'attendance_state_loaded',
-          path: 'serverFn:getCourseAttendanceState',
-          requestId: 'attendance-state-read',
-          actorId: studentId,
-          courseId,
-          role: 'student',
-          lessonCount: 2,
-          hasOpenSession: true,
-          openLessonId: lesson1,
-          alreadyPresent: false,
-          status: 'success',
-          durationMs: expect.any(Number),
-        }),
-        expect.objectContaining({
-          event: 'attendance_open_sessions_loaded',
-          path: 'serverFn:listOpenAttendanceForStudent',
-          requestId: 'attendance-open-read',
-          actorId: studentId,
-          role: 'student',
-          sessionCount: 1,
-          hasOpenSession: true,
-          status: 'success',
-          durationMs: expect.any(Number),
-        }),
-      ]),
-    )
-    expect(
-      infoSpy.mock.calls.map(([line]) => String(line)).join('\n'),
-    ).not.toContain('Lesson 1')
+    expect(events).toEqual([])
   })
 
   it('logs stable persistence categories without raw read errors', async () => {

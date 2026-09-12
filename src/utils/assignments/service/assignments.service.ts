@@ -18,7 +18,6 @@ import {
 import { canOpenUnpublishedAssignment } from '@/utils/assignments/domain/assignment-detail.domain'
 import {
   deleteAssignmentById,
-  findAssignmentById,
   findAssignmentSubmissionsWithStudent,
   findAssignmentWithFullDetail,
   findAssignmentWithLesson,
@@ -178,7 +177,10 @@ async function loadLessonForViewer(data: GetLessonInput, userId: string) {
     userId,
   )
 
-  if (!lesson.isPublished && !permissions.canManage) {
+  if (
+    (!lesson.isPublished || !lesson.course.isPublished) &&
+    !permissions.canManage
+  ) {
     throw new AuthorizationError('Lesson not available', {
       internalMessage: `Non-manager attempted to access unpublished lesson: ${data.lessonId}`,
       details: { lessonId: data.lessonId },
@@ -251,12 +253,16 @@ async function loadAssignmentForViewer(
     userId,
   )
 
+  const hiddenByUnpublishedParent =
+    !permissions.canManage &&
+    (!assignment.lesson.isPublished || !assignment.lesson.course.isPublished)
   if (
-    assignment.status !== 'published' &&
-    !canOpenUnpublishedAssignment({
-      role: profile.role,
-      canManage: permissions.canManage,
-    })
+    hiddenByUnpublishedParent ||
+    (assignment.status !== 'published' &&
+      !canOpenUnpublishedAssignment({
+        role: profile.role,
+        canManage: permissions.canManage,
+      }))
   ) {
     throw new AuthorizationError('Assignment not available', {
       internalMessage: `Non-manager attempted to access unpublished assignment: ${data.assignmentId}`,
@@ -611,10 +617,16 @@ export async function createOrUpdateSubmissionService(
     })
   }
 
-  const assignment = await findAssignmentById(data.assignmentId)
+  const assignment = await findAssignmentWithFullDetail(data.assignmentId)
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
       code: 'ASSIGNMENT_NOT_FOUND',
+      details: { assignmentId: data.assignmentId },
+    })
+  }
+  if (!assignment.lesson.isPublished || !assignment.lesson.course.isPublished) {
+    throw new AuthorizationError('Assignment not available', {
+      internalMessage: `Student attempted to submit to assignment on unpublished lesson/course: ${data.assignmentId}`,
       details: { assignmentId: data.assignmentId },
     })
   }
@@ -661,7 +673,9 @@ export async function getAllAssignmentsForStudentService(userId: string) {
         })
       }
 
-      const allAssignments = await findPublishedAssignmentsForStudent(userId)
+      const allAssignments = (
+        await findPublishedAssignmentsForStudent(userId)
+      ).filter((assignment) => assignment.lesson.course.isPublished)
 
       const assignmentsWithSubmission = allAssignments.map((assignment) => ({
         ...assignment,
@@ -764,10 +778,13 @@ async function getTeacherCatalogAssignments(
     await findAssignmentsForTeacherCatalog(managedLessonIds)
 
   return {
-    assignments: allAssignments.map((assignment) => {
+    assignments: allAssignments.flatMap((assignment) => {
       const teachers = courseTeachersFromRow(assignment)
       const permissions = calculateEntityPermissions(role, teachers, userId)
-      return mapTeacherAssignmentRow(assignment, permissions.canManage)
+      if (!permissions.canManage && !assignment.lesson.course.isPublished) {
+        return []
+      }
+      return [mapTeacherAssignmentRow(assignment, permissions.canManage)]
     }),
   }
 }

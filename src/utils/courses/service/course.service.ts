@@ -168,19 +168,22 @@ function restrictCourseToPublishedContent(course: CourseDetail): CourseDetail {
   }
 }
 
-function restrictCourseListToPublishedLessons(
+function restrictCourseListForViewer(
   courses: ReadonlyArray<CourseAssetRow>,
   teacherId: string,
 ): Array<CourseAssetRow> {
-  return courses.map((course) => {
+  return courses.flatMap((course) => {
     const managesCourse = course.courseTeachers.some(
       (teacher) => teacher.teacherId === teacherId,
     )
-    if (managesCourse) return course
-    return {
-      ...course,
-      lessons: course.lessons.filter((lesson) => lesson.isPublished),
-    }
+    if (managesCourse) return [course]
+    if (!course.isPublished) return []
+    return [
+      {
+        ...course,
+        lessons: course.lessons.filter((lesson) => lesson.isPublished),
+      },
+    ]
   })
 }
 
@@ -220,6 +223,14 @@ async function loadCourse(
     teacherRefs,
     userId,
   )
+
+  if (!course.isPublished && !permissions.canManage) {
+    throw new AuthorizationError('Course not available', {
+      internalMessage: `Non-manager attempted to access unpublished course: ${data.courseId}`,
+      details: { courseId: data.courseId },
+    })
+  }
+
   const visibleCourse = permissions.canManage
     ? course
     : restrictCourseToPublishedContent(course)
@@ -267,9 +278,10 @@ export async function getCoursesService(userId: string) {
     async () => {
       const isStudentView = profile.role === 'student'
       const allCourses = await findAllCourses(!isStudentView)
-      const visibleCourses =
-        profile.role === 'teacher'
-          ? restrictCourseListToPublishedLessons(allCourses, userId)
+      const visibleCourses = isStudentView
+        ? allCourses.filter((course) => course.isPublished)
+        : profile.role === 'teacher'
+          ? restrictCourseListForViewer(allCourses, userId)
           : allCourses
 
       if (!isStudentView) {
@@ -279,7 +291,7 @@ export async function getCoursesService(userId: string) {
         }
       }
 
-      const allLessonIds = allCourses.flatMap((course) =>
+      const allLessonIds = visibleCourses.flatMap((course) =>
         course.lessons.map((l) => l.id),
       )
       const allAssignments =
@@ -291,7 +303,7 @@ export async function getCoursesService(userId: string) {
       )
 
       const coursesWithProgress = buildCoursesWithProgress(
-        allCourses,
+        visibleCourses,
         allAssignments,
         allSubmissions,
       )

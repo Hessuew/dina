@@ -18,6 +18,7 @@ import {
   seedComment,
   seedCommentReaction,
   seedCourse,
+  seedCourseTeacher,
   seedPost,
   seedPostReaction,
   seedProfile,
@@ -47,6 +48,46 @@ describe('getPostChannelsService (integration)', () => {
       courseId: null,
     })
     expect(channels.some((c) => c.courseId === courseId)).toBe(true)
+  })
+
+  it('hides unpublished course channels from non-managers', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
+    const adminId = await seedProfile({ role: 'admin' })
+    const draftId = await seedCourse({ title: 'Draft', isPublished: false })
+    const managedDraftId = await seedCourse({
+      title: 'Managed draft',
+      isPublished: false,
+    })
+    const publishedId = await seedCourse({
+      title: 'Published',
+      isPublished: true,
+    })
+    await seedCourseTeacher(managedDraftId, teacherId)
+
+    const channelCourseIds = (channels: Array<{ courseId: string | null }>) =>
+      channels.map((c) => c.courseId)
+
+    const studentChannels = channelCourseIds(
+      (await getPostChannelsService(studentId)).channels,
+    )
+    expect(studentChannels).toContain(publishedId)
+    expect(studentChannels).not.toContain(draftId)
+    expect(studentChannels).not.toContain(managedDraftId)
+
+    const teacherChannels = channelCourseIds(
+      (await getPostChannelsService(teacherId)).channels,
+    )
+    expect(teacherChannels).toContain(publishedId)
+    expect(teacherChannels).toContain(managedDraftId)
+    expect(teacherChannels).not.toContain(draftId)
+
+    const adminChannels = channelCourseIds(
+      (await getPostChannelsService(adminId)).channels,
+    )
+    expect(adminChannels).toEqual(
+      expect.arrayContaining([publishedId, draftId, managedDraftId]),
+    )
   })
 })
 

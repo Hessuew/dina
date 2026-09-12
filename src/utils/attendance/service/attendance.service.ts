@@ -87,22 +87,15 @@ function shouldLogAttendanceReadFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
 }
 
+// Read callers are client-polled, so only failures emit log events; logging
+// every successful poll would flood the pipeline with per-user heartbeat noise.
 async function withAttendanceReadTelemetry<T>(args: {
   context: AttendanceReadContext
   read: () => Promise<T>
-  fields: (result: T) => Record<string, unknown>
-  successEvent: string
   failureEvent: string
 }): Promise<T> {
   try {
-    const result = await args.read()
-    logAttendanceReadEvent(
-      'info',
-      args.successEvent,
-      args.context,
-      args.fields(result),
-    )
-    return result
+    return await args.read()
   } catch (error) {
     if (shouldLogAttendanceReadFailure(error)) {
       logAttendanceReadEvent('error', args.failureEvent, args.context, {
@@ -223,9 +216,11 @@ function mapOpenSession(
   }
 }
 
-async function mapLessonsWithSessions(courseId: string, now: Date) {
-  const lessons = await findLessonsWithSessionsByCourseId(courseId)
-  return lessons.map((lesson) => ({
+function mapLessonsWithSessions(
+  lessonRows: Awaited<ReturnType<typeof findLessonsWithSessionsByCourseId>>,
+  now: Date,
+) {
+  return lessonRows.map((lesson) => ({
     lessonId: lesson.id,
     lessonTitle: lesson.title,
     orderIndex: lesson.orderIndex,
@@ -237,19 +232,37 @@ async function mapLessonsWithSessions(courseId: string, now: Date) {
 async function loadCourseAttendanceState(data: CourseIdInput, userId: string) {
   const profile = await getUserProfile(userId)
   const now = new Date()
-  const [openSession, lessons] = await Promise.all([
+  const [openSession, lessonRows, courseTeachers] = await Promise.all([
     findOpenSessionOnCourse(data.courseId, now),
-    mapLessonsWithSessions(data.courseId, now),
+    findLessonsWithSessionsByCourseId(data.courseId),
+    findCourseTeachers(data.courseId),
   ])
+
+  const { canManage } = calculateEntityPermissions(
+    profile.role,
+    { teacherIds: courseTeachers.map((t) => t.teacherId) },
+    userId,
+  )
+  const lessons = mapLessonsWithSessions(
+    canManage ? lessonRows : lessonRows.filter((lesson) => lesson.isPublished),
+    now,
+  )
+
+  // Hide a live session when its lesson is not visible to the viewer.
+  const visibleOpenSession =
+    openSession &&
+    (canManage || lessons.some((l) => l.lessonId === openSession.lessonId))
+      ? openSession
+      : null
 
   let alreadyPresent = false
   let lessonTitle: string | undefined
-  if (openSession) {
+  if (visibleOpenSession) {
     lessonTitle =
-      lessons.find((l) => l.lessonId === openSession.lessonId)?.lessonTitle ??
-      undefined
+      lessons.find((l) => l.lessonId === visibleOpenSession.lessonId)
+        ?.lessonTitle ?? undefined
     if (profile.role === 'student') {
-      const present = await findPresent(openSession.id, userId)
+      const present = await findPresent(visibleOpenSession.id, userId)
       alreadyPresent = present !== null
     }
   }
@@ -257,8 +270,11 @@ async function loadCourseAttendanceState(data: CourseIdInput, userId: string) {
   return {
     role: profile.role,
     serverNow: now,
-    openSession: openSession
-      ? mapOpenSession(openSession, now, { lessonTitle, alreadyPresent })
+    openSession: visibleOpenSession
+      ? mapOpenSession(visibleOpenSession, now, {
+          lessonTitle,
+          alreadyPresent,
+        })
       : null,
     lessons,
   }
@@ -278,15 +294,6 @@ export async function getCourseAttendanceStateService(
   return withAttendanceReadTelemetry({
     context,
     read: () => loadCourseAttendanceState(data, userId),
-    fields: (result) => ({
-      role: result.role,
-      lessonCount: result.lessons.length,
-      hasOpenSession: Boolean(result.openSession),
-      openSessionId: result.openSession?.id ?? null,
-      openLessonId: result.openSession?.lessonId ?? null,
-      alreadyPresent: result.openSession?.alreadyPresent ?? false,
-    }),
-    successEvent: 'attendance_state_loaded',
     failureEvent: 'attendance_state_load_failed',
   })
 }
@@ -529,12 +536,6 @@ export async function listOpenAttendanceForStudentService(userId: string) {
   const result = await withAttendanceReadTelemetry({
     context,
     read: () => loadOpenAttendanceForStudent(userId),
-    fields: (value) => ({
-      role: value.role,
-      sessionCount: value.sessions.length,
-      hasOpenSession: value.sessions.length > 0,
-    }),
-    successEvent: 'attendance_open_sessions_loaded',
     failureEvent: 'attendance_open_sessions_load_failed',
   })
   const { role: _role, ...response } = result

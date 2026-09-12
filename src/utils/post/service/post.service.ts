@@ -204,7 +204,7 @@ async function signCommentAvatars(
 export async function getPostChannelsService(actorId: string): Promise<{
   channels: Array<PostChannel>
 }> {
-  await getUserProfile(actorId)
+  const profile = await getUserProfile(actorId)
   return withPostReadTelemetry({
     context: {
       action: 'getPostChannels',
@@ -214,9 +214,17 @@ export async function getPostChannelsService(actorId: string): Promise<{
     },
     read: async () => {
       const rows = await findChannels()
+      const visibleRows =
+        profile.role === 'admin'
+          ? rows
+          : rows.filter(
+              (c) =>
+                c.isPublished ||
+                c.courseTeachers.some((t) => t.teacherId === actorId),
+            )
       const channels: Array<PostChannel> = [
         { id: 'general', name: 'General', courseId: null },
-        ...rows.map((c) => ({
+        ...visibleRows.map((c) => ({
           id: c.id,
           name: c.title,
           courseId: c.id,

@@ -17,7 +17,13 @@ export async function findPublishedLessonsWithCourses() {
     })
     .from(lessons)
     .innerJoin(courses, eq(lessons.courseId, courses.id))
-    .where(and(eq(lessons.isPublished, true), isNotNull(lessons.scheduledTime)))
+    .where(
+      and(
+        eq(lessons.isPublished, true),
+        eq(courses.isPublished, true),
+        isNotNull(lessons.scheduledTime),
+      ),
+    )
 }
 
 export async function findPublishedAssignmentsWithCourses() {
@@ -35,7 +41,9 @@ export async function findPublishedAssignmentsWithCourses() {
     .from(assignments)
     .innerJoin(lessons, eq(assignments.lessonId, lessons.id))
     .innerJoin(courses, eq(lessons.courseId, courses.id))
-    .where(eq(assignments.status, 'published'))
+    .where(
+      and(eq(assignments.status, 'published'), eq(courses.isPublished, true)),
+    )
 }
 
 export async function findAllCalendarEvents() {
