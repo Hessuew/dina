@@ -312,6 +312,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     count metadata and stable `calendar_event_read_persistence` failure
     categories; titles, descriptions, locations, meeting links, and timestamps
     remain excluded.
+  - Zoom-link list reads emit redacted `zoom_links_loaded` /
+    `zoom_links_load_failed` events with request correlation, actor ID, viewer
+    role, safe link and teacher-option counts, status, and duration. Titles,
+    descriptions, meeting URLs, meeting IDs, passcodes, and raw persistence
+    details remain excluded; unexpected failures use
+    `zoom_links_read_persistence`.
   - `attendance/` — live Attendance Session open/close, student self check-in (`markPresent`), and Course Teacher/Admin/privileged-teacher override (`setStudentPresent`) from student detail. Session and override mutations emit redacted request-correlated Better Stack-ready telemetry with stable persistence categories.
   - `staff-privilege/` — Staff Privilege grants (ADR 0023): domain live-check, Admin grant/revoke, `hasStaffPrivilege` used by attendance override and enrolment contact export.
   - `exam/` — Timed exam authoring, attempt lifecycle, autosave, lazy finalization, and grading (ADR 0017). Student listing/taking services require the caller's persisted `student` role; teacher/Admin services use the staff boundary.

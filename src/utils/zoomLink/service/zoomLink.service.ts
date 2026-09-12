@@ -34,6 +34,12 @@ type ZoomLinkMutationContext = {
   zoomLinkId?: string
 }
 
+type ZoomLinkReadContext = {
+  actorId: string
+  role: string
+  startedAt: number
+}
+
 function logZoomLinkMutation(
   level: LogLevel,
   event: string,
@@ -57,6 +63,40 @@ function logZoomLinkFailure(context: ZoomLinkMutationContext): void {
   })
 }
 
+function logZoomLinkRead(
+  level: LogLevel,
+  event: string,
+  context: ZoomLinkReadContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:getZoomLinks',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    role: context.role,
+    ...fields,
+  })
+}
+
+async function withZoomLinkReadTelemetry<T>(
+  context: ZoomLinkReadContext,
+  read: () => Promise<T>,
+  fields: (result: T) => Record<string, unknown>,
+): Promise<T> {
+  try {
+    const result = await read()
+    logZoomLinkRead('info', 'zoom_links_loaded', context, fields(result))
+    return result
+  } catch (error) {
+    logZoomLinkRead('error', 'zoom_links_load_failed', context, {
+      errorCategory: 'zoom_links_read_persistence',
+    })
+    throw error
+  }
+}
+
 export async function getZoomLinksService(userId: string) {
   const profile = await findViewerRole(userId)
   if (!profile) {
@@ -65,22 +105,38 @@ export async function getZoomLinksService(userId: string) {
     })
   }
 
-  const rows = await findZoomLinksWithTeachers()
-  const assignment =
-    profile.role === 'student' ? await findDiscipleshipTeacherId(userId) : null
-  const teacherOrder =
-    profile.role === 'student'
-      ? []
-      : (await getTeachersService(userId)).teachers.map(({ id, fullName }) => ({
-          id,
-          fullName,
-        }))
+  const context: ZoomLinkReadContext = {
+    actorId: userId,
+    role: profile.role,
+    startedAt: performance.now(),
+  }
 
-  return buildZoomLinksPayload(
-    rows,
-    teacherOrder,
-    profile.role,
-    assignment?.teacherId ?? null,
+  return withZoomLinkReadTelemetry(
+    context,
+    async () => {
+      const rows = await findZoomLinksWithTeachers()
+      const assignment =
+        profile.role === 'student'
+          ? await findDiscipleshipTeacherId(userId)
+          : null
+      const teacherOrder =
+        profile.role === 'student'
+          ? []
+          : (await getTeachersService(userId)).teachers.map(
+              ({ id, fullName }) => ({ id, fullName }),
+            )
+
+      return buildZoomLinksPayload(
+        rows,
+        teacherOrder,
+        profile.role,
+        assignment?.teacherId ?? null,
+      )
+    },
+    (result) => ({
+      linkCount: result.links.length,
+      teacherOptionCount: result.teachers.length,
+    }),
   )
 }
 

@@ -141,6 +141,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    status, and duration. Zoom URLs, meeting IDs, passcodes, titles, and raw
    persistence details remain excluded; unexpected repository failures use
    the stable `zoom_link_persistence` category.
+   Zoom-link list reads now emit redacted `zoom_links_loaded` /
+   `zoom_links_load_failed` events with request correlation, actor ID, viewer
+   role, safe link and teacher-option counts, status, and duration. Titles,
+   descriptions, meeting URLs, meeting IDs, passcodes, and raw persistence
+   details remain excluded; unexpected failures use the stable
+   `zoom_links_read_persistence` category.
    Media-library create, update, and delete mutations now emit redacted
    `media_created`, `media_updated`, and `media_deleted` events with request
    correlation, actor/media IDs, media kind, course ID where applicable,

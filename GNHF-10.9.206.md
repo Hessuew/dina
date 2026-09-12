@@ -3467,3 +3467,22 @@ Validation: focused event integration passed 6 tests; the full integration suite
 passed 442 tests; `bun run quality:gate` passed with 1,953 unit tests; formatting,
 type checks, `git diff --check`, and the production build passed. Existing build
 deprecation and bundle-size warnings remain unrelated.
+
+## Iteration 127 — Zoom-link read telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Zoom-link list reads now emit redacted `zoom_links_loaded` /
+  `zoom_links_load_failed` events with request correlation, actor ID, viewer
+  role, safe link and teacher-option counts, status, duration, and the stable
+  `zoom_links_read_persistence` failure category.
+- Zoom titles, descriptions, meeting URLs, meeting IDs, passcodes, and raw
+  repository errors remain outside Better Stack/Cloudflare telemetry. Existing
+  role filtering, teacher ordering, and response payloads are unchanged.
+- Added integration coverage for success metadata, request correlation,
+  credential redaction, persistence-failure categorization, and original-error
+  preservation.
+
+Validation: focused Zoom-link integration passed 14 tests. Hosted Better Stack /
+Cloudflare ingestion, dashboards, alerts, Uptime monitors, and source-map
+verification remain external follow-up.
