@@ -33,6 +33,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    duration; unexpected persistence failures emit
    `attendance_check_in_failed` with a stable error category. Closed-window
    validation remains an expected user-facing outcome.
+   Course attendance state and student open-session reads now emit redacted
+   `attendance_state_loaded` / `attendance_state_load_failed` and
+   `attendance_open_sessions_loaded` / `attendance_open_sessions_load_failed`
+   events with request correlation, actor/course IDs, role, safe session and
+   lesson counts, open-session flags, and duration. Attendance titles,
+   timestamps, and raw persistence details remain excluded; unexpected read
+   failures use the stable `attendance_read_persistence` category.
    Profile updates and email-change verification now emit redacted
    `profile_updated`, `email_change_requested`, `email_change_completed`, and
    failure events with request correlation, user ID, status, duration, and

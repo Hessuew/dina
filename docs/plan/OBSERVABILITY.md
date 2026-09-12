@@ -57,6 +57,9 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   Admin enrollment status, special-case, and deletion mutations also emit
   redacted request-correlated events with safe actor/enrollment metadata and
   stable persistence-failure categories.
+  Course attendance state and student open-session reads emit redacted,
+  request-correlated events with safe role, count, and open-session metadata;
+  attendance titles, timestamps, and raw persistence details remain excluded.
 
 - **Cloudflare Workers:** Basic observability
   - Logs enabled (100% sampling)

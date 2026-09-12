@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 118
-**Scope:** add redacted Better Stack-ready telemetry for assignment lesson,
-detail, list, and submission reads and record the remaining hosted observability
+**Iteration:** 125
+**Scope:** add redacted Better Stack-ready telemetry for course attendance state
+and student open-session reads and record the remaining hosted observability
 evidence gate.
 
 ## Executive summary
@@ -143,6 +143,13 @@ shadcn@latest` intentionally.
   course/session/lesson/student identifiers, status, duration, and a stable
   error category. Closed-window validation remains an expected user-facing
   outcome.
+- Course attendance state and student open-session reads now emit redacted
+  `attendance_state_loaded` / `attendance_state_load_failed` and
+  `attendance_open_sessions_loaded` / `attendance_open_sessions_load_failed`
+  events with request correlation, actor/course IDs, role, safe session and
+  lesson counts, open-session flags, and duration. Attendance titles,
+  timestamps, and raw persistence details remain excluded; unexpected read
+  failures use the stable `attendance_read_persistence` category.
 - Profile updates and email-change verification now emit redacted success and
   failure events with request correlation, user ID, status, duration, and
   stable persistence/provider categories. Email addresses, verification tokens,
@@ -3412,3 +3419,25 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
   failure redaction checks. Hosted Better Stack / Cloudflare ingestion,
   dashboards, alerts, Uptime monitors, and source-map verification remain
   external setup work.
+
+## Iteration 125 — attendance-read telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Course attendance state reads now emit redacted `attendance_state_loaded` /
+  `attendance_state_load_failed` events with request correlation, actor/course
+  IDs, role, safe lesson/session counts, open-session identifiers and flags,
+  and duration.
+- Student open-session reads now emit redacted
+  `attendance_open_sessions_loaded` /
+  `attendance_open_sessions_load_failed` events with request correlation, actor
+  ID, role, safe session counts, and duration. Attendance titles, timestamps,
+  and raw persistence details remain excluded; unexpected read failures use
+  the stable `attendance_read_persistence` category.
+- Added focused integration coverage for both success event shapes and
+  persistence-error redaction while preserving the existing response shapes
+  and authorization behavior.
+
+Validation for this iteration: the focused attendance integration suite passes
+20 tests. Hosted Better Stack / Cloudflare ingestion, dashboards, alerts,
+Uptime monitors, and source-map verification remain external setup work.

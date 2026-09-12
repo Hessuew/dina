@@ -5,6 +5,7 @@ import type {
   SetStudentPresentInput,
   StartAttendanceInput,
 } from '@/schemas/attendance.schema'
+import type { LogLevel } from '@/utils/observability/logger'
 import {
   clearPresentOverrideAtomically,
   closeAttendanceSessionAtomically,
@@ -33,6 +34,7 @@ import {
   ConflictError,
   NotFoundError,
   ValidationError,
+  isAppError,
 } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
@@ -52,6 +54,63 @@ type AttendanceManagementContext = {
   failureEvent: string
   failureCategory: string
   startedAt: number
+}
+
+type AttendanceReadAction =
+  'getCourseAttendanceState' | 'listOpenAttendanceForStudent'
+
+type AttendanceReadContext = {
+  action: AttendanceReadAction
+  actorId: string
+  courseId?: string
+  startedAt: number
+}
+
+function logAttendanceReadEvent(
+  level: LogLevel,
+  event: string,
+  context: AttendanceReadContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    courseId: context.courseId,
+    ...fields,
+  })
+}
+
+function shouldLogAttendanceReadFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function withAttendanceReadTelemetry<T>(args: {
+  context: AttendanceReadContext
+  read: () => Promise<T>
+  fields: (result: T) => Record<string, unknown>
+  successEvent: string
+  failureEvent: string
+}): Promise<T> {
+  try {
+    const result = await args.read()
+    logAttendanceReadEvent(
+      'info',
+      args.successEvent,
+      args.context,
+      args.fields(result),
+    )
+    return result
+  } catch (error) {
+    if (shouldLogAttendanceReadFailure(error)) {
+      logAttendanceReadEvent('error', args.failureEvent, args.context, {
+        errorCategory: 'attendance_read_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 function logAttendanceCheckInEvent(
@@ -175,10 +234,7 @@ async function mapLessonsWithSessions(courseId: string, now: Date) {
   }))
 }
 
-export async function getCourseAttendanceStateService(
-  data: CourseIdInput,
-  userId: string,
-) {
+async function loadCourseAttendanceState(data: CourseIdInput, userId: string) {
   const profile = await getUserProfile(userId)
   const now = new Date()
   const [openSession, lessons] = await Promise.all([
@@ -206,6 +262,33 @@ export async function getCourseAttendanceStateService(
       : null,
     lessons,
   }
+}
+
+export async function getCourseAttendanceStateService(
+  data: CourseIdInput,
+  userId: string,
+) {
+  const context: AttendanceReadContext = {
+    action: 'getCourseAttendanceState',
+    actorId: userId,
+    courseId: data.courseId,
+    startedAt: performance.now(),
+  }
+
+  return withAttendanceReadTelemetry({
+    context,
+    read: () => loadCourseAttendanceState(data, userId),
+    fields: (result) => ({
+      role: result.role,
+      lessonCount: result.lessons.length,
+      hasOpenSession: Boolean(result.openSession),
+      openSessionId: result.openSession?.id ?? null,
+      openLessonId: result.openSession?.lessonId ?? null,
+      alreadyPresent: result.openSession?.alreadyPresent ?? false,
+    }),
+    successEvent: 'attendance_state_loaded',
+    failureEvent: 'attendance_state_load_failed',
+  })
 }
 
 export async function startOrReopenAttendanceService(
@@ -414,10 +497,11 @@ export async function markPresentService(
   }
 }
 
-export async function listOpenAttendanceForStudentService(userId: string) {
+async function loadOpenAttendanceForStudent(userId: string) {
   const profile = await getUserProfile(userId)
   if (profile.role !== 'student') {
     return {
+      role: profile.role,
       sessions: [] as Array<
         ReturnType<typeof mapOpenSession> & { courseTitle: string }
       >,
@@ -433,7 +517,28 @@ export async function listOpenAttendanceForStudentService(userId: string) {
     }),
     courseTitle: row.courseTitle,
   }))
-  return { sessions, serverNow: now }
+  return { role: profile.role, sessions, serverNow: now }
+}
+
+export async function listOpenAttendanceForStudentService(userId: string) {
+  const context: AttendanceReadContext = {
+    action: 'listOpenAttendanceForStudent',
+    actorId: userId,
+    startedAt: performance.now(),
+  }
+  const result = await withAttendanceReadTelemetry({
+    context,
+    read: () => loadOpenAttendanceForStudent(userId),
+    fields: (value) => ({
+      role: value.role,
+      sessionCount: value.sessions.length,
+      hasOpenSession: value.sessions.length > 0,
+    }),
+    successEvent: 'attendance_open_sessions_loaded',
+    failureEvent: 'attendance_open_sessions_load_failed',
+  })
+  const { role: _role, ...response } = result
+  return response
 }
 
 export async function setStudentPresentService(

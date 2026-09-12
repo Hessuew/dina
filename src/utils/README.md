@@ -78,6 +78,13 @@ This folder is primarily where TanStack Start server functions live (via `create
     `attendance_check_in_completed` / `attendance_check_in_ignored` events
     with request correlation, course/session/lesson/student IDs, status, and
     duration; unexpected persistence failures use a stable category.
+  - Course attendance state and student open-session reads emit redacted
+    `attendance_state_loaded` / `attendance_state_load_failed` and
+    `attendance_open_sessions_loaded` / `attendance_open_sessions_load_failed`
+    events with request correlation, actor/course IDs, role, safe session and
+    lesson counts, open-session flags, and duration. Attendance titles,
+    timestamps, and raw persistence details remain excluded; unexpected read
+    failures use `attendance_read_persistence`.
   - Profile updates and email-change verification emit redacted
     `profile_updated`, `email_change_requested`, `email_change_completed`, and
     failure events with request correlation, user ID, status, duration, and
