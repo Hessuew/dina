@@ -179,6 +179,41 @@ describe('getStudentDetailService (integration)', () => {
     ).rejects.toBeInstanceOf(NotFoundError)
   })
 
+  it('logs detail lookup failures without exposing repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const viewerId = await seedProfile({ role: 'admin' })
+    const studentId = '00000000-0000-4000-8000-000000000002'
+    const repositoryError = new Error(
+      'student directory connectionString=secret; email=private@test.dev',
+    )
+    vi.spyOn(studentRepository, 'findStudentById').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/student-detail', {
+          headers: { 'x-request-id': 'student-detail-read-failure' },
+        }),
+        () => getStudentDetailService({ studentId }, viewerId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('private@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'student_directory_load_failed',
+      path: 'serverFn:getStudentDetail',
+      requestId: 'student-detail-read-failure',
+      actorId: viewerId,
+      targetStudentId: studentId,
+      status: 'failure',
+      errorCategory: 'student_directory_read_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
+
   it('throws NotFoundError when the id belongs to a non-student profile', async () => {
     const adminId = await seedProfile({ role: 'admin' })
 

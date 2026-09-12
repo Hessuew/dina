@@ -429,6 +429,24 @@ async function requireManagedMedia(
   return existing
 }
 
+async function requireManagedMediaWithTelemetry(
+  mediaId: string,
+  userId: string,
+  action: string,
+  context: LibraryMutationContext,
+): Promise<MediaRecord> {
+  try {
+    return await requireManagedMedia(mediaId, userId, action)
+  } catch (error) {
+    if (shouldLogLibraryMutationFailure(error)) {
+      logLibraryMutation('error', 'media_mutation_failed', context, {
+        errorCategory: 'media_read_persistence',
+      })
+    }
+    throw error
+  }
+}
+
 async function removeReplacedMediaFile(
   previous: MediaRecord,
   nextPath: string | null,
@@ -441,14 +459,19 @@ export async function updateLibraryMediaService(
   data: UpdateMediaInput,
   userId: string,
 ): Promise<{ media: MediaLibraryRow }> {
-  const existing = await requireManagedMedia(data.mediaId, userId, 'edit')
-  const source = mediaSource(data, userId, existing.filePath)
   const context: LibraryMutationContext = {
     action: 'updateLibraryMedia',
     actorId: userId,
     mediaId: data.mediaId,
     startedAt: performance.now(),
   }
+  const existing = await requireManagedMediaWithTelemetry(
+    data.mediaId,
+    userId,
+    'edit',
+    context,
+  )
+  const source = mediaSource(data, userId, existing.filePath)
 
   try {
     const media = await updateMedia(data.mediaId, {
@@ -483,13 +506,18 @@ export async function deleteLibraryMediaService(
   data: DeleteMediaInput,
   userId: string,
 ): Promise<{ success: true }> {
-  const existing = await requireManagedMedia(data.mediaId, userId, 'delete')
   const context: LibraryMutationContext = {
     action: 'deleteLibraryMedia',
     actorId: userId,
     mediaId: data.mediaId,
     startedAt: performance.now(),
   }
+  const existing = await requireManagedMediaWithTelemetry(
+    data.mediaId,
+    userId,
+    'delete',
+    context,
+  )
 
   try {
     await deleteMedia(data.mediaId)
@@ -585,17 +613,21 @@ export async function uploadMediaThumbnailService(
   data: UploadMediaThumbnailInput,
   userId: string,
 ): Promise<{ thumbnailUrl: string | null }> {
-  const existing = await requireManagedMedia(data.mediaId, userId, 'edit')
-  const path = extractPrivateStoragePath(data.path, 'media-thumbnails')
-  if (!path || !isOwnedStoragePath(path, userId)) {
-    throw new ValidationError('Thumbnail path is not owned by this user')
-  }
-
   const context: LibraryMutationContext = {
     action: 'uploadMediaThumbnail',
     actorId: userId,
     mediaId: data.mediaId,
     startedAt: performance.now(),
+  }
+  const existing = await requireManagedMediaWithTelemetry(
+    data.mediaId,
+    userId,
+    'edit',
+    context,
+  )
+  const path = extractPrivateStoragePath(data.path, 'media-thumbnails')
+  if (!path || !isOwnedStoragePath(path, userId)) {
+    throw new ValidationError('Thumbnail path is not owned by this user')
   }
 
   try {

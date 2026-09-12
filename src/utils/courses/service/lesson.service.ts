@@ -23,7 +23,7 @@ import {
 import { buildCourseCalendarEvents } from '@/utils/courses/domain/course.domain'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
-import { AuthorizationError, NotFoundError } from '@/utils/errors'
+import { AuthorizationError, NotFoundError, isAppError } from '@/utils/errors'
 
 type LessonMutationAction =
   'createLesson' | 'updateLesson' | 'deleteLesson' | 'completeLesson'
@@ -52,6 +52,56 @@ function logLessonMutationEvent(
     lessonId: context.lessonId,
     ...fields,
   })
+}
+
+function shouldLogLessonPreflightFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function loadLessonCompletionPreflight(
+  data: CompleteLessonInput,
+  userId: string,
+  context: LessonMutationLogContext,
+) {
+  let lesson: Awaited<ReturnType<typeof findLessonForCompletion>>
+  try {
+    lesson = await findLessonForCompletion(data.lessonId)
+  } catch (error) {
+    if (shouldLogLessonPreflightFailure(error)) {
+      logLessonMutationEvent('error', 'lesson_completion_failed', context, {
+        errorCategory: 'lesson_read_persistence',
+      })
+    }
+    throw error
+  }
+
+  if (!lesson) {
+    throw new NotFoundError('Lesson not found', {
+      code: 'LESSON_NOT_FOUND',
+      details: { lessonId: data.lessonId },
+    })
+  }
+  if (!lesson.isPublished) {
+    throw new AuthorizationError('Lesson not available', {
+      details: { lessonId: data.lessonId },
+    })
+  }
+
+  context.courseId = lesson.courseId
+
+  let progress: Awaited<ReturnType<typeof findLessonProgress>>
+  try {
+    progress = await findLessonProgress(userId, lesson.id)
+  } catch (error) {
+    if (shouldLogLessonPreflightFailure(error)) {
+      logLessonMutationEvent('error', 'lesson_completion_failed', context, {
+        errorCategory: 'lesson_progress_read_persistence',
+      })
+    }
+    throw error
+  }
+
+  return { lesson, progress }
 }
 
 export async function createLessonService(
@@ -165,21 +215,11 @@ export async function completeLessonService(
   }
   await authz(userId).hasRole('student')
 
-  const lesson = await findLessonForCompletion(data.lessonId)
-  if (!lesson) {
-    throw new NotFoundError('Lesson not found', {
-      code: 'LESSON_NOT_FOUND',
-      details: { lessonId: data.lessonId },
-    })
-  }
-  if (!lesson.isPublished) {
-    throw new AuthorizationError('Lesson not available', {
-      details: { lessonId: data.lessonId },
-    })
-  }
-
-  const progress = await findLessonProgress(userId, lesson.id)
-  context.courseId = lesson.courseId
+  const { lesson, progress } = await loadLessonCompletionPreflight(
+    data,
+    userId,
+    context,
+  )
 
   try {
     const updatedProgress = await completeLessonProgress(userId, lesson.id)

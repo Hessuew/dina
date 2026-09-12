@@ -172,8 +172,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     function only for published lessons. Completion uses an idempotent
     `(studentId, lessonId)` upsert and emits redacted `lesson_completed`,
     `lesson_completion_ignored`, or `lesson_completion_failed` events without
-    lesson content. The response includes a transition-only `courseCompleted`
-    flag when the request completes every published lesson in the course.
+    lesson content. Lesson/progress preflight failures use stable
+    `lesson_read_persistence` / `lesson_progress_read_persistence` categories;
+    expected not-found and unpublished outcomes remain quiet. The response
+    includes a transition-only `courseCompleted` flag when the request
+    completes every published lesson in the course.
   - Calendar overview reads emit redacted `calendar_events_loaded` events with
     request correlation, actor ID, source counts, total event count, status,
     and duration. Unexpected read failures use the stable
@@ -182,7 +185,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     `student_directory_loaded` / `student_directory_load_failed` events with
     request correlation, actor and target IDs where applicable, safe result
     counts, duration, and the stable `student_directory_read_persistence`
-    failure category; names, emails, bios, and assignment content remain
+    failure category, including detail preflight lookups; expected not-found
+    outcomes remain quiet. Names, emails, bios, and assignment content remain
     excluded.
   - Teacher-directory list reads emit redacted `teacher_directory_loaded` /
     `teacher_directory_load_failed` events with request correlation, actor ID,
@@ -204,6 +208,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     external URLs, private storage paths, and raw persistence details remain
     excluded; unexpected failures use `library_media_read_persistence` while
     expected authorization and not-found outcomes remain quiet.
+  - Managed-media update, delete, and thumbnail-upload preflight lookups emit
+    redacted `media_mutation_failed` events with the stable
+    `media_read_persistence` category; expected authorization and not-found
+    outcomes remain quiet.
   - Media-library file and thumbnail signed-upload requests emit redacted
     `media_upload_url_issued` / `media_upload_url_issue_failed` events with
     request correlation, actor/media IDs where applicable, bucket, media kind,
@@ -401,7 +409,7 @@ This folder is primarily where TanStack Start server functions live (via `create
     role, safe link and teacher-option counts, status, and duration. Titles,
     descriptions, meeting URLs, meeting IDs, passcodes, and raw persistence
     details remain excluded; unexpected failures use
-    `zoom_links_read_persistence`.
+    `zoom_links_read_persistence`, including viewer-role preflight failures.
   - `attendance/` — live Attendance Session open/close, student self check-in (`markPresent`), and Course Teacher/Admin/privileged-teacher override (`setStudentPresent`) from student detail. Session and override mutations emit redacted request-correlated Better Stack-ready telemetry with stable persistence categories.
   - `staff-privilege/` — Staff Privilege grants (ADR 0023): domain live-check, Admin grant/revoke, `hasStaffPrivilege` used by attendance override and enrolment contact export.
   - `exam/` — Timed exam authoring, attempt lifecycle, autosave, lazy finalization, and grading (ADR 0017). Student listing/taking services require the caller's persisted `student` role; teacher/Admin services use the staff boundary.

@@ -16,6 +16,7 @@ import {
   uploadMediaThumbnailService,
 } from '@/utils/library/service/library.service'
 import { mediaLibrary } from '@/db/schema'
+import * as libraryRepository from '@/utils/library/repository/library.repository'
 
 const mocks = vi.hoisted(() => ({
   createSignedUploadUrl: vi.fn(),
@@ -303,6 +304,69 @@ describe('library persistence', () => {
     })
     expect(line).not.toContain('private storage provider failure')
   })
+
+  it.each<{
+    name: string
+    path: string
+    run: (mediaId: string, ownerId: string) => Promise<unknown>
+  }>([
+    {
+      name: 'update',
+      path: 'serverFn:updateLibraryMedia',
+      run: (mediaId: string, ownerId: string) =>
+        updateLibraryMediaService({ ...makeCreateInput(), mediaId }, ownerId),
+    },
+    {
+      name: 'delete',
+      path: 'serverFn:deleteLibraryMedia',
+      run: (mediaId: string, ownerId: string) =>
+        deleteLibraryMediaService({ mediaId }, ownerId),
+    },
+    {
+      name: 'thumbnail upload',
+      path: 'serverFn:uploadMediaThumbnail',
+      run: (mediaId: string, ownerId: string) =>
+        uploadMediaThumbnailService(
+          { mediaId, path: `${ownerId}/new.png` },
+          ownerId,
+        ),
+    },
+  ])(
+    'logs managed-media $name preflight failures without raw details',
+    async ({ path, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const ownerId = await seedProfile({ role: 'teacher' })
+      const mediaId = '00000000-0000-4000-8000-000000000003'
+      const repositoryError = new Error(
+        'media lookup connectionString=secret; email=private@test.dev',
+      )
+      vi.spyOn(libraryRepository, 'findMediaById').mockRejectedValueOnce(
+        repositoryError,
+      )
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/library', {
+            headers: { 'x-request-id': `media-preflight-${path}` },
+          }),
+          () => run(mediaId, ownerId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('private@test.dev')
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'media_mutation_failed',
+        path,
+        actorId: ownerId,
+        mediaId,
+        status: 'failure',
+        errorCategory: 'media_read_persistence',
+        durationMs: expect.any(Number),
+      })
+    },
+  )
 
   it('stores YouTube URL separately from private file path', async () => {
     const uploaderId = await seedProfile({ role: 'teacher' })

@@ -98,18 +98,29 @@ async function withZoomLinkReadTelemetry<T>(
 }
 
 export async function getZoomLinksService(userId: string) {
-  const profile = await findViewerRole(userId)
+  const context: ZoomLinkReadContext = {
+    actorId: userId,
+    role: 'unknown',
+    startedAt: performance.now(),
+  }
+
+  let profile: Awaited<ReturnType<typeof findViewerRole>>
+  try {
+    profile = await findViewerRole(userId)
+  } catch (error) {
+    logZoomLinkRead('error', 'zoom_links_load_failed', context, {
+      errorCategory: 'zoom_links_read_persistence',
+    })
+    throw error
+  }
+
   if (!profile) {
     throw new NotFoundError('Profile not found', {
       details: { userId },
     })
   }
 
-  const context: ZoomLinkReadContext = {
-    actorId: userId,
-    role: profile.role,
-    startedAt: performance.now(),
-  }
+  context.role = profile.role
 
   return withZoomLinkReadTelemetry(
     context,

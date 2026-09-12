@@ -517,6 +517,68 @@ describe('completeLessonService (integration)', () => {
       completeLessonService({ lessonId }, teacherId),
     ).rejects.toMatchObject({ code: 'ROLE_REQUIRED', status: 403 })
   })
+
+  it.each([
+    {
+      name: 'lesson',
+      category: 'lesson_read_persistence',
+      setup: async () => {
+        const { lessonId } = await seedCourseWithTeacher()
+        return { courseId: undefined, lessonId }
+      },
+      mock: (error: Error) =>
+        vi
+          .spyOn(coursesRepository, 'findLessonForCompletion')
+          .mockRejectedValueOnce(error),
+    },
+    {
+      name: 'progress',
+      category: 'lesson_progress_read_persistence',
+      setup: async () => {
+        const { courseId, lessonId } = await seedCourseWithTeacher()
+        return { courseId, lessonId }
+      },
+      mock: (error: Error) =>
+        vi
+          .spyOn(coursesRepository, 'findLessonProgress')
+          .mockRejectedValueOnce(error),
+    },
+  ])(
+    'logs $name preflight persistence failures without raw details',
+    async ({ category, setup, mock }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const studentId = await seedProfile({ role: 'student' })
+      const lesson = await setup()
+      const repositoryError = new Error(
+        `${category} connectionString=secret; answer=private`,
+      )
+      mock(repositoryError)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/complete-lesson', {
+            headers: { 'x-request-id': `lesson-${category}` },
+          }),
+          () => completeLessonService({ lessonId: lesson.lessonId }, studentId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('answer=private')
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'lesson_completion_failed',
+        path: 'serverFn:completeLesson',
+        requestId: `lesson-${category}`,
+        actorId: studentId,
+        lessonId: lesson.lessonId,
+        ...(lesson.courseId ? { courseId: lesson.courseId } : {}),
+        status: 'failure',
+        errorCategory: category,
+        durationMs: expect.any(Number),
+      })
+    },
+  )
 })
 
 describe('createCourseService (integration)', () => {

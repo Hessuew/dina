@@ -3901,3 +3901,35 @@ integration suite were intentionally skipped for the iterative telemetry
 workflow. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime
 monitors, source maps, PostHog verification, and restore evidence remain
 pending.
+
+## Iteration 145 — batched read-preflight failure telemetry
+
+This iteration completed a batched Phase 1 structured-logging slice across
+remaining read boundaries:
+
+- Student detail profile lookup failures now reuse redacted
+  `student_directory_load_failed` telemetry with request correlation, the
+  target student ID, and stable `student_directory_read_persistence`
+  categorization; expected not-found outcomes remain quiet.
+- Zoom viewer-role lookup failures now emit the existing redacted
+  `zoom_links_load_failed` event with stable `zoom_links_read_persistence`
+  categorization while the role is unresolved; missing profiles remain quiet.
+- Managed-media update, delete, and thumbnail-upload preflight failures now
+  emit redacted `media_mutation_failed` events with stable
+  `media_read_persistence` categorization; expected authorization and
+  not-found outcomes remain quiet.
+- Lesson completion lesson/progress preflight failures now emit redacted
+  `lesson_completion_failed` events with stable `lesson_read_persistence` or
+  `lesson_progress_read_persistence` categorization; expected unpublished and
+  not-found outcomes remain quiet.
+- Added seven focused integration regressions covering request correlation,
+  safe identifiers, stable categories, raw-detail exclusion, and original
+  error preservation.
+
+Validation: focused student, Zoom-link, library, and course integration suites
+passed 118 tests; typecheck, formatting, static checks, `git diff --check`,
+Cloudflare type generation, and `bun run quality:gate` passed with 1,953 unit
+tests. The full build and full integration suite were intentionally skipped for
+the iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.

@@ -197,6 +197,37 @@ describe('zoomLink service (integration)', () => {
     expect(line).not.toContain('zoom passcode database secret')
   })
 
+  it('logs viewer-role lookup failures without raw repository errors', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const viewerId = await seedProfile({ role: 'admin' })
+    const repositoryError = new Error('viewer role connectionString=secret')
+    vi.spyOn(zoomLinkRepository, 'findViewerRole').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/zoom-links', {
+          headers: { 'x-request-id': 'zoom-viewer-read-failure' },
+        }),
+        () => getZoomLinksService(viewerId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'zoom_links_load_failed',
+      path: 'serverFn:getZoomLinks',
+      requestId: 'zoom-viewer-read-failure',
+      actorId: viewerId,
+      role: 'unknown',
+      status: 'failure',
+      errorCategory: 'zoom_links_read_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
+
   it('database rejects invalid section-owner combinations', async () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const db = getDb()

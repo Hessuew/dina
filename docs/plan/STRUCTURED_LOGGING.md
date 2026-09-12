@@ -214,7 +214,8 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    role, safe link and teacher-option counts, status, and duration. Titles,
    descriptions, meeting URLs, meeting IDs, passcodes, and raw persistence
    details remain excluded; unexpected failures use the stable
-   `zoom_links_read_persistence` category.
+   `zoom_links_read_persistence` category, including viewer-role preflight
+   failures.
    Dashboard upcoming-lesson reads now emit redacted
    `upcoming_lessons_loaded` / `upcoming_lessons_load_failed` events with
    request correlation, actor ID, safe lesson counts, status, duration, and
@@ -316,8 +317,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `lesson_completion_failed` for unexpected persistence errors. Events carry
    request correlation, actor/course/lesson IDs, status, duration,
    `courseCompleted`, and stable persistence categories; lesson content remains
-   excluded. The course-completion flag is true only for the request that
-   completes the final published lesson.
+   excluded. Lesson and progress preflight reads reuse the failure event with
+   stable `lesson_read_persistence` and `lesson_progress_read_persistence`
+   categories; expected not-found and unpublished outcomes remain quiet. The
+   course-completion flag is true only for the request that completes the final
+   published lesson.
    Calendar overview reads now emit redacted `calendar_events_loaded` events
    with request correlation, actor ID, source counts, total event count,
    status, and duration. Unexpected read failures emit
@@ -328,7 +332,8 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `student_directory_loaded` / `student_directory_load_failed` events with
    request correlation, actor and target IDs where applicable, safe result
    counts, duration, and the stable `student_directory_read_persistence`
-   failure category; names, emails, bios, and assignment content remain
+   failure category, including detail preflight lookups; expected not-found
+   outcomes remain quiet. Names, emails, bios, and assignment content remain
    excluded.
    Teacher-directory list reads now emit redacted
    `teacher_directory_loaded` / `teacher_directory_load_failed` events with
@@ -351,6 +356,9 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    details remain excluded; expected authorization and not-found outcomes
    remain quiet, while unexpected failures use the stable
    `library_media_read_persistence` category.
+   Managed-media update, delete, and thumbnail-upload preflight lookups emit
+   redacted mutation failures with the stable `media_read_persistence`
+   category; expected authorization and not-found outcomes remain quiet.
    Media-library file and thumbnail signed-upload requests now emit redacted
    `media_upload_url_issued` / `media_upload_url_issue_failed` events with
    request correlation, actor/media IDs where applicable, bucket, media kind,
