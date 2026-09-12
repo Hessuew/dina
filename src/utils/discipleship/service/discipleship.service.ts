@@ -61,6 +61,15 @@ import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 type ManageFlags = { isAdmin: boolean; isTeacher: boolean }
 type AssignmentRow = Awaited<ReturnType<typeof findAssignmentByStudentId>>
 
+type DiscipleshipReadAction =
+  'getDiscipleshipBoard' | 'getStudentDiscipleshipView'
+
+type DiscipleshipReadLogContext = {
+  action: DiscipleshipReadAction
+  actorId: string
+  startedAt: number
+}
+
 type DiscipleshipMutation =
   | 'assignStudentToTeacher'
   | 'unassignStudent'
@@ -75,6 +84,55 @@ type DiscipleshipMutationContext = {
   actorId: string
   startedAt: number
   fields: Record<string, unknown>
+}
+
+function logDiscipleshipReadEvent(
+  level: LogLevel,
+  event: string,
+  context: DiscipleshipReadLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    ...fields,
+  })
+}
+
+function shouldLogDiscipleshipFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function withDiscipleshipReadTelemetry<T>(args: {
+  context: DiscipleshipReadLogContext
+  read: () => Promise<T>
+  fields: (result: T) => Record<string, unknown>
+}): Promise<T> {
+  try {
+    const result = await args.read()
+    logDiscipleshipReadEvent(
+      'info',
+      'discipleship_read_loaded',
+      args.context,
+      args.fields(result),
+    )
+    return result
+  } catch (error) {
+    if (shouldLogDiscipleshipFailure(error)) {
+      logDiscipleshipReadEvent(
+        'error',
+        'discipleship_read_failed',
+        args.context,
+        {
+          errorCategory: 'discipleship_read_persistence',
+        },
+      )
+    }
+    throw error
+  }
 }
 
 function logDiscipleshipMutationEvent(
@@ -228,28 +286,48 @@ function toGroupDTO(row: {
 }
 
 export async function getDiscipleshipBoardService(userId: string) {
-  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-  if (!isAdmin && !isTeacher) throw new AuthorizationError()
-
-  const [teachers, students, assignments, pairs, groups] = await Promise.all([
-    findDiscipleshipTeachers(),
-    findDiscipleshipStudents(),
-    isAdmin ? findAllAssignments() : findAssignmentsByTeacher(userId),
-    isAdmin ? findAllPairs() : findPairsByTeacher(userId),
-    isAdmin ? findAllGroups() : findGroupsByTeacher(userId),
-  ])
-
-  return {
-    isAdmin,
-    currentUserId: userId,
-    teachers: await signAvatarRows(
-      isAdmin ? teachers : teachers.filter((t) => t.id === userId),
-    ),
-    students: await signAvatarRows(students),
-    assignments: assignments.map(toAssignmentDTO),
-    pairs: pairs.map(toPairDTO),
-    groups: groups.map(toGroupDTO),
+  const context: DiscipleshipReadLogContext = {
+    action: 'getDiscipleshipBoard',
+    actorId: userId,
+    startedAt: performance.now(),
   }
+
+  return withDiscipleshipReadTelemetry({
+    context,
+    read: async () => {
+      const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+      if (!isAdmin && !isTeacher) throw new AuthorizationError()
+
+      const [teachers, students, assignments, pairs, groups] =
+        await Promise.all([
+          findDiscipleshipTeachers(),
+          findDiscipleshipStudents(),
+          isAdmin ? findAllAssignments() : findAssignmentsByTeacher(userId),
+          isAdmin ? findAllPairs() : findPairsByTeacher(userId),
+          isAdmin ? findAllGroups() : findGroupsByTeacher(userId),
+        ])
+
+      return {
+        isAdmin,
+        currentUserId: userId,
+        teachers: await signAvatarRows(
+          isAdmin ? teachers : teachers.filter((t) => t.id === userId),
+        ),
+        students: await signAvatarRows(students),
+        assignments: assignments.map(toAssignmentDTO),
+        pairs: pairs.map(toPairDTO),
+        groups: groups.map(toGroupDTO),
+      }
+    },
+    fields: (result) => ({
+      scope: result.isAdmin ? 'all' : 'teacher',
+      teacherCount: result.teachers.length,
+      studentCount: result.students.length,
+      assignmentCount: result.assignments.length,
+      pairCount: result.pairs.length,
+      groupCount: result.groups.length,
+    }),
+  })
 }
 
 function isoOrNull(value: Date | null | undefined): string | null {
@@ -317,38 +395,59 @@ function toStudentViewBuilderInput(args: {
 export async function getStudentDiscipleshipViewService(
   userId: string,
 ): Promise<StudentDiscipleshipView> {
-  const role = await getAuthorizationService().getRole(userId)
-  if (role !== 'student') throw new AuthorizationError()
+  const context: DiscipleshipReadLogContext = {
+    action: 'getStudentDiscipleshipView',
+    actorId: userId,
+    startedAt: performance.now(),
+  }
 
-  const assignment = await findAssignmentByStudentId(userId)
-  if (!assignment) return { kind: 'unassigned' }
+  return withDiscipleshipReadTelemetry({
+    context,
+    read: async () => {
+      const role = await getAuthorizationService().getRole(userId)
+      if (role !== 'student') throw new AuthorizationError()
 
-  const [teacher, teacherAssignments, pairs, groups] = await Promise.all([
-    findPublicPersonById(assignment.teacherId),
-    findAssignmentsByTeacher(assignment.teacherId),
-    findPairsByTeacher(assignment.teacherId),
-    findGroupsByTeacher(assignment.teacherId),
-  ])
+      const assignment = await findAssignmentByStudentId(userId)
+      if (!assignment) return { kind: 'unassigned' }
 
-  const classmateIds = teacherAssignments
-    .map((a) => a.studentId)
-    .filter((id) => id !== userId)
-  const [signedPeople, classmates] = await Promise.all([
-    signAvatarRows(teacher ? [teacher] : []),
-    findPublicPersonsByIds(classmateIds).then(signAvatarRows),
-  ])
+      const [teacher, teacherAssignments, pairs, groups] = await Promise.all([
+        findPublicPersonById(assignment.teacherId),
+        findAssignmentsByTeacher(assignment.teacherId),
+        findPairsByTeacher(assignment.teacherId),
+        findGroupsByTeacher(assignment.teacherId),
+      ])
 
-  return buildStudentDiscipleshipView(
-    toStudentViewBuilderInput({
-      viewerId: userId,
-      assignment,
-      teacher: signedPeople[0],
-      classmates,
-      teacherAssignments,
-      pairs,
-      groups,
-    }),
-  )
+      const classmateIds = teacherAssignments
+        .map((a) => a.studentId)
+        .filter((id) => id !== userId)
+      const [signedPeople, classmates] = await Promise.all([
+        signAvatarRows(teacher ? [teacher] : []),
+        findPublicPersonsByIds(classmateIds).then(signAvatarRows),
+      ])
+
+      return buildStudentDiscipleshipView(
+        toStudentViewBuilderInput({
+          viewerId: userId,
+          assignment,
+          teacher: signedPeople[0],
+          classmates,
+          teacherAssignments,
+          pairs,
+          groups,
+        }),
+      )
+    },
+    fields: (result) => {
+      if (result.kind === 'unassigned') return { viewKind: 'unassigned' }
+      return {
+        viewKind: 'assigned',
+        teacherId: result.teacher.id,
+        pairPresent: Boolean(result.pair),
+        rosterPairCount: result.roster.pairs.length,
+        rosterSoloCount: result.roster.solos.length,
+      }
+    },
+  })
 }
 
 export async function assignStudentToTeacherService(

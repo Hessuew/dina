@@ -247,6 +247,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    details remain excluded; expected authorization and not-found outcomes
    remain quiet, while unexpected failures use the stable
    `library_media_read_persistence` category.
+   Discipleship board and student-view reads now emit redacted
+   `discipleship_read_loaded` / `discipleship_read_failed` events with request
+   correlation, actor/teacher IDs, scope, safe result counts, view kind, and
+   duration. Names, email addresses, avatars, schedules, and raw persistence
+   details remain excluded; expected authorization outcomes stay quiet while
+   unexpected failures use the stable `discipleship_read_persistence`
+   category.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

@@ -226,6 +226,13 @@ This folder is primarily where TanStack Start server functions live (via `create
     role, safe result counts, status, and duration. Exam titles, question
     prompts, option labels, answers, scores, and raw persistence details remain
     excluded; unexpected failures use `exam_read_persistence`.
+  - Discipleship board and student-view reads emit redacted
+    `discipleship_read_loaded` / `discipleship_read_failed` events with request
+    correlation, actor/teacher IDs, scope, safe counts, view kind, status, and
+    duration. Names, email addresses, avatars, schedules, and raw persistence
+    details remain excluded; unexpected failures use
+    `discipleship_read_persistence` while expected authorization outcomes stay
+    quiet.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is

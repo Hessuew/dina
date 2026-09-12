@@ -13,6 +13,8 @@ import {
   setIndividualScheduleService,
 } from '@/utils/discipleship/service/discipleship.service'
 import { AuthorizationError } from '@/utils/errors'
+import * as discipleshipRepository from '@/utils/discipleship/repository'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 describe('getStudentDiscipleshipViewService (integration)', () => {
   it('returns unassigned for a student with no assignment', async () => {
@@ -161,6 +163,116 @@ describe('getDiscipleshipBoardService (integration)', () => {
     await expect(getDiscipleshipBoardService(studentId)).rejects.toBeInstanceOf(
       AuthorizationError,
     )
+  })
+})
+
+describe('discipleship read telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs safe board and student-view metadata', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({
+      role: 'student',
+      fullName: 'Private Student',
+      email: 'private.student@test.dev',
+    })
+    await seedDiscipleshipAssignment({
+      studentId,
+      teacherId,
+      anchorAt: new Date('2026-09-12T10:00:00.000Z'),
+    })
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org', {
+        headers: { 'x-request-id': 'discipleship-board-request' },
+      }),
+      () => getDiscipleshipBoardService(teacherId),
+    )
+    const boardLine = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(boardLine)).toMatchObject({
+      event: 'discipleship_read_loaded',
+      path: 'serverFn:getDiscipleshipBoard',
+      requestId: 'discipleship-board-request',
+      actorId: teacherId,
+      scope: 'teacher',
+      teacherCount: 1,
+      studentCount: 1,
+      assignmentCount: 1,
+      pairCount: 0,
+      groupCount: 0,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org', {
+        headers: { 'x-request-id': 'discipleship-student-request' },
+      }),
+      () => getStudentDiscipleshipViewService(studentId),
+    )
+    const studentLine = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(studentLine)).toMatchObject({
+      event: 'discipleship_read_loaded',
+      path: 'serverFn:getStudentDiscipleshipView',
+      requestId: 'discipleship-student-request',
+      actorId: studentId,
+      viewKind: 'assigned',
+      teacherId,
+      pairPresent: false,
+      rosterPairCount: 0,
+      rosterSoloCount: 0,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+    expect(`${boardLine}\n${studentLine}`).not.toContain('Private Student')
+    expect(`${boardLine}\n${studentLine}`).not.toContain(
+      'private.student@test.dev',
+    )
+    expect(`${boardLine}\n${studentLine}`).not.toContain('2026-09-12')
+  })
+
+  it('logs stable persistence failures and keeps expected authorization quiet', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const repositoryError = new Error(
+      'connectionString=secret; student email=private.student@test.dev',
+    )
+    vi.spyOn(
+      discipleshipRepository,
+      'findDiscipleshipTeachers',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'discipleship-read-failure-request' },
+        }),
+        () => getDiscipleshipBoardService(teacherId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'discipleship_read_failed',
+      path: 'serverFn:getDiscipleshipBoard',
+      requestId: 'discipleship-read-failure-request',
+      actorId: teacherId,
+      status: 'failure',
+      errorCategory: 'discipleship_read_persistence',
+      durationMs: expect.any(Number),
+    })
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('private.student@test.dev')
+
+    errorSpy.mockClear()
+    const studentId = await seedProfile({ role: 'student' })
+    await expect(getDiscipleshipBoardService(studentId)).rejects.toBeInstanceOf(
+      AuthorizationError,
+    )
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })
 

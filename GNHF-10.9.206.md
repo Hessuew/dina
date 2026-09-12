@@ -3334,3 +3334,21 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
 - Focused exam integration coverage passes 23 tests. Hosted Better Stack /
   Cloudflare ingestion, dashboards, alerts, Uptime monitors, and source-map
   verification remain external setup work.
+
+## Iteration 121 — discipleship-read telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Discipleship board and student-view reads now emit redacted
+  `discipleship_read_loaded` / `discipleship_read_failed` events with request
+  correlation, actor/teacher IDs, scope, safe result counts, view kind, and
+  duration.
+- Names, email addresses, avatars, schedules, and raw persistence details
+  remain excluded. Expected authorization outcomes stay quiet; unexpected
+  repository failures use the stable `discipleship_read_persistence` category
+  and preserve the original error.
+- Repository evidence: `src/utils/discipleship/service/discipleship.service.ts`,
+  `src/utils/discipleship/discipleship.integration.test.ts`,
+  `docs/plan/STRUCTURED_LOGGING.md`, and `src/utils/README.md`.
+- Hosted Better Stack / Cloudflare ingestion, dashboards, alerts, Uptime
+  monitors, and source-map verification remain external setup work.
