@@ -1,9 +1,32 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 153
-**Scope:** verify the final evidence-aware disposition of the engineering
-roadmap phases and record the remaining hosted evidence gates.
+**Iteration:** 154
+**Scope:** publish the final evidence-aware disposition of the engineering
+roadmap phases and make the remaining hosted closure gates self-contained.
+
+## Final roadmap disposition
+
+The repository-side handoff is complete for the currently scoped engineering
+roadmap work. The live Engineering Roadmap uses the same evidence-aware
+disposition:
+
+| Phase                             | Current disposition                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Phase 1 — Production fundamentals | Repository implementation complete; hosted verification pending                                   |
+| Phase 2 — Reliability             | Repository procedures drafted; hosted verification pending                                        |
+| Phase 3 — Safe delivery           | Repository procedure implemented; hosted rehearsal pending                                        |
+| Phase 4 — Performance and scale   | Initial query/index review implemented; hosted measurement pending                                |
+| Phase 5 — Security                | Repository security baseline implemented; hosted verification and remaining RBAC/RLS work pending |
+| Phase 6 — Long-term architecture  | Planned                                                                                           |
+
+Closure requires dated external evidence for the applicable phase gates:
+Better Stack and Cloudflare ingestion, dashboards, alert routing, Uptime and
+source-map verification, PostHog project/dashboard verification, the first
+backup/restore drill, protected-environment rehearsal, representative hosted
+query plans and latency measurements, and hosted security/RLS verification.
+No dashboard, alert, SLO, readiness, or phase status is promoted from
+repository structure or local tests alone.
 
 ## Executive summary
 
@@ -4110,3 +4133,13 @@ no phase or hosted status was promoted. Validation: the live page was read
 back, `bun run docs:notion-check --json` returned no changed-file targets, and
 `git diff --check` passed. The full build and full integration suite were not
 run for this documentation-only audit.
+
+## Iteration 154 — self-contained final disposition
+
+This iteration added a concise phase-by-phase disposition and hosted closure
+checklist to the top of the handoff so its current state is unambiguous without
+reading the historical iteration log. The wording matches the live Notion
+Engineering Roadmap; no phase, dashboard, alert, SLO, readiness, or hosted
+status was promoted. Validation: Markdown formatting and `git diff --check`
+passed. The full build and full integration suite were not run for this
+documentation-only handoff clarification.
