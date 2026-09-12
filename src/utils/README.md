@@ -120,6 +120,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     result counts, duration, and the stable `invitation_read_persistence`
     category; invitation emails, inviter details, tokens, and raw persistence
     errors remain excluded.
+  - Public invitation-token validation emits redacted
+    `invitation_token_validated` / `invitation_token_lookup_failed` events
+    with request correlation, invitation role/ID on success, and a stable
+    persistence category on unexpected failure; tokens, email addresses, and
+    raw persistence details remain excluded.
   - Privileged enrollment contact exports emit redacted
     `enrollment_contact_exported` / `enrollment_contact_export_failed` events
     with request correlation, actor ID, cohort, safe contact count, duration,

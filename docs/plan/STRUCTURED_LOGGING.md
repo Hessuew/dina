@@ -76,6 +76,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    invitation counts, duration, and the stable
    `invitation_read_persistence` failure category. Invitation emails, inviter
    details, tokens, and raw persistence errors remain excluded.
+   Public invitation-token validation now emits a redacted
+   `invitation_token_validated` success event and an
+   `invitation_token_lookup_failed` event for unexpected persistence failures.
+   Events carry only request correlation, invitation ID/role on success, and
+   the stable `invitation_token_read_persistence` category on failure; tokens,
+   email addresses, and raw provider/database details remain excluded. Expected
+   invalid, expired, and revoked-token outcomes stay quiet.
    Privileged enrollment contact exports now emit redacted
    `enrollment_contact_exported` / `enrollment_contact_export_failed` events
    with request correlation, actor ID, cohort, safe contact count, duration,

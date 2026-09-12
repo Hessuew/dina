@@ -189,12 +189,30 @@ describe('checkInvitationByEmailService (integration)', () => {
 })
 
 describe('getInvitationByTokenService (integration)', () => {
-  it('returns email + role for an active token', async () => {
+  it('returns email + role and logs safe validation metadata', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { token, email } = await seedInvitation({ role: 'student' })
 
-    const result = await getInvitationByTokenService({ token })
+    const result = await withObservabilityRequest(
+      new Request('https://christ-dina.org/signup', {
+        headers: { 'x-request-id': 'invitation-token-read' },
+      }),
+      () => getInvitationByTokenService({ token }),
+    )
 
     expect(result.invitation).toEqual({ email, role: 'student' })
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain(email)
+    expect(line).not.toContain(token)
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_token_validated',
+      path: 'serverFn:getInvitationByToken',
+      requestId: 'invitation-token-read',
+      invitationId: expect.any(String),
+      role: 'student',
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
   })
 
   it('throws when the token is empty', async () => {
@@ -207,6 +225,38 @@ describe('getInvitationByTokenService (integration)', () => {
     await expect(
       getInvitationByTokenService({ token: 'does-not-exist' }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 })
+  })
+
+  it('logs unexpected lookup failures without token or provider details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const repositoryError = new Error(
+      'connectionString=secret while reading invite-token-secret',
+    )
+    vi.spyOn(
+      invitationsRepository,
+      'findInvitationByToken',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/signup', {
+          headers: { 'x-request-id': 'invitation-token-failure' },
+        }),
+        () => getInvitationByTokenService({ token: 'invite-token-secret' }),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('invite-token-secret')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_token_lookup_failed',
+      errorCategory: 'invitation_token_read_persistence',
+      path: 'serverFn:getInvitationByToken',
+      requestId: 'invitation-token-failure',
+      status: 'failure',
+      durationMs: expect.any(Number),
+    })
   })
 })
 

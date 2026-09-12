@@ -1,10 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 132
-**Scope:** add redacted Better Stack-ready telemetry for Admin campaign-lock
-inspection and explicit release, and record the remaining hosted observability
-evidence gate.
+**Iteration:** 135
+**Scope:** add redacted Better Stack-ready telemetry for public invitation-token
+validation and record the remaining hosted observability evidence gate.
 
 ## Executive summary
 
@@ -178,6 +177,12 @@ shadcn@latest` intentionally.
   result counts, duration, and the stable `invitation_read_persistence`
   failure category. Invitation emails, inviter details, tokens, and raw
   persistence errors remain excluded.
+- Public invitation-token validation now emits redacted
+  `invitation_token_validated` / `invitation_token_lookup_failed` events with
+  request correlation, invitation ID/role on success, and the stable
+  `invitation_token_read_persistence` category for unexpected persistence
+  failures. Tokens, email addresses, and raw persistence details remain
+  excluded; expected invalid, expired, and revoked-token outcomes stay quiet.
 - Privileged enrollment contact exports now emit redacted
   `enrollment_contact_exported` / `enrollment_contact_export_failed` events
   with request correlation, actor ID, cohort, safe contact count, duration,
@@ -3655,6 +3660,26 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
   preservation.
 
 Validation: focused enrollment integration tests, formatting, typecheck,
+`bun run quality:gate`, and the production build are required before final
+handoff. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime
+monitors, and source-map verification remain external follow-up.
+
+## Iteration 135 — public invitation-token telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Public invitation-token validation now emits redacted
+  `invitation_token_validated` success events with request correlation,
+  invitation ID, role, status, and duration.
+- Unexpected invitation-token repository failures emit
+  `invitation_token_lookup_failed` with the stable
+  `invitation_token_read_persistence` category while preserving the original
+  error. Invalid, expired, and revoked-token outcomes remain quiet.
+- Invitation tokens, email addresses, and raw provider/database details remain
+  outside Better Stack/Cloudflare telemetry. Added integration coverage for
+  safe success metadata and persistence-failure redaction.
+
+Validation: focused invitation integration tests, formatting, typecheck,
 `bun run quality:gate`, and the production build are required before final
 handoff. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime
 monitors, and source-map verification remain external follow-up.

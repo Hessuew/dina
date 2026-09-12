@@ -51,6 +51,10 @@ type InvitationLogContext = {
   startedAt: number
 }
 
+type InvitationTokenLogContext = {
+  startedAt: number
+}
+
 function logInvitationEvent(
   level: 'info' | 'error',
   event: string,
@@ -65,6 +69,21 @@ function logInvitationEvent(
     actorId: context.actorId,
     invitationId: context.invitationId,
     role: context.role,
+    ...fields,
+  })
+}
+
+function logInvitationTokenEvent(
+  level: 'info' | 'error',
+  event: string,
+  context: InvitationTokenLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:getInvitationByToken',
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
     ...fields,
   })
 }
@@ -220,13 +239,31 @@ export async function checkInvitationByEmailService(
 export async function getInvitationByTokenService(
   data: GetInvitationByTokenInput,
 ) {
+  const context: InvitationTokenLogContext = {
+    startedAt: performance.now(),
+  }
   if (!data.token) {
     throw new NotFoundError('No token provided', {
       details: { token: data.token },
     })
   }
 
-  const invitation = await findInvitationByToken(data.token)
+  let invitation
+  try {
+    invitation = await findInvitationByToken(data.token)
+  } catch (error) {
+    if (shouldLogInvitationReadFailure(error)) {
+      logInvitationTokenEvent(
+        'error',
+        'invitation_token_lookup_failed',
+        context,
+        {
+          errorCategory: 'invitation_token_read_persistence',
+        },
+      )
+    }
+    throw error
+  }
 
   if (!invitation) {
     throw new NotFoundError('Invalid invitation token', {
@@ -235,6 +272,11 @@ export async function getInvitationByTokenService(
   }
 
   validateInvitationActive(invitation, new Date())
+
+  logInvitationTokenEvent('info', 'invitation_token_validated', context, {
+    invitationId: invitation.id,
+    role: invitation.role,
+  })
 
   return { invitation: { email: invitation.email, role: invitation.role } }
 }
