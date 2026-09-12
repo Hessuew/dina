@@ -28,6 +28,7 @@ import {
   findLessonProgress,
   insertCourse,
 } from '@/utils/courses/repository'
+import * as coursesRepository from '@/utils/courses/repository'
 import {
   seedAssignment,
   seedCourse,
@@ -39,6 +40,7 @@ import {
   seedSubmission,
 } from '@/../test/integration/seed'
 import { resetCreateSignedUrlsMock } from '@/../test/integration/storage-mocks'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 // The only external boundary in this area is Supabase storage, used by
 // deleteCourseService to remove a course thumbnail. We mock just that; the DB
@@ -80,6 +82,78 @@ async function seedCourseWithTeacher() {
 }
 
 describe('getCoursesService (integration)', () => {
+  it('logs a redacted list-read event with safe counts', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const courseId = await seedCourse({ title: 'Private Course' })
+    await seedCourseTeacher(courseId, teacherId)
+    await seedLesson({
+      courseId,
+      isPublished: true,
+      content: 'Private lesson content',
+    })
+    await seedLesson({
+      courseId,
+      isPublished: false,
+      content: 'Private draft content',
+    })
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org', {
+        headers: { 'x-request-id': 'course-list-request' },
+      }),
+      () => getCoursesService(teacherId),
+    )
+
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('Private Course')
+    expect(line).not.toContain('Private lesson content')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'course_read_loaded',
+      path: 'serverFn:getCourses',
+      requestId: 'course-list-request',
+      actorId: teacherId,
+      role: 'teacher',
+      courseCount: 1,
+      lessonCount: 2,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+  })
+
+  it('logs stable failure metadata and preserves repository errors', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const actorId = await seedProfile({ role: 'student' })
+    const repositoryError = new Error(
+      'connectionString=secret; content=private lesson',
+    )
+    vi.spyOn(coursesRepository, 'findAllCourses').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'course-list-failure-request' },
+        }),
+        () => getCoursesService(actorId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('private lesson')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'course_read_failed',
+      path: 'serverFn:getCourses',
+      requestId: 'course-list-failure-request',
+      actorId,
+      status: 'failure',
+      errorCategory: 'course_read_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
+
   it('admin sees unpublished lessons', async () => {
     const adminId = await seedProfile({ role: 'admin' })
     const courseId = await seedCourse()
@@ -160,11 +234,49 @@ describe('getCoursesService (integration)', () => {
 
 describe('getCourseService (integration)', () => {
   it('throws when the course does not exist', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const studentId = await seedProfile({ role: 'student' })
 
     await expect(
       getCourseService({ courseId: randomUUID() }, studentId),
     ).rejects.toMatchObject({ code: 'COURSE_NOT_FOUND', status: 404 })
+    expect(infoSpy).not.toHaveBeenCalled()
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
+
+  it('logs a redacted detail-read event with safe counts', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { courseId, teacherId } = await seedCourseWithTeacher()
+    await seedMedia({
+      uploaderId: teacherId,
+      courseId,
+      isPublished: true,
+      title: 'Private media title',
+    })
+    const studentId = await seedProfile({ role: 'student' })
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org', {
+        headers: { 'x-request-id': 'course-detail-request' },
+      }),
+      () => getCourseService({ courseId }, studentId),
+    )
+
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('Private media title')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'course_read_loaded',
+      path: 'serverFn:getCourse',
+      requestId: 'course-detail-request',
+      actorId: studentId,
+      courseId,
+      role: 'student',
+      lessonCount: 1,
+      mediaCount: 1,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
   })
 
   it('teacher sees all lessons and a manage-capable permissions object', async () => {

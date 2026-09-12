@@ -75,6 +75,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    unexpected persistence failures use the stable `course_persistence`
    category while expected authorization, validation, and teacher-conflict
    outcomes remain out of noisy error logs.
+   Course list and detail reads now emit redacted `course_read_loaded` and
+   `course_read_failed` events with request correlation, actor/course IDs,
+   role, safe course/lesson/media counts, status, and duration. Course titles,
+   lesson content, media metadata, teacher payloads, and storage URLs remain
+   excluded; expected authorization and not-found outcomes remain outside
+   noisy error logs.
    The direct Admin course-teacher assignment mutation now emits a redacted
    `course_teachers_updated` event with request correlation, actor/course/
    teacher IDs, status, and duration; unexpected replacement failures use the

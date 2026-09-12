@@ -157,6 +157,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     state where relevant; unexpected persistence failures use the stable
     `course_persistence` category while expected conflicts and validation
     outcomes remain outside noisy error logs.
+  - Course list and detail reads emit redacted `course_read_loaded` and
+    `course_read_failed` events with request correlation, actor/course IDs,
+    role, safe lesson/media/course counts, status, and duration; expected
+    authorization and not-found outcomes remain outside noisy error logs, and
+    course content is excluded.
   - Direct Admin course-teacher assignment emits redacted
     `course_teachers_updated` telemetry with request correlation,
     actor/course/teacher IDs, status, and duration; unexpected replacement

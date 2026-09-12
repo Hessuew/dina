@@ -3246,3 +3246,23 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
 Focused teacher integration coverage passes (12 tests). Hosted Better Stack /
 Cloudflare ingestion, dashboards, alerts, Uptime, and source-map verification
 remain external follow-up.
+
+## Iteration 117 — course-read telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Course list and detail reads now emit redacted `course_read_loaded` and
+  `course_read_failed` events with request correlation, actor/course IDs,
+  role, safe course/lesson/media counts, status, and duration.
+- Course titles, lesson content, media metadata, teacher payloads, and storage
+  URLs remain excluded. Expected authorization and not-found outcomes do not
+  create noisy failure logs; unexpected repository errors retain stable
+  `course_read_persistence` categorization while the original error is
+  re-thrown.
+- Repository evidence: `src/utils/courses/service/course.service.ts`,
+  `src/utils/courses/courses.integration.test.ts`,
+  `docs/plan/STRUCTURED_LOGGING.md`, and `src/utils/README.md`.
+
+Focused course integration coverage passes (55 tests). Hosted Better Stack /
+Cloudflare ingestion, dashboards, alerts, Uptime, and source-map verification
+remain external follow-up.

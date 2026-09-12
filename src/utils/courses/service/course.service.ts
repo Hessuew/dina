@@ -54,6 +54,51 @@ type CourseDetail = NonNullable<
   Awaited<ReturnType<typeof findCourseWithDetails>>
 >
 
+type CourseReadAction = 'getCourses' | 'getCourse'
+
+type CourseReadLogContext = {
+  action: CourseReadAction
+  actorId: string
+  courseId?: string
+  startedAt: number
+}
+
+function logCourseReadEvent(
+  level: LogLevel,
+  event: string,
+  context: CourseReadLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    courseId: context.courseId,
+    ...fields,
+  })
+}
+
+async function withCourseReadTelemetry<T>(
+  context: CourseReadLogContext,
+  read: () => Promise<T>,
+  fields: (result: T) => Record<string, unknown>,
+): Promise<T> {
+  try {
+    const result = await read()
+    logCourseReadEvent('info', 'course_read_loaded', context, fields(result))
+    return result
+  } catch (error) {
+    if (shouldLogCourseFailure(error)) {
+      logCourseReadEvent('error', 'course_read_failed', context, {
+        errorCategory: 'course_read_persistence',
+      })
+    }
+    throw error
+  }
+}
+
 type CourseMutationAction = 'createCourse' | 'updateCourse' | 'deleteCourse'
 
 type CourseMutationLogContext = {
@@ -139,44 +184,24 @@ function restrictCourseListToPublishedLessons(
   })
 }
 
-export async function getCoursesService(userId: string) {
-  const profile = await getUserProfile(userId)
-  const isStudentView = profile.role === 'student'
-  const allCourses = await findAllCourses(!isStudentView)
-  const visibleCourses =
-    profile.role === 'teacher'
-      ? restrictCourseListToPublishedLessons(allCourses, userId)
-      : allCourses
-
-  if (!isStudentView) {
-    return {
-      courses: await signCourseAssets(visibleCourses),
-      role: profile.role,
-    }
-  }
-
-  const allLessonIds = allCourses.flatMap((course) =>
-    course.lessons.map((l) => l.id),
-  )
-  const allAssignments = await findPublishedAssignmentsByLessonIds(allLessonIds)
-  const allAssignmentIds = allAssignments.map((a) => a.id)
-  const allSubmissions = await findStudentSubmissions(userId, allAssignmentIds)
-
-  const coursesWithProgress = buildCoursesWithProgress(
-    allCourses,
-    allAssignments,
-    allSubmissions,
-  )
+async function loadStudentCourseData(userId: string, course: CourseDetail) {
+  const progress = await findCompletedLessonProgress(userId)
+  const lessonIds = course.lessons.map((lesson) => lesson.id)
+  const courseAssignments = await findPublishedAssignmentsByLessonIds(lessonIds)
+  const assignmentIds = courseAssignments.map((assignment) => assignment.id)
+  const studentSubmissions = await findStudentSubmissions(userId, assignmentIds)
 
   return {
-    courses: await signCourseAssets(coursesWithProgress),
-    role: profile.role,
+    progress,
+    assignmentData: buildAssignmentStats(courseAssignments, studentSubmissions),
   }
 }
 
-export async function getCourseService(data: GetCourseInput, userId: string) {
-  const profile = await getUserProfile(userId)
-
+async function loadCourse(
+  data: GetCourseInput,
+  userId: string,
+  profile: Awaited<ReturnType<typeof getUserProfile>>,
+) {
   const course = await findCourseWithDetails(
     data.courseId,
     profile.role !== 'student',
@@ -198,28 +223,21 @@ export async function getCourseService(data: GetCourseInput, userId: string) {
   const visibleCourse = permissions.canManage
     ? course
     : restrictCourseToPublishedContent(course)
+  const courseData =
+    profile.role === 'student'
+      ? await loadStudentCourseData(userId, visibleCourse)
+      : {
+          progress: [],
+          assignmentData: {
+            totalAssignments: 0,
+            submittedCount: 0,
+            gradedCount: 0,
+          },
+        }
 
-  let progress: Array<{ lessonId: string }> = []
-  let assignmentData = {
-    totalAssignments: 0,
-    submittedCount: 0,
-    gradedCount: 0,
-  }
-
-  if (profile.role === 'student') {
-    progress = await findCompletedLessonProgress(userId)
-    const lessonIds = visibleCourse.lessons.map((lesson) => lesson.id)
-    const courseAssignments =
-      await findPublishedAssignmentsByLessonIds(lessonIds)
-    const assignmentIds = courseAssignments.map((assignment) => assignment.id)
-    const studentSubmissions = await findStudentSubmissions(
-      userId,
-      assignmentIds,
-    )
-    assignmentData = buildAssignmentStats(courseAssignments, studentSubmissions)
-  }
-
-  const completedLessonIds = new Set(progress.map((item) => item.lessonId))
+  const completedLessonIds = new Set(
+    courseData.progress.map((item) => item.lessonId),
+  )
   const [signedCourse] = await signCourseAssets([visibleCourse])
   const courseWithTeachers = {
     ...signedCourse,
@@ -231,9 +249,87 @@ export async function getCourseService(data: GetCourseInput, userId: string) {
     course: courseWithTeachers,
     role: profile.role,
     completedLessonIds: Array.from(completedLessonIds),
-    assignmentData,
+    assignmentData: courseData.assignmentData,
     permissions,
   }
+}
+
+export async function getCoursesService(userId: string) {
+  const profile = await getUserProfile(userId)
+  const context: CourseReadLogContext = {
+    action: 'getCourses',
+    actorId: userId,
+    startedAt: performance.now(),
+  }
+
+  return withCourseReadTelemetry(
+    context,
+    async () => {
+      const isStudentView = profile.role === 'student'
+      const allCourses = await findAllCourses(!isStudentView)
+      const visibleCourses =
+        profile.role === 'teacher'
+          ? restrictCourseListToPublishedLessons(allCourses, userId)
+          : allCourses
+
+      if (!isStudentView) {
+        return {
+          courses: await signCourseAssets(visibleCourses),
+          role: profile.role,
+        }
+      }
+
+      const allLessonIds = allCourses.flatMap((course) =>
+        course.lessons.map((l) => l.id),
+      )
+      const allAssignments =
+        await findPublishedAssignmentsByLessonIds(allLessonIds)
+      const allAssignmentIds = allAssignments.map((a) => a.id)
+      const allSubmissions = await findStudentSubmissions(
+        userId,
+        allAssignmentIds,
+      )
+
+      const coursesWithProgress = buildCoursesWithProgress(
+        allCourses,
+        allAssignments,
+        allSubmissions,
+      )
+
+      return {
+        courses: await signCourseAssets(coursesWithProgress),
+        role: profile.role,
+      }
+    },
+    (result) => ({
+      role: result.role,
+      courseCount: result.courses.length,
+      lessonCount: result.courses.reduce(
+        (count, course) => count + course.lessons.length,
+        0,
+      ),
+    }),
+  )
+}
+
+export async function getCourseService(data: GetCourseInput, userId: string) {
+  const profile = await getUserProfile(userId)
+  const context: CourseReadLogContext = {
+    action: 'getCourse',
+    actorId: userId,
+    courseId: data.courseId,
+    startedAt: performance.now(),
+  }
+
+  return withCourseReadTelemetry(
+    context,
+    () => loadCourse(data, userId, profile),
+    (result) => ({
+      role: result.role,
+      lessonCount: result.course.lessons.length,
+      mediaCount: result.course.mediaFiles.length,
+    }),
+  )
 }
 
 export async function createCourseService(
