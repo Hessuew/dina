@@ -22,6 +22,7 @@ import {
   seedPostReaction,
   seedProfile,
 } from '@/../test/integration/seed'
+import * as postRepository from '@/utils/post/repository/post.repository'
 
 // Post services have no external IO. The DB is real (PGlite via the `@/db`
 // alias); post/comment authorization resolves ownership and staff roles from
@@ -361,6 +362,120 @@ describe('getCommentsService (integration)', () => {
 
     expect(comments).toHaveLength(2)
     expect(nextCursor).toBeDefined()
+  })
+})
+
+describe('post read telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs redacted success events for channels, posts, details, and comments', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const actorId = await seedProfile({ role: 'student' })
+    const courseId = await seedCourse({ title: 'Private course title' })
+    const postId = await seedPost({
+      authorId: actorId,
+      courseId,
+      content: 'Private post content',
+    })
+    await seedComment({
+      postId,
+      authorId: actorId,
+      content: 'Private comment content',
+    })
+
+    await getPostChannelsService(actorId)
+    await getPostsService({ courseId, limit: 10 }, actorId)
+    await getPostByIdService({ postId }, actorId)
+    await getCommentsService({ postId, limit: 10 }, actorId)
+
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'post_read_loaded',
+          path: 'serverFn:getPostChannels',
+          actorId,
+          readScope: 'channels',
+          resultCount: expect.any(Number),
+        }),
+        expect.objectContaining({
+          event: 'post_read_loaded',
+          path: 'serverFn:getPosts',
+          actorId,
+          courseId,
+          readScope: 'feed',
+          resultCount: 1,
+          pageSize: 10,
+          hasNextPage: false,
+        }),
+        expect.objectContaining({
+          event: 'post_read_loaded',
+          path: 'serverFn:getPostById',
+          actorId,
+          postId,
+          readScope: 'detail',
+          resultCount: 1,
+          commentCount: 1,
+        }),
+        expect.objectContaining({
+          event: 'post_read_loaded',
+          path: 'serverFn:getComments',
+          actorId,
+          postId,
+          readScope: 'comments',
+          resultCount: 1,
+          pageSize: 10,
+          hasNextPage: false,
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(lines.join('\n')).not.toContain('Private course title')
+    expect(lines.join('\n')).not.toContain('Private post content')
+    expect(lines.join('\n')).not.toContain('Private comment content')
+  })
+
+  it('logs stable persistence categories without raw database details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const actorId = await seedProfile({ role: 'student' })
+    const courseId = await seedCourse()
+    vi.spyOn(postRepository, 'findPosts').mockRejectedValueOnce(
+      new Error('private post database secret'),
+    )
+
+    await expect(
+      getPostsService({ courseId, limit: 10 }, actorId),
+    ).rejects.toThrow('private post database secret')
+
+    const serialized = String(errorSpy.mock.calls[0]?.[0])
+    expect(JSON.parse(serialized)).toMatchObject({
+      event: 'post_read_failed',
+      path: 'serverFn:getPosts',
+      actorId,
+      courseId,
+      readScope: 'feed',
+      status: 'failure',
+      errorCategory: 'post_read_persistence',
+    })
+    expect(serialized).not.toContain('private post database secret')
+  })
+
+  it('keeps expected missing-post failures out of noisy telemetry', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const actorId = await seedProfile({ role: 'student' })
+
+    await expect(
+      getPostByIdService({ postId: randomUUID() }, actorId),
+    ).rejects.toMatchObject({ code: 'POST_NOT_FOUND', status: 404 })
+
+    expect(infoSpy).not.toHaveBeenCalled()
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })
 

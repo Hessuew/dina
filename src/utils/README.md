@@ -241,6 +241,13 @@ This folder is primarily where TanStack Start server functions live (via `create
     remain excluded; unexpected failures use
     `enrollment_read_persistence` while expected authorization and not-found
     outcomes stay quiet.
+  - Post channel, feed, single-post, and comment reads emit redacted
+    `post_read_loaded` / `post_read_failed` events with request correlation,
+    actor/post/course IDs where applicable, read scope, safe result counts,
+    pagination metadata, comment counts, status, and duration. Post/comment
+    content, author payloads, and raw persistence details remain excluded;
+    unexpected failures use `post_read_persistence` while expected
+    authorization and not-found outcomes stay quiet.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is

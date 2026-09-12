@@ -73,6 +73,20 @@ type PostMutationLogContext = {
   startedAt: number
 }
 
+type PostReadScope = 'channels' | 'feed' | 'detail' | 'comments'
+
+type PostReadAction =
+  'getPostChannels' | 'getPosts' | 'getPostById' | 'getComments'
+
+type PostReadLogContext = {
+  action: PostReadAction
+  scope: PostReadScope
+  actorId: string
+  postId?: string
+  courseId?: string
+  startedAt: number
+}
+
 function logPostMutationEvent(
   level: LogLevel,
   event: string,
@@ -90,6 +104,53 @@ function logPostMutationEvent(
     courseId: context.courseId,
     ...fields,
   })
+}
+
+function logPostReadEvent(
+  level: LogLevel,
+  event: string,
+  context: PostReadLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    postId: context.postId,
+    courseId: context.courseId,
+    readScope: context.scope,
+    ...fields,
+  })
+}
+
+function shouldLogPostReadFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function withPostReadTelemetry<T>(args: {
+  context: PostReadLogContext
+  read: () => Promise<T>
+  fields: (result: T) => Record<string, unknown>
+}): Promise<T> {
+  try {
+    const result = await args.read()
+    logPostReadEvent(
+      'info',
+      'post_read_loaded',
+      args.context,
+      args.fields(result),
+    )
+    return result
+  } catch (error) {
+    if (shouldLogPostReadFailure(error)) {
+      logPostReadEvent('error', 'post_read_failed', args.context, {
+        errorCategory: 'post_read_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 function shouldLogPostMutationFailure(error: unknown): boolean {
@@ -144,16 +205,27 @@ export async function getPostChannelsService(actorId: string): Promise<{
   channels: Array<PostChannel>
 }> {
   await getUserProfile(actorId)
-  const rows = await findChannels()
-  const channels: Array<PostChannel> = [
-    { id: 'general', name: 'General', courseId: null },
-    ...rows.map((c) => ({
-      id: c.id,
-      name: c.title,
-      courseId: c.id,
-    })),
-  ]
-  return { channels }
+  return withPostReadTelemetry({
+    context: {
+      action: 'getPostChannels',
+      scope: 'channels',
+      actorId,
+      startedAt: performance.now(),
+    },
+    read: async () => {
+      const rows = await findChannels()
+      const channels: Array<PostChannel> = [
+        { id: 'general', name: 'General', courseId: null },
+        ...rows.map((c) => ({
+          id: c.id,
+          name: c.title,
+          courseId: c.id,
+        })),
+      ]
+      return { channels }
+    },
+    fields: ({ channels }) => ({ resultCount: channels.length }),
+  })
 }
 
 export async function getPostsService(
@@ -164,29 +236,45 @@ export async function getPostsService(
   nextCursor?: { createdAt: string; id: string }
 }> {
   await getUserProfile(actorId)
-  const limit = data.limit
-  const rows = await findPosts({
-    courseId: data.courseId,
-    cursor: data.cursor,
-    limit,
+  return withPostReadTelemetry({
+    context: {
+      action: 'getPosts',
+      scope: 'feed',
+      actorId,
+      courseId: data.courseId ?? undefined,
+      startedAt: performance.now(),
+    },
+    read: async () => {
+      const limit = data.limit
+      const rows = await findPosts({
+        courseId: data.courseId,
+        cursor: data.cursor,
+        limit,
+      })
+
+      const hasMore = rows.length > limit
+      const postsSlice = hasMore ? rows.slice(0, limit) : rows
+      const postIds = postsSlice.map((p) => p.id)
+      const commentCounts = await calculateCommentCounts(postIds)
+
+      const transformed = postsSlice.map((p) =>
+        transformPostWithDetails(p, commentCounts[p.id] ?? 0),
+      )
+      const result = await signPostAvatars(transformed)
+
+      const lastPost = postsSlice[postsSlice.length - 1]
+      const nextCursor = hasMore
+        ? { createdAt: lastPost.createdAt.toISOString(), id: lastPost.id }
+        : undefined
+
+      return { posts: result, nextCursor }
+    },
+    fields: ({ posts, nextCursor }) => ({
+      resultCount: posts.length,
+      pageSize: data.limit,
+      hasNextPage: Boolean(nextCursor),
+    }),
   })
-
-  const hasMore = rows.length > limit
-  const postsSlice = hasMore ? rows.slice(0, limit) : rows
-  const postIds = postsSlice.map((p) => p.id)
-  const commentCounts = await calculateCommentCounts(postIds)
-
-  const transformed = postsSlice.map((p) =>
-    transformPostWithDetails(p, commentCounts[p.id] ?? 0),
-  )
-  const result = await signPostAvatars(transformed)
-
-  const lastPost = postsSlice[postsSlice.length - 1]
-  const nextCursor = hasMore
-    ? { createdAt: lastPost.createdAt.toISOString(), id: lastPost.id }
-    : undefined
-
-  return { posts: result, nextCursor }
 }
 
 export async function getPostByIdService(
@@ -196,20 +284,35 @@ export async function getPostByIdService(
   post: PostWithDetails
 }> {
   await getUserProfile(actorId)
-  const row = await findPostById(data.postId)
+  return withPostReadTelemetry({
+    context: {
+      action: 'getPostById',
+      scope: 'detail',
+      actorId,
+      postId: data.postId,
+      startedAt: performance.now(),
+    },
+    read: async () => {
+      const row = await findPostById(data.postId)
 
-  if (!row) {
-    throw new NotFoundError('Post not found', {
-      code: 'POST_NOT_FOUND',
-      details: { postId: data.postId },
-    })
-  }
+      if (!row) {
+        throw new NotFoundError('Post not found', {
+          code: 'POST_NOT_FOUND',
+          details: { postId: data.postId },
+        })
+      }
 
-  const commentCounts = await calculateCommentCounts([row.id])
-  const [post] = await signPostAvatars([
-    transformPostWithDetails(row, commentCounts[row.id] ?? 0),
-  ])
-  return { post }
+      const commentCounts = await calculateCommentCounts([row.id])
+      const [post] = await signPostAvatars([
+        transformPostWithDetails(row, commentCounts[row.id] ?? 0),
+      ])
+      return { post }
+    },
+    fields: ({ post }) => ({
+      resultCount: 1,
+      commentCount: post.commentCount,
+    }),
+  })
 }
 
 export async function createPostBaseService(
@@ -340,28 +443,44 @@ export async function getCommentsService(
   nextCursor?: { createdAt: string; id: string }
 }> {
   await getUserProfile(actorId)
-  const limit = data.limit
-  const rows = await findComments({
-    postId: data.postId,
-    cursor: data.cursor,
-    limit,
+  return withPostReadTelemetry({
+    context: {
+      action: 'getComments',
+      scope: 'comments',
+      actorId,
+      postId: data.postId,
+      startedAt: performance.now(),
+    },
+    read: async () => {
+      const limit = data.limit
+      const rows = await findComments({
+        postId: data.postId,
+        cursor: data.cursor,
+        limit,
+      })
+
+      const hasMore = rows.length > limit
+      const commentsSlice = hasMore ? rows.slice(0, limit) : rows
+
+      const transformed = commentsSlice
+        .slice()
+        .reverse()
+        .map((c) => transformCommentWithAuthor(c))
+      const result = await signCommentAvatars(transformed)
+
+      const lastRow = commentsSlice[commentsSlice.length - 1]
+      const nextCursor = hasMore
+        ? { createdAt: lastRow.createdAt.toISOString(), id: lastRow.id }
+        : undefined
+
+      return { comments: result, nextCursor }
+    },
+    fields: ({ comments, nextCursor }) => ({
+      resultCount: comments.length,
+      pageSize: data.limit,
+      hasNextPage: Boolean(nextCursor),
+    }),
   })
-
-  const hasMore = rows.length > limit
-  const commentsSlice = hasMore ? rows.slice(0, limit) : rows
-
-  const transformed = commentsSlice
-    .slice()
-    .reverse()
-    .map((c) => transformCommentWithAuthor(c))
-  const result = await signCommentAvatars(transformed)
-
-  const lastRow = commentsSlice[commentsSlice.length - 1]
-  const nextCursor = hasMore
-    ? { createdAt: lastRow.createdAt.toISOString(), id: lastRow.id }
-    : undefined
-
-  return { comments: result, nextCursor }
 }
 
 export async function createCommentBaseService(

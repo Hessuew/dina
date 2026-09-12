@@ -261,6 +261,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    failure category. Applicant identity, contact details, application answers,
    evaluation payloads, and raw persistence details remain excluded; expected
    authorization and not-found outcomes stay quiet.
+   Post channel, feed, single-post, and comment reads now emit redacted
+   `post_read_loaded` / `post_read_failed` events with request correlation,
+   actor/post/course IDs where applicable, read scope, safe result counts,
+   pagination metadata, comment counts, status, and duration. Post/comment
+   content, author payloads, and raw persistence details remain excluded;
+   unexpected failures use the stable `post_read_persistence` category while
+   expected authorization and not-found outcomes stay quiet.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a
