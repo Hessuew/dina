@@ -3297,3 +3297,22 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
 Focused assignment integration coverage passes (46 tests). Hosted Better Stack /
 Cloudflare ingestion, dashboards, alerts, Uptime, and source-map verification
 remain external follow-up.
+
+## Iteration 119 — library-read telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Library media list and detail reads now emit redacted
+  `library_media_loaded` / `library_media_load_failed` events with request
+  correlation, actor/media IDs, role, safe result counts, publication and
+  permission flags, file type, status, and duration.
+- Media titles, descriptions, external URLs, private storage paths, and raw
+  persistence details remain excluded. Expected authorization and not-found
+  outcomes remain quiet; unexpected read failures use the stable
+  `library_media_read_persistence` category and preserve the original error.
+- Added integration coverage for list/detail event shapes and storage-signing
+  failure redaction. Hosted Better Stack/Cloudflare ingestion, dashboards,
+  alerts, Uptime monitors, and source-map verification remain external setup.
+- Validation: focused library integration passed 24 tests; full integration
+  passed 427 tests, `bun run quality:gate` passed with 1,953 unit tests, and
+  the production build passed with only pre-existing warnings.

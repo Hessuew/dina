@@ -141,6 +141,13 @@ This folder is primarily where TanStack Start server functions live (via `create
     text, grades, feedback, and raw persistence details remain excluded;
     unexpected failures use `assignment_read_persistence` while expected
     authorization and not-found outcomes remain quiet.
+  - Library media list/detail reads emit redacted
+    `library_media_loaded` / `library_media_load_failed` events with request
+    correlation, actor/media IDs, role, safe result counts, publication and
+    permission flags, file type, status, and duration. Titles, descriptions,
+    external URLs, private storage paths, and raw persistence details remain
+    excluded; unexpected failures use `library_media_read_persistence` while
+    expected authorization and not-found outcomes remain quiet.
   - Assignment authoring emits redacted `assignment_created`,
     `assignment_updated`, and `assignment_deleted` events with request
     correlation, server-function path, actor/course/lesson/assignment IDs,

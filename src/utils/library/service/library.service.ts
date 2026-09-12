@@ -72,6 +72,15 @@ type LibraryMutationContext = {
   startedAt: number
 }
 
+type LibraryReadAction = 'getLibraryMedia' | 'getLibraryMediaItem'
+
+type LibraryReadContext = {
+  action: LibraryReadAction
+  actorId: string
+  mediaId?: string
+  startedAt: number
+}
+
 function logLibraryMutation(
   level: LogLevel,
   event: string,
@@ -89,8 +98,48 @@ function logLibraryMutation(
   })
 }
 
+function logLibraryRead(
+  level: LogLevel,
+  event: string,
+  context: LibraryReadContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    mediaId: context.mediaId,
+    ...fields,
+  })
+}
+
 function shouldLogLibraryMutationFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
+}
+
+function shouldLogLibraryReadFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function withLibraryReadTelemetry<T>(
+  context: LibraryReadContext,
+  read: () => Promise<T>,
+  fields: (result: T) => Record<string, unknown>,
+): Promise<T> {
+  try {
+    const result = await read()
+    logLibraryRead('info', 'library_media_loaded', context, fields(result))
+    return result
+  } catch (error) {
+    if (shouldLogLibraryReadFailure(error)) {
+      logLibraryRead('error', 'library_media_load_failed', context, {
+        errorCategory: 'library_media_read_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 function requireStaffRole(role: Role, action: string): void {
@@ -188,46 +237,81 @@ export async function getLibraryMediaService(userId: string): Promise<{
   media: Array<MediaLibraryRow>
   viewer: { id: string; role: Role }
 }> {
-  const role = await getUserRole(userId)
-  const rows = await findAllMedia(role === 'student')
-  return {
-    media: await serializeMediaRecords(rows),
-    viewer: { id: userId, role },
+  const context: LibraryReadContext = {
+    action: 'getLibraryMedia',
+    actorId: userId,
+    startedAt: performance.now(),
   }
+
+  return withLibraryReadTelemetry(
+    context,
+    async () => {
+      const role = await getUserRole(userId)
+      const rows = await findAllMedia(role === 'student')
+      return {
+        media: await serializeMediaRecords(rows),
+        viewer: { id: userId, role },
+      }
+    },
+    (result) => ({
+      role: result.viewer.role,
+      mediaCount: result.media.length,
+      publishedOnly: result.viewer.role === 'student',
+    }),
+  )
 }
 
 export async function getLibraryMediaItemService(
   data: GetMediaInput,
   userId: string,
 ) {
-  const role = await getUserRole(userId)
-  const row = await findMediaById(data.mediaId)
-  if (!row) {
-    throw new NotFoundError('Media not found', {
-      details: { mediaId: data.mediaId },
-    })
-  }
-  if (role === 'student' && !row.isPublished) {
-    throw new AuthorizationError('Media not available', {
-      internalMessage: `Student attempted to view unpublished media: ${data.mediaId}`,
-      details: { mediaId: data.mediaId },
-    })
+  const context: LibraryReadContext = {
+    action: 'getLibraryMediaItem',
+    actorId: userId,
+    mediaId: data.mediaId,
+    startedAt: performance.now(),
   }
 
-  const media = await serializeMediaRecord(row)
-  const permissions = calculateEntityPermissions(
-    role,
-    { teacher1Id: row.uploaderId, teacher2Id: null },
-    userId,
+  return withLibraryReadTelemetry(
+    context,
+    async () => {
+      const role = await getUserRole(userId)
+      const row = await findMediaById(data.mediaId)
+      if (!row) {
+        throw new NotFoundError('Media not found', {
+          details: { mediaId: data.mediaId },
+        })
+      }
+      if (role === 'student' && !row.isPublished) {
+        throw new AuthorizationError('Media not available', {
+          internalMessage: `Student attempted to view unpublished media: ${data.mediaId}`,
+          details: { mediaId: data.mediaId },
+        })
+      }
+
+      const media = await serializeMediaRecord(row)
+      const permissions = calculateEntityPermissions(
+        role,
+        { teacher1Id: row.uploaderId, teacher2Id: null },
+        userId,
+      )
+      return {
+        media,
+        viewerUrl: needsSignedViewerUrl(row.fileType)
+          ? media.fileUrl || null
+          : null,
+        permissions,
+        viewer: { id: userId, role },
+      }
+    },
+    (result) => ({
+      role: result.viewer.role,
+      mediaPublished: result.media.isPublished,
+      fileType: result.media.fileType,
+      canManage: result.permissions.canManage,
+      hasViewerUrl: result.viewerUrl !== null,
+    }),
   )
-  return {
-    media,
-    viewerUrl: needsSignedViewerUrl(row.fileType)
-      ? media.fileUrl || null
-      : null,
-    permissions,
-    viewer: { id: userId, role },
-  }
 }
 
 export async function createLibraryMediaService(

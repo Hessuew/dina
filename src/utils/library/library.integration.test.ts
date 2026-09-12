@@ -67,6 +67,89 @@ beforeEach(() => {
 })
 
 describe('library reads', () => {
+  it('logs redacted list and detail read telemetry', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const mediaId = await seedMedia({
+      uploaderId: ownerId,
+      title: 'Private media title',
+      description: 'Private media description',
+      fileType: 'document',
+      fileUrl: `${ownerId}/private.pdf`,
+      thumbnailUrl: `${ownerId}/private.png`,
+      isPublished: true,
+    })
+
+    await getLibraryMediaService(ownerId)
+    await getLibraryMediaItemService({ mediaId }, ownerId)
+
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'library_media_loaded',
+          path: 'serverFn:getLibraryMedia',
+          actorId: ownerId,
+          role: 'teacher',
+          mediaCount: 1,
+          publishedOnly: false,
+          status: 'success',
+        }),
+        expect.objectContaining({
+          event: 'library_media_loaded',
+          path: 'serverFn:getLibraryMediaItem',
+          actorId: ownerId,
+          mediaId,
+          role: 'teacher',
+          mediaPublished: true,
+          fileType: 'document',
+          canManage: true,
+          hasViewerUrl: true,
+          status: 'success',
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(lines.join('\n')).not.toContain('Private media title')
+    expect(lines.join('\n')).not.toContain('Private media description')
+    expect(lines.join('\n')).not.toContain(`${ownerId}/private.pdf`)
+    expect(lines.join('\n')).not.toContain(`${ownerId}/private.png`)
+    infoSpy.mockRestore()
+  })
+
+  it('logs stable read failures without raw storage details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ownerId = await seedProfile({ role: 'teacher' })
+    await seedMedia({
+      uploaderId: ownerId,
+      fileType: 'document',
+      fileUrl: `${ownerId}/private.pdf`,
+    })
+    mocks.createSignedUrls.mockRejectedValueOnce(
+      new Error('private storage signing failure'),
+    )
+
+    await expect(getLibraryMediaService(ownerId)).rejects.toThrow(
+      'private storage signing failure',
+    )
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    const event = JSON.parse(line)
+    expect(event).toMatchObject({
+      event: 'library_media_load_failed',
+      path: 'serverFn:getLibraryMedia',
+      actorId: ownerId,
+      status: 'failure',
+      errorCategory: 'library_media_read_persistence',
+    })
+    expect(line).not.toContain('private storage signing failure')
+    expect(line).not.toContain(`${ownerId}/private.pdf`)
+    errorSpy.mockRestore()
+  })
+
   it('filters unpublished rows for students', async () => {
     const uploaderId = await seedProfile({ role: 'teacher' })
     const studentId = await seedProfile({ role: 'student' })
