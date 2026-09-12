@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 149
-**Scope:** finalize the repository-side Phase 1 observability handoff and
-record the remaining hosted evidence gates.
+**Iteration:** 151
+**Scope:** finalize the evidence-aware status of the remaining engineering
+roadmap phases and record the hosted evidence gates.
 
 ## Executive summary
 
@@ -4033,6 +4033,31 @@ the evidence boundary already established in the repository handoff:
 - The Notion Phase 1 heading now reads `Repository implementation complete;
 hosted verification pending`; related dashboard and SLI/SLO rows remain
   Planned or Needs data until dated hosted evidence exists.
+
+Validation: Markdown formatting, `bun run docs:notion-check --json`, and
+`git diff --check` passed. The full build and full integration suite were not
+run because this was a documentation and external-status alignment iteration.
+
+## Iteration 151 — remaining roadmap phase disposition
+
+This iteration aligned the remaining roadmap phase statuses with the repository
+evidence without promoting any hosted or operational claim:
+
+- Phase 2 Reliability has repository-owned SLI/SLO definitions, error-budget,
+  incident, observability, and restore procedures; production telemetry,
+  ownership, and the first restore drill remain pending.
+- Phase 3 Safe delivery has an implemented repository promotion, migration,
+  smoke-test, and rollback procedure; protected-environment controls and a
+  hosted rehearsal remain pending.
+- Phase 4 Performance and scale has an initial twelve-query index review and
+  additive migrations; hosted `EXPLAIN (ANALYZE, BUFFERS)` evidence and
+  production measurements remain pending.
+- Phase 5 Security has a clear high/critical audit baseline plus documented
+  authorization, secret-inventory, threat-model, and WAF follow-up; hosted
+  security verification and remaining RBAC/RLS work remain pending.
+- Phase 6 Long-term architecture remains Planned; repository structure exists
+  for ADRs, domain boundaries, contracts, and technical-debt tracking, but no
+  maturity claim is promoted from structure alone.
 
 Validation: Markdown formatting, `bun run docs:notion-check --json`, and
 `git diff --check` passed. The full build and full integration suite were not
