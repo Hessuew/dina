@@ -352,6 +352,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    actor IDs on explicit release, status, duration, and stable
    `campaign_lock_read` / `campaign_lock_release` categories. Provider,
    database, recipient, phone, email, and invitation details remain excluded.
+   Admin email and WhatsApp campaign previews now emit redacted
+   `email_campaign_previewed` / `whatsapp_campaign_previewed` events with
+   request correlation, campaign, actor ID, safe send/skip counts, status, and
+   duration. Unexpected lock or recipient-planning persistence failures emit
+   `*_campaign_preview_failed` with the stable
+   `campaign_preview_persistence` category; expected authorization and lock
+   conflicts remain quiet.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

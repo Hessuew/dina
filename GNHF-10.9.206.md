@@ -63,6 +63,12 @@ shadcn@latest` intentionally.
   campaign completion summaries, and lock-release failures with request
   correlation and stable error categories. Recipient phone numbers, names, and
   provider error text are excluded.
+- Admin email and WhatsApp campaign previews now emit redacted
+  request-correlated success/failure events with safe send/skip counts and the
+  stable `campaign_preview_persistence` category. Recipient/contact values,
+  phone numbers, email addresses, invitation details, and provider errors
+  remain excluded; expected authorization and campaign-lock conflicts stay
+  quiet.
 - Post/comment notification persistence failures now emit a redacted
   `notification_delivery_failed` event with request correlation, notification
   type, recipient count, duration, and a stable error category. Best-effort
@@ -3709,3 +3715,27 @@ formatting, typecheck, and `bun run quality:static` passed. Per the iterative
 telemetry workflow, the full build and full integration suite were not run.
 Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors,
 and source-map verification remain external follow-up.
+
+## Iteration 137 — campaign-preview telemetry
+
+This iteration completed a batched Phase 1 structured-logging slice:
+
+- Admin email and WhatsApp campaign previews now emit redacted
+  `email_campaign_previewed` / `whatsapp_campaign_previewed` events with
+  request correlation, campaign, actor ID, safe send/skip counts, status, and
+  duration.
+- Unexpected lock-acquisition or recipient-planning persistence failures emit
+  `*_campaign_preview_failed` with the stable
+  `campaign_preview_persistence` category. Expected authorization and
+  campaign-lock conflicts remain quiet; recipient/contact values, phone
+  numbers, email addresses, invitation details, and provider errors remain
+  outside telemetry.
+- Added focused integration assertions for both preview event shapes while
+  preserving no-send and lock behavior.
+
+Validation: focused email and WhatsApp campaign integration tests passed 38
+tests; formatting, typecheck, `bun run quality:static`, `bun run quality:gate`,
+and diff checks passed. Per the iterative telemetry workflow, the full build
+and full integration suite were not run. Hosted Better Stack/Cloudflare
+ingestion, dashboards, alerts, Uptime monitors, and source-map verification
+remain external follow-up.

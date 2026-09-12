@@ -298,12 +298,33 @@ export async function previewEmailCampaignService(
   userId: string,
 ): Promise<EmailCampaignPreview> {
   await authz(userId).hasRole('admin')
-  const acquired = await acquireEmailCampaignLock(data.campaign, userId)
-  if (!acquired) throw new CampaignLockedError()
-  const { plan } = await planCampaign(data)
-  return {
-    toSend: plan.toSend.length,
-    skipped: summarizeInviteSkips(plan.skipped),
+  const context: EmailCampaignLogContext = {
+    campaign: data.campaign,
+    path: 'serverFn:preview_email_campaign',
+    startedAt: performance.now(),
+  }
+  try {
+    const acquired = await acquireEmailCampaignLock(data.campaign, userId)
+    if (!acquired) throw new CampaignLockedError()
+    const { plan } = await planCampaign(data)
+    const skipped = summarizeInviteSkips(plan.skipped)
+    const preview = { toSend: plan.toSend.length, skipped }
+    logEmailCampaignEvent('info', 'email_campaign_previewed', context, {
+      userId,
+      toSend: preview.toSend,
+      skippedLinkStillValid: skipped.linkStillValid,
+      skippedRevoked: skipped.revoked,
+      skippedOverCap: skipped.overCap,
+    })
+    return preview
+  } catch (error) {
+    if (!(error instanceof CampaignLockedError)) {
+      logEmailCampaignEvent('error', 'email_campaign_preview_failed', context, {
+        errorCategory: 'campaign_preview_persistence',
+        userId,
+      })
+    }
+    throw error
   }
 }
 

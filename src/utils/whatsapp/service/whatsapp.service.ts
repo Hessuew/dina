@@ -205,10 +205,36 @@ export async function previewWhatsAppCampaignService(
   userId: string,
 ): Promise<CampaignPreview> {
   await authz(userId).hasRole('admin')
-  const acquired = await acquireWhatsAppCampaignLock(data.campaign, userId)
-  if (!acquired) throw new CampaignLockedError()
-  const { plan } = await planCampaign(data)
-  return { toSend: plan.toSend.length, skipped: summarizeSkips(plan.skipped) }
+  const context: WhatsAppCampaignLogContext = {
+    campaign: data.campaign,
+    path: 'serverFn:preview_whatsapp_campaign',
+    startedAt: performance.now(),
+  }
+  try {
+    const acquired = await acquireWhatsAppCampaignLock(data.campaign, userId)
+    if (!acquired) throw new CampaignLockedError()
+    const { plan } = await planCampaign(data)
+    const skipped = summarizeSkips(plan.skipped)
+    const preview = { toSend: plan.toSend.length, skipped }
+    logWhatsAppCampaignEvent('info', 'whatsapp_campaign_previewed', context, {
+      userId,
+      toSend: preview.toSend,
+      skippedAlreadySent: skipped.alreadySent,
+      skippedInvalidRecipients: skipped.invalidPhone,
+      skippedOverCap: skipped.overCap,
+    })
+    return preview
+  } catch (error) {
+    if (!(error instanceof CampaignLockedError)) {
+      logWhatsAppCampaignEvent(
+        'error',
+        'whatsapp_campaign_preview_failed',
+        context,
+        { errorCategory: 'campaign_preview_persistence', userId },
+      )
+    }
+    throw error
+  }
 }
 
 /**

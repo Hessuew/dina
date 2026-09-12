@@ -74,23 +74,79 @@ describe('previewEmailCampaignService (integration)', () => {
     ).rejects.toThrow(AuthorizationError)
   })
 
-  it('reports approved applicants without sending or logging', async () => {
+  it('reports approved applicants and logs safe preview telemetry', async () => {
     const adminId = await seedProfile({ role: 'admin' })
     const calls = installFakeSender()
     const enrollmentId = await seedEnrollment({ status: 'approved' })
     await seedEnrollment({ status: 'pending' })
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
 
-    const preview = await previewEmailCampaignService(
-      { campaign: 'invitation' },
-      adminId,
-    )
+    try {
+      const preview = await previewEmailCampaignService(
+        { campaign: 'invitation' },
+        adminId,
+      )
 
-    expect(preview).toEqual({
-      toSend: 1,
-      skipped: { linkStillValid: 0, revoked: 0, overCap: 0 },
-    })
-    expect(calls).toEqual([])
-    expect(await findLogRows(enrollmentId)).toHaveLength(0)
+      expect(preview).toEqual({
+        toSend: 1,
+        skipped: { linkStillValid: 0, revoked: 0, overCap: 0 },
+      })
+      expect(calls).toEqual([])
+      expect(await findLogRows(enrollmentId)).toHaveLength(0)
+      expect(
+        infoSpy.mock.calls.map(([line]) => JSON.parse(String(line))),
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            event: 'email_campaign_previewed',
+            path: 'serverFn:preview_email_campaign',
+            campaign: 'invitation',
+            userId: adminId,
+            toSend: 1,
+            skippedLinkStillValid: 0,
+            skippedRevoked: 0,
+            skippedOverCap: 0,
+            status: 'success',
+          }),
+        ]),
+      )
+    } finally {
+      infoSpy.mockRestore()
+    }
+  })
+
+  it('categorizes preview planning failures without raw repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const planningError = new Error('private email recipient database detail')
+    vi.spyOn(
+      emailCampaignRepository,
+      'findEmailCampaignRecipients',
+    ).mockRejectedValueOnce(planningError)
+
+    try {
+      await expect(
+        previewEmailCampaignService({ campaign: 'invitation' }, adminId),
+      ).rejects.toBe(planningError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const event = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === 'email_campaign_preview_failed')
+      expect(event).toMatchObject({
+        event: 'email_campaign_preview_failed',
+        path: 'serverFn:preview_email_campaign',
+        campaign: 'invitation',
+        userId: adminId,
+        errorCategory: 'campaign_preview_persistence',
+        status: 'failure',
+      })
+      expect(serialized.join('\n')).not.toContain(
+        'private email recipient database detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 })
 

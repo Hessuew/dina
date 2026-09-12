@@ -241,6 +241,14 @@ This folder is primarily where TanStack Start server functions live (via `create
     actor ID, safe substitution counts, duration, and the stable
     `enrollment_substitution_read_persistence` category; teacher IDs and raw
     persistence details remain excluded.
+  - Admin email and WhatsApp campaign previews emit redacted
+    `email_campaign_previewed` / `whatsapp_campaign_previewed` events with
+    request correlation, campaign, actor ID, safe send/skip counts, status,
+    and duration. Unexpected lock or recipient-planning persistence failures
+    use `email_campaign_preview_failed` /
+    `whatsapp_campaign_preview_failed` and the stable
+    `campaign_preview_persistence` category; expected authorization and lock
+    conflicts remain quiet, and recipient/contact values remain excluded.
   - Post and comment create, update, and delete mutations emit redacted
     `post_*` / `comment_*` events with request correlation, actor/post/comment/
     course IDs, status, and duration; content and raw persistence details are

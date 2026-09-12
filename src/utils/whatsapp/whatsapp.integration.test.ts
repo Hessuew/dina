@@ -288,7 +288,7 @@ describe('previewWhatsAppCampaignService (integration)', () => {
     ).rejects.toThrow(AuthorizationError)
   })
 
-  it('reports the plan without sending or logging', async () => {
+  it('reports the plan and logs safe preview telemetry', async () => {
     const adminId = await seedProfile({ role: 'admin' })
     const calls = installFakeSender()
     const sendableId = await seedEnrollment({
@@ -296,18 +296,79 @@ describe('previewWhatsAppCampaignService (integration)', () => {
       phoneWhatsApp: '+358401234567',
     })
     await seedEnrollment({ status: 'approved', phoneWhatsApp: 'garbage' })
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
 
-    const preview = await previewWhatsAppCampaignService(
-      { campaign: 'congratulations' },
-      adminId,
+    try {
+      const preview = await previewWhatsAppCampaignService(
+        { campaign: 'congratulations' },
+        adminId,
+      )
+
+      expect(preview).toEqual({
+        toSend: 1,
+        skipped: { alreadySent: 0, invalidPhone: 1, overCap: 0 },
+      })
+      expect(calls).toEqual([])
+      expect(await findLogRows(sendableId)).toHaveLength(0)
+      expect(
+        infoSpy.mock.calls.map(([line]) => JSON.parse(String(line))),
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            event: 'whatsapp_campaign_previewed',
+            path: 'serverFn:preview_whatsapp_campaign',
+            campaign: 'congratulations',
+            userId: adminId,
+            toSend: 1,
+            skippedAlreadySent: 0,
+            skippedInvalidRecipients: 1,
+            skippedOverCap: 0,
+            status: 'success',
+          }),
+        ]),
+      )
+    } finally {
+      infoSpy.mockRestore()
+    }
+  })
+
+  it('categorizes preview planning failures without raw repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const planningError = new Error(
+      'private WhatsApp recipient database detail',
     )
+    vi.spyOn(
+      whatsappRepository,
+      'findEnrollmentRecipientsByCampaign',
+    ).mockRejectedValueOnce(planningError)
 
-    expect(preview).toEqual({
-      toSend: 1,
-      skipped: { alreadySent: 0, invalidPhone: 1, overCap: 0 },
-    })
-    expect(calls).toEqual([])
-    expect(await findLogRows(sendableId)).toHaveLength(0)
+    try {
+      await expect(
+        previewWhatsAppCampaignService(
+          { campaign: 'congratulations' },
+          adminId,
+        ),
+      ).rejects.toBe(planningError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const event = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === 'whatsapp_campaign_preview_failed')
+      expect(event).toMatchObject({
+        event: 'whatsapp_campaign_preview_failed',
+        path: 'serverFn:preview_whatsapp_campaign',
+        campaign: 'congratulations',
+        userId: adminId,
+        errorCategory: 'campaign_preview_persistence',
+        status: 'failure',
+      })
+      expect(serialized.join('\n')).not.toContain(
+        'private WhatsApp recipient database detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 })
 
