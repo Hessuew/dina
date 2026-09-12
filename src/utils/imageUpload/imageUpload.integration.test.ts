@@ -54,16 +54,18 @@ afterEach(() => {
 
 describe('avatar signed upload', () => {
   it('validates metadata and returns an actor-owned signed upload', async () => {
-    const result = await requestAvatarUploadService(imageInput, 'user-1')
+    const userId = await seedProfile()
+    const result = await requestAvatarUploadService(imageInput, userId)
 
-    expect(result.path).toMatch(/^user-1\/\d+-[\w-]+\.png$/)
+    expect(result.path).toMatch(new RegExp(`^${userId}\\/\\d+-[\\w-]+\\.png$`))
     expect(result.signedUrl).toBe('https://signed-upload')
   })
 
   it('emits a request-correlated completion event', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const userId = await seedProfile()
 
-    await requestAvatarUploadService(imageInput, 'user-1')
+    await requestAvatarUploadService(imageInput, userId)
 
     const entry = JSON.parse(
       infoSpy.mock.calls[infoSpy.mock.calls.length - 1]?.[0] as string,
@@ -74,19 +76,31 @@ describe('avatar signed upload', () => {
       requestId: 'unknown',
       status: 'success',
       bucket: 'avatars',
-      userId: 'user-1',
+      userId,
     })
+  })
+
+  it('rejects an unknown actor before issuing a signed upload', async () => {
+    const userId = '00000000-0000-4000-8000-000000000001'
+
+    await expect(
+      requestAvatarUploadService(imageInput, userId),
+    ).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    })
+    expect(mocks.createSignedUploadUrl).not.toHaveBeenCalled()
   })
 
   it('logs provider failures without exposing the provider message', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const userId = await seedProfile()
     mocks.createSignedUploadUrl.mockResolvedValue({
       data: null,
       error: { message: 'provider secret' },
     })
 
     await expect(
-      requestAvatarUploadService(imageInput, 'user-1'),
+      requestAvatarUploadService(imageInput, userId),
     ).rejects.toMatchObject({ code: 'STORAGE_UPLOAD_FAILED' })
 
     const entry = JSON.parse(
@@ -101,10 +115,11 @@ describe('avatar signed upload', () => {
   })
 
   it('rejects oversized metadata before signing', async () => {
+    const userId = await seedProfile()
     await expect(
       requestAvatarUploadService(
         { ...imageInput, fileSize: 3 * 1024 * 1024 },
-        'user-1',
+        userId,
       ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' })
     expect(mocks.createSignedUploadUrl).not.toHaveBeenCalled()
@@ -122,6 +137,15 @@ describe('avatar signed upload', () => {
       where: eq(profiles.id, id),
     })
     expect(row?.avatarUrl).toBe(path)
+  })
+
+  it('rejects avatar completion for an unknown actor before persistence', async () => {
+    const userId = '00000000-0000-4000-8000-000000000002'
+
+    await expect(
+      uploadAvatarService({ path: `${userId}/123.png` }, userId),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    expect(mocks.createSignedUrls).not.toHaveBeenCalled()
   })
 
   it('rejects a foreign completion path', async () => {

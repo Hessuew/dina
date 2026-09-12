@@ -23,6 +23,7 @@ import {
   updateCourseThumbnailPath,
   updateProfileAvatarPath,
 } from '@/utils/imageUpload/repository/imageUpload.repository'
+import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { getSupabaseAdminClient } from '@/utils/supabase'
 import {
@@ -173,7 +174,10 @@ export function requestAvatarUploadService(
       startedAt: performance.now(),
       userId,
     },
-    () => requestImageUpload(data, userId, 'avatars'),
+    async () => {
+      await getUserProfile(userId)
+      return requestImageUpload(data, userId, 'avatars')
+    },
   )
 }
 
@@ -189,6 +193,7 @@ export async function uploadAvatarService(
       userId,
     },
     async () => {
+      await getUserProfile(userId)
       const path = ownedPathOrThrow(data.path, 'avatars', userId)
       const oldPath = await findProfileAvatarPath(userId)
       await updateProfileAvatarPath(userId, path)

@@ -330,6 +330,15 @@ only. Course teachers and admins retain draft lesson content and assignment
 authoring data. This check lives in `getLessonService`, so direct server-function
 or service calls cannot bypass the route's UI filtering.
 
+### Private avatar storage boundary
+
+Avatar upload request and completion services now require a persisted profile
+before minting an actor-owned signed upload or accepting an avatar path. The
+server-function session check remains the transport boundary, while the
+service check prevents unknown direct callers from using the service-role
+storage client or writing an avatar path for a non-existent profile. Focused
+integration coverage confirms both operations fail before storage access.
+
 ## Secret inventory and rotation contract
 
 The repository-owned secret inventory in

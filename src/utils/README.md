@@ -257,6 +257,8 @@ This folder is primarily where TanStack Start server functions live (via `create
 - **Misc**
   - `imageUpload/` and `storage/`: private upload helpers.
     - Request server functions validate metadata and mint actor-owned signed upload URLs.
+    - Avatar upload request/completion services require a persisted profile before
+      using the service-role storage client or persisting an avatar path.
     - Browser bytes upload directly to Supabase Storage.
     - Completion server functions persist canonical paths and remove replaced objects.
     - Read services batch-mint one-hour signed display URLs (ADR 0022).

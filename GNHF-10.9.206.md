@@ -2703,3 +2703,21 @@ full integration passed all 398 tests, `bun run quality:gate` passed with 1,953
 unit tests, the production build passed, and the Architecture Inventory plus
 Engineering Roadmap were synchronized in Notion. Production Readiness was
 skipped because the database contains only its protected template row.
+
+## Iteration 96 — private avatar storage service authorization hardening
+
+This iteration closed the next small Phase 5 storage-boundary gap:
+
+- Avatar upload request and completion services now require a persisted profile
+  before minting an actor-owned signed upload or accepting an avatar path.
+- Unknown direct callers fail before the service-role storage client is used;
+  valid profile behavior, ownership validation, cleanup, and signed response
+  behavior remain unchanged.
+- Added integration coverage for unknown actors on both avatar operations and
+  updated the security, threat-model, and utility boundary documentation.
+
+Validation: focused image-upload integration passed all 12 tests; full
+integration passed all 400 tests, `bun run quality:gate` passed with 1,953 unit
+tests, the production build and formatting passed, and Architecture Inventory
+plus Engineering Roadmap were synchronized in Notion. Hosted storage-policy
+and Better Stack/Cloudflare acceptance remain external follow-up work.
