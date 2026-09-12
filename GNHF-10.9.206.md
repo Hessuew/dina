@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 151
-**Scope:** finalize the evidence-aware status of the remaining engineering
-roadmap phases and record the hosted evidence gates.
+**Iteration:** 153
+**Scope:** verify the final evidence-aware disposition of the engineering
+roadmap phases and record the remaining hosted evidence gates.
 
 ## Executive summary
 
