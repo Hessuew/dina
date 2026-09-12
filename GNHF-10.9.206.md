@@ -1,10 +1,10 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 109
-**Scope:** remediate the remaining moderate `@humanfs/node` development-tool
-advisory with a compatible root resolution and record the lower-severity audit
-baseline.
+**Iteration:** 111
+**Scope:** implement the next repository-owned Phase 4 performance slice for
+the published student assignment list and record the remaining hosted evidence
+gate.
 
 ## Executive summary
 
@@ -274,6 +274,13 @@ shadcn@latest` intentionally.
   Migration `0053_youthful_rafael_vega` and the hosted
   `EXPLAIN (ANALYZE, BUFFERS)` follow-up are documented in
   `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
+- Student assignment lists now have the additive
+  `assignments_status_due_date_idx` index on `(status, due_date)`. It supports
+  the existing published-assignment filter and ascending due-date order
+  without changing student authorization, submission joins, or response
+  shape. Migration `0057_thin_mandrill` and the hosted
+  `EXPLAIN (ANALYZE, BUFFERS)` follow-up are documented in
+  `docs/plan/PERFORMANCE_QUERY_INDEX_REVIEW.md`.
 - Student open-attendance-session reads now have the additive
   `attendance_sessions_closes_at_opened_at_idx` index on `(closes_at,
 opened_at)`. It supports filtering active windows before recent-opening
@@ -366,6 +373,28 @@ brace-expansion` refreshes their compatible 1.x lockfile branches to
   paths at `^3.4.2`, and the lockfile resolves `flatted@3.4.4`. This removes
   the prototype-pollution advisory without changing application runtime
   behavior.
+
+## Iteration 111 — student assignment list index
+
+This iteration completed the next repository-owned Phase 4 performance slice:
+
+- Added `assignments_status_due_date_idx` on `(status, due_date)` for the
+  existing student assignment list, which filters to published assignments
+  and orders them by due date.
+- Kept student-role authorization, submission joins, response shape, and
+  assignment publication behavior unchanged. The index is additive and does
+  not replace the lesson-scoped catalog indexes.
+- Migration replay, the repository quality gate, and the production build are
+  the verification contract. Hosted `EXPLAIN (ANALYZE, BUFFERS)` plan and
+  timing evidence remains pending until representative hosted data exists.
+- Validation passed: 408 integration tests, 1,953 unit tests through
+  `bun run quality:gate`, formatting, typecheck, `git diff --check`, and
+  `bun run build`. Existing TanStack `inputValidator` deprecation and large
+  chunk warnings remain unrelated.
+- Notion Data Management, Architecture Inventory, and Engineering Roadmap
+  records were synchronized. Production Readiness was skipped because only
+  the protected template row exists and this index does not change launch
+  ownership, SLOs, or a production decision.
 
 ## Iteration 85 — flatted transitive dependency remediation
 

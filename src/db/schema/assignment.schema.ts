@@ -32,6 +32,7 @@ export const assignments = pgTable(
   (table) => [
     index('assignments_lesson_status_idx').on(table.lessonId, table.status),
     index('assignments_lesson_due_date_idx').on(table.lessonId, table.dueDate),
+    index('assignments_status_due_date_idx').on(table.status, table.dueDate),
     // All authenticated users can view assignments
     pgPolicy('authenticated_view_assignments', {
       for: 'select',

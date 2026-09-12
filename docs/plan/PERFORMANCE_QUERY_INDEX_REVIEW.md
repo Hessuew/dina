@@ -5,8 +5,8 @@
 
 ## Review boundary
 
-The first review targets bounded application reads that already filter and
-order by stable columns:
+The first review targets existing application reads that filter and order by
+stable columns:
 
 | Read path                  | Query shape                                                        | Index                                         |
 | -------------------------- | ------------------------------------------------------------------ | --------------------------------------------- |
@@ -17,6 +17,7 @@ order by stable columns:
 | Upcoming lesson dashboard  | published lessons with future `scheduled_time`, ascending, limit 5 | `lessons_published_scheduled_idx`             |
 | Assignment catalog         | managed `lesson_id` membership plus assignment `status`            | `assignments_lesson_status_idx`               |
 | Teacher lesson assignments | managed `lesson_id` membership plus ascending `due_date`           | `assignments_lesson_due_date_idx`             |
+| Student assignment list    | published `status` plus ascending `due_date`                       | `assignments_status_due_date_idx`             |
 | Course-team reads          | `course_id` membership plus oldest-first `created_at`              | `course_teachers_course_created_at_idx`       |
 | Student submission reads   | `student_id` lookup for assignment and teacher/student views       | `submissions_student_id_idx`                  |
 | Open attendance sessions   | active `closes_at` plus newest-first `opened_at`                   | `attendance_sessions_closes_at_opened_at_idx` |
@@ -24,18 +25,18 @@ order by stable columns:
 
 These indexes support the existing cursor pagination, unread read-state,
 ordered/upcoming lesson, assignment catalog, teacher lesson assignment,
-course-team, and student submission queries without changing response shape or
-retention behavior. They are additive and safe for the expand/contract release
-procedure.
+student assignment list, course-team, and student submission queries without
+changing response shape or retention behavior. They are additive and safe for
+the expand/contract release procedure.
 
 ## Verification contract
 
 - The migration is replayed by `bun run test:integration`.
 - The affected post, notification, and course integration suites must remain
   green.
-- After hosted data exists, capture `EXPLAIN (ANALYZE, BUFFERS)` for the eleven
+- After hosted data exists, capture `EXPLAIN (ANALYZE, BUFFERS)` for the twelve
   query shapes in a controlled development environment and record only plan
-  summaries and timings in the performance review record for the eleven
+  summaries and timings in the performance review record for the twelve
   indexed query shapes.
 - Revisit index usefulness after production traffic is available; remove or
   refine indexes only through a later measured migration.
@@ -102,3 +103,17 @@ This iteration completed the next repository-owned Phase 4 slice:
   the existing `(exam_id, status)` and `(exam_id, student_id)` indexes.
 - Hosted verification now covers eleven `EXPLAIN (ANALYZE, BUFFERS)` shapes;
   student-wide attempt history remains a separate evidence-gated query.
+
+## Iteration 111 — student assignment list index
+
+This iteration completed the next repository-owned Phase 4 slice:
+
+- Added `assignments_status_due_date_idx` on `(status, due_date)` for the
+  existing student assignment list, which filters to published assignments
+  and orders them by due date.
+- Kept student-role authorization, submission joins, response shape, and
+  assignment publication behavior unchanged. The index is additive and does
+  not replace the lesson-scoped catalog indexes.
+- Hosted verification now covers twelve `EXPLAIN (ANALYZE, BUFFERS)` shapes;
+  plan summaries and timing evidence remain pending until representative
+  hosted data is available.
