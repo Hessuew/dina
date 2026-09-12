@@ -1,9 +1,10 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 108
-**Scope:** remediate the remaining moderate `srvx` development-tool advisory
-with a compatible root resolution and record the lower-severity audit baseline.
+**Iteration:** 109
+**Scope:** remediate the remaining moderate `@humanfs/node` development-tool
+advisory with a compatible root resolution and record the lower-severity audit
+baseline.
 
 ## Executive summary
 
@@ -35,6 +36,10 @@ shadcn@latest` intentionally.
 - The remaining moderate `srvx` advisory is now resolved by a compatible root
   `^0.11.13` override; the audit report retains only lower-severity findings for
   routine review, and the high/critical CI threshold remains clear.
+- The remaining moderate `@humanfs/node` advisory is now resolved by a compatible
+  root `^0.16.8` override; ESLint's existing `^0.16.6` range remains satisfied,
+  and the audit report retains only the separate `esbuild` and `@babel/core`
+  findings for routine review.
 - Assignment submission saves now emit structured Better Stack/Cloudflare-ready
   outcome events with request ID, status, duration, and stable error category.
 - Enrollment distribution and teacher substitution mutations now emit
@@ -3034,3 +3039,24 @@ passed. The post-change `bun audit --json` report was generated and inspected;
 it exits non-zero only for the three below-threshold findings listed above, with
 zero high or critical advisories. Full quality, integration, and
 production-build validation remains required before final handoff.
+
+## Iteration 109 — humanfs moderate advisory remediation
+
+This iteration completed the next bounded Phase 5 dependency-security unit:
+
+- Added the compatible root Bun/npm override `@humanfs/node: ^0.16.8` for
+  ESLint's existing `^0.16.6` dependency range. The lockfile now resolves
+  `@humanfs/node@0.16.8` and its compatible `@humanfs/core@0.19.2` branch.
+- This removes the recursive-copy symlink traversal advisory
+  [GHSA-p498-v437-472g](https://github.com/advisories/GHSA-p498-v437-472g)
+  from the development-tool dependency tree without changing deployed
+  Worker/browser behavior.
+- The post-change audit report contains only the low `@babel/core` advisory and
+  moderate `esbuild` development-tool advisory. No high or critical advisories
+  are present, so the existing CI blocking threshold remains green while those
+  lower-severity findings stay visible for routine review.
+
+Validation: `bun install`, dependency-tree inspection, and post-change
+`bun audit --json` passed with the expected below-threshold findings. Full
+quality, integration, and production-build validation remains required before
+final handoff.

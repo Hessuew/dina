@@ -2,7 +2,7 @@
 
 **Status:** In progress — the direct browser PDF, nested Vite, shell-quote,
 brace-expansion, Browserslist, PostCSS, Nanoid, fast-uri, flatted, js-yaml,
-ip-address, sharp, Hono, and srvx dependencies are remediated; the reviewed
+ip-address, sharp, Hono, srvx, and humanfs dependencies are remediated; the reviewed
 server-function authorization gaps, secret-inventory contract, and threat-model baseline are documented incrementally,
 while hosted security verification and non-high transitive advisories remain pending
 **Phase:** Engineering Roadmap Phase 5: Security
@@ -231,6 +231,21 @@ deployed Worker/browser runtime. The moderate advisory is removed from the
 local audit report without changing application behavior. The report still
 contains lower-severity findings for `@babel/core`, `@humanfs/node`, and
 `esbuild`, which remain visible for separate routine review.
+
+## humanfs transitive development-tool dependency remediation
+
+The ESLint development-tool chain previously resolved `@humanfs/node@0.16.7`,
+which is affected by the recursive-copy symlink traversal advisory
+[GHSA-p498-v437-472g](https://github.com/advisories/GHSA-p498-v437-472g).
+The compatible root Bun/npm `overrides` entry now floors
+`@humanfs/node` at `^0.16.8`, the patched release accepted by ESLint's existing
+`^0.16.6` range. Bun resolves the branch to `@humanfs/node@0.16.8` and its
+compatible `@humanfs/core@0.19.2` dependency.
+
+This is a development-only ESLint dependency remediation; the package is not
+bundled into the deployed Worker/browser runtime. The local audit report now
+contains only the separate low `@babel/core` and moderate `esbuild` findings,
+which remain visible for routine review.
 
 ## Review order
 
