@@ -33,7 +33,8 @@ This folder is primarily where TanStack Start server functions live (via `create
 - **Auth utilities**
   - `auth.ts`: current user lookup and role/access helpers (legacy, migrate to authz).
   - `auth/login.ts`: Supabase password sign-in adapter with redacted,
-    request-correlated `login_succeeded` / `login_failed` telemetry.
+    request-correlated `login_succeeded` / `login_failed` telemetry, including
+    stable error-level logging for unexpected provider exceptions.
   - `auth/logout.ts`: Supabase sign-out adapter with redacted,
     request-correlated `logout_succeeded` / `logout_failed` telemetry.
 

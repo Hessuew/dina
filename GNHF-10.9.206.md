@@ -3788,3 +3788,25 @@ passed. The full build and full integration suite were not run per the
 iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
 dashboards, alerts, Uptime monitors, and source-map verification remain
 external follow-up.
+
+## Iteration 140 — batched auth and assignment grading failure telemetry
+
+This iteration completed the next batched Phase 1 structured-logging slice:
+
+- Unexpected password sign-in provider exceptions now emit redacted
+  `login_failed` error events with failure status and the stable `auth_sign_in`
+  category while preserving the original exception for the caller.
+- Assignment-grade persistence failures now emit redacted
+  `assignment_grading_failed` events with request correlation, safe
+  assignment/submission/actor IDs, duration, and the stable
+  `assignment_grading_persistence` category while preserving the original
+  repository error.
+- Added focused integration coverage for both failure paths, including raw
+  exception-detail exclusion and request correlation.
+
+Validation: focused login and assignment integration suites passed 50 tests;
+typecheck, formatting, `bun run quality:static`, and `git diff --check` passed.
+The full build and full integration suite were not run per the iterative
+telemetry workflow. Hosted Better Stack/Cloudflare ingestion, dashboards,
+alerts, Uptime monitors, source maps, and restore evidence remain external
+follow-up.

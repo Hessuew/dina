@@ -19,6 +19,7 @@ import {
 } from '@/utils/assignments/service/assignments.service'
 import { findAssignmentById } from '@/utils/assignments/repository/assignments.repository'
 import * as assignmentsRepository from '@/utils/assignments/repository/assignments.repository'
+import * as submissionsRepository from '@/utils/assignments/repository/submissions.repository'
 import {
   seedAssignment,
   seedCourse,
@@ -907,6 +908,53 @@ describe('gradeSubmissionService (integration)', () => {
         teacherId,
       ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED', status: 400 })
+  })
+
+  it('logs grading persistence failures without leaking repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { teacherId, lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({ lessonId, status: 'published' })
+    const studentId = await seedProfile({ role: 'student' })
+    const submissionId = await seedSubmission({
+      assignmentId,
+      studentId,
+      status: 'submitted',
+    })
+    const repositoryError = new Error(
+      'connectionString=secret; feedback=private submission',
+    )
+    vi.spyOn(submissionsRepository, 'updateSubmissionGrade').mockRejectedValue(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'assignment-grading-failure-request' },
+        }),
+        () =>
+          gradeSubmissionService(
+            { assignmentId, submissionId, grade: 95, feedback: 'private' },
+            teacherId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('private submission')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'assignment_grading_failed',
+      level: 'error',
+      path: 'serverFn:gradeSubmission',
+      requestId: 'assignment-grading-failure-request',
+      status: 'failure',
+      errorCategory: 'assignment_grading_persistence',
+      assignmentId,
+      submissionId,
+      userId: teacherId,
+      durationMs: expect.any(Number),
+    })
   })
 
   it('throws when the submission does not exist', async () => {

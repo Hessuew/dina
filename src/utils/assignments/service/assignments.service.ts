@@ -824,6 +824,23 @@ export async function getAssignmentSubmissionsService(
   )
 }
 
+function logAssignmentGradingFailure(
+  startedAt: number,
+  data: GradeSubmissionInput,
+  userId: string,
+): void {
+  logServerEvent('error', 'assignment_grading_failed', {
+    requestId: getRequestId(),
+    path: 'serverFn:gradeSubmission',
+    status: 'failure',
+    durationMs: elapsedMs(startedAt),
+    errorCategory: 'assignment_grading_persistence',
+    assignmentId: data.assignmentId,
+    submissionId: data.submissionId,
+    userId,
+  })
+}
+
 export async function gradeSubmissionService(
   data: GradeSubmissionInput,
   userId: string,
@@ -857,12 +874,18 @@ export async function gradeSubmissionService(
     })
   }
 
-  const gradedSubmission = await updateSubmissionGrade(data.submissionId, {
-    grade: data.grade,
-    feedback: data.feedback || null,
-    gradedAt: new Date(),
-    updatedAt: new Date(),
-  })
+  let gradedSubmission
+  try {
+    gradedSubmission = await updateSubmissionGrade(data.submissionId, {
+      grade: data.grade,
+      feedback: data.feedback || null,
+      gradedAt: new Date(),
+      updatedAt: new Date(),
+    })
+  } catch (error) {
+    logAssignmentGradingFailure(startedAt, data, userId)
+    throw error
+  }
 
   logServerEvent('info', 'assignment_grading_completed', {
     requestId: getRequestId(),

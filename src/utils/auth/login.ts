@@ -18,7 +18,12 @@ function logLoginEvent(
   logServerEvent(level, event, {
     requestId: getRequestId(),
     path: 'serverFn:login',
-    status: event === 'login_failed' ? 'rejected' : 'success',
+    status:
+      level === 'error'
+        ? 'failure'
+        : event === 'login_failed'
+          ? 'rejected'
+          : 'success',
     durationMs: elapsedMs(context.startedAt),
     ...fields,
   })
@@ -26,21 +31,28 @@ function logLoginEvent(
 
 export async function loginService(data: z.infer<typeof loginSchema>) {
   const context: LoginLogContext = { startedAt: performance.now() }
-  const { data: authData, error } =
-    await getSupabaseServerClient().auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-    })
+  try {
+    const { data: authData, error } =
+      await getSupabaseServerClient().auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      })
 
-  if (error) {
-    logLoginEvent('info', 'login_failed', context, {
+    if (error) {
+      logLoginEvent('info', 'login_failed', context, {
+        errorCategory: 'auth_sign_in',
+        providerCode: error.code ?? 'unknown',
+      })
+      return { error: true, message: error.message }
+    }
+
+    logLoginEvent('info', 'login_succeeded', context, {
+      userId: authData.user.id,
+    })
+  } catch (error) {
+    logLoginEvent('error', 'login_failed', context, {
       errorCategory: 'auth_sign_in',
-      providerCode: error.code ?? 'unknown',
     })
-    return { error: true, message: error.message }
+    throw error
   }
-
-  logLoginEvent('info', 'login_succeeded', context, {
-    userId: authData.user.id,
-  })
 }
