@@ -216,7 +216,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     correlation, server-function path, actor/course/lesson/assignment IDs,
     safe assignment status, and duration; titles, descriptions, due dates,
     and raw persistence details remain excluded, with failures categorized as
-    `assignment_persistence`.
+    `assignment_persistence`. Unexpected assignment, submission, and grading
+    preflight lookup failures reuse redacted failure events with stable
+    `assignment_read_persistence`, `submission_read_persistence`, and
+    `assignment_grading_read_persistence` categories; expected not-found and
+    validation outcomes remain quiet.
   - Enrollment distribution and teacher substitution mutations emit redacted
     `enrollment_distribution_completed`,
     `enrollment_substitution_completed`, and

@@ -35,6 +35,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    submission, and actor IDs, duration, and the stable
    `assignment_grading_persistence` category while preserving the original
    error.
+   Assignment authoring, submission, and grading preflight repository reads now
+   reuse the same redacted failure events with stable
+   `assignment_read_persistence`, `submission_read_persistence`, and
+   `assignment_grading_read_persistence` categories; lookup identifiers and
+   raw persistence details remain excluded while original errors are preserved.
    Student attendance check-in now emits redacted
    `attendance_check_in_completed` and `attendance_check_in_ignored` events
    with request correlation, course/session/lesson/student IDs, status, and
@@ -256,7 +261,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    with request correlation, server-function path, actor/course/lesson/
    assignment IDs, safe assignment status, and duration. Assignment titles,
    descriptions, due dates, and raw persistence details remain excluded;
-   unexpected failures use the stable `assignment_persistence` category.
+   unexpected failures use the stable `assignment_persistence` category, while
+   preflight lookup failures use `assignment_read_persistence`. Submission
+   assignment/existing-submission lookups emit the existing
+   `assignment_submission_failed` event with `submission_read_persistence`,
+   and grading assignment/submission lookups use
+   `assignment_grading_read_persistence`; expected not-found and validation
+   outcomes remain quiet.
    Enrollment distribution and teacher substitution mutations now emit
    redacted completion events with request correlation, actor and safe
    teacher/course identifiers, assignment/reassignment counters, and duration.

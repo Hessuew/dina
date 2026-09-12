@@ -63,8 +63,8 @@ type AssignmentMutationLogContext = {
   action: AssignmentMutationAction
   actorId: string
   assignmentId?: string
-  lessonId: string
-  courseId: string
+  lessonId?: string
+  courseId?: string
   startedAt: number
 }
 
@@ -360,7 +360,21 @@ export async function createAssignmentService(
   userId: string,
 ) {
   const startedAt = performance.now()
-  const lesson = await findLessonById(data.lessonId)
+  const context: AssignmentMutationLogContext = {
+    action: 'createAssignment',
+    actorId: userId,
+    lessonId: data.lessonId,
+    startedAt,
+  }
+  let lesson: Awaited<ReturnType<typeof findLessonById>>
+  try {
+    lesson = await findLessonById(data.lessonId)
+  } catch (error) {
+    logAssignmentMutationEvent('error', 'assignment_create_failed', context, {
+      errorCategory: 'assignment_read_persistence',
+    })
+    throw error
+  }
   if (!lesson) {
     throw new NotFoundError('Lesson not found', {
       code: 'LESSON_NOT_FOUND',
@@ -370,13 +384,7 @@ export async function createAssignmentService(
 
   await authz(userId).perform('createLesson').on('course', lesson.courseId)
 
-  const context: AssignmentMutationLogContext = {
-    action: 'createAssignment',
-    actorId: userId,
-    lessonId: data.lessonId,
-    courseId: lesson.courseId,
-    startedAt,
-  }
+  context.courseId = lesson.courseId
 
   try {
     const assignment = await insertAssignment({
@@ -405,7 +413,21 @@ export async function updateAssignmentService(
   userId: string,
 ) {
   const startedAt = performance.now()
-  const assignment = await findAssignmentWithLesson(data.assignmentId)
+  const context: AssignmentMutationLogContext = {
+    action: 'updateAssignment',
+    actorId: userId,
+    assignmentId: data.assignmentId,
+    startedAt,
+  }
+  let assignment: Awaited<ReturnType<typeof findAssignmentWithLesson>>
+  try {
+    assignment = await findAssignmentWithLesson(data.assignmentId)
+  } catch (error) {
+    logAssignmentMutationEvent('error', 'assignment_update_failed', context, {
+      errorCategory: 'assignment_read_persistence',
+    })
+    throw error
+  }
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
       code: 'ASSIGNMENT_NOT_FOUND',
@@ -417,14 +439,8 @@ export async function updateAssignmentService(
     .perform('editLesson')
     .on('course', assignment.lesson.courseId)
 
-  const context: AssignmentMutationLogContext = {
-    action: 'updateAssignment',
-    actorId: userId,
-    assignmentId: data.assignmentId,
-    lessonId: assignment.lesson.id,
-    courseId: assignment.lesson.courseId,
-    startedAt,
-  }
+  context.lessonId = assignment.lesson.id
+  context.courseId = assignment.lesson.courseId
 
   try {
     const updated = await updateAssignmentById(data.assignmentId, {
@@ -486,9 +502,23 @@ export async function deleteAssignmentService(
   userId: string,
 ) {
   const startedAt = performance.now()
-  const assignment = await findAssignmentWithLessonAndSubmissions(
-    data.assignmentId,
-  )
+  const context: AssignmentMutationLogContext = {
+    action: 'deleteAssignment',
+    actorId: userId,
+    assignmentId: data.assignmentId,
+    startedAt,
+  }
+  let assignment: Awaited<
+    ReturnType<typeof findAssignmentWithLessonAndSubmissions>
+  >
+  try {
+    assignment = await findAssignmentWithLessonAndSubmissions(data.assignmentId)
+  } catch (error) {
+    logAssignmentMutationEvent('error', 'assignment_delete_failed', context, {
+      errorCategory: 'assignment_read_persistence',
+    })
+    throw error
+  }
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
       code: 'ASSIGNMENT_NOT_FOUND',
@@ -512,14 +542,8 @@ export async function deleteAssignmentService(
     )
   }
 
-  const context: AssignmentMutationLogContext = {
-    action: 'deleteAssignment',
-    actorId: userId,
-    assignmentId: data.assignmentId,
-    lessonId: assignment.lesson.id,
-    courseId: assignment.lesson.courseId,
-    startedAt,
-  }
+  context.lessonId = assignment.lesson.id
+  context.courseId = assignment.lesson.courseId
 
   try {
     await deleteAssignmentById(data.assignmentId)
@@ -556,23 +580,40 @@ async function persistSubmission(
   })
 }
 
+function logAssignmentSubmissionFailure(
+  assignmentId: string,
+  userId: string,
+  startedAt: number,
+  errorCategory: string,
+  error?: unknown,
+): void {
+  logServerEvent('error', 'assignment_submission_failed', {
+    requestId: getRequestId(),
+    path: 'serverFn:createOrUpdateSubmission',
+    status: 'error',
+    durationMs: elapsedMs(startedAt),
+    errorCategory,
+    assignmentId,
+    userId,
+    ...(error !== undefined
+      ? { error, cause: error instanceof Error ? error.cause : undefined }
+      : {}),
+  })
+}
+
 function mapSubmissionPersistenceError(
   error: unknown,
   assignmentId: string,
   userId: string,
   startedAt: number,
 ): AppError {
-  logServerEvent('error', 'assignment_submission_failed', {
-    requestId: getRequestId(),
-    path: 'serverFn:createOrUpdateSubmission',
-    status: 'error',
-    durationMs: elapsedMs(startedAt),
-    errorCategory: 'submission_persistence',
+  logAssignmentSubmissionFailure(
     assignmentId,
     userId,
+    startedAt,
+    'submission_persistence',
     error,
-    cause: error instanceof Error ? error.cause : undefined,
-  })
+  )
   return new AppError({
     code: 'SUBMISSION_SAVE_FAILED',
     status: 500,
@@ -603,6 +644,25 @@ async function saveSubmission(
   }
 }
 
+async function withAssignmentSubmissionReadTelemetry<T>(
+  assignmentId: string,
+  userId: string,
+  startedAt: number,
+  read: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await read()
+  } catch (error) {
+    logAssignmentSubmissionFailure(
+      assignmentId,
+      userId,
+      startedAt,
+      'submission_read_persistence',
+    )
+    throw error
+  }
+}
+
 export async function createOrUpdateSubmissionService(
   data: CreateOrUpdateSubmissionInput,
   userId: string,
@@ -617,7 +677,12 @@ export async function createOrUpdateSubmissionService(
     })
   }
 
-  const assignment = await findAssignmentWithFullDetail(data.assignmentId)
+  const assignment = await withAssignmentSubmissionReadTelemetry(
+    data.assignmentId,
+    userId,
+    startedAt,
+    () => findAssignmentWithFullDetail(data.assignmentId),
+  )
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
       code: 'ASSIGNMENT_NOT_FOUND',
@@ -633,9 +698,11 @@ export async function createOrUpdateSubmissionService(
 
   validateSubmissionWindow(assignment, new Date())
 
-  const existingSubmission = await findSubmissionByAssignmentAndStudent(
+  const existingSubmission = await withAssignmentSubmissionReadTelemetry(
     data.assignmentId,
     userId,
+    startedAt,
+    () => findSubmissionByAssignmentAndStudent(data.assignmentId, userId),
   )
   const submission = await saveSubmission(
     data,
@@ -828,17 +895,55 @@ function logAssignmentGradingFailure(
   startedAt: number,
   data: GradeSubmissionInput,
   userId: string,
+  errorCategory = 'assignment_grading_persistence',
 ): void {
   logServerEvent('error', 'assignment_grading_failed', {
     requestId: getRequestId(),
     path: 'serverFn:gradeSubmission',
     status: 'failure',
     durationMs: elapsedMs(startedAt),
-    errorCategory: 'assignment_grading_persistence',
+    errorCategory,
     assignmentId: data.assignmentId,
     submissionId: data.submissionId,
     userId,
   })
+}
+
+async function withAssignmentGradingReadTelemetry<T>(
+  data: GradeSubmissionInput,
+  userId: string,
+  startedAt: number,
+  read: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await read()
+  } catch (error) {
+    logAssignmentGradingFailure(
+      startedAt,
+      data,
+      userId,
+      'assignment_grading_read_persistence',
+    )
+    throw error
+  }
+}
+
+async function updateGradedSubmission(
+  data: GradeSubmissionInput,
+  userId: string,
+  startedAt: number,
+) {
+  try {
+    return await updateSubmissionGrade(data.submissionId, {
+      grade: data.grade,
+      feedback: data.feedback || null,
+      gradedAt: new Date(),
+      updatedAt: new Date(),
+    })
+  } catch (error) {
+    logAssignmentGradingFailure(startedAt, data, userId)
+    throw error
+  }
 }
 
 export async function gradeSubmissionService(
@@ -846,7 +951,12 @@ export async function gradeSubmissionService(
   userId: string,
 ) {
   const startedAt = performance.now()
-  const assignment = await findAssignmentWithLesson(data.assignmentId)
+  const assignment = await withAssignmentGradingReadTelemetry(
+    data,
+    userId,
+    startedAt,
+    () => findAssignmentWithLesson(data.assignmentId),
+  )
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
       code: 'ASSIGNMENT_NOT_FOUND',
@@ -858,7 +968,12 @@ export async function gradeSubmissionService(
     .perform('gradeAssignment')
     .on('course', assignment.lesson.courseId)
 
-  const submission = await findSubmissionById(data.submissionId)
+  const submission = await withAssignmentGradingReadTelemetry(
+    data,
+    userId,
+    startedAt,
+    () => findSubmissionById(data.submissionId),
+  )
   if (!submission) {
     throw new NotFoundError('Submission not found', {
       code: 'NOT_FOUND',
@@ -874,18 +989,7 @@ export async function gradeSubmissionService(
     })
   }
 
-  let gradedSubmission
-  try {
-    gradedSubmission = await updateSubmissionGrade(data.submissionId, {
-      grade: data.grade,
-      feedback: data.feedback || null,
-      gradedAt: new Date(),
-      updatedAt: new Date(),
-    })
-  } catch (error) {
-    logAssignmentGradingFailure(startedAt, data, userId)
-    throw error
-  }
+  const gradedSubmission = await updateGradedSubmission(data, userId, startedAt)
 
   logServerEvent('info', 'assignment_grading_completed', {
     requestId: getRequestId(),

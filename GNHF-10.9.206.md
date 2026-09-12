@@ -3877,3 +3877,27 @@ checks, typecheck, `git diff --check`, and `bun run quality:gate` passed with
 skipped for the iterative telemetry workflow. Hosted Better Stack/Cloudflare
 ingestion, dashboards, alerts, Uptime monitors, source maps, PostHog
 verification, and restore evidence remain pending.
+
+## Iteration 144 — assignment preflight failure telemetry
+
+This iteration completed a batched Phase 1 assignment-observability slice:
+
+- Assignment create, update, and delete now emit their existing redacted
+  failure events when lesson/assignment preflight reads fail unexpectedly,
+  using the stable `assignment_read_persistence` category.
+- Assignment submission assignment/existing-submission lookups and teacher
+  grading assignment/submission lookups now emit redacted failure events with
+  `submission_read_persistence` and `assignment_grading_read_persistence`
+  categories while preserving the original repository errors.
+- Added six focused integration regressions covering request correlation,
+  safe identifiers, stable categories, and exclusion of raw persistence
+  details. Expected not-found, authorization, and validation outcomes remain
+  quiet.
+
+Validation: focused assignment integration passed 54 tests; typecheck,
+formatting, static checks, `git diff --check`, Cloudflare type generation, and
+`bun run quality:gate` passed with 1,953 unit tests. The full build and full
+integration suite were intentionally skipped for the iterative telemetry
+workflow. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime
+monitors, source maps, PostHog verification, and restore evidence remain
+pending.

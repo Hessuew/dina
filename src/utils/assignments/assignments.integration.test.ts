@@ -19,6 +19,7 @@ import {
 } from '@/utils/assignments/service/assignments.service'
 import { findAssignmentById } from '@/utils/assignments/repository/assignments.repository'
 import * as assignmentsRepository from '@/utils/assignments/repository/assignments.repository'
+import * as lessonsRepository from '@/utils/assignments/repository/lessons.repository'
 import * as submissionsRepository from '@/utils/assignments/repository/submissions.repository'
 import {
   seedAssignment,
@@ -62,6 +63,45 @@ const future = () => new Date(Date.now() + 24 * 60 * 60 * 1000)
 const past = () => new Date(Date.now() - 24 * 60 * 60 * 1000)
 
 describe('createAssignmentService (integration)', () => {
+  it('logs lesson preflight persistence failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const lessonId = randomUUID()
+    const repositoryError = new Error('assignment lesson database detail')
+    vi.spyOn(lessonsRepository, 'findLessonById').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'assignment-create-read-failure' },
+        }),
+        () =>
+          createAssignmentService(
+            {
+              lessonId,
+              title: 'private title',
+              dueDate: future().toISOString(),
+            },
+            teacherId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('assignment lesson database detail')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'assignment_create_failed',
+      path: 'serverFn:createAssignment',
+      requestId: 'assignment-create-read-failure',
+      actorId: teacherId,
+      lessonId,
+      status: 'failure',
+      errorCategory: 'assignment_read_persistence',
+    })
+  })
+
   it('course teacher creates a draft assignment defaulting maxGrade to 100', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { teacherId, lessonId } = await seedCourseWithTeacher()
@@ -118,6 +158,46 @@ describe('createAssignmentService (integration)', () => {
 })
 
 describe('updateAssignmentService (integration)', () => {
+  it('logs assignment preflight persistence failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const assignmentId = randomUUID()
+    const repositoryError = new Error('assignment update lookup detail')
+    vi.spyOn(
+      assignmentsRepository,
+      'findAssignmentWithLesson',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'assignment-update-read-failure' },
+        }),
+        () =>
+          updateAssignmentService(
+            {
+              assignmentId,
+              title: 'private title',
+              dueDate: future().toISOString(),
+            },
+            teacherId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('assignment update lookup detail')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'assignment_update_failed',
+      path: 'serverFn:updateAssignment',
+      requestId: 'assignment-update-read-failure',
+      actorId: teacherId,
+      assignmentId,
+      status: 'failure',
+      errorCategory: 'assignment_read_persistence',
+    })
+  })
+
   it('course teacher publishes a draft assignment', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { teacherId, lessonId } = await seedCourseWithTeacher()
@@ -171,6 +251,38 @@ describe('updateAssignmentService (integration)', () => {
 })
 
 describe('deleteAssignmentService (integration)', () => {
+  it('logs assignment deletion preflight failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const assignmentId = randomUUID()
+    const repositoryError = new Error('assignment delete lookup detail')
+    vi.spyOn(
+      assignmentsRepository,
+      'findAssignmentWithLessonAndSubmissions',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'assignment-delete-read-failure' },
+        }),
+        () => deleteAssignmentService({ assignmentId }, teacherId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('assignment delete lookup detail')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'assignment_delete_failed',
+      path: 'serverFn:deleteAssignment',
+      requestId: 'assignment-delete-read-failure',
+      actorId: teacherId,
+      assignmentId,
+      status: 'failure',
+      errorCategory: 'assignment_read_persistence',
+    })
+  })
+
   it('deletes an assignment that has no submissions', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { teacherId, lessonId } = await seedCourseWithTeacher()
@@ -371,6 +483,83 @@ describe('getLessonService (integration)', () => {
 })
 
 describe('createOrUpdateSubmissionService (integration)', () => {
+  it('logs assignment lookup failures without exposing repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const studentId = await seedProfile({ role: 'student' })
+    const assignmentId = randomUUID()
+    const repositoryError = new Error('submission assignment lookup detail')
+    vi.spyOn(
+      assignmentsRepository,
+      'findAssignmentWithFullDetail',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'submission-assignment-read-failure' },
+        }),
+        () =>
+          createOrUpdateSubmissionService(
+            { assignmentId, submit: true },
+            studentId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('submission assignment lookup detail')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'assignment_submission_failed',
+      path: 'serverFn:createOrUpdateSubmission',
+      requestId: 'submission-assignment-read-failure',
+      assignmentId,
+      userId: studentId,
+      status: 'error',
+      errorCategory: 'submission_read_persistence',
+    })
+  })
+
+  it('logs existing-submission lookup failures without exposing repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({
+      lessonId,
+      status: 'published',
+      dueDate: future(),
+    })
+    const studentId = await seedProfile({ role: 'student' })
+    const repositoryError = new Error('existing submission lookup detail')
+    vi.spyOn(
+      submissionsRepository,
+      'findSubmissionByAssignmentAndStudent',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'submission-existing-read-failure' },
+        }),
+        () =>
+          createOrUpdateSubmissionService(
+            { assignmentId, submit: true },
+            studentId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('existing submission lookup detail')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'assignment_submission_failed',
+      path: 'serverFn:createOrUpdateSubmission',
+      requestId: 'submission-existing-read-failure',
+      assignmentId,
+      userId: studentId,
+      status: 'error',
+      errorCategory: 'submission_read_persistence',
+    })
+  })
+
   it('submits within the window', async () => {
     const { lessonId } = await seedCourseWithTeacher()
     const assignmentId = await seedAssignment({
@@ -856,6 +1045,79 @@ describe('getAssignmentSubmissionCountService (integration)', () => {
 })
 
 describe('gradeSubmissionService (integration)', () => {
+  it('logs grading assignment lookup failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const assignmentId = randomUUID()
+    const repositoryError = new Error('grading assignment lookup detail')
+    vi.spyOn(
+      assignmentsRepository,
+      'findAssignmentWithLesson',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'grading-assignment-read-failure' },
+        }),
+        () =>
+          gradeSubmissionService(
+            { assignmentId, submissionId: randomUUID(), grade: 95 },
+            teacherId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('grading assignment lookup detail')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'assignment_grading_failed',
+      path: 'serverFn:gradeSubmission',
+      requestId: 'grading-assignment-read-failure',
+      assignmentId,
+      userId: teacherId,
+      status: 'failure',
+      errorCategory: 'assignment_grading_read_persistence',
+    })
+  })
+
+  it('logs grading submission lookup failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { teacherId, lessonId } = await seedCourseWithTeacher()
+    const assignmentId = await seedAssignment({ lessonId, status: 'published' })
+    const submissionId = randomUUID()
+    const repositoryError = new Error('grading submission lookup detail')
+    vi.spyOn(submissionsRepository, 'findSubmissionById').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'grading-submission-read-failure' },
+        }),
+        () =>
+          gradeSubmissionService(
+            { assignmentId, submissionId, grade: 95 },
+            teacherId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('grading submission lookup detail')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'assignment_grading_failed',
+      path: 'serverFn:gradeSubmission',
+      requestId: 'grading-submission-read-failure',
+      assignmentId,
+      submissionId,
+      userId: teacherId,
+      status: 'failure',
+      errorCategory: 'assignment_grading_read_persistence',
+    })
+  })
+
   it('grades a submission belonging to the assignment', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { teacherId, lessonId } = await seedCourseWithTeacher()
