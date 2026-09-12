@@ -213,18 +213,39 @@ export async function completeLessonService(
 
 export async function getUpcomingLessonsService(userId: string) {
   await getUserProfile(userId)
+  const startedAt = performance.now()
 
-  const upcomingLessons = await findUpcomingLessons(new Date())
-
-  return {
-    lessons: upcomingLessons.map((l) => ({
+  try {
+    const upcomingLessons = await findUpcomingLessons(new Date())
+    const lessons = upcomingLessons.map((l) => ({
       id: l.id,
       title: l.title,
       scheduledTime: l.scheduledTime!,
       thumbnailUrl: l.thumbnailUrl,
       courseId: l.courseId,
       courseName: l.courseName,
-    })),
+    }))
+
+    logServerEvent('info', 'upcoming_lessons_loaded', {
+      requestId: getRequestId(),
+      path: 'serverFn:getUpcomingLessons',
+      status: 'success',
+      durationMs: elapsedMs(startedAt),
+      actorId: userId,
+      lessonCount: lessons.length,
+    })
+
+    return { lessons }
+  } catch (error) {
+    logServerEvent('error', 'upcoming_lessons_load_failed', {
+      requestId: getRequestId(),
+      path: 'serverFn:getUpcomingLessons',
+      status: 'failure',
+      durationMs: elapsedMs(startedAt),
+      actorId: userId,
+      errorCategory: 'upcoming_lessons_read_persistence',
+    })
+    throw error
   }
 }
 

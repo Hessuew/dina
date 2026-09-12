@@ -874,6 +874,69 @@ describe('deleteLessonService (integration)', () => {
 })
 
 describe('getUpcomingLessonsService (integration)', () => {
+  it('requires a persisted profile before reading upcoming lessons', async () => {
+    await expect(
+      getUpcomingLessonsService('00000000-0000-4000-8000-000000000001'),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('logs a redacted list-read event with request correlation and safe counts', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const courseId = await seedCourse({ title: 'Private upcoming course' })
+    await seedLesson({
+      courseId,
+      title: 'Private upcoming lesson',
+      content: 'Private lesson content',
+      isPublished: true,
+      scheduledTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    })
+    const userId = await seedProfile({ role: 'student' })
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org', {
+        headers: { 'x-request-id': 'upcoming-lessons-request' },
+      }),
+      () => getUpcomingLessonsService(userId),
+    )
+
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    const event = JSON.parse(line) as Record<string, unknown>
+    expect(event).toMatchObject({
+      event: 'upcoming_lessons_loaded',
+      requestId: 'upcoming-lessons-request',
+      actorId: userId,
+      lessonCount: 1,
+      status: 'success',
+    })
+    expect(event.durationMs).toEqual(expect.any(Number))
+    expect(line).not.toContain('Private upcoming course')
+    expect(line).not.toContain('Private upcoming lesson')
+    expect(line).not.toContain('Private lesson content')
+  })
+
+  it('logs persistence failures without changing the original error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const repositoryError = new Error('upcoming lesson database secret')
+    vi.spyOn(coursesRepository, 'findUpcomingLessons').mockRejectedValueOnce(
+      repositoryError,
+    )
+    const userId = await seedProfile({ role: 'student' })
+
+    await expect(getUpcomingLessonsService(userId)).rejects.toBe(
+      repositoryError,
+    )
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'upcoming_lessons_load_failed',
+      actorId: userId,
+      status: 'failure',
+      errorCategory: 'upcoming_lessons_read_persistence',
+      durationMs: expect.any(Number),
+    })
+    expect(line).not.toContain('upcoming lesson database secret')
+  })
+
   it('returns only future, published lessons', async () => {
     const userId = await seedProfile({ role: 'student' })
     const courseId = await seedCourse()

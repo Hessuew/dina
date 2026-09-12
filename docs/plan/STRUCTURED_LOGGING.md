@@ -147,6 +147,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    descriptions, meeting URLs, meeting IDs, passcodes, and raw persistence
    details remain excluded; unexpected failures use the stable
    `zoom_links_read_persistence` category.
+   Dashboard upcoming-lesson reads now emit redacted
+   `upcoming_lessons_loaded` / `upcoming_lessons_load_failed` events with
+   request correlation, actor ID, safe lesson counts, status, duration, and
+   the stable `upcoming_lessons_read_persistence` failure category. Lesson
+   titles, course names, content, and thumbnail URLs remain outside telemetry.
    Media-library create, update, and delete mutations now emit redacted
    `media_created`, `media_updated`, and `media_deleted` events with request
    correlation, actor/media IDs, media kind, course ID where applicable,

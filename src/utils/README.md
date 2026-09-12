@@ -184,6 +184,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     role, safe lesson/media/course counts, status, and duration; expected
     authorization and not-found outcomes remain outside noisy error logs, and
     course content is excluded.
+  - Dashboard upcoming-lesson reads emit redacted
+    `upcoming_lessons_loaded` / `upcoming_lessons_load_failed` events with
+    request correlation, actor ID, safe lesson counts, status, duration, and
+    the stable `upcoming_lessons_read_persistence` failure category. Lesson
+    titles, course names, content, and thumbnail URLs remain outside telemetry.
   - Direct Admin course-teacher assignment emits redacted
     `course_teachers_updated` telemetry with request correlation,
     actor/course/teacher IDs, status, and duration; unexpected replacement

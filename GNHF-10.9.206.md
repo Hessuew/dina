@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 126
-**Scope:** add redacted Better Stack-ready telemetry for calendar event-management
-list reads and record the remaining hosted observability evidence gate.
+**Iteration:** 128
+**Scope:** add redacted Better Stack-ready telemetry for dashboard upcoming-lesson
+reads and record the remaining hosted observability evidence gate.
 
 ## Executive summary
 
@@ -89,6 +89,11 @@ shadcn@latest` intentionally.
   request correlation, actor ID, safe result counts, duration, and the stable
   `teacher_directory_read_persistence` failure category; teacher names, email
   addresses, bios, and privilege details remain excluded.
+- Dashboard upcoming-lesson reads now emit redacted
+  `upcoming_lessons_loaded` / `upcoming_lessons_load_failed` events with
+  request correlation, actor ID, safe lesson counts, status, duration, and the
+  stable `upcoming_lessons_read_persistence` failure category; lesson titles,
+  course names, content, and thumbnail URLs remain excluded.
 - Assignment lesson/detail, student/teacher list, submission-count, and
   submission-list reads now emit redacted `assignment_read_loaded` /
   `assignment_read_failed` events with request correlation, actor IDs, safe
@@ -3486,3 +3491,21 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
 Validation: focused Zoom-link integration passed 14 tests. Hosted Better Stack /
 Cloudflare ingestion, dashboards, alerts, Uptime monitors, and source-map
 verification remain external follow-up.
+
+## Iteration 128 — upcoming-lesson read telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Dashboard upcoming-lesson reads now emit redacted
+  `upcoming_lessons_loaded` / `upcoming_lessons_load_failed` events with request
+  correlation, actor ID, safe lesson counts, status, duration, and the stable
+  `upcoming_lessons_read_persistence` failure category.
+- Lesson titles, course names, content, and thumbnail URLs remain outside
+  Better Stack/Cloudflare telemetry. Persisted-profile authorization and the
+  existing response shape remain unchanged; unexpected repository failures
+  preserve the original error.
+- Added integration coverage for profile enforcement, request correlation,
+  safe success metadata, and persistence-error redaction.
+
+Hosted Better Stack / Cloudflare ingestion, dashboards, alerts, Uptime
+monitors, and source-map verification remain external follow-up.
