@@ -21,7 +21,9 @@ import {
   finalizeGradingService,
   getAttemptForGradingService,
   getAttemptForTakingService,
+  getExamForAuthorService,
   getExamsForStudentService,
+  getExamsForTeacherService,
   gradeOpenAnswerService,
   listAttemptsForGradingService,
   publishExamService,
@@ -383,6 +385,126 @@ describe('exam authoring (integration)', () => {
       'Updated option',
       'New option',
     ])
+  })
+})
+
+describe('exam reads (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs safe telemetry for author, catalog, and attempt reads', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
+    const { examId } = await seedPublishedMcExam(teacherId)
+
+    await getExamForAuthorService({ examId }, teacherId)
+    await getExamsForTeacherService(teacherId)
+    await getExamsForStudentService(studentId)
+    const taking = await startAttemptService({ examId }, studentId)
+    await getAttemptForTakingService({ examId }, studentId)
+    await listAttemptsForGradingService({ examId }, teacherId)
+    await getAttemptForGradingService(
+      { attemptId: taking.attempt.id },
+      teacherId,
+    )
+
+    const lines = infoSpy.mock.calls.map(([line]) => String(line))
+    const events = lines
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .filter((event) => event.event === 'exam_read_loaded')
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: 'serverFn:getExamForAuthor',
+          actorId: teacherId,
+          examId,
+          role: 'teacher',
+          examStatus: 'published',
+          questionCount: 2,
+          optionCount: 2,
+          attemptCount: 0,
+          canEdit: false,
+        }),
+        expect.objectContaining({
+          path: 'serverFn:getExamsForTeacher',
+          actorId: teacherId,
+          role: 'teacher',
+          examCount: 1,
+        }),
+        expect.objectContaining({
+          path: 'serverFn:getExamsForStudent',
+          actorId: studentId,
+          role: 'student',
+          examCount: 1,
+          attemptedCount: 0,
+        }),
+        expect.objectContaining({
+          path: 'serverFn:getExamAttemptForTaking',
+          actorId: studentId,
+          examId,
+          attemptId: taking.attempt.id,
+          role: 'student',
+          attemptStatus: 'in_progress',
+          questionCount: 2,
+          answerCount: 0,
+        }),
+        expect.objectContaining({
+          path: 'serverFn:listExamAttemptsForGrading',
+          actorId: teacherId,
+          examId,
+          role: 'teacher',
+          attemptCount: 1,
+        }),
+        expect.objectContaining({
+          path: 'serverFn:getExamAttemptForGrading',
+          actorId: teacherId,
+          examId,
+          attemptId: taking.attempt.id,
+          role: 'teacher',
+          attemptStatus: 'in_progress',
+          questionCount: 2,
+          optionCount: 2,
+          answerCount: 0,
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(lines.join('\n')).not.toContain('Test Exam')
+    expect(lines.join('\n')).not.toContain('Test question?')
+    expect(lines.join('\n')).not.toContain('Option 1')
+  })
+
+  it('logs stable read failures without raw persistence details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const examId = await seedExam({
+      createdBy: teacherId,
+      title: 'Private exam title',
+      status: 'published',
+    })
+    vi.spyOn(examRepository, 'findQuestionsWithOptions').mockRejectedValueOnce(
+      new Error('exam prompt database secret'),
+    )
+
+    await expect(
+      getExamForAuthorService({ examId }, teacherId),
+    ).rejects.toThrow('exam prompt database secret')
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'exam_read_failed',
+      path: 'serverFn:getExamForAuthor',
+      actorId: teacherId,
+      examId,
+      role: 'teacher',
+      status: 'failure',
+      errorCategory: 'exam_read_persistence',
+    })
+    expect(line).not.toContain('exam prompt database secret')
   })
 })
 

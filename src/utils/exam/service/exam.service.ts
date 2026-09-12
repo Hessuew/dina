@@ -109,6 +109,23 @@ type ExamGradingLogContext = {
   startedAt: number
 }
 
+type ExamReadAction =
+  | 'getExamForAuthor'
+  | 'getExamsForTeacher'
+  | 'getExamsForStudent'
+  | 'getExamAttemptForTaking'
+  | 'listExamAttemptsForGrading'
+  | 'getExamAttemptForGrading'
+
+type ExamReadLogContext = {
+  action: ExamReadAction
+  actorId: string
+  examId?: string
+  attemptId?: string
+  role?: 'admin' | 'teacher' | 'student'
+  startedAt: number
+}
+
 function logExamAttemptEvent(
   level: LogLevel,
   event: string,
@@ -162,6 +179,44 @@ function logExamGradingEvent(
     questionId: context.questionId,
     ...fields,
   })
+}
+
+function logExamReadEvent(
+  level: LogLevel,
+  event: string,
+  context: ExamReadLogContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    examId: context.examId,
+    attemptId: context.attemptId,
+    role: context.role,
+    ...fields,
+  })
+}
+
+async function withExamReadTelemetry<T>(
+  context: ExamReadLogContext,
+  read: () => Promise<T>,
+  fields: (result: T) => Record<string, unknown>,
+): Promise<T> {
+  try {
+    const result = await read()
+    logExamReadEvent('info', 'exam_read_loaded', context, fields(result))
+    return result
+  } catch (error) {
+    if (shouldLogExamFailure(error)) {
+      logExamReadEvent('error', 'exam_read_failed', context, {
+        errorCategory: 'exam_read_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 function shouldLogExamFailure(error: unknown): boolean {
@@ -336,21 +391,54 @@ export async function getExamForAuthorService(
   data: GetExamInput,
   userId: string,
 ) {
-  const { isAdmin } = await assertTeacherOrAdmin(userId)
-  const exam = await findExamById(data.examId)
-  if (!exam) throw new NotFoundError('Exam not found')
-  const { questions, options } = await findQuestionsWithOptions(data.examId)
-  const attemptCount = await countAttemptsByExam(data.examId)
-  const canEdit = canAuthorEditExam(exam.status, {
-    isAdmin,
-    isCreator: exam.createdBy === userId,
-  })
-  return { exam, questions, options, attemptCount, canEdit }
+  const context: ExamReadLogContext = {
+    action: 'getExamForAuthor',
+    actorId: userId,
+    examId: data.examId,
+    startedAt: performance.now(),
+  }
+
+  return withExamReadTelemetry(
+    context,
+    async () => {
+      const { isAdmin } = await assertTeacherOrAdmin(userId)
+      context.role = isAdmin ? 'admin' : 'teacher'
+      const exam = await findExamById(data.examId)
+      if (!exam) throw new NotFoundError('Exam not found')
+      const { questions, options } = await findQuestionsWithOptions(data.examId)
+      const attemptCount = await countAttemptsByExam(data.examId)
+      const canEdit = canAuthorEditExam(exam.status, {
+        isAdmin,
+        isCreator: exam.createdBy === userId,
+      })
+      return { exam, questions, options, attemptCount, canEdit }
+    },
+    (result) => ({
+      examStatus: result.exam.status,
+      questionCount: result.questions.length,
+      optionCount: result.options.length,
+      attemptCount: result.attemptCount,
+      canEdit: result.canEdit,
+    }),
+  )
 }
 
 export async function getExamsForTeacherService(userId: string) {
-  await assertTeacherOrAdmin(userId)
-  return findAllExams()
+  const context: ExamReadLogContext = {
+    action: 'getExamsForTeacher',
+    actorId: userId,
+    startedAt: performance.now(),
+  }
+
+  return withExamReadTelemetry(
+    context,
+    async () => {
+      const { isAdmin } = await assertTeacherOrAdmin(userId)
+      context.role = isAdmin ? 'admin' : 'teacher'
+      return findAllExams()
+    },
+    (result) => ({ examCount: result.length }),
+  )
 }
 
 export type StudentExamListItem = {
@@ -366,36 +454,52 @@ export type StudentExamListItem = {
 export async function getExamsForStudentService(
   userId: string,
 ): Promise<Array<StudentExamListItem>> {
-  await assertStudent(userId)
-  const [published, attempts] = await Promise.all([
-    findPublishedExams(),
-    findAttemptsByStudent(userId),
-  ])
-  const pointsMap = await findExamTotalPointsMap(published.map((e) => e.id))
-  const attemptByExam = new Map(attempts.map((a) => [a.examId, a]))
-  const now = new Date()
-  return published
-    .filter(
-      (exam) =>
-        attemptByExam.has(exam.id) ||
-        isWithinStartWindow(now, exam.opensAt, exam.closesAt) ||
-        now.getTime() < exam.opensAt.getTime(),
-    )
-    .map((exam) => {
-      const attempt = attemptByExam.get(exam.id)
-      const finalized = attempt ? redactAttemptForStudent(attempt) : null
-      return {
-        exam: {
-          id: exam.id,
-          title: exam.title,
-          durationMinutes: exam.durationMinutes,
-          opensAt: exam.opensAt,
-          closesAt: exam.closesAt,
-          totalPoints: pointsMap.get(exam.id) ?? 0,
-        },
-        attempt: finalized,
-      }
-    })
+  const context: ExamReadLogContext = {
+    action: 'getExamsForStudent',
+    actorId: userId,
+    role: 'student',
+    startedAt: performance.now(),
+  }
+
+  return withExamReadTelemetry(
+    context,
+    async () => {
+      await assertStudent(userId)
+      const [published, attempts] = await Promise.all([
+        findPublishedExams(),
+        findAttemptsByStudent(userId),
+      ])
+      const pointsMap = await findExamTotalPointsMap(published.map((e) => e.id))
+      const attemptByExam = new Map(attempts.map((a) => [a.examId, a]))
+      const now = new Date()
+      return published
+        .filter(
+          (exam) =>
+            attemptByExam.has(exam.id) ||
+            isWithinStartWindow(now, exam.opensAt, exam.closesAt) ||
+            now.getTime() < exam.opensAt.getTime(),
+        )
+        .map((exam) => {
+          const attempt = attemptByExam.get(exam.id)
+          const finalized = attempt ? redactAttemptForStudent(attempt) : null
+          return {
+            exam: {
+              id: exam.id,
+              title: exam.title,
+              durationMinutes: exam.durationMinutes,
+              opensAt: exam.opensAt,
+              closesAt: exam.closesAt,
+              totalPoints: pointsMap.get(exam.id) ?? 0,
+            },
+            attempt: finalized,
+          }
+        })
+    },
+    (result) => ({
+      examCount: result.length,
+      attemptedCount: result.filter((item) => item.attempt !== null).length,
+    }),
+  )
 }
 
 /**
@@ -581,10 +685,32 @@ export async function getAttemptForTakingService(
   data: GetAttemptForTakingInput,
   userId: string,
 ): Promise<TakingPayload> {
-  await assertStudent(userId)
-  const attempt = await findAttemptByExamAndStudent(data.examId, userId)
-  if (!attempt) throw new NotFoundError('Attempt not found')
-  return buildTakingPayload(await finalizeIfExpired(attempt, new Date()))
+  const context: ExamReadLogContext = {
+    action: 'getExamAttemptForTaking',
+    actorId: userId,
+    examId: data.examId,
+    role: 'student',
+    startedAt: performance.now(),
+  }
+
+  return withExamReadTelemetry(
+    context,
+    async () => {
+      await assertStudent(userId)
+      const attempt = await findAttemptByExamAndStudent(data.examId, userId)
+      if (!attempt) throw new NotFoundError('Attempt not found')
+      context.attemptId = attempt.id
+      const payload = await buildTakingPayload(
+        await finalizeIfExpired(attempt, new Date()),
+      )
+      return payload
+    },
+    (result) => ({
+      attemptStatus: result.attempt.status,
+      questionCount: result.questions.length,
+      answerCount: result.answers.length,
+    }),
+  )
 }
 
 export async function saveAnswerService(
@@ -676,14 +802,34 @@ export async function listAttemptsForGradingService(
   data: ListAttemptsForGradingInput,
   userId: string,
 ) {
-  await assertTeacherOrAdmin(userId)
-  const attempts = await findAttemptsForGrading(data.examId)
-  const now = new Date()
-  return Promise.all(
-    attempts.map(async ({ studentName, ...attempt }) => ({
-      ...(await finalizeIfExpired(attempt, now)),
-      studentName,
-    })),
+  const context: ExamReadLogContext = {
+    action: 'listExamAttemptsForGrading',
+    actorId: userId,
+    examId: data.examId,
+    startedAt: performance.now(),
+  }
+
+  return withExamReadTelemetry(
+    context,
+    async () => {
+      const { isAdmin } = await assertTeacherOrAdmin(userId)
+      context.role = isAdmin ? 'admin' : 'teacher'
+      const attempts = await findAttemptsForGrading(data.examId)
+      const now = new Date()
+      return Promise.all(
+        attempts.map(async ({ studentName, ...attempt }) => ({
+          ...(await finalizeIfExpired(attempt, now)),
+          studentName,
+        })),
+      )
+    },
+    (result) => ({
+      attemptCount: result.length,
+      submittedCount: result.filter((attempt) => attempt.status === 'submitted')
+        .length,
+      gradedCount: result.filter((attempt) => attempt.status === 'graded')
+        .length,
+    }),
   )
 }
 
@@ -691,15 +837,35 @@ export async function getAttemptForGradingService(
   data: GetAttemptForGradingInput,
   userId: string,
 ) {
-  await assertTeacherOrAdmin(userId)
-  const attempt = await findAttemptById(data.attemptId)
-  if (!attempt) throw new NotFoundError('Attempt not found')
-  const finalized = await finalizeIfExpired(attempt, new Date())
-  const [{ questions, options }, answers] = await Promise.all([
-    findQuestionsWithOptions(finalized.examId),
-    findAnswersByAttempt(finalized.id),
-  ])
-  return { attempt: finalized, questions, options, answers }
+  const context: ExamReadLogContext = {
+    action: 'getExamAttemptForGrading',
+    actorId: userId,
+    attemptId: data.attemptId,
+    startedAt: performance.now(),
+  }
+
+  return withExamReadTelemetry(
+    context,
+    async () => {
+      const { isAdmin } = await assertTeacherOrAdmin(userId)
+      context.role = isAdmin ? 'admin' : 'teacher'
+      const attempt = await findAttemptById(data.attemptId)
+      if (!attempt) throw new NotFoundError('Attempt not found')
+      context.examId = attempt.examId
+      const finalized = await finalizeIfExpired(attempt, new Date())
+      const [{ questions, options }, answers] = await Promise.all([
+        findQuestionsWithOptions(finalized.examId),
+        findAnswersByAttempt(finalized.id),
+      ])
+      return { attempt: finalized, questions, options, answers }
+    },
+    (result) => ({
+      attemptStatus: result.attempt.status,
+      questionCount: result.questions.length,
+      optionCount: result.options.length,
+      answerCount: result.answers.length,
+    }),
+  )
 }
 
 export async function gradeOpenAnswerService(

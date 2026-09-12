@@ -152,6 +152,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    question type, status, and duration. Awarded points, aggregate scores,
    answer text, and raw persistence details remain excluded; unexpected
    failures use the stable `exam_grading_persistence` category.
+   Exam author/catalog and attempt reads now emit redacted
+   `exam_read_loaded` / `exam_read_failed` events with request correlation,
+   actor/exam/attempt IDs, role, safe result counts, status, and duration.
+   Exam titles, question prompts, option labels, answers, scores, and raw
+   persistence details remain excluded; unexpected failures use the stable
+   `exam_read_persistence` category.
    Assignment create, update, and delete mutations now emit redacted
    `assignment_created`, `assignment_updated`, and `assignment_deleted` events
    with request correlation, server-function path, actor/course/lesson/

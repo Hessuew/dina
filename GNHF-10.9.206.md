@@ -3316,3 +3316,21 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
 - Validation: focused library integration passed 24 tests; full integration
   passed 427 tests, `bun run quality:gate` passed with 1,953 unit tests, and
   the production build passed with only pre-existing warnings.
+
+## Iteration 120 — exam-read telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Exam author/catalog and attempt reads now emit redacted
+  `exam_read_loaded` / `exam_read_failed` events with request correlation,
+  actor/exam/attempt IDs, role, safe result counts, status, and duration.
+- Exam titles, question prompts, option labels, answers, scores, and raw
+  persistence details remain excluded. Expected authorization and not-found
+  outcomes stay quiet; unexpected read failures use the stable
+  `exam_read_persistence` category and preserve the original error.
+- Repository evidence: `src/utils/exam/service/exam.service.ts`,
+  `src/utils/exam/exam.integration.test.ts`,
+  `docs/plan/STRUCTURED_LOGGING.md`, and `src/utils/README.md`.
+- Focused exam integration coverage passes 23 tests. Hosted Better Stack /
+  Cloudflare ingestion, dashboards, alerts, Uptime monitors, and source-map
+  verification remain external setup work.

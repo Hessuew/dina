@@ -221,6 +221,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     grader/attempt/exam/question metadata, status, and duration. Awarded
     points, aggregate scores, answer text, and raw persistence details remain
     excluded; unexpected failures use `exam_grading_persistence`.
+  - Exam author/catalog and attempt reads emit redacted `exam_read_loaded` /
+    `exam_read_failed` events with request correlation, actor/exam/attempt IDs,
+    role, safe result counts, status, and duration. Exam titles, question
+    prompts, option labels, answers, scores, and raw persistence details remain
+    excluded; unexpected failures use `exam_read_persistence`.
   - `observability/request-context.ts`: keeps the Cloudflare/request
     correlation ID available through nested request and server-function work;
     it prefers `cf-ray`/`x-request-id` and generates a UUID when neither is
