@@ -3723,6 +3723,25 @@ telemetry workflow, the full build and full integration suite were not run.
 Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors,
 and source-map verification remain external follow-up.
 
+## Iteration 139 — evidence-aware roadmap closeout
+
+This iteration refreshed the final repository-side Phase 1 closeout record after
+the batched password-reset validation telemetry slice:
+
+- The current repository evidence now includes request-correlated,
+  privacy-safe telemetry for password-reset request failures and token
+  validation, with focused password-reset integration coverage passing 9 tests.
+- TypeScript validation, formatting, static checks, and `bun run quality:gate`
+  passed for the accumulated changes; the full build and full integration suite
+  remain intentionally deferred for the iterative telemetry workflow.
+- Better Stack/Cloudflare ingestion, dashboards, alert routing, Uptime
+  monitors, source maps, PostHog project verification, and backup/restore
+  evidence remain external operational gates, so the roadmap retains an
+  evidence-aware closeout rather than claiming hosted readiness.
+
+The Engineering Roadmap and Observability records were synchronized with this
+snapshot after local verification.
+
 ## Iteration 137 — campaign-preview telemetry
 
 This iteration completed a batched Phase 1 structured-logging slice:
