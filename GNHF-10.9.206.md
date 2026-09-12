@@ -3979,3 +3979,23 @@ focused suites, typecheck, formatting, static checks, diff checks, Cloudflare
 type generation, and `bun run quality:gate`. The full build and full
 integration suite remain intentionally deferred for the iterative telemetry
 workflow.
+
+## Iteration 148 — roadmap finalization and evidence boundary
+
+This iteration finalized the repository-side roadmap handoff without adding
+another one-at-a-time telemetry change:
+
+- Structured logging is now recorded as repository-implemented through the
+  Iteration 147 batched auth, profile, assignment preflight, read-preflight,
+  campaign-preview, password-reset, and enrollment-evaluation slices.
+- The local observability plans now distinguish completed repository work from
+  hosted operationalization. Better Stack/Cloudflare ingestion, dashboards,
+  alert routing, Uptime monitors, source maps, PostHog project verification,
+  and backup/restore evidence remain explicit external gates.
+- The live Engineering Roadmap and Observability hubs were updated with this
+  evidence-aware closeout state; no dashboard or SLO was promoted without
+  dated hosted evidence.
+
+Validation: documentation checks and `git diff --check` passed. The full build
+and full integration suite were not run because this iteration only finalized
+documentation and external-status records.

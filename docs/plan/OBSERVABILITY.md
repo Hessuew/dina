@@ -1,6 +1,6 @@
 # Observability Architecture Implementation Plan
 
-**Status:** In progress
+**Status:** Repository implementation complete; hosted verification pending
 **Date:** 2026-07-04  
 **Context:** Engineering roadmap implementation plan and Better Stack transition record
 
@@ -468,16 +468,13 @@ Implementation is successful when:
 
 ---
 
-## Next Steps
+## External Follow-up
 
-When ready to implement:
-
-1. Complete Better Stack and Cloudflare external setup in `GNHF-10.9.206.md`
-2. Set the public dashboard-link variables from `.env.example` in each deployment environment
-3. Complete prerequisites checklist (PostHog account, Slack workspace)
-4. Validate the admin observability hub and external links
-5. Update this document with actual implementation details
-6. Consider creating ADR 0015 to document the completed implementation
+1. Complete Better Stack and Cloudflare external setup and record dated evidence in `GNHF-10.9.206.md`.
+2. Set the public dashboard-link variables from `.env.example` in each deployment environment.
+3. Complete the PostHog project/dashboard and Slack alerting prerequisites.
+4. Validate the Admin observability hub and external links against the hosted destinations.
+5. Add dated source-map, alert-delivery, Uptime, and backup/restore evidence before promoting roadmap statuses.
 
 ---
 
