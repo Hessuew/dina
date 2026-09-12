@@ -46,7 +46,8 @@ export const profiles = pgTable(
       to: authenticatedRole,
       using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
     }),
-    // Users can update their own profile
+    // Users can update their own profile. The role column is additionally
+    // protected by the profile-role guard migration for direct Supabase calls.
     pgPolicy('users_update_own_profile', {
       for: 'update',
       to: authenticatedRole,

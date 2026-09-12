@@ -2909,3 +2909,29 @@ This iteration closed a Phase 5 object-level content disclosure gap:
 Validation: the focused course integration suite passed all 51 tests. Run the
 full quality gate, integration suite, formatting, and production build before
 the final handoff.
+
+## Iteration 102 — profile role mutation defense-in-depth
+
+This iteration closed a small Phase 5 RBAC/RLS gap in the `profiles` table:
+
+- Added migration `drizzle/0056_profile_role_guard.sql`, which installs a
+  `BEFORE UPDATE OF role` trigger. Authenticated Supabase requests may change a
+  profile role only when their JWT subject is a persisted Admin; anonymous or
+  other request roles are rejected.
+- Preserved trusted account-provisioning paths: the direct server database
+  connection (which has no PostgREST request settings) and Supabase
+  `service_role` requests remain allowed. No role field was added to the
+  self-service profile update contract.
+- Added PGlite integration coverage for student denial and Admin,
+  service-role, and trusted-server success paths. Updated the security plan and
+  threat model with the new control and hosted verification requirement.
+
+Validation: the migration chain and focused profile-role integration test must
+pass locally, followed by the normal quality gate and production build. Before
+production rollout, apply the versioned migration through the protected
+Supabase delivery path, verify direct `authenticated` student/admin JWT
+behavior with synthetic profiles, and retain only redacted evidence. If the
+trigger blocks legitimate provisioning, stop the rollout and use the database
+rollback/forward-fix procedure rather than editing the applied migration.
+Hosted Supabase JWT-claim verification, the first restore/rollback rehearsal,
+and Better Stack/Cloudflare acceptance remain external follow-up work.

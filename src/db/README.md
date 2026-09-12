@@ -37,6 +37,10 @@ Database access layer and schema definitions.
   - Notable tables:
     - `profiles`
       - Stores authenticated user profile data, including optional `lecturer_title` metadata for teacher/lecturer display surfaces.
+      - Role changes are protected by the `profiles_prevent_role_escalation`
+        trigger from migration `0056_profile_role_guard`; authenticated
+        Supabase requests need a persisted Admin identity, while trusted
+        server provisioning remains supported.
     - `submissions`
       - Stores text answers and grading data; no attachment or URL field.
       - Enforces one row per `(assignment_id, student_id)`; assignment saves use conflict-safe upsert behavior.

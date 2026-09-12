@@ -377,6 +377,20 @@ from using a course-detail request for another course to obtain draft content
 or signed URLs for unpublished private media. Integration coverage verifies
 the outsider-teacher response while preserving the assigned-teacher path.
 
+### Profile role mutation boundary
+
+The `profiles.role` column is not part of the self-service profile update
+payload, and migration `0056_profile_role_guard` adds a database trigger as
+defense-in-depth for direct Supabase updates. A request using the
+`authenticated` PostgREST role may change a profile role only when its JWT
+subject belongs to a persisted Admin profile. Anonymous/other request roles
+are rejected, while the server's direct database connection and the
+`service_role` path remain available for trusted account provisioning.
+
+The trigger reads only PostgREST request JWT settings and does not replace
+server-function authorization. The integration regression covers rejection for
+a student plus successful Admin, service-role, and trusted server changes.
+
 ## Secret inventory and rotation contract
 
 The repository-owned secret inventory in
@@ -439,7 +453,9 @@ this repository; the remaining step is operator execution and evidence capture.
   directory list/detail services require a teacher or Admin actor. Post
   channel/feed/post/comment reads and community mutations now require a
   persisted caller profile; student exam surfaces now require the persisted
-  `student` role rather than merely excluding staff roles.
+  `student` role rather than merely excluding staff roles. The profile role
+  mutation boundary now also blocks direct authenticated Supabase role changes
+  unless the JWT subject is an Admin.
 - Continue hardening admin access and review authentication/session boundaries;
   the calendar event listing is now covered by a server-side teacher/admin
   check; the teacher directory now also requires a persisted caller profile,

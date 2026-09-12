@@ -79,7 +79,7 @@ and restore evidence belong in the external systems and the linked runbooks.
 | ID    | Threat and impact                                                                                                           | Current controls and evidence                                                                                                                                                                                                                                                                                                                                              | Residual action                                                                                                                                                          |
 | ----- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | TM-01 | Broken object-level authorization exposes another student's submission, enrollment, progress, or private content            | Server functions call getCurrentUser; shared authz checks roles, ownership, course teachers, and resource relationships; student-directory services enforce staff access before reads; post read services require a persisted profile; focused integration tests cover recent calendar, moderation, substitution, teacher-directory, student-directory, and post-read gaps | Continue route/server-function review whenever a read or mutation is added; add a negative integration case for every new sensitive resource                             |
-| TM-02 | A student escalates to teacher/Admin through a forged role, stale profile, or staff-privilege mutation                      | Roles are read from the persisted profile; staff privileges are Admin-only; service functions do not trust client role values; authz regression tests exist                                                                                                                                                                                                                | Review all profile/admin mutations after schema changes and keep the threat-model checklist in the PR/release review                                                     |
+| TM-02 | A student escalates to teacher/Admin through a forged role, stale profile, or staff-privilege mutation                      | Persisted-profile roles, Admin-only staff privileges, server-side role handling, migration `0056_profile_role_guard` for direct Supabase updates, and authz regression tests                                                                                                                                                                                               | Verify migration `0056_profile_role_guard` against hosted Supabase JWT claims; review profile/admin mutations after schema changes                                       |
 | TM-03 | Public enrollment, OTP, reset, invitation-token, or email-check endpoints are abused for enumeration, spam, or token replay | Zod input validation, cooldown/state checks, short-lived token semantics, generic account-missing behavior, and closed enrollment flag are implemented                                                                                                                                                                                                                     | Configure provider and edge rate limits; verify abuse thresholds and alerting against synthetic requests without collecting applicant data                               |
 | TM-04 | Service-role key, database URL, delivery token, or Better Stack token reaches the browser, repository, or logs              | Typed server/client environment split, ignored local env, Worker/GitHub secret inventory, redacted logger, and Better Stack acceptance procedure are documented in SECRET_INVENTORY.md                                                                                                                                                                                     | Perform the first controlled rotation and secret-exposure review in the external stores; keep old values revocable during cutover                                        |
 | TM-05 | Logs, traces, or product analytics leak PII, private content, credentials, or provider errors                               | Structured logger recursively redacts sensitive field names; event families use stable IDs/categories; PostHog autocapture and recording are disabled; focused tests assert exclusions                                                                                                                                                                                     | Verify live Better Stack and PostHog events with synthetic values, then review new event fields at each integration change                                               |
@@ -190,6 +190,15 @@ non-managing teachers. Assigned course teachers and admins retain draft access;
 integration coverage confirms an outsider teacher cannot receive unpublished
 lesson data or private-media response records.
 
+### Profile role mutation boundary
+
+Migration `0056_profile_role_guard` protects the persisted role used by every
+application authorization decision. Direct Supabase requests tagged
+`authenticated` must identify a persisted Admin before changing any
+`profiles.role` value. Trusted direct server connections and `service_role`
+requests remain allowed for account provisioning. The focused integration
+test exercises the student denial and the three trusted success paths.
+
 ## Existing control map
 
 | Control                | Repository evidence                                                                   | Verification boundary                                   |
@@ -227,7 +236,8 @@ procedure.
    record redacted evidence.
 2. Run the first hosted restore and non-production rollback rehearsals.
 3. Finish the remaining RBAC/RLS review with a request-identity-aware policy
-   plan before enabling policies on legacy tables.
+   plan before enabling policies on legacy tables, and verify the profile role
+   trigger with hosted Supabase JWT claims.
 4. Apply the Cloudflare WAF public-endpoint recipe in
    `GNHF-10.9.206.md`, then verify the staged policy with synthetic requests and
    record the rule IDs, thresholds, exclusions, and alert evidence.
