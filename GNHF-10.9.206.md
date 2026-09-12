@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
-**Date:** 2026-09-12
-**Iteration:** 135
-**Scope:** add redacted Better Stack-ready telemetry for public invitation-token
-validation and record the remaining hosted observability evidence gate.
+**Date:** 2026-09-13
+**Iteration:** 147
+**Scope:** finalize the repository-side Phase 1 observability handoff and
+record the remaining hosted evidence gates.
 
 ## Executive summary
 
@@ -3956,3 +3956,26 @@ integration suite remain intentionally skipped for the iterative telemetry
 workflow. Hosted Better
 Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
 PostHog verification, and restore evidence remain pending.
+
+## Iteration 147 — final evidence-aware roadmap handoff
+
+This iteration finalized the repository-side handoff after the batched
+telemetry work:
+
+- The high-value Phase 1 structured-logging families are implemented through
+  enrollment evaluation persistence boundaries, with redacted request
+  correlation, stable categories, safe identifiers/counts, and focused
+  regression coverage.
+- The roadmap remains evidence-aware rather than claiming operationalized
+  readiness. Better Stack and Cloudflare ingestion, dashboards, alert routing,
+  Uptime monitors, source maps, PostHog project verification, and backup/
+  restore evidence still require external setup or dated drills.
+- The Engineering Roadmap is synchronized to this handoff; dashboard and
+  SLI/SLO records remain Planned or Needs data until real hosted evidence is
+  available.
+
+Repository validation for the accumulated telemetry changes remains the
+focused suites, typecheck, formatting, static checks, diff checks, Cloudflare
+type generation, and `bun run quality:gate`. The full build and full
+integration suite remain intentionally deferred for the iterative telemetry
+workflow.
