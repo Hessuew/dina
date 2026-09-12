@@ -646,6 +646,10 @@ describe('teacher substitution — Review heading peer resolution (integration)'
 })
 
 describe('active substitution lookup authorization (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('allows Admins and rejects students before reading substitution IDs', async () => {
     const { adminId, absentC } = await seedSubstitutionScenario()
     const studentId = await seedProfile({ role: 'student' })
@@ -656,6 +660,60 @@ describe('active substitution lookup authorization (integration)', () => {
     await expect(
       getActiveSubstitutedTeacherIdsService(studentId),
     ).rejects.toBeInstanceOf(AuthorizationError)
+  })
+
+  it('logs safe success telemetry with request correlation', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { adminId, absentC } = await seedSubstitutionScenario()
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org/enrollments', {
+        headers: { 'x-request-id': 'active-substitution-read' },
+      }),
+      () => getActiveSubstitutedTeacherIdsService(adminId),
+    )
+
+    const serialized = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(serialized)).toMatchObject({
+      event: 'enrollment_substitutions_loaded',
+      path: 'serverFn:getActiveSubstitutedTeacherIds',
+      requestId: 'active-substitution-read',
+      actorId: adminId,
+      substitutionCount: 1,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+    expect(serialized).not.toContain(absentC)
+  })
+
+  it('logs stable persistence failure without the raw repository error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { adminId } = await seedSubstitutionScenario()
+    vi.spyOn(
+      enrollmentRepository,
+      'findAbsentTeacherIdsWithActiveSubstitution',
+    ).mockRejectedValueOnce(new Error('substitution database secret'))
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/enrollments', {
+          headers: { 'x-request-id': 'active-substitution-failure' },
+        }),
+        () => getActiveSubstitutedTeacherIdsService(adminId),
+      ),
+    ).rejects.toThrow('substitution database secret')
+
+    const serialized = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(serialized)).toMatchObject({
+      event: 'enrollment_substitutions_load_failed',
+      path: 'serverFn:getActiveSubstitutedTeacherIds',
+      requestId: 'active-substitution-failure',
+      actorId: adminId,
+      status: 'failure',
+      errorCategory: 'enrollment_substitution_read_persistence',
+      durationMs: expect.any(Number),
+    })
+    expect(serialized).not.toContain('substitution database secret')
   })
 })
 

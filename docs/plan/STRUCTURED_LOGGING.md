@@ -116,6 +116,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    correlation, actor/course IDs, safe teacher counts, status, duration, and
    the stable `course_teacher_read_persistence` failure category. Teacher
    profile fields, storage URLs, and raw persistence details remain excluded.
+   Admin active-substitution lookups now emit redacted
+   `enrollment_substitutions_loaded` / `enrollment_substitutions_load_failed`
+   events with request correlation, actor ID, a safe substitution count,
+   duration, and the stable `enrollment_substitution_read_persistence`
+   failure category; teacher IDs and raw persistence details remain excluded.
    Discipleship assignment, pairing, and schedule mutations now emit shared
    `discipleship_mutation_completed` / `discipleship_mutation_failed` events
    with request correlation, action path, actor and safe student/teacher/pair

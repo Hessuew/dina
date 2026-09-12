@@ -3637,3 +3637,24 @@ production build, formatting, static checks, and diff check passed. Notion
 evidence was synchronized for this slice. Hosted Better Stack/Cloudflare
 ingestion, dashboards, alerts, Uptime monitors, and source-map verification
 remain external follow-up.
+
+## Iteration 134 — active-substitution read telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- The Admin active-substitution lookup now emits redacted
+  `enrollment_substitutions_loaded` / `enrollment_substitutions_load_failed`
+  events with request correlation, actor ID, a safe substitution count, status,
+  duration, and the stable `enrollment_substitution_read_persistence`
+  failure category.
+- Teacher IDs, provider/database details, and expected non-Admin authorization
+  failures remain outside operational telemetry; the existing response shape
+  and Admin-only boundary are unchanged.
+- Added integration coverage for request correlation, safe success metadata,
+  persistence-failure categorization, raw-error exclusion, and original-error
+  preservation.
+
+Validation: focused enrollment integration tests, formatting, typecheck,
+`bun run quality:gate`, and the production build are required before final
+handoff. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime
+monitors, and source-map verification remain external follow-up.

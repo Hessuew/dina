@@ -109,6 +109,11 @@ type EnrollmentAssignmentMutationContext = {
   startedAt: number
 }
 
+type EnrollmentSubstitutionReadContext = {
+  actorId: string
+  startedAt: number
+}
+
 type EnrollmentBulkGradeContext = {
   actorId: string
   startedAt: number
@@ -236,6 +241,22 @@ function logEnrollmentAssignmentMutation(
   logServerEvent(level, event, {
     requestId: getRequestId(),
     path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    ...fields,
+  })
+}
+
+function logEnrollmentSubstitutionReadEvent(
+  level: LogLevel,
+  event: string,
+  context: EnrollmentSubstitutionReadContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: 'serverFn:getActiveSubstitutedTeacherIds',
     status: level === 'error' ? 'failure' : 'success',
     durationMs: elapsedMs(context.startedAt),
     actorId: context.actorId,
@@ -1284,8 +1305,29 @@ export async function endSubstitutionService(
  */
 export async function getActiveSubstitutedTeacherIdsService(userId: string) {
   await authz(userId).hasRole('admin')
-  const teacherIds = await findAbsentTeacherIdsWithActiveSubstitution()
-  return { teacherIds }
+  const context: EnrollmentSubstitutionReadContext = {
+    actorId: userId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const teacherIds = await findAbsentTeacherIdsWithActiveSubstitution()
+    logEnrollmentSubstitutionReadEvent(
+      'info',
+      'enrollment_substitutions_loaded',
+      context,
+      { substitutionCount: teacherIds.length },
+    )
+    return { teacherIds }
+  } catch (error) {
+    logEnrollmentSubstitutionReadEvent(
+      'error',
+      'enrollment_substitutions_load_failed',
+      context,
+      { errorCategory: 'enrollment_substitution_read_persistence' },
+    )
+    throw error
+  }
 }
 
 async function requireEnrollmentContactExport(userId: string) {

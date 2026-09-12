@@ -217,6 +217,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     duration, and the stable `course_teacher_read_persistence` category;
     teacher profile fields, storage URLs, and raw persistence details remain
     excluded.
+  - Admin active-substitution lookups emit redacted
+    `enrollment_substitutions_loaded` /
+    `enrollment_substitutions_load_failed` events with request correlation,
+    actor ID, safe substitution counts, duration, and the stable
+    `enrollment_substitution_read_persistence` category; teacher IDs and raw
+    persistence details remain excluded.
   - Post and comment create, update, and delete mutations emit redacted
     `post_*` / `comment_*` events with request correlation, actor/post/comment/
     course IDs, status, and duration; content and raw persistence details are
