@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 92
-**Scope:** close the next Phase 5 post-read service authorization boundary after
-the calendar-event hardening in iteration 91.
+**Iteration:** 97
+**Scope:** close the next Phase 5 media-library service authorization boundary
+after the private avatar storage hardening in iteration 96.
 
 ## Executive summary
 
@@ -141,6 +141,11 @@ The repository already has the first production-fundamentals slice:
   Titles, descriptions, URLs, private storage paths, and raw persistence
   details remain excluded; unexpected failures use the stable
   `media_persistence` category.
+- Media-library reads, CRUD mutations, and private upload helpers now derive
+  the caller role from the persisted profile inside the service. The server
+  function adapters pass only the authenticated user ID, preventing direct
+  callers from forging a role to bypass unpublished-media or staff/ownership
+  checks.
 - Exam create, save, and publish mutations now emit redacted
   `exam_created`, `exam_updated`, and `exam_published` events with request
   correlation, actor/exam IDs, exam status, question counts, duration, and
@@ -2721,3 +2726,21 @@ integration passed all 400 tests, `bun run quality:gate` passed with 1,953 unit
 tests, the production build and formatting passed, and Architecture Inventory
 plus Engineering Roadmap were synchronized in Notion. Hosted storage-policy
 and Better Stack/Cloudflare acceptance remain external follow-up work.
+
+## Iteration 97 — media-library service authorization hardening
+
+This iteration closed the next small Phase 5 service-boundary gap:
+
+- Media-library reads, CRUD mutations, and private upload helpers now resolve
+  the caller role from the persisted profile inside `library.service.ts`.
+- Server-function adapters pass only the authenticated user ID; callers can no
+  longer forge a `teacher` or `admin` role to bypass publication filtering or
+  staff/ownership checks.
+- Updated integration coverage for persisted student/teacher roles and unknown
+  actors, while preserving media response, ownership, signing, and cleanup
+  behavior.
+
+Validation: focused library integration passed all 21 tests. Full integration,
+the quality gate, production build, formatting, and Notion synchronization are
+the remaining handoff checks for this slice; Better Stack/Cloudflare acceptance
+and hosted storage-policy verification remain external follow-up work.

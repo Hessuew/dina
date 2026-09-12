@@ -204,9 +204,12 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `courses/` - Course management split by aggregate:
     - `course.ts` - Course CRUD, publishing, teacher assignment orchestration
     - `lesson.ts` - Lesson CRUD, scheduling, ordering, calendar queries
-    - `teacher-assignment.ts` - Teacher-course relationship management (2-teacher invariant)
+  - `teacher-assignment.ts` - Teacher-course relationship management (2-teacher invariant)
     - `index.ts` - Re-exports all functions for backward compatibility
   - `assignments.ts`, `students.ts`, `teachers.ts`, `calendar.ts`, `events.ts`, `invitations.ts`, `enrollments.ts`, `posts.ts`, `library.ts`.
+  - `library.ts` - Authenticated media-library reads and mutations. The service
+    derives the viewer role from the persisted profile; adapters pass only the
+    authenticated actor ID, and private upload paths remain actor-owned.
   - `teachers.ts` - Authenticated teacher directory reads; the service requires
     a persisted profile and carries the actor through internal callers.
   - `posts.ts` - Authenticated community post/channel/comment reads and

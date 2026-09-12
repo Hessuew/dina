@@ -41,6 +41,7 @@ import {
   ValidationError,
   isAppError,
 } from '@/utils/errors'
+import { getUserProfile } from '@/utils/auth/auth'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
 import {
   resolveFileExtension,
@@ -89,13 +90,23 @@ function shouldLogLibraryMutationFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
 }
 
-function requireStaff(role: Role, action: string): void {
+function requireStaffRole(role: Role, action: string): void {
   if (role !== 'student') return
   throw new AuthorizationError('Teacher access required', {
     code: 'ROLE_REQUIRED',
     internalMessage: `Student attempted to ${action}`,
     details: { role },
   })
+}
+
+async function getUserRole(userId: string): Promise<Role> {
+  return (await getUserProfile(userId)).role
+}
+
+async function requireStaff(userId: string, action: string): Promise<Role> {
+  const role = await getUserRole(userId)
+  requireStaffRole(role, action)
+  return role
 }
 
 function mediaFilePathOrThrow(
@@ -170,13 +181,11 @@ async function serializeMediaRecord(
   return media
 }
 
-export async function getLibraryMediaService(
-  userId: string,
-  role: Role,
-): Promise<{
+export async function getLibraryMediaService(userId: string): Promise<{
   media: Array<MediaLibraryRow>
   viewer: { id: string; role: Role }
 }> {
+  const role = await getUserRole(userId)
   const rows = await findAllMedia(role === 'student')
   return {
     media: await serializeMediaRecords(rows),
@@ -187,8 +196,8 @@ export async function getLibraryMediaService(
 export async function getLibraryMediaItemService(
   data: GetMediaInput,
   userId: string,
-  role: Role,
 ) {
+  const role = await getUserRole(userId)
   const row = await findMediaById(data.mediaId)
   if (!row) {
     throw new NotFoundError('Media not found', {
@@ -221,9 +230,8 @@ export async function getLibraryMediaItemService(
 export async function createLibraryMediaService(
   data: CreateMediaInput,
   userId: string,
-  role: Role,
 ): Promise<{ media: MediaLibraryRow }> {
-  requireStaff(role, 'create library media')
+  await requireStaff(userId, 'create library media')
   const source = mediaSource(data, userId)
   const context: LibraryMutationContext = {
     action: 'createLibraryMedia',
@@ -266,10 +274,10 @@ export async function createLibraryMediaService(
 async function requireManagedMedia(
   mediaId: string,
   userId: string,
-  role: Role,
   action: string,
 ): Promise<MediaRecord> {
-  requireStaff(role, `${action} library media`)
+  const role = await getUserRole(userId)
+  requireStaffRole(role, `${action} library media`)
   const existing = await findMediaById(mediaId)
   if (!existing) {
     throw new NotFoundError('Media not found', { details: { mediaId } })
@@ -293,9 +301,8 @@ async function removeReplacedMediaFile(
 export async function updateLibraryMediaService(
   data: UpdateMediaInput,
   userId: string,
-  role: Role,
 ): Promise<{ media: MediaLibraryRow }> {
-  const existing = await requireManagedMedia(data.mediaId, userId, role, 'edit')
+  const existing = await requireManagedMedia(data.mediaId, userId, 'edit')
   const source = mediaSource(data, userId, existing.filePath)
   const context: LibraryMutationContext = {
     action: 'updateLibraryMedia',
@@ -336,14 +343,8 @@ export async function updateLibraryMediaService(
 export async function deleteLibraryMediaService(
   data: DeleteMediaInput,
   userId: string,
-  role: Role,
 ): Promise<{ success: true }> {
-  const existing = await requireManagedMedia(
-    data.mediaId,
-    userId,
-    role,
-    'delete',
-  )
+  const existing = await requireManagedMedia(data.mediaId, userId, 'delete')
   const context: LibraryMutationContext = {
     action: 'deleteLibraryMedia',
     actorId: userId,
@@ -382,9 +383,8 @@ function resolveDocumentExtension(fileType: string): string {
 export async function requestMediaFileUploadService(
   data: RequestMediaFileUploadInput,
   userId: string,
-  role: Role,
 ): Promise<SignedUpload> {
-  requireStaff(role, 'request library file upload')
+  await requireStaff(userId, 'request library file upload')
   let extension: string
   if (data.kind === 'video-file') {
     validateVideoUpload(data.fileSize, data.fileType, data.fileName)
@@ -407,9 +407,8 @@ export async function requestMediaFileUploadService(
 export async function requestMediaThumbnailUploadService(
   data: RequestMediaThumbnailUploadInput,
   userId: string,
-  role: Role,
 ): Promise<SignedUpload> {
-  await requireManagedMedia(data.mediaId, userId, role, 'edit')
+  await requireManagedMedia(data.mediaId, userId, 'edit')
   validateImageUpload(data.fileSize, data.fileType)
   const extension = resolveFileExtension(data.fileType, data.fileName)
   const path = buildOwnedStoragePath(
@@ -424,9 +423,8 @@ export async function requestMediaThumbnailUploadService(
 export async function uploadMediaThumbnailService(
   data: UploadMediaThumbnailInput,
   userId: string,
-  role: Role,
 ): Promise<{ thumbnailUrl: string | null }> {
-  const existing = await requireManagedMedia(data.mediaId, userId, role, 'edit')
+  const existing = await requireManagedMedia(data.mediaId, userId, 'edit')
   const path = extractPrivateStoragePath(data.path, 'media-thumbnails')
   if (!path || !isOwnedStoragePath(path, userId)) {
     throw new ValidationError('Thumbnail path is not owned by this user')

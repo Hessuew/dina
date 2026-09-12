@@ -339,6 +339,16 @@ service check prevents unknown direct callers from using the service-role
 storage client or writing an avatar path for a non-existent profile. Focused
 integration coverage confirms both operations fail before storage access.
 
+### Media-library service boundary
+
+Media-library reads, CRUD mutations, and private upload helpers now derive the
+caller's role from the persisted profile inside `library.service.ts`. The
+server-function adapters pass only the authenticated user ID, so a direct
+service caller cannot supply a forged `teacher` or `admin` role to bypass
+publication filtering or staff/ownership checks. Integration coverage verifies
+unknown actors are rejected before media reads, while persisted student and
+teacher roles retain their existing behavior.
+
 ## Secret inventory and rotation contract
 
 The repository-owned secret inventory in

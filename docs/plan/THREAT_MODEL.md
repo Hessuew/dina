@@ -137,6 +137,15 @@ before minting an actor-owned signed upload or persisting an avatar path.
 Unknown direct callers therefore fail before the service-role storage client is
 used; integration coverage exercises both request and completion paths.
 
+### Media-library service boundary
+
+Media-library reads, CRUD mutations, and private upload helpers resolve the
+caller's role from the persisted profile inside the service. Adapters pass only
+the authenticated user ID, preventing direct callers from forging a role to
+bypass unpublished-media filtering or staff/ownership checks. Integration
+coverage rejects unknown actors before media reads and preserves persisted
+student/teacher behavior.
+
 ## Existing control map
 
 | Control                | Repository evidence                                                                   | Verification boundary                                   |
