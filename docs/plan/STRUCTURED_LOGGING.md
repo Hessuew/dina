@@ -214,6 +214,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    counts, duration, and the stable `student_directory_read_persistence`
    failure category; names, emails, bios, and assignment content remain
    excluded.
+   Teacher-directory list reads now emit redacted
+   `teacher_directory_loaded` / `teacher_directory_load_failed` events with
+   request correlation, actor ID, safe result counts, duration, and the stable
+   `teacher_directory_read_persistence` failure category; teacher names,
+   emails, bios, and privilege details remain excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
 The next migration should target one high-value server-function family at a

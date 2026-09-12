@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 115
-**Scope:** add redacted Better Stack-ready telemetry for student-directory
-list/detail reads and record the remaining hosted observability evidence gate.
+**Iteration:** 116
+**Scope:** add redacted Better Stack-ready telemetry for teacher-directory
+list reads and record the remaining hosted observability evidence gate.
 
 ## Executive summary
 
@@ -84,6 +84,11 @@ shadcn@latest` intentionally.
   counts, duration, and the stable `student_directory_read_persistence`
   failure category; student names, emails, bios, and assignment content remain
   excluded.
+- Teacher-directory list reads now emit redacted
+  `teacher_directory_loaded` / `teacher_directory_load_failed` events with
+  request correlation, actor ID, safe result counts, duration, and the stable
+  `teacher_directory_read_persistence` failure category; teacher names, email
+  addresses, bios, and privilege details remain excluded.
 - Authenticated profile password changes now emit redacted
   `password_updated` / `password_update_failed` events with request
   correlation, user ID, status, duration, stable error category, and provider
@@ -3221,3 +3226,23 @@ This iteration completed the next bounded Phase 1 structured-logging slice:
   integration suite passes 413 tests; hosted Better Stack/Cloudflare ingestion,
   dashboards, alerts, Uptime, and source-map verification remain external
   follow-up.
+
+## Iteration 116 — teacher-directory telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Teacher-directory list reads now emit redacted
+  `teacher_directory_loaded` / `teacher_directory_load_failed` events with
+  request correlation, actor ID, safe result counts, duration, and the stable
+  `teacher_directory_read_persistence` failure category.
+- The full teacher payload is not logged: names, email addresses, bios,
+  avatar data, course details, and Admin privilege details remain excluded.
+  Existing response shapes, role checks, and authorization behavior are
+  unchanged.
+- Repository evidence: `src/utils/teachers/service/teachers.service.ts`,
+  `src/utils/teachers/teachers.integration.test.ts`,
+  `docs/plan/STRUCTURED_LOGGING.md`, and `src/utils/README.md`.
+
+Focused teacher integration coverage passes (12 tests). Hosted Better Stack /
+Cloudflare ingestion, dashboards, alerts, Uptime, and source-map verification
+remain external follow-up.

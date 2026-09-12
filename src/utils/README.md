@@ -128,6 +128,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     counts, duration, and the stable `student_directory_read_persistence`
     failure category; names, emails, bios, and assignment content remain
     excluded.
+  - Teacher-directory list reads emit redacted `teacher_directory_loaded` /
+    `teacher_directory_load_failed` events with request correlation, actor ID,
+    safe result counts, duration, and the stable
+    `teacher_directory_read_persistence` failure category; teacher names,
+    emails, bios, and privilege details remain excluded.
   - Assignment authoring emits redacted `assignment_created`,
     `assignment_updated`, and `assignment_deleted` events with request
     correlation, server-function path, actor/course/lesson/assignment IDs,

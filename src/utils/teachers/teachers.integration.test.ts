@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   getAllTeachersService,
   getTeachersService,
@@ -11,6 +11,12 @@ import {
   seedCourseTeacher,
   seedProfile,
 } from '@/../test/integration/seed'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
+import * as teachersRepository from '@/utils/teachers/repository'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('teachers service (integration)', () => {
   describe('getTeachersService', () => {
@@ -54,6 +60,61 @@ describe('teachers service (integration)', () => {
       await expect(getTeachersService(randomUUID())).rejects.toBeInstanceOf(
         NotFoundError,
       )
+    })
+
+    it('logs redacted list telemetry with safe metadata', async () => {
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+      const actorId = await seedProfile({ role: 'teacher' })
+      await seedProfile({
+        role: 'teacher',
+        fullName: 'Private Teacher',
+        email: 'private.teacher@test.dev',
+      })
+
+      await withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'teacher-directory-request' },
+        }),
+        () => getTeachersService(actorId),
+      )
+
+      const line = String(infoSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('Private Teacher')
+      expect(line).not.toContain('private.teacher@test.dev')
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'teacher_directory_loaded',
+        path: 'serverFn:getTeachers',
+        requestId: 'teacher-directory-request',
+        actorId,
+        teacherCount: 2,
+        status: 'success',
+        durationMs: expect.any(Number),
+      })
+    })
+
+    it('logs stable failure metadata and preserves the repository error', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const actorId = await seedProfile({ role: 'teacher' })
+      const repositoryError = new Error(
+        'connectionString=secret; email=private.teacher@test.dev',
+      )
+      vi.spyOn(teachersRepository, 'findAllTeachers').mockRejectedValueOnce(
+        repositoryError,
+      )
+
+      await expect(getTeachersService(actorId)).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('private.teacher@test.dev')
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'teacher_directory_load_failed',
+        path: 'serverFn:getTeachers',
+        actorId,
+        status: 'failure',
+        errorCategory: 'teacher_directory_read_persistence',
+        durationMs: expect.any(Number),
+      })
     })
   })
 
@@ -102,6 +163,36 @@ describe('teachers service (integration)', () => {
       await expect(getAllTeachersService(teacherId)).rejects.toBeInstanceOf(
         AuthorizationError,
       )
+    })
+
+    it('logs the admin teacher-list read with a safe result count', async () => {
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+      const adminId = await seedProfile({ role: 'admin' })
+      await seedProfile({
+        role: 'teacher',
+        fullName: 'Private Teacher',
+        email: 'private.teacher@test.dev',
+      })
+
+      await withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'admin-teacher-list-request' },
+        }),
+        () => getAllTeachersService(adminId),
+      )
+
+      const line = String(infoSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('Private Teacher')
+      expect(line).not.toContain('private.teacher@test.dev')
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'teacher_directory_loaded',
+        path: 'serverFn:getAllTeachers',
+        requestId: 'admin-teacher-list-request',
+        actorId: adminId,
+        teacherCount: 2,
+        status: 'success',
+        durationMs: expect.any(Number),
+      })
     })
   })
 
