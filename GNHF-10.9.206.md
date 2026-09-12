@@ -1,9 +1,10 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-12
-**Iteration:** 131
-**Scope:** add redacted Better Stack-ready telemetry for privileged enrollment
-contact lookups and record the remaining hosted observability evidence gate.
+**Iteration:** 132
+**Scope:** add redacted Better Stack-ready telemetry for Admin campaign-lock
+inspection and explicit release, and record the remaining hosted observability
+evidence gate.
 
 ## Executive summary
 
@@ -3589,3 +3590,28 @@ unit tests, and typecheck, formatting, and the production build pass. Hosted
 Better Stack / Cloudflare ingestion, dashboards, alerts, Uptime monitors, and
 source-map verification remain external follow-up; Notion evidence is
 synchronized for this slice.
+
+## Iteration 132 — Admin campaign-lock telemetry
+
+This iteration completed the next bounded Phase 1 structured-logging slice:
+
+- Admin email and WhatsApp campaign lock inspection now emits redacted
+  `email_campaign_locks_loaded` / `whatsapp_campaign_locks_loaded` events with
+  request correlation, safe lock counts, status, duration, and separate
+  persistence failure events using the stable `campaign_lock_read` category.
+- Explicit Admin lock release now emits redacted success/failure events with
+  request correlation, campaign, actor ID, status, duration, and the stable
+  `campaign_lock_release` failure category. Existing Admin authorization and
+  lock ownership behavior are unchanged.
+- Provider errors, database messages, recipient/contact values, phone numbers,
+  email addresses, and invitation details remain outside Better Stack/Cloudflare
+  telemetry.
+- Added integration coverage for success events, failure categorization, raw
+  error exclusion, authorization, and existing lock behavior in both campaign
+  transports.
+
+Validation: focused email and WhatsApp integration suites pass 36 tests.
+Full quality-gate, integration, production-build, and Notion synchronization
+remain final handoff checks for this slice. Hosted Better Stack/Cloudflare
+ingestion, dashboards, alerts, Uptime monitors, and source-map verification
+remain external follow-up.

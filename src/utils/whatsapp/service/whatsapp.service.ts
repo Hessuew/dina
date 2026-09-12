@@ -40,26 +40,9 @@ export type CampaignSendSummary = {
   skipped: SkipSummary
 }
 
-export async function getWhatsAppCampaignLocksService(
-  userId: string,
-): Promise<Array<CampaignType>> {
-  await authz(userId).hasRole('admin')
-  return getLockedCampaigns()
-}
-
-export async function releaseWhatsAppCampaignService(
-  data: SendWhatsAppCampaignInput,
-  userId: string,
-): Promise<void> {
-  await authz(userId).hasRole('admin')
-  await releaseWhatsAppCampaignLock(data.campaign, userId)
-}
-
-// Inter-send pause: stays polite to the Cloud API rate limits without a queue.
-const SEND_INTERVAL_MS = 100
-
 type WhatsAppCampaignLogContext = {
-  campaign: SendWhatsAppCampaignInput['campaign']
+  campaign?: SendWhatsAppCampaignInput['campaign']
+  path: string
   startedAt: number
 }
 
@@ -71,13 +54,73 @@ function logWhatsAppCampaignEvent(
 ): void {
   logServerEvent(level, event, {
     requestId: getRequestId(),
-    path: 'serverFn:send_whatsapp_campaign',
+    path: context.path,
     campaign: context.campaign,
     status: level === 'error' ? 'failure' : 'success',
     durationMs: elapsedMs(context.startedAt),
     ...fields,
   })
 }
+
+export async function getWhatsAppCampaignLocksService(
+  userId: string,
+): Promise<Array<CampaignType>> {
+  await authz(userId).hasRole('admin')
+  const context: WhatsAppCampaignLogContext = {
+    path: 'serverFn:getWhatsAppCampaignLocks',
+    startedAt: performance.now(),
+  }
+  try {
+    const campaigns = await getLockedCampaigns()
+    logWhatsAppCampaignEvent(
+      'info',
+      'whatsapp_campaign_locks_loaded',
+      context,
+      { lockCount: campaigns.length },
+    )
+    return campaigns
+  } catch (error) {
+    logWhatsAppCampaignEvent(
+      'error',
+      'whatsapp_campaign_locks_load_failed',
+      context,
+      { errorCategory: 'campaign_lock_read' },
+    )
+    throw error
+  }
+}
+
+export async function releaseWhatsAppCampaignService(
+  data: SendWhatsAppCampaignInput,
+  userId: string,
+): Promise<void> {
+  await authz(userId).hasRole('admin')
+  const context: WhatsAppCampaignLogContext = {
+    campaign: data.campaign,
+    path: 'serverFn:releaseWhatsAppCampaign',
+    startedAt: performance.now(),
+  }
+  try {
+    await releaseWhatsAppCampaignLock(data.campaign, userId)
+    logWhatsAppCampaignEvent(
+      'info',
+      'whatsapp_campaign_lock_released',
+      context,
+      { userId },
+    )
+  } catch (error) {
+    logWhatsAppCampaignEvent(
+      'error',
+      'whatsapp_campaign_lock_release_failed',
+      context,
+      { errorCategory: 'campaign_lock_release', userId },
+    )
+    throw error
+  }
+}
+
+// Inter-send pause: stays polite to the Cloud API rate limits without a queue.
+const SEND_INTERVAL_MS = 100
 
 function logWhatsAppMessageOutcome(input: {
   status: 'sent' | 'failed'
@@ -178,6 +221,7 @@ export async function sendWhatsAppCampaignService(
 ): Promise<CampaignSendSummary> {
   const context: WhatsAppCampaignLogContext = {
     campaign: data.campaign,
+    path: 'serverFn:send_whatsapp_campaign',
     startedAt: performance.now(),
   }
   await authz(userId).hasRole('admin')

@@ -47,25 +47,9 @@ export type EmailCampaignSendSummary = {
   skipped: SkipSummary
 }
 
-export async function getEmailCampaignLocksService(
-  userId: string,
-): Promise<Array<SendEmailCampaignInput['campaign']>> {
-  await authz(userId).hasRole('admin')
-  return getLockedEmailCampaigns()
-}
-
-export async function releaseEmailCampaignService(
-  data: SendEmailCampaignInput,
-  userId: string,
-): Promise<void> {
-  await authz(userId).hasRole('admin')
-  await releaseEmailCampaignLock(data.campaign, userId)
-}
-
-const SEND_INTERVAL_MS = 600
-
 type EmailCampaignLogContext = {
-  campaign: SendEmailCampaignInput['campaign']
+  campaign?: SendEmailCampaignInput['campaign']
+  path: string
   startedAt: number
 }
 
@@ -77,13 +61,71 @@ function logEmailCampaignEvent(
 ): void {
   logServerEvent(level, event, {
     requestId: getRequestId(),
-    path: 'serverFn:send_email_campaign',
+    path: context.path,
     campaign: context.campaign,
     status: level === 'error' ? 'failure' : 'success',
     durationMs: elapsedMs(context.startedAt),
     ...fields,
   })
 }
+
+export async function getEmailCampaignLocksService(
+  userId: string,
+): Promise<Array<SendEmailCampaignInput['campaign']>> {
+  await authz(userId).hasRole('admin')
+  const context: EmailCampaignLogContext = {
+    path: 'serverFn:getEmailCampaignLocks',
+    startedAt: performance.now(),
+  }
+  try {
+    const campaigns = await getLockedEmailCampaigns()
+    logEmailCampaignEvent('info', 'email_campaign_locks_loaded', context, {
+      lockCount: campaigns.length,
+    })
+    return campaigns
+  } catch (error) {
+    logEmailCampaignEvent(
+      'error',
+      'email_campaign_locks_load_failed',
+      context,
+      {
+        errorCategory: 'campaign_lock_read',
+      },
+    )
+    throw error
+  }
+}
+
+export async function releaseEmailCampaignService(
+  data: SendEmailCampaignInput,
+  userId: string,
+): Promise<void> {
+  await authz(userId).hasRole('admin')
+  const context: EmailCampaignLogContext = {
+    campaign: data.campaign,
+    path: 'serverFn:releaseEmailCampaign',
+    startedAt: performance.now(),
+  }
+  try {
+    await releaseEmailCampaignLock(data.campaign, userId)
+    logEmailCampaignEvent('info', 'email_campaign_lock_released', context, {
+      userId,
+    })
+  } catch (error) {
+    logEmailCampaignEvent(
+      'error',
+      'email_campaign_lock_release_failed',
+      context,
+      {
+        errorCategory: 'campaign_lock_release',
+        userId,
+      },
+    )
+    throw error
+  }
+}
+
+const SEND_INTERVAL_MS = 600
 
 function logInvitationOutcome(input: {
   status: 'sent' | 'failed'
@@ -271,6 +313,7 @@ export async function sendEmailCampaignService(
 ): Promise<EmailCampaignSendSummary> {
   const context: EmailCampaignLogContext = {
     campaign: data.campaign,
+    path: 'serverFn:send_email_campaign',
     startedAt: performance.now(),
   }
   await authz(userId).hasRole('admin')
