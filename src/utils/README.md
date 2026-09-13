@@ -300,7 +300,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Post and comment create, update, and delete mutations emit redacted
     `post_*` / `comment_*` events with request correlation, actor/post/comment/
     course IDs, status, and duration; content and raw persistence details are
-    excluded.
+    excluded. Unexpected post/comment preflight persistence failures use stable
+    `post_mutation_preflight_persistence` /
+    `comment_mutation_preflight_persistence` categories.
   - Post and comment reaction toggles emit redacted
     `post_reaction_toggled` / `comment_reaction_toggled` events with request
     correlation, actor/target IDs, action, emoji, status, and duration;

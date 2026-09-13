@@ -157,6 +157,23 @@ function shouldLogPostMutationFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
 }
 
+async function withPostMutationPreflightTelemetry<T>(args: {
+  context: PostMutationLogContext
+  read: () => Promise<T>
+  errorCategory: string
+}): Promise<T> {
+  try {
+    return await args.read()
+  } catch (error) {
+    if (shouldLogPostMutationFailure(error)) {
+      logPostMutationEvent('error', 'post_mutation_failed', args.context, {
+        errorCategory: args.errorCategory,
+      })
+    }
+    throw error
+  }
+}
+
 async function requirePostActor(userId: string) {
   return getUserProfile(userId)
 }
@@ -369,8 +386,18 @@ export async function updatePostService(
   data: UpdatePostInput,
   userId: string,
 ): Promise<{ post: { id: string; content: string; updatedAt: Date } }> {
+  const context: PostMutationLogContext = {
+    action: 'updatePost',
+    actorId: userId,
+    postId: data.postId,
+    startedAt: performance.now(),
+  }
   await requirePostActor(userId)
-  const existing = await findPostForWrite(data.postId)
+  const existing = await withPostMutationPreflightTelemetry({
+    context,
+    read: () => findPostForWrite(data.postId),
+    errorCategory: 'post_mutation_preflight_persistence',
+  })
 
   if (!existing) {
     throw new NotFoundError('Post not found', {
@@ -382,13 +409,7 @@ export async function updatePostService(
     await authz(userId).perform('editPost').on('post', data.postId)
   }
 
-  const context: PostMutationLogContext = {
-    action: 'updatePost',
-    actorId: userId,
-    postId: data.postId,
-    courseId: existing.courseId,
-    startedAt: performance.now(),
-  }
+  context.courseId = existing.courseId
 
   try {
     const post = await updatePostContent(data.postId, data.content)
@@ -408,8 +429,18 @@ export async function deletePostService(
   data: DeletePostInput,
   userId: string,
 ): Promise<{ success: true }> {
+  const context: PostMutationLogContext = {
+    action: 'deletePost',
+    actorId: userId,
+    postId: data.postId,
+    startedAt: performance.now(),
+  }
   await requirePostActor(userId)
-  const existing = await findPostForWrite(data.postId)
+  const existing = await withPostMutationPreflightTelemetry({
+    context,
+    read: () => findPostForWrite(data.postId),
+    errorCategory: 'post_mutation_preflight_persistence',
+  })
 
   if (!existing) {
     throw new NotFoundError('Post not found', {
@@ -421,13 +452,7 @@ export async function deletePostService(
     await authz(userId).perform('deletePost').on('post', data.postId)
   }
 
-  const context: PostMutationLogContext = {
-    action: 'deletePost',
-    actorId: userId,
-    postId: data.postId,
-    courseId: existing.courseId,
-    startedAt: performance.now(),
-  }
+  context.courseId = existing.courseId
 
   try {
     await softDeletePost(data.postId, userId)
@@ -495,20 +520,23 @@ export async function createCommentBaseService(
   data: CreateCommentInput,
   userId: string,
 ): Promise<{ comment: CommentWithAuthor; postAuthorId: string }> {
-  await requirePostActor(userId)
-  const post = await findPostForWrite(data.postId)
-  if (!post) {
-    throw new NotFoundError('Post not found', {
-      code: 'POST_NOT_FOUND',
-      details: { postId: data.postId },
-    })
-  }
-
   const context: PostMutationLogContext = {
     action: 'createComment',
     actorId: userId,
     postId: data.postId,
     startedAt: performance.now(),
+  }
+  await requirePostActor(userId)
+  const post = await withPostMutationPreflightTelemetry({
+    context,
+    read: () => findPostForWrite(data.postId),
+    errorCategory: 'post_mutation_preflight_persistence',
+  })
+  if (!post) {
+    throw new NotFoundError('Post not found', {
+      code: 'POST_NOT_FOUND',
+      details: { postId: data.postId },
+    })
   }
 
   try {
@@ -549,8 +577,18 @@ export async function updateCommentService(
   data: UpdateCommentInput,
   userId: string,
 ): Promise<{ comment: { id: string; content: string; updatedAt: Date } }> {
+  const context: PostMutationLogContext = {
+    action: 'updateComment',
+    actorId: userId,
+    commentId: data.commentId,
+    startedAt: performance.now(),
+  }
   await requirePostActor(userId)
-  const existing = await findCommentForWrite(data.commentId)
+  const existing = await withPostMutationPreflightTelemetry({
+    context,
+    read: () => findCommentForWrite(data.commentId),
+    errorCategory: 'comment_mutation_preflight_persistence',
+  })
 
   if (!existing) {
     throw new NotFoundError('Comment not found', {
@@ -565,13 +603,7 @@ export async function updateCommentService(
     })
   }
 
-  const context: PostMutationLogContext = {
-    action: 'updateComment',
-    actorId: userId,
-    commentId: data.commentId,
-    postId: existing.postId,
-    startedAt: performance.now(),
-  }
+  context.postId = existing.postId
 
   try {
     const comment = await updateCommentContent(data.commentId, data.content)
@@ -591,8 +623,18 @@ export async function deleteCommentService(
   data: DeleteCommentInput,
   userId: string,
 ): Promise<{ success: true }> {
+  const context: PostMutationLogContext = {
+    action: 'deleteComment',
+    actorId: userId,
+    commentId: data.commentId,
+    startedAt: performance.now(),
+  }
   await requirePostActor(userId)
-  const existing = await findCommentForWrite(data.commentId)
+  const existing = await withPostMutationPreflightTelemetry({
+    context,
+    read: () => findCommentForWrite(data.commentId),
+    errorCategory: 'comment_mutation_preflight_persistence',
+  })
 
   if (!existing) {
     throw new NotFoundError('Comment not found', {
@@ -604,13 +646,7 @@ export async function deleteCommentService(
     await authz(userId).perform('deleteComment').on('comment', data.commentId)
   }
 
-  const context: PostMutationLogContext = {
-    action: 'deleteComment',
-    actorId: userId,
-    commentId: data.commentId,
-    postId: existing.postId,
-    startedAt: performance.now(),
-  }
+  context.postId = existing.postId
 
   try {
     await softDeleteComment(data.commentId, userId)

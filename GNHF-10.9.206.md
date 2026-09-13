@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 157
-**Scope:** record the batched attendance preflight telemetry slice while
+**Iteration:** 158
+**Scope:** record the batched post/comment mutation preflight telemetry slice while
 keeping the evidence-aware roadmap closure auditable.
 
 ## Final roadmap disposition
@@ -4215,3 +4215,28 @@ The full build and full integration suite remain intentionally skipped for the
 iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
 dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
 restore evidence remain pending.
+
+## Iteration 158 — post/comment mutation preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for the community workflow:
+
+- Post update/delete and comment create/update/delete now initialize mutation
+  telemetry before their target preflight reads, so unexpected repository
+  failures emit the existing redacted `post_mutation_failed` event.
+- Post and comment preflight failures use stable
+  `post_mutation_preflight_persistence` and
+  `comment_mutation_preflight_persistence` categories; actor and target IDs,
+  request correlation, status, and duration remain safe fields.
+- Expected missing-target, authorization, and validation outcomes remain quiet,
+  while post/comment content and raw persistence details stay excluded.
+- Added one focused regression covering all five preflight boundaries,
+  request-safe identifiers, stable categories, duration, raw-detail exclusion,
+  and original-error preservation.
+
+Validation: targeted formatting, the focused post integration suite, typecheck,
+static checks, Cloudflare type generation, `bun run quality:gate`, and
+`git diff --check` passed. The full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.

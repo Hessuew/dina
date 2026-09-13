@@ -520,6 +520,103 @@ describe('post read telemetry (integration)', () => {
   })
 })
 
+describe('post mutation preflight telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs redacted persistence failures for post and comment preflight reads', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const postActorId = await seedProfile({ role: 'student' })
+    const commentActorId = await seedProfile({ role: 'student' })
+    const postId = randomUUID()
+    const commentId = randomUUID()
+    const postError = new Error('post database connectionString=secret')
+    const commentError = new Error('comment database password=secret')
+    vi.spyOn(postRepository, 'findPostForWrite')
+      .mockRejectedValueOnce(postError)
+      .mockRejectedValueOnce(postError)
+      .mockRejectedValueOnce(postError)
+    vi.spyOn(postRepository, 'findCommentForWrite')
+      .mockRejectedValueOnce(commentError)
+      .mockRejectedValueOnce(commentError)
+
+    await expect(
+      updatePostService({ postId, content: 'private content' }, postActorId),
+    ).rejects.toBe(postError)
+    await expect(deletePostService({ postId }, postActorId)).rejects.toBe(
+      postError,
+    )
+    await expect(
+      createCommentBaseService(
+        { postId, content: 'private comment' },
+        postActorId,
+      ),
+    ).rejects.toBe(postError)
+    await expect(
+      updateCommentService(
+        { commentId, content: 'private update' },
+        commentActorId,
+      ),
+    ).rejects.toBe(commentError)
+    await expect(
+      deleteCommentService({ commentId }, commentActorId),
+    ).rejects.toBe(commentError)
+
+    const lines = errorSpy.mock.calls.map(([line]) => String(line))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'post_mutation_failed',
+          path: 'serverFn:updatePost',
+          actorId: postActorId,
+          postId,
+          errorCategory: 'post_mutation_preflight_persistence',
+          status: 'failure',
+        }),
+        expect.objectContaining({
+          event: 'post_mutation_failed',
+          path: 'serverFn:deletePost',
+          actorId: postActorId,
+          postId,
+          errorCategory: 'post_mutation_preflight_persistence',
+          status: 'failure',
+        }),
+        expect.objectContaining({
+          event: 'post_mutation_failed',
+          path: 'serverFn:createComment',
+          actorId: postActorId,
+          postId,
+          errorCategory: 'post_mutation_preflight_persistence',
+          status: 'failure',
+        }),
+        expect.objectContaining({
+          event: 'post_mutation_failed',
+          path: 'serverFn:updateComment',
+          actorId: commentActorId,
+          commentId,
+          errorCategory: 'comment_mutation_preflight_persistence',
+          status: 'failure',
+        }),
+        expect.objectContaining({
+          event: 'post_mutation_failed',
+          path: 'serverFn:deleteComment',
+          actorId: commentActorId,
+          commentId,
+          errorCategory: 'comment_mutation_preflight_persistence',
+          status: 'failure',
+        }),
+      ]),
+    )
+    expect(lines.join('\n')).not.toContain('connectionString')
+    expect(lines.join('\n')).not.toContain('password=secret')
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+  })
+})
+
 describe('createCommentBaseService (integration)', () => {
   it('requires a persisted profile before creating a comment', async () => {
     await expect(
