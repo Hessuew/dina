@@ -16,6 +16,7 @@ import {
   findInvitationById,
 } from '@/utils/invitation/repository/invitations.repository'
 import * as invitationsRepository from '@/utils/invitation/repository/invitations.repository'
+import * as profilesRepository from '@/utils/invitation/repository/profiles.repository'
 import { seedInvitation, seedProfile } from '@/../test/integration/seed'
 import { setEmailSender } from '@/utils/email'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
@@ -147,6 +148,155 @@ describe('createInvitationService (integration)', () => {
     )
     expect(JSON.stringify(events)).not.toContain('smtp down')
     expect(JSON.stringify(events)).not.toContain('rollback@test.dev')
+  })
+})
+
+describe('invitation mutation preflight telemetry (integration)', () => {
+  it('logs create invitation lookup failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const repositoryError = new Error(
+      'invitation lookup connectionString=secret for applicant@test.dev',
+    )
+    vi.spyOn(
+      invitationsRepository,
+      'findInvitationByEmail',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/invitations', {
+          headers: { 'x-request-id': 'invitation-create-read-failure' },
+        }),
+        () =>
+          createInvitationService(
+            { email: 'applicant@test.dev', role: 'student' },
+            adminId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('applicant@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_create_failed',
+      path: 'serverFn:createInvitation',
+      requestId: 'invitation-create-read-failure',
+      actorId: adminId,
+      status: 'failure',
+      errorCategory: 'invitation_read_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
+
+  it('logs create profile lookup failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const repositoryError = new Error(
+      'profile lookup connectionString=secret for applicant@test.dev',
+    )
+    vi.spyOn(
+      invitationsRepository,
+      'findInvitationByEmail',
+    ).mockResolvedValueOnce(undefined)
+    vi.spyOn(profilesRepository, 'findProfileByEmail').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/invitations', {
+          headers: { 'x-request-id': 'invitation-create-profile-failure' },
+        }),
+        () =>
+          createInvitationService(
+            { email: 'applicant@test.dev', role: 'student' },
+            adminId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('applicant@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_create_failed',
+      path: 'serverFn:createInvitation',
+      requestId: 'invitation-create-profile-failure',
+      actorId: adminId,
+      status: 'failure',
+      errorCategory: 'invitation_profile_read_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
+
+  it('logs resend invitation lookup failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const repositoryError = new Error(
+      'resend lookup connectionString=secret for invitation',
+    )
+    vi.spyOn(invitationsRepository, 'findInvitationById').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/invitations', {
+          headers: { 'x-request-id': 'invitation-resend-read-failure' },
+        }),
+        () => resendInvitationService({ id: randomUUID() }, adminId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_resend_failed',
+      path: 'serverFn:resendInvitation',
+      requestId: 'invitation-resend-read-failure',
+      actorId: adminId,
+      status: 'failure',
+      errorCategory: 'invitation_read_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
+
+  it('logs resend token rotation failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const { id } = await seedInvitation({ status: 'pending' })
+    const repositoryError = new Error(
+      'resend update connectionString=secret for invitation',
+    )
+    vi.spyOn(
+      invitationsRepository,
+      'updateInvitationById',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/invitations', {
+          headers: { 'x-request-id': 'invitation-resend-update-failure' },
+        }),
+        () => resendInvitationService({ id }, adminId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_resend_failed',
+      path: 'serverFn:resendInvitation',
+      requestId: 'invitation-resend-update-failure',
+      actorId: adminId,
+      invitationId: id,
+      role: 'student',
+      status: 'failure',
+      errorCategory: 'invitation_persistence',
+      durationMs: expect.any(Number),
+    })
   })
 })
 

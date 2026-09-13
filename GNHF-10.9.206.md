@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 166
+**Iteration:** 167
 **Scope:** continue the batched structured-logging rollout while preserving the
 evidence-aware Engineering Roadmap handoff.
 
@@ -4464,3 +4464,28 @@ full build and full integration suite remain intentionally skipped for the
 iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
 dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
 restore evidence remain pending.
+
+## Iteration 167 — invitation mutation preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for Admin invitation mutations:
+
+- Invitation creation now observes unexpected duplicate-invitation and
+  existing-profile preflight persistence failures through the redacted
+  `invitation_create_failed` event with stable read categories.
+- Invitation resend now observes unexpected target lookup and token-rotation
+  persistence failures through `invitation_resend_failed`; actor/invitation/
+  role identifiers, request correlation, status, duration, and stable
+  categories remain safe, while email addresses, tokens, and raw repository
+  details remain excluded.
+- Original repository errors and expected authorization, conflict, not-found,
+  pending-state, and delivery outcomes remain unchanged. Added four focused
+  integration regressions covering redaction, request correlation, stable
+  categories, and error preservation across all four boundaries.
+
+Validation: the focused invitation integration file passed all 32 tests;
+targeted Prettier formatting and typecheck passed. The full build and full
+integration suite remain intentionally skipped for the iterative telemetry
+workflow. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts,
+Uptime monitors, source maps, PostHog verification, and restore evidence
+remain pending.

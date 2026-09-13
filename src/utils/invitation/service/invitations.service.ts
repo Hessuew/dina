@@ -51,6 +51,10 @@ type InvitationLogContext = {
   startedAt: number
 }
 
+type InvitationPreflightContext = InvitationLogContext & {
+  failureEvent: 'invitation_create_failed' | 'invitation_resend_failed'
+}
+
 type InvitationTokenLogContext = {
   startedAt: number
 }
@@ -109,6 +113,121 @@ function logInvitationEmailEvent(
 
 function shouldLogInvitationReadFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
+}
+
+async function withInvitationPreflightTelemetry<T>(
+  context: InvitationPreflightContext,
+  errorCategory: string,
+  read: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await read()
+  } catch (error) {
+    if (shouldLogInvitationReadFailure(error)) {
+      logInvitationEvent('error', context.failureEvent, context, {
+        errorCategory,
+      })
+    }
+    throw error
+  }
+}
+
+async function prepareInvitationCreation(input: {
+  data: CreateInvitationInput
+  userId: string
+  context: InvitationPreflightContext
+}) {
+  const profile = await getUserProfile(input.userId)
+  if (profile.role !== 'admin') {
+    throw new AuthorizationError('Only admins can create invitations', {
+      code: 'ROLE_REQUIRED',
+      internalMessage: 'Non-admin attempted to create invitation',
+      details: { role: profile.role },
+    })
+  }
+
+  const existingInvitation = await withInvitationPreflightTelemetry(
+    input.context,
+    'invitation_read_persistence',
+    () => findInvitationByEmail(input.data.email),
+  )
+  if (existingInvitation?.status === 'pending') {
+    throw new ConflictError('Invitation already exists for this email', {
+      code: 'INVITATION_EXISTS',
+      details: { email: input.data.email },
+    })
+  }
+
+  const existingProfile = await withInvitationPreflightTelemetry(
+    input.context,
+    'invitation_profile_read_persistence',
+    () => findProfileByEmail(input.data.email),
+  )
+  if (existingProfile) {
+    throw new ConflictError('User already registered with this email', {
+      code: 'INVITATION_EXISTS',
+      details: { email: input.data.email },
+    })
+  }
+
+  return profile
+}
+
+type PreparedInvitationResend = {
+  profile: Awaited<ReturnType<typeof getUserProfile>>
+  invitation: NonNullable<Awaited<ReturnType<typeof findInvitationById>>>
+  emailToUse: string
+  token: string
+  oldToken: string
+  oldExpiresAt: Date
+}
+
+async function prepareInvitationResend(input: {
+  data: ResendInvitationInput
+  userId: string
+  context: InvitationPreflightContext
+}): Promise<PreparedInvitationResend> {
+  const profile = await getUserProfile(input.userId)
+  if (profile.role !== 'admin') {
+    throw new AuthorizationError('Only admins can resend invitations', {
+      code: 'ROLE_REQUIRED',
+      internalMessage: 'Non-admin attempted to resend invitation',
+      details: { role: profile.role },
+    })
+  }
+
+  const invitation = await withInvitationPreflightTelemetry(
+    input.context,
+    'invitation_read_persistence',
+    () => findInvitationById(input.data.id),
+  )
+  if (!invitation) {
+    throw new NotFoundError('Invitation not found', {
+      details: { invitationId: input.data.id },
+    })
+  }
+
+  validateInvitationPending(invitation)
+  input.context.role = invitation.role as 'student' | 'teacher'
+  const oldToken = invitation.token
+  const oldExpiresAt = invitation.expiresAt
+  const token = generateSecureToken()
+  const expiresAt = calculateInvitationExpiry(new Date())
+  const emailToUse = input.data.email || invitation.email
+
+  await withInvitationPreflightTelemetry(
+    input.context,
+    'invitation_persistence',
+    () =>
+      updateInvitationById(input.data.id, {
+        email: emailToUse,
+        token,
+        expiresAt,
+        updatedAt: new Date(),
+      }),
+  )
+
+  return { profile, invitation, emailToUse, token, oldToken, oldExpiresAt }
 }
 
 async function sendInvitationEmailOrThrow(input: {
@@ -186,37 +305,14 @@ export async function createInvitationService(
   data: CreateInvitationInput,
   userId: string,
 ) {
-  const context: InvitationLogContext = {
+  const context: InvitationPreflightContext = {
     action: 'createInvitation',
     actorId: userId,
     role: data.role,
     startedAt: performance.now(),
+    failureEvent: 'invitation_create_failed',
   }
-  const profile = await getUserProfile(userId)
-
-  if (profile.role !== 'admin') {
-    throw new AuthorizationError('Only admins can create invitations', {
-      code: 'ROLE_REQUIRED',
-      internalMessage: 'Non-admin attempted to create invitation',
-      details: { role: profile.role },
-    })
-  }
-
-  const existingInvitation = await findInvitationByEmail(data.email)
-  if (existingInvitation && existingInvitation.status === 'pending') {
-    throw new ConflictError('Invitation already exists for this email', {
-      code: 'INVITATION_EXISTS',
-      details: { email: data.email },
-    })
-  }
-
-  const existingProfile = await findProfileByEmail(data.email)
-  if (existingProfile) {
-    throw new ConflictError('User already registered with this email', {
-      code: 'INVITATION_EXISTS',
-      details: { email: data.email },
-    })
-  }
+  const profile = await prepareInvitationCreation({ data, userId, context })
 
   const token = generateSecureToken()
   const expiresAt = calculateInvitationExpiry(new Date())
@@ -434,45 +530,15 @@ export async function resendInvitationService(
   data: ResendInvitationInput,
   userId: string,
 ) {
-  const context: InvitationLogContext = {
+  const context: InvitationPreflightContext = {
     action: 'resendInvitation',
     actorId: userId,
     invitationId: data.id,
     startedAt: performance.now(),
+    failureEvent: 'invitation_resend_failed',
   }
-  const profile = await getUserProfile(userId)
-
-  if (profile.role !== 'admin') {
-    throw new AuthorizationError('Only admins can resend invitations', {
-      code: 'ROLE_REQUIRED',
-      internalMessage: 'Non-admin attempted to resend invitation',
-      details: { role: profile.role },
-    })
-  }
-
-  const invitation = await findInvitationById(data.id)
-
-  if (!invitation) {
-    throw new NotFoundError('Invitation not found', {
-      details: { invitationId: data.id },
-    })
-  }
-
-  validateInvitationPending(invitation)
-  context.role = invitation.role as 'student' | 'teacher'
-
-  const oldToken = invitation.token
-  const oldExpiresAt = invitation.expiresAt
-  const token = generateSecureToken()
-  const expiresAt = calculateInvitationExpiry(new Date())
-  const emailToUse = data.email || invitation.email
-
-  await updateInvitationById(data.id, {
-    email: emailToUse,
-    token,
-    expiresAt,
-    updatedAt: new Date(),
-  })
+  const { profile, invitation, emailToUse, token, oldToken, oldExpiresAt } =
+    await prepareInvitationResend({ data, userId, context })
 
   try {
     await sendInvitationEmailOrThrow({
