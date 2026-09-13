@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 171
+**Iteration:** 172
 **Scope:** continue the batched structured-logging rollout while preserving the
 evidence-aware Engineering Roadmap handoff.
 
@@ -151,6 +151,11 @@ shadcn@latest` intentionally.
   text, grades, feedback, and raw persistence details remain excluded;
   unexpected failures use the stable `assignment_read_persistence` category
   while expected authorization and not-found outcomes remain quiet.
+- Assignment submission and student/teacher assignment-list actor-profile
+  lookups now remain inside their existing redacted failure boundaries, using
+  `submission_read_persistence` or `assignment_read_persistence` for unexpected
+  profile persistence errors while expected role and missing-profile outcomes
+  remain quiet.
 - Authenticated profile password changes now emit redacted
   `password_updated` / `password_update_failed` events with request
   correlation, user ID, status, duration, stable error category, and provider
@@ -4600,3 +4605,27 @@ formatting, and `git diff --check` passed. The full build and full integration
 suite remain intentionally skipped for the iterative telemetry workflow.
 Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors,
 source maps, PostHog verification, and restore evidence remain pending.
+
+## Iteration 172 — assignment actor-profile telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for assignment workflows:
+
+- Assignment submission actor-profile lookup failures now reuse the redacted
+  `assignment_submission_failed` event with the existing
+  `submission_read_persistence` category, request correlation, assignment and
+  user identifiers, and original-error preservation.
+- Student and teacher assignment-list actor-profile lookups now occur inside
+  the existing `assignment_read_failed` boundary with the stable
+  `assignment_read_persistence` category. Public response shapes are unchanged.
+- Expected missing-profile and role authorization outcomes remain quiet, and
+  profile fields, credentials, and raw persistence details remain excluded.
+- Added three parameterized focused integration regressions covering redaction,
+  request correlation, stable categories, duration, and error preservation.
+
+Validation: the focused assignment integration file passed all 57 tests,
+targeted Prettier formatting passed, and `bun run typecheck` passed. The full
+build and full integration suite remain intentionally skipped for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.

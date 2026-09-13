@@ -653,12 +653,14 @@ async function withAssignmentSubmissionReadTelemetry<T>(
   try {
     return await read()
   } catch (error) {
-    logAssignmentSubmissionFailure(
-      assignmentId,
-      userId,
-      startedAt,
-      'submission_read_persistence',
-    )
+    if (!isAppError(error) || error.status >= 500) {
+      logAssignmentSubmissionFailure(
+        assignmentId,
+        userId,
+        startedAt,
+        'submission_read_persistence',
+      )
+    }
     throw error
   }
 }
@@ -668,7 +670,12 @@ export async function createOrUpdateSubmissionService(
   userId: string,
 ) {
   const startedAt = performance.now()
-  const profile = await getUserProfile(userId)
+  const profile = await withAssignmentSubmissionReadTelemetry(
+    data.assignmentId,
+    userId,
+    startedAt,
+    () => getUserProfile(userId),
+  )
   if (profile.role !== 'student') {
     throw new AuthorizationError('Only students can submit assignments', {
       code: 'ROLE_REQUIRED',
@@ -722,16 +729,16 @@ export async function createOrUpdateSubmissionService(
 }
 
 export async function getAllAssignmentsForStudentService(userId: string) {
-  const profile = await getUserProfile(userId)
   const context: AssignmentReadLogContext = {
     action: 'getAllAssignmentsForStudent',
     actorId: userId,
     startedAt: performance.now(),
   }
 
-  return withAssignmentReadTelemetry(
+  const result = await withAssignmentReadTelemetry(
     context,
     async () => {
+      const profile = await getUserProfile(userId)
       if (profile.role !== 'student') {
         throw new AuthorizationError('Only students can access this endpoint', {
           code: 'ROLE_REQUIRED',
@@ -757,32 +764,34 @@ export async function getAllAssignmentsForStudentService(userId: string) {
         submissions: undefined,
       }))
 
-      return { assignments: assignmentsWithSubmission }
+      return { assignments: assignmentsWithSubmission, role: profile.role }
     },
-    (result) => ({
-      role: profile.role,
-      assignmentCount: result.assignments.length,
-      submittedCount: result.assignments.filter((assignment) =>
+    (assignmentResult) => ({
+      role: assignmentResult.role,
+      assignmentCount: assignmentResult.assignments.length,
+      submittedCount: assignmentResult.assignments.filter((assignment) =>
         Boolean(assignment.submission),
       ).length,
     }),
   )
+
+  return { assignments: result.assignments }
 }
 
 export async function getAllAssignmentsForTeacherService(
   userId: string,
   scope: TeacherAssignmentListScope = 'owned',
 ) {
-  const profile = await getUserProfile(userId)
   const context: AssignmentReadLogContext = {
     action: 'getAllAssignmentsForTeacher',
     actorId: userId,
     startedAt: performance.now(),
   }
 
-  return withAssignmentReadTelemetry(
+  const result = await withAssignmentReadTelemetry(
     context,
     async () => {
+      const profile = await getUserProfile(userId)
       if (profile.role !== 'teacher' && profile.role !== 'admin') {
         throw new AuthorizationError(
           'Only teachers and admins can access this endpoint',
@@ -795,18 +804,20 @@ export async function getAllAssignmentsForTeacherService(
         )
       }
 
-      if (scope === 'catalog') {
-        return getTeacherCatalogAssignments(userId, profile.role)
-      }
-
-      return getTeacherOwnedAssignments(userId, profile.role)
+      const assignments =
+        scope === 'catalog'
+          ? await getTeacherCatalogAssignments(userId, profile.role)
+          : await getTeacherOwnedAssignments(userId, profile.role)
+      return { ...assignments, role: profile.role }
     },
-    (result) => ({
-      role: profile.role,
+    (assignmentResult) => ({
+      role: assignmentResult.role,
       scope,
-      assignmentCount: result.assignments.length,
+      assignmentCount: assignmentResult.assignments.length,
     }),
   )
+
+  return { assignments: result.assignments }
 }
 
 async function getTeacherOwnedAssignments(

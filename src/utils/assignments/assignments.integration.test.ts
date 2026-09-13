@@ -21,6 +21,7 @@ import { findAssignmentById } from '@/utils/assignments/repository/assignments.r
 import * as assignmentsRepository from '@/utils/assignments/repository/assignments.repository'
 import * as lessonsRepository from '@/utils/assignments/repository/lessons.repository'
 import * as submissionsRepository from '@/utils/assignments/repository/submissions.repository'
+import * as authUtils from '@/utils/auth/auth'
 import {
   seedAssignment,
   seedCourse,
@@ -763,6 +764,92 @@ describe('createOrUpdateSubmissionService (integration)', () => {
       ),
     ).rejects.toMatchObject({ code: 'ASSIGNMENT_NOT_FOUND', status: 404 })
   })
+})
+
+describe('assignment actor-profile telemetry (integration)', () => {
+  it.each([
+    {
+      name: 'submission',
+      requestId: 'assignment-submission-profile-failure',
+      event: 'assignment_submission_failed',
+      path: 'serverFn:createOrUpdateSubmission',
+      category: 'submission_read_persistence',
+      status: 'error',
+      identityField: 'userId',
+      run: async (actorId: string) => {
+        await createOrUpdateSubmissionService(
+          { assignmentId: randomUUID(), submit: true },
+          actorId,
+        )
+      },
+    },
+    {
+      name: 'student list',
+      requestId: 'assignment-student-list-profile-failure',
+      event: 'assignment_read_failed',
+      path: 'serverFn:getAllAssignmentsForStudent',
+      category: 'assignment_read_persistence',
+      status: 'failure',
+      identityField: 'actorId',
+      run: async (actorId: string) => {
+        await getAllAssignmentsForStudentService(actorId)
+      },
+    },
+    {
+      name: 'teacher list',
+      requestId: 'assignment-teacher-list-profile-failure',
+      event: 'assignment_read_failed',
+      path: 'serverFn:getAllAssignmentsForTeacher',
+      category: 'assignment_read_persistence',
+      status: 'failure',
+      identityField: 'actorId',
+      run: async (actorId: string) => {
+        await getAllAssignmentsForTeacherService(actorId)
+      },
+    },
+  ])(
+    'logs unexpected $name actor-profile failures without raw details',
+    async ({
+      requestId,
+      event,
+      path,
+      category,
+      status,
+      identityField,
+      run,
+    }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const actorId = randomUUID()
+      const repositoryError = new Error(
+        'assignment actor profile connectionString=secret; email=actor@test.dev',
+      )
+      vi.spyOn(authUtils, 'getUserProfile').mockRejectedValueOnce(
+        repositoryError,
+      )
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/assignments', {
+            headers: { 'x-request-id': requestId },
+          }),
+          () => run(actorId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('actor@test.dev')
+      expect(JSON.parse(line)).toMatchObject({
+        event,
+        path,
+        requestId,
+        [identityField]: actorId,
+        status,
+        errorCategory: category,
+        durationMs: expect.any(Number),
+      })
+    },
+  )
 })
 
 describe('getAllAssignmentsForStudentService (integration)', () => {

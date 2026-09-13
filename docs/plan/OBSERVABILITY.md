@@ -25,6 +25,10 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 
 - **Better Stack-compatible error transport:** The existing Sentry SDK packages remain as the transition transport for Better Stack Errors. Browser and Worker telemetry include explicit environment/release identity, suppress expected errors, and attach active OpenTelemetry trace identifiers when available.
 - **Structured application telemetry:** Shared redacted JSON logging covers health/readiness plus high-value assignment authoring/submission/grading, auth, enrollment, course-authoring, storage, exam, attendance, notification, profile, discipleship, and Admin workflows. See [`STRUCTURED_LOGGING.md`](./STRUCTURED_LOGGING.md).
+  Assignment submission and student/teacher assignment-list actor-profile
+  persistence failures remain inside their existing redacted assignment
+  failure events with stable read-persistence categories; expected role and
+  missing-profile outcomes remain quiet.
   Password sign-in and sign-out now emit request-correlated success/failure
   events with stable authentication categories and no credentials or provider
   messages. Authenticated profile password changes emit the same redacted

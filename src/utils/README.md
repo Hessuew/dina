@@ -229,7 +229,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     counts. Assignment titles, lesson content, student identity, submission
     text, grades, feedback, and raw persistence details remain excluded;
     unexpected failures use `assignment_read_persistence` while expected
-    authorization and not-found outcomes remain quiet.
+    authorization and not-found outcomes remain quiet. Actor-profile failures
+    in student/teacher lists remain inside this boundary; submission
+    actor-profile and repository read failures use
+    `submission_read_persistence`.
   - Library media list/detail reads emit redacted
     `library_media_loaded` / `library_media_load_failed` events with request
     correlation, actor/media IDs, role, safe result counts, publication and
