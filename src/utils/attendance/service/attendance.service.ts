@@ -150,6 +150,31 @@ function logAttendanceManagementFailure(
   })
 }
 
+function shouldLogUnexpectedAttendanceFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function getCheckInProfile(
+  userId: string,
+  context: AttendanceCheckInLogContext,
+) {
+  try {
+    return await getUserProfile(userId)
+  } catch (error) {
+    if (shouldLogUnexpectedAttendanceFailure(error)) {
+      logAttendanceCheckInEvent(
+        'error',
+        'attendance_check_in_failed',
+        context,
+        {
+          errorCategory: 'attendance_check_in',
+        },
+      )
+    }
+    throw error
+  }
+}
+
 async function requireCourseManage(userId: string, courseId: string) {
   const profile = await getUserProfile(userId)
   const course = await findCourseById(courseId)
@@ -302,15 +327,6 @@ export async function startOrReopenAttendanceService(
   data: StartAttendanceInput,
   userId: string,
 ) {
-  await requireCourseManage(userId, data.courseId)
-  const lesson = await findLessonInCourse(data.lessonId, data.courseId)
-  if (!lesson) {
-    throw new NotFoundError('Lesson not found on this course', {
-      code: 'LESSON_NOT_FOUND',
-      details: { lessonId: data.lessonId, courseId: data.courseId },
-    })
-  }
-
   const context: AttendanceManagementContext = {
     action: 'startOrReopenAttendance',
     actorId: userId,
@@ -320,6 +336,23 @@ export async function startOrReopenAttendanceService(
     failureCategory: 'attendance_session_open_persistence',
     startedAt: performance.now(),
   }
+  let lesson: Awaited<ReturnType<typeof findLessonInCourse>>
+  try {
+    await requireCourseManage(userId, data.courseId)
+    lesson = await findLessonInCourse(data.lessonId, data.courseId)
+    if (!lesson) {
+      throw new NotFoundError('Lesson not found on this course', {
+        code: 'LESSON_NOT_FOUND',
+        details: { lessonId: data.lessonId, courseId: data.courseId },
+      })
+    }
+  } catch (error) {
+    if (shouldLogUnexpectedAttendanceFailure(error)) {
+      logAttendanceManagementFailure(context)
+    }
+    throw error
+  }
+
   let result: Awaited<ReturnType<typeof openAttendanceSessionAtomically>>
   try {
     result = await openAttendanceSessionAtomically({
@@ -354,7 +387,6 @@ export async function closeAttendanceService(
   data: CloseAttendanceInput,
   userId: string,
 ) {
-  await requireCourseManage(userId, data.courseId)
   const context: AttendanceManagementContext = {
     action: 'closeAttendance',
     actorId: userId,
@@ -363,6 +395,15 @@ export async function closeAttendanceService(
     failureCategory: 'attendance_session_close_persistence',
     startedAt: performance.now(),
   }
+  try {
+    await requireCourseManage(userId, data.courseId)
+  } catch (error) {
+    if (shouldLogUnexpectedAttendanceFailure(error)) {
+      logAttendanceManagementFailure(context)
+    }
+    throw error
+  }
+
   let closed: Awaited<ReturnType<typeof closeAttendanceSessionAtomically>>
   try {
     closed = await closeAttendanceSessionAtomically(data.courseId)
@@ -461,7 +502,7 @@ export async function markPresentService(
     studentId: userId,
     startedAt: performance.now(),
   }
-  const profile = await getUserProfile(userId)
+  const profile = await getCheckInProfile(userId, context)
   if (profile.role !== 'student') {
     throw new AuthorizationError('Only students can mark attendance')
   }
@@ -546,24 +587,6 @@ export async function setStudentPresentService(
   data: SetStudentPresentInput,
   actorId: string,
 ) {
-  await requireAttendanceOverride(actorId, data.courseId)
-
-  const target = await getUserProfile(data.studentId)
-  if (target.role !== 'student') {
-    throw new ValidationError('Target must be a student', {
-      code: 'TARGET_NOT_STUDENT',
-      details: { studentId: data.studentId },
-    })
-  }
-
-  const lesson = await findLessonInCourse(data.lessonId, data.courseId)
-  if (!lesson) {
-    throw new NotFoundError('Lesson not found on this course', {
-      code: 'LESSON_NOT_FOUND',
-      details: { lessonId: data.lessonId, courseId: data.courseId },
-    })
-  }
-
   const context: AttendanceManagementContext = {
     action: 'setStudentPresent',
     actorId,
@@ -574,6 +597,31 @@ export async function setStudentPresentService(
     failureCategory: 'attendance_override_persistence',
     startedAt: performance.now(),
   }
+  try {
+    await requireAttendanceOverride(actorId, data.courseId)
+
+    const target = await getUserProfile(data.studentId)
+    if (target.role !== 'student') {
+      throw new ValidationError('Target must be a student', {
+        code: 'TARGET_NOT_STUDENT',
+        details: { studentId: data.studentId },
+      })
+    }
+
+    const lesson = await findLessonInCourse(data.lessonId, data.courseId)
+    if (!lesson) {
+      throw new NotFoundError('Lesson not found on this course', {
+        code: 'LESSON_NOT_FOUND',
+        details: { lessonId: data.lessonId, courseId: data.courseId },
+      })
+    }
+  } catch (error) {
+    if (shouldLogUnexpectedAttendanceFailure(error)) {
+      logAttendanceManagementFailure(context)
+    }
+    throw error
+  }
+
   return data.present
     ? setPresentOverride(data, actorId, context)
     : clearPresentOverride(data, context)

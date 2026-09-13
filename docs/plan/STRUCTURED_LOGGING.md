@@ -54,6 +54,10 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    duration; unexpected persistence failures emit
    `attendance_check_in_failed` with a stable error category. Closed-window
    validation remains an expected user-facing outcome.
+   Attendance session management and student overrides also cover unexpected
+   authorization-boundary, profile, and lesson preflight failures through the
+   corresponding redacted failure events; expected authorization, not-found,
+   and validation outcomes remain quiet.
    Password-reset request lookup/persistence failures and valid token checks
    now emit `password_reset_request_failed`, `password_reset_token_validated`,
    and `password_reset_token_lookup_failed` events with request correlation,

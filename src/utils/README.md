@@ -97,6 +97,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     `attendance_check_in_completed` / `attendance_check_in_ignored` events
     with request correlation, course/session/lesson/student IDs, status, and
     duration; unexpected persistence failures use a stable category.
+    Unexpected profile and attendance preflight persistence failures reuse
+    `attendance_check_in_failed`, `attendance_session_open_failed`,
+    `attendance_session_close_failed`, or `attendance_override_failed` with
+    stable categories; expected authorization, not-found, and validation
+    outcomes remain quiet.
   - Course attendance state and student open-session reads are client-polled,
     so only failures emit log events: redacted `attendance_state_load_failed`
     and `attendance_open_sessions_load_failed` with request correlation,

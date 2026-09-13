@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 156
-**Scope:** record the batched signup/OTP persistence telemetry slice while
+**Iteration:** 157
+**Scope:** record the batched attendance preflight telemetry slice while
 keeping the evidence-aware roadmap closure auditable.
 
 ## Final roadmap disposition
@@ -191,6 +191,10 @@ shadcn@latest` intentionally.
   lesson counts, open-session flags, and duration. Attendance titles,
   timestamps, and raw persistence details remain excluded; unexpected read
   failures use the stable `attendance_read_persistence` category.
+- Attendance session open/close, student check-in, and teacher/admin override
+  paths now also observe unexpected authorization-boundary, profile, and
+  lesson preflight failures through their existing redacted failure events;
+  expected authorization, not-found, and validation outcomes remain quiet.
 - Calendar event-management list reads now emit redacted
   `calendar_event_list_loaded` / `calendar_event_list_load_failed` events with
   request correlation, actor ID, safe total/linked event counts, status, and
@@ -4187,3 +4191,27 @@ Prettier formatting passed. The full build and full integration suite remain
 intentionally skipped for the iterative telemetry workflow. Hosted Better
 Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
 PostHog verification, and restore evidence remain pending.
+
+## Iteration 157 — attendance preflight persistence telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for attendance:
+
+- Attendance session open/close, student check-in, and teacher/admin override
+  flows now initialize telemetry before authorization, profile, and lesson
+  preflight reads, so unexpected persistence failures use their existing
+  redacted failure events with request correlation and stable categories.
+- Expected authorization, not-found, validation, and closed-window outcomes
+  remain quiet; original repository errors are preserved for the existing
+  error boundary.
+- Added four focused integration regressions covering request correlation,
+  safe identifiers, stable categories, raw-detail exclusion, and original
+  error preservation across the new preflight boundaries.
+
+Validation: the focused attendance integration file passed all 25 tests.
+Targeted Prettier, typecheck, static checks, Cloudflare type generation, and
+`bun run quality:gate` passed with 1,953 unit tests; `git diff --check` passed.
+The full build and full integration suite remain intentionally skipped for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.

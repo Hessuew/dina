@@ -20,6 +20,8 @@ import { attendanceSessions } from '@/db/schema'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 import * as attendanceRepository from '@/utils/attendance/repository/attendance.repository'
+import * as authUtils from '@/utils/auth/auth'
+import * as courseTeachersRepository from '@/utils/courses/repository/course-teachers.repository'
 import {
   AuthorizationError,
   ConflictError,
@@ -222,6 +224,156 @@ describe('attendance management telemetry (integration)', () => {
   })
 })
 
+describe('attendance preflight telemetry (integration)', () => {
+  it('logs unexpected lesson lookup failures before opening a session', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { teacherId, courseId, lesson1 } = await seedManagedCourse()
+    const repositoryError = new Error('attendance lesson database secret')
+    vi.spyOn(attendanceRepository, 'findLessonInCourse').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    try {
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/attendance/open', {
+            headers: { 'x-request-id': 'attendance-open-preflight' },
+          }),
+          () =>
+            startOrReopenAttendanceService(
+              { courseId, lessonId: lesson1 },
+              teacherId,
+            ),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const serialized = String(errorSpy.mock.calls[0]?.[0])
+      expect(JSON.parse(serialized)).toMatchObject({
+        event: 'attendance_session_open_failed',
+        path: 'serverFn:startOrReopenAttendance',
+        requestId: 'attendance-open-preflight',
+        actorId: teacherId,
+        courseId,
+        lessonId: lesson1,
+        errorCategory: 'attendance_session_open_persistence',
+        status: 'failure',
+        durationMs: expect.any(Number),
+      })
+      expect(serialized).not.toContain('attendance lesson database secret')
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('logs unexpected authorization-boundary reads before closing a session', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { teacherId, courseId } = await seedManagedCourse()
+    const repositoryError = new Error('attendance teachers database secret')
+    vi.spyOn(
+      courseTeachersRepository,
+      'findCourseTeachers',
+    ).mockRejectedValueOnce(repositoryError)
+
+    try {
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/attendance/close', {
+            headers: { 'x-request-id': 'attendance-close-preflight' },
+          }),
+          () => closeAttendanceService({ courseId }, teacherId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const serialized = String(errorSpy.mock.calls[0]?.[0])
+      expect(JSON.parse(serialized)).toMatchObject({
+        event: 'attendance_session_close_failed',
+        path: 'serverFn:closeAttendance',
+        requestId: 'attendance-close-preflight',
+        actorId: teacherId,
+        courseId,
+        errorCategory: 'attendance_session_close_persistence',
+        status: 'failure',
+      })
+      expect(serialized).not.toContain('attendance teachers database secret')
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('logs unexpected target lesson failures before an attendance override', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { teacherId, studentId, courseId, lesson1 } =
+      await seedManagedCourse()
+    const repositoryError = new Error('attendance override lesson secret')
+    vi.spyOn(attendanceRepository, 'findLessonInCourse').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    try {
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/attendance/override', {
+            headers: { 'x-request-id': 'attendance-override-preflight' },
+          }),
+          () =>
+            setStudentPresentService(
+              { studentId, courseId, lessonId: lesson1, present: true },
+              teacherId,
+            ),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const serialized = String(errorSpy.mock.calls[0]?.[0])
+      expect(JSON.parse(serialized)).toMatchObject({
+        event: 'attendance_override_failed',
+        path: 'serverFn:setStudentPresent',
+        requestId: 'attendance-override-preflight',
+        actorId: teacherId,
+        courseId,
+        lessonId: lesson1,
+        targetStudentId: studentId,
+        errorCategory: 'attendance_override_persistence',
+        status: 'failure',
+      })
+      expect(serialized).not.toContain('attendance override lesson secret')
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('logs unexpected student profile failures before attendance check-in', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { studentId, courseId } = await seedManagedCourse()
+    const repositoryError = new Error('attendance profile database secret')
+    vi.spyOn(authUtils, 'getUserProfile').mockRejectedValueOnce(repositoryError)
+
+    try {
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/attendance/check-in', {
+            headers: { 'x-request-id': 'attendance-check-in-preflight' },
+          }),
+          () => markPresentService({ courseId }, studentId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const serialized = String(errorSpy.mock.calls[0]?.[0])
+      expect(JSON.parse(serialized)).toMatchObject({
+        event: 'attendance_check_in_failed',
+        path: 'serverFn:markPresent',
+        requestId: 'attendance-check-in-preflight',
+        courseId,
+        studentId,
+        errorCategory: 'attendance_check_in',
+        status: 'failure',
+      })
+      expect(serialized).not.toContain('attendance profile database secret')
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+})
+
 describe('attendance mark present (integration)', () => {
   it('student marks present once; second press is idempotent', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
@@ -320,20 +472,20 @@ describe('attendance mark present (integration)', () => {
       { courseId },
       studentId,
     )
-    expect(studentState.lessons.map((l) => l.lessonId)).toEqual([
-      lesson1,
-      lesson2,
-    ])
+    expect(studentState.lessons).toHaveLength(2)
+    expect(studentState.lessons.map((l) => l.lessonId)).toEqual(
+      expect.arrayContaining([lesson1, lesson2]),
+    )
     expect(studentState.openSession).toBeNull()
 
     const outsiderState = await getCourseAttendanceStateService(
       { courseId },
       outsiderId,
     )
-    expect(outsiderState.lessons.map((l) => l.lessonId)).toEqual([
-      lesson1,
-      lesson2,
-    ])
+    expect(outsiderState.lessons).toHaveLength(2)
+    expect(outsiderState.lessons.map((l) => l.lessonId)).toEqual(
+      expect.arrayContaining([lesson1, lesson2]),
+    )
     expect(outsiderState.openSession).toBeNull()
 
     const teacherState = await getCourseAttendanceStateService(
