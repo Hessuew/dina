@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
+import type { AuthorizationService } from '@/utils/authz/types'
+import {
+  DefaultAuthorizationService,
+  setAuthorizationService,
+} from '@/utils/authz'
 import {
   bulkGradeEnrollmentsService,
   createEnrollmentService,
@@ -607,6 +612,181 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
     expect(
       events.every(({ serialized }) => !serialized.includes('database secret')),
     ).toBe(true)
+  })
+})
+
+function rejectingAuthorizationService(error: unknown): AuthorizationService {
+  return {
+    hasRole: vi.fn().mockRejectedValue(error),
+    isRole: vi.fn(),
+    getRole: vi.fn(),
+    isAdmin: vi.fn(),
+    canPerformAction: vi.fn(),
+    isAllowedToPerformAction: vi.fn(),
+  }
+}
+
+describe('enrollment authorization preflight telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    setAuthorizationService(new DefaultAuthorizationService())
+  })
+
+  it.each([
+    {
+      name: 'status update',
+      event: 'enrollment_status_update_failed',
+      path: 'serverFn:updateEnrollmentStatus',
+      category: 'enrollment_status_authorization_persistence',
+      run: async (userId: string) => {
+        await updateEnrollmentStatusService(
+          { enrollmentId: 'enrollment-auth', status: 'approved' },
+          userId,
+        )
+      },
+    },
+    {
+      name: 'special-case update',
+      event: 'enrollment_special_case_update_failed',
+      path: 'serverFn:setEnrollmentSpecialCase',
+      category: 'enrollment_special_case_authorization_persistence',
+      run: async (userId: string) => {
+        await setEnrollmentSpecialCaseService(
+          { enrollmentId: 'enrollment-auth', specialCase: true },
+          userId,
+        )
+      },
+    },
+    {
+      name: 'deletion',
+      event: 'enrollment_delete_failed',
+      path: 'serverFn:deleteEnrollment',
+      category: 'enrollment_delete_authorization_persistence',
+      run: async (userId: string) => {
+        await deleteEnrollmentService(
+          { enrollmentId: 'enrollment-auth' },
+          userId,
+        )
+      },
+    },
+    {
+      name: 'invitation send',
+      event: 'enrollment_invitation_failed',
+      path: 'serverFn:sendInvitationForEnrollment',
+      category: 'enrollment_invitation_authorization_persistence',
+      run: async (userId: string) => {
+        await sendInvitationForEnrollmentService(
+          { enrollmentId: 'enrollment-auth' },
+          userId,
+          undefined,
+        )
+      },
+    },
+    {
+      name: 'distribution',
+      event: 'enrollment_distribution_failed',
+      path: 'serverFn:distributeEnrollments',
+      category: 'enrollment_distribution_authorization_persistence',
+      run: async (userId: string) => {
+        await distributeEnrollmentsService(userId)
+      },
+    },
+    {
+      name: 'substitution',
+      event: 'enrollment_substitution_failed',
+      path: 'serverFn:substituteTeacher',
+      category: 'enrollment_substitution_authorization_persistence',
+      run: async (userId: string) => {
+        await substituteTeacherService(
+          {
+            absentTeacherId: 'absent-teacher',
+            substituteTeacherId: 'substitute-teacher',
+          },
+          userId,
+        )
+      },
+    },
+    {
+      name: 'end substitution',
+      event: 'enrollment_substitution_end_failed',
+      path: 'serverFn:endSubstitution',
+      category: 'enrollment_substitution_end_authorization_persistence',
+      run: async (userId: string) => {
+        await endSubstitutionService(
+          { absentTeacherId: 'absent-teacher' },
+          userId,
+        )
+      },
+    },
+    {
+      name: 'active substitution read',
+      event: 'enrollment_substitutions_load_failed',
+      path: 'serverFn:getActiveSubstitutedTeacherIds',
+      category: 'enrollment_substitution_authorization_persistence',
+      run: async (userId: string) => {
+        await getActiveSubstitutedTeacherIdsService(userId)
+      },
+    },
+    {
+      name: 'bulk grading',
+      event: 'enrollment_bulk_grade_failed',
+      path: 'serverFn:bulkGradeEnrollments',
+      category: 'enrollment_bulk_grade_authorization_persistence',
+      run: async (userId: string) => {
+        await bulkGradeEnrollmentsService(
+          { approveMin: 6, dryRun: true },
+          userId,
+        )
+      },
+    },
+  ])(
+    'logs unexpected admin-role persistence failures for $name without raw details',
+    async ({ event, path, category, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const repositoryError = new Error(
+        'enrollment role connectionString=secret; email=private@test.dev',
+      )
+      setAuthorizationService(rejectingAuthorizationService(repositoryError))
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/enrollments', {
+            headers: { 'x-request-id': `enrollment-auth-${path}` },
+          }),
+          () => run('enrollment-auth-user'),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const eventLine = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === event)
+      expect(eventLine).toMatchObject({
+        event,
+        path,
+        requestId: `enrollment-auth-${path}`,
+        actorId: 'enrollment-auth-user',
+        status: 'failure',
+        errorCategory: category,
+        durationMs: expect.any(Number),
+      })
+      expect(serialized.join('\n')).not.toContain('connectionString')
+      expect(serialized.join('\n')).not.toContain('private@test.dev')
+    },
+  )
+
+  it('keeps expected admin-role denials out of operation telemetry', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const denial = new AuthorizationError('admin access required')
+    setAuthorizationService(rejectingAuthorizationService(denial))
+
+    await expect(
+      updateEnrollmentStatusService(
+        { enrollmentId: 'enrollment-denied', status: 'approved' },
+        'enrollment-denied-user',
+      ),
+    ).rejects.toBe(denial)
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })
 

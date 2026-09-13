@@ -4866,3 +4866,27 @@ Validation: targeted Markdown formatting, `bun run docs:notion-check --json`,
 and `git diff --check` are the verification scope for this documentation-only
 handoff. The full build and full integration suite remain intentionally
 skipped.
+
+## Iteration 182 — enrollment authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for the remaining enrollment Admin-role boundaries:
+
+- Enrollment status, special-case, and deletion mutations; enrollment
+  invitation sends; distribution; substitution start/end; active-substitution
+  reads; and bulk grading now initialize their operation telemetry before the
+  Admin-role check.
+- Unexpected role-store failures reuse the matching redacted operation event
+  with request correlation, duration, stable authorization-persistence
+  categories, and original-error preservation. Expected authorization denials
+  remain quiet; enrollment content, contact values, and raw persistence
+  details remain excluded.
+- Added one parameterized focused integration suite covering all nine
+  authorization boundaries plus expected-denial silence.
+
+Validation: the focused enrollment integration suite passed 66 tests;
+`bun run typecheck` and targeted Prettier checks passed. The full build and
+full integration suite remain intentionally skipped for the iterative
+telemetry workflow. Hosted Better Stack/Cloudflare ingestion, dashboards,
+alerts, Uptime monitors, source maps, PostHog verification, and restore
+evidence remain pending.

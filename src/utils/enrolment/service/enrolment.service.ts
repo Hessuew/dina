@@ -271,6 +271,18 @@ async function withEnrollmentAssignmentReadTelemetry<T>(args: {
   }
 }
 
+async function requireAdminWithTelemetry(
+  userId: string,
+  onUnexpectedFailure: () => void,
+): Promise<void> {
+  try {
+    await authz(userId).hasRole('admin')
+  } catch (error) {
+    if (shouldLogEnrollmentReadFailure(error)) onUnexpectedFailure()
+    throw error
+  }
+}
+
 function logEnrollmentSubstitutionReadEvent(
   level: LogLevel,
   event: string,
@@ -834,14 +846,17 @@ export async function updateEnrollmentStatusService(
   data: UpdateEnrollmentStatusInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
-
   const context: EnrollmentMutationContext = {
     action: 'updateEnrollmentStatus',
     actorId: userId,
     enrollmentId: data.enrollmentId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentMutation('error', 'enrollment_status_update_failed', context, {
+      errorCategory: 'enrollment_status_authorization_persistence',
+    }),
+  )
   try {
     await updateEnrollmentStatusById(data.enrollmentId, data.status)
     logEnrollmentMutation('info', 'enrollment_status_updated', context, {
@@ -861,14 +876,20 @@ export async function setEnrollmentSpecialCaseService(
   data: SetEnrollmentSpecialCaseInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
-
   const context: EnrollmentMutationContext = {
     action: 'setEnrollmentSpecialCase',
     actorId: userId,
     enrollmentId: data.enrollmentId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentMutation(
+      'error',
+      'enrollment_special_case_update_failed',
+      context,
+      { errorCategory: 'enrollment_special_case_authorization_persistence' },
+    ),
+  )
   try {
     await updateEnrollmentSpecialCaseById(data.enrollmentId, data.specialCase)
     logEnrollmentMutation('info', 'enrollment_special_case_updated', context, {
@@ -891,14 +912,17 @@ export async function deleteEnrollmentService(
   data: DeleteEnrollmentInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
-
   const context: EnrollmentMutationContext = {
     action: 'deleteEnrollment',
     actorId: userId,
     enrollmentId: data.enrollmentId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentMutation('error', 'enrollment_delete_failed', context, {
+      errorCategory: 'enrollment_delete_authorization_persistence',
+    }),
+  )
   try {
     await deleteEnrollmentById(data.enrollmentId)
     logEnrollmentMutation('info', 'enrollment_deleted', context)
@@ -1015,13 +1039,19 @@ export async function sendInvitationForEnrollmentService(
   userId: string,
   userEmail: string | undefined,
 ) {
-  await authz(userId).hasRole('admin')
-
   const context: EnrollmentInvitationLogContext = {
     actorId: userId,
     enrollmentId: data.enrollmentId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentInvitationEvent(
+      'error',
+      'enrollment_invitation_failed',
+      context,
+      { errorCategory: 'enrollment_invitation_authorization_persistence' },
+    ),
+  )
 
   try {
     return await sendEnrollmentInvitation(data, userId, userEmail, context)
@@ -1225,12 +1255,19 @@ export async function setEvaluationNoteService(
 }
 
 export async function distributeEnrollmentsService(userId: string) {
-  await authz(userId).hasRole('admin')
   const context = {
     action: 'distributeEnrollments' as const,
     actorId: userId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentAssignmentMutation(
+      'error',
+      'enrollment_distribution_failed',
+      context,
+      { errorCategory: 'enrollment_distribution_authorization_persistence' },
+    ),
+  )
   const [unassignedIds, teacherIds] =
     await withEnrollmentAssignmentReadTelemetry({
       context,
@@ -1298,12 +1335,19 @@ export async function substituteTeacherService(
   data: SubstituteTeacherInput,
   adminUserId: string,
 ): Promise<{ reassigned: number }> {
-  await authz(adminUserId).hasRole('admin')
   const context = {
     action: 'substituteTeacher' as const,
     actorId: adminUserId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(adminUserId, () =>
+    logEnrollmentAssignmentMutation(
+      'error',
+      'enrollment_substitution_failed',
+      context,
+      { errorCategory: 'enrollment_substitution_authorization_persistence' },
+    ),
+  )
 
   const courseId = await withEnrollmentAssignmentReadTelemetry({
     context,
@@ -1360,12 +1404,21 @@ export async function endSubstitutionService(
   data: EndSubstitutionInput,
   adminUserId: string,
 ): Promise<void> {
-  await authz(adminUserId).hasRole('admin')
   const context = {
     action: 'endSubstitution' as const,
     actorId: adminUserId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(adminUserId, () =>
+    logEnrollmentAssignmentMutation(
+      'error',
+      'enrollment_substitution_end_failed',
+      context,
+      {
+        errorCategory: 'enrollment_substitution_end_authorization_persistence',
+      },
+    ),
+  )
   let deleted: number
   try {
     deleted = await deleteCourseSubstituteByAbsent(data.absentTeacherId)
@@ -1401,11 +1454,18 @@ export async function endSubstitutionService(
  * server-function boundary.
  */
 export async function getActiveSubstitutedTeacherIdsService(userId: string) {
-  await authz(userId).hasRole('admin')
   const context: EnrollmentSubstitutionReadContext = {
     actorId: userId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentSubstitutionReadEvent(
+      'error',
+      'enrollment_substitutions_load_failed',
+      context,
+      { errorCategory: 'enrollment_substitution_authorization_persistence' },
+    ),
+  )
 
   try {
     const teacherIds = await findAbsentTeacherIdsWithActiveSubstitution()
@@ -1557,12 +1617,18 @@ export async function bulkGradeEnrollmentsService(
   data: BulkGradeEnrollmentsInput,
   userId: string,
 ): Promise<BulkGradeResult> {
-  await authz(userId).hasRole('admin')
-
   const context: EnrollmentBulkGradeContext = {
     actorId: userId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentBulkGradeMutation(
+      'error',
+      'enrollment_bulk_grade_failed',
+      context,
+      { errorCategory: 'enrollment_bulk_grade_authorization_persistence' },
+    ),
+  )
   const thresholds = {
     approveMin: data.approveMin,
     waitlistMin: data.waitlistMin ?? undefined,

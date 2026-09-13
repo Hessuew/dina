@@ -334,8 +334,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    duration. Read and update failures emit
    `enrollment_bulk_grade_failed` with stable
    `enrollment_bulk_grade_read_persistence` or
-   `enrollment_bulk_grade_update_persistence` categories; enrollment
-   identifiers and raw database details remain excluded.
+   `enrollment_bulk_grade_update_persistence` categories. Admin-role
+   authorization failures also reuse that event with the stable
+   `enrollment_bulk_grade_authorization_persistence` category; enrollment
+   identifiers and raw database details remain excluded, and expected denials
+   remain quiet.
    Password sign-in now emits redacted `login_succeeded` and `login_failed`
    events with request correlation, outcome, duration, a safe user ID on
    success, and a stable auth error category/provider code on rejection;
@@ -515,9 +518,15 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    authorization outcomes stay quiet. Library-media creation also keeps its
    staff/profile preflight inside `media_mutation_failed`, using the stable
    `media_persistence` category while preserving the original error.
+   Enrollment lifecycle, invitation, distribution, substitution, active-
+   substitution read, and bulk-grading Admin-role preflights now initialize
+   their operation telemetry before authorization. Unexpected role-store
+   failures reuse the matching redacted operation event with stable
+   authorization-persistence categories, request correlation, duration, and
+   original-error preservation; expected denials remain quiet.
 4. Keep expected user-input failures out of noisy error logs.
 
-The repository migration is complete through Iteration 180. Future code
+The repository migration is complete through Iteration 182. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining

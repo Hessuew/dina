@@ -89,8 +89,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     redacted `enrollment_status_updated`,
     `enrollment_special_case_updated`, and `enrollment_deleted` events with
     request correlation, actor/enrollment IDs, safe outcome metadata, and
-    duration; unexpected persistence failures use stable categories without
-    enrollment content or raw database details.
+    duration; unexpected persistence failures, including Admin-role
+    authorization preflight failures, use stable categories without enrollment
+    content or raw database details; expected denials remain quiet.
   - Avatar and course-thumbnail upload actions emit request-correlated
     `image_upload_completed` / `image_upload_failed` events; signed-URL and
     old-object cleanup failures use stable warning categories without storage
@@ -279,12 +280,15 @@ This folder is primarily where TanStack Start server functions live (via `create
     read-preflight failures reuse redacted `enrollment_distribution_failed` /
     `enrollment_substitution_failed` events with stable read-persistence
     categories, safe actor/teacher identifiers, and original-error
-    preservation.
+    preservation. Admin-role authorization preflight failures remain inside
+    the matching operation event with stable authorization-persistence
+    categories; expected denials remain quiet.
   - Bulk enrollment grading emits redacted
     `enrollment_bulk_grade_completed` events for preview and execute paths with
     request correlation, actor ID, thresholds, safe outcome counters, and
-    duration; read and update failures use stable persistence categories without
-    enrollment identifiers or raw database details.
+    duration; read, update, and Admin-role authorization failures use stable
+    persistence categories without enrollment identifiers or raw database
+    details; expected denials remain quiet.
   - Course create, update, and delete mutations emit redacted
     `course_created`, `course_updated`, and `course_deleted` events with
     request correlation, actor/course IDs, status, duration, and publication
