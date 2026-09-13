@@ -57,11 +57,28 @@ async function loadTargetProfileWithTelemetry(
   }
 }
 
+async function requireAdminWithTelemetry(
+  context: StaffPrivilegeLogContext,
+): Promise<void> {
+  try {
+    await authz(context.actorId).hasRole('admin')
+  } catch (error) {
+    if (!isAppError(error) || error.status >= 500) {
+      logStaffPrivilegeEvent(
+        'error',
+        'staff_privilege_update_failed',
+        context,
+        { errorCategory: 'staff_privilege_authorization_persistence' },
+      )
+    }
+    throw error
+  }
+}
+
 export async function setStaffPrivilegeService(
   actorId: string,
   data: { userId: string; privilege: StaffPrivilege; granted: boolean },
 ) {
-  await authz(actorId).hasRole('admin')
   const context: StaffPrivilegeLogContext = {
     actorId,
     targetUserId: data.userId,
@@ -69,6 +86,7 @@ export async function setStaffPrivilegeService(
     granted: data.granted,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(context)
   const target = await loadTargetProfileWithTelemetry(context)
   try {
     assertTeacherPrivilegeTarget(target.role)

@@ -106,7 +106,7 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `staff_privilege_updated` audit events with request correlation, actor and
    target IDs, privilege, grant direction, status, and duration; persistence
    failures use `staff_privilege_update_failed` with stable categories,
-   including unexpected target-profile preflight failures.
+   including unexpected Admin-role and target-profile preflight failures.
    Admin invitation creation and resend now emit redacted
    `invitation_created` / `invitation_resent` events and stable delivery or
    persistence failures; revoke and delete emit audit events. Actor and

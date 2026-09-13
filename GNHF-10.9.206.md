@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 187
+**Iteration:** 188
 **Scope:** record the completed batched structured-logging rollout through
-Iteration 187 and maintain the evidence-aware Engineering Roadmap handoff.
+Iteration 188 and maintain the evidence-aware Engineering Roadmap handoff.
 
 ## Final roadmap disposition
 
@@ -5022,3 +5022,26 @@ verification scope for this iterative telemetry workflow. The full build and
 full integration suite remain intentionally skipped. Hosted Better
 Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
 PostHog verification, and restore evidence remain pending.
+
+## Iteration 188 — staff-privilege authorization telemetry
+
+This iteration completed the next bounded repository-owned structured-logging
+slice for the Admin staff-privilege mutation:
+
+- The Admin-role preflight now runs inside the existing
+  `staff_privilege_update_failed` telemetry boundary. Unexpected role-store
+  persistence failures carry request correlation, actor/target IDs, privilege,
+  grant direction, duration, and the stable
+  `staff_privilege_authorization_persistence` category; raw provider details
+  remain excluded.
+- Expected Admin-role denials remain quiet and preserve their original error.
+  Existing target-profile and mutation persistence telemetry is unchanged.
+- Added focused integration coverage for unexpected role-store failure,
+  redaction, request correlation, stable categorization, and denial silence.
+
+Validation: the focused staff-privilege integration suite passed all 7 tests;
+targeted formatting and typecheck remain the verification scope for this
+iterative telemetry workflow. The full build and full integration suite remain
+intentionally skipped. Hosted Better Stack/Cloudflare ingestion, dashboards,
+alerts, Uptime monitors, source maps, PostHog verification, and restore
+evidence remain pending.

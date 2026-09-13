@@ -156,8 +156,8 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Admin staff-privilege grants and revokes emit redacted
     `staff_privilege_updated` audit events with request correlation, actor and
     target IDs, privilege, grant direction, status, and duration; persistence
-    failures use stable categories, including unexpected target-profile
-    preflight failures, without raw provider details.
+    failures use stable categories, including unexpected Admin-role and
+    target-profile preflight failures, without raw provider details.
   - Admin invitation creation and resend emit redacted
     `invitation_created` / `invitation_resent` events and stable delivery or
     persistence failures; revoke and delete emit audit events. Actor and
