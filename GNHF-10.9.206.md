@@ -2,8 +2,8 @@
 
 **Date:** 2026-09-13
 **Iteration:** 185
-**Scope:** continue the batched structured-logging rollout and maintain the
-evidence-aware Engineering Roadmap handoff.
+**Scope:** record the completed batched structured-logging rollout through
+Iteration 185 and maintain the evidence-aware Engineering Roadmap handoff.
 
 ## Final roadmap disposition
 
