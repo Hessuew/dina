@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 185
+**Iteration:** 186
 **Scope:** record the completed batched structured-logging rollout through
-Iteration 185 and maintain the evidence-aware Engineering Roadmap handoff.
+Iteration 186 and maintain the evidence-aware Engineering Roadmap handoff.
 
 ## Final roadmap disposition
 
@@ -156,6 +156,10 @@ shadcn@latest` intentionally.
   text, grades, feedback, and raw persistence details remain excluded;
   unexpected failures use the stable `assignment_read_persistence` category
   while expected authorization and not-found outcomes remain quiet.
+- Assignment creation, update, deletion, and teacher grading authorization
+  preflights now reuse their redacted operation failure events with request
+  correlation, safe assignment/lesson/course identifiers, duration, and stable
+  authorization-persistence categories; expected denials remain quiet.
 - Assignment submission and student/teacher assignment-list actor-profile
   lookups now remain inside their existing redacted failure boundaries, using
   `submission_read_persistence` or `assignment_read_persistence` for unexpected
@@ -2123,7 +2127,7 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 | Roadmap item          | Current state                                                                                                                                                                                                                | Next smallest verifiable slice                                                               |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                                                                                       | Verify `/healthz` and `/readyz` after deployment                                             |
-| Structured logging    | Repository rollout complete through Iteration 183; shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, discipleship, and Admin workflows | Verify hosted ingestion, dashboards, alerts, and source-map correlation                      |
+| Structured logging    | Repository rollout complete through Iteration 186; shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, discipleship, and Admin workflows | Verify hosted ingestion, dashboards, alerts, and source-map correlation                      |
 | Error tracking        | Better Stack is the canonical DSN configuration with Sentry-compatible SDK wiring and explicit environment/release identity; provider verification is pending                                                                | Set `VITE_BETTER_STACK_DSN` and `BETTER_STACK_DSN`, then verify ingestion/source maps        |
 | Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                                                                                      | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
 | Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                                                                                     | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
@@ -4955,3 +4959,29 @@ verification scope for this iterative telemetry workflow. The full build and
 full integration suite remain intentionally skipped. Hosted Better
 Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
 PostHog verification, and restore evidence remain pending.
+
+## Iteration 186 — assignment authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for assignment authorization persistence boundaries:
+
+- Assignment creation, update, and deletion now initialize their existing
+  mutation telemetry before course-scoped authorization. Unexpected authz
+  persistence failures reuse the matching operation failure event with the
+  stable `assignment_authorization_persistence` category, safe assignment,
+  lesson, and course identifiers, request correlation, and duration.
+- Teacher grading now keeps the course-scoped authorization preflight inside
+  `assignment_grading_failed` telemetry with the stable
+  `assignment_grading_authorization_persistence` category. Expected denials
+  remain quiet, original errors are preserved, and assignment content,
+  grades, feedback, and raw persistence details remain excluded.
+- Added focused integration coverage for all four authorization boundaries,
+  redaction, request correlation, stable categorization, duration, original
+  error preservation, and expected-denial silence.
+
+Validation: the focused assignment integration suite passed all 62 tests.
+Targeted formatting and typecheck remain the verification scope for this
+iterative telemetry workflow. The full build and full integration suite remain
+intentionally skipped. Hosted Better Stack/Cloudflare ingestion, dashboards,
+alerts, Uptime monitors, source maps, PostHog verification, and restore
+evidence remain pending.

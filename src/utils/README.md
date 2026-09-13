@@ -242,6 +242,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     in student/teacher lists remain inside this boundary; submission
     actor-profile and repository read failures use
     `submission_read_persistence`.
+  - Assignment creation, update, deletion, and teacher grading authorization
+    preflights reuse their redacted operation failure events with request
+    correlation, safe assignment/lesson/course identifiers, duration, and
+    stable authorization-persistence categories; expected denials remain quiet
+    and assignment content, grades, feedback, and raw persistence details
+    remain excluded.
   - Library media list/detail reads emit redacted
     `library_media_loaded` / `library_media_load_failed` events with request
     correlation, actor/media IDs, role, safe result counts, publication and

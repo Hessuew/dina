@@ -407,6 +407,10 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    text, grades, feedback, and raw persistence details remain excluded;
    unexpected failures use the stable `assignment_read_persistence` category
    while expected authorization and not-found outcomes remain quiet.
+   Assignment creation, update, deletion, and teacher grading authorization
+   preflights now reuse their redacted operation failure events with request
+   correlation, safe assignment/lesson/course identifiers, duration, and
+   stable authorization-persistence categories; expected denials remain quiet.
    Library media list/detail reads now emit redacted
    `library_media_loaded` / `library_media_load_failed` events with request
    correlation, actor/media IDs, role, safe result counts, publication and
@@ -537,7 +541,7 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    events with stable authorization-persistence categories while expected
    denials remain quiet.
 
-The repository migration is complete through Iteration 185. Future code
+The repository migration is complete through Iteration 186. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining

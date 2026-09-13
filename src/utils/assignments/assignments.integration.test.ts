@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { AuthorizationService } from '@/utils/authz/types'
+import {
+  DefaultAuthorizationService,
+  setAuthorizationService,
+} from '@/utils/authz'
+import { AuthorizationError } from '@/utils/errors'
 import { getDb } from '@/db'
 import { submissions as submissionsTable } from '@/db/schema'
 import { upsertSubmission } from '@/utils/assignments/repository/submissions.repository'
@@ -34,6 +40,7 @@ import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 afterEach(() => {
   vi.restoreAllMocks()
+  setAuthorizationService(new DefaultAuthorizationService())
 })
 
 // Assignment services have no external IO — the DB (real PGlite via the `@/db`
@@ -58,6 +65,17 @@ async function seedPublishedAssignmentWithSubmission() {
   const studentId = await seedProfile({ role: 'student' })
   await seedSubmission({ assignmentId, studentId, status: 'submitted' })
   return { teacherId, lessonId, assignmentId, studentId }
+}
+
+function rejectingAuthorizationService(error: Error): AuthorizationService {
+  return {
+    hasRole: vi.fn().mockRejectedValue(error),
+    isRole: vi.fn(),
+    getRole: vi.fn(),
+    isAdmin: vi.fn(),
+    canPerformAction: vi.fn().mockRejectedValue(error),
+    isAllowedToPerformAction: vi.fn(),
+  }
 }
 
 const future = () => new Date(Date.now() + 24 * 60 * 60 * 1000)
@@ -313,6 +331,138 @@ describe('deleteAssignmentService (integration)', () => {
     await expect(
       deleteAssignmentService({ assignmentId }, teacherId),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED', status: 400 })
+  })
+})
+
+describe('assignment authorization preflight telemetry (integration)', () => {
+  it.each([
+    {
+      name: 'creation',
+      event: 'assignment_create_failed',
+      path: 'serverFn:createAssignment',
+      category: 'assignment_authorization_persistence',
+      identityField: 'actorId',
+      run: async (actorId: string) => {
+        const { lessonId } = await seedCourseWithTeacher()
+        await createAssignmentService(
+          {
+            lessonId,
+            title: 'Private assignment',
+            dueDate: future().toISOString(),
+          },
+          actorId,
+        )
+      },
+    },
+    {
+      name: 'update',
+      event: 'assignment_update_failed',
+      path: 'serverFn:updateAssignment',
+      category: 'assignment_authorization_persistence',
+      identityField: 'actorId',
+      run: async (actorId: string) => {
+        const { lessonId } = await seedCourseWithTeacher()
+        const assignmentId = await seedAssignment({ lessonId })
+        await updateAssignmentService(
+          {
+            assignmentId,
+            title: 'Private assignment',
+            dueDate: future().toISOString(),
+          },
+          actorId,
+        )
+      },
+    },
+    {
+      name: 'deletion',
+      event: 'assignment_delete_failed',
+      path: 'serverFn:deleteAssignment',
+      category: 'assignment_authorization_persistence',
+      identityField: 'actorId',
+      run: async (actorId: string) => {
+        const { lessonId } = await seedCourseWithTeacher()
+        const assignmentId = await seedAssignment({ lessonId })
+        await deleteAssignmentService({ assignmentId }, actorId)
+      },
+    },
+    {
+      name: 'grading',
+      event: 'assignment_grading_failed',
+      path: 'serverFn:gradeSubmission',
+      category: 'assignment_grading_authorization_persistence',
+      identityField: 'userId',
+      run: async (actorId: string) => {
+        const { lessonId } = await seedCourseWithTeacher()
+        const assignmentId = await seedAssignment({
+          lessonId,
+          status: 'published',
+        })
+        const studentId = await seedProfile({ role: 'student' })
+        const submissionId = await seedSubmission({
+          assignmentId,
+          studentId,
+          status: 'submitted',
+        })
+        await gradeSubmissionService(
+          { assignmentId, submissionId, grade: 95 },
+          actorId,
+        )
+      },
+    },
+  ])(
+    'logs unexpected $name authorization failures without raw details',
+    async ({ category, event, identityField, path, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const actorId = randomUUID()
+      const repositoryError = new Error(
+        'assignment authorization connectionString=secret; title=private',
+      )
+      setAuthorizationService(rejectingAuthorizationService(repositoryError))
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/assignments', {
+            headers: { 'x-request-id': `assignment-auth-${path}` },
+          }),
+          () => run(actorId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const eventLine = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === event)
+      expect(eventLine).toMatchObject({
+        event,
+        path,
+        requestId: `assignment-auth-${path}`,
+        [identityField]: actorId,
+        status: 'failure',
+        errorCategory: category,
+        durationMs: expect.any(Number),
+      })
+      expect(serialized.join('\n')).not.toContain('connectionString')
+      expect(serialized.join('\n')).not.toContain('title=private')
+    },
+  )
+
+  it('keeps expected authorization denials out of operation telemetry', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const denial = new AuthorizationError('course access required')
+    setAuthorizationService(rejectingAuthorizationService(denial))
+    const { lessonId } = await seedCourseWithTeacher()
+
+    await expect(
+      createAssignmentService(
+        {
+          lessonId,
+          title: 'Denied assignment',
+          dueDate: future().toISOString(),
+        },
+        randomUUID(),
+      ),
+    ).rejects.toBe(denial)
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })
 

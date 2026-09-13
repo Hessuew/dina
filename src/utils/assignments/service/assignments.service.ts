@@ -65,6 +65,7 @@ type AssignmentMutationLogContext = {
   assignmentId?: string
   lessonId?: string
   courseId?: string
+  failureEvent: string
   startedAt: number
 }
 
@@ -123,6 +124,26 @@ function logAssignmentReadEvent(
 
 function shouldLogAssignmentReadFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
+}
+
+function shouldLogAssignmentMutationFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function withAssignmentAuthorizationTelemetry(
+  context: AssignmentMutationLogContext,
+  authorize: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    await authorize()
+  } catch (error) {
+    if (shouldLogAssignmentMutationFailure(error)) {
+      logAssignmentMutationEvent('error', context.failureEvent, context, {
+        errorCategory: 'assignment_authorization_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 async function withAssignmentReadTelemetry<T>(
@@ -364,6 +385,7 @@ export async function createAssignmentService(
     action: 'createAssignment',
     actorId: userId,
     lessonId: data.lessonId,
+    failureEvent: 'assignment_create_failed',
     startedAt,
   }
   let lesson: Awaited<ReturnType<typeof findLessonById>>
@@ -382,9 +404,10 @@ export async function createAssignmentService(
     })
   }
 
-  await authz(userId).perform('createLesson').on('course', lesson.courseId)
-
   context.courseId = lesson.courseId
+  await withAssignmentAuthorizationTelemetry(context, () =>
+    authz(userId).perform('createLesson').on('course', lesson.courseId),
+  )
 
   try {
     const assignment = await insertAssignment({
@@ -417,6 +440,7 @@ export async function updateAssignmentService(
     action: 'updateAssignment',
     actorId: userId,
     assignmentId: data.assignmentId,
+    failureEvent: 'assignment_update_failed',
     startedAt,
   }
   let assignment: Awaited<ReturnType<typeof findAssignmentWithLesson>>
@@ -435,12 +459,13 @@ export async function updateAssignmentService(
     })
   }
 
-  await authz(userId)
-    .perform('editLesson')
-    .on('course', assignment.lesson.courseId)
-
   context.lessonId = assignment.lesson.id
   context.courseId = assignment.lesson.courseId
+  await withAssignmentAuthorizationTelemetry(context, () =>
+    authz(userId)
+      .perform('editLesson')
+      .on('course', assignment.lesson.courseId),
+  )
 
   try {
     const updated = await updateAssignmentById(data.assignmentId, {
@@ -506,6 +531,7 @@ export async function deleteAssignmentService(
     action: 'deleteAssignment',
     actorId: userId,
     assignmentId: data.assignmentId,
+    failureEvent: 'assignment_delete_failed',
     startedAt,
   }
   let assignment: Awaited<
@@ -526,9 +552,13 @@ export async function deleteAssignmentService(
     })
   }
 
-  await authz(userId)
-    .perform('editLesson')
-    .on('course', assignment.lesson.courseId)
+  context.lessonId = assignment.lesson.id
+  context.courseId = assignment.lesson.courseId
+  await withAssignmentAuthorizationTelemetry(context, () =>
+    authz(userId)
+      .perform('editLesson')
+      .on('course', assignment.lesson.courseId),
+  )
 
   if (!canDeleteAssignment(assignment, assignment.submissions)) {
     throw new ValidationError(
@@ -541,9 +571,6 @@ export async function deleteAssignmentService(
       },
     )
   }
-
-  context.lessonId = assignment.lesson.id
-  context.courseId = assignment.lesson.courseId
 
   try {
     await deleteAssignmentById(data.assignmentId)
@@ -939,6 +966,27 @@ async function withAssignmentGradingReadTelemetry<T>(
   }
 }
 
+async function withAssignmentGradingAuthorizationTelemetry(
+  data: GradeSubmissionInput,
+  userId: string,
+  startedAt: number,
+  authorize: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    await authorize()
+  } catch (error) {
+    if (!isAppError(error) || error.status >= 500) {
+      logAssignmentGradingFailure(
+        startedAt,
+        data,
+        userId,
+        'assignment_grading_authorization_persistence',
+      )
+    }
+    throw error
+  }
+}
+
 async function updateGradedSubmission(
   data: GradeSubmissionInput,
   userId: string,
@@ -975,9 +1023,15 @@ export async function gradeSubmissionService(
     })
   }
 
-  await authz(userId)
-    .perform('gradeAssignment')
-    .on('course', assignment.lesson.courseId)
+  await withAssignmentGradingAuthorizationTelemetry(
+    data,
+    userId,
+    startedAt,
+    () =>
+      authz(userId)
+        .perform('gradeAssignment')
+        .on('course', assignment.lesson.courseId),
+  )
 
   const submission = await withAssignmentGradingReadTelemetry(
     data,
