@@ -142,7 +142,6 @@ export async function getCourseTeachersService(
   data: GetCourseTeachersInput,
   userId: string,
 ) {
-  await getUserProfile(userId)
   const context: CourseTeacherReadContext = {
     actorId: userId,
     courseId: data.courseId,
@@ -152,6 +151,7 @@ export async function getCourseTeachersService(
   return withCourseTeacherReadTelemetry(
     context,
     async () => {
+      await getUserProfile(userId)
       const courseTeachersList = await findCourseTeachers(data.courseId)
       return {
         teachers: await signAvatarRows(

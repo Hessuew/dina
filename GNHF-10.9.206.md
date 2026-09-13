@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 168
+**Iteration:** 169
 **Scope:** continue the batched structured-logging rollout while preserving the
 evidence-aware Engineering Roadmap handoff.
 
@@ -4510,6 +4510,32 @@ slice for Admin identity preflights:
 Validation: the focused invitation and staff-privilege integration suites
 passed all 42 tests; targeted Prettier formatting, typecheck, static quality,
 and `git diff --check` passed. The full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
+
+## Iteration 169 — course read actor-profile preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for authenticated course and lesson reads:
+
+- Course list/detail, upcoming-lesson, course-calendar, and course-teacher
+  reads now initialize their existing redacted read telemetry before persisted
+  actor-profile lookup. Unexpected profile persistence failures therefore emit
+  the same operation-specific failure event and stable read category as later
+  repository failures.
+- Expected missing-profile outcomes remain quiet and preserve their existing
+  typed errors. Request correlation, actor/course identifiers, status,
+  duration, and safe count metadata remain unchanged; profile fields,
+  calendar/lesson content, and raw persistence details stay outside telemetry.
+- Added one parameterized focused integration regression covering all five
+  preflight paths, redaction, request correlation, stable categories, and
+  original-error preservation.
+
+Validation: the five new focused integration cases passed. The broader course
+integration file passed 71 of 72 tests; its one failure is the existing
+thumbnail-signing storage-mock assertion, unrelated to this slice. Targeted
+formatting remains clean; the full build and full integration suite remain
 intentionally skipped for the iterative telemetry workflow. Hosted Better
 Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
 PostHog verification, and restore evidence remain pending.

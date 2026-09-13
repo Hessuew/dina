@@ -216,8 +216,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Teacher-directory list reads emit redacted `teacher_directory_loaded` /
     `teacher_directory_load_failed` events with request correlation, actor ID,
     safe result counts, duration, and the stable
-    `teacher_directory_read_persistence` failure category; teacher names,
-    emails, bios, and privilege details remain excluded.
+    `teacher_directory_read_persistence` failure category; actor-profile
+    preflight failures remain inside the same redacted read boundary, while
+    teacher names, emails, bios, and privilege details remain excluded.
   - Assignment lesson/detail, student/teacher list, submission-count, and
     submission-list reads emit redacted `assignment_read_loaded` /
     `assignment_read_failed` events with request correlation, actor IDs, safe
@@ -279,8 +280,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Course list and detail reads emit redacted `course_read_loaded` and
     `course_read_failed` events with request correlation, actor/course IDs,
     role, safe lesson/media/course counts, status, and duration; expected
-    authorization and not-found outcomes remain outside noisy error logs, and
-    course content is excluded.
+    authorization and not-found outcomes remain outside noisy error logs;
+    actor-profile preflight failures reuse the same stable
+    `course_read_persistence` category, and course content is excluded.
   - Student course-calendar reads emit redacted
     `course_calendar_events_loaded` / `course_calendar_events_load_failed`
     events with request correlation, actor ID, safe course/source/event counts,
@@ -290,7 +292,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     `upcoming_lessons_loaded` / `upcoming_lessons_load_failed` events with
     request correlation, actor ID, safe lesson counts, status, duration, and
     the stable `upcoming_lessons_read_persistence` failure category. Lesson
-    titles, course names, content, and thumbnail URLs remain outside telemetry.
+    actor-profile preflight failures remain inside the same redacted read
+    boundary; lesson titles, course names, content, and thumbnail URLs remain
+    outside telemetry.
   - Direct Admin course-teacher assignment emits redacted
     `course_teachers_updated` telemetry with request correlation,
     actor/course/teacher IDs, status, and duration; unexpected replacement
@@ -300,8 +304,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     `course_teachers_loaded` / `course_teachers_load_failed` events with
     request correlation, actor/course IDs, safe teacher counts, status,
     duration, and the stable `course_teacher_read_persistence` category;
-    teacher profile fields, storage URLs, and raw persistence details remain
-    excluded.
+    actor-profile preflight failures reuse that boundary, while teacher profile
+    fields, storage URLs, and raw persistence details remain excluded.
   - The legacy `isCourseTeacherService` probe emits a redacted
     `course_teacher_check_failed` event for unexpected assignment-read
     persistence failures with request correlation, actor/course IDs, duration,

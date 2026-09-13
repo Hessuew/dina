@@ -452,9 +452,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    The legacy course-teacher boolean probe now emits a redacted
    `course_teacher_check_failed` event for unexpected assignment-read
    persistence failures; successful `true`/`false` results remain unchanged.
+   Course list/detail, upcoming-lesson, course-calendar, and course-teacher
+   reads now keep actor-profile preflight failures inside their existing
+   redacted read events with stable persistence categories; expected
+   missing-profile outcomes remain quiet.
 4. Keep expected user-input failures out of noisy error logs.
 
-The repository migration is complete through Iteration 168. Future code
+The repository migration is complete through Iteration 169. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining

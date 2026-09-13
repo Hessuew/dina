@@ -266,7 +266,6 @@ async function loadCourse(
 }
 
 export async function getCoursesService(userId: string) {
-  const profile = await getUserProfile(userId)
   const context: CourseReadLogContext = {
     action: 'getCourses',
     actorId: userId,
@@ -276,6 +275,7 @@ export async function getCoursesService(userId: string) {
   return withCourseReadTelemetry(
     context,
     async () => {
+      const profile = await getUserProfile(userId)
       const isStudentView = profile.role === 'student'
       const allCourses = await findAllCourses(!isStudentView)
       const visibleCourses = isStudentView
@@ -325,7 +325,6 @@ export async function getCoursesService(userId: string) {
 }
 
 export async function getCourseService(data: GetCourseInput, userId: string) {
-  const profile = await getUserProfile(userId)
   const context: CourseReadLogContext = {
     action: 'getCourse',
     actorId: userId,
@@ -335,7 +334,7 @@ export async function getCourseService(data: GetCourseInput, userId: string) {
 
   return withCourseReadTelemetry(
     context,
-    () => loadCourse(data, userId, profile),
+    async () => loadCourse(data, userId, await getUserProfile(userId)),
     (result) => ({
       role: result.role,
       lessonCount: result.course.lessons.length,

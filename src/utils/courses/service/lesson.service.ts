@@ -252,10 +252,10 @@ export async function completeLessonService(
 }
 
 export async function getUpcomingLessonsService(userId: string) {
-  await getUserProfile(userId)
   const startedAt = performance.now()
 
   try {
+    await getUserProfile(userId)
     const upcomingLessons = await findUpcomingLessons(new Date())
     const lessons = upcomingLessons.map((l) => ({
       id: l.id,
@@ -277,23 +277,25 @@ export async function getUpcomingLessonsService(userId: string) {
 
     return { lessons }
   } catch (error) {
-    logServerEvent('error', 'upcoming_lessons_load_failed', {
-      requestId: getRequestId(),
-      path: 'serverFn:getUpcomingLessons',
-      status: 'failure',
-      durationMs: elapsedMs(startedAt),
-      actorId: userId,
-      errorCategory: 'upcoming_lessons_read_persistence',
-    })
+    if (shouldLogLessonPreflightFailure(error)) {
+      logServerEvent('error', 'upcoming_lessons_load_failed', {
+        requestId: getRequestId(),
+        path: 'serverFn:getUpcomingLessons',
+        status: 'failure',
+        durationMs: elapsedMs(startedAt),
+        actorId: userId,
+        errorCategory: 'upcoming_lessons_read_persistence',
+      })
+    }
     throw error
   }
 }
 
 export async function getCalendarEventsService(userId: string) {
-  await getUserProfile(userId)
   const startedAt = performance.now()
 
   try {
+    await getUserProfile(userId)
     const courseIds = await findAllCourseIds()
     if (courseIds.length === 0) {
       logServerEvent('info', 'course_calendar_events_loaded', {
@@ -330,14 +332,16 @@ export async function getCalendarEventsService(userId: string) {
 
     return { events }
   } catch (error) {
-    logServerEvent('error', 'course_calendar_events_load_failed', {
-      requestId: getRequestId(),
-      path: 'serverFn:getCalendarEvents',
-      status: 'failure',
-      durationMs: elapsedMs(startedAt),
-      actorId: userId,
-      errorCategory: 'course_calendar_read_persistence',
-    })
+    if (shouldLogLessonPreflightFailure(error)) {
+      logServerEvent('error', 'course_calendar_events_load_failed', {
+        requestId: getRequestId(),
+        path: 'serverFn:getCalendarEvents',
+        status: 'failure',
+        durationMs: elapsedMs(startedAt),
+        actorId: userId,
+        errorCategory: 'course_calendar_read_persistence',
+      })
+    }
     throw error
   }
 }

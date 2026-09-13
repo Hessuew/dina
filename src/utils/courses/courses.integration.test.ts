@@ -29,6 +29,7 @@ import {
   insertCourse,
 } from '@/utils/courses/repository'
 import * as coursesRepository from '@/utils/courses/repository'
+import * as authUtils from '@/utils/auth/auth'
 import {
   seedAssignment,
   seedCourse,
@@ -1218,6 +1219,95 @@ describe('getCalendarEventsService (integration)', () => {
 
     expect(events).toEqual([])
   })
+})
+
+describe('course read actor-profile telemetry (integration)', () => {
+  it.each([
+    {
+      name: 'course list',
+      requestId: 'course-list-profile-failure',
+      event: 'course_read_failed',
+      path: 'serverFn:getCourses',
+      category: 'course_read_persistence',
+      run: async (actorId: string) => {
+        await getCoursesService(actorId)
+      },
+    },
+    {
+      name: 'course detail',
+      requestId: 'course-detail-profile-failure',
+      event: 'course_read_failed',
+      path: 'serverFn:getCourse',
+      category: 'course_read_persistence',
+      run: async (actorId: string) => {
+        await getCourseService({ courseId: randomUUID() }, actorId)
+      },
+    },
+    {
+      name: 'upcoming lessons',
+      requestId: 'upcoming-lessons-profile-failure',
+      event: 'upcoming_lessons_load_failed',
+      path: 'serverFn:getUpcomingLessons',
+      category: 'upcoming_lessons_read_persistence',
+      run: async (actorId: string) => {
+        await getUpcomingLessonsService(actorId)
+      },
+    },
+    {
+      name: 'course calendar',
+      requestId: 'course-calendar-profile-failure',
+      event: 'course_calendar_events_load_failed',
+      path: 'serverFn:getCalendarEvents',
+      category: 'course_calendar_read_persistence',
+      run: async (actorId: string) => {
+        await getCalendarEventsService(actorId)
+      },
+    },
+    {
+      name: 'course teachers',
+      requestId: 'course-teachers-profile-failure',
+      event: 'course_teachers_load_failed',
+      path: 'serverFn:getCourseTeachers',
+      category: 'course_teacher_read_persistence',
+      run: async (actorId: string) => {
+        await getCourseTeachersService({ courseId: randomUUID() }, actorId)
+      },
+    },
+  ])(
+    'logs unexpected $name actor-profile failures without raw details',
+    async ({ requestId, event, path, category, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const actorId = randomUUID()
+      const repositoryError = new Error(
+        'actor profile connectionString=secret; email=actor@test.dev',
+      )
+      vi.spyOn(authUtils, 'getUserProfile').mockRejectedValueOnce(
+        repositoryError,
+      )
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/course-reads', {
+            headers: { 'x-request-id': requestId },
+          }),
+          () => run(actorId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('actor@test.dev')
+      expect(JSON.parse(line)).toMatchObject({
+        event,
+        path,
+        requestId,
+        actorId,
+        status: 'failure',
+        errorCategory: category,
+        durationMs: expect.any(Number),
+      })
+    },
+  )
 })
 
 describe('validateTeacherPair (integration)', () => {
