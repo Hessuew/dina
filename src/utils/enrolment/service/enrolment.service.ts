@@ -248,6 +248,25 @@ function logEnrollmentAssignmentMutation(
   })
 }
 
+async function withEnrollmentAssignmentReadTelemetry<T>(args: {
+  context: EnrollmentAssignmentMutationContext
+  errorCategory: string
+  fields?: Record<string, unknown>
+  read: () => Promise<T>
+}): Promise<T> {
+  try {
+    return await args.read()
+  } catch (error) {
+    logEnrollmentAssignmentMutation(
+      'error',
+      `enrollment_${args.context.action === 'substituteTeacher' ? 'substitution' : 'distribution'}_failed`,
+      args.context,
+      { ...args.fields, errorCategory: args.errorCategory },
+    )
+    throw error
+  }
+}
+
 function logEnrollmentSubstitutionReadEvent(
   level: LogLevel,
   event: string,
@@ -1208,10 +1227,13 @@ export async function distributeEnrollmentsService(userId: string) {
     actorId: userId,
     startedAt: performance.now(),
   }
-  const [unassignedIds, teacherIds] = await Promise.all([
-    findUnassignedEnrollmentIds(),
-    findAllTeacherIds(),
-  ])
+  const [unassignedIds, teacherIds] =
+    await withEnrollmentAssignmentReadTelemetry({
+      context,
+      errorCategory: 'enrollment_distribution_read_persistence',
+      read: () =>
+        Promise.all([findUnassignedEnrollmentIds(), findAllTeacherIds()]),
+    })
   if (teacherIds.length === 0 || unassignedIds.length === 0) {
     logEnrollmentDistributionCompleted(
       context,
@@ -1226,7 +1248,11 @@ export async function distributeEnrollmentsService(userId: string) {
   // Enrich each assignment with the reviewer's course_id so the course namespace
   // is recorded on the assignment row (used for peer-review scoping, ADR 0007 rev 2).
   const uniqueReviewerIds = [...new Set(assignments.map((a) => a.reviewerId))]
-  const courseByReviewer = await findCourseIdsByTeacherIds(uniqueReviewerIds)
+  const courseByReviewer = await withEnrollmentAssignmentReadTelemetry({
+    context,
+    errorCategory: 'enrollment_distribution_read_persistence',
+    read: () => findCourseIdsByTeacherIds(uniqueReviewerIds),
+  })
   const enriched = assignments.map((a) => ({
     ...a,
     courseId: courseByReviewer.get(a.reviewerId) ?? null,
@@ -1275,7 +1301,12 @@ export async function substituteTeacherService(
     startedAt: performance.now(),
   }
 
-  const courseId = await findCourseIdByTeacherId(data.absentTeacherId)
+  const courseId = await withEnrollmentAssignmentReadTelemetry({
+    context,
+    errorCategory: 'enrollment_substitution_read_persistence',
+    fields: { absentTeacherId: data.absentTeacherId },
+    read: () => findCourseIdByTeacherId(data.absentTeacherId),
+  })
   if (!courseId) {
     throw new NotFoundError('Absent teacher has no course assignment', {
       code: 'NOT_FOUND',

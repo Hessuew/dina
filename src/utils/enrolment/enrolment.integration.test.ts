@@ -546,6 +546,67 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
       events.every(({ serialized }) => !serialized.includes('secret')),
     ).toBe(true)
   })
+
+  it('logs distribution and substitution read-preflight failures safely', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const absentTeacherId = await seedProfile({ role: 'teacher' })
+    const distributionError = new Error('distribution read database secret')
+    const substitutionError = new Error('substitution lookup database secret')
+
+    vi.spyOn(
+      enrollmentRepository,
+      'findUnassignedEnrollmentIds',
+    ).mockRejectedValueOnce(distributionError)
+    await expect(distributeEnrollmentsService(adminId)).rejects.toBe(
+      distributionError,
+    )
+
+    vi.spyOn(
+      enrollmentRepository,
+      'findCourseIdByTeacherId',
+    ).mockRejectedValueOnce(substitutionError)
+    await expect(
+      substituteTeacherService(
+        {
+          absentTeacherId,
+          substituteTeacherId: await seedProfile({ role: 'teacher' }),
+        },
+        adminId,
+      ),
+    ).rejects.toBe(substitutionError)
+
+    const events = errorSpy.mock.calls.map(([line]) => {
+      const serialized = String(line)
+      return {
+        event: JSON.parse(serialized) as Record<string, unknown>,
+        serialized,
+      }
+    })
+    expect(events.map(({ event }) => event)).toEqual([
+      expect.objectContaining({
+        event: 'enrollment_distribution_failed',
+        path: 'serverFn:distributeEnrollments',
+        actorId: adminId,
+        status: 'failure',
+        errorCategory: 'enrollment_distribution_read_persistence',
+      }),
+      expect.objectContaining({
+        event: 'enrollment_substitution_failed',
+        path: 'serverFn:substituteTeacher',
+        actorId: adminId,
+        absentTeacherId,
+        status: 'failure',
+        errorCategory: 'enrollment_substitution_read_persistence',
+      }),
+    ])
+    expect(
+      events.every(({ event }) => typeof event.durationMs === 'number'),
+    ).toBe(true)
+    expect(
+      events.every(({ serialized }) => !serialized.includes('database secret')),
+    ).toBe(true)
+  })
 })
 
 const LIST_INPUT = {

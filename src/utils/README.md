@@ -250,7 +250,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     `enrollment_substitution_ended` events with request correlation, actor and
     safe teacher/course identifiers, outcome counters, and duration;
     unexpected persistence failures use stable categories without applicant
-    content or raw database details.
+    content or raw database details. Distribution and substitution
+    read-preflight failures reuse redacted `enrollment_distribution_failed` /
+    `enrollment_substitution_failed` events with stable read-persistence
+    categories, safe actor/teacher identifiers, and original-error
+    preservation.
   - Bulk enrollment grading emits redacted
     `enrollment_bulk_grade_completed` events for preview and execute paths with
     request correlation, actor ID, thresholds, safe outcome counters, and

@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 159
-**Scope:** record the batched Zoom-link owner preflight telemetry slice while
-keeping the evidence-aware roadmap closure auditable.
+**Iteration:** 160
+**Scope:** record the batched enrollment assignment read-preflight telemetry
+slice while keeping the evidence-aware roadmap closure auditable.
 
 ## Final roadmap disposition
 
@@ -67,7 +67,9 @@ shadcn@latest` intentionally.
 - Enrollment distribution and teacher substitution mutations now emit
   structured Better Stack/Cloudflare-ready completion and failure events with
   safe actor/teacher/course identifiers, assignment counters, request ID,
-  status, duration, and stable error categories.
+  status, duration, and stable error categories. Their distribution and
+  substitution read-preflights also emit stable failure categories while
+  preserving original repository errors.
 - Signup and OTP flows now emit the same safe event shape for delivery,
   provisioning, rollback, verification, auto-login, resend, and invitation/
   profile/OTP persistence failure outcomes.
@@ -4268,5 +4270,30 @@ typecheck, static checks, Cloudflare type generation, targeted Prettier
 formatting, `bun run quality:gate` with 1,953 unit tests, and `git diff --check`
 passed. The full build and full integration suite remain intentionally skipped
 for the iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 160 — enrollment assignment read-preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for enrollment assignment administration:
+
+- Distribution preflight reads for unassigned enrollments, teacher IDs, and
+  reviewer-course enrichment now emit `enrollment_distribution_failed` with
+  the stable `enrollment_distribution_read_persistence` category when
+  persistence fails unexpectedly.
+- Teacher-substitution course lookup now emits
+  `enrollment_substitution_failed` with the stable
+  `enrollment_substitution_read_persistence` category before the existing
+  write-failure boundary. Expected missing-course outcomes remain quiet.
+- Events retain request correlation, actor and safe teacher identifiers,
+  status, and duration; applicant data and raw persistence details remain
+  excluded, and original repository errors are preserved.
+
+Validation: the focused enrollment integration file passed 54 tests;
+targeted formatting, typecheck, static checks, Cloudflare type generation,
+`bun run quality:gate` with 1,953 unit tests, and `git diff --check` passed.
+The full build and full integration suite remain intentionally deferred for
+the iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
 dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
 restore evidence remain pending.
