@@ -502,6 +502,7 @@ This folder is primarily where TanStack Start server functions live (via `create
     - `email-campaign.ts`, `service/`, `repository/`: admin-only bulk invitation email campaign server functions, lock handling, and logging. Send-path lock, sender-profile, planning, invitation, enrollment-marking, and message-record persistence failures use redacted structured events with stable categories; provider delivery failures retain their delivery category.
   - `whatsapp/`: Admin-only bulk WhatsApp campaign server functions, lock handling, delivery logging, and provider adapter.
     - Campaign lock inspection and explicit release are authorized in the service layer, so direct callers cannot bypass the Admin boundary. Both operations emit redacted lock-count/release telemetry with stable persistence categories.
+    - Send-path lock lookup, recipient planning, and message-record persistence failures emit redacted failure telemetry with request correlation and stable categories; provider delivery failures retain their delivery category and recipient phone/name/provider details remain excluded.
 
 - **Role-gated route helpers**
   - `admin.ts`: shared admin-only access check for routes (legacy, migrate to authz).

@@ -22,6 +22,7 @@ import {
 } from '@/utils/whatsapp/service/whatsapp.service'
 import { AuthorizationError } from '@/utils/errors'
 import * as whatsappRepository from '@/utils/whatsapp/repository/whatsapp.repository'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -214,6 +215,132 @@ describe('sendWhatsAppCampaignService (integration)', () => {
       errorSpy.mockRestore()
       infoSpy.mockRestore()
     }
+  })
+
+  it('categorizes send lock and planning failures and releases the lock', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const lockError = new Error('private WhatsApp lock connectionString detail')
+    vi.spyOn(
+      whatsappRepository,
+      'checkWhatsAppCampaignLockHeldBy',
+    ).mockRejectedValueOnce(lockError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/whatsapp', {
+          headers: { 'x-request-id': 'whatsapp-send-lock-failure' },
+        }),
+        () =>
+          sendWhatsAppCampaignService({ campaign: 'congratulations' }, adminId),
+      ),
+    ).rejects.toBe(lockError)
+
+    const lockEvent = JSON.parse(
+      String(errorSpy.mock.calls.at(-1)?.[0]),
+    ) as Record<string, unknown>
+    expect(lockEvent).toMatchObject({
+      event: 'whatsapp_campaign_send_failed',
+      path: 'serverFn:send_whatsapp_campaign',
+      requestId: 'whatsapp-send-lock-failure',
+      campaign: 'congratulations',
+      userId: adminId,
+      errorCategory: 'campaign_lock_read',
+      status: 'failure',
+    })
+    expect(String(errorSpy.mock.calls.at(-1)?.[0])).not.toContain(
+      'connectionString detail',
+    )
+
+    errorSpy.mockClear()
+    await previewWhatsAppCampaignService(
+      { campaign: 'congratulations' },
+      adminId,
+    )
+    const planningError = new Error(
+      'private WhatsApp recipient database detail',
+    )
+    vi.spyOn(
+      whatsappRepository,
+      'findEnrollmentRecipientsByCampaign',
+    ).mockRejectedValueOnce(planningError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/whatsapp', {
+          headers: { 'x-request-id': 'whatsapp-send-planning-failure' },
+        }),
+        () =>
+          sendWhatsAppCampaignService({ campaign: 'congratulations' }, adminId),
+      ),
+    ).rejects.toBe(planningError)
+
+    const planningEvent = JSON.parse(
+      String(errorSpy.mock.calls.at(-1)?.[0]),
+    ) as Record<string, unknown>
+    expect(planningEvent).toMatchObject({
+      event: 'whatsapp_campaign_send_failed',
+      path: 'serverFn:send_whatsapp_campaign',
+      requestId: 'whatsapp-send-planning-failure',
+      userId: adminId,
+      errorCategory: 'campaign_send_planning_persistence',
+      status: 'failure',
+    })
+    expect(String(errorSpy.mock.calls.at(-1)?.[0])).not.toContain(
+      'private WhatsApp recipient database detail',
+    )
+    expect(await findLockRows('congratulations')).toHaveLength(0)
+  })
+
+  it('categorizes message-record persistence failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const enrollmentId = await seedEnrollment({
+      status: 'approved',
+      phoneWhatsApp: '+358401234567',
+      preferredName: 'Private recipient',
+    })
+    await previewWhatsAppCampaignService(
+      { campaign: 'congratulations' },
+      adminId,
+    )
+    const recordError = new Error('private WhatsApp message database detail')
+    vi.spyOn(whatsappRepository, 'insertWhatsAppMessage').mockRejectedValueOnce(
+      recordError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/whatsapp', {
+          headers: { 'x-request-id': 'whatsapp-message-record-failure' },
+        }),
+        () =>
+          sendWhatsAppCampaignService({ campaign: 'congratulations' }, adminId),
+      ),
+    ).rejects.toBe(recordError)
+
+    const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+    const event = serialized
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .find(
+        (entry) => entry.event === 'whatsapp_campaign_message_record_failed',
+      )
+    expect(event).toMatchObject({
+      event: 'whatsapp_campaign_message_record_failed',
+      path: 'serverFn:send_whatsapp_campaign',
+      requestId: 'whatsapp-message-record-failure',
+      campaign: 'congratulations',
+      enrollmentId,
+      userId: adminId,
+      errorCategory: 'campaign_message_persistence',
+      status: 'failure',
+      durationMs: expect.any(Number),
+    })
+    expect(serialized.join('\n')).not.toContain(
+      'private WhatsApp message database detail',
+    )
+    expect(serialized.join('\n')).not.toContain('Private recipient')
+    expect(await findLockRows('congratulations')).toHaveLength(0)
   })
 
   it('retries failed sends but dedupes sent ones on re-run', async () => {

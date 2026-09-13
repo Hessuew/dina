@@ -448,6 +448,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `email_campaign_message_record_failed` events. Provider delivery failures
    retain their delivery category; campaign, recipient, invitation, email,
    and provider details remain excluded.
+   Admin WhatsApp campaign sends now emit redacted
+   `whatsapp_campaign_send_failed` events for unexpected lock and
+   recipient-planning persistence failures. Message-record persistence
+   failures use `whatsapp_campaign_message_record_failed`; provider delivery
+   failures retain their delivery category. Campaign, recipient, phone,
+   recipient-name, and provider details remain excluded, and send-path lock
+   failures release their held lock before returning the original error.
    Unexpected Supabase session lookup exceptions now emit redacted
    `auth_session_lookup_failed` events, and persisted-profile lookup failures
    emit `auth_profile_lookup_failed` events with request correlation, safe user

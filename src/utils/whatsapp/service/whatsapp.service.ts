@@ -158,6 +158,47 @@ async function planCampaign(
   return { templateName, plan }
 }
 
+async function planCampaignForSendWithTelemetry(
+  data: SendWhatsAppCampaignInput,
+  userId: string,
+  context: WhatsAppCampaignLogContext,
+): Promise<{ templateName: WhatsAppTemplateName; plan: BulkSendPlan }> {
+  try {
+    return await planCampaign(data)
+  } catch (error) {
+    logWhatsAppCampaignEvent(
+      'error',
+      'whatsapp_campaign_send_failed',
+      context,
+      {
+        errorCategory: 'campaign_send_planning_persistence',
+        userId,
+      },
+    )
+    throw error
+  }
+}
+
+async function requireWhatsAppCampaignLockForSend(
+  data: SendWhatsAppCampaignInput,
+  userId: string,
+  context: WhatsAppCampaignLogContext,
+): Promise<void> {
+  let holdsLock: boolean
+  try {
+    holdsLock = await checkWhatsAppCampaignLockHeldBy(data.campaign, userId)
+  } catch (error) {
+    logWhatsAppCampaignEvent(
+      'error',
+      'whatsapp_campaign_send_failed',
+      context,
+      { errorCategory: 'campaign_lock_read', userId },
+    )
+    throw error
+  }
+  if (!holdsLock) throw new CampaignLockedError()
+}
+
 // Sends one planned message and logs the outcome; a provider failure is
 // recorded as a `failed` row and never aborts the rest of the batch. Only the
 // provider call is caught — a DB insert failure must propagate, otherwise a
@@ -180,15 +221,29 @@ async function sendPlannedMessage(
     errorMessage = error instanceof Error ? error.message : String(error)
   }
   const status: 'sent' | 'failed' = providerMessageId ? 'sent' : 'failed'
-  await insertWhatsAppMessage({
-    enrollmentId: planned.enrollmentId,
-    recipientPhone: planned.e164,
-    templateName,
-    status,
-    providerMessageId: providerMessageId ?? null,
-    errorMessage,
-    sentByUserId: userId,
-  })
+  try {
+    await insertWhatsAppMessage({
+      enrollmentId: planned.enrollmentId,
+      recipientPhone: planned.e164,
+      templateName,
+      status,
+      providerMessageId: providerMessageId ?? null,
+      errorMessage,
+      sentByUserId: userId,
+    })
+  } catch (error) {
+    logWhatsAppCampaignEvent(
+      'error',
+      'whatsapp_campaign_message_record_failed',
+      context,
+      {
+        errorCategory: 'campaign_message_persistence',
+        enrollmentId: planned.enrollmentId,
+        userId,
+      },
+    )
+    throw error
+  }
   logWhatsAppMessageOutcome({
     status,
     planned,
@@ -251,14 +306,16 @@ export async function sendWhatsAppCampaignService(
     startedAt: performance.now(),
   }
   await authz(userId).hasRole('admin')
-  const holdsLock = await checkWhatsAppCampaignLockHeldBy(data.campaign, userId)
-  if (!holdsLock) throw new CampaignLockedError()
-
-  const { templateName, plan } = await planCampaign(data)
+  await requireWhatsAppCampaignLockForSend(data, userId, context)
 
   let sent = 0
   let failed = 0
   try {
+    const { templateName, plan } = await planCampaignForSendWithTelemetry(
+      data,
+      userId,
+      context,
+    )
     for (const [index, planned] of plan.toSend.entries()) {
       if (index > 0) {
         await new Promise((resolve) => setTimeout(resolve, SEND_INTERVAL_MS))
@@ -272,6 +329,18 @@ export async function sendWhatsAppCampaignService(
       if (outcome === 'sent') sent++
       else failed++
     }
+
+    const summary = { sent, failed, skipped: summarizeSkips(plan.skipped) }
+    logWhatsAppCampaignEvent('info', 'whatsapp_campaign_completed', context, {
+      status: failed > 0 ? 'partial_failure' : 'success',
+      userId,
+      sent,
+      failed,
+      skippedAlreadySent: summary.skipped.alreadySent,
+      skippedInvalidRecipients: summary.skipped.invalidPhone,
+      skippedOverCap: summary.skipped.overCap,
+    })
+    return summary
   } finally {
     await releaseWhatsAppCampaignLock(data.campaign, userId).catch(() => {
       logWhatsAppCampaignEvent(
@@ -282,17 +351,5 @@ export async function sendWhatsAppCampaignService(
       )
     })
   }
-
-  const summary = { sent, failed, skipped: summarizeSkips(plan.skipped) }
-  logWhatsAppCampaignEvent('info', 'whatsapp_campaign_completed', context, {
-    status: failed > 0 ? 'partial_failure' : 'success',
-    userId,
-    sent,
-    failed,
-    skippedAlreadySent: summary.skipped.alreadySent,
-    skippedInvalidRecipients: summary.skipped.invalidPhone,
-    skippedOverCap: summary.skipped.overCap,
-  })
-  return summary
 }
 /* v8 ignore end */

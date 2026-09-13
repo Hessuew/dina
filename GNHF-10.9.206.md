@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 174
+**Iteration:** 175
 **Scope:** continue the batched structured-logging rollout while preserving the
 evidence-aware Engineering Roadmap handoff.
 
@@ -4686,3 +4686,31 @@ WhatsApp test files. The full build and full integration suite remain
 intentionally skipped for the iterative telemetry workflow. Hosted Better
 Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
 PostHog verification, and restore evidence remain pending.
+
+## Iteration 175 — WhatsApp campaign send persistence telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for the Admin WhatsApp-campaign send path:
+
+- Unexpected send lock checks and recipient planning failures now emit
+  `whatsapp_campaign_send_failed` with request correlation, campaign, actor ID,
+  duration, and stable persistence categories.
+- Message-row persistence failures now emit
+  `whatsapp_campaign_message_record_failed` with request correlation, campaign,
+  enrollment/actor IDs, duration, and the stable
+  `campaign_message_persistence` category. Provider delivery failures retain
+  `whatsapp_message_delivery` and still remain best-effort per recipient.
+- Send-path planning failures now release the caller's held campaign lock before
+  returning the original repository error. Recipient phone numbers, names,
+  provider details, and raw persistence errors remain outside structured
+  telemetry.
+- Added focused integration regressions for lock lookup, planning, lock release,
+  message-row persistence, request correlation, redaction, and error
+  preservation.
+
+Validation: the focused WhatsApp integration suite and targeted typecheck,
+formatting, static quality, and diff checks are the verification scope for this
+iteration. The full build and full integration suite remain intentionally
+skipped for the iterative telemetry workflow. Hosted Better Stack/Cloudflare
+ingestion, dashboards, alerts, Uptime monitors, source maps, PostHog
+verification, and restore evidence remain pending.
