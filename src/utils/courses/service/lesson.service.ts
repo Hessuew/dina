@@ -291,14 +291,53 @@ export async function getUpcomingLessonsService(userId: string) {
 
 export async function getCalendarEventsService(userId: string) {
   await getUserProfile(userId)
+  const startedAt = performance.now()
 
-  const courseIds = await findAllCourseIds()
-  if (courseIds.length === 0) return { events: [] }
+  try {
+    const courseIds = await findAllCourseIds()
+    if (courseIds.length === 0) {
+      logServerEvent('info', 'course_calendar_events_loaded', {
+        requestId: getRequestId(),
+        path: 'serverFn:getCalendarEvents',
+        status: 'success',
+        durationMs: elapsedMs(startedAt),
+        actorId: userId,
+        courseCount: 0,
+        lessonEventCount: 0,
+        assignmentEventCount: 0,
+        eventCount: 0,
+      })
+      return { events: [] }
+    }
 
-  const [lessonEvents, assignmentEvents] = await Promise.all([
-    findLessonCalendarEvents(courseIds),
-    findAssignmentCalendarEvents(courseIds),
-  ])
+    const [lessonEvents, assignmentEvents] = await Promise.all([
+      findLessonCalendarEvents(courseIds),
+      findAssignmentCalendarEvents(courseIds),
+    ])
+    const events = buildCourseCalendarEvents(lessonEvents, assignmentEvents)
 
-  return { events: buildCourseCalendarEvents(lessonEvents, assignmentEvents) }
+    logServerEvent('info', 'course_calendar_events_loaded', {
+      requestId: getRequestId(),
+      path: 'serverFn:getCalendarEvents',
+      status: 'success',
+      durationMs: elapsedMs(startedAt),
+      actorId: userId,
+      courseCount: courseIds.length,
+      lessonEventCount: lessonEvents.length,
+      assignmentEventCount: assignmentEvents.length,
+      eventCount: events.length,
+    })
+
+    return { events }
+  } catch (error) {
+    logServerEvent('error', 'course_calendar_events_load_failed', {
+      requestId: getRequestId(),
+      path: 'serverFn:getCalendarEvents',
+      status: 'failure',
+      durationMs: elapsedMs(startedAt),
+      actorId: userId,
+      errorCategory: 'course_calendar_read_persistence',
+    })
+    throw error
+  }
 }

@@ -167,7 +167,6 @@ export async function updateCourseTeachersService(
   data: UpdateCourseTeachersInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
   const context: CourseTeacherAssignmentLogContext = {
     actorId: userId,
     courseId: data.courseId,
@@ -177,6 +176,8 @@ export async function updateCourseTeachersService(
   }
 
   try {
+    await authz(userId).hasRole('admin')
+
     const course = await findCourseById(data.courseId)
     if (!course) {
       throw new NotFoundError('Course not found', {

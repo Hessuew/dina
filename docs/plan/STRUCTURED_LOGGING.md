@@ -158,6 +158,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    lesson content, media metadata, teacher payloads, and storage URLs remain
    excluded; expected authorization and not-found outcomes remain outside
    noisy error logs.
+   Student course-calendar reads now emit redacted
+   `course_calendar_events_loaded` / `course_calendar_events_load_failed`
+   events with request correlation, actor ID, safe course/source/event counts,
+   status, and duration. Lesson and assignment content plus raw persistence
+   details remain excluded; unexpected repository failures preserve the
+   original error and use the stable `course_calendar_read_persistence`
+   category.
    The direct Admin course-teacher assignment mutation now emits a redacted
    `course_teachers_updated` event with request correlation, actor/course/
    teacher IDs, status, and duration; unexpected replacement failures use the

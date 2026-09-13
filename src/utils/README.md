@@ -277,6 +277,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     role, safe lesson/media/course counts, status, and duration; expected
     authorization and not-found outcomes remain outside noisy error logs, and
     course content is excluded.
+  - Student course-calendar reads emit redacted
+    `course_calendar_events_loaded` / `course_calendar_events_load_failed`
+    events with request correlation, actor ID, safe course/source/event counts,
+    status, and duration; lesson and assignment content plus raw persistence
+    details remain excluded, and original repository errors are preserved.
   - Dashboard upcoming-lesson reads emit redacted
     `upcoming_lessons_loaded` / `upcoming_lessons_load_failed` events with
     request correlation, actor ID, safe lesson counts, status, duration, and

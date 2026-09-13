@@ -1090,6 +1090,103 @@ describe('getUpcomingLessonsService (integration)', () => {
 })
 
 describe('getCalendarEventsService (integration)', () => {
+  it('logs safe read counts and request correlation', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'student' })
+    const courseId = await seedCourse({ title: 'Private course calendar' })
+    const lessonId = await seedLesson({
+      courseId,
+      isPublished: true,
+      scheduledTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    })
+    await seedAssignment({ lessonId, status: 'published' })
+
+    await withObservabilityRequest(
+      new Request('https://christ-dina.org/course-calendar', {
+        headers: { 'x-request-id': 'course-calendar-read' },
+      }),
+      () => getCalendarEventsService(userId),
+    )
+
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('Private course calendar')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'course_calendar_events_loaded',
+      path: 'serverFn:getCalendarEvents',
+      requestId: 'course-calendar-read',
+      actorId: userId,
+      courseCount: 1,
+      lessonEventCount: 1,
+      assignmentEventCount: 1,
+      eventCount: 2,
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
+  })
+
+  it.each([
+    {
+      name: 'course ID read',
+      category: 'course_calendar_read_persistence',
+      mock: (error: Error) =>
+        vi
+          .spyOn(coursesRepository, 'findAllCourseIds')
+          .mockRejectedValueOnce(error),
+      seedCourse: false,
+    },
+    {
+      name: 'lesson calendar read',
+      category: 'course_calendar_read_persistence',
+      mock: (error: Error) =>
+        vi
+          .spyOn(coursesRepository, 'findLessonCalendarEvents')
+          .mockRejectedValueOnce(error),
+      seedCourse: true,
+    },
+    {
+      name: 'assignment calendar read',
+      category: 'course_calendar_read_persistence',
+      mock: (error: Error) =>
+        vi
+          .spyOn(coursesRepository, 'findAssignmentCalendarEvents')
+          .mockRejectedValueOnce(error),
+      seedCourse: true,
+    },
+  ])(
+    'logs $name failures without raw persistence details',
+    async ({ category, mock, seedCourse: shouldSeedCourse }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const userId = await seedProfile({ role: 'student' })
+      if (shouldSeedCourse) await seedCourse()
+      const repositoryError = new Error(
+        `${category} connectionString=secret; title=private`,
+      )
+      mock(repositoryError)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/course-calendar', {
+            headers: { 'x-request-id': `course-calendar-${category}` },
+          }),
+          () => getCalendarEventsService(userId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('title=private')
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'course_calendar_events_load_failed',
+        path: 'serverFn:getCalendarEvents',
+        requestId: `course-calendar-${category}`,
+        actorId: userId,
+        status: 'failure',
+        errorCategory: category,
+        durationMs: expect.any(Number),
+      })
+    },
+  )
+
   it('merges lessons and assignments and drops lessons without a schedule', async () => {
     const userId = await seedProfile({ role: 'student' })
     const courseId = await seedCourse()

@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 165
-**Scope:** finalize the evidence-aware Engineering Roadmap handoff after the
-batched root-auth and course-teacher telemetry slice.
+**Iteration:** 166
+**Scope:** continue the batched structured-logging rollout while preserving the
+evidence-aware Engineering Roadmap handoff.
 
 ## Final roadmap disposition
 
@@ -4436,3 +4436,31 @@ The live Notion Engineering Roadmap was synchronized with this final audit.
 Validation for this documentation-only closeout is targeted Markdown
 formatting, `bun run docs:notion-check --json`, and `git diff --check`; the full
 build and full integration suite remain intentionally skipped.
+
+## Iteration 166 — course calendar and mutation preflight telemetry
+
+This iteration completed another batched repository-owned structured-logging
+slice for course workflows:
+
+- Student course-calendar reads now emit redacted
+  `course_calendar_events_loaded` / `course_calendar_events_load_failed`
+  events across course-ID, lesson-calendar, and assignment-calendar reads.
+  Events retain request correlation, actor ID, safe source/event counts,
+  status, and duration; lesson and assignment content plus raw persistence
+  details remain excluded, and original repository errors are preserved.
+- Course create, update, delete, and Admin course-teacher assignment telemetry
+  now remains active through profile, authorization, course, and teacher
+  preflight reads. Expected authorization, validation, conflict, and not-found
+  outcomes remain quiet; unexpected failures retain stable persistence
+  categories and original errors.
+- Added focused integration coverage for calendar success/failure outcomes,
+  request correlation, safe counts, redaction, and error preservation.
+
+Validation: the six focused course-calendar integration tests passed and
+targeted Prettier formatting passed. The broader course integration file ran
+66 of 67 tests; its existing thumbnail-signing assertion failed because the
+storage mock returned no signed URL, while the new calendar tests passed. The
+full build and full integration suite remain intentionally skipped for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.

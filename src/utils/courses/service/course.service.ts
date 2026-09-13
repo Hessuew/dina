@@ -353,24 +353,24 @@ export async function createCourseService(
     actorId: userId,
     startedAt: performance.now(),
   }
-  const profile = await getUserProfile(userId)
-  if (profile.role !== 'admin') {
-    throw new AuthorizationError('Only admins can create courses', {
-      code: 'ROLE_REQUIRED',
-      internalMessage: 'Non-admin attempted to create course',
-      details: { role: profile.role },
-    })
-  }
-
-  const teacherIds = resolveOptionalTeacherPair(
-    data.teacher1Id,
-    data.teacher2Id,
-  )
-  if (teacherIds) {
-    await validateNewCourseTeacherPair(...teacherIds)
-  }
-
   try {
+    const profile = await getUserProfile(userId)
+    if (profile.role !== 'admin') {
+      throw new AuthorizationError('Only admins can create courses', {
+        code: 'ROLE_REQUIRED',
+        internalMessage: 'Non-admin attempted to create course',
+        details: { role: profile.role },
+      })
+    }
+
+    const teacherIds = resolveOptionalTeacherPair(
+      data.teacher1Id,
+      data.teacher2Id,
+    )
+    if (teacherIds) {
+      await validateNewCourseTeacherPair(...teacherIds)
+    }
+
     const course = await insertCourse(
       {
         title: data.title,
@@ -416,12 +416,12 @@ export async function updateCourseService(
     courseId: data.courseId,
     startedAt: performance.now(),
   }
-  const isUserAdmin = await authz(userId).isAdmin()
-  if (!isUserAdmin) {
-    await authz(userId).perform('editCourse').on('course', data.courseId)
-  }
-
   try {
+    const isUserAdmin = await authz(userId).isAdmin()
+    if (!isUserAdmin) {
+      await authz(userId).perform('editCourse').on('course', data.courseId)
+    }
+
     const course = await updateCourseById(data.courseId, {
       title: data.title,
       description: data.description,
@@ -478,12 +478,12 @@ export async function deleteCourseService(
     courseId: data.courseId,
     startedAt: performance.now(),
   }
-  const isUserAdmin = await authz(userId).isAdmin()
-  if (!isUserAdmin) {
-    await authz(userId).perform('deleteCourse').on('course', data.courseId)
-  }
-
   try {
+    const isUserAdmin = await authz(userId).isAdmin()
+    if (!isUserAdmin) {
+      await authz(userId).perform('deleteCourse').on('course', data.courseId)
+    }
+
     const course = await findCourseById(data.courseId)
     if (!course) {
       throw new NotFoundError('Course not found', {
