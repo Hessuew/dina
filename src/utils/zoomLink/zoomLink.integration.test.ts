@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getDb } from 'test/integration/db'
 import type { CreateZoomLinkInput } from '@/schemas/zoomLink.schema'
+import type { AuthorizationService } from '@/utils/authz/types'
+import {
+  DefaultAuthorizationService,
+  setAuthorizationService,
+} from '@/utils/authz'
 import {
   createZoomLinkService,
   deleteZoomLinkService,
@@ -497,5 +502,88 @@ describe('zoomLink service (integration)', () => {
     await expect(
       createZoomLinkService(makeGeneralInput(), teacherId),
     ).rejects.toBeInstanceOf(AuthorizationError)
+  })
+})
+
+describe('Zoom-link authorization preflight telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    setAuthorizationService(new DefaultAuthorizationService())
+  })
+
+  it.each([
+    {
+      name: 'creation',
+      eventPath: 'serverFn:createZoomLink',
+      run: async (actorId: string) => {
+        await createZoomLinkService(makeGeneralInput(), actorId)
+      },
+    },
+    {
+      name: 'update',
+      eventPath: 'serverFn:updateZoomLink',
+      run: async (actorId: string) => {
+        await updateZoomLinkService(
+          { ...makeGeneralInput(), zoomLinkId: 'zoom-link-id' },
+          actorId,
+        )
+      },
+    },
+    {
+      name: 'deletion',
+      eventPath: 'serverFn:deleteZoomLink',
+      run: async (actorId: string) => {
+        await deleteZoomLinkService({ zoomLinkId: 'zoom-link-id' }, actorId)
+      },
+    },
+  ])(
+    'logs unexpected Admin-role persistence failures for $name without raw details',
+    async ({ eventPath, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const repositoryError = new Error(
+        'zoom role connectionString=secret; email=zoom-admin@test.dev',
+      )
+      setAuthorizationService({
+        hasRole: vi.fn().mockRejectedValue(repositoryError),
+      } as unknown as AuthorizationService)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/zoom-links', {
+            headers: { 'x-request-id': `zoom-auth-${eventPath}` },
+          }),
+          () => run('zoom-auth-user'),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const event = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === 'zoom_link_mutation_failed')
+      expect(event).toMatchObject({
+        event: 'zoom_link_mutation_failed',
+        path: eventPath,
+        requestId: `zoom-auth-${eventPath}`,
+        actorId: 'zoom-auth-user',
+        status: 'failure',
+        errorCategory: 'zoom_link_authorization_persistence',
+        durationMs: expect.any(Number),
+      })
+      expect(serialized.join('\n')).not.toContain('connectionString')
+      expect(serialized.join('\n')).not.toContain('zoom-admin@test.dev')
+    },
+  )
+
+  it('keeps expected Admin-role denials out of operation telemetry', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const denial = new AuthorizationError('admin access required')
+    setAuthorizationService({
+      hasRole: vi.fn().mockRejectedValue(denial),
+    } as unknown as AuthorizationService)
+
+    await expect(
+      createZoomLinkService(makeGeneralInput(), 'zoom-denied-user'),
+    ).rejects.toBe(denial)
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })

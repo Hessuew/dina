@@ -4820,3 +4820,30 @@ full integration suite remain intentionally skipped for the iterative telemetry
 workflow. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime
 monitors, source maps, PostHog verification, and restore evidence remain
 pending.
+
+## Iteration 180 — exam and Zoom authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for three previously uncovered Admin/teacher authorization boundaries:
+
+- Exam creation now initializes its mutation telemetry before the teacher/admin
+  role check. Unexpected role-read persistence failures emit the redacted
+  `exam_create_failed` event with request correlation, actor ID, duration, and
+  the stable `exam_authorization_persistence` category; expected denials remain
+  quiet and preserve their original error.
+- Zoom-link creation, update, and deletion now initialize mutation telemetry
+  before their Admin role checks. Unexpected role-read persistence failures
+  emit `zoom_link_mutation_failed` with the stable
+  `zoom_link_authorization_persistence` category, safe actor/link metadata,
+  request correlation, and duration; credentials and raw details remain
+  excluded.
+- Added focused integration coverage for all four authorization boundaries,
+  including raw-detail exclusion, request correlation, duration, and expected
+  denial silence.
+
+Validation: focused exam and Zoom-link integration tests passed all 45 tests;
+targeted formatting, typecheck, static quality, and `git diff --check` remain
+the verification scope for this iterative telemetry workflow. The full build
+and full integration suite remain intentionally skipped. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.

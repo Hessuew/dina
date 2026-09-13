@@ -67,6 +67,22 @@ function shouldLogZoomLinkFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
 }
 
+async function requireZoomLinkAdmin(
+  userId: string,
+  context: ZoomLinkMutationContext,
+): Promise<void> {
+  try {
+    await authz(userId).hasRole('admin')
+  } catch (error) {
+    if (shouldLogZoomLinkFailure(error)) {
+      logZoomLinkMutation('error', 'zoom_link_mutation_failed', context, {
+        errorCategory: 'zoom_link_authorization_persistence',
+      })
+    }
+    throw error
+  }
+}
+
 function logZoomLinkRead(
   level: LogLevel,
   event: string,
@@ -168,12 +184,12 @@ export async function createZoomLinkService(
   data: CreateZoomLinkInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
   const context: ZoomLinkMutationContext = {
     action: 'createZoomLink',
     actorId: userId,
     startedAt: performance.now(),
   }
+  await requireZoomLinkAdmin(userId, context)
 
   try {
     await validateTeacherOwner(data)
@@ -194,13 +210,13 @@ export async function updateZoomLinkService(
   data: UpdateZoomLinkInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
   const context: ZoomLinkMutationContext = {
     action: 'updateZoomLink',
     actorId: userId,
     zoomLinkId: data.zoomLinkId,
     startedAt: performance.now(),
   }
+  await requireZoomLinkAdmin(userId, context)
 
   try {
     await validateTeacherOwner(data)
@@ -225,13 +241,13 @@ export async function deleteZoomLinkService(
   data: DeleteZoomLinkInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
   const context: ZoomLinkMutationContext = {
     action: 'deleteZoomLink',
     actorId: userId,
     zoomLinkId: data.zoomLinkId,
     startedAt: performance.now(),
   }
+  await requireZoomLinkAdmin(userId, context)
 
   try {
     await deleteZoomLinkById(data.zoomLinkId)

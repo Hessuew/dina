@@ -2,6 +2,11 @@ import { randomUUID } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { getDb } from 'test/integration/db'
+import type { AuthorizationService } from '@/utils/authz/types'
+import {
+  DefaultAuthorizationService,
+  setAuthorizationService,
+} from '@/utils/authz'
 import {
   seedExam,
   seedExamAttempt,
@@ -506,6 +511,72 @@ describe('exam reads (integration)', () => {
       errorCategory: 'exam_read_persistence',
     })
     expect(line).not.toContain('exam prompt database secret')
+  })
+})
+
+describe('exam authoring authorization preflight telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    setAuthorizationService(new DefaultAuthorizationService())
+  })
+
+  it('logs unexpected author-role persistence failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const repositoryError = new Error(
+      'exam role connectionString=secret; email=exam-author@test.dev',
+    )
+    setAuthorizationService({
+      getRole: vi.fn().mockRejectedValue(repositoryError),
+    } as unknown as AuthorizationService)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/exams', {
+          headers: { 'x-request-id': 'exam-author-role-failure' },
+        }),
+        () =>
+          createExamService(
+            {
+              title: 'Private exam title',
+              opensAt: new Date(Date.now() - 60_000).toISOString(),
+              closesAt: new Date(Date.now() + HOUR_MS).toISOString(),
+            },
+            randomUUID(),
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'exam_create_failed',
+      path: 'serverFn:createExam',
+      requestId: 'exam-author-role-failure',
+      status: 'failure',
+      errorCategory: 'exam_authorization_persistence',
+      durationMs: expect.any(Number),
+    })
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('exam-author@test.dev')
+  })
+
+  it('keeps expected author-role denials out of operation telemetry', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const denial = new AuthorizationError('teacher or admin access required')
+    setAuthorizationService({
+      getRole: vi.fn().mockRejectedValue(denial),
+    } as unknown as AuthorizationService)
+
+    await expect(
+      createExamService(
+        {
+          title: 'Denied exam',
+          opensAt: new Date(Date.now() - 60_000).toISOString(),
+          closesAt: new Date(Date.now() + HOUR_MS).toISOString(),
+        },
+        randomUUID(),
+      ),
+    ).rejects.toBe(denial)
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })
 

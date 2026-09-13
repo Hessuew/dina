@@ -238,6 +238,22 @@ async function assertStudent(userId: string): Promise<void> {
   await authz(userId).hasRole('student')
 }
 
+async function requireExamAuthor(
+  userId: string,
+  context: ExamMutationLogContext,
+): Promise<void> {
+  try {
+    await assertTeacherOrAdmin(userId)
+  } catch (error) {
+    if (shouldLogExamFailure(error)) {
+      logExamMutationEvent('error', 'exam_create_failed', context, {
+        errorCategory: 'exam_authorization_persistence',
+      })
+    }
+    throw error
+  }
+}
+
 /** Loads an exam and asserts the caller may edit it: creator or admin, draft only (or admin when published). */
 async function loadEditableExam(
   examId: string,
@@ -266,7 +282,7 @@ export async function createExamService(
     actorId: userId,
     startedAt: performance.now(),
   }
-  await assertTeacherOrAdmin(userId)
+  await requireExamAuthor(userId, context)
   const opensAt = new Date(data.opensAt)
   const closesAt = new Date(data.closesAt)
   if (closesAt.getTime() <= opensAt.getTime()) {

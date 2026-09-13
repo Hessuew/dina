@@ -248,7 +248,10 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    with request correlation, actor/link IDs, section, teacher ownership,
    status, and duration. Zoom URLs, meeting IDs, passcodes, titles, and raw
    persistence details remain excluded; unexpected repository failures use
-   the stable `zoom_link_persistence` category.
+   the stable `zoom_link_persistence` category. Unexpected Admin-role
+   preflight persistence failures reuse `zoom_link_mutation_failed` with the
+   stable `zoom_link_authorization_persistence` category; expected denials
+   remain quiet.
    Zoom-link list reads now emit redacted `zoom_links_loaded` /
    `zoom_links_load_failed` events with request correlation, actor ID, viewer
    role, safe link and teacher-option counts, status, and duration. Titles,
@@ -277,7 +280,9 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    correlation, actor/exam IDs, exam status, safe question counters, and
    duration. Exam titles, dates, question prompts, option labels, and raw
    persistence details remain excluded; unexpected failures use the stable
-   `exam_persistence` category.
+   `exam_persistence` category. Unexpected teacher/admin authorization
+   preflight failures on creation reuse `exam_create_failed` with the stable
+   `exam_authorization_persistence` category; expected denials remain quiet.
    Student exam-taking start/resume and answer-save mutations now emit
    redacted `exam_attempt_started`, `exam_attempt_resumed`, and
    `exam_answer_saved` events with request correlation, server-function path,
@@ -512,7 +517,7 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `media_persistence` category while preserving the original error.
 4. Keep expected user-input failures out of noisy error logs.
 
-The repository migration is complete through Iteration 177. Future code
+The repository migration is complete through Iteration 180. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining

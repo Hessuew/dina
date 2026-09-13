@@ -374,8 +374,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     duration; teacher-owner preflight failures reuse redacted
     `zoom_link_mutation_failed` telemetry with the stable
     `zoom_link_persistence` category. Credentials, meeting IDs, URLs, titles,
-    and raw persistence details remain excluded; expected validation outcomes
-    remain quiet.
+    and raw persistence details remain excluded; unexpected Admin-role
+    preflight failures reuse the same event with the stable
+    `zoom_link_authorization_persistence` category. Expected authorization and
+    validation outcomes remain quiet.
   - Media-library create, update, and delete mutations emit redacted
     `media_created`, `media_updated`, and `media_deleted` events with request
     correlation, actor/media IDs, media kind, course ID where applicable,
@@ -402,7 +404,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     `exam_read_failed` events with request correlation, actor/exam/attempt IDs,
     role, safe result counts, status, and duration. Exam titles, question
     prompts, option labels, answers, scores, and raw persistence details remain
-    excluded; unexpected failures use `exam_read_persistence`.
+    excluded; unexpected failures use `exam_read_persistence`. Unexpected
+    teacher/admin authorization preflight failures for exam creation reuse
+    `exam_create_failed` with the stable `exam_authorization_persistence`
+    category; expected denials remain quiet.
   - Discipleship board and student-view reads emit redacted
     `discipleship_read_loaded` / `discipleship_read_failed` events with request
     correlation, actor/teacher IDs, scope, safe counts, view kind, status, and
