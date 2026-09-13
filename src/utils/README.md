@@ -344,7 +344,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     events with request correlation, student/attempt/exam IDs, attempt or
     question status, question type, and duration. Selected option IDs, answer
     text, and raw persistence details remain excluded; unexpected failures use
-    stable `exam_attempt_persistence` or `exam_answer_persistence` categories.
+    stable `exam_attempt_persistence` or `exam_answer_persistence` categories,
+    including exam and attempt preflight lookup failures.
   - Teacher exam grading emits redacted `exam_open_answer_graded` and
     `exam_grading_finalized` events with request correlation,
     grader/attempt/exam/question metadata, status, and duration. Awarded

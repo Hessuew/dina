@@ -33,6 +33,7 @@ import {
   submitAttemptService,
 } from '@/utils/exam/service/exam.service'
 import * as examRepository from '@/utils/exam/repository/exam.repository'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 import {
   AuthorizationError,
   ConflictError,
@@ -595,6 +596,39 @@ describe('exam taking (integration)', () => {
     ).rejects.toThrow(AuthorizationError)
   })
 
+  it('logs exam lookup failures before starting an attempt', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
+    const { examId } = await seedPublishedMcExam(teacherId)
+    const repositoryError = new Error('exam lookup database secret')
+    vi.spyOn(examRepository, 'findExamById').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/exams/start', {
+          headers: { 'x-request-id': 'exam-start-preflight' },
+        }),
+        () => startAttemptService({ examId }, studentId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const serialized = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(serialized)).toMatchObject({
+      event: 'exam_attempt_start_failed',
+      path: 'serverFn:startExamAttempt',
+      requestId: 'exam-start-preflight',
+      studentId,
+      examId,
+      status: 'failure',
+      errorCategory: 'exam_attempt_persistence',
+      durationMs: expect.any(Number),
+    })
+    expect(serialized).not.toContain('exam lookup database secret')
+  })
+
   it('upserts autosaved answers and never leaks isCorrect to students', async () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const studentId = await seedProfile({ role: 'student' })
@@ -851,6 +885,37 @@ describe('exam taking (integration)', () => {
       true,
     )
     expect(events.every((event) => !('textAnswer' in event))).toBe(true)
+  })
+
+  it('logs attempt lookup failures before submitting', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const studentId = await seedProfile({ role: 'student' })
+    const attemptId = randomUUID()
+    const repositoryError = new Error('attempt lookup database secret')
+    vi.spyOn(examRepository, 'findAttemptById').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/exams/submit', {
+          headers: { 'x-request-id': 'exam-submit-preflight' },
+        }),
+        () => submitExamAndReturn(attemptId, studentId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const serialized = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(serialized)).toMatchObject({
+      event: 'exam_attempt_submission_failed',
+      path: 'serverFn:submitExamAttempt',
+      requestId: 'exam-submit-preflight',
+      studentId,
+      attemptId,
+      status: 'failure',
+      errorCategory: 'exam_attempt_persistence',
+    })
+    expect(serialized).not.toContain('attempt lookup database secret')
   })
 })
 

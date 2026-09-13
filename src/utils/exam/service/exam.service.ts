@@ -628,11 +628,6 @@ export async function startAttemptService(
   data: StartAttemptInput,
   userId: string,
 ): Promise<TakingPayload> {
-  await assertStudent(userId)
-  const exam = await findExamById(data.examId)
-  if (!exam || exam.status !== 'published') {
-    throw new NotFoundError('Exam not found')
-  }
   const context: ExamAttemptLogContext = {
     action: 'startExamAttempt',
     studentId: userId,
@@ -640,6 +635,11 @@ export async function startAttemptService(
     startedAt: performance.now(),
   }
   try {
+    await assertStudent(userId)
+    const exam = await findExamById(data.examId)
+    if (!exam || exam.status !== 'published') {
+      throw new NotFoundError('Exam not found')
+    }
     const existing = await findAttemptByExamAndStudent(data.examId, userId)
     if (existing) {
       context.attemptId = existing.id
@@ -757,9 +757,21 @@ export async function submitAttemptService(
   const context: ExamAttemptLogContext = {
     action: 'submitExamAttempt',
     studentId: userId,
+    attemptId: data.attemptId,
     startedAt: performance.now(),
   }
-  const attempt = await loadOwnAttempt(data.attemptId, userId)
+  let attempt: ExamAttemptRow
+  try {
+    attempt = await loadOwnAttempt(data.attemptId, userId)
+  } catch (error) {
+    if (shouldLogExamFailure(error)) {
+      logExamAttemptEvent('error', 'exam_attempt_submission_failed', context, {
+        errorCategory: 'exam_attempt_persistence',
+      })
+    }
+    throw error
+  }
+
   context.attemptId = attempt.id
   context.examId = attempt.examId
   if (attempt.status !== 'in_progress') {

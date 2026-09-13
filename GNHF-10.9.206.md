@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 160
-**Scope:** record the batched enrollment assignment read-preflight telemetry
-slice while keeping the evidence-aware roadmap closure auditable.
+**Iteration:** 161
+**Scope:** record the batched exam-taking read-preflight telemetry slice while
+keeping the evidence-aware roadmap closure auditable.
 
 ## Final roadmap disposition
 
@@ -301,7 +301,8 @@ shadcn@latest` intentionally.
   IDs, attempt/question status, question type, and duration. Selected option
   IDs, answer text, and raw persistence details remain excluded; unexpected
   failures use stable `exam_attempt_persistence` or
-  `exam_answer_persistence` categories.
+  `exam_answer_persistence` categories, including exam and attempt preflight
+  lookup failures.
 - The optional PostHog browser foundation now initializes from the root route
   when `VITE_POSTHOG_KEY` is configured. It identifies users by stable ID and
   role only, allow-lists the initial LMS journey event names, disables
@@ -4292,6 +4293,32 @@ slice for enrollment assignment administration:
 
 Validation: the focused enrollment integration file passed 54 tests;
 targeted formatting, typecheck, static checks, Cloudflare type generation,
+`bun run quality:gate` with 1,953 unit tests, and `git diff --check` passed.
+The full build and full integration suite remain intentionally deferred for
+the iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 161 — exam-taking read-preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for student exam taking:
+
+- Exam start now initializes its attempt telemetry before student authorization
+  and the published-exam lookup, so unexpected preflight persistence failures
+  emit `exam_attempt_start_failed` with the stable
+  `exam_attempt_persistence` category.
+- Exam submission now places the own-attempt lookup in its own failure boundary,
+  so unexpected lookup persistence failures emit
+  `exam_attempt_submission_failed` with the same stable category while keeping
+  the finalization failure path intact.
+- Events retain request correlation, student/attempt/exam identifiers where
+  available, status, and duration; exam content, answer values, and raw
+  persistence details remain excluded. Original repository errors are
+  preserved, and expected authorization/not-found outcomes remain quiet.
+
+Validation: the focused exam integration file passed 23 tests; targeted
+formatting, typecheck, static checks, Cloudflare type generation,
 `bun run quality:gate` with 1,953 unit tests, and `git diff --check` passed.
 The full build and full integration suite remain intentionally deferred for
 the iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
