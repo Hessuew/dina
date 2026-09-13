@@ -97,7 +97,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Avatar and course-thumbnail upload actions emit request-correlated
     `image_upload_completed` / `image_upload_failed` events; signed-URL and
     old-object cleanup failures use stable warning categories without storage
-    paths or provider messages.
+    paths or provider messages. Unexpected course authorization persistence
+    failures use the stable `course_thumbnail_authorization_persistence`
+    category; expected denials remain quiet.
   - Student exam submission emits redacted
     `exam_attempt_submitted` / `exam_attempt_submission_ignored` events with
     request correlation, attempt/exam/student IDs, status, duration, and
@@ -301,7 +303,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     `course_created`, `course_updated`, and `course_deleted` events with
     request correlation, actor/course IDs, status, duration, and publication
     state where relevant; unexpected persistence failures use the stable
-    `course_persistence` category while expected conflicts and validation
+    `course_persistence` category, while authorization preflight failures use
+    `course_authorization_persistence`; expected conflicts and validation
     outcomes remain outside noisy error logs.
   - Course list and detail reads emit redacted `course_read_loaded` and
     `course_read_failed` events with request correlation, actor/course IDs,
@@ -324,8 +327,10 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Direct Admin course-teacher assignment emits redacted
     `course_teachers_updated` telemetry with request correlation,
     actor/course/teacher IDs, status, and duration; unexpected replacement
-    failures use `course_teacher_assignment_persistence` without raw database
-    details.
+    failures use `course_teacher_assignment_persistence`, while Admin-role
+    preflight failures use
+    `course_teacher_assignment_authorization_persistence`; raw database
+    details remain excluded and expected denials stay quiet.
   - Authenticated course-teacher list reads emit redacted
     `course_teachers_loaded` / `course_teachers_load_failed` events with
     request correlation, actor/course IDs, safe teacher counts, status,

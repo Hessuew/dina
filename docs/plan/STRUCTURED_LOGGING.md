@@ -163,8 +163,10 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    and `course_deleted` events with request correlation, server-function path,
    actor/course IDs, publication status where relevant, and duration;
    unexpected persistence failures use the stable `course_persistence`
-   category while expected authorization, validation, and teacher-conflict
-   outcomes remain out of noisy error logs.
+   category. Course CRUD authorization/profile preflights reuse the matching
+   operation failure event with the stable `course_authorization_persistence`
+   category; expected authorization, validation, and teacher-conflict outcomes
+   remain out of noisy error logs.
    Course list and detail reads now emit redacted `course_read_loaded` and
    `course_read_failed` events with request correlation, actor/course IDs,
    role, safe course/lesson/media counts, status, and duration. Course titles,
@@ -181,7 +183,9 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    The direct Admin course-teacher assignment mutation now emits a redacted
    `course_teachers_updated` event with request correlation, actor/course/
    teacher IDs, status, and duration; unexpected replacement failures use the
-   stable `course_teacher_assignment_persistence` category while expected
+   stable `course_teacher_assignment_persistence` category. Unexpected
+   Admin-role preflight failures reuse the same event with the stable
+   `course_teacher_assignment_authorization_persistence` category; expected
    authorization, validation, conflict, and not-found outcomes remain out of
    noisy error logs.
    Authenticated course-teacher list reads now emit redacted
@@ -541,7 +545,12 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    events with stable authorization-persistence categories while expected
    denials remain quiet.
 
-The repository migration is complete through Iteration 186. Future code
+   Course thumbnail signed-upload requests and completion now keep course
+   authorization preflights inside `image_upload_failed` telemetry with the
+   stable `course_thumbnail_authorization_persistence` category; expected
+   denials remain quiet and storage paths/provider details stay excluded.
+
+The repository migration is complete through Iteration 187. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining

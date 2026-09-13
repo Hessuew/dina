@@ -105,6 +105,7 @@ type CourseMutationLogContext = {
   action: CourseMutationAction
   actorId: string
   courseId?: string
+  failureEvent: string
   startedAt: number
 }
 
@@ -127,6 +128,50 @@ function logCourseMutationEvent(
 
 function shouldLogCourseFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
+}
+
+async function withCourseAuthorizationTelemetry<T>(
+  context: CourseMutationLogContext,
+  authorize: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await authorize()
+  } catch (error) {
+    if (shouldLogCourseFailure(error)) {
+      logCourseMutationEvent('error', context.failureEvent, context, {
+        errorCategory: 'course_authorization_persistence',
+      })
+    }
+    throw error
+  }
+}
+
+function requireCourseAdmin(
+  profile: Awaited<ReturnType<typeof getUserProfile>>,
+): void {
+  if (profile.role === 'admin') return
+  throw new AuthorizationError('Only admins can create courses', {
+    code: 'ROLE_REQUIRED',
+    internalMessage: 'Non-admin attempted to create course',
+    details: { role: profile.role },
+  })
+}
+
+async function authorizeCourseMutation(
+  context: CourseMutationLogContext,
+  userId: string,
+  courseId: string,
+  action: 'editCourse' | 'deleteCourse',
+): Promise<boolean> {
+  const isUserAdmin = await withCourseAuthorizationTelemetry(context, () =>
+    authz(userId).isAdmin(),
+  )
+  if (!isUserAdmin) {
+    await withCourseAuthorizationTelemetry(context, () =>
+      authz(userId).perform(action).on('course', courseId),
+    )
+  }
+  return isUserAdmin
 }
 
 async function signCourseAssets<T extends CourseAssetRow>(
@@ -158,6 +203,17 @@ function courseThumbnailPath(value: string | null | undefined): string | null {
   const path = extractPrivateStoragePath(value, 'course-thumbnails')
   if (!path) throw new ValidationError('Invalid course thumbnail path')
   return path
+}
+
+function buildCourseUpdateValues(data: UpdateCourseInput) {
+  return {
+    title: data.title,
+    description: data.description,
+    thumbnailUrl: courseThumbnailPath(data.thumbnailUrl),
+    isPublished: data.isPublished,
+    orderIndex: data.orderIndex,
+    updatedAt: new Date(),
+  }
 }
 
 function restrictCourseToPublishedContent(course: CourseDetail): CourseDetail {
@@ -350,17 +406,14 @@ export async function createCourseService(
   const context: CourseMutationLogContext = {
     action: 'createCourse',
     actorId: userId,
+    failureEvent: 'course_create_failed',
     startedAt: performance.now(),
   }
+  const profile = await withCourseAuthorizationTelemetry(context, () =>
+    getUserProfile(userId),
+  )
   try {
-    const profile = await getUserProfile(userId)
-    if (profile.role !== 'admin') {
-      throw new AuthorizationError('Only admins can create courses', {
-        code: 'ROLE_REQUIRED',
-        internalMessage: 'Non-admin attempted to create course',
-        details: { role: profile.role },
-      })
-    }
+    requireCourseAdmin(profile)
 
     const teacherIds = resolveOptionalTeacherPair(
       data.teacher1Id,
@@ -413,22 +466,20 @@ export async function updateCourseService(
     action: 'updateCourse',
     actorId: userId,
     courseId: data.courseId,
+    failureEvent: 'course_update_failed',
     startedAt: performance.now(),
   }
+  const isUserAdmin = await authorizeCourseMutation(
+    context,
+    userId,
+    data.courseId,
+    'editCourse',
+  )
   try {
-    const isUserAdmin = await authz(userId).isAdmin()
-    if (!isUserAdmin) {
-      await authz(userId).perform('editCourse').on('course', data.courseId)
-    }
-
-    const course = await updateCourseById(data.courseId, {
-      title: data.title,
-      description: data.description,
-      thumbnailUrl: courseThumbnailPath(data.thumbnailUrl),
-      isPublished: data.isPublished,
-      orderIndex: data.orderIndex,
-      updatedAt: new Date(),
-    })
+    const course = await updateCourseById(
+      data.courseId,
+      buildCourseUpdateValues(data),
+    )
 
     if (isUserAdmin) {
       if (data.teacher1Id && data.teacher2Id) {
@@ -475,14 +526,16 @@ export async function deleteCourseService(
     action: 'deleteCourse',
     actorId: userId,
     courseId: data.courseId,
+    failureEvent: 'course_delete_failed',
     startedAt: performance.now(),
   }
+  const isUserAdmin = await authorizeCourseMutation(
+    context,
+    userId,
+    data.courseId,
+    'deleteCourse',
+  )
   try {
-    const isUserAdmin = await authz(userId).isAdmin()
-    if (!isUserAdmin) {
-      await authz(userId).perform('deleteCourse').on('course', data.courseId)
-    }
-
     const course = await findCourseById(data.courseId)
     if (!course) {
       throw new NotFoundError('Course not found', {

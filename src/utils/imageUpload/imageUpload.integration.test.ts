@@ -3,12 +3,19 @@ import { eq } from 'drizzle-orm'
 import { getDb } from '../../../test/integration/db'
 import { seedCourse, seedProfile } from '../../../test/integration/seed'
 import { resetCreateSignedUrlsMock } from '../../../test/integration/storage-mocks'
+import type { AuthorizationService } from '@/utils/authz/types'
+import {
+  DefaultAuthorizationService,
+  setAuthorizationService,
+} from '@/utils/authz'
 import {
   requestAvatarUploadService,
   requestCourseThumbnailUploadService,
   uploadAvatarService,
   uploadCourseThumbnailService,
 } from '@/utils/imageUpload/service/imageUpload.service'
+import { AuthorizationError } from '@/utils/errors'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 import { courses, profiles } from '@/db/schema'
 
 const mocks = vi.hoisted(() => ({
@@ -50,6 +57,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  setAuthorizationService(new DefaultAuthorizationService())
 })
 
 describe('avatar signed upload', () => {
@@ -227,5 +235,79 @@ describe('course thumbnail signed upload', () => {
       where: eq(courses.id, courseId),
     })
     expect(row?.thumbnailUrl).toBe(path)
+  })
+})
+
+describe('course thumbnail authorization telemetry', () => {
+  it.each([
+    {
+      name: 'signed upload request',
+      path: 'serverFn:request_course_thumbnail_upload',
+      run: (courseId: string, userId: string): Promise<unknown> =>
+        requestCourseThumbnailUploadService(
+          { ...imageInput, courseId },
+          userId,
+        ),
+    },
+    {
+      name: 'upload completion',
+      path: 'serverFn:upload_course_thumbnail',
+      run: (courseId: string, userId: string): Promise<unknown> =>
+        uploadCourseThumbnailService(
+          { courseId, path: `${userId}/123.png` },
+          userId,
+        ),
+    },
+  ])(
+    'logs unexpected $name authorization failures without raw details',
+    async ({ path, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const userId = await seedProfile({ role: 'teacher' })
+      const courseId = await seedCourse()
+      const repositoryError = new Error(
+        'thumbnail authorization connectionString=secret; email=thumbnail@test.dev',
+      )
+      setAuthorizationService({
+        canPerformAction: vi.fn().mockRejectedValue(repositoryError),
+      } as unknown as AuthorizationService)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/course-thumbnail', {
+            headers: { 'x-request-id': `course-thumbnail-${path}` },
+          }),
+          () => run(courseId, userId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'image_upload_failed',
+        path,
+        requestId: `course-thumbnail-${path}`,
+        status: 'failure',
+        bucket: 'course-thumbnails',
+        userId,
+        courseId,
+        errorCategory: 'course_thumbnail_authorization_persistence',
+      })
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('thumbnail@test.dev')
+    },
+  )
+
+  it('keeps expected thumbnail authorization denials quiet', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const userId = await seedProfile({ role: 'teacher' })
+    const courseId = await seedCourse()
+    const denial = new AuthorizationError('course access required')
+    setAuthorizationService({
+      canPerformAction: vi.fn().mockRejectedValue(denial),
+    } as unknown as AuthorizationService)
+
+    await expect(
+      requestCourseThumbnailUploadService({ ...imageInput, courseId }, userId),
+    ).rejects.toBe(denial)
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })

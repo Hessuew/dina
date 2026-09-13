@@ -1018,6 +1018,219 @@ describe('deleteCourseService (integration)', () => {
   })
 })
 
+describe('course authorization preflight telemetry (integration)', () => {
+  it('logs unexpected create profile failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const actorId = randomUUID()
+    const repositoryError = new Error(
+      'course profile connectionString=secret; email=course@test.dev',
+    )
+    vi.spyOn(authUtils, 'getUserProfile').mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/courses', {
+          headers: { 'x-request-id': 'course-create-profile-failure' },
+        }),
+        () =>
+          createCourseService(
+            {
+              title: 'Private course',
+              description: 'Private details',
+              orderIndex: 0,
+            },
+            actorId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'course_create_failed',
+      path: 'serverFn:createCourse',
+      requestId: 'course-create-profile-failure',
+      actorId,
+      status: 'failure',
+      errorCategory: 'course_authorization_persistence',
+      durationMs: expect.any(Number),
+    })
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('course@test.dev')
+  })
+
+  it.each([
+    {
+      name: 'update',
+      event: 'course_update_failed',
+      path: 'serverFn:updateCourse',
+      run: (actorId: string): Promise<unknown> =>
+        updateCourseService(
+          { courseId: randomUUID(), title: 'Private', description: 'Details' },
+          actorId,
+        ),
+    },
+    {
+      name: 'delete',
+      event: 'course_delete_failed',
+      path: 'serverFn:deleteCourse',
+      run: (actorId: string): Promise<unknown> =>
+        deleteCourseService({ courseId: randomUUID() }, actorId),
+    },
+  ])(
+    'logs unexpected $name role-read failures without raw details',
+    async ({ event, path, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const repositoryError = new Error(
+        'course role connectionString=secret; email=course-role@test.dev',
+      )
+      setAuthorizationService({
+        isAdmin: vi.fn().mockRejectedValue(repositoryError),
+      } as unknown as AuthorizationService)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/courses', {
+            headers: { 'x-request-id': `course-role-${path}` },
+          }),
+          () => run(randomUUID()),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(JSON.parse(line)).toMatchObject({
+        event,
+        path,
+        requestId: `course-role-${path}`,
+        status: 'failure',
+        errorCategory: 'course_authorization_persistence',
+        durationMs: expect.any(Number),
+      })
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('course-role@test.dev')
+    },
+  )
+
+  it.each([
+    {
+      name: 'update',
+      event: 'course_update_failed',
+      path: 'serverFn:updateCourse',
+      run: (actorId: string): Promise<unknown> =>
+        updateCourseService(
+          { courseId: randomUUID(), title: 'Private', description: 'Details' },
+          actorId,
+        ),
+    },
+    {
+      name: 'delete',
+      event: 'course_delete_failed',
+      path: 'serverFn:deleteCourse',
+      run: (actorId: string): Promise<unknown> =>
+        deleteCourseService({ courseId: randomUUID() }, actorId),
+    },
+  ])(
+    'logs unexpected $name resource-authorization failures without raw details',
+    async ({ event, path, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const repositoryError = new Error(
+        'course access connectionString=secret; email=course-access@test.dev',
+      )
+      setAuthorizationService({
+        isAdmin: vi.fn().mockResolvedValue(false),
+        canPerformAction: vi.fn().mockRejectedValue(repositoryError),
+      } as unknown as AuthorizationService)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/courses', {
+            headers: { 'x-request-id': `course-access-${path}` },
+          }),
+          () => run(randomUUID()),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(JSON.parse(line)).toMatchObject({
+        event,
+        path,
+        requestId: `course-access-${path}`,
+        status: 'failure',
+        errorCategory: 'course_authorization_persistence',
+        durationMs: expect.any(Number),
+      })
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('course-access@test.dev')
+    },
+  )
+
+  it('logs unexpected course-teacher assignment role failures', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const repositoryError = new Error(
+      'course assignment connectionString=secret; email=teacher-pair@test.dev',
+    )
+    setAuthorizationService({
+      hasRole: vi.fn().mockRejectedValue(repositoryError),
+    } as unknown as AuthorizationService)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/course-teachers', {
+          headers: { 'x-request-id': 'course-teacher-role-failure' },
+        }),
+        () =>
+          updateCourseTeachersService(
+            {
+              courseId: randomUUID(),
+              teacher1Id: randomUUID(),
+              teacher2Id: randomUUID(),
+            },
+            randomUUID(),
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'course_teachers_update_failed',
+      path: 'serverFn:updateCourseTeachers',
+      requestId: 'course-teacher-role-failure',
+      status: 'failure',
+      errorCategory: 'course_teacher_assignment_authorization_persistence',
+      durationMs: expect.any(Number),
+    })
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('teacher-pair@test.dev')
+  })
+
+  it('keeps expected course authorization denials out of error telemetry', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const denial = new AuthorizationError('course access required')
+    setAuthorizationService({
+      hasRole: vi.fn().mockRejectedValue(denial),
+      isAdmin: vi.fn().mockResolvedValue(false),
+      canPerformAction: vi.fn().mockRejectedValue(denial),
+    } as unknown as AuthorizationService)
+
+    await expect(
+      updateCourseService(
+        { courseId: randomUUID(), title: 'Denied', description: 'Denied' },
+        randomUUID(),
+      ),
+    ).rejects.toBe(denial)
+    await expect(
+      updateCourseTeachersService(
+        {
+          courseId: randomUUID(),
+          teacher1Id: randomUUID(),
+          teacher2Id: randomUUID(),
+        },
+        randomUUID(),
+      ),
+    ).rejects.toBe(denial)
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
+})
+
 describe('createLessonService (integration)', () => {
   it('course teacher creates a lesson (defaults to unpublished)', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})

@@ -26,6 +26,7 @@ type CourseTeacherAssignmentLogContext = {
   courseId: string
   teacher1Id: string
   teacher2Id: string
+  failureEvent: string
   startedAt: number
 }
 
@@ -56,6 +57,22 @@ function logCourseTeacherAssignmentEvent(
 
 function shouldLogCourseTeacherAssignmentFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
+}
+
+async function withCourseTeacherAuthorizationTelemetry<T>(
+  context: CourseTeacherAssignmentLogContext,
+  authorize: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await authorize()
+  } catch (error) {
+    if (shouldLogCourseTeacherAssignmentFailure(error)) {
+      logCourseTeacherAssignmentEvent('error', context.failureEvent, context, {
+        errorCategory: 'course_teacher_assignment_authorization_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 function logCourseTeacherReadEvent(
@@ -172,12 +189,14 @@ export async function updateCourseTeachersService(
     courseId: data.courseId,
     teacher1Id: data.teacher1Id,
     teacher2Id: data.teacher2Id,
+    failureEvent: 'course_teachers_update_failed',
     startedAt: performance.now(),
   }
+  await withCourseTeacherAuthorizationTelemetry(context, () =>
+    authz(userId).hasRole('admin'),
+  )
 
   try {
-    await authz(userId).hasRole('admin')
-
     const course = await findCourseById(data.courseId)
     if (!course) {
       throw new NotFoundError('Course not found', {

@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 186
+**Iteration:** 187
 **Scope:** record the completed batched structured-logging rollout through
-Iteration 186 and maintain the evidence-aware Engineering Roadmap handoff.
+Iteration 187 and maintain the evidence-aware Engineering Roadmap handoff.
 
 ## Final roadmap disposition
 
@@ -303,8 +303,11 @@ shadcn@latest` intentionally.
   `course_updated`, and `course_deleted` events with request correlation,
   server-function path, actor/course IDs, status, duration, and publication
   state where relevant. Unexpected persistence failures emit the stable
-  `course_persistence` category; expected authorization, validation, and
-  teacher-assignment conflict outcomes remain outside noisy error logs.
+  `course_persistence` category, while authorization/profile preflight
+  failures reuse the matching operation event with the stable
+  `course_authorization_persistence` category; expected authorization,
+  validation, and teacher-assignment conflict outcomes remain outside noisy
+  error logs.
 - Admins now have an authenticated `/admin/observability` hub that links to
   Better Stack, Cloudflare, Supabase, and Notion operations surfaces. Link URLs
   are public environment configuration only; no provider credentials are sent
@@ -2127,7 +2130,7 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 | Roadmap item          | Current state                                                                                                                                                                                                                | Next smallest verifiable slice                                                               |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                                                                                       | Verify `/healthz` and `/readyz` after deployment                                             |
-| Structured logging    | Repository rollout complete through Iteration 186; shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, discipleship, and Admin workflows | Verify hosted ingestion, dashboards, alerts, and source-map correlation                      |
+| Structured logging    | Repository rollout complete through Iteration 187; shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, discipleship, and Admin workflows | Verify hosted ingestion, dashboards, alerts, and source-map correlation                      |
 | Error tracking        | Better Stack is the canonical DSN configuration with Sentry-compatible SDK wiring and explicit environment/release identity; provider verification is pending                                                                | Set `VITE_BETTER_STACK_DSN` and `BETTER_STACK_DSN`, then verify ingestion/source maps        |
 | Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                                                                                      | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
 | Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                                                                                     | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
@@ -4985,3 +4988,37 @@ iterative telemetry workflow. The full build and full integration suite remain
 intentionally skipped. Hosted Better Stack/Cloudflare ingestion, dashboards,
 alerts, Uptime monitors, source maps, PostHog verification, and restore
 evidence remain pending.
+
+## Iteration 187 — course authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for course administration and course-thumbnail access:
+
+- Course creation now keeps its persisted-profile/admin-role preflight inside
+  `course_create_failed` telemetry. Course update and deletion keep both the
+  Admin-role and course-scoped authorization preflights inside their matching
+  operation failure events, using the stable
+  `course_authorization_persistence` category for unexpected persistence
+  failures.
+- Admin course-teacher assignment now keeps its role preflight inside
+  `course_teachers_update_failed` with the stable
+  `course_teacher_assignment_authorization_persistence` category.
+- Course-thumbnail signed-upload request and completion authorization failures
+  now use the stable `course_thumbnail_authorization_persistence` category on
+  the existing redacted `image_upload_failed` event. Expected authorization
+  denials remain quiet; course content, storage paths, provider details, and
+  raw persistence errors remain excluded, and original errors are preserved.
+- Added focused integration coverage for profile, role, resource, teacher-pair,
+  and thumbnail authorization boundaries, including request correlation,
+  redaction, stable categorization, and expected-denial silence.
+
+Validation: the new course authorization tests passed all 12 focused cases and
+the new thumbnail authorization tests passed all 3 focused cases. The broader
+course integration file passed 83 of 84 tests; its existing thumbnail-signing
+storage-mock assertion remains unrelated to this slice. The image-upload file
+retains five pre-existing storage-mock failures outside the new authorization
+cases. Targeted Prettier formatting and focused type/test checks remain the
+verification scope for this iterative telemetry workflow. The full build and
+full integration suite remain intentionally skipped. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.

@@ -50,6 +50,7 @@ type ImageUploadLogContext = {
   startedAt: number
   userId: string
   courseId?: string
+  failureCategory?: string
 }
 
 function logImageUploadEvent(
@@ -81,7 +82,9 @@ async function runImageUploadAction<T>(
   } catch (error) {
     if (!isAppError(error) || error.status >= 500) {
       logImageUploadEvent('error', 'image_upload_failed', context, {
-        errorCategory: isAppError(error) ? error.code : 'unexpected',
+        errorCategory:
+          context.failureCategory ??
+          (isAppError(error) ? error.code : 'unexpected'),
       })
     }
     throw error
@@ -203,7 +206,11 @@ export async function uploadAvatarService(
   )
 }
 
-async function requireCourseThumbnailAccess(courseId: string, userId: string) {
+async function requireCourseThumbnailAccess(
+  courseId: string,
+  userId: string,
+  context: ImageUploadLogContext,
+) {
   const course = await findCourseForThumbnail(courseId)
   if (!course) {
     throw new NotFoundError('Course not found', {
@@ -211,7 +218,14 @@ async function requireCourseThumbnailAccess(courseId: string, userId: string) {
       details: { courseId },
     })
   }
-  await authz(userId).perform('editCourse').on('course', courseId)
+  try {
+    await authz(userId).perform('editCourse').on('course', courseId)
+  } catch (error) {
+    if (!isAppError(error) || error.status >= 500) {
+      context.failureCategory = 'course_thumbnail_authorization_persistence'
+    }
+    throw error
+  }
   return course
 }
 
@@ -219,41 +233,41 @@ export async function requestCourseThumbnailUploadService(
   data: RequestCourseThumbnailUploadInput,
   userId: string,
 ): Promise<SignedUpload> {
-  return runImageUploadAction(
-    {
-      action: 'request_course_thumbnail_upload',
-      bucket: 'course-thumbnails',
-      courseId: data.courseId,
-      startedAt: performance.now(),
-      userId,
-    },
-    async () => {
-      await requireCourseThumbnailAccess(data.courseId, userId)
-      return requestImageUpload(data, userId, 'course-thumbnails')
-    },
-  )
+  const context: ImageUploadLogContext = {
+    action: 'request_course_thumbnail_upload',
+    bucket: 'course-thumbnails',
+    courseId: data.courseId,
+    startedAt: performance.now(),
+    userId,
+  }
+  return runImageUploadAction(context, async () => {
+    await requireCourseThumbnailAccess(data.courseId, userId, context)
+    return requestImageUpload(data, userId, 'course-thumbnails')
+  })
 }
 
 export async function uploadCourseThumbnailService(
   data: UploadCourseThumbnailInput,
   userId: string,
 ): Promise<{ thumbnailUrl: string | null }> {
-  return runImageUploadAction(
-    {
-      action: 'upload_course_thumbnail',
-      bucket: 'course-thumbnails',
-      courseId: data.courseId,
-      startedAt: performance.now(),
+  const context: ImageUploadLogContext = {
+    action: 'upload_course_thumbnail',
+    bucket: 'course-thumbnails',
+    courseId: data.courseId,
+    startedAt: performance.now(),
+    userId,
+  }
+  return runImageUploadAction(context, async () => {
+    const course = await requireCourseThumbnailAccess(
+      data.courseId,
       userId,
-    },
-    async () => {
-      const course = await requireCourseThumbnailAccess(data.courseId, userId)
-      const path = ownedPathOrThrow(data.path, 'course-thumbnails', userId)
-      await updateCourseThumbnailPath(data.courseId, path)
-      await removePreviousPath('course-thumbnails', course.thumbnailUrl, path)
-      return {
-        thumbnailUrl: await signPrivateStoragePath('course-thumbnails', path),
-      }
-    },
-  )
+      context,
+    )
+    const path = ownedPathOrThrow(data.path, 'course-thumbnails', userId)
+    await updateCourseThumbnailPath(data.courseId, path)
+    await removePreviousPath('course-thumbnails', course.thumbnailUrl, path)
+    return {
+      thumbnailUrl: await signPrivateStoragePath('course-thumbnails', path),
+    }
+  })
 }
