@@ -528,7 +528,16 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    original-error preservation; expected denials remain quiet.
 4. Keep expected user-input failures out of noisy error logs.
 
-The repository migration is complete through Iteration 183. Future code
+   Shared staff-privilege authorization reads now emit the redacted
+   `authorization_lookup_failed` event with request correlation, actor ID,
+   privilege, duration, and the stable
+   `authorization_staff_privilege_read_persistence` category; expected
+   admin/student short-circuits remain silent. Exam save/publish and open-
+   answer/finalize-grading role preflights now reuse their operation failure
+   events with stable authorization-persistence categories while expected
+   denials remain quiet.
+
+The repository migration is complete through Iteration 185. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining

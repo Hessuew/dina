@@ -24,7 +24,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Unexpected role and resource persistence failures emit one redacted
     `authorization_lookup_failed` event with request correlation, safe IDs,
     action metadata, and stable lookup categories; expected denials remain
-    ordinary authorization outcomes.
+    ordinary authorization outcomes. Staff-privilege reads use the same event
+    with the stable `authorization_staff_privilege_read_persistence` category;
+    raw persistence details remain excluded.
 
 - **Unified request scope**
   - `request-scope.ts`: composes re-entrant authz cache maps with `withDbConnection`.

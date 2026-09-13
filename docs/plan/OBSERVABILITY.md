@@ -75,6 +75,10 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   Course attendance state and student open-session reads emit redacted,
   request-correlated events with safe role, count, and open-session metadata;
   attendance titles, timestamps, and raw persistence details remain excluded.
+  Shared staff-privilege authorization reads emit redacted lookup failures
+  with stable persistence categories; exam save/publish and grading role
+  preflights reuse their operation failure events without logging expected
+  denials or raw persistence details.
 
 - **Cloudflare Workers:** Basic observability
   - Logs enabled (100% sampling)

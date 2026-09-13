@@ -94,6 +94,7 @@ type ExamMutationLogContext = {
   action: ExamMutationAction
   actorId: string
   examId?: string
+  failureEvent: string
   startedAt: number
 }
 
@@ -106,6 +107,7 @@ type ExamGradingLogContext = {
   examId?: string
   answerId?: string
   questionId?: string
+  failureEvent: string
   startedAt: number
 }
 
@@ -241,13 +243,29 @@ async function assertStudent(userId: string): Promise<void> {
 async function requireExamAuthor(
   userId: string,
   context: ExamMutationLogContext,
+): Promise<{ isAdmin: boolean; isTeacher: boolean }> {
+  try {
+    return await assertTeacherOrAdmin(userId)
+  } catch (error) {
+    if (shouldLogExamFailure(error)) {
+      logExamMutationEvent('error', context.failureEvent, context, {
+        errorCategory: 'exam_authorization_persistence',
+      })
+    }
+    throw error
+  }
+}
+
+async function requireExamGrader(
+  userId: string,
+  context: ExamGradingLogContext,
 ): Promise<void> {
   try {
     await assertTeacherOrAdmin(userId)
   } catch (error) {
     if (shouldLogExamFailure(error)) {
-      logExamMutationEvent('error', 'exam_create_failed', context, {
-        errorCategory: 'exam_authorization_persistence',
+      logExamGradingEvent('error', context.failureEvent, context, {
+        errorCategory: 'exam_grading_authorization_persistence',
       })
     }
     throw error
@@ -258,8 +276,8 @@ async function requireExamAuthor(
 async function loadEditableExam(
   examId: string,
   userId: string,
+  isAdmin: boolean,
 ): Promise<ExamRow> {
-  const { isAdmin } = await assertTeacherOrAdmin(userId)
   const exam = await findExamById(examId)
   if (!exam) throw new NotFoundError('Exam not found')
   if (!isAdmin && exam.createdBy !== userId) {
@@ -280,6 +298,7 @@ export async function createExamService(
   const context: ExamMutationLogContext = {
     action: 'createExam',
     actorId: userId,
+    failureEvent: 'exam_create_failed',
     startedAt: performance.now(),
   }
   await requireExamAuthor(userId, context)
@@ -322,10 +341,12 @@ export async function saveExamChangesService(
     action: 'saveExamChanges',
     actorId: userId,
     examId: data.examId,
+    failureEvent: 'exam_update_failed',
     startedAt: performance.now(),
   }
+  const { isAdmin } = await requireExamAuthor(userId, context)
   try {
-    const exam = await loadEditableExam(data.examId, userId)
+    const exam = await loadEditableExam(data.examId, userId, isAdmin)
     const opensAt = new Date(data.opensAt)
     const closesAt = new Date(data.closesAt)
     if (closesAt.getTime() <= opensAt.getTime()) {
@@ -370,10 +391,12 @@ export async function publishExamService(
     action: 'publishExam',
     actorId: userId,
     examId: data.examId,
+    failureEvent: 'exam_publish_failed',
     startedAt: performance.now(),
   }
+  const { isAdmin } = await requireExamAuthor(userId, context)
   try {
-    const exam = await loadEditableExam(data.examId, userId)
+    const exam = await loadEditableExam(data.examId, userId, isAdmin)
     if (exam.status === 'published') {
       throw new ConflictError('Exam is already published')
     }
@@ -904,10 +927,11 @@ export async function gradeOpenAnswerService(
     action: 'gradeOpenAnswer',
     graderId: userId,
     answerId: data.answerId,
+    failureEvent: 'exam_open_answer_grade_failed',
     startedAt: performance.now(),
   }
+  await requireExamGrader(userId, context)
   try {
-    await assertTeacherOrAdmin(userId)
     const answer = await findAnswerById(data.answerId)
     if (!answer) throw new NotFoundError('Answer not found')
     context.attemptId = answer.attemptId
@@ -955,10 +979,11 @@ export async function finalizeGradingService(
     action: 'finalizeGrading',
     graderId: userId,
     attemptId: data.attemptId,
+    failureEvent: 'exam_grading_finalize_failed',
     startedAt: performance.now(),
   }
+  await requireExamGrader(userId, context)
   try {
-    await assertTeacherOrAdmin(userId)
     const attempt = await findAttemptById(data.attemptId)
     if (!attempt) throw new NotFoundError('Attempt not found')
     context.examId = attempt.examId

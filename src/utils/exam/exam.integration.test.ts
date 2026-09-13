@@ -520,62 +520,200 @@ describe('exam authoring authorization preflight telemetry (integration)', () =>
     setAuthorizationService(new DefaultAuthorizationService())
   })
 
-  it('logs unexpected author-role persistence failures without raw details', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const repositoryError = new Error(
-      'exam role connectionString=secret; email=exam-author@test.dev',
-    )
-    setAuthorizationService({
-      getRole: vi.fn().mockRejectedValue(repositoryError),
-    } as unknown as AuthorizationService)
-
-    await expect(
-      withObservabilityRequest(
-        new Request('https://christ-dina.org/exams', {
-          headers: { 'x-request-id': 'exam-author-role-failure' },
-        }),
-        () =>
-          createExamService(
-            {
-              title: 'Private exam title',
-              opensAt: new Date(Date.now() - 60_000).toISOString(),
-              closesAt: new Date(Date.now() + HOUR_MS).toISOString(),
-            },
-            randomUUID(),
-          ),
-      ),
-    ).rejects.toBe(repositoryError)
-
-    const line = String(errorSpy.mock.calls.at(-1)?.[0])
-    expect(JSON.parse(line)).toMatchObject({
+  it.each([
+    {
+      name: 'create',
       event: 'exam_create_failed',
       path: 'serverFn:createExam',
-      requestId: 'exam-author-role-failure',
-      status: 'failure',
-      errorCategory: 'exam_authorization_persistence',
-      durationMs: expect.any(Number),
-    })
-    expect(line).not.toContain('connectionString')
-    expect(line).not.toContain('exam-author@test.dev')
-  })
+      run: (userId: string): Promise<unknown> =>
+        createExamService(
+          {
+            title: 'Private exam title',
+            opensAt: new Date(Date.now() - 60_000).toISOString(),
+            closesAt: new Date(Date.now() + HOUR_MS).toISOString(),
+          },
+          userId,
+        ),
+    },
+    {
+      name: 'save',
+      event: 'exam_update_failed',
+      path: 'serverFn:saveExamChanges',
+      run: (userId: string): Promise<unknown> =>
+        saveExamChangesService(
+          {
+            examId: randomUUID(),
+            title: 'Private exam title',
+            durationMinutes: 45,
+            opensAt: new Date(Date.now() - 60_000).toISOString(),
+            closesAt: new Date(Date.now() + HOUR_MS).toISOString(),
+            questions: [],
+            deletedQuestionIds: [],
+          },
+          userId,
+        ),
+    },
+    {
+      name: 'publish',
+      event: 'exam_publish_failed',
+      path: 'serverFn:publishExam',
+      run: (userId: string): Promise<unknown> =>
+        publishExamService({ examId: randomUUID() }, userId),
+    },
+  ])(
+    'logs unexpected author-role persistence failures for $name without raw details',
+    async ({ event, path, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const repositoryError = new Error(
+        'exam role connectionString=secret; email=exam-author@test.dev',
+      )
+      setAuthorizationService({
+        getRole: vi.fn().mockRejectedValue(repositoryError),
+      } as unknown as AuthorizationService)
 
-  it('keeps expected author-role denials out of operation telemetry', async () => {
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/exams', {
+            headers: { 'x-request-id': 'exam-author-role-failure' },
+          }),
+          () => run(randomUUID()),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(JSON.parse(line)).toMatchObject({
+        event,
+        path,
+        requestId: 'exam-author-role-failure',
+        status: 'failure',
+        errorCategory: 'exam_authorization_persistence',
+        durationMs: expect.any(Number),
+      })
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('exam-author@test.dev')
+    },
+  )
+
+  it.each([
+    {
+      name: 'create',
+      run: (userId: string): Promise<unknown> =>
+        createExamService(
+          {
+            title: 'Denied exam',
+            opensAt: new Date(Date.now() - 60_000).toISOString(),
+            closesAt: new Date(Date.now() + HOUR_MS).toISOString(),
+          },
+          userId,
+        ),
+    },
+    {
+      name: 'save',
+      run: (userId: string): Promise<unknown> =>
+        saveExamChangesService(
+          {
+            examId: randomUUID(),
+            title: 'Denied exam',
+            durationMinutes: 45,
+            opensAt: new Date(Date.now() - 60_000).toISOString(),
+            closesAt: new Date(Date.now() + HOUR_MS).toISOString(),
+            questions: [],
+            deletedQuestionIds: [],
+          },
+          userId,
+        ),
+    },
+    {
+      name: 'publish',
+      run: (userId: string): Promise<unknown> =>
+        publishExamService({ examId: randomUUID() }, userId),
+    },
+  ])('keeps expected $name author-role denials quiet', async ({ run }) => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const denial = new AuthorizationError('teacher or admin access required')
     setAuthorizationService({
       getRole: vi.fn().mockRejectedValue(denial),
     } as unknown as AuthorizationService)
 
-    await expect(
-      createExamService(
-        {
-          title: 'Denied exam',
-          opensAt: new Date(Date.now() - 60_000).toISOString(),
-          closesAt: new Date(Date.now() + HOUR_MS).toISOString(),
-        },
-        randomUUID(),
+    await expect(run(randomUUID())).rejects.toBe(denial)
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('exam grading authorization preflight telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    setAuthorizationService(new DefaultAuthorizationService())
+  })
+
+  it.each([
+    {
+      name: 'open-answer grading',
+      event: 'exam_open_answer_grade_failed',
+      path: 'serverFn:gradeOpenAnswer',
+      run: (userId: string): Promise<unknown> =>
+        gradeOpenAnswerService(
+          { answerId: randomUUID(), awardedPoints: 1 },
+          userId,
+        ),
+    },
+    {
+      name: 'grading finalization',
+      event: 'exam_grading_finalize_failed',
+      path: 'serverFn:finalizeGrading',
+      run: (userId: string): Promise<unknown> =>
+        finalizeGradingService({ attemptId: randomUUID() }, userId),
+    },
+  ])(
+    'logs unexpected grader-role persistence failures for $name without raw details',
+    async ({ event, path, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const repositoryError = new Error(
+        'grader role connectionString=secret; email=grader@test.dev',
+      )
+      setAuthorizationService({
+        getRole: vi.fn().mockRejectedValue(repositoryError),
+      } as unknown as AuthorizationService)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/exams', {
+            headers: { 'x-request-id': 'exam-grader-role-failure' },
+          }),
+          () => run(randomUUID()),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(JSON.parse(line)).toMatchObject({
+        event,
+        path,
+        requestId: 'exam-grader-role-failure',
+        status: 'failure',
+        errorCategory: 'exam_grading_authorization_persistence',
+        durationMs: expect.any(Number),
+      })
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('grader@test.dev')
+    },
+  )
+
+  it.each([
+    (userId: string): Promise<unknown> =>
+      gradeOpenAnswerService(
+        { answerId: randomUUID(), awardedPoints: 1 },
+        userId,
       ),
-    ).rejects.toBe(denial)
+    (userId: string): Promise<unknown> =>
+      finalizeGradingService({ attemptId: randomUUID() }, userId),
+  ])('keeps expected grader-role denials quiet', async (run) => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const denial = new AuthorizationError('teacher or admin access required')
+    setAuthorizationService({
+      getRole: vi.fn().mockRejectedValue(denial),
+    } as unknown as AuthorizationService)
+
+    await expect(run(randomUUID())).rejects.toBe(denial)
     expect(errorSpy).not.toHaveBeenCalled()
   })
 })

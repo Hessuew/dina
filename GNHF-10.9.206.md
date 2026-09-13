@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 184
-**Scope:** finalize the batched structured-logging rollout and the
+**Iteration:** 185
+**Scope:** continue the batched structured-logging rollout and maintain the
 evidence-aware Engineering Roadmap handoff.
 
 ## Final roadmap disposition
@@ -4930,3 +4930,28 @@ This iteration closes the current repository-to-Notion roadmap handoff:
 Validation for this documentation-only synchronization is limited to targeted
 Markdown formatting, `bun run docs:notion-check --json`, and `git diff --check`.
 The full build and full integration suite remain intentionally skipped.
+
+## Iteration 185 — authorization persistence telemetry completion
+
+This iteration completed a batched repository-owned structured-logging slice
+for authorization persistence boundaries that remained generic or silent:
+
+- Shared teacher staff-privilege reads now emit redacted
+  `authorization_lookup_failed` events with request correlation, actor ID,
+  privilege, duration, and the stable
+  `authorization_staff_privilege_read_persistence` category. Admin and student
+  short-circuits remain silent, and raw persistence details remain excluded.
+- Exam save/publish and open-answer/finalize-grading role preflights now reuse
+  their operation-specific failure events with stable authorization-persistence
+  categories. Expected role denials remain quiet and original errors are
+  preserved.
+- Added focused coverage for redaction, request correlation, stable categories,
+  error identity, short-circuit behavior, and expected-denial silence across
+  the shared helper and four exam authorization boundaries.
+
+Validation: the focused authz unit suite passed 4 tests and the focused exam
+integration suite passed 33 tests. Targeted formatting and typecheck remain the
+verification scope for this iterative telemetry workflow. The full build and
+full integration suite remain intentionally skipped. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
