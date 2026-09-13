@@ -1,9 +1,10 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 191
-**Scope:** finalize the evidence-aware Engineering Roadmap handoff after the
-completed batched structured-logging rollout through Iteration 190.
+**Iteration:** 192
+**Scope:** finalize the evidence-aware Engineering Roadmap handoff and align
+the canonical Notion observability signal wording after the completed batched
+structured-logging rollout through Iteration 190.
 
 ## Final roadmap disposition
 
@@ -5126,3 +5127,23 @@ Iteration 190 telemetry slice:
 Validation: the handoff Markdown was formatted and checked with
 `git diff --check`; the full build and full integration suite remain
 intentionally skipped because this is a documentation-only closeout.
+
+## Iteration 192 — observability signal naming audit
+
+This iteration completed a small documentation consistency correction after
+the final roadmap audit:
+
+- The canonical Notion Observability Signals section now names Better Stack
+  Errors and Cloudflare Logs & Traces as the operator-facing surfaces for
+  critical flows. The Sentry-compatible SDK transport remains an internal
+  implementation detail during the cutover.
+- The six Engineering Roadmap phase dispositions remain unchanged: Phase 1 is
+  repository implementation complete with hosted verification pending; Phases
+  2–5 retain their evidence-gated dispositions; Phase 6 remains Planned.
+- No telemetry boundary, SLO, dashboard, alert, readiness, ownership, or
+  hosted status was promoted.
+
+Validation: targeted Markdown formatting, `bun run docs:notion-check`, and
+`git diff --check` remain the verification scope. The full build and full
+integration suite remain intentionally skipped for this documentation-only
+audit.
