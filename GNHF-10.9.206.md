@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 170
+**Iteration:** 171
 **Scope:** continue the batched structured-logging rollout while preserving the
 evidence-aware Engineering Roadmap handoff.
 
@@ -124,8 +124,8 @@ shadcn@latest` intentionally.
   with request correlation, actor ID, source counts, total event count,
   status, and duration. Unexpected read failures emit
   `calendar_events_load_failed` with the stable
-  `calendar_read_persistence` category; calendar content, locations, links,
-  and timestamps are excluded.
+  `calendar_read_persistence` category, including actor-profile preflight
+  failures; calendar content, locations, links, and timestamps are excluded.
 - Student-directory list and detail reads now emit redacted
   `student_directory_loaded` / `student_directory_load_failed` events with
   request correlation, actor and target IDs where applicable, safe result
@@ -135,8 +135,9 @@ shadcn@latest` intentionally.
 - Teacher-directory list reads now emit redacted
   `teacher_directory_loaded` / `teacher_directory_load_failed` events with
   request correlation, actor ID, safe result counts, duration, and the stable
-  `teacher_directory_read_persistence` failure category; teacher names, email
-  addresses, bios, and privilege details remain excluded.
+  `teacher_directory_read_persistence` failure category, including actor-profile
+  preflight failures; teacher names, email addresses, bios, and privilege
+  details remain excluded.
 - Dashboard upcoming-lesson reads now emit redacted
   `upcoming_lessons_loaded` / `upcoming_lessons_load_failed` events with
   request correlation, actor ID, safe lesson counts, status, duration, and the
@@ -195,8 +196,13 @@ shadcn@latest` intentionally.
   `notification_group_marked_read` / `notifications_marked_read` events with
   request correlation, actor/target metadata, read scope, status, and duration.
   Unexpected persistence failures use the stable
-  `notification_read_state_persistence` category without notification content
-  or raw database details.
+  `notification_read_state_persistence` category, including actor-profile
+  preflight failures, without notification content or raw database details.
+- Notification summary reads keep their client-polled success path silent while
+  actor-profile preflight failures remain inside the redacted
+  `notification_summary_load_failed` boundary with request correlation,
+  requested limit, duration, and the stable
+  `notification_summary_read_persistence` category.
 - Student attendance check-ins now emit redacted completed, idempotent-retry,
   and unexpected-failure events with request correlation, safe
   course/session/lesson/student identifiers, status, duration, and a stable
@@ -4563,3 +4569,34 @@ build and full integration suite remain intentionally skipped for the
 iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
 dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
 restore evidence remain pending.
+
+## Iteration 171 — calendar, teacher, and notification actor-profile telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for authenticated read preflights:
+
+- Calendar overview reads now initialize their existing redacted failure
+  telemetry before the persisted actor-profile lookup. Unexpected profile
+  persistence failures emit `calendar_events_load_failed` with the stable
+  `calendar_read_persistence` category; expected missing-profile outcomes stay
+  quiet and the calendar response is unchanged.
+- Teacher-directory reads now keep the persisted actor-profile lookup inside
+  the existing `teacher_directory_load_failed` boundary. Unexpected failures
+  retain request correlation, actor ID, duration, stable categorization, and
+  original-error preservation; expected profile/not-found outcomes remain
+  quiet.
+- Notification summary, group read, and mark-all read services now initialize
+  telemetry before their persisted actor-profile checks. Unexpected failures
+  reuse the existing summary or read-state events with stable categories;
+  successful polled summaries remain silent and expected 4xx outcomes remain
+  outside noisy error telemetry.
+- Added focused integration coverage for all five actor-profile boundaries,
+  including redaction, request correlation, stable categories, duration, and
+  original-error preservation.
+
+Validation: the focused calendar, teacher, and notification integration files
+passed all 36 tests. Typecheck, static quality verification, targeted
+formatting, and `git diff --check` passed. The full build and full integration
+suite remain intentionally skipped for the iterative telemetry workflow.
+Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors,
+source maps, PostHog verification, and restore evidence remain pending.

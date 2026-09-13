@@ -205,7 +205,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Calendar overview reads emit redacted `calendar_events_loaded` events with
     request correlation, actor ID, source counts, total event count, status,
     and duration. Unexpected read failures use the stable
-    `calendar_read_persistence` category without calendar content or links.
+    `calendar_read_persistence` category, including actor-profile preflight
+    failures, without calendar content or links; expected missing-profile
+    outcomes remain quiet.
   - Student-directory list and detail reads emit redacted
     `student_directory_loaded` / `student_directory_load_failed` events with
     request correlation, actor and target IDs where applicable, safe result
@@ -217,8 +219,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     `teacher_directory_load_failed` events with request correlation, actor ID,
     safe result counts, duration, and the stable
     `teacher_directory_read_persistence` failure category; actor-profile
-    preflight failures remain inside the same redacted read boundary, while
-    teacher names, emails, bios, and privilege details remain excluded.
+    preflight failures remain inside the same redacted read boundary and
+    expected missing-profile outcomes remain quiet, while teacher names,
+    emails, bios, and privilege details remain excluded.
   - Assignment lesson/detail, student/teacher list, submission-count, and
     submission-list reads emit redacted `assignment_read_loaded` /
     `assignment_read_failed` events with request correlation, actor IDs, safe
@@ -343,12 +346,14 @@ This folder is primarily where TanStack Start server functions live (via `create
     `notification_group_marked_read` / `notifications_marked_read` events with
     request correlation, actor/target metadata, read scope, status, and
     duration; unexpected persistence failures use the stable
-    `notification_read_state_persistence` category.
+    `notification_read_state_persistence` category, including actor-profile
+    preflight failures; expected missing-profile outcomes remain quiet.
   - Notification summary reads are client-polled, so only failures emit log
     events: redacted `notification_summary_load_failed` with request
     correlation, actor ID, requested limit, and duration; notification content,
     post excerpts, author details, and raw persistence details remain excluded,
-    while unexpected failures use `notification_summary_read_persistence`.
+    while unexpected failures use `notification_summary_read_persistence`,
+    including actor-profile preflight failures.
   - Admin Zoom-link create, update, and delete mutations emit redacted
     `zoom_link_created`, `zoom_link_updated`, and `zoom_link_deleted` events
     with request correlation, actor/link IDs, ownership section, status, and

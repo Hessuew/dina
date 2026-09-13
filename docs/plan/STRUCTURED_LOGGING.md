@@ -228,7 +228,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    with request correlation, actor ID, requested limit, safe group counts,
    status, and duration. Notification content, post excerpts, author details,
    and raw persistence details remain excluded; unexpected read failures use
-   the stable `notification_summary_read_persistence` category.
+   the stable `notification_summary_read_persistence` category, including
+   actor-profile preflight failures. Group and mark-all read-state actor-profile
+   preflight failures remain inside their existing redacted
+   `notification_read_state_failed` boundary with the stable
+   `notification_read_state_persistence` category.
    Admin Zoom-link create, update, and delete mutations now emit redacted
    `zoom_link_created`, `zoom_link_updated`, and `zoom_link_deleted` events
    with request correlation, actor/link IDs, section, teacher ownership,
@@ -358,8 +362,9 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    with request correlation, actor ID, source counts, total event count,
    status, and duration. Unexpected read failures emit
    `calendar_events_load_failed` with the stable
-   `calendar_read_persistence` category; calendar titles, descriptions,
-   locations, links, and timestamps remain excluded.
+   `calendar_read_persistence` category, including actor-profile preflight
+   failures; calendar titles, descriptions, locations, links, and timestamps
+   remain excluded.
    Student-directory list and detail reads now emit redacted
    `student_directory_loaded` / `student_directory_load_failed` events with
    request correlation, actor and target IDs where applicable, safe result
@@ -371,7 +376,9 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `teacher_directory_loaded` / `teacher_directory_load_failed` events with
    request correlation, actor ID, safe result counts, duration, and the stable
    `teacher_directory_read_persistence` failure category; teacher names,
-   emails, bios, and privilege details remain excluded.
+   emails, bios, and privilege details remain excluded. Actor-profile
+   preflight failures remain inside the same redacted read boundary, while
+   expected missing-profile outcomes stay quiet.
    Assignment lesson/detail, student/teacher list, submission-count, and
    submission-list reads now emit redacted `assignment_read_loaded` /
    `assignment_read_failed` events with request correlation, actor IDs, safe
@@ -462,7 +469,7 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    outcomes remain quiet.
 4. Keep expected user-input failures out of noisy error logs.
 
-The repository migration is complete through Iteration 170. Future code
+The repository migration is complete through Iteration 171. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining

@@ -13,6 +13,7 @@ import {
 } from '@/../test/integration/seed'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 import * as teachersRepository from '@/utils/teachers/repository'
+import * as authUtils from '@/utils/auth/auth'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -110,6 +111,39 @@ describe('teachers service (integration)', () => {
       expect(JSON.parse(line)).toMatchObject({
         event: 'teacher_directory_load_failed',
         path: 'serverFn:getTeachers',
+        actorId,
+        status: 'failure',
+        errorCategory: 'teacher_directory_read_persistence',
+        durationMs: expect.any(Number),
+      })
+    })
+
+    it('logs unexpected actor-profile failures without raw details', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const actorId = randomUUID()
+      const repositoryError = new Error(
+        'teacher profile connectionString=secret; email=teacher@test.dev',
+      )
+      vi.spyOn(authUtils, 'getUserProfile').mockRejectedValueOnce(
+        repositoryError,
+      )
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/teachers', {
+            headers: { 'x-request-id': 'teacher-profile-failure' },
+          }),
+          () => getTeachersService(actorId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('teacher@test.dev')
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'teacher_directory_load_failed',
+        path: 'serverFn:getTeachers',
+        requestId: 'teacher-profile-failure',
         actorId,
         status: 'failure',
         errorCategory: 'teacher_directory_read_persistence',

@@ -10,6 +10,7 @@ import {
 } from '@/utils/teachers/repository'
 import { authz } from '@/utils/authz'
 import { getUserProfile } from '@/utils/auth/auth'
+import { isAppError } from '@/utils/errors'
 import { findPrivilegesForUsers } from '@/utils/staff-privilege/repository'
 import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
 
@@ -69,18 +70,19 @@ async function withTeacherDirectoryTelemetry<T>(
     })
     return result
   } catch (error) {
-    logTeacherDirectoryEvent(
-      'error',
-      'teacher_directory_load_failed',
-      context,
-      { errorCategory: 'teacher_directory_read_persistence' },
-    )
+    if (!isAppError(error) || error.status >= 500) {
+      logTeacherDirectoryEvent(
+        'error',
+        'teacher_directory_load_failed',
+        context,
+        { errorCategory: 'teacher_directory_read_persistence' },
+      )
+    }
     throw error
   }
 }
 
 export async function getTeachersService(actorId: string) {
-  const profile = await getUserProfile(actorId)
   const context: TeacherDirectoryReadContext = {
     action: 'getTeachers',
     actorId,
@@ -90,6 +92,7 @@ export async function getTeachersService(actorId: string) {
   return withTeacherDirectoryTelemetry(
     context,
     async () => {
+      const profile = await getUserProfile(actorId)
       const teachers = await signAvatarRows(await findAllTeachers())
 
       const teacherIds = teachers.map((t) => t.id)

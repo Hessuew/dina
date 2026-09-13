@@ -7,6 +7,8 @@ import {
 } from '@/utils/post/notifications/service/notification.service'
 import { NotFoundError } from '@/utils/errors'
 import * as notificationRepository from '@/utils/post/notifications/repository/notification.repository'
+import * as authUtils from '@/utils/auth/auth'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 import {
   seedPost,
   seedPostNotification,
@@ -37,6 +39,37 @@ describe('getPostNotificationsSummaryService (integration)', () => {
     await expect(
       markAllPostNotificationsReadService(userId),
     ).rejects.toBeInstanceOf(NotFoundError)
+  })
+
+  it('logs unexpected actor-profile failures without notification details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const actorId = randomUUID()
+    const repositoryError = new Error(
+      'notification profile connectionString=secret; body=private',
+    )
+    vi.spyOn(authUtils, 'getUserProfile').mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/notifications', {
+          headers: { 'x-request-id': 'notification-profile-failure' },
+        }),
+        () => getPostNotificationsSummaryService({}, actorId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('private')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'notification_summary_load_failed',
+      path: 'serverFn:getPostNotificationsSummary',
+      requestId: 'notification-profile-failure',
+      actorId,
+      status: 'failure',
+      errorCategory: 'notification_summary_read_persistence',
+      durationMs: expect.any(Number),
+    })
   })
 
   it('returns empty results when the user has no notifications', async () => {
@@ -135,6 +168,64 @@ describe('getPostNotificationsSummaryService (integration)', () => {
     expect(result.groups[0].postId).toBe(livePostId)
     expect(result.unreadGroupCount).toBe(2)
   })
+})
+
+describe('notification read-state actor-profile telemetry (integration)', () => {
+  it.each([
+    {
+      name: 'group read',
+      requestId: 'notification-group-profile-failure',
+      path: 'serverFn:markPostNotificationGroupRead',
+      readScope: 'group',
+      run: (actorId: string) =>
+        markPostNotificationGroupReadService(
+          { event: 'post_created', postId: randomUUID() },
+          actorId,
+        ),
+    },
+    {
+      name: 'mark all read',
+      requestId: 'notification-all-profile-failure',
+      path: 'serverFn:markAllPostNotificationsRead',
+      readScope: 'all',
+      run: (actorId: string) => markAllPostNotificationsReadService(actorId),
+    },
+  ])(
+    'logs unexpected $name actor-profile failures without raw details',
+    async ({ requestId, path, readScope, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const actorId = randomUUID()
+      const repositoryError = new Error(
+        'notification profile connectionString=secret; body=private',
+      )
+      vi.spyOn(authUtils, 'getUserProfile').mockRejectedValueOnce(
+        repositoryError,
+      )
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/notifications', {
+            headers: { 'x-request-id': requestId },
+          }),
+          () => run(actorId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('private')
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'notification_read_state_failed',
+        path,
+        requestId,
+        actorId,
+        readScope,
+        status: 'failure',
+        errorCategory: 'notification_read_state_persistence',
+        durationMs: expect.any(Number),
+      })
+    },
+  )
 })
 
 describe('markPostNotificationGroupReadService (integration)', () => {
