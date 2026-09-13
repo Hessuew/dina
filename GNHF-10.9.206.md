@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 189
+**Iteration:** 190
 **Scope:** record the completed batched structured-logging rollout through
-Iteration 189 and maintain the evidence-aware Engineering Roadmap handoff.
+Iteration 190 and maintain the evidence-aware Engineering Roadmap handoff.
 
 ## Final roadmap disposition
 
@@ -5076,3 +5076,29 @@ remain in the final verification scope. The full build and full integration
 suite remain intentionally skipped. Hosted Better Stack/Cloudflare ingestion,
 dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
 restore evidence remain pending.
+
+## Iteration 190 — enrollment evaluation authorization telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for the three enrollment evaluation mutations:
+
+- Score, admission-category, and note updates now distinguish unexpected role,
+  reviewer-assignment, and course-team authorization read failures with the
+  stable `enrollment_evaluation_authorization_persistence` category on the
+  existing redacted `enrollment_evaluation_update_failed` event.
+- Evaluation persistence failures retain the existing
+  `enrollment_evaluation_persistence` category. Expected authorization and
+  validation outcomes remain quiet; evaluator IDs, enrollment IDs, request
+  correlation, duration, and field type remain safe telemetry fields while
+  scores, notes, and raw persistence details stay excluded.
+- Added focused integration coverage for both role and evaluator-access
+  lookup failures across all three evaluation fields, including redaction,
+  request correlation, stable categorization, duration, and original-error
+  preservation.
+
+Validation: the focused enrollment integration suite passed 69 tests;
+`bun run quality:gate` passed with 1,968 unit tests, typecheck, static checks,
+Cloudflare type generation, formatting, and diff validation. The full build
+and full integration suite remain intentionally skipped. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.

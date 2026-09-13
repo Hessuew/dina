@@ -85,8 +85,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     status, duration, evaluator/enrollment IDs, and the updated field type;
     scores, admission values, and note text are not logged. Unexpected
     persistence failures emit `enrollment_evaluation_update_failed` with the
-    stable `enrollment_evaluation_persistence` category; expected authorization
-    and validation outcomes remain quiet.
+    stable `enrollment_evaluation_persistence` category. Unexpected role,
+    reviewer-assignment, and course-team authorization reads reuse the same
+    failure event with `enrollment_evaluation_authorization_persistence`;
+    expected authorization and validation outcomes remain quiet.
   - Admin enrollment status, special-case, and deletion mutations emit
     redacted `enrollment_status_updated`,
     `enrollment_special_case_updated`, and `enrollment_deleted` events with

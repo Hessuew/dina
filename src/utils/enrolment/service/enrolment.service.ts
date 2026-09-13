@@ -97,6 +97,19 @@ import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 type EvaluationField = 'score' | 'admission_category' | 'note'
 
+type EvaluationFailureCategory =
+  | 'enrollment_evaluation_persistence'
+  | 'enrollment_evaluation_authorization_persistence'
+
+type EvaluationTelemetryContext = {
+  field: EvaluationField
+  action: string
+  enrollmentId: string
+  userId: string
+  startedAt: number
+  failureCategory: EvaluationFailureCategory
+}
+
 type EnrollmentMutationAction =
   'updateEnrollmentStatus' | 'setEnrollmentSpecialCase' | 'deleteEnrollment'
 
@@ -370,21 +383,15 @@ function logBulkGradeCompleted(
   )
 }
 
-function logEvaluationUpdated(
-  field: EvaluationField,
-  action: string,
-  enrollmentId: string,
-  userId: string,
-  startedAt: number,
-): void {
+function logEvaluationUpdated(context: EvaluationTelemetryContext): void {
   logServerEvent('info', 'enrollment_evaluation_updated', {
     requestId: getRequestId(),
-    path: `serverFn:${action}`,
+    path: `serverFn:${context.action}`,
     status: 'updated',
-    durationMs: elapsedMs(startedAt),
-    enrollmentId,
-    evaluatorId: userId,
-    evaluationField: field,
+    durationMs: elapsedMs(context.startedAt),
+    enrollmentId: context.enrollmentId,
+    evaluatorId: context.userId,
+    evaluationField: context.field,
   })
 }
 
@@ -392,23 +399,49 @@ function shouldLogEvaluationFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
 }
 
-function logEvaluationFailure(
+function logEvaluationFailure(context: EvaluationTelemetryContext): void {
+  logServerEvent('error', 'enrollment_evaluation_update_failed', {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: 'failure',
+    durationMs: elapsedMs(context.startedAt),
+    enrollmentId: context.enrollmentId,
+    evaluatorId: context.userId,
+    evaluationField: context.field,
+    errorCategory: context.failureCategory,
+  })
+}
+
+async function withEvaluationAuthorizationTelemetry<T>(
+  context: EvaluationTelemetryContext,
+  read: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await read()
+  } catch (error) {
+    if (shouldLogEvaluationFailure(error)) {
+      context.failureCategory =
+        'enrollment_evaluation_authorization_persistence'
+    }
+    throw error
+  }
+}
+
+function createEvaluationTelemetryContext(
   field: EvaluationField,
   action: string,
   enrollmentId: string,
   userId: string,
   startedAt: number,
-): void {
-  logServerEvent('error', 'enrollment_evaluation_update_failed', {
-    requestId: getRequestId(),
-    path: `serverFn:${action}`,
-    status: 'failure',
-    durationMs: elapsedMs(startedAt),
+): EvaluationTelemetryContext {
+  return {
+    field,
+    action,
     enrollmentId,
-    evaluatorId: userId,
-    evaluationField: field,
-    errorCategory: 'enrollment_evaluation_persistence',
-  })
+    userId,
+    startedAt,
+    failureCategory: 'enrollment_evaluation_persistence',
+  }
 }
 
 /**
@@ -537,8 +570,12 @@ function buildBulkGradePlan(
 async function setEvaluationScoreWithAccess(
   data: SetEvaluationScoreInput,
   userId: string,
+  context: EvaluationTelemetryContext,
 ): Promise<void> {
-  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+  const { isAdmin, isTeacher } = await withEvaluationAuthorizationTelemetry(
+    context,
+    () => resolveAdminOrTeacherAccess(userId),
+  )
   if (!isAdmin && !isTeacher) {
     throw new AuthorizationError('admin or teacher access required', {
       code: 'ROLE_REQUIRED',
@@ -547,13 +584,15 @@ async function setEvaluationScoreWithAccess(
   }
 
   // Fetch assignment once — reused for authz check and status derivation.
-  const assignment = await findReviewerAssignmentForEnrollment(
-    data.enrollmentId,
+  const assignment = await withEvaluationAuthorizationTelemetry(context, () =>
+    findReviewerAssignmentForEnrollment(data.enrollmentId),
   )
   const reviewerId = assignment?.reviewerId ?? null
   const courseId = assignment?.courseId ?? null
   const teamIds = courseId
-    ? await findCourseTeamIds(courseId)
+    ? await withEvaluationAuthorizationTelemetry(context, () =>
+        findCourseTeamIds(courseId),
+      )
     : reviewerId
       ? [reviewerId]
       : []
@@ -591,27 +630,22 @@ export async function setEvaluationScoreService(
   userId: string,
 ) {
   const startedAt = performance.now()
-  try {
-    await setEvaluationScoreWithAccess(data, userId)
-  } catch (error) {
-    if (shouldLogEvaluationFailure(error)) {
-      logEvaluationFailure(
-        'score',
-        'setEvaluationScore',
-        data.enrollmentId,
-        userId,
-        startedAt,
-      )
-    }
-    throw error
-  }
-  logEvaluationUpdated(
+  const context = createEvaluationTelemetryContext(
     'score',
     'setEvaluationScore',
     data.enrollmentId,
     userId,
     startedAt,
   )
+  try {
+    await setEvaluationScoreWithAccess(data, userId, context)
+  } catch (error) {
+    if (shouldLogEvaluationFailure(error)) {
+      logEvaluationFailure(context)
+    }
+    throw error
+  }
+  logEvaluationUpdated(context)
 }
 
 export async function createEnrollmentService(data: CreateEnrollmentInput) {
@@ -1179,8 +1213,18 @@ export async function setEvaluationAdmissionCategoryService(
   userId: string,
 ) {
   const startedAt = performance.now()
+  const context = createEvaluationTelemetryContext(
+    'admission_category',
+    'setEvaluationAdmissionCategory',
+    data.enrollmentId,
+    userId,
+    startedAt,
+  )
   try {
-    const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+    const { isAdmin, isTeacher } = await withEvaluationAuthorizationTelemetry(
+      context,
+      () => resolveAdminOrTeacherAccess(userId),
+    )
     if (!isAdmin && !isTeacher) {
       throw new AuthorizationError('admin or teacher access required', {
         code: 'ROLE_REQUIRED',
@@ -1188,31 +1232,21 @@ export async function setEvaluationAdmissionCategoryService(
       })
     }
 
-    await assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin)
+    await withEvaluationAuthorizationTelemetry(context, () =>
+      assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin),
+    )
 
     await upsertEvaluation(data.enrollmentId, userId, {
       admissionCategory: data.admissionCategory,
     })
   } catch (error) {
     if (shouldLogEvaluationFailure(error)) {
-      logEvaluationFailure(
-        'admission_category',
-        'setEvaluationAdmissionCategory',
-        data.enrollmentId,
-        userId,
-        startedAt,
-      )
+      logEvaluationFailure(context)
     }
     throw error
   }
 
-  logEvaluationUpdated(
-    'admission_category',
-    'setEvaluationAdmissionCategory',
-    data.enrollmentId,
-    userId,
-    startedAt,
-  )
+  logEvaluationUpdated(context)
 }
 
 export async function setEvaluationNoteService(
@@ -1220,8 +1254,18 @@ export async function setEvaluationNoteService(
   userId: string,
 ) {
   const startedAt = performance.now()
+  const context = createEvaluationTelemetryContext(
+    'note',
+    'setEvaluationNote',
+    data.enrollmentId,
+    userId,
+    startedAt,
+  )
   try {
-    const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+    const { isAdmin, isTeacher } = await withEvaluationAuthorizationTelemetry(
+      context,
+      () => resolveAdminOrTeacherAccess(userId),
+    )
     if (!isAdmin && !isTeacher) {
       throw new AuthorizationError('admin or teacher access required', {
         code: 'ROLE_REQUIRED',
@@ -1229,29 +1273,19 @@ export async function setEvaluationNoteService(
       })
     }
 
-    await assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin)
+    await withEvaluationAuthorizationTelemetry(context, () =>
+      assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin),
+    )
 
     await upsertEvaluation(data.enrollmentId, userId, { note: data.note })
   } catch (error) {
     if (shouldLogEvaluationFailure(error)) {
-      logEvaluationFailure(
-        'note',
-        'setEvaluationNote',
-        data.enrollmentId,
-        userId,
-        startedAt,
-      )
+      logEvaluationFailure(context)
     }
     throw error
   }
 
-  logEvaluationUpdated(
-    'note',
-    'setEvaluationNote',
-    data.enrollmentId,
-    userId,
-    startedAt,
-  )
+  logEvaluationUpdated(context)
 }
 
 export async function distributeEnrollmentsService(userId: string) {
