@@ -9,7 +9,7 @@ import { getDb } from '@/db'
 import { calendarEvents, courses } from '@/db/schema'
 import { buildEventValues } from '@/utils/event/domain/event-input.domain'
 import { resolveAdminOrTeacherAccess } from '@/utils/authz'
-import { AuthorizationError } from '@/utils/errors'
+import { AuthorizationError, isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
@@ -41,14 +41,18 @@ function logCalendarEventRead(
   })
 }
 
+function shouldLogCalendarEventFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
 export async function getEventsService(actorId: string) {
-  await requireEventManager(actorId)
   const context: CalendarEventReadContext = {
     actorId,
     startedAt: performance.now(),
   }
 
   try {
+    await requireEventManager(actorId)
     const db = await getDb()
     const rows = await db
       .select({
@@ -81,9 +85,14 @@ export async function getEventsService(actorId: string) {
 
     return { events }
   } catch (error) {
-    logCalendarEventRead('error', 'calendar_event_list_load_failed', context, {
-      errorCategory: 'calendar_event_read_persistence',
-    })
+    if (shouldLogCalendarEventFailure(error)) {
+      logCalendarEventRead(
+        'error',
+        'calendar_event_list_load_failed',
+        context,
+        { errorCategory: 'calendar_event_read_persistence' },
+      )
+    }
     throw error
   }
 }
@@ -125,7 +134,6 @@ export async function createEventService(
   data: CreateEventInput,
   actorId: string,
 ) {
-  await requireEventManager(actorId)
   const context: CalendarEventMutationContext = {
     action: 'createEvent',
     actorId,
@@ -134,6 +142,7 @@ export async function createEventService(
   }
 
   try {
+    await requireEventManager(actorId)
     const db = await getDb()
     const [event] = await db
       .insert(calendarEvents)
@@ -146,7 +155,9 @@ export async function createEventService(
     })
     return { event }
   } catch (error) {
-    logCalendarEventFailure(context)
+    if (shouldLogCalendarEventFailure(error)) {
+      logCalendarEventFailure(context)
+    }
     throw error
   }
 }
@@ -155,7 +166,6 @@ export async function updateEventService(
   data: UpdateEventInput,
   actorId: string,
 ) {
-  await requireEventManager(actorId)
   const context: CalendarEventMutationContext = {
     action: 'updateEvent',
     actorId,
@@ -165,6 +175,7 @@ export async function updateEventService(
   }
 
   try {
+    await requireEventManager(actorId)
     const db = await getDb()
     const rows = await db
       .update(calendarEvents)
@@ -179,7 +190,9 @@ export async function updateEventService(
     })
     return { event }
   } catch (error) {
-    logCalendarEventFailure(context)
+    if (shouldLogCalendarEventFailure(error)) {
+      logCalendarEventFailure(context)
+    }
     throw error
   }
 }
@@ -188,7 +201,6 @@ export async function deleteEventService(
   data: DeleteEventInput,
   actorId: string,
 ): Promise<void> {
-  await requireEventManager(actorId)
   const context: CalendarEventMutationContext = {
     action: 'deleteEvent',
     actorId,
@@ -198,11 +210,14 @@ export async function deleteEventService(
   }
 
   try {
+    await requireEventManager(actorId)
     const db = await getDb()
     await db.delete(calendarEvents).where(eq(calendarEvents.id, data.eventId))
     logCalendarEventMutation('info', 'calendar_event_deleted', context)
   } catch (error) {
-    logCalendarEventFailure(context)
+    if (shouldLogCalendarEventFailure(error)) {
+      logCalendarEventFailure(context)
+    }
     throw error
   }
 }

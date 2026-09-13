@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 175
+**Iteration:** 176
 **Scope:** continue the batched structured-logging rollout while preserving the
 evidence-aware Engineering Roadmap handoff.
 
@@ -4714,3 +4714,28 @@ iteration. The full build and full integration suite remain intentionally
 skipped for the iterative telemetry workflow. Hosted Better Stack/Cloudflare
 ingestion, dashboards, alerts, Uptime monitors, source maps, PostHog
 verification, and restore evidence remain pending.
+
+## Iteration 176 — calendar event authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for the teacher/admin calendar event-management boundary:
+
+- Calendar event listing, creation, update, and deletion now initialize their
+  existing redacted telemetry contexts before the teacher/admin role preflight.
+  Unexpected role/profile persistence failures therefore emit the matching
+  operation-specific failure event with request correlation, duration, and a
+  stable read or mutation persistence category.
+- Expected authorization outcomes remain quiet and preserve the existing
+  teacher/admin restriction. Event titles, descriptions, locations, meeting
+  links, timestamps, and raw authorization/database details remain outside
+  structured telemetry.
+- Added four parameterized focused integration regressions covering request
+  correlation, redaction, stable categories, duration, and original-error
+  preservation across the batched operations.
+
+Validation: the focused calendar-event integration suite and targeted
+typecheck, formatting, static quality, and diff checks are the verification
+scope for this iteration. The full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.

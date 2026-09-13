@@ -205,7 +205,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    with request correlation, actor ID, safe total/linked counts, status, and
    duration. Event content, locations, meeting links, timestamps, and raw
    persistence details remain excluded; unexpected failures use the stable
-   `calendar_event_read_persistence` category.
+   `calendar_event_read_persistence` category. The teacher/admin preflight for
+   listing and calendar-event mutations remains inside the same redacted
+   operation boundary, so unexpected role/profile persistence failures retain
+   request correlation and operation-specific persistence categories while
+   expected authorization outcomes remain quiet.
    Post and comment create, update, and delete mutations now emit redacted
    `post_created`, `post_updated`, `post_deleted`, `comment_created`,
    `comment_updated`, and `comment_deleted` events with request correlation,

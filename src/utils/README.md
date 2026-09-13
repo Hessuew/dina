@@ -465,8 +465,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     for the shared database adapter, teacher/Admin service boundary, and
     redacted `calendar_event_*` operational events. Event-list reads emit safe
     count metadata and stable `calendar_event_read_persistence` failure
-    categories; titles, descriptions, locations, meeting links, and timestamps
-    remain excluded.
+    categories. Teacher/admin role preflights remain inside the list and
+    mutation telemetry boundaries, using stable operation-specific persistence
+    categories for unexpected failures while expected authorization outcomes
+    remain quiet. Titles, descriptions, locations, meeting links, and
+    timestamps remain excluded.
   - Zoom-link list reads emit redacted `zoom_links_loaded` /
     `zoom_links_load_failed` events with request correlation, actor ID, viewer
     role, safe link and teacher-option counts, status, and duration. Titles,
