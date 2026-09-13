@@ -419,6 +419,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     details remain excluded; unexpected failures use
     `discipleship_read_persistence` while expected authorization outcomes stay
     quiet.
+  - Discipleship assignment, pairing, and schedule mutations emit shared
+    redacted `discipleship_mutation_completed` / `discipleship_mutation_failed`
+    events. Unexpected role-store failures use the stable
+    `discipleship_authorization_persistence` category; expected denials,
+    not-found outcomes, and pairing conflicts remain quiet.
   - Enrollment list and detail reads emit redacted
     `enrollment_read_loaded` / `enrollment_read_failed` events with request
     correlation, actor/enrollment IDs, pagination and view metadata, safe

@@ -199,7 +199,9 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    with request correlation, action path, actor and safe student/teacher/pair
    IDs, operation type, status, and duration; schedule timestamps and raw
    persistence details are excluded, and expected authorization, not-found,
-   and pairing-conflict outcomes remain out of noisy error logs.
+   and pairing-conflict outcomes remain out of noisy error logs. Unexpected
+   role-store failures use the stable
+   `discipleship_authorization_persistence` category.
    Calendar event create, update, and delete mutations now emit redacted
    `calendar_event_created`, `calendar_event_updated`, and
    `calendar_event_deleted` events with request correlation, actor/event/course
@@ -526,7 +528,7 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    original-error preservation; expected denials remain quiet.
 4. Keep expected user-input failures out of noisy error logs.
 
-The repository migration is complete through Iteration 182. Future code
+The repository migration is complete through Iteration 183. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining

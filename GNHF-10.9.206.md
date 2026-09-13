@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 181
-**Scope:** finalize the batched structured-logging rollout and the
+**Iteration:** 183
+**Scope:** continue the batched structured-logging rollout and the
 evidence-aware Engineering Roadmap handoff.
 
 ## Final roadmap disposition
@@ -2120,15 +2120,15 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 
 ### Phase 1 — Production fundamentals
 
-| Roadmap item          | Current state                                                                                                                                                                                                  | Next smallest verifiable slice                                                               |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                                                                         | Verify `/healthz` and `/readyz` after deployment                                             |
-| Structured logging    | Repository rollout complete through Iteration 180; shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, and Admin workflows | Verify hosted ingestion, dashboards, alerts, and source-map correlation                      |
-| Error tracking        | Better Stack is the canonical DSN configuration with Sentry-compatible SDK wiring and explicit environment/release identity; provider verification is pending                                                  | Set `VITE_BETTER_STACK_DSN` and `BETTER_STACK_DSN`, then verify ingestion/source maps        |
-| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                                                                        | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
-| Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                                                                       | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
-| Alerting              | No verified production alert set                                                                                                                                                                               | Configure Uptime, error-rate, readiness, and latency alerts; test them                       |
-| Product analytics     | Enrollment start/submission, assignment submission, course-start, teacher-review, lesson-completion, and course-completion events are instrumented; project verification remains pending                       | Verify events and create the initial funnel in PostHog                                       |
+| Roadmap item          | Current state                                                                                                                                                                                                                | Next smallest verifiable slice                                                               |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                                                                                       | Verify `/healthz` and `/readyz` after deployment                                             |
+| Structured logging    | Repository rollout complete through Iteration 183; shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, discipleship, and Admin workflows | Verify hosted ingestion, dashboards, alerts, and source-map correlation                      |
+| Error tracking        | Better Stack is the canonical DSN configuration with Sentry-compatible SDK wiring and explicit environment/release identity; provider verification is pending                                                                | Set `VITE_BETTER_STACK_DSN` and `BETTER_STACK_DSN`, then verify ingestion/source maps        |
+| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                                                                                      | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
+| Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                                                                                     | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
+| Alerting              | No verified production alert set                                                                                                                                                                                             | Configure Uptime, error-rate, readiness, and latency alerts; test them                       |
+| Product analytics     | Enrollment start/submission, assignment submission, course-start, teacher-review, lesson-completion, and course-completion events are instrumented; project verification remains pending                                     | Verify events and create the initial funnel in PostHog                                       |
 
 ### Phase 2 — Reliability
 
@@ -4890,3 +4890,25 @@ full integration suite remain intentionally skipped for the iterative
 telemetry workflow. Hosted Better Stack/Cloudflare ingestion, dashboards,
 alerts, Uptime monitors, source maps, PostHog verification, and restore
 evidence remain pending.
+
+## Iteration 183 — discipleship authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for the seven discipleship mutation entrypoints:
+
+- Assignment, unassignment, pairing, unpairing, and individual/pair/group
+  schedule mutations now classify unexpected role-store failures with the
+  stable `discipleship_authorization_persistence` category while preserving
+  the shared redacted mutation event shape.
+- Expected authorization denials remain quiet and preserve their original
+  errors. Student and teacher identifiers remain the only safe mutation
+  metadata; schedules, profile data, and raw persistence details stay excluded.
+- Added parameterized integration coverage for all seven role preflight
+  boundaries, request correlation, redaction, error identity, and denial
+  silence.
+
+Validation: the focused discipleship integration suite passed all 17 tests;
+targeted formatting and typecheck passed. The full build and full integration
+suite remain intentionally skipped for the iterative telemetry workflow.
+Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors,
+source maps, PostHog verification, and restore evidence remain pending.
