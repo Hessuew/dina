@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 177
+**Iteration:** 178
 **Scope:** continue the batched structured-logging rollout while preserving the
 evidence-aware Engineering Roadmap handoff.
 
@@ -275,8 +275,10 @@ shadcn@latest` intentionally.
 - Course-teacher lesson creation, update, and deletion now emit redacted
   `lesson_created`, `lesson_updated`, and `lesson_deleted` events with request
   correlation, server-function path, actor/course/lesson IDs, status, and
-  duration. Persistence failures emit stable `lesson_persistence` categories;
-  lesson content, titles, and provider/database messages are excluded.
+  duration. Persistence failures emit stable `lesson_persistence` categories,
+  and unexpected authorization preflight persistence failures reuse the
+  matching operation event with `lesson_authorization_persistence`; lesson
+  content, titles, and provider/database messages are excluded.
 - Assignment create, update, and delete mutations now emit redacted
   `assignment_created`, `assignment_updated`, and `assignment_deleted` events
   with request correlation, server-function path, actor/course/lesson/
@@ -4762,3 +4764,29 @@ full build and full integration suite remain intentionally skipped for the
 iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
 dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
 restore evidence remain pending.
+
+## Iteration 178 — lesson authorization preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for lesson mutations and completion:
+
+- Lesson creation, update, and deletion now run their course authorization
+  preflights inside operation-aware telemetry boundaries. Student lesson
+  completion now does the same for its student-role preflight.
+- Unexpected authorization persistence failures reuse the matching redacted
+  operation failure event with request correlation, actor/course/lesson IDs
+  where available, duration, and the stable
+  `lesson_authorization_persistence` category. Expected authorization
+  denials remain quiet and preserve their existing errors.
+- Added a parameterized focused integration regression covering all four
+  authorization boundaries, raw-detail exclusion, request correlation,
+  category stability, duration, and original-error preservation.
+
+Validation: the new focused lesson telemetry cases passed all 5 tests;
+targeted Prettier formatting and `bun run typecheck` passed. The broader
+course integration file passed 76 of 77 tests; its one failure remains the
+existing thumbnail-signing storage-mock assertion and is unrelated to this
+slice. The full build and full integration suite remain intentionally skipped
+for the iterative telemetry workflow. Hosted Better Stack/Cloudflare
+ingestion, dashboards, alerts, Uptime monitors, source maps, PostHog
+verification, and restore evidence remain pending.

@@ -1,5 +1,20 @@
 import { randomUUID } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AuthorizationService } from '@/utils/authz/types'
+import {
+  DefaultAuthorizationService,
+  setAuthorizationService,
+} from '@/utils/authz'
+import { AuthorizationError } from '@/utils/errors'
+import * as authUtils from '@/utils/auth/auth'
+import {
+  findAllCourses,
+  findCourseById,
+  findCourseTeachers,
+  findLessonProgress,
+  insertCourse,
+} from '@/utils/courses/repository'
+import * as coursesRepository from '@/utils/courses/repository'
 import {
   createCourseService,
   deleteCourseService,
@@ -21,15 +36,6 @@ import {
   updateCourseTeachersService,
   validateTeacherPair,
 } from '@/utils/courses/service/teacher-assignment.service'
-import {
-  findAllCourses,
-  findCourseById,
-  findCourseTeachers,
-  findLessonProgress,
-  insertCourse,
-} from '@/utils/courses/repository'
-import * as coursesRepository from '@/utils/courses/repository'
-import * as authUtils from '@/utils/auth/auth'
 import {
   seedAssignment,
   seedCourse,
@@ -72,6 +78,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  setAuthorizationService(new DefaultAuthorizationService())
 })
 
 async function seedCourseWithTeacher() {
@@ -580,6 +587,118 @@ describe('completeLessonService (integration)', () => {
       })
     },
   )
+})
+
+describe('lesson authorization preflight telemetry (integration)', () => {
+  it.each([
+    {
+      name: 'lesson creation',
+      event: 'lesson_create_failed',
+      path: 'serverFn:createLesson',
+      run: async (actorId: string) => {
+        await createLessonService(
+          { courseId: randomUUID(), title: 'Private lesson', orderIndex: 0 },
+          actorId,
+        )
+      },
+    },
+    {
+      name: 'lesson update',
+      event: 'lesson_update_failed',
+      path: 'serverFn:updateLesson',
+      run: async (actorId: string) => {
+        await updateLessonService(
+          {
+            courseId: randomUUID(),
+            lessonId: randomUUID(),
+            title: 'Private lesson',
+          },
+          actorId,
+        )
+      },
+    },
+    {
+      name: 'lesson deletion',
+      event: 'lesson_delete_failed',
+      path: 'serverFn:deleteLesson',
+      run: async (actorId: string) => {
+        await deleteLessonService(
+          { courseId: randomUUID(), lessonId: randomUUID() },
+          actorId,
+        )
+      },
+    },
+    {
+      name: 'lesson completion',
+      event: 'lesson_completion_failed',
+      path: 'serverFn:completeLesson',
+      run: async (actorId: string) => {
+        await completeLessonService({ lessonId: randomUUID() }, actorId)
+      },
+    },
+  ])(
+    'logs unexpected $name authorization failures without raw details',
+    async ({ event, path, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const repositoryError = new Error(
+        'authorization connectionString=secret; lesson=private',
+      )
+      const rejectingService: AuthorizationService = {
+        hasRole: vi.fn().mockRejectedValue(repositoryError),
+        isRole: vi.fn(),
+        getRole: vi.fn(),
+        isAdmin: vi.fn(),
+        canPerformAction: vi.fn().mockRejectedValue(repositoryError),
+        isAllowedToPerformAction: vi.fn(),
+      }
+      setAuthorizationService(rejectingService)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/lesson-mutation', {
+            headers: { 'x-request-id': `lesson-auth-${path}` },
+          }),
+          () => run(randomUUID()),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const eventLine = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === event)
+      expect(eventLine).toMatchObject({
+        event,
+        path,
+        requestId: `lesson-auth-${path}`,
+        status: 'failure',
+        errorCategory: 'lesson_authorization_persistence',
+        durationMs: expect.any(Number),
+      })
+      expect(serialized.join('\n')).not.toContain('connectionString')
+      expect(serialized.join('\n')).not.toContain('lesson=private')
+    },
+  )
+
+  it('keeps expected authorization denials out of operation telemetry', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const denial = new AuthorizationError('course access required')
+    setAuthorizationService({
+      hasRole: vi.fn().mockRejectedValue(denial),
+      isRole: vi.fn(),
+      getRole: vi.fn(),
+      isAdmin: vi.fn(),
+      canPerformAction: vi.fn().mockRejectedValue(denial),
+      isAllowedToPerformAction: vi.fn(),
+    })
+
+    await expect(
+      createLessonService(
+        { courseId: randomUUID(), title: 'Denied lesson', orderIndex: 0 },
+        randomUUID(),
+      ),
+    ).rejects.toBe(denial)
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
 })
 
 describe('createCourseService (integration)', () => {

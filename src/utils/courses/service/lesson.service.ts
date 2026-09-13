@@ -33,6 +33,7 @@ type LessonMutationLogContext = {
   actorId: string
   courseId?: string
   lessonId?: string
+  failureEvent: string
   startedAt: number
 }
 
@@ -56,6 +57,22 @@ function logLessonMutationEvent(
 
 function shouldLogLessonPreflightFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
+}
+
+async function requireLessonAuthorization(
+  context: LessonMutationLogContext,
+  authorize: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    await authorize()
+  } catch (error) {
+    if (shouldLogLessonPreflightFailure(error)) {
+      logLessonMutationEvent('error', context.failureEvent, context, {
+        errorCategory: 'lesson_authorization_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 async function loadLessonCompletionPreflight(
@@ -112,9 +129,12 @@ export async function createLessonService(
     action: 'createLesson',
     actorId: userId,
     courseId: data.courseId,
+    failureEvent: 'lesson_create_failed',
     startedAt: performance.now(),
   }
-  await authz(userId).perform('createLesson').on('course', data.courseId)
+  await requireLessonAuthorization(context, () =>
+    authz(userId).perform('createLesson').on('course', data.courseId),
+  )
 
   try {
     const lesson = await insertLesson({
@@ -151,9 +171,12 @@ export async function updateLessonService(
     actorId: userId,
     courseId: data.courseId,
     lessonId: data.lessonId,
+    failureEvent: 'lesson_update_failed',
     startedAt: performance.now(),
   }
-  await authz(userId).perform('editLesson').on('course', data.courseId)
+  await requireLessonAuthorization(context, () =>
+    authz(userId).perform('editLesson').on('course', data.courseId),
+  )
 
   try {
     const lesson = await updateLessonById(data.lessonId, {
@@ -187,9 +210,12 @@ export async function deleteLessonService(
     actorId: userId,
     courseId: data.courseId,
     lessonId: data.lessonId,
+    failureEvent: 'lesson_delete_failed',
     startedAt: performance.now(),
   }
-  await authz(userId).perform('deleteLesson').on('course', data.courseId)
+  await requireLessonAuthorization(context, () =>
+    authz(userId).perform('deleteLesson').on('course', data.courseId),
+  )
   try {
     await deleteLessonById(data.lessonId)
     logLessonMutationEvent('info', 'lesson_deleted', context)
@@ -211,9 +237,12 @@ export async function completeLessonService(
     action: 'completeLesson',
     actorId: userId,
     lessonId: data.lessonId,
+    failureEvent: 'lesson_completion_failed',
     startedAt: performance.now(),
   }
-  await authz(userId).hasRole('student')
+  await requireLessonAuthorization(context, () =>
+    authz(userId).hasRole('student'),
+  )
 
   const { lesson, progress } = await loadLessonCompletionPreflight(
     data,

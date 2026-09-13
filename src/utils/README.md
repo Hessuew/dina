@@ -195,7 +195,10 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Course-teacher lesson authoring emits redacted `lesson_created`,
     `lesson_updated`, and `lesson_deleted` events with request correlation,
     actor/course/lesson IDs, status, and duration; persistence failures use
-    the stable `lesson_persistence` category.
+    the stable `lesson_persistence` category. Unexpected authorization
+    preflight persistence failures reuse each operation's redacted failure
+    event with `lesson_authorization_persistence`; expected denials remain
+    quiet.
   - Student lesson completion is persisted through the `completeLesson` server
     function only for published lessons. Completion uses an idempotent
     `(studentId, lessonId)` upsert and emits redacted `lesson_completed`,

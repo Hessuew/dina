@@ -156,7 +156,9 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `lesson_created`, `lesson_updated`, and `lesson_deleted` events with
    request correlation, server-function path, actor/course/lesson IDs,
    status, and duration; persistence failures use the stable
-   `lesson_persistence` category.
+   `lesson_persistence` category. Unexpected authorization preflight
+   persistence failures reuse each operation's redacted failure event with
+   `lesson_authorization_persistence`; expected denials remain quiet.
    Course management now emits redacted `course_created`, `course_updated`,
    and `course_deleted` events with request correlation, server-function path,
    actor/course IDs, publication status where relevant, and duration;
