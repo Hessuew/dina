@@ -456,7 +456,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     - `recipients.ts` - Business rules for recipient calculation
     - `delivery.ts` - Delivery adapters (DatabaseDeliveryAdapter for DB writes); failed
       persistence is best-effort and emits redacted `notification_delivery_failed` telemetry
-    - `index.ts` - Main exports: emit(event) for sending notifications
+    - `index.ts` - Main exports: emit(event) resolves recipients with redacted
+      `notification_recipients_resolved` / `notification_recipient_resolution_failed`
+      telemetry and keeps recipient lookup and delivery failures best-effort
     - Usage: `await emit(createPostCreatedEvent(actorId, postId, courseId, canModerate))`
   - `email/` - Shared outbound email utilities:
     - `types.ts`: `EmailSender` port and typed transactional email message shapes.

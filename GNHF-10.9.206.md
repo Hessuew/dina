@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 162
-**Scope:** record the batched shared-authorization persistence telemetry slice
+**Iteration:** 163
+**Scope:** record the batched notification recipient-resolution telemetry slice
 while keeping the evidence-aware roadmap closure auditable.
 
 ## Final roadmap disposition
@@ -99,10 +99,13 @@ shadcn@latest` intentionally.
   phone numbers, email addresses, invitation details, and provider errors
   remain excluded; expected authorization and campaign-lock conflicts stay
   quiet.
-- Post/comment notification persistence failures now emit a redacted
-  `notification_delivery_failed` event with request correlation, notification
-  type, recipient count, duration, and a stable error category. Best-effort
-  delivery semantics are unchanged.
+- Post/comment notification fan-out now emits redacted
+  `notification_recipients_resolved` /
+  `notification_recipient_resolution_failed` events for safe recipient counts
+  and lookup failures; `notification_delivery_failed` continues to cover DB
+  delivery failures. Recipient identities, notification content, and raw
+  persistence details remain excluded, and lookup plus delivery stay
+  best-effort.
 - Media-thumbnail completion now emits redacted
   `media_thumbnail_uploaded` / `media_thumbnail_upload_failed` events with
   request correlation, actor/media IDs, replacement and signing outcomes,
@@ -3974,6 +3977,31 @@ tests. The full build and full integration suite were intentionally skipped for
 the iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
 dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
 restore evidence remain pending.
+
+## Iteration 163 — notification recipient-resolution telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for post/comment notification fan-out:
+
+- Recipient resolution now emits redacted
+  `notification_recipients_resolved` telemetry with request correlation,
+  actor/post IDs, notification type, safe recipient count, status, and duration.
+- Unexpected profile/course-teacher recipient lookup failures now emit
+  `notification_recipient_resolution_failed` with the stable
+  `notification_recipient_read_persistence` category. The failure is swallowed
+  so recipient lookup remains best effort, matching the existing DB-delivery
+  failure behavior.
+- Recipient identities, notification content, and raw persistence/provider
+  details remain outside structured telemetry; the original post/comment
+  mutation response is unchanged when notification fan-out cannot resolve.
+- Added focused unit coverage for successful resolution/delivery and redacted
+  failure swallowing.
+
+Validation: the focused notification unit suite, targeted formatting,
+typecheck, static checks, `bun run quality:gate`, and `git diff --check` passed.
+The full build and full integration suite remain intentionally skipped. Hosted
+Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source
+maps, PostHog verification, and restore evidence remain pending.
 
 ## Iteration 146 — enrollment evaluation persistence telemetry
 

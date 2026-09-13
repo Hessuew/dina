@@ -44,6 +44,12 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   create/update/delete mutations emit redacted request-correlated events with
   safe actor/media metadata; titles, descriptions, URLs, and private storage
   paths are excluded.
+  Post/comment notification fan-out also emits redacted recipient-resolution
+  success/failure events with request correlation, actor/post IDs, event type,
+  safe recipient counts, duration, and the stable
+  `notification_recipient_read_persistence` category; recipient identities,
+  notification content, and raw persistence details remain excluded, and
+  lookup plus delivery failures remain best effort.
   Exam create/save/publish mutations emit redacted request-correlated events
   with safe actor/exam metadata, exam state, question counters, and stable
   persistence-failure categories; titles, dates, prompts, option labels, and
