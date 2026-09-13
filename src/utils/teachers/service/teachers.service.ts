@@ -21,6 +21,12 @@ type TeacherDirectoryReadContext = {
   startedAt: number
 }
 
+type CourseTeacherCheckContext = {
+  actorId: string
+  courseId: string
+  startedAt: number
+}
+
 function logTeacherDirectoryEvent(
   level: LogLevel,
   event: string,
@@ -34,6 +40,20 @@ function logTeacherDirectoryEvent(
     durationMs: elapsedMs(context.startedAt),
     actorId: context.actorId,
     ...fields,
+  })
+}
+
+function logCourseTeacherCheckFailure(
+  context: CourseTeacherCheckContext,
+): void {
+  logServerEvent('error', 'course_teacher_check_failed', {
+    requestId: getRequestId(),
+    path: 'service:isCourseTeacher',
+    status: 'failure',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    courseId: context.courseId,
+    errorCategory: 'course_teacher_read_persistence',
   })
 }
 
@@ -134,6 +154,17 @@ export async function getAllTeachersService(userId: string) {
 }
 
 export async function isCourseTeacherService(courseId: string, userId: string) {
-  const assignment = await findCourseTeacher(courseId, userId)
-  return { isCourseTeacher: Boolean(assignment) }
+  const context: CourseTeacherCheckContext = {
+    actorId: userId,
+    courseId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const assignment = await findCourseTeacher(courseId, userId)
+    return { isCourseTeacher: Boolean(assignment) }
+  } catch (error) {
+    logCourseTeacherCheckFailure(context)
+    throw error
+  }
 }

@@ -215,5 +215,39 @@ describe('teachers service (integration)', () => {
         isCourseTeacher: false,
       })
     })
+
+    it('logs stable lookup failures without raw repository details', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const teacherId = await seedProfile({ role: 'teacher' })
+      const courseId = await seedCourse()
+      const repositoryError = new Error(
+        'course teacher connectionString secret',
+      )
+      vi.spyOn(teachersRepository, 'findCourseTeacher').mockRejectedValueOnce(
+        repositoryError,
+      )
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org', {
+            headers: { 'x-request-id': 'course-teacher-check-failure' },
+          }),
+          () => isCourseTeacherService(courseId, teacherId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'course_teacher_check_failed',
+        path: 'service:isCourseTeacher',
+        requestId: 'course-teacher-check-failure',
+        actorId: teacherId,
+        courseId,
+        status: 'failure',
+        errorCategory: 'course_teacher_read_persistence',
+        durationMs: expect.any(Number),
+      })
+      expect(line).not.toContain('course teacher connectionString secret')
+    })
   })
 })

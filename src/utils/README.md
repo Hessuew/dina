@@ -40,7 +40,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     redacted `auth_session_lookup_failed` / `auth_profile_lookup_failed`
     telemetry with request correlation, duration, safe identity where
     available, and stable error categories; expected unauthenticated and
-    missing-profile results remain ordinary auth outcomes.
+    missing-profile results remain ordinary auth outcomes. The root route's
+    `getRootUserContext` bootstrap uses the same redacted events for its
+    session/profile persistence failures.
   - `auth/login.ts`: Supabase password sign-in adapter with redacted,
     request-correlated `login_succeeded` / `login_failed` telemetry, including
     stable error-level logging for unexpected provider exceptions.
@@ -291,6 +293,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     duration, and the stable `course_teacher_read_persistence` category;
     teacher profile fields, storage URLs, and raw persistence details remain
     excluded.
+  - The legacy `isCourseTeacherService` probe emits a redacted
+    `course_teacher_check_failed` event for unexpected assignment-read
+    persistence failures with request correlation, actor/course IDs, duration,
+    and the stable `course_teacher_read_persistence` category; boolean
+    authorization results remain unchanged.
   - Admin active-substitution lookups emit redacted
     `enrollment_substitutions_loaded` /
     `enrollment_substitutions_load_failed` events with request correlation,

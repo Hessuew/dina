@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 163
-**Scope:** record the batched notification recipient-resolution telemetry slice
+**Iteration:** 164
+**Scope:** record the batched root-auth and course-teacher telemetry slice
 while keeping the evidence-aware roadmap closure auditable.
 
 ## Final roadmap disposition
@@ -106,6 +106,15 @@ shadcn@latest` intentionally.
   delivery failures. Recipient identities, notification content, and raw
   persistence details remain excluded, and lookup plus delivery stay
   best-effort.
+- Root route authentication bootstrap now reuses redacted
+  `auth_session_lookup_failed` / `auth_profile_lookup_failed` events for
+  unexpected Supabase session and profile persistence failures, with the
+  `auth:fetchUser` path and request correlation; anonymous `null` context
+  behavior is unchanged.
+- The legacy course-teacher boolean probe now emits redacted
+  `course_teacher_check_failed` telemetry for unexpected assignment-read
+  persistence failures with safe actor/course IDs, request correlation,
+  duration, and the stable `course_teacher_read_persistence` category.
 - Media-thumbnail completion now emits redacted
   `media_thumbnail_uploaded` / `media_thumbnail_upload_failed` events with
   request correlation, actor/media IDs, replacement and signing outcomes,
@@ -4379,3 +4388,29 @@ build and full integration suite remain intentionally deferred for the
 iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
 dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
 restore evidence remain pending.
+
+## Iteration 164 — root-auth and course-teacher telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for two remaining auth-related persistence boundaries:
+
+- Root route authentication bootstrap now emits the existing redacted
+  `auth_session_lookup_failed` and `auth_profile_lookup_failed` events when
+  unexpected Supabase session or profile persistence failures occur. Events
+  use the `auth:fetchUser` path, request correlation, safe user identity where
+  available, stable categories, and preserve the original error; anonymous
+  `null` context behavior is unchanged.
+- The legacy `isCourseTeacherService` boolean probe now emits redacted
+  `course_teacher_check_failed` telemetry for unexpected assignment-read
+  persistence failures with request correlation, actor/course IDs, duration,
+  and the stable `course_teacher_read_persistence` category. Successful
+  authorization results remain quiet and unchanged.
+- Added focused integration coverage for root session/profile failures and
+  course-teacher lookup failure redaction and error preservation.
+
+Validation: the focused auth and teacher integration suites, targeted
+formatting, typecheck, static checks, `bun run quality:gate`, and
+`git diff --check` passed. The full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.

@@ -50,6 +50,10 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   `notification_recipient_read_persistence` category; recipient identities,
   notification content, and raw persistence details remain excluded, and
   lookup plus delivery failures remain best effort.
+  Root route authentication bootstrap now records redacted session/profile
+  persistence failures through the shared auth event names, and the legacy
+  course-teacher boolean probe records stable assignment-read failures without
+  logging successful authorization checks.
   Exam create/save/publish mutations emit redacted request-correlated events
   with safe actor/exam metadata, exam state, question counters, and stable
   persistence-failure categories; titles, dates, prompts, option labels, and

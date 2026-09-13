@@ -11,7 +11,6 @@ import { createServerFn } from '@tanstack/react-start'
 import * as Sentry from '@sentry/tanstackstart-react'
 import * as React from 'react'
 
-import type { User } from '@supabase/supabase-js'
 import type { UserContext } from '@/utils/auth/domain/user-context.domain'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar/Sidebar'
 import { AppSidebar } from '@/components/navigation/AppSidebar'
@@ -20,16 +19,10 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import appCss from '@/styles/app.css?url'
 import { seo } from '@/utils/seo'
 
-import { getDb } from '@/db'
-import { getSupabaseServerClient } from '@/utils/supabase'
-import {
-  buildUserContext,
-  isAuthenticatedUser,
-} from '@/utils/auth/domain/user-context.domain'
+import { getRootUserContext } from '@/utils/auth/auth'
 import { DefaultCatchBoundary } from '@/components/navigation/DefaultCatchBoundary'
 import { NotFound } from '@/components/navigation/NotFound'
 import { Header } from '@/components/navigation/Header'
-import { signPrivateStoragePath } from '@/utils/storage/service/private-storage.service'
 import { useSessionPrivateImageCacheUser } from '@/hooks/useSessionPrivateImageUrl'
 import {
   identifyAnalyticsUser,
@@ -37,35 +30,7 @@ import {
   resetAnalyticsUser,
 } from '@/utils/analytics'
 
-const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
-  const supabase = getSupabaseServerClient()
-  const { data, error: _error } = await supabase.auth.getUser()
-
-  if (!isAuthenticatedUser(data.user)) {
-    return null
-  }
-
-  // Fetch user profile to get avatarUrl and fullName
-  const db = await getDb()
-
-  const profile = await db.query.profiles.findFirst({
-    where: (t, { eq }) => eq(t.id, (data.user as User).id),
-    columns: {
-      avatarUrl: true,
-      bio: true,
-      fullName: true,
-      role: true,
-    },
-  })
-
-  const signedProfile = profile
-    ? {
-        ...profile,
-        avatarUrl: await signPrivateStoragePath('avatars', profile.avatarUrl),
-      }
-    : undefined
-  return buildUserContext(data.user, signedProfile)
-})
+const fetchUser = createServerFn({ method: 'GET' }).handler(getRootUserContext)
 
 export const Route = createRootRoute({
   beforeLoad: async () => {
