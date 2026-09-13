@@ -4,7 +4,7 @@ import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
-import { ValidationError } from '@/utils/errors'
+import { ValidationError, isAppError } from '@/utils/errors'
 import { assertTeacherPrivilegeTarget } from '@/utils/staff-privilege/domain/staff-privilege.domain'
 import {
   deleteStaffPrivilege,
@@ -39,12 +39,37 @@ function logStaffPrivilegeEvent(
   })
 }
 
+async function loadTargetProfileWithTelemetry(
+  context: StaffPrivilegeLogContext,
+): Promise<Awaited<ReturnType<typeof getUserProfile>>> {
+  try {
+    return await getUserProfile(context.targetUserId)
+  } catch (error) {
+    if (!isAppError(error) || error.status >= 500) {
+      logStaffPrivilegeEvent(
+        'error',
+        'staff_privilege_update_failed',
+        context,
+        { errorCategory: 'staff_privilege_target_read_persistence' },
+      )
+    }
+    throw error
+  }
+}
+
 export async function setStaffPrivilegeService(
   actorId: string,
   data: { userId: string; privilege: StaffPrivilege; granted: boolean },
 ) {
   await authz(actorId).hasRole('admin')
-  const target = await getUserProfile(data.userId)
+  const context: StaffPrivilegeLogContext = {
+    actorId,
+    targetUserId: data.userId,
+    privilege: data.privilege,
+    granted: data.granted,
+    startedAt: performance.now(),
+  }
+  const target = await loadTargetProfileWithTelemetry(context)
   try {
     assertTeacherPrivilegeTarget(target.role)
   } catch (error) {
@@ -52,14 +77,6 @@ export async function setStaffPrivilegeService(
       error instanceof Error ? error.message : 'Invalid privilege target',
       { details: { userId: data.userId, role: target.role } },
     )
-  }
-
-  const context: StaffPrivilegeLogContext = {
-    actorId,
-    targetUserId: data.userId,
-    privilege: data.privilege,
-    granted: data.granted,
-    startedAt: performance.now(),
   }
 
   try {

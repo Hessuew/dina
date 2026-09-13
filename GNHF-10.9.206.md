@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 167
+**Iteration:** 168
 **Scope:** continue the batched structured-logging rollout while preserving the
 evidence-aware Engineering Roadmap handoff.
 
@@ -4489,3 +4489,27 @@ integration suite remain intentionally skipped for the iterative telemetry
 workflow. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts,
 Uptime monitors, source maps, PostHog verification, and restore evidence
 remain pending.
+
+## Iteration 168 — Admin actor-profile preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for Admin identity preflights:
+
+- Unexpected actor-profile lookup failures in invitation create, resend, list,
+  revoke, and delete flows now reuse each action's redacted failure event with
+  the stable `invitation_actor_profile_read_persistence` category. Expected
+  authorization and missing-profile outcomes remain quiet.
+- Unexpected staff-privilege target-profile lookup failures now emit
+  `staff_privilege_update_failed` with the stable
+  `staff_privilege_target_read_persistence` category; target IDs remain safe
+  correlation fields and raw profile/provider details remain excluded.
+- Added six focused integration regressions covering request correlation,
+  stable categories, redaction, and original-error preservation across the
+  batched boundaries.
+
+Validation: the focused invitation and staff-privilege integration suites
+passed all 42 tests; targeted Prettier formatting, typecheck, static quality,
+and `git diff --check` passed. The full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.

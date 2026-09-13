@@ -3,6 +3,8 @@ import { seedProfile } from '@/../test/integration/seed'
 import { getTeachersService } from '@/utils/teachers/service/teachers.service'
 import { AuthorizationError, ValidationError } from '@/utils/errors'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
+import * as authUtils from '@/utils/auth/auth'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 describe('setStaffPrivilegeService (integration)', () => {
   it('lets an Admin grant and revoke a Teacher-user privilege', async () => {
@@ -68,6 +70,44 @@ describe('setStaffPrivilegeService (integration)', () => {
         granted: true,
       }),
     ).rejects.toBeInstanceOf(ValidationError)
+  })
+
+  it('logs unexpected target-profile failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const targetId = await seedProfile({ role: 'teacher' })
+    const repositoryError = new Error(
+      'staff target profile connectionString=secret; email=teacher@test.dev',
+    )
+    vi.spyOn(authUtils, 'getUserProfile').mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/staff-privilege', {
+          headers: { 'x-request-id': 'staff-privilege-target-failure' },
+        }),
+        () =>
+          setStaffPrivilegeService(adminId, {
+            userId: targetId,
+            privilege: 'attendance_override',
+            granted: true,
+          }),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('teacher@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'staff_privilege_update_failed',
+      path: 'serverFn:setStaffPrivilege',
+      requestId: 'staff-privilege-target-failure',
+      actorId: adminId,
+      targetUserId: targetId,
+      errorCategory: 'staff_privilege_target_read_persistence',
+      status: 'failure',
+      durationMs: expect.any(Number),
+    })
   })
 
   it('rejects a Teacher-user granting privileges', async () => {

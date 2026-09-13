@@ -52,7 +52,7 @@ type InvitationLogContext = {
 }
 
 type InvitationPreflightContext = InvitationLogContext & {
-  failureEvent: 'invitation_create_failed' | 'invitation_resend_failed'
+  failureEvent: string
 }
 
 type InvitationTokenLogContext = {
@@ -137,7 +137,11 @@ async function prepareInvitationCreation(input: {
   userId: string
   context: InvitationPreflightContext
 }) {
-  const profile = await getUserProfile(input.userId)
+  const profile = await withInvitationPreflightTelemetry(
+    input.context,
+    'invitation_actor_profile_read_persistence',
+    () => getUserProfile(input.userId),
+  )
   if (profile.role !== 'admin') {
     throw new AuthorizationError('Only admins can create invitations', {
       code: 'ROLE_REQUIRED',
@@ -187,7 +191,11 @@ async function prepareInvitationResend(input: {
   userId: string
   context: InvitationPreflightContext
 }): Promise<PreparedInvitationResend> {
-  const profile = await getUserProfile(input.userId)
+  const profile = await withInvitationPreflightTelemetry(
+    input.context,
+    'invitation_actor_profile_read_persistence',
+    () => getUserProfile(input.userId),
+  )
   if (profile.role !== 'admin') {
     throw new AuthorizationError('Only admins can resend invitations', {
       code: 'ROLE_REQUIRED',
@@ -418,7 +426,17 @@ export async function getInvitationByTokenService(
 }
 
 export async function getInvitationsService(userId: string) {
-  const profile = await getUserProfile(userId)
+  const context: InvitationPreflightContext = {
+    action: 'getInvitations',
+    actorId: userId,
+    startedAt: performance.now(),
+    failureEvent: 'invitations_load_failed',
+  }
+  const profile = await withInvitationPreflightTelemetry(
+    context,
+    'invitation_actor_profile_read_persistence',
+    () => getUserProfile(userId),
+  )
 
   if (profile.role !== 'admin') {
     throw new AuthorizationError('Only admins can view invitations', {
@@ -426,12 +444,6 @@ export async function getInvitationsService(userId: string) {
       internalMessage: 'Non-admin attempted to view invitations',
       details: { role: profile.role },
     })
-  }
-
-  const context: InvitationLogContext = {
-    action: 'getInvitations',
-    actorId: userId,
-    startedAt: performance.now(),
   }
 
   try {
@@ -474,7 +486,11 @@ export async function revokeInvitationService(
     invitationId: data.id,
     startedAt: performance.now(),
   }
-  const profile = await getUserProfile(userId)
+  const profile = await withInvitationPreflightTelemetry(
+    { ...context, failureEvent: 'invitation_revoke_failed' },
+    'invitation_actor_profile_read_persistence',
+    () => getUserProfile(userId),
+  )
 
   if (profile.role !== 'admin') {
     throw new AuthorizationError('Only admins can revoke invitations', {
@@ -505,7 +521,11 @@ export async function deleteInvitationService(
     invitationId: data.id,
     startedAt: performance.now(),
   }
-  const profile = await getUserProfile(userId)
+  const profile = await withInvitationPreflightTelemetry(
+    { ...context, failureEvent: 'invitation_delete_failed' },
+    'invitation_actor_profile_read_persistence',
+    () => getUserProfile(userId),
+  )
 
   if (profile.role !== 'admin') {
     throw new AuthorizationError('Only admins can delete invitations', {

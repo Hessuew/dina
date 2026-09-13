@@ -151,15 +151,16 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Admin staff-privilege grants and revokes emit redacted
     `staff_privilege_updated` audit events with request correlation, actor and
     target IDs, privilege, grant direction, status, and duration; persistence
-    failures use a stable category without raw provider details.
+    failures use stable categories, including unexpected target-profile
+    preflight failures, without raw provider details.
   - Admin invitation creation and resend emit redacted
     `invitation_created` / `invitation_resent` events and stable delivery or
     persistence failures; revoke and delete emit audit events. Actor and
     invitation IDs plus role are safe fields, while email addresses, tokens,
     and provider messages are excluded. Unexpected create duplicate/profile
-    checks and resend target/token-rotation failures reuse the corresponding
-    redacted mutation failure events with stable read or persistence
-    categories; original repository errors remain unchanged.
+    checks, actor-profile preflights, and resend target/token-rotation failures
+    reuse the corresponding redacted mutation failure events with stable read
+    or persistence categories; original repository errors remain unchanged.
   - Admin invitation-list reads emit redacted `invitations_loaded` /
     `invitations_load_failed` events with request correlation, actor ID, safe
     result counts, duration, and the stable `invitation_read_persistence`
