@@ -212,16 +212,16 @@ This folder is primarily where TanStack Start server functions live (via `create
     `student_directory_loaded` / `student_directory_load_failed` events with
     request correlation, actor and target IDs where applicable, safe result
     counts, duration, and the stable `student_directory_read_persistence`
-    failure category, including detail preflight lookups; expected not-found
-    outcomes remain quiet. Names, emails, bios, and assignment content remain
-    excluded.
+    failure category, including authorization and detail preflight lookups;
+    expected not-found and authorization outcomes remain quiet. Names, emails,
+    bios, and assignment content remain excluded.
   - Teacher-directory list reads emit redacted `teacher_directory_loaded` /
     `teacher_directory_load_failed` events with request correlation, actor ID,
     safe result counts, duration, and the stable
-    `teacher_directory_read_persistence` failure category; actor-profile
-    preflight failures remain inside the same redacted read boundary and
-    expected missing-profile outcomes remain quiet, while teacher names,
-    emails, bios, and privilege details remain excluded.
+    `teacher_directory_read_persistence` failure category; actor-profile and
+    admin-role preflight failures remain inside the same redacted read boundary
+    and expected missing-profile or authorization outcomes remain quiet, while
+    teacher names, emails, bios, and privilege details remain excluded.
   - Assignment lesson/detail, student/teacher list, submission-count, and
     submission-list reads emit redacted `assignment_read_loaded` /
     `assignment_read_failed` events with request correlation, actor IDs, safe
@@ -243,7 +243,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Managed-media update, delete, and thumbnail-upload preflight lookups emit
     redacted `media_mutation_failed` events with the stable
     `media_read_persistence` category; expected authorization and not-found
-    outcomes remain quiet.
+    outcomes remain quiet. Media creation keeps its staff/profile preflight in
+    the same mutation boundary and uses the stable `media_persistence`
+    category for unexpected failures.
   - Media-library file and thumbnail signed-upload requests emit redacted
     `media_upload_url_issued` / `media_upload_url_issue_failed` events with
     request correlation, actor/media IDs where applicable, bucket, media kind,

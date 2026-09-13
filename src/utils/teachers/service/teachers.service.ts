@@ -134,7 +134,6 @@ export async function getTeachersService(actorId: string) {
 }
 
 export async function getAllTeachersService(userId: string) {
-  await authz(userId).hasRole('admin')
   const context: TeacherDirectoryReadContext = {
     action: 'getAllTeachers',
     actorId: userId,
@@ -144,6 +143,7 @@ export async function getAllTeachersService(userId: string) {
   return withTeacherDirectoryTelemetry(
     context,
     async () => {
+      await authz(userId).hasRole('admin')
       const rows = await signAvatarRows(await findAllTeachersSimple())
       const teachers = rows.map(({ courseTeachers, ...teacher }) => ({
         ...teacher,

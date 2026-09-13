@@ -467,9 +467,15 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    preflight failures inside their existing redacted `post_read_failed` events
    with the stable `post_read_persistence` category; expected missing-profile
    outcomes remain quiet.
+   Student-directory list/detail authorization preflights and the admin
+   teacher-directory role preflight now remain inside their existing redacted
+   read failure events with stable directory read categories; expected
+   authorization outcomes stay quiet. Library-media creation also keeps its
+   staff/profile preflight inside `media_mutation_failed`, using the stable
+   `media_persistence` category while preserving the original error.
 4. Keep expected user-input failures out of noisy error logs.
 
-The repository migration is complete through Iteration 172. Future code
+The repository migration is complete through Iteration 173. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining

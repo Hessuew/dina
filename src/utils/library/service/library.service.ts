@@ -370,8 +370,6 @@ export async function createLibraryMediaService(
   data: CreateMediaInput,
   userId: string,
 ): Promise<{ media: MediaLibraryRow }> {
-  await requireStaff(userId, 'create library media')
-  const source = mediaSource(data, userId)
   const context: LibraryMutationContext = {
     action: 'createLibraryMedia',
     actorId: userId,
@@ -379,6 +377,8 @@ export async function createLibraryMediaService(
   }
 
   try {
+    await requireStaff(userId, 'create library media')
+    const source = mediaSource(data, userId)
     const media = await insertMedia({
       uploaderId: userId,
       courseId: data.courseId ?? null,

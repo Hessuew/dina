@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 172
+**Iteration:** 173
 **Scope:** continue the batched structured-logging rollout while preserving the
 evidence-aware Engineering Roadmap handoff.
 
@@ -4626,6 +4626,36 @@ for assignment workflows:
 Validation: the focused assignment integration file passed all 57 tests,
 targeted Prettier formatting passed, and `bun run typecheck` passed. The full
 build and full integration suite remain intentionally skipped for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 173 — directory and media authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for four authorization/profile persistence boundaries:
+
+- Student-directory list and detail authorization checks now run inside the
+  existing `student_directory_load_failed` boundary. Unexpected role/profile
+  persistence failures carry request correlation, actor/target IDs, the stable
+  `student_directory_read_persistence` category, and the original error;
+  expected authorization and not-found outcomes remain quiet.
+- The admin teacher-directory role preflight now runs inside the existing
+  `teacher_directory_load_failed` boundary with the stable
+  `teacher_directory_read_persistence` category. The list response and normal
+  role-denial behavior are unchanged.
+- Library-media creation now keeps its staff/profile preflight inside the
+  existing `media_mutation_failed` boundary with the stable
+  `media_persistence` category. Validation and authorization outcomes remain
+  quiet, and raw profile/provider details remain excluded.
+- Added four focused integration regressions covering redaction, request
+  correlation, stable categories, duration, and original-error preservation.
+
+Validation: the new student, teacher, and library preflight tests passed. The
+student and teacher integration files passed in the focused combined run. The
+library file retains ten unrelated storage-mock failures in its existing
+signing/upload tests; the new create preflight test passes in isolation. The
+full build and full integration suite remain intentionally skipped for the
 iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
 dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
 restore evidence remain pending.

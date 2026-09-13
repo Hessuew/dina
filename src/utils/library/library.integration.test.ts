@@ -5,6 +5,7 @@ import { seedMedia, seedProfile } from '../../../test/integration/seed'
 import { resetCreateSignedUrlsMock } from '../../../test/integration/storage-mocks'
 import type { CreateMediaInput } from '@/schemas/media.schema'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
+import * as authUtils from '@/utils/auth/auth'
 import {
   createLibraryMediaService,
   deleteLibraryMediaService,
@@ -611,6 +612,37 @@ describe('signed file upload requests', () => {
       durationMs: expect.any(Number),
     })
     errorSpy.mockRestore()
+  })
+
+  it('logs create actor-profile preflight failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const actorId = '00000000-0000-4000-8000-000000000007'
+    const repositoryError = new Error(
+      'actor profile connectionString=secret; email=owner@test.dev',
+    )
+    vi.spyOn(authUtils, 'getUserProfile').mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/library', {
+          headers: { 'x-request-id': 'media-create-profile-failure' },
+        }),
+        () => createLibraryMediaService(makeCreateInput(), actorId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('owner@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'media_mutation_failed',
+      path: 'serverFn:createLibraryMedia',
+      requestId: 'media-create-profile-failure',
+      actorId,
+      status: 'failure',
+      errorCategory: 'media_persistence',
+      durationMs: expect.any(Number),
+    })
   })
 })
 

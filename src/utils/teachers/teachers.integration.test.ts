@@ -14,9 +14,14 @@ import {
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 import * as teachersRepository from '@/utils/teachers/repository'
 import * as authUtils from '@/utils/auth/auth'
+import {
+  DefaultAuthorizationService,
+  setAuthorizationService,
+} from '@/utils/authz'
 
 afterEach(() => {
   vi.restoreAllMocks()
+  setAuthorizationService(new DefaultAuthorizationService())
 })
 
 describe('teachers service (integration)', () => {
@@ -225,6 +230,39 @@ describe('teachers service (integration)', () => {
         actorId: adminId,
         teacherCount: 2,
         status: 'success',
+        durationMs: expect.any(Number),
+      })
+    })
+
+    it('logs unexpected admin-role preflight failures without raw details', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const actorId = '00000000-0000-4000-8000-000000000006'
+      const repositoryError = new Error(
+        'role lookup connectionString=secret; email=admin@test.dev',
+      )
+      setAuthorizationService({
+        hasRole: vi.fn().mockRejectedValue(repositoryError),
+      } as never)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/teachers', {
+            headers: { 'x-request-id': 'admin-teacher-role-failure' },
+          }),
+          () => getAllTeachersService(actorId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('admin@test.dev')
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'teacher_directory_load_failed',
+        path: 'serverFn:getAllTeachers',
+        requestId: 'admin-teacher-role-failure',
+        actorId,
+        status: 'failure',
+        errorCategory: 'teacher_directory_read_persistence',
         durationMs: expect.any(Number),
       })
     })

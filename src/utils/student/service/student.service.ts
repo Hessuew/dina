@@ -137,15 +137,19 @@ async function loadStudents(): Promise<{ students: Array<StudentWithStats> }> {
 }
 
 export async function getStudentsService(actorId: string) {
-  await requireStaffViewer(actorId)
   const context: StudentDirectoryReadContext = {
     action: 'getStudents',
     actorId,
     startedAt: performance.now(),
   }
-  return withStudentDirectoryTelemetry(context, loadStudents, (result) => ({
-    studentCount: result.students.length,
-  }))
+  return withStudentDirectoryTelemetry(
+    context,
+    async () => {
+      await requireStaffViewer(actorId)
+      return loadStudents()
+    },
+    (result) => ({ studentCount: result.students.length }),
+  )
 }
 
 async function resolveManageableCourseIds(
@@ -222,7 +226,6 @@ export async function getStudentDetailService(
   data: GetStudentDetailInput,
   actorId: string,
 ) {
-  await requireStaffViewer(actorId)
   const context: StudentDirectoryReadContext = {
     action: 'getStudentDetail',
     actorId,
@@ -232,6 +235,7 @@ export async function getStudentDetailService(
   return withStudentDirectoryTelemetry(
     context,
     async () => {
+      await requireStaffViewer(actorId)
       const student = await findStudentById(data.studentId)
       if (!student) {
         throw new NotFoundError('Student not found', {
