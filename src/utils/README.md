@@ -320,8 +320,11 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Admin Zoom-link create, update, and delete mutations emit redacted
     `zoom_link_created`, `zoom_link_updated`, and `zoom_link_deleted` events
     with request correlation, actor/link IDs, ownership section, status, and
-    duration; credentials, meeting IDs, URLs, titles, and raw persistence
-    details remain excluded.
+    duration; teacher-owner preflight failures reuse redacted
+    `zoom_link_mutation_failed` telemetry with the stable
+    `zoom_link_persistence` category. Credentials, meeting IDs, URLs, titles,
+    and raw persistence details remain excluded; expected validation outcomes
+    remain quiet.
   - Media-library create, update, and delete mutations emit redacted
     `media_created`, `media_updated`, and `media_deleted` events with request
     correlation, actor/media IDs, media kind, course ID where applicable,

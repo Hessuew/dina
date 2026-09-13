@@ -228,6 +228,80 @@ describe('zoomLink service (integration)', () => {
     })
   })
 
+  it('logs unexpected teacher-owner lookup failures for create and update', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const createError = new Error('zoom owner database password')
+    vi.spyOn(zoomLinkRepository, 'findZoomLinkOwner').mockRejectedValueOnce(
+      createError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/zoom-links', {
+          headers: { 'x-request-id': 'zoom-owner-create-failure' },
+        }),
+        () => createZoomLinkService(makeTeacherInput(teacherId), adminId),
+      ),
+    ).rejects.toBe(createError)
+
+    const created = await createZoomLinkService(
+      makeTeacherInput(teacherId),
+      adminId,
+    )
+    const updateError = new Error('zoom owner connectionString secret')
+    vi.spyOn(zoomLinkRepository, 'findZoomLinkOwner').mockRejectedValueOnce(
+      updateError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/zoom-links', {
+          headers: { 'x-request-id': 'zoom-owner-update-failure' },
+        }),
+        () =>
+          updateZoomLinkService(
+            {
+              ...makeTeacherInput(teacherId),
+              zoomLinkId: created.link.id,
+            },
+            adminId,
+          ),
+      ),
+    ).rejects.toBe(updateError)
+
+    const events = errorSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'zoom_link_mutation_failed',
+          path: 'serverFn:createZoomLink',
+          requestId: 'zoom-owner-create-failure',
+          actorId: adminId,
+          status: 'failure',
+          errorCategory: 'zoom_link_persistence',
+          durationMs: expect.any(Number),
+        }),
+        expect.objectContaining({
+          event: 'zoom_link_mutation_failed',
+          path: 'serverFn:updateZoomLink',
+          requestId: 'zoom-owner-update-failure',
+          actorId: adminId,
+          zoomLinkId: created.link.id,
+          status: 'failure',
+          errorCategory: 'zoom_link_persistence',
+          durationMs: expect.any(Number),
+        }),
+      ]),
+    )
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+    expect(JSON.stringify(events)).not.toContain('database password')
+    expect(JSON.stringify(events)).not.toContain('connectionString secret')
+  })
+
   it('database rejects invalid section-owner combinations', async () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const db = getDb()

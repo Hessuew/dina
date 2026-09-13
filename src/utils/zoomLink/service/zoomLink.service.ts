@@ -19,7 +19,7 @@ import {
   updateZoomLinkById,
 } from '@/utils/zoomLink/repository'
 import { authz } from '@/utils/authz'
-import { NotFoundError, ValidationError } from '@/utils/errors'
+import { NotFoundError, ValidationError, isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { getTeachersService } from '@/utils/teachers/service/teachers.service'
@@ -61,6 +61,10 @@ function logZoomLinkFailure(context: ZoomLinkMutationContext): void {
   logZoomLinkMutation('error', 'zoom_link_mutation_failed', context, {
     errorCategory: 'zoom_link_persistence',
   })
+}
+
+function shouldLogZoomLinkFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
 }
 
 function logZoomLinkRead(
@@ -165,7 +169,6 @@ export async function createZoomLinkService(
   userId: string,
 ) {
   await authz(userId).hasRole('admin')
-  await validateTeacherOwner(data)
   const context: ZoomLinkMutationContext = {
     action: 'createZoomLink',
     actorId: userId,
@@ -173,6 +176,7 @@ export async function createZoomLinkService(
   }
 
   try {
+    await validateTeacherOwner(data)
     const result = await insertZoomLink(buildCreateZoomLinkValues(data))
     context.zoomLinkId = result.link.id
     logZoomLinkMutation('info', 'zoom_link_created', context, {
@@ -181,7 +185,7 @@ export async function createZoomLinkService(
     })
     return result
   } catch (error) {
-    logZoomLinkFailure(context)
+    if (shouldLogZoomLinkFailure(error)) logZoomLinkFailure(context)
     throw error
   }
 }
@@ -191,7 +195,6 @@ export async function updateZoomLinkService(
   userId: string,
 ) {
   await authz(userId).hasRole('admin')
-  await validateTeacherOwner(data)
   const context: ZoomLinkMutationContext = {
     action: 'updateZoomLink',
     actorId: userId,
@@ -200,6 +203,7 @@ export async function updateZoomLinkService(
   }
 
   try {
+    await validateTeacherOwner(data)
     const result = await updateZoomLinkById(
       data.zoomLinkId,
       buildUpdateZoomLinkValues(data, new Date()),
@@ -212,7 +216,7 @@ export async function updateZoomLinkService(
     }
     return result
   } catch (error) {
-    logZoomLinkFailure(context)
+    if (shouldLogZoomLinkFailure(error)) logZoomLinkFailure(context)
     throw error
   }
 }

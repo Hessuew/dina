@@ -1,8 +1,8 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 158
-**Scope:** record the batched post/comment mutation preflight telemetry slice while
+**Iteration:** 159
+**Scope:** record the batched Zoom-link owner preflight telemetry slice while
 keeping the evidence-aware roadmap closure auditable.
 
 ## Final roadmap disposition
@@ -201,6 +201,12 @@ shadcn@latest` intentionally.
   duration. Event titles, descriptions, locations, meeting links, timestamps,
   and raw persistence details remain excluded; unexpected failures use the
   stable `calendar_event_read_persistence` category.
+- Admin Zoom-link create and update mutations now keep telemetry active through
+  teacher-owner preflight lookups. Unexpected repository failures emit the
+  redacted `zoom_link_mutation_failed` event with request correlation, actor/
+  link IDs where available, status, duration, and the stable
+  `zoom_link_persistence` category; expected owner-validation outcomes remain
+  quiet and credentials/raw persistence details remain excluded.
 - Profile updates and email-change verification now emit redacted success and
   failure events with request correlation, user ID, status, duration, and
   stable persistence/provider categories. Email addresses, verification tokens,
@@ -4240,3 +4246,27 @@ static checks, Cloudflare type generation, `bun run quality:gate`, and
 intentionally skipped for the iterative telemetry workflow. Hosted Better
 Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
 PostHog verification, and restore evidence remain pending.
+
+## Iteration 159 — Zoom-link owner preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for Zoom-link administration:
+
+- Create and update mutations now initialize their telemetry context before
+  teacher-owner validation, so unexpected owner lookup persistence failures
+  emit the existing redacted `zoom_link_mutation_failed` event.
+- Expected owner validation errors remain quiet; unexpected failures carry
+  request correlation, actor/link IDs where available, status, duration, and
+  the stable `zoom_link_persistence` category. Credentials, URLs, titles, and
+  raw repository details remain excluded.
+- Added focused integration coverage for both create and update owner lookup
+  failures, redaction, request correlation, stable categorization, duration,
+  and original-error preservation.
+
+Validation: the focused Zoom-link integration file passed 16 tests;
+typecheck, static checks, Cloudflare type generation, targeted Prettier
+formatting, `bun run quality:gate` with 1,953 unit tests, and `git diff --check`
+passed. The full build and full integration suite remain intentionally skipped
+for the iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
