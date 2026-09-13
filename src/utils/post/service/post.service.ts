@@ -221,7 +221,6 @@ async function signCommentAvatars(
 export async function getPostChannelsService(actorId: string): Promise<{
   channels: Array<PostChannel>
 }> {
-  const profile = await getUserProfile(actorId)
   return withPostReadTelemetry({
     context: {
       action: 'getPostChannels',
@@ -230,6 +229,7 @@ export async function getPostChannelsService(actorId: string): Promise<{
       startedAt: performance.now(),
     },
     read: async () => {
+      const profile = await getUserProfile(actorId)
       const rows = await findChannels()
       const visibleRows =
         profile.role === 'admin'
@@ -260,7 +260,6 @@ export async function getPostsService(
   posts: Array<PostWithDetails>
   nextCursor?: { createdAt: string; id: string }
 }> {
-  await getUserProfile(actorId)
   return withPostReadTelemetry({
     context: {
       action: 'getPosts',
@@ -270,6 +269,7 @@ export async function getPostsService(
       startedAt: performance.now(),
     },
     read: async () => {
+      await getUserProfile(actorId)
       const limit = data.limit
       const rows = await findPosts({
         courseId: data.courseId,
@@ -308,7 +308,6 @@ export async function getPostByIdService(
 ): Promise<{
   post: PostWithDetails
 }> {
-  await getUserProfile(actorId)
   return withPostReadTelemetry({
     context: {
       action: 'getPostById',
@@ -318,6 +317,7 @@ export async function getPostByIdService(
       startedAt: performance.now(),
     },
     read: async () => {
+      await getUserProfile(actorId)
       const row = await findPostById(data.postId)
 
       if (!row) {
@@ -475,7 +475,6 @@ export async function getCommentsService(
   comments: Array<CommentWithAuthor>
   nextCursor?: { createdAt: string; id: string }
 }> {
-  await getUserProfile(actorId)
   return withPostReadTelemetry({
     context: {
       action: 'getComments',
@@ -485,6 +484,7 @@ export async function getCommentsService(
       startedAt: performance.now(),
     },
     read: async () => {
+      await getUserProfile(actorId)
       const limit = data.limit
       const rows = await findComments({
         postId: data.postId,

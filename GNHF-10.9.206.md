@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 169
+**Iteration:** 170
 **Scope:** continue the batched structured-logging rollout while preserving the
 evidence-aware Engineering Roadmap handoff.
 
@@ -4539,3 +4539,27 @@ formatting remains clean; the full build and full integration suite remain
 intentionally skipped for the iterative telemetry workflow. Hosted Better
 Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
 PostHog verification, and restore evidence remain pending.
+
+## Iteration 170 — post read actor-profile preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for community reads:
+
+- Post channel, feed, single-post, and comment reads now initialize their
+  existing redacted read telemetry before the persisted actor-profile lookup.
+  Unexpected profile persistence failures therefore emit `post_read_failed`
+  with the stable `post_read_persistence` category and the operation-specific
+  path.
+- Expected missing-profile outcomes remain quiet and preserve the existing
+  typed error. Request correlation, actor/post/course identifiers, read scope,
+  and safe result metadata remain unchanged; post/comment content, author
+  payloads, and raw persistence details remain excluded.
+- Added four parameterized focused integration regressions covering redaction,
+  request correlation, stable categorization, duration, and original-error
+  preservation across all four read paths.
+
+Validation: the focused post integration file passed all 54 tests. The full
+build and full integration suite remain intentionally skipped for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.

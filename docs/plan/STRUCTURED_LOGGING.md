@@ -456,9 +456,13 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    reads now keep actor-profile preflight failures inside their existing
    redacted read events with stable persistence categories; expected
    missing-profile outcomes remain quiet.
+   Post channel, feed, single-post, and comment reads now keep actor-profile
+   preflight failures inside their existing redacted `post_read_failed` events
+   with the stable `post_read_persistence` category; expected missing-profile
+   outcomes remain quiet.
 4. Keep expected user-input failures out of noisy error logs.
 
-The repository migration is complete through Iteration 169. Future code
+The repository migration is complete through Iteration 170. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining

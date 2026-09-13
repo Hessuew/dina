@@ -335,6 +335,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     `post_reaction_toggled` / `comment_reaction_toggled` events with request
     correlation, actor/target IDs, action, emoji, status, and duration;
     unexpected persistence failures use stable reaction categories.
+  - Post channel, feed, single-post, and comment reads keep actor-profile
+    preflight failures inside the same redacted `post_read_failed` event with
+    the stable `post_read_persistence` category; expected missing-profile
+    outcomes remain quiet and post/comment content stays excluded.
   - Post-notification group and mark-all read-state mutations emit redacted
     `notification_group_marked_read` / `notifications_marked_read` events with
     request correlation, actor/target metadata, read scope, status, and

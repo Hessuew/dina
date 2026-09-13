@@ -24,6 +24,8 @@ import {
   seedProfile,
 } from '@/../test/integration/seed'
 import * as postRepository from '@/utils/post/repository/post.repository'
+import * as authUtils from '@/utils/auth/auth'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 // Post services have no external IO. The DB is real (PGlite via the `@/db`
 // alias); post/comment authorization resolves ownership and staff roles from
@@ -518,6 +520,81 @@ describe('post read telemetry (integration)', () => {
     expect(infoSpy).not.toHaveBeenCalled()
     expect(errorSpy).not.toHaveBeenCalled()
   })
+})
+
+describe('post read actor-profile telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it.each([
+    {
+      name: 'channels',
+      requestId: 'post-channels-profile-failure',
+      path: 'serverFn:getPostChannels',
+      run: async (actorId: string) => {
+        await getPostChannelsService(actorId)
+      },
+    },
+    {
+      name: 'feed',
+      requestId: 'post-feed-profile-failure',
+      path: 'serverFn:getPosts',
+      run: async (actorId: string) => {
+        await getPostsService({ courseId: null, limit: 10 }, actorId)
+      },
+    },
+    {
+      name: 'detail',
+      requestId: 'post-detail-profile-failure',
+      path: 'serverFn:getPostById',
+      run: async (actorId: string) => {
+        await getPostByIdService({ postId: randomUUID() }, actorId)
+      },
+    },
+    {
+      name: 'comments',
+      requestId: 'post-comments-profile-failure',
+      path: 'serverFn:getComments',
+      run: async (actorId: string) => {
+        await getCommentsService({ postId: randomUUID(), limit: 10 }, actorId)
+      },
+    },
+  ])(
+    'logs unexpected $name actor-profile failures without raw details',
+    async ({ requestId, path, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const actorId = randomUUID()
+      const repositoryError = new Error(
+        'actor profile connectionString=secret; email=actor@test.dev',
+      )
+      vi.spyOn(authUtils, 'getUserProfile').mockRejectedValueOnce(
+        repositoryError,
+      )
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/post-reads', {
+            headers: { 'x-request-id': requestId },
+          }),
+          () => run(actorId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('actor@test.dev')
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'post_read_failed',
+        path,
+        requestId,
+        actorId,
+        status: 'failure',
+        errorCategory: 'post_read_persistence',
+        durationMs: expect.any(Number),
+      })
+    },
+  )
 })
 
 describe('post mutation preflight telemetry (integration)', () => {
