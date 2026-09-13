@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 161
-**Scope:** record the batched exam-taking read-preflight telemetry slice while
-keeping the evidence-aware roadmap closure auditable.
+**Iteration:** 162
+**Scope:** record the batched shared-authorization persistence telemetry slice
+while keeping the evidence-aware roadmap closure auditable.
 
 ## Final roadmap disposition
 
@@ -64,6 +64,10 @@ shadcn@latest` intentionally.
   findings for routine review.
 - Assignment submission saves now emit structured Better Stack/Cloudflare-ready
   outcome events with request ID, status, duration, and stable error category.
+- Shared authorization role and resource persistence reads now emit one
+  redacted `authorization_lookup_failed` event with request correlation, safe
+  identifiers, action metadata, duration, and stable lookup categories while
+  preserving ordinary denials and missing-resource outcomes.
 - Enrollment distribution and teacher substitution mutations now emit
   structured Better Stack/Cloudflare-ready completion and failure events with
   safe actor/teacher/course identifiers, assignment counters, request ID,
@@ -4322,5 +4326,28 @@ formatting, typecheck, static checks, Cloudflare type generation,
 `bun run quality:gate` with 1,953 unit tests, and `git diff --check` passed.
 The full build and full integration suite remain intentionally deferred for
 the iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 162 — shared authorization persistence telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for the shared authorization adapter:
+
+- Role and course/lesson/assignment/submission/post/comment resource lookups now
+  emit one redacted `authorization_lookup_failed` event when their persistence
+  reads fail unexpectedly. Events include request correlation, safe user and
+  resource identifiers, action metadata where applicable, duration, and a
+  stable lookup-specific persistence category.
+- Expected authorization denials and missing resources retain their existing
+  boolean or typed-error behavior without noisy telemetry; raw persistence
+  details remain excluded and original repository errors are preserved.
+- Added focused unit coverage for both role-read methods and all six resource
+  lookup branches, including redaction, request correlation, stable categories,
+  and error preservation.
+
+Validation: the focused authorization telemetry test passed 9 tests. The full
+build and full integration suite remain intentionally deferred for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
 dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
 restore evidence remain pending.

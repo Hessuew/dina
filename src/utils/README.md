@@ -21,6 +21,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     - Used by server functions to return permissions to frontend, eliminating client-side permission logic duplication.
   - Usage: `authz(userId).perform('gradeAssignment').on(assignmentId)` (throws if not allowed)
   - Usage: `isAllowed(userId).perform('gradeAssignment').on(assignmentId)` (returns boolean)
+  - Unexpected role and resource persistence failures emit one redacted
+    `authorization_lookup_failed` event with request correlation, safe IDs,
+    action metadata, and stable lookup categories; expected denials remain
+    ordinary authorization outcomes.
 
 - **Unified request scope**
   - `request-scope.ts`: composes re-entrant authz cache maps with `withDbConnection`.

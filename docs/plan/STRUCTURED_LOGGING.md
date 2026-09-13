@@ -425,9 +425,16 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    identity where available, duration, and stable auth/persistence categories.
    Expected unauthenticated and missing-profile outcomes remain ordinary auth
    boundary results, and provider/database exception details remain excluded.
+   Shared authorization role and course/lesson/assignment/submission/post/
+   comment resource lookups now emit one redacted
+   `authorization_lookup_failed` event on unexpected persistence failures,
+   with request correlation, safe user/resource identifiers, action metadata,
+   duration, and stable lookup-specific read categories. Expected denials and
+   missing resources remain ordinary boolean or typed authorization outcomes,
+   and raw persistence details remain excluded.
 4. Keep expected user-input failures out of noisy error logs.
 
-The repository migration is complete through Iteration 161. Future code
+The repository migration is complete through Iteration 162. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining
