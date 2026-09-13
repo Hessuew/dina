@@ -6,6 +6,11 @@ import type {
   WhatsAppTemplateMessage,
 } from '@/utils/whatsapp/types'
 import type { CampaignType } from '@/utils/whatsapp/domain/templates.domain'
+import type { AuthorizationService } from '@/utils/authz/types'
+import {
+  DefaultAuthorizationService,
+  setAuthorizationService,
+} from '@/utils/authz'
 import {
   seedEnrollment,
   seedInvitation,
@@ -26,6 +31,7 @@ import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 afterEach(() => {
   vi.restoreAllMocks()
+  setAuthorizationService(new DefaultAuthorizationService())
 })
 
 /** Fake sender: records calls; throws for phones listed in `failFor`. */
@@ -673,5 +679,101 @@ describe('campaign lock (integration)', () => {
     expect(serialized.join('\n')).not.toContain(
       'private WhatsApp release database detail',
     )
+  })
+})
+
+describe('WhatsApp campaign authorization telemetry (integration)', () => {
+  it.each([
+    {
+      name: 'lock inspection',
+      event: 'whatsapp_campaign_locks_load_failed',
+      path: 'serverFn:getWhatsAppCampaignLocks',
+      run: (userId: string): Promise<unknown> =>
+        getWhatsAppCampaignLocksService(userId),
+    },
+    {
+      name: 'lock release',
+      event: 'whatsapp_campaign_lock_release_failed',
+      path: 'serverFn:releaseWhatsAppCampaign',
+      run: (userId: string): Promise<unknown> =>
+        releaseWhatsAppCampaignService({ campaign: 'congratulations' }, userId),
+    },
+    {
+      name: 'preview',
+      event: 'whatsapp_campaign_preview_failed',
+      path: 'serverFn:preview_whatsapp_campaign',
+      run: (userId: string): Promise<unknown> =>
+        previewWhatsAppCampaignService({ campaign: 'congratulations' }, userId),
+    },
+    {
+      name: 'send',
+      event: 'whatsapp_campaign_send_failed',
+      path: 'serverFn:send_whatsapp_campaign',
+      run: (userId: string): Promise<unknown> =>
+        sendWhatsAppCampaignService({ campaign: 'congratulations' }, userId),
+    },
+  ])(
+    'logs unexpected $name authorization failures without raw details',
+    async ({ event, path, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const repositoryError = new Error(
+        'authorization connectionString=secret; campaign=whatsapp',
+      )
+      const rejectingService: AuthorizationService = {
+        hasRole: vi.fn().mockRejectedValue(repositoryError),
+        isRole: vi.fn(),
+        getRole: vi.fn(),
+        isAdmin: vi.fn(),
+        canPerformAction: vi.fn(),
+        isAllowedToPerformAction: vi.fn(),
+      }
+      setAuthorizationService(rejectingService)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/whatsapp-campaign', {
+            headers: { 'x-request-id': `whatsapp-auth-${path}` },
+          }),
+          () => run('whatsapp-auth-user'),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const eventLine = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === event)
+      expect(eventLine).toMatchObject({
+        event,
+        path,
+        requestId: `whatsapp-auth-${path}`,
+        status: 'failure',
+        errorCategory: 'campaign_authorization_persistence',
+        userId: 'whatsapp-auth-user',
+        durationMs: expect.any(Number),
+      })
+      expect(serialized.join('\n')).not.toContain('connectionString')
+      expect(serialized.join('\n')).not.toContain('campaign=whatsapp')
+    },
+  )
+
+  it('keeps expected authorization denials out of operation telemetry', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const denial = new AuthorizationError('admin access required')
+    setAuthorizationService({
+      hasRole: vi.fn().mockRejectedValue(denial),
+      isRole: vi.fn(),
+      getRole: vi.fn(),
+      isAdmin: vi.fn(),
+      canPerformAction: vi.fn(),
+      isAllowedToPerformAction: vi.fn(),
+    })
+
+    await expect(
+      previewWhatsAppCampaignService(
+        { campaign: 'congratulations' },
+        'whatsapp-user',
+      ),
+    ).rejects.toBe(denial)
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })

@@ -331,7 +331,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     actor ID, safe substitution counts, duration, and the stable
     `enrollment_substitution_read_persistence` category; teacher IDs and raw
     persistence details remain excluded.
-  - Admin email and WhatsApp campaign previews emit redacted
+  - Admin email and WhatsApp campaign lock, preview, and send entrypoints emit
+    redacted operation-specific authorization failures with the stable
+    `campaign_authorization_persistence` category when the Admin role read
+    unexpectedly fails; expected denials remain quiet. Campaign previews emit
     `email_campaign_previewed` / `whatsapp_campaign_previewed` events with
     request correlation, campaign, actor ID, safe send/skip counts, status,
     and duration. Unexpected lock or recipient-planning persistence failures

@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 178
+**Iteration:** 179
 **Scope:** continue the batched structured-logging rollout while preserving the
 evidence-aware Engineering Roadmap handoff.
 
@@ -79,7 +79,10 @@ shadcn@latest` intentionally.
   profile/OTP persistence failure outcomes.
 - The admin invitation-email campaign now emits safe per-invitation delivery
   outcomes, campaign completion summaries, and lock-release failures with
-  request correlation and stable error categories.
+  request correlation and stable error categories. Unexpected Admin role-read
+  persistence failures reuse the matching operation failure event with the
+  stable `campaign_authorization_persistence` category; expected denials stay
+  quiet.
 - Teacher grading now emits a request-correlated completion event with stable
   status, duration, assignment, submission, and actor identifiers.
 - Enrollment evaluation score, admission-category, and note mutations now emit
@@ -91,8 +94,10 @@ shadcn@latest` intentionally.
   mode. Answer text and scores are excluded.
 - The admin WhatsApp campaign now emits redacted per-message delivery outcomes,
   campaign completion summaries, and lock-release failures with request
-  correlation and stable error categories. Recipient phone numbers, names, and
-  provider error text are excluded.
+  correlation and stable error categories. Unexpected Admin role-read
+  persistence failures reuse the matching operation failure event with the
+  stable `campaign_authorization_persistence` category; expected denials stay
+  quiet. Recipient phone numbers, names, and provider error text are excluded.
 - Admin email and WhatsApp campaign previews now emit redacted
   request-correlated success/failure events with safe send/skip counts and the
   stable `campaign_preview_persistence` category. Recipient/contact values,
@@ -4790,3 +4795,28 @@ slice. The full build and full integration suite remain intentionally skipped
 for the iterative telemetry workflow. Hosted Better Stack/Cloudflare
 ingestion, dashboards, alerts, Uptime monitors, source maps, PostHog
 verification, and restore evidence remain pending.
+
+## Iteration 179 — campaign authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for Admin campaign entrypoints:
+
+- Email and WhatsApp campaign lock inspection, explicit release, preview, and
+  send now initialize operation telemetry before their Admin role checks.
+- Unexpected role-read persistence failures reuse each operation's existing
+  redacted failure event with request correlation, campaign/path metadata where
+  applicable, duration, and the stable `campaign_authorization_persistence`
+  category. Expected authorization denials preserve their original errors and
+  remain outside operation error telemetry.
+- Added parameterized focused integration coverage for all eight authorization
+  boundaries, raw-detail exclusion, request correlation, duration, and error
+  identity preservation.
+
+Validation: focused email and WhatsApp campaign integration tests passed all 55
+tests. `bun run quality:gate` passed with 1,964 unit tests; typecheck, targeted
+formatting, ESLint, and `git diff --check` also passed, with only pre-existing
+warnings in unrelated enrollment and WhatsApp test code. The full build and
+full integration suite remain intentionally skipped for the iterative telemetry
+workflow. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime
+monitors, source maps, PostHog verification, and restore evidence remain
+pending.

@@ -441,15 +441,20 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `*_campaign_lock_released`, and `*_campaign_lock_release_failed` events
    with request correlation, campaign where applicable, safe lock counts,
    actor IDs on explicit release, status, duration, and stable
-   `campaign_lock_read` / `campaign_lock_release` categories. Provider,
-   database, recipient, phone, email, and invitation details remain excluded.
+   `campaign_lock_read` / `campaign_lock_release` categories. Unexpected
+   Admin role-read persistence failures reuse the matching operation failure
+   event with `campaign_authorization_persistence`; expected denials remain
+   quiet. Provider, database, recipient, phone, email, and invitation details
+   remain excluded.
    Admin email and WhatsApp campaign previews now emit redacted
    `email_campaign_previewed` / `whatsapp_campaign_previewed` events with
    request correlation, campaign, actor ID, safe send/skip counts, status, and
    duration. Unexpected lock or recipient-planning persistence failures emit
    `*_campaign_preview_failed` with the stable
    `campaign_preview_persistence` category; expected authorization and lock
-   conflicts remain quiet.
+   conflicts remain quiet. Unexpected Admin role-read persistence failures
+   reuse the same operation failure event with
+   `campaign_authorization_persistence`.
    Admin email campaign sends now emit redacted
    `email_campaign_send_failed` events for unexpected lock, sender-profile,
    and recipient-planning persistence failures. Per-invitation persistence,
@@ -457,7 +462,10 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    the existing `email_campaign_invitation_failed` or
    `email_campaign_message_record_failed` events. Provider delivery failures
    retain their delivery category; campaign, recipient, invitation, email,
-   and provider details remain excluded.
+   and provider details remain excluded. Unexpected Admin role-read
+   persistence failures reuse `email_campaign_send_failed` with the stable
+   `campaign_authorization_persistence` category; expected denials remain
+   quiet.
    Admin WhatsApp campaign sends now emit redacted
    `whatsapp_campaign_send_failed` events for unexpected lock and
    recipient-planning persistence failures. Message-record persistence
@@ -465,6 +473,10 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    failures retain their delivery category. Campaign, recipient, phone,
    recipient-name, and provider details remain excluded, and send-path lock
    failures release their held lock before returning the original error.
+   Unexpected Admin role-read persistence failures reuse
+   `whatsapp_campaign_send_failed` with the stable
+   `campaign_authorization_persistence` category; expected denials remain
+   quiet.
    Unexpected Supabase session lookup exceptions now emit redacted
    `auth_session_lookup_failed` events, and persisted-profile lookup failures
    emit `auth_profile_lookup_failed` events with request correlation, safe user

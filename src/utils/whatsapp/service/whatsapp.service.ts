@@ -25,7 +25,7 @@ import {
   releaseWhatsAppCampaignLock,
 } from '@/utils/whatsapp/repository/whatsapp.repository'
 import { authz } from '@/utils/authz'
-import { CampaignLockedError } from '@/utils/errors'
+import { CampaignLockedError, isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
@@ -43,6 +43,7 @@ export type CampaignSendSummary = {
 type WhatsAppCampaignLogContext = {
   campaign?: SendWhatsAppCampaignInput['campaign']
   path: string
+  failureEvent: string
   startedAt: number
 }
 
@@ -62,14 +63,36 @@ function logWhatsAppCampaignEvent(
   })
 }
 
+function shouldLogWhatsAppCampaignFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function requireWhatsAppCampaignAdmin(
+  userId: string,
+  context: WhatsAppCampaignLogContext,
+): Promise<void> {
+  try {
+    await authz(userId).hasRole('admin')
+  } catch (error) {
+    if (shouldLogWhatsAppCampaignFailure(error)) {
+      logWhatsAppCampaignEvent('error', context.failureEvent, context, {
+        errorCategory: 'campaign_authorization_persistence',
+        userId,
+      })
+    }
+    throw error
+  }
+}
+
 export async function getWhatsAppCampaignLocksService(
   userId: string,
 ): Promise<Array<CampaignType>> {
-  await authz(userId).hasRole('admin')
   const context: WhatsAppCampaignLogContext = {
     path: 'serverFn:getWhatsAppCampaignLocks',
+    failureEvent: 'whatsapp_campaign_locks_load_failed',
     startedAt: performance.now(),
   }
+  await requireWhatsAppCampaignAdmin(userId, context)
   try {
     const campaigns = await getLockedCampaigns()
     logWhatsAppCampaignEvent(
@@ -94,12 +117,13 @@ export async function releaseWhatsAppCampaignService(
   data: SendWhatsAppCampaignInput,
   userId: string,
 ): Promise<void> {
-  await authz(userId).hasRole('admin')
   const context: WhatsAppCampaignLogContext = {
     campaign: data.campaign,
     path: 'serverFn:releaseWhatsAppCampaign',
+    failureEvent: 'whatsapp_campaign_lock_release_failed',
     startedAt: performance.now(),
   }
+  await requireWhatsAppCampaignAdmin(userId, context)
   try {
     await releaseWhatsAppCampaignLock(data.campaign, userId)
     logWhatsAppCampaignEvent(
@@ -259,12 +283,13 @@ export async function previewWhatsAppCampaignService(
   data: SendWhatsAppCampaignInput,
   userId: string,
 ): Promise<CampaignPreview> {
-  await authz(userId).hasRole('admin')
   const context: WhatsAppCampaignLogContext = {
     campaign: data.campaign,
     path: 'serverFn:preview_whatsapp_campaign',
+    failureEvent: 'whatsapp_campaign_preview_failed',
     startedAt: performance.now(),
   }
+  await requireWhatsAppCampaignAdmin(userId, context)
   try {
     const acquired = await acquireWhatsAppCampaignLock(data.campaign, userId)
     if (!acquired) throw new CampaignLockedError()
@@ -303,9 +328,10 @@ export async function sendWhatsAppCampaignService(
   const context: WhatsAppCampaignLogContext = {
     campaign: data.campaign,
     path: 'serverFn:send_whatsapp_campaign',
+    failureEvent: 'whatsapp_campaign_send_failed',
     startedAt: performance.now(),
   }
-  await authz(userId).hasRole('admin')
+  await requireWhatsAppCampaignAdmin(userId, context)
   await requireWhatsAppCampaignLockForSend(data, userId, context)
 
   let sent = 0

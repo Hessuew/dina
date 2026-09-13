@@ -31,7 +31,11 @@ import {
 } from '@/utils/invitation/domain/invitations.domain'
 import { findProfileById } from '@/utils/enrolment/repository/enrolment.repository'
 import { authz } from '@/utils/authz'
-import { CampaignLockedError, ValidationError } from '@/utils/errors'
+import {
+  CampaignLockedError,
+  ValidationError,
+  isAppError,
+} from '@/utils/errors'
 import { env } from '@/env'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
@@ -50,6 +54,7 @@ export type EmailCampaignSendSummary = {
 type EmailCampaignLogContext = {
   campaign?: SendEmailCampaignInput['campaign']
   path: string
+  failureEvent: string
   startedAt: number
 }
 
@@ -69,14 +74,36 @@ function logEmailCampaignEvent(
   })
 }
 
+function shouldLogEmailCampaignFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function requireEmailCampaignAdmin(
+  userId: string,
+  context: EmailCampaignLogContext,
+): Promise<void> {
+  try {
+    await authz(userId).hasRole('admin')
+  } catch (error) {
+    if (shouldLogEmailCampaignFailure(error)) {
+      logEmailCampaignEvent('error', context.failureEvent, context, {
+        errorCategory: 'campaign_authorization_persistence',
+        userId,
+      })
+    }
+    throw error
+  }
+}
+
 export async function getEmailCampaignLocksService(
   userId: string,
 ): Promise<Array<SendEmailCampaignInput['campaign']>> {
-  await authz(userId).hasRole('admin')
   const context: EmailCampaignLogContext = {
     path: 'serverFn:getEmailCampaignLocks',
+    failureEvent: 'email_campaign_locks_load_failed',
     startedAt: performance.now(),
   }
+  await requireEmailCampaignAdmin(userId, context)
   try {
     const campaigns = await getLockedEmailCampaigns()
     logEmailCampaignEvent('info', 'email_campaign_locks_loaded', context, {
@@ -100,12 +127,13 @@ export async function releaseEmailCampaignService(
   data: SendEmailCampaignInput,
   userId: string,
 ): Promise<void> {
-  await authz(userId).hasRole('admin')
   const context: EmailCampaignLogContext = {
     campaign: data.campaign,
     path: 'serverFn:releaseEmailCampaign',
+    failureEvent: 'email_campaign_lock_release_failed',
     startedAt: performance.now(),
   }
+  await requireEmailCampaignAdmin(userId, context)
   try {
     await releaseEmailCampaignLock(data.campaign, userId)
     logEmailCampaignEvent('info', 'email_campaign_lock_released', context, {
@@ -406,12 +434,13 @@ export async function previewEmailCampaignService(
   data: SendEmailCampaignInput,
   userId: string,
 ): Promise<EmailCampaignPreview> {
-  await authz(userId).hasRole('admin')
   const context: EmailCampaignLogContext = {
     campaign: data.campaign,
     path: 'serverFn:preview_email_campaign',
+    failureEvent: 'email_campaign_preview_failed',
     startedAt: performance.now(),
   }
+  await requireEmailCampaignAdmin(userId, context)
   try {
     const acquired = await acquireEmailCampaignLock(data.campaign, userId)
     if (!acquired) throw new CampaignLockedError()
@@ -444,9 +473,10 @@ export async function sendEmailCampaignService(
   const context: EmailCampaignLogContext = {
     campaign: data.campaign,
     path: 'serverFn:send_email_campaign',
+    failureEvent: 'email_campaign_send_failed',
     startedAt: performance.now(),
   }
-  await authz(userId).hasRole('admin')
+  await requireEmailCampaignAdmin(userId, context)
   let holdsLock: boolean
   try {
     holdsLock = await checkEmailCampaignLockHeldBy(data.campaign, userId)

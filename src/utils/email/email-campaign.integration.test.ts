@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
+import type { AuthorizationService } from '@/utils/authz/types'
+import {
+  DefaultAuthorizationService,
+  setAuthorizationService,
+} from '@/utils/authz'
 import {
   seedEnrollment,
   seedInvitation,
@@ -19,9 +24,11 @@ import { findInvitationByEmail } from '@/utils/invitation/repository/invitations
 import { AuthorizationError } from '@/utils/errors'
 import * as emailCampaignRepository from '@/utils/email/repository/email-campaign.repository'
 import * as enrolmentRepository from '@/utils/enrolment/repository/enrolment.repository'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 afterEach(() => {
   vi.restoreAllMocks()
+  setAuthorizationService(new DefaultAuthorizationService())
 })
 
 function installFakeSender(failFor: Array<string> = []) {
@@ -703,5 +710,98 @@ describe('email campaign lock (integration)', () => {
     await expect(
       releaseEmailCampaignService({ campaign: 'invitation' }, teacherId),
     ).rejects.toThrow(AuthorizationError)
+  })
+})
+
+describe('email campaign authorization telemetry (integration)', () => {
+  it.each([
+    {
+      name: 'lock inspection',
+      event: 'email_campaign_locks_load_failed',
+      path: 'serverFn:getEmailCampaignLocks',
+      run: (userId: string): Promise<unknown> =>
+        getEmailCampaignLocksService(userId),
+    },
+    {
+      name: 'lock release',
+      event: 'email_campaign_lock_release_failed',
+      path: 'serverFn:releaseEmailCampaign',
+      run: (userId: string): Promise<unknown> =>
+        releaseEmailCampaignService({ campaign: 'invitation' }, userId),
+    },
+    {
+      name: 'preview',
+      event: 'email_campaign_preview_failed',
+      path: 'serverFn:preview_email_campaign',
+      run: (userId: string): Promise<unknown> =>
+        previewEmailCampaignService({ campaign: 'invitation' }, userId),
+    },
+    {
+      name: 'send',
+      event: 'email_campaign_send_failed',
+      path: 'serverFn:send_email_campaign',
+      run: (userId: string): Promise<unknown> =>
+        sendEmailCampaignService({ campaign: 'invitation' }, userId),
+    },
+  ])(
+    'logs unexpected $name authorization failures without raw details',
+    async ({ event, path, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const repositoryError = new Error(
+        'authorization connectionString=secret; campaign=email',
+      )
+      const rejectingService: AuthorizationService = {
+        hasRole: vi.fn().mockRejectedValue(repositoryError),
+        isRole: vi.fn(),
+        getRole: vi.fn(),
+        isAdmin: vi.fn(),
+        canPerformAction: vi.fn(),
+        isAllowedToPerformAction: vi.fn(),
+      }
+      setAuthorizationService(rejectingService)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/email-campaign', {
+            headers: { 'x-request-id': `email-auth-${path}` },
+          }),
+          () => run('email-auth-user'),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const eventLine = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === event)
+      expect(eventLine).toMatchObject({
+        event,
+        path,
+        requestId: `email-auth-${path}`,
+        status: 'failure',
+        errorCategory: 'campaign_authorization_persistence',
+        userId: 'email-auth-user',
+        durationMs: expect.any(Number),
+      })
+      expect(serialized.join('\n')).not.toContain('connectionString')
+      expect(serialized.join('\n')).not.toContain('campaign=email')
+    },
+  )
+
+  it('keeps expected authorization denials out of operation telemetry', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const denial = new AuthorizationError('admin access required')
+    setAuthorizationService({
+      hasRole: vi.fn().mockRejectedValue(denial),
+      isRole: vi.fn(),
+      getRole: vi.fn(),
+      isAdmin: vi.fn(),
+      canPerformAction: vi.fn(),
+      isAllowedToPerformAction: vi.fn(),
+    })
+
+    await expect(
+      previewEmailCampaignService({ campaign: 'invitation' }, 'email-user'),
+    ).rejects.toBe(denial)
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })
