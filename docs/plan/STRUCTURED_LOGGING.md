@@ -147,7 +147,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    events with request correlation, actor ID, query/candidate/group counts,
    matched-contact and suggestion counts, duration, and the stable
    `enrollment_contact_lookup_persistence` failure category. Names, emails,
-   phone numbers, and raw persistence errors remain excluded.
+   phone numbers, and raw persistence errors remain excluded. Unexpected
+   staff-privilege persistence failures during export or lookup authorization
+   remain inside their operation boundaries with the stable
+   `enrollment_contact_access_persistence` category; expected denials remain
+   quiet.
    Course-teacher lesson authoring now emits redacted
    `lesson_created`, `lesson_updated`, and `lesson_deleted` events with
    request correlation, server-function path, actor/course/lesson IDs,
@@ -494,7 +498,7 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `media_persistence` category while preserving the original error.
 4. Keep expected user-input failures out of noisy error logs.
 
-The repository migration is complete through Iteration 174. Future code
+The repository migration is complete through Iteration 177. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining

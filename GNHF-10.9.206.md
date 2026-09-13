@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 176
+**Iteration:** 177
 **Scope:** continue the batched structured-logging rollout while preserving the
 evidence-aware Engineering Roadmap handoff.
 
@@ -4739,3 +4739,26 @@ scope for this iteration. The full build and full integration suite remain
 intentionally skipped for the iterative telemetry workflow. Hosted Better
 Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
 PostHog verification, and restore evidence remain pending.
+
+## Iteration 177 — enrollment contact authorization telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for the two privileged enrollment-contact endpoints:
+
+- Enrollment email export and pasted-name contact lookup now initialize their
+  operation telemetry before checking the staff privilege. Unexpected
+  privilege-read persistence failures emit the matching redacted operation
+  failure event with request correlation, actor ID, duration, and the stable
+  `enrollment_contact_access_persistence` category.
+- Expected authorization denials and input validation outcomes remain quiet;
+  contact values, names, privilege details, and raw persistence errors remain
+  excluded from structured telemetry. Original exceptions are preserved.
+- Added two focused integration regressions covering both preflight boundaries,
+  request correlation, redaction, stable categorization, duration, and
+  original-error preservation.
+
+Validation: the focused enrollment integration suite passed 56 tests. The
+full build and full integration suite remain intentionally skipped for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.

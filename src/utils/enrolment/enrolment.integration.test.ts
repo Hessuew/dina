@@ -21,6 +21,7 @@ import {
   updateEnrollmentStatusService,
 } from '@/utils/enrolment/service/enrolment.service'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
+import * as staffPrivilegeRepository from '@/utils/staff-privilege/repository'
 import * as enrollmentRepository from '@/utils/enrolment/repository/enrolment.repository'
 import {
   findEnrollmentById,
@@ -1282,6 +1283,40 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
       durationMs: expect.any(Number),
     })
   })
+
+  it('logs unexpected privilege-read failures before export authorization', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const repositoryError = new Error(
+      'privilege database connectionString=secret; email=private@test.dev',
+    )
+    vi.spyOn(
+      staffPrivilegeRepository,
+      'findPrivilegesForUser',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/enrollments/emails', {
+          headers: { 'x-request-id': 'enrollment-contact-access-failure' },
+        }),
+        () => getEnrollmentEmailsService({ group: 'all' }, teacherId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const serialized = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(serialized).not.toContain('connectionString')
+    expect(serialized).not.toContain('private@test.dev')
+    expect(JSON.parse(serialized)).toMatchObject({
+      event: 'enrollment_contact_export_failed',
+      path: 'serverFn:getEnrollmentEmails',
+      requestId: 'enrollment-contact-access-failure',
+      actorId: teacherId,
+      status: 'failure',
+      errorCategory: 'enrollment_contact_access_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
 })
 
 describe('enrollment contact lookup by name (integration)', () => {
@@ -1443,6 +1478,44 @@ describe('enrollment contact lookup by name (integration)', () => {
       actorId: adminId,
       status: 'failure',
       errorCategory: 'enrollment_contact_lookup_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
+
+  it('logs unexpected privilege-read failures before name-lookup authorization', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const repositoryError = new Error(
+      'privilege database connectionString=secret; email=private@test.dev',
+    )
+    vi.spyOn(
+      staffPrivilegeRepository,
+      'findPrivilegesForUser',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/enrollments/contact-lookup', {
+          headers: { 'x-request-id': 'enrollment-lookup-access-failure' },
+        }),
+        () =>
+          searchEnrollmentContactsByNamesService(
+            { names: 'Private Applicant' },
+            teacherId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const serialized = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(serialized).not.toContain('connectionString')
+    expect(serialized).not.toContain('private@test.dev')
+    expect(JSON.parse(serialized)).toMatchObject({
+      event: 'enrollment_contact_lookup_failed',
+      path: 'serverFn:searchEnrollmentContactsByNames',
+      requestId: 'enrollment-lookup-access-failure',
+      actorId: teacherId,
+      status: 'failure',
+      errorCategory: 'enrollment_contact_access_persistence',
       durationMs: expect.any(Number),
     })
   })

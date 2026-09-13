@@ -191,6 +191,10 @@ function logEnrollmentContactEvent(
   })
 }
 
+function shouldLogEnrollmentContactFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
 async function withEnrollmentReadTelemetry<T>(args: {
   context: EnrollmentReadLogContext
   read: () => Promise<T>
@@ -1438,12 +1442,25 @@ export async function getEnrollmentEmailsService(
   data: GetEnrollmentEmailsInput,
   userId: string,
 ): Promise<{ emails: Array<string> }> {
-  await requireEnrollmentContactExport(userId)
   const context: EnrollmentContactLogContext = {
     actorId: userId,
     action: 'getEnrollmentEmails',
     group: data.group,
     startedAt: performance.now(),
+  }
+
+  try {
+    await requireEnrollmentContactExport(userId)
+  } catch (error) {
+    if (shouldLogEnrollmentContactFailure(error)) {
+      logEnrollmentContactEvent(
+        'error',
+        'enrollment_contact_export_failed',
+        context,
+        { errorCategory: 'enrollment_contact_access_persistence' },
+      )
+    }
+    throw error
   }
 
   try {
@@ -1471,19 +1488,30 @@ export async function searchEnrollmentContactsByNamesService(
   data: SearchEnrollmentContactsByNamesInput,
   userId: string,
 ) {
-  await requireEnrollmentContactExport(userId)
-
-  const queries = parseEnrollmentContactLookupNames(data.names)
-  if (queries.length === 0) {
-    throw new ValidationError('Enter at least one name')
-  }
-
   const context: EnrollmentContactLogContext = {
     actorId: userId,
     action: 'searchEnrollmentContactsByNames',
     startedAt: performance.now(),
   }
 
+  try {
+    await requireEnrollmentContactExport(userId)
+  } catch (error) {
+    if (shouldLogEnrollmentContactFailure(error)) {
+      logEnrollmentContactEvent(
+        'error',
+        'enrollment_contact_lookup_failed',
+        context,
+        { errorCategory: 'enrollment_contact_access_persistence' },
+      )
+    }
+    throw error
+  }
+
+  const queries = parseEnrollmentContactLookupNames(data.names)
+  if (queries.length === 0) {
+    throw new ValidationError('Enter at least one name')
+  }
   try {
     const candidates = await findEnrollmentContactLookupCandidates(queries)
     const groups = buildEnrollmentContactLookupGroups(queries, candidates)

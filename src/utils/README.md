@@ -187,8 +187,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     `enrollment_contact_lookup_completed` /
     `enrollment_contact_lookup_failed` events with request correlation, actor
     ID, safe query/candidate/group/match counts, duration, and the stable
-    `enrollment_contact_lookup_persistence` category; names, emails, phone
-    numbers, and raw persistence errors remain excluded.
+    `enrollment_contact_lookup_persistence` category. Unexpected staff-
+    privilege persistence failures during export or lookup authorization use
+    the stable `enrollment_contact_access_persistence` category inside the
+    matching operation event; expected denials remain quiet. Names, emails,
+    phone numbers, and raw persistence errors remain excluded.
   - Course-teacher lesson authoring emits redacted `lesson_created`,
     `lesson_updated`, and `lesson_deleted` events with request correlation,
     actor/course/lesson IDs, status, and duration; persistence failures use
