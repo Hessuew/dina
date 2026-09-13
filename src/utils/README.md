@@ -499,7 +499,7 @@ This folder is primarily where TanStack Start server functions live (via `create
     - `sender/resend-email-sender.ts`: Resend adapter, template rendering, subjects, and provider error normalization.
     - `index.ts`: `getEmailSender` / `setEmailSender` seam plus shared transactional and invitation sending primitives.
     - `domain/`: pure campaign resolver and bulk invitation planner.
-    - `email-campaign.ts`, `service/`, `repository/`: admin-only bulk invitation email campaign server functions, lock handling, and logging.
+    - `email-campaign.ts`, `service/`, `repository/`: admin-only bulk invitation email campaign server functions, lock handling, and logging. Send-path lock, sender-profile, planning, invitation, enrollment-marking, and message-record persistence failures use redacted structured events with stable categories; provider delivery failures retain their delivery category.
   - `whatsapp/`: Admin-only bulk WhatsApp campaign server functions, lock handling, delivery logging, and provider adapter.
     - Campaign lock inspection and explicit release are authorized in the service layer, so direct callers cannot bypass the Admin boundary. Both operations emit redacted lock-count/release telemetry with stable persistence categories.
 

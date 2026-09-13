@@ -1,7 +1,7 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 173
+**Iteration:** 174
 **Scope:** continue the batched structured-logging rollout while preserving the
 evidence-aware Engineering Roadmap handoff.
 
@@ -4659,3 +4659,30 @@ full build and full integration suite remain intentionally skipped for the
 iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
 dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
 restore evidence remain pending.
+
+## Iteration 174 — email campaign send persistence telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for the Admin email-campaign send path:
+
+- Unexpected send lock checks, sender-profile reads, and recipient planning
+  failures now emit `email_campaign_send_failed` with request correlation,
+  campaign, actor ID, duration, and stable persistence categories.
+- Invitation creation/rotation failures and enrollment-marking failures now
+  use stable categories on the per-invitation failure event. Email-message
+  record failures emit `email_campaign_message_record_failed`; provider
+  delivery failures retain `invitation_email_delivery`.
+- Existing campaign summaries, rollback behavior, failed message rows, and
+  original exceptions remain unchanged. Recipient email addresses, invitation
+  tokens, provider details, and raw persistence errors remain outside
+  structured telemetry.
+- Added five focused integration regressions covering categories, request
+  correlation, redaction, and error preservation.
+
+Validation: the focused email-campaign integration file passed all 24 tests;
+typecheck, targeted formatting, static quality, and `git diff --check` passed.
+Static quality reported only existing warnings in unrelated enrollment and
+WhatsApp test files. The full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.

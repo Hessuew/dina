@@ -440,6 +440,14 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `*_campaign_preview_failed` with the stable
    `campaign_preview_persistence` category; expected authorization and lock
    conflicts remain quiet.
+   Admin email campaign sends now emit redacted
+   `email_campaign_send_failed` events for unexpected lock, sender-profile,
+   and recipient-planning persistence failures. Per-invitation persistence,
+   enrollment-marking, and message-record failures use stable categories on
+   the existing `email_campaign_invitation_failed` or
+   `email_campaign_message_record_failed` events. Provider delivery failures
+   retain their delivery category; campaign, recipient, invitation, email,
+   and provider details remain excluded.
    Unexpected Supabase session lookup exceptions now emit redacted
    `auth_session_lookup_failed` events, and persisted-profile lookup failures
    emit `auth_profile_lookup_failed` events with request correlation, safe user
@@ -475,7 +483,7 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `media_persistence` category while preserving the original error.
 4. Keep expected user-input failures out of noisy error logs.
 
-The repository migration is complete through Iteration 173. Future code
+The repository migration is complete through Iteration 174. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining

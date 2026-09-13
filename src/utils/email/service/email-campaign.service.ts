@@ -130,10 +130,11 @@ const SEND_INTERVAL_MS = 600
 function logInvitationOutcome(input: {
   status: 'sent' | 'failed'
   planned: PlannedInvitationEmail
-  invitationId: string
+  invitationId?: string
   invitationCreated: boolean
   userId: string
   context: EmailCampaignLogContext
+  errorCategory?: string
 }): void {
   const failed = input.status === 'failed'
   logEmailCampaignEvent(
@@ -144,7 +145,9 @@ function logInvitationOutcome(input: {
     input.context,
     {
       status: input.status,
-      errorCategory: failed ? 'invitation_email_delivery' : null,
+      errorCategory: failed
+        ? (input.errorCategory ?? 'invitation_email_delivery')
+        : null,
       enrollmentId: input.planned.enrollmentId,
       invitationId: input.invitationId,
       userId: input.userId,
@@ -165,6 +168,22 @@ async function planCampaign(
     includeValidLinks: data.includeValidLinks,
   })
   return { emailType, plan }
+}
+
+async function planCampaignForSendWithTelemetry(
+  data: SendEmailCampaignInput,
+  userId: string,
+  context: EmailCampaignLogContext,
+): Promise<{ emailType: EmailType; plan: BulkInvitePlan }> {
+  try {
+    return await planCampaign(data)
+  } catch (error) {
+    logEmailCampaignEvent('error', 'email_campaign_send_failed', context, {
+      errorCategory: 'campaign_send_planning_persistence',
+      userId,
+    })
+    throw error
+  }
 }
 
 function buildInvitationRow(input: {
@@ -216,6 +235,31 @@ async function createInvitationForSend(
   return { id: invitation.id, token, created: true }
 }
 
+async function createInvitationForSendWithTelemetry(
+  planned: PlannedInvitationEmail,
+  userId: string,
+  context: EmailCampaignLogContext,
+) {
+  try {
+    return await createInvitationForSend(planned, userId)
+  } catch (error) {
+    logEmailCampaignEvent(
+      'error',
+      'email_campaign_invitation_failed',
+      context,
+      {
+        status: 'failed',
+        errorCategory: 'invitation_persistence',
+        enrollmentId: planned.enrollmentId,
+        invitationId: planned.invitationId,
+        userId,
+        invitationAction: planned.action,
+      },
+    )
+    throw error
+  }
+}
+
 async function rollbackInvitationForSend(input: {
   planned: PlannedInvitationEmail
   invitationId: string
@@ -236,6 +280,83 @@ async function rollbackInvitationForSend(input: {
   }
 }
 
+async function deliverAndMarkInvitation(input: {
+  planned: PlannedInvitationEmail
+  invitation: { id: string; token: string; created: boolean }
+  senderName: string
+  lecturerTitle: string | null
+}): Promise<{
+  providerMessageId: string | null
+  errorMessage?: string
+  errorCategory?: string
+}> {
+  const oldToken = input.planned.invitation?.token ?? null
+  const oldExpiresAt = input.planned.invitation?.expiresAt ?? null
+  let providerMessageId: string | null = null
+  let errorMessage: string | undefined
+  let errorCategory: string | undefined
+
+  try {
+    providerMessageId = await sendInvitationEmail({
+      to: input.planned.email,
+      invitedByName: input.senderName,
+      role: 'student',
+      token: input.invitation.token,
+      lecturerTitle: input.lecturerTitle,
+      appUrl: env.APP_URL || 'http://localhost:3000',
+    })
+  } catch (error) {
+    errorMessage = error instanceof Error ? error.message : String(error)
+    errorCategory = 'invitation_email_delivery'
+  }
+
+  if (!errorMessage) {
+    try {
+      await markCampaignEnrollmentInvited(
+        input.planned.enrollmentId,
+        input.invitation.id,
+      )
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : String(error)
+      errorCategory = 'campaign_enrollment_persistence'
+    }
+  }
+
+  if (errorMessage) {
+    await rollbackInvitationForSend({
+      planned: input.planned,
+      invitationId: input.invitation.id,
+      created: input.invitation.created,
+      oldToken,
+      oldExpiresAt,
+    })
+  }
+
+  return { providerMessageId, errorMessage, errorCategory }
+}
+
+async function insertEmailMessageWithTelemetry(
+  row: Parameters<typeof insertEmailMessage>[0],
+  userId: string,
+  context: EmailCampaignLogContext,
+): Promise<void> {
+  try {
+    await insertEmailMessage(row)
+  } catch (error) {
+    logEmailCampaignEvent(
+      'error',
+      'email_campaign_message_record_failed',
+      context,
+      {
+        errorCategory: 'campaign_message_persistence',
+        enrollmentId: row.enrollmentId,
+        userId,
+      },
+    )
+    throw error
+  }
+}
+
 async function sendPlannedInvitation(input: {
   planned: PlannedInvitationEmail
   emailType: EmailType
@@ -244,44 +365,31 @@ async function sendPlannedInvitation(input: {
   lecturerTitle: string | null
   context: EmailCampaignLogContext
 }): Promise<'sent' | 'failed'> {
-  const oldToken = input.planned.invitation?.token ?? null
-  const oldExpiresAt = input.planned.invitation?.expiresAt ?? null
-  const invitation = await createInvitationForSend(input.planned, input.userId)
-  let providerMessageId: string | null = null
-  let errorMessage: string | undefined
-  try {
-    providerMessageId = await sendInvitationEmail({
-      to: input.planned.email,
-      invitedByName: input.senderName,
-      role: 'student',
-      token: invitation.token,
-      lecturerTitle: input.lecturerTitle,
-      appUrl: env.APP_URL || 'http://localhost:3000',
-    })
-    await markCampaignEnrollmentInvited(
-      input.planned.enrollmentId,
-      invitation.id,
-    )
-  } catch (error) {
-    errorMessage = error instanceof Error ? error.message : String(error)
-    await rollbackInvitationForSend({
-      planned: input.planned,
-      invitationId: invitation.id,
-      created: invitation.created,
-      oldToken,
-      oldExpiresAt,
-    })
-  }
-  const status = errorMessage ? 'failed' : 'sent'
-  await insertEmailMessage({
-    enrollmentId: input.planned.enrollmentId,
-    recipientEmail: input.planned.email,
-    emailType: input.emailType,
-    status,
-    providerMessageId,
-    errorMessage,
-    sentByUserId: input.userId,
+  const invitation = await createInvitationForSendWithTelemetry(
+    input.planned,
+    input.userId,
+    input.context,
+  )
+  const delivery = await deliverAndMarkInvitation({
+    planned: input.planned,
+    invitation,
+    senderName: input.senderName,
+    lecturerTitle: input.lecturerTitle,
   })
+  const status = delivery.errorMessage ? 'failed' : 'sent'
+  await insertEmailMessageWithTelemetry(
+    {
+      enrollmentId: input.planned.enrollmentId,
+      recipientEmail: input.planned.email,
+      emailType: input.emailType,
+      status,
+      providerMessageId: delivery.providerMessageId,
+      errorMessage: delivery.errorMessage,
+      sentByUserId: input.userId,
+    },
+    input.userId,
+    input.context,
+  )
   logInvitationOutcome({
     status,
     planned: input.planned,
@@ -289,6 +397,7 @@ async function sendPlannedInvitation(input: {
     invitationCreated: invitation.created,
     userId: input.userId,
     context: input.context,
+    errorCategory: delivery.errorCategory,
   })
   return status
 }
@@ -338,7 +447,16 @@ export async function sendEmailCampaignService(
     startedAt: performance.now(),
   }
   await authz(userId).hasRole('admin')
-  const holdsLock = await checkEmailCampaignLockHeldBy(data.campaign, userId)
+  let holdsLock: boolean
+  try {
+    holdsLock = await checkEmailCampaignLockHeldBy(data.campaign, userId)
+  } catch (error) {
+    logEmailCampaignEvent('error', 'email_campaign_send_failed', context, {
+      errorCategory: 'campaign_lock_read',
+      userId,
+    })
+    throw error
+  }
   if (!holdsLock) throw new CampaignLockedError()
   try {
     return await sendLockedEmailCampaign(data, userId, context)
@@ -359,10 +477,23 @@ async function sendLockedEmailCampaign(
   userId: string,
   context: EmailCampaignLogContext,
 ): Promise<EmailCampaignSendSummary> {
-  const profile = await findProfileById(userId)
+  let profile: Awaited<ReturnType<typeof findProfileById>>
+  try {
+    profile = await findProfileById(userId)
+  } catch (error) {
+    logEmailCampaignEvent('error', 'email_campaign_send_failed', context, {
+      errorCategory: 'campaign_sender_profile_read',
+      userId,
+    })
+    throw error
+  }
   const senderName = resolveSenderName(profile)
   if (!senderName) throw new ValidationError('Email not found')
-  const { emailType, plan } = await planCampaign(data)
+  const { emailType, plan } = await planCampaignForSendWithTelemetry(
+    data,
+    userId,
+    context,
+  )
   const result = await sendPlannedInvitations({
     plan,
     emailType,

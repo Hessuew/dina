@@ -18,6 +18,7 @@ import {
 import { findInvitationByEmail } from '@/utils/invitation/repository/invitations.repository'
 import { AuthorizationError } from '@/utils/errors'
 import * as emailCampaignRepository from '@/utils/email/repository/email-campaign.repository'
+import * as enrolmentRepository from '@/utils/enrolment/repository/enrolment.repository'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -160,6 +161,75 @@ describe('sendEmailCampaignService (integration)', () => {
     await expect(
       sendEmailCampaignService({ campaign: 'invitation' }, teacherId),
     ).rejects.toThrow(AuthorizationError)
+  })
+
+  it('categorizes sender profile lookup failures without raw repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
+    const profileError = new Error('private campaign sender profile detail')
+    vi.spyOn(enrolmentRepository, 'findProfileById').mockRejectedValueOnce(
+      profileError,
+    )
+
+    try {
+      await expect(
+        sendEmailCampaignService({ campaign: 'invitation' }, adminId),
+      ).rejects.toBe(profileError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const event = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === 'email_campaign_send_failed')
+      expect(event).toMatchObject({
+        event: 'email_campaign_send_failed',
+        path: 'serverFn:send_email_campaign',
+        campaign: 'invitation',
+        userId: adminId,
+        errorCategory: 'campaign_sender_profile_read',
+        status: 'failure',
+      })
+      expect(serialized.join('\n')).not.toContain(
+        'private campaign sender profile detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('categorizes send planning failures without raw repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
+    const planningError = new Error('private send planning database detail')
+    vi.spyOn(
+      emailCampaignRepository,
+      'findEmailCampaignRecipients',
+    ).mockRejectedValueOnce(planningError)
+
+    try {
+      await expect(
+        sendEmailCampaignService({ campaign: 'invitation' }, adminId),
+      ).rejects.toBe(planningError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const event = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === 'email_campaign_send_failed')
+      expect(event).toMatchObject({
+        event: 'email_campaign_send_failed',
+        path: 'serverFn:send_email_campaign',
+        campaign: 'invitation',
+        userId: adminId,
+        errorCategory: 'campaign_send_planning_persistence',
+        status: 'failure',
+      })
+      expect(serialized.join('\n')).not.toContain(
+        'private send planning database detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 
   it('creates invitations for never-invited approved applicants and logs sent rows', async () => {
@@ -353,6 +423,125 @@ describe('sendEmailCampaignService (integration)', () => {
       })
       expect(String(errorSpy.mock.calls[0]?.[0])).not.toContain(
         'provider rejected email',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('categorizes invitation persistence failures without raw repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const enrollmentId = await seedEnrollment({
+      status: 'approved',
+      email: 'persistence-failure@test.dev',
+    })
+    await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
+    const invitationError = new Error('private invitation database detail')
+    vi.spyOn(
+      emailCampaignRepository,
+      'insertCampaignInvitation',
+    ).mockRejectedValueOnce(invitationError)
+
+    try {
+      await expect(
+        sendEmailCampaignService({ campaign: 'invitation' }, adminId),
+      ).rejects.toBe(invitationError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const event = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === 'email_campaign_invitation_failed')
+      expect(event).toMatchObject({
+        event: 'email_campaign_invitation_failed',
+        path: 'serverFn:send_email_campaign',
+        status: 'failed',
+        errorCategory: 'invitation_persistence',
+        enrollmentId,
+        userId: adminId,
+      })
+      expect(serialized.join('\n')).not.toContain(
+        'private invitation database detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('categorizes enrollment-mark failures while preserving failed delivery rows', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const enrollmentId = await seedEnrollment({
+      status: 'approved',
+      email: 'mark-failure@test.dev',
+    })
+    await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
+    const markError = new Error('private enrollment update detail')
+    vi.spyOn(
+      emailCampaignRepository,
+      'markCampaignEnrollmentInvited',
+    ).mockRejectedValueOnce(markError)
+
+    try {
+      await expect(
+        sendEmailCampaignService({ campaign: 'invitation' }, adminId),
+      ).resolves.toMatchObject({ sent: 0, failed: 1 })
+
+      expect((await findLogRows(enrollmentId))[0]).toMatchObject({
+        status: 'failed',
+        errorMessage: 'private enrollment update detail',
+      })
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const event = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === 'email_campaign_invitation_failed')
+      expect(event).toMatchObject({
+        event: 'email_campaign_invitation_failed',
+        errorCategory: 'campaign_enrollment_persistence',
+        enrollmentId,
+        userId: adminId,
+      })
+      expect(serialized.join('\n')).not.toContain(
+        'private enrollment update detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('categorizes message-record failures without raw repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const enrollmentId = await seedEnrollment({
+      status: 'approved',
+      email: 'message-record-failure@test.dev',
+    })
+    await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
+    const messageError = new Error('private email message database detail')
+    vi.spyOn(
+      emailCampaignRepository,
+      'insertEmailMessage',
+    ).mockRejectedValueOnce(messageError)
+
+    try {
+      await expect(
+        sendEmailCampaignService({ campaign: 'invitation' }, adminId),
+      ).rejects.toBe(messageError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const event = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === 'email_campaign_message_record_failed')
+      expect(event).toMatchObject({
+        event: 'email_campaign_message_record_failed',
+        path: 'serverFn:send_email_campaign',
+        errorCategory: 'campaign_message_persistence',
+        enrollmentId,
+        userId: adminId,
+        status: 'failure',
+      })
+      expect(serialized.join('\n')).not.toContain(
+        'private email message database detail',
       )
     } finally {
       errorSpy.mockRestore()
