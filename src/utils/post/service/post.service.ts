@@ -406,7 +406,11 @@ export async function updatePostService(
     })
   }
   if (existing.authorId !== userId) {
-    await authz(userId).perform('editPost').on('post', data.postId)
+    await withPostMutationPreflightTelemetry({
+      context,
+      read: () => authz(userId).perform('editPost').on('post', data.postId),
+      errorCategory: 'post_authorization_persistence',
+    })
   }
 
   context.courseId = existing.courseId
@@ -449,7 +453,11 @@ export async function deletePostService(
     })
   }
   if (existing.authorId !== userId) {
-    await authz(userId).perform('deletePost').on('post', data.postId)
+    await withPostMutationPreflightTelemetry({
+      context,
+      read: () => authz(userId).perform('deletePost').on('post', data.postId),
+      errorCategory: 'post_authorization_persistence',
+    })
   }
 
   context.courseId = existing.courseId
@@ -643,7 +651,12 @@ export async function deleteCommentService(
     })
   }
   if (existing.authorId !== userId) {
-    await authz(userId).perform('deleteComment').on('comment', data.commentId)
+    await withPostMutationPreflightTelemetry({
+      context,
+      read: () =>
+        authz(userId).perform('deleteComment').on('comment', data.commentId),
+      errorCategory: 'comment_authorization_persistence',
+    })
   }
 
   context.postId = existing.postId

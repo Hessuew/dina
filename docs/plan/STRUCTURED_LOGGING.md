@@ -227,7 +227,11 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    `comment_updated`, and `comment_deleted` events with request correlation,
    actor/post/comment/course IDs, status, and duration. Unexpected persistence
    failures use `post_persistence` or `comment_persistence`; post and comment
-   content remains excluded.
+   content remains excluded. Ownership-moderation authorization preflights for
+   post update/delete and comment delete remain inside the same redacted
+   mutation boundary with stable `post_authorization_persistence` or
+   `comment_authorization_persistence` categories; expected denials remain
+   quiet and preserve their original errors.
    Post and comment reaction toggles now emit redacted
    `post_reaction_toggled` / `comment_reaction_toggled` events with request
    correlation, actor/target IDs, reaction action, emoji, status, and duration.
@@ -550,7 +554,7 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    stable `course_thumbnail_authorization_persistence` category; expected
    denials remain quiet and storage paths/provider details stay excluded.
 
-The repository migration is complete through Iteration 187. Future code
+The repository migration is complete through Iteration 189. Future code
 changes should continue in batched, independently verifiable slices and
 provide stable `event`, `requestId`, `status`, and `durationMs` fields. Do not
 pass raw exception messages or request bodies to the logger. The remaining

@@ -1,9 +1,9 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
 **Date:** 2026-09-13
-**Iteration:** 188
+**Iteration:** 189
 **Scope:** record the completed batched structured-logging rollout through
-Iteration 188 and maintain the evidence-aware Engineering Roadmap handoff.
+Iteration 189 and maintain the evidence-aware Engineering Roadmap handoff.
 
 ## Final roadmap disposition
 
@@ -206,6 +206,13 @@ shadcn@latest` intentionally.
   server-function adapter into the service boundary, closing direct service
   calls that could otherwise bypass the profile check without changing the
   response shapes for authenticated roles.
+- Post update/delete and comment deletion ownership-moderation authorization
+  preflights now remain inside the existing redacted mutation telemetry
+  boundary. Unexpected authz persistence failures reuse `post_mutation_failed`
+  with stable `post_authorization_persistence` or
+  `comment_authorization_persistence` categories, request correlation, safe
+  actor/target identifiers, duration, and original-error preservation; expected
+  denials remain quiet and post/comment content stays excluded.
 - Post-notification group and mark-all read-state mutations now emit redacted
   `notification_group_marked_read` / `notifications_marked_read` events with
   request correlation, actor/target metadata, read scope, status, and duration.
@@ -5045,3 +5052,27 @@ iterative telemetry workflow. The full build and full integration suite remain
 intentionally skipped. Hosted Better Stack/Cloudflare ingestion, dashboards,
 alerts, Uptime monitors, source maps, PostHog verification, and restore
 evidence remain pending.
+
+## Iteration 189 — post/comment authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for community moderation authorization boundaries:
+
+- Post update and deletion, plus comment deletion, now keep ownership-
+  moderation authorization inside the existing `post_mutation_failed`
+  telemetry boundary.
+- Unexpected authorization persistence failures use stable
+  `post_authorization_persistence` or `comment_authorization_persistence`
+  categories with request correlation, safe actor/target identifiers,
+  duration, and original-error preservation. Expected denials remain quiet;
+  post/comment content and raw persistence details remain excluded.
+- Added parameterized focused integration coverage for all three authorization
+  boundaries, redaction, request correlation, stable categorization, error
+  identity, and expected-denial silence.
+
+Validation: the focused post integration suite passed all 58 tests; targeted
+Prettier formatting passed. Typecheck, static quality, and Notion synchronization
+remain in the final verification scope. The full build and full integration
+suite remain intentionally skipped. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.

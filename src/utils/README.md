@@ -364,7 +364,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     course IDs, status, and duration; content and raw persistence details are
     excluded. Unexpected post/comment preflight persistence failures use stable
     `post_mutation_preflight_persistence` /
-    `comment_mutation_preflight_persistence` categories.
+    `comment_mutation_preflight_persistence` categories. Ownership-moderation
+    authorization preflights remain inside the same mutation boundary with
+    stable `post_authorization_persistence` or
+    `comment_authorization_persistence` categories; expected denials remain
+    quiet and preserve their original errors.
   - Post and comment reaction toggles emit redacted
     `post_reaction_toggled` / `comment_reaction_toggled` events with request
     correlation, actor/target IDs, action, emoji, status, and duration;
