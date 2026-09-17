@@ -20,6 +20,7 @@ import type {
   GetEnrollmentEmailsInput,
 } from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
+import { insertCourseSubstituteInTransaction } from '@/utils/repository'
 import {
   courseSubstitutes,
   courseTeachers,
@@ -479,9 +480,11 @@ export async function insertSubstituteWithReassignment(
   const db = await getDb()
   let reassigned = 0
   await db.transaction(async (tx) => {
-    await tx
-      .insert(courseSubstitutes)
-      .values({ courseId, substituteTeacherId, absentTeacherId })
+    await insertCourseSubstituteInTransaction(tx, {
+      courseId,
+      substituteTeacherId,
+      absentTeacherId,
+    })
 
     const rows = await tx
       .select({ enrollmentId: enrollmentReviewerAssignments.enrollmentId })
@@ -520,36 +523,6 @@ export async function insertSubstituteWithReassignment(
     }
   })
   return { reassigned }
-}
-
-/**
- * Returns the distinct absent teacher IDs that currently have an active
- * substitution in course_substitutes. Used to filter the End-Substitution
- * dialog to only teachers who can actually have a substitution ended.
- */
-export async function findAbsentTeacherIdsWithActiveSubstitution(): Promise<
-  Array<string>
-> {
-  const db = await getDb()
-  const rows = await db
-    .select({ absentTeacherId: courseSubstitutes.absentTeacherId })
-    .from(courseSubstitutes)
-  return [...new Set(rows.map((r) => r.absentTeacherId))]
-}
-
-/**
- * Removes the active course_substitutes record for the given absent teacher.
- * Returns the number of deleted rows so the caller can detect a missing record.
- */
-export async function deleteCourseSubstituteByAbsent(
-  absentTeacherId: string,
-): Promise<number> {
-  const db = await getDb()
-  const deleted = await db
-    .delete(courseSubstitutes)
-    .where(eq(courseSubstitutes.absentTeacherId, absentTeacherId))
-    .returning({ id: courseSubstitutes.id })
-  return deleted.length
 }
 
 /** WHERE predicate for each export cohort (see CONTEXT.md → Email Export Cohorts). */

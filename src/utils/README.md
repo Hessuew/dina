@@ -518,6 +518,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     Staff Privilege-only access must use `@/utils/repository`; its
     `staff-privileges.repository.ts` owns the shared table-only reads and writes reused
     across authorization, teacher-directory, enrolment, and staff privilege services. New
+    `course-substitutes.repository.ts` owns course-substitute-only reads and writes reused
+    across enrolment substitution services; the atomic substitution transaction keeps its
+    reviewer reassignment orchestration in the enrolment feature repository and delegates
+    the table write through a transaction-scoped adapter. New course-substitute-only access
+    must use `@/utils/repository`.
     enrollment-only, invitation-only, assignment-only, or submission-only access must use
     `@/utils/repository`. `lessons.repository.ts` now owns lesson-only reads and
     writes reused across assignment and course services. New lesson-only access

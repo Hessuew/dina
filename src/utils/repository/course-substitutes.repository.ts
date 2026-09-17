@@ -1,0 +1,40 @@
+import { eq } from 'drizzle-orm'
+import { getDb } from '@/db'
+import { courseSubstitutes } from '@/db/schema'
+
+export type CourseSubstitutesTransactionClient = Parameters<
+  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
+>[0]
+
+/* v8 ignore start */
+export async function insertCourseSubstituteInTransaction(
+  tx: CourseSubstitutesTransactionClient,
+  values: Pick<
+    typeof courseSubstitutes.$inferInsert,
+    'courseId' | 'substituteTeacherId' | 'absentTeacherId'
+  >,
+) {
+  await tx.insert(courseSubstitutes).values(values)
+}
+
+export async function findAbsentTeacherIdsWithActiveSubstitution(): Promise<
+  Array<string>
+> {
+  const db = await getDb()
+  const rows = await db
+    .select({ absentTeacherId: courseSubstitutes.absentTeacherId })
+    .from(courseSubstitutes)
+  return [...new Set(rows.map((r) => r.absentTeacherId))]
+}
+
+export async function deleteCourseSubstituteByAbsent(
+  absentTeacherId: string,
+): Promise<number> {
+  const db = await getDb()
+  const deleted = await db
+    .delete(courseSubstitutes)
+    .where(eq(courseSubstitutes.absentTeacherId, absentTeacherId))
+    .returning({ id: courseSubstitutes.id })
+  return deleted.length
+}
+/* v8 ignore end */

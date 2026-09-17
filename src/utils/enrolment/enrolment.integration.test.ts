@@ -1187,7 +1187,7 @@ describe('active substitution lookup authorization (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { adminId } = await seedSubstitutionScenario()
     vi.spyOn(
-      enrollmentRepository,
+      sharedRepository,
       'findAbsentTeacherIdsWithActiveSubstitution',
     ).mockRejectedValueOnce(new Error('substitution database secret'))
 
@@ -1334,7 +1334,7 @@ describe('enrollment distribution and substitution telemetry (integration)', () 
     ).rejects.toThrow('substitution database secret')
 
     vi.spyOn(
-      enrollmentRepository,
+      sharedRepository,
       'deleteCourseSubstituteByAbsent',
     ).mockRejectedValueOnce(new Error('substitution end database secret'))
     await expect(

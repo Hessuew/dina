@@ -38,8 +38,6 @@ import {
 } from '@/utils/enrolment/domain/enrolment.domain'
 import {
   bulkAssignEnrollments,
-  deleteCourseSubstituteByAbsent,
-  findAbsentTeacherIdsWithActiveSubstitution,
   findAwaitingApprovalIdsWithSum,
   findCourseIdsForViewer,
   findCourseTeamIds,
@@ -54,8 +52,10 @@ import {
 } from '@/utils/enrolment/repository/enrolment.repository'
 import {
   bulkUpdateEnrollmentStatuses,
+  deleteCourseSubstituteByAbsent,
   deleteEnrollmentById,
   deleteInvitationById,
+  findAbsentTeacherIdsWithActiveSubstitution,
   findAllTeacherIds,
   findCourseIdByTeacherId,
   findCourseIdsByTeacherIds,
