@@ -178,6 +178,35 @@ describe('getDiscipleshipBoardService (integration)', () => {
     ])
   })
 
+  it('persists pair schedules through the shared pair repository', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const studentA = await seedProfile({ role: 'student' })
+    const studentB = await seedProfile({ role: 'student' })
+    await seedDiscipleshipAssignment({ studentId: studentB, teacherId })
+
+    await pairStudentsService(
+      { studentIdA: studentA, studentIdB: studentB, teacherId },
+      teacherId,
+    )
+    const initialBoard = await getDiscipleshipBoardService(teacherId)
+    expect(initialBoard.pairs).toHaveLength(1)
+
+    const anchorAt = new Date('2026-09-11T10:00:00.000Z')
+    await setPairScheduleService(
+      { pairId: initialBoard.pairs[0].id, anchorAt },
+      teacherId,
+    )
+
+    const board = await getDiscipleshipBoardService(teacherId)
+    expect(board.pairs).toEqual([
+      {
+        id: initialBoard.pairs[0].id,
+        teacherId,
+        anchorAt: anchorAt.toISOString(),
+      },
+    ])
+  })
+
   it('rejects students from the manage board', async () => {
     const studentId = await seedProfile({ role: 'student' })
 

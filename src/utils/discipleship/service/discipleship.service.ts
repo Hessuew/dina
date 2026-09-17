@@ -30,29 +30,27 @@ import {
 } from '@/utils/discipleship/domain/discipleship-pairing.domain'
 import { buildStudentDiscipleshipView } from '@/utils/discipleship/domain/discipleship-student-view.domain'
 import {
-  deletePair,
-  findAllPairs,
-  findPairById,
-  findPairsByTeacher,
-  insertPair,
-  setPairAnchor,
-} from '@/utils/discipleship/repository'
-import {
   clearDiscipleshipAssignmentPair as clearAssignmentPair,
   deleteDiscipleshipAssignmentByStudentId as deleteAssignmentByStudentId,
+  deleteDiscipleshipPair,
   findAllDiscipleshipAssignments as findAllAssignments,
+  findAllDiscipleshipPairs,
   findAllDiscipleshipGroups as findAllGroups,
   findDiscipleshipAssignmentByStudentId as findAssignmentByStudentId,
   findDiscipleshipAssignmentsByPairId as findAssignmentsByPairId,
   findDiscipleshipAssignmentsByTeacher as findAssignmentsByTeacher,
+  findDiscipleshipPairById,
+  findDiscipleshipPairsByTeacher,
   findDiscipleshipGroupsByTeacher as findGroupsByTeacher,
   findPublicProfileById,
   findPublicProfilesByIds,
   findStaffProfiles,
   findStudentProfiles,
   insertDiscipleshipAssignment as insertAssignment,
+  insertDiscipleshipPair,
   setDiscipleshipAssignmentAnchor as setAssignmentAnchor,
   setDiscipleshipAssignmentPair as setAssignmentPair,
+  setDiscipleshipPairAnchor,
   updateDiscipleshipAssignmentTeacher as updateAssignmentTeacher,
   upsertDiscipleshipGroupAnchor as upsertGroupAnchor,
 } from '@/utils/repository'
@@ -231,7 +229,7 @@ async function dissolvePairIfNeeded(
   const remaining = members.filter(
     (m) => m.studentId !== leavingStudentId,
   ).length
-  if (shouldDissolvePair(remaining)) await deletePair(pairId)
+  if (shouldDissolvePair(remaining)) await deleteDiscipleshipPair(pairId)
   else await clearAssignmentPair(leavingStudentId)
 }
 
@@ -316,7 +314,9 @@ export async function getDiscipleshipBoardService(userId: string) {
           findStaffProfiles(),
           findStudentProfiles(),
           isAdmin ? findAllAssignments() : findAssignmentsByTeacher(userId),
-          isAdmin ? findAllPairs() : findPairsByTeacher(userId),
+          isAdmin
+            ? findAllDiscipleshipPairs()
+            : findDiscipleshipPairsByTeacher(userId),
           isAdmin ? findAllGroups() : findGroupsByTeacher(userId),
         ])
 
@@ -348,7 +348,9 @@ function isoOrNull(value: Date | null | undefined): string | null {
 }
 
 type StudentAssignmentRow = NonNullable<AssignmentRow>
-type PairRow = Awaited<ReturnType<typeof findPairsByTeacher>>[number]
+type PairRow = Awaited<
+  ReturnType<typeof findDiscipleshipPairsByTeacher>
+>[number]
 type GroupRow = Awaited<ReturnType<typeof findGroupsByTeacher>>[number]
 type PublicPerson = NonNullable<
   Awaited<ReturnType<typeof findPublicProfileById>>
@@ -426,7 +428,7 @@ export async function getStudentDiscipleshipViewService(
       const [teacher, teacherAssignments, pairs, groups] = await Promise.all([
         findPublicProfileById(assignment.teacherId),
         findAssignmentsByTeacher(assignment.teacherId),
-        findPairsByTeacher(assignment.teacherId),
+        findDiscipleshipPairsByTeacher(assignment.teacherId),
         findGroupsByTeacher(assignment.teacherId),
       ])
 
@@ -546,7 +548,7 @@ export async function pairStudentsService(
       // Assign A (inserts if new, moves if under a different teacher).
       await assignInternal(data.studentIdA, data.teacherId, flags, userId)
 
-      const pair = await insertPair(data.teacherId)
+      const pair = await insertDiscipleshipPair(data.teacherId)
       await Promise.all([
         setAssignmentPair(data.studentIdA, pair.id),
         setAssignmentPair(b.studentId, pair.id),
@@ -600,10 +602,10 @@ export async function setPairScheduleService(
     actorId: userId,
     fields: { pairId: data.pairId, scheduleType: 'pair' },
     operation: async (context) => {
-      const pair = await findPairById(data.pairId)
+      const pair = await findDiscipleshipPairById(data.pairId)
       if (!pair) throw new NotFoundError('Discipleship pair not found.')
       await requireManage(userId, pair.teacherId, context)
-      await setPairAnchor(data.pairId, data.anchorAt)
+      await setDiscipleshipPairAnchor(data.pairId, data.anchorAt)
     },
   })
 }

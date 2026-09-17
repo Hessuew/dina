@@ -1,28 +1,28 @@
-/* v8 ignore start -- thin DB adapters; logic lives in domain/ */
 import { eq } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { discipleshipPairs } from '@/db/schema'
 
-export async function findAllPairs() {
+/* v8 ignore start */
+export async function findAllDiscipleshipPairs() {
   const db = await getDb()
   return db.query.discipleshipPairs.findMany()
 }
 
-export async function findPairsByTeacher(teacherId: string) {
+export async function findDiscipleshipPairsByTeacher(teacherId: string) {
   const db = await getDb()
   return db.query.discipleshipPairs.findMany({
     where: eq(discipleshipPairs.teacherId, teacherId),
   })
 }
 
-export async function findPairById(pairId: string) {
+export async function findDiscipleshipPairById(pairId: string) {
   const db = await getDb()
   return db.query.discipleshipPairs.findFirst({
     where: eq(discipleshipPairs.id, pairId),
   })
 }
 
-export async function insertPair(teacherId: string) {
+export async function insertDiscipleshipPair(teacherId: string) {
   const db = await getDb()
   const [row] = await db
     .insert(discipleshipPairs)
@@ -31,7 +31,10 @@ export async function insertPair(teacherId: string) {
   return row
 }
 
-export async function setPairAnchor(pairId: string, anchorAt: Date) {
+export async function setDiscipleshipPairAnchor(
+  pairId: string,
+  anchorAt: Date,
+) {
   const db = await getDb()
   await db
     .update(discipleshipPairs)
@@ -40,7 +43,7 @@ export async function setPairAnchor(pairId: string, anchorAt: Date) {
 }
 
 // Deleting a pair nulls each member's `pairId` via the FK's ON DELETE SET NULL.
-export async function deletePair(pairId: string) {
+export async function deleteDiscipleshipPair(pairId: string) {
   const db = await getDb()
   await db.delete(discipleshipPairs).where(eq(discipleshipPairs.id, pairId))
 }
