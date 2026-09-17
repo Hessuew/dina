@@ -17,7 +17,7 @@ import {
   uploadMediaThumbnailService,
 } from '@/utils/library/service/library.service'
 import { mediaLibrary } from '@/db/schema'
-import * as libraryRepository from '@/utils/library/repository/library.repository'
+import * as mediaRepository from '@/utils/repository/media-library.repository'
 
 const mocks = vi.hoisted(() => ({
   createSignedUploadUrl: vi.fn(),
@@ -341,7 +341,7 @@ describe('library persistence', () => {
       const repositoryError = new Error(
         'media lookup connectionString=secret; email=private@test.dev',
       )
-      vi.spyOn(libraryRepository, 'findMediaById').mockRejectedValueOnce(
+      vi.spyOn(mediaRepository, 'findMediaById').mockRejectedValueOnce(
         repositoryError,
       )
 

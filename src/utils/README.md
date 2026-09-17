@@ -530,6 +530,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     `@/utils/repository`. `enrollment-evaluations.repository.ts` owns
     enrollment-evaluation-only writes reused by the enrollment review service;
     joined evaluation/profile reads remain in the enrolment feature repository.
+    `media-library.repository.ts` owns media-library-only reads and writes reused by
+    the library service; the course-enriched media listing remains in the library
+    feature repository. New media-library-only access must use `@/utils/repository`.
   - Lesson detail reads require a persisted profile and expose unpublished
     lessons/draft assignments only to course teachers or admins; non-managers
     receive published lesson/assignment data only.
