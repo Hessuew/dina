@@ -525,7 +525,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     in their feature repositories. `zoom-links.repository.ts` owns zoom-link-only
     writes; joined zoom-link/teacher reads and profile or discipleship lookups remain
     in the Zoom Link feature repository. New zoom-link-only access must use
-    `@/utils/repository`.
+    `@/utils/repository`. `enrollment-evaluations.repository.ts` owns
+    enrollment-evaluation-only writes reused by the enrollment review service;
+    joined evaluation/profile reads remain in the enrolment feature repository.
   - Lesson detail reads require a persisted profile and expose unpublished
     lessons/draft assignments only to course teachers or admins; non-managers
     receive published lesson/assignment data only.

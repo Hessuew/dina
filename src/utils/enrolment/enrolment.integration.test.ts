@@ -27,6 +27,7 @@ import {
 } from '@/utils/enrolment/service/enrolment.service'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 import * as enrollmentRepository from '@/utils/enrolment/repository/enrolment.repository'
+import * as enrollmentEvaluationsRepository from '@/utils/repository/enrollment-evaluations.repository'
 import { findEnrollmentEmailsByGroup } from '@/utils/enrolment/repository/enrolment.repository'
 import * as sharedRepository from '@/utils/repository'
 import { AuthorizationError } from '@/utils/errors'
@@ -322,7 +323,7 @@ describe('setEvaluationScoreService (integration)', () => {
     const { reviewerId, enrollmentId } = await seedPeerReviewScenario()
     const repositoryError = new Error('evaluation database secret')
     const upsertSpy = vi
-      .spyOn(enrollmentRepository, 'upsertEvaluation')
+      .spyOn(enrollmentEvaluationsRepository, 'upsertEnrollmentEvaluation')
       .mockRejectedValue(repositoryError)
 
     const requests = [

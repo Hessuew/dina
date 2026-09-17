@@ -269,48 +269,6 @@ export async function findEvaluationsForEnrollments(
     .orderBy(asc(enrollmentEvaluations.createdAt))
 }
 
-export async function upsertEvaluation(
-  enrollmentId: string,
-  evaluatorId: string,
-  patch: {
-    score?: number | null
-    admissionCategory?: (typeof enrollmentEvaluations.$inferSelect)['admissionCategory']
-    note?: string
-  },
-) {
-  const db = await getDb()
-  await db
-    .insert(enrollmentEvaluations)
-    .values({
-      enrollmentId,
-      evaluatorId,
-      score: patch.score ?? null,
-      admissionCategory: patch.admissionCategory ?? null,
-      note: patch.note ?? null,
-    })
-    .onConflictDoUpdate({
-      target: [
-        enrollmentEvaluations.enrollmentId,
-        enrollmentEvaluations.evaluatorId,
-      ],
-      set: {
-        ...(patch.score !== undefined
-          ? {
-              score: patch.score,
-              ...(!patch.score || patch.score < 3
-                ? { admissionCategory: null }
-                : {}),
-            }
-          : {}),
-        ...(patch.admissionCategory !== undefined
-          ? { admissionCategory: patch.admissionCategory }
-          : {}),
-        ...(patch.note !== undefined ? { note: patch.note } : {}),
-        updatedAt: new Date(),
-      },
-    })
-}
-
 /**
  * Returns the reviewer ID and course namespace for a single enrollment's
  * assignment. Used by authz helpers that need course-scoped peer resolution.

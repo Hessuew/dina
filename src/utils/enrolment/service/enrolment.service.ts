@@ -51,7 +51,6 @@ import {
   findReviewerAssignmentsForEnrollments,
   findUnassignedEnrollmentIds,
   insertSubstituteWithReassignment,
-  upsertEvaluation,
 } from '@/utils/enrolment/repository/enrolment.repository'
 import {
   bulkUpdateEnrollmentStatuses,
@@ -70,6 +69,7 @@ import {
   updateEnrollmentSpecialCaseById,
   updateEnrollmentStatusById,
   updateInvitationToken,
+  upsertEnrollmentEvaluation,
 } from '@/utils/repository'
 import {
   authz,
@@ -608,7 +608,9 @@ async function setEvaluationScoreWithAccess(
     peerIds,
   )
 
-  await upsertEvaluation(data.enrollmentId, userId, { score: data.score })
+  await upsertEnrollmentEvaluation(data.enrollmentId, userId, {
+    score: data.score,
+  })
 
   // Only update status when the evaluator is the assigned Reviewer or the Peer.
   if (shouldDeriveScoreStatus(reviewerId, userId, peerIds)) {
@@ -1285,7 +1287,7 @@ export async function setEvaluationAdmissionCategoryService(
       assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin),
     )
 
-    await upsertEvaluation(data.enrollmentId, userId, {
+    await upsertEnrollmentEvaluation(data.enrollmentId, userId, {
       admissionCategory: data.admissionCategory,
     })
   } catch (error) {
@@ -1326,7 +1328,9 @@ export async function setEvaluationNoteService(
       assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin),
     )
 
-    await upsertEvaluation(data.enrollmentId, userId, { note: data.note })
+    await upsertEnrollmentEvaluation(data.enrollmentId, userId, {
+      note: data.note,
+    })
   } catch (error) {
     if (shouldLogEvaluationFailure(error)) {
       logEvaluationFailure(context)
