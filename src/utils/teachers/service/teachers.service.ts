@@ -6,11 +6,10 @@ import {
   findCourseAssignmentsForTeachers,
   findCourseTeacher,
 } from '@/utils/teachers/repository'
-import { findAllTeachers } from '@/utils/repository'
+import { findAllTeachers, findPrivilegesForUsers } from '@/utils/repository'
 import { authz } from '@/utils/authz'
 import { getUserProfile } from '@/utils/auth/auth'
 import { isAppError } from '@/utils/errors'
-import { findPrivilegesForUsers } from '@/utils/staff-privilege/repository'
 import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
 
 type TeacherDirectoryReadAction = 'getTeachers' | 'getAllTeachers'

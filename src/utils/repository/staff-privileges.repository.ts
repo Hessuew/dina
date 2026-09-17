@@ -1,9 +1,9 @@
+/* v8 ignore start */
 import { and, eq, inArray } from 'drizzle-orm'
 import type { StaffPrivilege } from '@/utils/staff-privilege/domain/staff-privilege.domain'
 import { getDb } from '@/db'
 import { staffPrivileges } from '@/db/schema'
 
-/* v8 ignore start */
 export async function findPrivilegesForUser(
   userId: string,
 ): Promise<Array<StaffPrivilege>> {

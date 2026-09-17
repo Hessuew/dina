@@ -2,7 +2,7 @@ import { createAuthorizationBuilder } from './builder'
 import { getAuthorizationService } from './service'
 import type { StaffPrivilege } from '@/utils/staff-privilege/domain/staff-privilege.domain'
 import { isLiveStaffPrivilege } from '@/utils/staff-privilege/domain/staff-privilege.domain'
-import { findPrivilegesForUser } from '@/utils/staff-privilege/repository'
+import { findPrivilegesForUser } from '@/utils/repository'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 

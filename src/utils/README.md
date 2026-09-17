@@ -505,6 +505,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     invitation-only reads and writes reused across invitation, signup, enrollment,
     and email-campaign services. The course-teacher repository owns
     course-teacher-only lookups reused by assignment services. New profile-only,
+    Staff Privilege-only access must use `@/utils/repository`; its
+    `staff-privileges.repository.ts` owns the shared table-only reads and writes reused
+    across authorization, teacher-directory, enrolment, and staff privilege services. New
     enrollment-only, invitation-only, assignment-only, or submission-only access must use
     `@/utils/repository`. `lessons.repository.ts` now owns lesson-only reads and
     writes reused across assignment and course services. New lesson-only access

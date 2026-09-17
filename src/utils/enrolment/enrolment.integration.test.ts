@@ -26,7 +26,6 @@ import {
   updateEnrollmentStatusService,
 } from '@/utils/enrolment/service/enrolment.service'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
-import * as staffPrivilegeRepository from '@/utils/staff-privilege/repository'
 import * as enrollmentRepository from '@/utils/enrolment/repository/enrolment.repository'
 import { findEnrollmentEmailsByGroup } from '@/utils/enrolment/repository/enrolment.repository'
 import * as sharedRepository from '@/utils/repository'
@@ -1636,10 +1635,9 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
     const repositoryError = new Error(
       'privilege database connectionString=secret; email=private@test.dev',
     )
-    vi.spyOn(
-      staffPrivilegeRepository,
-      'findPrivilegesForUser',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findPrivilegesForUser').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(
@@ -1834,10 +1832,9 @@ describe('enrollment contact lookup by name (integration)', () => {
     const repositoryError = new Error(
       'privilege database connectionString=secret; email=private@test.dev',
     )
-    vi.spyOn(
-      staffPrivilegeRepository,
-      'findPrivilegesForUser',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findPrivilegesForUser').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(
