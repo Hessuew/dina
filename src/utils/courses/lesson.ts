@@ -13,21 +13,21 @@ import {
 import { getCurrentUser } from '@/utils/auth/auth'
 
 export const createLesson = createServerFn({ method: 'POST' })
-  .inputValidator(createLessonSchema)
+  .validator(createLessonSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return createLessonService(data, user.id)
   })
 
 export const updateLesson = createServerFn({ method: 'POST' })
-  .inputValidator(updateLessonSchema)
+  .validator(updateLessonSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return updateLessonService(data, user.id)
   })
 
 export const deleteLesson = createServerFn({ method: 'POST' })
-  .inputValidator(deleteLessonSchema)
+  .validator(deleteLessonSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return deleteLessonService(data, user.id)

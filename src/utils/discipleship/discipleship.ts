@@ -36,49 +36,49 @@ export const getStudentDiscipleshipView = createServerFn({
 })
 
 export const assignStudentToTeacher = createServerFn({ method: 'POST' })
-  .inputValidator(assignStudentToTeacherSchema)
+  .validator(assignStudentToTeacherSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return assignStudentToTeacherService(data, user.id)
   })
 
 export const unassignStudent = createServerFn({ method: 'POST' })
-  .inputValidator(unassignStudentSchema)
+  .validator(unassignStudentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return unassignStudentService(data, user.id)
   })
 
 export const pairStudents = createServerFn({ method: 'POST' })
-  .inputValidator(pairStudentsSchema)
+  .validator(pairStudentsSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return pairStudentsService(data, user.id)
   })
 
 export const unpairStudent = createServerFn({ method: 'POST' })
-  .inputValidator(unpairStudentSchema)
+  .validator(unpairStudentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return unpairStudentService(data, user.id)
   })
 
 export const setIndividualSchedule = createServerFn({ method: 'POST' })
-  .inputValidator(setIndividualScheduleSchema)
+  .validator(setIndividualScheduleSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return setIndividualScheduleService(data, user.id)
   })
 
 export const setPairSchedule = createServerFn({ method: 'POST' })
-  .inputValidator(setPairScheduleSchema)
+  .validator(setPairScheduleSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return setPairScheduleService(data, user.id)
   })
 
 export const setGroupSchedule = createServerFn({ method: 'POST' })
-  .inputValidator(setGroupScheduleSchema)
+  .validator(setGroupScheduleSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return setGroupScheduleService(data, user.id)

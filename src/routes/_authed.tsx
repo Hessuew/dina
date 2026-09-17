@@ -5,7 +5,7 @@ import { loginService } from '@/utils/auth/login'
 import { toUserError } from '@/utils/errors'
 
 export const loginFn = createServerFn({ method: 'POST' })
-  .inputValidator(loginSchema)
+  .validator(loginSchema)
   .handler(({ data }) => loginService(data))
 
 export const Route = createFileRoute('/_authed')({

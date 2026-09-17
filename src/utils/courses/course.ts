@@ -22,7 +22,7 @@ export const getCourses = createServerFn({ method: 'POST' }).handler(
 )
 
 export const getCourse = createServerFn({ method: 'POST' })
-  .inputValidator(getCourseSchema)
+  .validator(getCourseSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     const result = await getCourseService(data, user.id)
@@ -30,21 +30,21 @@ export const getCourse = createServerFn({ method: 'POST' })
   })
 
 export const createCourse = createServerFn({ method: 'POST' })
-  .inputValidator(createCourseSchema)
+  .validator(createCourseSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return createCourseService(data, user.id)
   })
 
 export const updateCourse = createServerFn({ method: 'POST' })
-  .inputValidator(updateCourseSchema)
+  .validator(updateCourseSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return updateCourseService(data, user.id)
   })
 
 export const deleteCourse = createServerFn({ method: 'POST' })
-  .inputValidator(deleteCourseSchema)
+  .validator(deleteCourseSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return deleteCourseService(data, user.id)

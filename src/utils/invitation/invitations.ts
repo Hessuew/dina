@@ -19,20 +19,20 @@ import {
 } from '@/schemas/invitation.schema'
 
 export const createInvitation = createServerFn({ method: 'POST' })
-  .inputValidator(createInvitationSchema)
+  .validator(createInvitationSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return createInvitationService(data, user.id)
   })
 
 export const checkInvitationByEmail = createServerFn({ method: 'GET' })
-  .inputValidator(checkInvitationByEmailSchema)
+  .validator(checkInvitationByEmailSchema)
   .handler(async ({ data }) => {
     return checkInvitationByEmailService(data)
   })
 
 export const getInvitationByToken = createServerFn({ method: 'GET' })
-  .inputValidator(getInvitationByTokenSchema)
+  .validator(getInvitationByTokenSchema)
   .handler(async ({ data }) => {
     return getInvitationByTokenService(data)
   })
@@ -45,21 +45,21 @@ export const getInvitations = createServerFn({ method: 'POST' }).handler(
 )
 
 export const revokeInvitation = createServerFn({ method: 'POST' })
-  .inputValidator(revokeInvitationSchema)
+  .validator(revokeInvitationSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return revokeInvitationService(data, user.id)
   })
 
 export const deleteInvitation = createServerFn({ method: 'POST' })
-  .inputValidator(deleteInvitationSchema)
+  .validator(deleteInvitationSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return deleteInvitationService(data, user.id)
   })
 
 export const resendInvitation = createServerFn({ method: 'POST' })
-  .inputValidator(resendInvitationSchema)
+  .validator(resendInvitationSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return resendInvitationService(data, user.id)

@@ -24,7 +24,7 @@ import {
 } from '@/utils/lessons/domain/lesson-detail.domain'
 
 const getLessonData = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({ lessonId: z.uuid() }))
+  .validator(z.object({ lessonId: z.uuid() }))
   .handler(async ({ data }) => {
     return await getLesson({ data })
   })

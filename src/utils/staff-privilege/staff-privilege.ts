@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/utils/auth/auth'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 
 export const setStaffPrivilege = createServerFn({ method: 'POST' })
-  .inputValidator(setStaffPrivilegeSchema)
+  .validator(setStaffPrivilegeSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return setStaffPrivilegeService(user.id, data)

@@ -9,14 +9,14 @@ import {
 } from '@/utils/email/service/email-campaign.service'
 
 export const previewEmailCampaign = createServerFn({ method: 'POST' })
-  .inputValidator(sendEmailCampaignSchema)
+  .validator(sendEmailCampaignSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return previewEmailCampaignService(data, user.id)
   })
 
 export const sendEmailCampaign = createServerFn({ method: 'POST' })
-  .inputValidator(sendEmailCampaignSchema)
+  .validator(sendEmailCampaignSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return sendEmailCampaignService(data, user.id)
@@ -30,7 +30,7 @@ export const getEmailCampaignLocks = createServerFn({
 })
 
 export const releaseEmailCampaign = createServerFn({ method: 'POST' })
-  .inputValidator(sendEmailCampaignSchema)
+  .validator(sendEmailCampaignSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     await releaseEmailCampaignService(data, user.id)

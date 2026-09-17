@@ -25,21 +25,21 @@ export const getEvents = createServerFn({ method: 'POST' }).handler(
 )
 
 export const createEvent = createServerFn({ method: 'POST' })
-  .inputValidator(createEventSchema)
+  .validator(createEventSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return createEventService(data, user.id)
   })
 
 export const updateEvent = createServerFn({ method: 'POST' })
-  .inputValidator(updateEventSchema)
+  .validator(updateEventSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return updateEventService(data, user.id)
   })
 
 export const deleteEvent = createServerFn({ method: 'POST' })
-  .inputValidator(deleteEventSchema)
+  .validator(deleteEventSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     await deleteEventService(data, user.id)

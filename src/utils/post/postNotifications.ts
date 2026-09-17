@@ -13,14 +13,14 @@ import {
 export type { PostNotificationGroup } from '@/utils/post/notifications/domain/notification.domain'
 
 export const getPostNotificationsSummary = createServerFn({ method: 'POST' })
-  .inputValidator(getPostNotificationsSummarySchema)
+  .validator(getPostNotificationsSummarySchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return getPostNotificationsSummaryService(data, user.id)
   })
 
 export const markPostNotificationGroupRead = createServerFn({ method: 'POST' })
-  .inputValidator(markPostNotificationGroupReadSchema)
+  .validator(markPostNotificationGroupReadSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return markPostNotificationGroupReadService(data, user.id)

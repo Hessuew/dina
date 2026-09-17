@@ -283,7 +283,7 @@ export const getWhatsAppCampaignLocks = createServerFn({ method: 'GET' }).handle
 )
 
 export const releaseWhatsAppCampaign = createServerFn({ method: 'POST' })
-  .inputValidator(sendWhatsAppCampaignSchema)
+  .validator(sendWhatsAppCampaignSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     await releaseWhatsAppCampaignLock(data.campaign, user.id)
