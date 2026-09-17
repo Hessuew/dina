@@ -493,7 +493,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     before notification reads or read-state updates.
   - `repository/` - Shared table-oriented database seams. `profiles.repository.ts`
     is the single owner for profile-only reads and writes reused across features
-    (email, identity, avatar, student, teacher, and enrollment support). Feature
+    (email, identity, avatar, student, teacher, and enrollment support). `calendar-events.repository.ts`
+    owns calendar-event-only reads and writes reused across calendar and event services;
+    the course-joined event listing remains in the event feature service. Feature
     repositories remain responsible for aggregate or joined queries until their
     tables are migrated to this shared layer. `account-security.repository.ts`
     owns account-security-only email-change and password-reset state reads and
@@ -537,8 +539,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Course catalog reads expose unpublished lessons only to the assigned
     course teachers or admins; other teachers receive published lessons only.
   - Calendar event listing and mutations use `event/service/event.service.ts`
-    for the shared database adapter, teacher/Admin service boundary, and
-    redacted `calendar_event_*` operational events. Event-list reads emit safe
+    for the teacher/Admin service boundary and redacted `calendar_event_*`
+    operational events; table-owned calendar-event CRUD is delegated to
+    `repository/calendar-events.repository.ts`. Event-list reads emit safe
     count metadata and stable `calendar_event_read_persistence` failure
     categories. Teacher/admin role preflights remain inside the list and
     mutation telemetry boundaries, using stable operation-specific persistence

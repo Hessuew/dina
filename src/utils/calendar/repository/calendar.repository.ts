@@ -1,6 +1,6 @@
 import { and, eq, isNotNull } from 'drizzle-orm'
 import { getDb } from '@/db'
-import { assignments, calendarEvents, courses, lessons } from '@/db/schema'
+import { assignments, courses, lessons } from '@/db/schema'
 
 /* v8 ignore start */
 export async function findPublishedLessonsWithCourses() {
@@ -46,8 +46,4 @@ export async function findPublishedAssignmentsWithCourses() {
     )
 }
 
-export async function findAllCalendarEvents() {
-  const db = await getDb()
-  return db.select().from(calendarEvents)
-}
 /* v8 ignore end */

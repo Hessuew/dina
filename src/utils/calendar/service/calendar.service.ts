@@ -4,10 +4,10 @@ import { isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
-  findAllCalendarEvents,
   findPublishedAssignmentsWithCourses,
   findPublishedLessonsWithCourses,
 } from '@/utils/calendar/repository'
+import { findAllCalendarEvents } from '@/utils/repository'
 
 export async function getCalendarEventsService(userId: string) {
   const startedAt = performance.now()

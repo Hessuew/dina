@@ -12,6 +12,11 @@ import { resolveAdminOrTeacherAccess } from '@/utils/authz'
 import { AuthorizationError, isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+import {
+  deleteCalendarEvent,
+  insertCalendarEvent,
+  updateCalendarEvent,
+} from '@/utils/repository'
 
 async function requireEventManager(actorId: string): Promise<void> {
   const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(actorId)
@@ -143,11 +148,7 @@ export async function createEventService(
 
   try {
     await requireEventManager(actorId)
-    const db = await getDb()
-    const [event] = await db
-      .insert(calendarEvents)
-      .values(buildEventValues(data))
-      .returning()
+    const event = await insertCalendarEvent(buildEventValues(data))
     context.eventId = event.id
     logCalendarEventMutation('info', 'calendar_event_created', context, {
       category: data.category ?? null,
@@ -176,14 +177,11 @@ export async function updateEventService(
 
   try {
     await requireEventManager(actorId)
-    const db = await getDb()
-    const rows = await db
-      .update(calendarEvents)
-      .set({ ...buildEventValues(data), updatedAt: new Date() })
-      .where(eq(calendarEvents.id, data.eventId))
-      .returning()
-    if (rows.length === 0) return { event: undefined }
-    const [event] = rows
+    const event = await updateCalendarEvent(data.eventId, {
+      ...buildEventValues(data),
+      updatedAt: new Date(),
+    })
+    if (!event) return { event: undefined }
     logCalendarEventMutation('info', 'calendar_event_updated', context, {
       category: data.category ?? null,
       courseId: data.courseId ?? null,
@@ -211,8 +209,7 @@ export async function deleteEventService(
 
   try {
     await requireEventManager(actorId)
-    const db = await getDb()
-    await db.delete(calendarEvents).where(eq(calendarEvents.id, data.eventId))
+    await deleteCalendarEvent(data.eventId)
     logCalendarEventMutation('info', 'calendar_event_deleted', context)
   } catch (error) {
     if (shouldLogCalendarEventFailure(error)) {
