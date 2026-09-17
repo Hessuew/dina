@@ -15,11 +15,13 @@ import {
 } from '@/utils/profile/service/email.service'
 import {
   clearEmailChangeTokens,
-  completeEmailChange,
+  findEmailChangeToken,
   findLastEmailChangeRequestAt,
-  findProfileByEmailChangeToken,
   incrementEmailChangeAttempts,
   updateProfileBasic,
+} from '@/utils/repository'
+import {
+  completeEmailChange,
   updateProfileWithEmailChange,
 } from '@/utils/profile/repository'
 import { AppError } from '@/utils/errors'
@@ -87,7 +89,7 @@ async function findEmailChangeUserWithTelemetry(
   context: ProfileLogContext,
 ) {
   try {
-    return await findProfileByEmailChangeToken(tokenHash)
+    return await findEmailChangeToken(tokenHash)
   } catch (error) {
     logProfileEvent('error', 'email_change_token_lookup_failed', context, {
       errorCategory: 'email_change_token_read_persistence',

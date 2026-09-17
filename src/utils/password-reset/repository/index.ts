@@ -1,7 +1,1 @@
-export {
-  clearProfileResetToken,
-  findProfileByEmail,
-  findProfileByResetTokenHash,
-  incrementResetTokenAttempts,
-  updateProfileResetToken,
-} from './password-reset.repository'
+export { findProfileByEmail } from './password-reset.repository'

@@ -13,7 +13,7 @@ import {
   updateProfileWithEmailChangeService,
   verifyEmailChangeService,
 } from '@/utils/profile/service/profile.service'
-import * as profileRepository from '@/utils/profile/repository'
+import * as accountSecurityRepository from '@/utils/repository'
 import { accountSecurity, profiles } from '@/db/schema'
 
 const sendEmail = vi.hoisted(() => vi.fn())
@@ -113,7 +113,7 @@ describe('updateProfileWithEmailChangeService (integration)', () => {
     const userId = 'email-change-request-user'
     const repositoryError = new Error('email change request database detail')
     vi.spyOn(
-      profileRepository,
+      accountSecurityRepository,
       'findLastEmailChangeRequestAt',
     ).mockRejectedValueOnce(repositoryError)
 
@@ -237,9 +237,10 @@ describe('updateProfileWithEmailChangeService (integration)', () => {
     const id = await seedProfile({ email: 'old@test.dev' })
     const cleanupError = new Error('email change cleanup database detail')
     sendEmail.mockRejectedValue(new Error('provider unavailable'))
-    vi.spyOn(profileRepository, 'clearEmailChangeTokens').mockRejectedValueOnce(
-      cleanupError,
-    )
+    vi.spyOn(
+      accountSecurityRepository,
+      'clearEmailChangeTokens',
+    ).mockRejectedValueOnce(cleanupError)
 
     await expect(
       updateProfileWithEmailChangeService(
@@ -356,8 +357,8 @@ describe('verifyEmailChangeService (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const repositoryError = new Error('email change token database detail')
     vi.spyOn(
-      profileRepository,
-      'findProfileByEmailChangeToken',
+      accountSecurityRepository,
+      'findEmailChangeToken',
     ).mockRejectedValueOnce(repositoryError)
 
     await expect(verifyEmailChangeService('private-email-token')).rejects.toBe(
@@ -478,7 +479,7 @@ describe('verifyEmailChangeService (integration)', () => {
     })
     const repositoryError = new Error('email change attempt database detail')
     vi.spyOn(
-      profileRepository,
+      accountSecurityRepository,
       'incrementEmailChangeAttempts',
     ).mockRejectedValueOnce(repositoryError)
     updateUserById.mockResolvedValue({ error: { message: 'provider detail' } })

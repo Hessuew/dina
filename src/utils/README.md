@@ -495,7 +495,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     is the single owner for profile-only reads and writes reused across features
     (email, identity, student, teacher, and enrollment support). Feature
     repositories remain responsible for aggregate or joined queries until their
-    tables are migrated to this shared layer. `enrollments.repository.ts` now
+    tables are migrated to this shared layer. `account-security.repository.ts`
+    owns account-security-only email-change and password-reset state reads and
+    writes; profile email-change transactions use its transaction-scoped table
+    helpers. `enrollments.repository.ts` now
     owns enrollment-only reads and writes reused across enrollment and campaign
     services. `assignments.repository.ts` now
     owns assignment-only reads and writes reused across assignment and course

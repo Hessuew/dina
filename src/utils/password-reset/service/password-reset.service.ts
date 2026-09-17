@@ -15,13 +15,13 @@ import {
   resolveCooldownMessage,
   resolveValidResetUser,
 } from '@/utils/password-reset/domain/password-reset-flow.domain'
+import { findProfileByEmail } from '@/utils/password-reset/repository'
 import {
-  clearProfileResetToken,
-  findProfileByEmail,
-  findProfileByResetTokenHash,
+  clearResetToken,
+  findResetToken,
   incrementResetTokenAttempts,
-  updateProfileResetToken,
-} from '@/utils/password-reset/repository'
+  upsertResetToken,
+} from '@/utils/repository'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
@@ -65,11 +65,11 @@ async function findPasswordResetUser(
 
 async function persistPasswordResetState(
   userId: string,
-  values: Parameters<typeof updateProfileResetToken>[1],
+  values: Parameters<typeof upsertResetToken>[1],
   context: PasswordResetLogContext,
 ): Promise<void> {
   try {
-    await updateProfileResetToken(userId, values)
+    await upsertResetToken(userId, values)
   } catch (error) {
     logPasswordResetEvent('error', 'password_reset_request_failed', context, {
       errorCategory: 'password_reset_write_persistence',
@@ -84,7 +84,7 @@ async function findPasswordResetUserForCompletion(
   context: PasswordResetLogContext,
 ) {
   try {
-    return await findProfileByResetTokenHash(tokenHash)
+    return await findResetToken(tokenHash)
   } catch (error) {
     logPasswordResetEvent(
       'error',
@@ -121,7 +121,7 @@ async function clearPasswordResetStateWithTelemetry(
   context: PasswordResetLogContext,
 ): Promise<void> {
   try {
-    await clearProfileResetToken(userId)
+    await clearResetToken(userId)
   } catch (error) {
     logPasswordResetEvent('error', 'password_reset_cleanup_failed', context, {
       errorCategory: 'password_reset_cleanup_persistence',
@@ -181,7 +181,7 @@ export async function requestPasswordResetService(
       errorCategory: 'password_reset_email_delivery',
       userId: user.id,
     })
-    await clearProfileResetToken(user.id)
+    await clearResetToken(user.id)
     return {
       success: false,
       message: 'Failed to send reset email. Please try again.',
@@ -206,9 +206,9 @@ export async function validateResetTokenService(
   }
 
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
-  let user: Awaited<ReturnType<typeof findProfileByResetTokenHash>>
+  let user: Awaited<ReturnType<typeof findResetToken>>
   try {
-    user = await findProfileByResetTokenHash(tokenHash)
+    user = await findResetToken(tokenHash)
   } catch (error) {
     logPasswordResetEvent(
       'error',

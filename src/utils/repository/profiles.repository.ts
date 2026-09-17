@@ -72,4 +72,22 @@ export async function insertProfileOnConflict(
       set: { fullName: values.fullName, role: values.role },
     })
 }
+
+export async function updateProfileBasic(
+  userId: string,
+  data: {
+    fullName: string
+    bio: string | null
+  },
+) {
+  const db = await getDb()
+  await db
+    .update(profiles)
+    .set({
+      fullName: data.fullName,
+      bio: data.bio,
+      updatedAt: new Date(),
+    })
+    .where(eq(profiles.id, userId))
+}
 /* v8 ignore end */
