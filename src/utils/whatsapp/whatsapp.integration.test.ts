@@ -27,6 +27,7 @@ import {
 } from '@/utils/whatsapp/service/whatsapp.service'
 import { AuthorizationError } from '@/utils/errors'
 import * as whatsappRepository from '@/utils/whatsapp/repository/whatsapp.repository'
+import * as sharedRepository from '@/utils/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 afterEach(() => {
@@ -311,7 +312,7 @@ describe('sendWhatsAppCampaignService (integration)', () => {
       adminId,
     )
     const recordError = new Error('private WhatsApp message database detail')
-    vi.spyOn(whatsappRepository, 'insertWhatsAppMessage').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'insertWhatsAppMessage').mockRejectedValueOnce(
       recordError,
     )
 

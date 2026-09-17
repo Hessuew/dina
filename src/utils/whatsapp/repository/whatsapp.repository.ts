@@ -3,12 +3,7 @@ import { and, asc, eq, gt, isNull, lt, ne, or } from 'drizzle-orm'
 import type { CampaignRecipient } from '../domain/bulk-send.domain'
 import type { CampaignCohort, CampaignType } from '../domain/templates.domain'
 import { getDb } from '@/db'
-import {
-  enrollments,
-  invitations,
-  whatsappCampaignLocks,
-  whatsappMessages,
-} from '@/db/schema'
+import { enrollments, invitations, whatsappCampaignLocks } from '@/db/schema'
 
 /**
  * WHERE predicate per campaign cohort — same shape as `emailGroupWhere` in
@@ -45,36 +40,6 @@ export async function findEnrollmentRecipientsByCampaign(
     .leftJoin(invitations, eq(enrollments.invitationId, invitations.id))
     .where(campaignCohortWhere(cohort))
     .orderBy(asc(enrollments.createdAt))
-}
-
-/**
- * Enrollment ids that already received the template successfully — the
- * dedupe source for `planBulkSend`. Failed attempts are retried, so only
- * `status='sent'` rows count.
- */
-export async function findSentEnrollmentIdsByTemplate(
-  templateName: string,
-): Promise<Set<string>> {
-  const db = await getDb()
-  const rows = await db
-    .select({ enrollmentId: whatsappMessages.enrollmentId })
-    .from(whatsappMessages)
-    .where(
-      and(
-        eq(whatsappMessages.templateName, templateName),
-        eq(whatsappMessages.status, 'sent'),
-      ),
-    )
-  return new Set(rows.map((r) => r.enrollmentId))
-}
-
-export type WhatsAppMessageInsert = typeof whatsappMessages.$inferInsert
-
-export async function insertWhatsAppMessage(
-  row: WhatsAppMessageInsert,
-): Promise<void> {
-  const db = await getDb()
-  await db.insert(whatsappMessages).values(row)
 }
 
 const LOCK_TTL_MS = 5 * 60 * 1000

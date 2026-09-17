@@ -19,11 +19,13 @@ import {
   acquireWhatsAppCampaignLock,
   checkWhatsAppCampaignLockHeldBy,
   findEnrollmentRecipientsByCampaign,
-  findSentEnrollmentIdsByTemplate,
   getLockedCampaigns,
-  insertWhatsAppMessage,
   releaseWhatsAppCampaignLock,
 } from '@/utils/whatsapp/repository/whatsapp.repository'
+import {
+  findSentEnrollmentIdsByTemplate,
+  insertWhatsAppMessage,
+} from '@/utils/repository'
 import { authz } from '@/utils/authz'
 import { CampaignLockedError, isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'

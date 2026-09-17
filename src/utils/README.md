@@ -550,6 +550,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     `email-messages.repository.ts` owns email-message log inserts used by the bulk email
     campaign; campaign recipient planning and email-campaign lock access remain in the
     email feature repository. New email-message-only access must use `@/utils/repository`.
+    `whatsapp-messages.repository.ts` owns WhatsApp message dedupe reads and delivery-log
+    inserts used by the bulk WhatsApp campaign; recipient planning and campaign-lock access
+    remain in the WhatsApp feature repository. New WhatsApp-message-only access must use
+    `@/utils/repository`.
   - Lesson detail reads require a persisted profile and expose unpublished
     lessons/draft assignments only to course teachers or admins; non-managers
     receive published lesson/assignment data only.
