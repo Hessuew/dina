@@ -658,16 +658,15 @@ describe('email campaign lock (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const readError = new Error('private email lock database detail')
-    vi.spyOn(
-      emailCampaignRepository,
-      'getLockedEmailCampaigns',
-    ).mockRejectedValueOnce(readError)
+    vi.spyOn(sharedRepository, 'getLockedEmailCampaigns').mockRejectedValueOnce(
+      readError,
+    )
 
     await expect(getEmailCampaignLocksService(adminId)).rejects.toBe(readError)
 
     const releaseError = new Error('private email release database detail')
     vi.spyOn(
-      emailCampaignRepository,
+      sharedRepository,
       'releaseEmailCampaignLock',
     ).mockRejectedValueOnce(releaseError)
     await expect(

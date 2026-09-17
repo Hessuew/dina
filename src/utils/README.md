@@ -550,8 +550,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     writes used by the discipleship service. New group-only or pair-only access must use
     `@/utils/repository`.
     `email-messages.repository.ts` owns email-message log inserts used by the bulk email
-    campaign; campaign recipient planning and email-campaign lock access remain in the
-    email feature repository. New email-message-only access must use `@/utils/repository`.
+    campaign. `email-campaign-locks.repository.ts` owns email-campaign mutex reads and
+    writes; campaign recipient planning remains in the email feature repository because
+    it joins enrollments and invitations. New email-message-only or email-campaign-lock-only
+    access must use `@/utils/repository`.
     `whatsapp-messages.repository.ts` owns WhatsApp message dedupe reads and delivery-log
     inserts used by the bulk WhatsApp campaign; recipient planning and campaign-lock access
     remain in the WhatsApp feature repository. New WhatsApp-message-only access must use

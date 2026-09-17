@@ -13,23 +13,21 @@ import {
 } from '@/utils/email/domain/bulk-invite.domain'
 import { resolveEmailCampaign } from '@/utils/email/domain/campaigns.domain'
 import { sendInvitationEmail } from '@/utils/email'
-import {
-  acquireEmailCampaignLock,
-  checkEmailCampaignLockHeldBy,
-  findEmailCampaignRecipients,
-  getLockedEmailCampaigns,
-  releaseEmailCampaignLock,
-} from '@/utils/email/repository/email-campaign.repository'
+import { findEmailCampaignRecipients } from '@/utils/email/repository/email-campaign.repository'
 import {
   calculateInvitationExpiry,
   generateSecureToken,
 } from '@/utils/invitation/domain/invitations.domain'
 import {
+  acquireEmailCampaignLock,
+  checkEmailCampaignLockHeldBy,
   deleteInvitationById,
   findProfileById,
+  getLockedEmailCampaigns,
   insertEmailMessage,
   insertInvitation,
   markEnrollmentInvitationSent,
+  releaseEmailCampaignLock,
   updateInvitationToken,
 } from '@/utils/repository'
 import { authz } from '@/utils/authz'
