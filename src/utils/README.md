@@ -538,7 +538,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     delivery inserts, group reads, and read-state writes; the post/course/profile-
     enriched notification summary rows remain in the notification feature repository. New
     media-library-only or post-notification-only access must use
-    `@/utils/repository`.
+    `@/utils/repository`. `discipleship-assignments.repository.ts` owns
+    discipleship-assignment-only reads and writes reused by the discipleship and Zoom Link
+    services; pair and group operations remain in the discipleship feature repository. New
+    discipleship-assignment-only access must use `@/utils/repository`.
   - Lesson detail reads require a persisted profile and expose unpublished
     lessons/draft assignments only to course teachers or admins; non-managers
     receive published lesson/assignment data only.

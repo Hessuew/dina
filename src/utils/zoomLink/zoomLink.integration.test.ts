@@ -12,7 +12,7 @@ import {
   getZoomLinksService,
   updateZoomLinkService,
 } from '@/utils/zoomLink/service/zoomLink.service'
-import { updateAssignmentTeacher } from '@/utils/discipleship/repository'
+import { updateDiscipleshipAssignmentTeacher } from '@/utils/repository'
 import { AuthorizationError, ValidationError } from '@/utils/errors'
 import { zoomLinks } from '@/db/schema'
 import {
@@ -461,7 +461,7 @@ describe('zoomLink service (integration)', () => {
     )
 
     expect((await getZoomLinksService(studentId)).links[0].title).toBe('A')
-    await updateAssignmentTeacher(studentId, teacherB)
+    await updateDiscipleshipAssignmentTeacher(studentId, teacherB)
     expect((await getZoomLinksService(studentId)).links[0].title).toBe('B')
   })
 

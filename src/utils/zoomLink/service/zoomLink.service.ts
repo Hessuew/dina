@@ -11,11 +11,11 @@ import {
 } from '@/utils/zoomLink/domain/zoomLink.domain'
 import {
   deleteZoomLinkById,
+  findDiscipleshipTeacherIdByStudentId,
   insertZoomLink,
   updateZoomLinkById,
 } from '@/utils/repository'
 import {
-  findDiscipleshipTeacherId,
   findViewerRole,
   findZoomLinkOwner,
   findZoomLinksWithTeachers,
@@ -150,7 +150,7 @@ export async function getZoomLinksService(userId: string) {
       const rows = await findZoomLinksWithTeachers()
       const assignment =
         profile.role === 'student'
-          ? await findDiscipleshipTeacherId(userId)
+          ? await findDiscipleshipTeacherIdByStudentId(userId)
           : null
       const teacherOrder =
         profile.role === 'student'

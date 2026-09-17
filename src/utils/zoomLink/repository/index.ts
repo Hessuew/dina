@@ -1,5 +1,4 @@
 export {
-  findDiscipleshipTeacherId,
   findZoomLinkOwner,
   findViewerRole,
   findZoomLinksWithTeachers,

@@ -1,6 +1,6 @@
 import { asc, eq } from 'drizzle-orm'
 import { getDb } from '@/db'
-import { discipleshipAssignments, profiles, zoomLinks } from '@/db/schema'
+import { profiles, zoomLinks } from '@/db/schema'
 
 /* v8 ignore start */
 export async function findViewerRole(userId: string) {
@@ -8,14 +8,6 @@ export async function findViewerRole(userId: string) {
   return db.query.profiles.findFirst({
     where: eq(profiles.id, userId),
     columns: { role: true },
-  })
-}
-
-export async function findDiscipleshipTeacherId(userId: string) {
-  const db = await getDb()
-  return db.query.discipleshipAssignments.findFirst({
-    where: eq(discipleshipAssignments.studentId, userId),
-    columns: { teacherId: true },
   })
 }
 

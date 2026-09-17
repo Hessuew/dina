@@ -1,38 +1,8 @@
 import { eq } from 'drizzle-orm'
 import { getDb } from '@/db'
-import {
-  discipleshipAssignments,
-  discipleshipGroups,
-  discipleshipPairs,
-} from '@/db/schema'
+import { discipleshipGroups, discipleshipPairs } from '@/db/schema'
 
 /* v8 ignore start -- thin DB adapters; logic lives in domain/ */
-
-export async function findAllAssignments() {
-  const db = await getDb()
-  return db.query.discipleshipAssignments.findMany()
-}
-
-export async function findAssignmentsByTeacher(teacherId: string) {
-  const db = await getDb()
-  return db.query.discipleshipAssignments.findMany({
-    where: eq(discipleshipAssignments.teacherId, teacherId),
-  })
-}
-
-export async function findAssignmentByStudentId(studentId: string) {
-  const db = await getDb()
-  return db.query.discipleshipAssignments.findFirst({
-    where: eq(discipleshipAssignments.studentId, studentId),
-  })
-}
-
-export async function findAssignmentsByPairId(pairId: string) {
-  const db = await getDb()
-  return db.query.discipleshipAssignments.findMany({
-    where: eq(discipleshipAssignments.pairId, pairId),
-  })
-}
 
 export async function findAllPairs() {
   const db = await getDb()
@@ -63,57 +33,6 @@ export async function findGroupsByTeacher(teacherId: string) {
   return db.query.discipleshipGroups.findMany({
     where: eq(discipleshipGroups.teacherId, teacherId),
   })
-}
-
-export async function insertAssignment(studentId: string, teacherId: string) {
-  const db = await getDb()
-  const [row] = await db
-    .insert(discipleshipAssignments)
-    .values({ studentId, teacherId })
-    .returning()
-  return row
-}
-
-export async function updateAssignmentTeacher(
-  studentId: string,
-  teacherId: string,
-) {
-  const db = await getDb()
-  await db
-    .update(discipleshipAssignments)
-    .set({ teacherId, pairId: null, updatedAt: new Date() })
-    .where(eq(discipleshipAssignments.studentId, studentId))
-}
-
-export async function deleteAssignmentByStudentId(studentId: string) {
-  const db = await getDb()
-  await db
-    .delete(discipleshipAssignments)
-    .where(eq(discipleshipAssignments.studentId, studentId))
-}
-
-export async function setAssignmentPair(studentId: string, pairId: string) {
-  const db = await getDb()
-  await db
-    .update(discipleshipAssignments)
-    .set({ pairId, updatedAt: new Date() })
-    .where(eq(discipleshipAssignments.studentId, studentId))
-}
-
-export async function clearAssignmentPair(studentId: string) {
-  const db = await getDb()
-  await db
-    .update(discipleshipAssignments)
-    .set({ pairId: null, updatedAt: new Date() })
-    .where(eq(discipleshipAssignments.studentId, studentId))
-}
-
-export async function setAssignmentAnchor(studentId: string, anchorAt: Date) {
-  const db = await getDb()
-  await db
-    .update(discipleshipAssignments)
-    .set({ anchorAt, updatedAt: new Date() })
-    .where(eq(discipleshipAssignments.studentId, studentId))
 }
 
 export async function insertPair(teacherId: string) {

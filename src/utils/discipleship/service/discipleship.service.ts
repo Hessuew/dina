@@ -30,31 +30,31 @@ import {
 } from '@/utils/discipleship/domain/discipleship-pairing.domain'
 import { buildStudentDiscipleshipView } from '@/utils/discipleship/domain/discipleship-student-view.domain'
 import {
-  clearAssignmentPair,
-  deleteAssignmentByStudentId,
   deletePair,
-  findAllAssignments,
   findAllGroups,
   findAllPairs,
-  findAssignmentByStudentId,
-  findAssignmentsByPairId,
-  findAssignmentsByTeacher,
   findGroupsByTeacher,
   findPairById,
   findPairsByTeacher,
-  insertAssignment,
   insertPair,
-  setAssignmentAnchor,
-  setAssignmentPair,
   setPairAnchor,
-  updateAssignmentTeacher,
   upsertGroupAnchor,
 } from '@/utils/discipleship/repository'
 import {
+  clearDiscipleshipAssignmentPair as clearAssignmentPair,
+  deleteDiscipleshipAssignmentByStudentId as deleteAssignmentByStudentId,
+  findAllDiscipleshipAssignments as findAllAssignments,
+  findDiscipleshipAssignmentByStudentId as findAssignmentByStudentId,
+  findDiscipleshipAssignmentsByPairId as findAssignmentsByPairId,
+  findDiscipleshipAssignmentsByTeacher as findAssignmentsByTeacher,
   findPublicProfileById,
   findPublicProfilesByIds,
   findStaffProfiles,
   findStudentProfiles,
+  insertDiscipleshipAssignment as insertAssignment,
+  setDiscipleshipAssignmentAnchor as setAssignmentAnchor,
+  setDiscipleshipAssignmentPair as setAssignmentPair,
+  updateDiscipleshipAssignmentTeacher as updateAssignmentTeacher,
 } from '@/utils/repository'
 import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
 import { logServerEvent } from '@/utils/observability/logger'
