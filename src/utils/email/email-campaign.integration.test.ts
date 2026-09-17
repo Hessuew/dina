@@ -524,10 +524,9 @@ describe('sendEmailCampaignService (integration)', () => {
     })
     await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
     const messageError = new Error('private email message database detail')
-    vi.spyOn(
-      emailCampaignRepository,
-      'insertEmailMessage',
-    ).mockRejectedValueOnce(messageError)
+    vi.spyOn(sharedRepository, 'insertEmailMessage').mockRejectedValueOnce(
+      messageError,
+    )
 
     try {
       await expect(

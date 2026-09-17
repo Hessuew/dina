@@ -18,7 +18,6 @@ import {
   checkEmailCampaignLockHeldBy,
   findEmailCampaignRecipients,
   getLockedEmailCampaigns,
-  insertEmailMessage,
   releaseEmailCampaignLock,
 } from '@/utils/email/repository/email-campaign.repository'
 import {
@@ -28,6 +27,7 @@ import {
 import {
   deleteInvitationById,
   findProfileById,
+  insertEmailMessage,
   insertInvitation,
   markEnrollmentInvitationSent,
   updateInvitationToken,

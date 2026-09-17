@@ -6,12 +6,7 @@ import type {
 } from '../domain/campaigns.domain'
 import type { InvitationCampaignRecipient } from '../domain/bulk-invite.domain'
 import { getDb } from '@/db'
-import {
-  emailCampaignLocks,
-  emailMessages,
-  enrollments,
-  invitations,
-} from '@/db/schema'
+import { emailCampaignLocks, enrollments, invitations } from '@/db/schema'
 
 function campaignCohortWhere(cohort: EmailCampaignCohort) {
   cohort satisfies EmailCampaignCohort
@@ -51,14 +46,6 @@ export async function findEmailCampaignRecipients(
         }
       : null,
   }))
-}
-
-export type EmailMessageInsert = typeof emailMessages.$inferInsert
-export async function insertEmailMessage(
-  row: EmailMessageInsert,
-): Promise<void> {
-  const db = await getDb()
-  await db.insert(emailMessages).values(row)
 }
 
 const LOCK_TTL_MS = 5 * 60 * 1000
