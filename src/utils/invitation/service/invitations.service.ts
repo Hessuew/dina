@@ -18,11 +18,11 @@ import {
   findInvitationByEmail,
   findInvitationById,
   findInvitationByToken,
+  findProfileByEmail,
   insertInvitation,
   revokeInvitationById,
   updateInvitationById,
-} from '@/utils/invitation/repository/invitations.repository'
-import { findProfileByEmail } from '@/utils/repository'
+} from '@/utils/repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import {
   AppError,

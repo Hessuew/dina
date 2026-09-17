@@ -54,38 +54,11 @@ export async function findEmailCampaignRecipients(
 }
 
 export type EmailMessageInsert = typeof emailMessages.$inferInsert
-export type InvitationInsert = typeof invitations.$inferInsert
-
 export async function insertEmailMessage(
   row: EmailMessageInsert,
 ): Promise<void> {
   const db = await getDb()
   await db.insert(emailMessages).values(row)
-}
-
-export async function insertCampaignInvitation(
-  row: InvitationInsert,
-): Promise<typeof invitations.$inferSelect> {
-  const db = await getDb()
-  const [invitation] = await db.insert(invitations).values(row).returning()
-  return invitation
-}
-
-export async function deleteCampaignInvitation(id: string): Promise<void> {
-  const db = await getDb()
-  await db.delete(invitations).where(eq(invitations.id, id))
-}
-
-export async function updateCampaignInvitationToken(
-  id: string,
-  token: string,
-  expiresAt: Date,
-): Promise<void> {
-  const db = await getDb()
-  await db
-    .update(invitations)
-    .set({ token, expiresAt, updatedAt: new Date() })
-    .where(eq(invitations.id, id))
 }
 
 const LOCK_TTL_MS = 5 * 60 * 1000

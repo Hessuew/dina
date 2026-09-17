@@ -1,8 +1,9 @@
 /* v8 ignore start */
-import { eq } from 'drizzle-orm'
-import type { Role } from '@/utils/authz'
+import { eq, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { invitations } from '@/db/schema'
+
+export type InvitationInsert = typeof invitations.$inferInsert
 
 export async function findInvitationByEmail(email: string) {
   const db = await getDb()
@@ -41,14 +42,7 @@ export async function findAllInvitationsWithInviter() {
   })
 }
 
-export async function insertInvitation(values: {
-  email: string
-  role: Role
-  token: string
-  expiresAt: Date
-  status: 'pending'
-  invitedBy: string
-}) {
+export async function insertInvitation(values: InvitationInsert) {
   const db = await getDb()
   const [invitation] = await db.insert(invitations).values(values).returning()
   return invitation
@@ -65,6 +59,66 @@ export async function updateInvitationById(
 ) {
   const db = await getDb()
   await db.update(invitations).set(values).where(eq(invitations.id, id))
+}
+
+export async function updateInvitationToken(
+  invitationId: string,
+  token: string,
+  expiresAt: Date,
+) {
+  const db = await getDb()
+  await db
+    .update(invitations)
+    .set({ token, expiresAt, updatedAt: new Date() })
+    .where(eq(invitations.id, invitationId))
+}
+
+export async function updateInvitationOtp(
+  invitationId: string,
+  values: {
+    otpHash: string
+    otpExpiresAt: Date
+    otpAttempts: number
+    updatedAt: Date
+  },
+) {
+  const db = await getDb()
+  await db
+    .update(invitations)
+    .set(values)
+    .where(eq(invitations.id, invitationId))
+}
+
+export async function incrementOtpAttempts(invitationId: string) {
+  const db = await getDb()
+  await db
+    .update(invitations)
+    .set({
+      otpAttempts: sql`${invitations.otpAttempts} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(invitations.id, invitationId))
+}
+
+export async function clearInvitationOtp(invitationId: string) {
+  const db = await getDb()
+  await db
+    .update(invitations)
+    .set({
+      otpHash: null,
+      otpExpiresAt: null,
+      otpAttempts: 0,
+      updatedAt: new Date(),
+    })
+    .where(eq(invitations.id, invitationId))
+}
+
+export async function markInvitationAccepted(invitationId: string) {
+  const db = await getDb()
+  await db
+    .update(invitations)
+    .set({ status: 'accepted', acceptedAt: new Date(), updatedAt: new Date() })
+    .where(eq(invitations.id, invitationId))
 }
 
 export async function revokeInvitationById(id: string) {

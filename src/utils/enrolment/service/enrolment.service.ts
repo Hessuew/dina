@@ -53,26 +53,24 @@ import {
   findReviewerAssignmentsForEnrollments,
   findUnassignedEnrollmentIds,
   insertSubstituteWithReassignment,
-  updateInvitationToken,
   upsertEvaluation,
 } from '@/utils/enrolment/repository/enrolment.repository'
 import {
   bulkUpdateEnrollmentStatuses,
   deleteEnrollmentById,
+  deleteInvitationById,
   findAllTeacherIds,
   findEnrollmentById,
   findEnrollmentContactLookupCandidates,
+  findInvitationByEmail,
   findProfileById,
   insertEnrollment,
+  insertInvitation,
   markEnrollmentInvitationSent,
   updateEnrollmentSpecialCaseById,
   updateEnrollmentStatusById,
+  updateInvitationToken,
 } from '@/utils/repository'
-import {
-  deleteInvitationById,
-  findInvitationByEmail,
-  insertInvitation,
-} from '@/utils/invitation/repository/invitations.repository'
 import {
   authz,
   hasStaffPrivilege,

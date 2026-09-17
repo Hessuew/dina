@@ -30,11 +30,6 @@ import * as staffPrivilegeRepository from '@/utils/staff-privilege/repository'
 import * as enrollmentRepository from '@/utils/enrolment/repository/enrolment.repository'
 import { findEnrollmentEmailsByGroup } from '@/utils/enrolment/repository/enrolment.repository'
 import * as sharedRepository from '@/utils/repository'
-import {
-  findEnrollmentById,
-  findEnrollmentContactLookupCandidates as findSharedEnrollmentContactLookupCandidates,
-} from '@/utils/repository'
-import { findInvitationByEmail } from '@/utils/invitation/repository/invitations.repository'
 import { AuthorizationError } from '@/utils/errors'
 import {
   seedCourse,
@@ -221,7 +216,8 @@ describe('setEvaluationScoreService (integration)', () => {
 
         await setEvaluationScoreService({ enrollmentId, score }, reviewerId)
 
-        const enrollment = await findEnrollmentById(enrollmentId)
+        const enrollment =
+          await sharedRepository.findEnrollmentById(enrollmentId)
         expect(enrollment?.status).toBe(expected)
       },
     )
@@ -234,7 +230,7 @@ describe('setEvaluationScoreService (integration)', () => {
 
     await setEvaluationScoreService({ enrollmentId, score: 0 }, reviewerId)
 
-    const enrollment = await findEnrollmentById(enrollmentId)
+    const enrollment = await sharedRepository.findEnrollmentById(enrollmentId)
     expect(enrollment?.status).toBe('approved')
   })
 
@@ -244,7 +240,7 @@ describe('setEvaluationScoreService (integration)', () => {
     // The peer (not the assigned Reviewer) scores a strong admit.
     await setEvaluationScoreService({ enrollmentId, score: 4 }, peerId)
 
-    const enrollment = await findEnrollmentById(enrollmentId)
+    const enrollment = await sharedRepository.findEnrollmentById(enrollmentId)
     expect(enrollment?.status).toBe('pending')
   })
 
@@ -253,15 +249,15 @@ describe('setEvaluationScoreService (integration)', () => {
 
     // Reviewer scores first → under_review
     await setEvaluationScoreService({ enrollmentId, score: 4 }, reviewerId)
-    expect((await findEnrollmentById(enrollmentId))?.status).toBe(
-      'under_review',
-    )
+    expect(
+      (await sharedRepository.findEnrollmentById(enrollmentId))?.status,
+    ).toBe('under_review')
 
     // Peer scores → awaiting_approval
     await setEvaluationScoreService({ enrollmentId, score: 3 }, peerId)
-    expect((await findEnrollmentById(enrollmentId))?.status).toBe(
-      'awaiting_approval',
-    )
+    expect(
+      (await sharedRepository.findEnrollmentById(enrollmentId))?.status,
+    ).toBe('awaiting_approval')
   })
 
   it('rejects a caller who is neither admin nor teacher', async () => {
@@ -585,7 +581,9 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
       adminId,
     )
 
-    expect((await findEnrollmentById(enrollmentId))?.status).toBe('approved')
+    expect(
+      (await sharedRepository.findEnrollmentById(enrollmentId))?.status,
+    ).toBe('approved')
     const event = infoSpy.mock.calls
       .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
       .find((entry) => entry.event === 'enrollment_status_updated')
@@ -611,7 +609,9 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
       adminId,
     )
 
-    expect((await findEnrollmentById(enrollmentId))?.specialCase).toBe(true)
+    expect(
+      (await sharedRepository.findEnrollmentById(enrollmentId))?.specialCase,
+    ).toBe(true)
     const event = infoSpy.mock.calls
       .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
       .find((entry) => entry.event === 'enrollment_special_case_updated')
@@ -634,7 +634,9 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
 
     await deleteEnrollmentService({ enrollmentId }, adminId)
 
-    expect(await findEnrollmentById(enrollmentId)).toBeUndefined()
+    expect(
+      await sharedRepository.findEnrollmentById(enrollmentId),
+    ).toBeUndefined()
     const event = infoSpy.mock.calls
       .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
       .find((entry) => entry.event === 'enrollment_deleted')
@@ -1691,7 +1693,7 @@ describe('enrollment contact lookup by name (integration)', () => {
   it('finds candidates by full legal name and preferred name', async () => {
     await seedLookupEnrollments()
 
-    const rows = await findSharedEnrollmentContactLookupCandidates([
+    const rows = await sharedRepository.findEnrollmentContactLookupCandidates([
       'Maria Santos',
       'Mia',
     ])
@@ -1902,7 +1904,9 @@ describe('sendInvitationForEnrollmentService (integration)', () => {
       invitedByName: 'Admin User',
       role: 'student',
     })
-    expect(await findInvitationByEmail('approved@test.dev')).toMatchObject({
+    expect(
+      await sharedRepository.findInvitationByEmail('approved@test.dev'),
+    ).toMatchObject({
       id: result.invitationId,
       status: 'pending',
     })
@@ -1949,9 +1953,9 @@ describe('sendInvitationForEnrollmentService (integration)', () => {
     )
 
     expect(result.invitationId).toBe(invitation.id)
-    expect((await findInvitationByEmail(invitation.email))?.token).not.toBe(
-      'expired-token',
-    )
+    expect(
+      (await sharedRepository.findInvitationByEmail(invitation.email))?.token,
+    ).not.toBe('expired-token')
     const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
     expect(events).toEqual(
       expect.arrayContaining([
@@ -1990,7 +1994,9 @@ describe('sendInvitationForEnrollmentService (integration)', () => {
     ).rejects.toMatchObject({ code: 'EMAIL_SEND_FAILED', status: 500 })
 
     expect(
-      await findInvitationByEmail('failed-invitation@test.dev'),
+      await sharedRepository.findInvitationByEmail(
+        'failed-invitation@test.dev',
+      ),
     ).toBeUndefined()
     const events = errorSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
     expect(events).toEqual(

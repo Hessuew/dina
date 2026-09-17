@@ -11,12 +11,7 @@ import {
   resendInvitationService,
   revokeInvitationService,
 } from '@/utils/invitation/service/invitations.service'
-import {
-  findInvitationByEmail,
-  findInvitationById,
-} from '@/utils/invitation/repository/invitations.repository'
-import * as invitationsRepository from '@/utils/invitation/repository/invitations.repository'
-import * as profilesRepository from '@/utils/repository'
+import * as invitationsRepository from '@/utils/repository'
 import * as authUtils from '@/utils/auth/auth'
 import { seedInvitation, seedProfile } from '@/../test/integration/seed'
 import { setEmailSender } from '@/utils/email'
@@ -64,7 +59,8 @@ describe('createInvitationService (integration)', () => {
     expect(expiry).toBeGreaterThan(before + sevenDays - 60_000)
     expect(expiry).toBeLessThan(Date.now() + sevenDays + 60_000)
 
-    const row = await findInvitationByEmail('new@test.dev')
+    const row =
+      await invitationsRepository.findInvitationByEmail('new@test.dev')
     expect(row?.id).toBe(invitation.id)
 
     const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
@@ -133,7 +129,9 @@ describe('createInvitationService (integration)', () => {
       ),
     ).rejects.toMatchObject({ code: 'EMAIL_SEND_FAILED', status: 500 })
 
-    expect(await findInvitationByEmail('rollback@test.dev')).toBeUndefined()
+    expect(
+      await invitationsRepository.findInvitationByEmail('rollback@test.dev'),
+    ).toBeUndefined()
 
     const events = errorSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
     expect(events).toEqual(
@@ -286,7 +284,7 @@ describe('invitation mutation preflight telemetry (integration)', () => {
       invitationsRepository,
       'findInvitationByEmail',
     ).mockResolvedValueOnce(undefined)
-    vi.spyOn(profilesRepository, 'findProfileByEmail').mockRejectedValueOnce(
+    vi.spyOn(invitationsRepository, 'findProfileByEmail').mockRejectedValueOnce(
       repositoryError,
     )
 
@@ -645,7 +643,7 @@ describe('revokeInvitationService (integration)', () => {
 
     await revokeInvitationService({ id }, adminId)
 
-    const row = await findInvitationById(id)
+    const row = await invitationsRepository.findInvitationById(id)
     expect(row?.status).toBe('revoked')
 
     const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
@@ -680,7 +678,7 @@ describe('deleteInvitationService (integration)', () => {
 
     await deleteInvitationService({ id }, adminId)
 
-    expect(await findInvitationById(id)).toBeUndefined()
+    expect(await invitationsRepository.findInvitationById(id)).toBeUndefined()
 
     const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
     expect(events).toEqual(
@@ -714,7 +712,7 @@ describe('resendInvitationService (integration)', () => {
 
     await resendInvitationService({ id }, adminId)
 
-    const row = await findInvitationById(id)
+    const row = await invitationsRepository.findInvitationById(id)
     expect(row?.token).not.toBe(oldToken)
     expect(mocks.sendEmail).toHaveBeenCalledOnce()
 
@@ -742,7 +740,7 @@ describe('resendInvitationService (integration)', () => {
 
     await resendInvitationService({ id }, adminId)
 
-    const row = await findInvitationById(id)
+    const row = await invitationsRepository.findInvitationById(id)
     expect(row?.token).not.toBe(oldToken)
     expect(row?.expiresAt.getTime()).toBeGreaterThan(Date.now())
     expect(mocks.sendEmail).toHaveBeenCalledOnce()
@@ -758,7 +756,7 @@ describe('resendInvitationService (integration)', () => {
       resendInvitationService({ id }, adminId),
     ).rejects.toMatchObject({ code: 'EMAIL_SEND_FAILED', status: 500 })
 
-    const row = await findInvitationById(id)
+    const row = await invitationsRepository.findInvitationById(id)
     expect(row?.token).toBe(oldToken)
 
     const events = errorSpy.mock.calls.map(([line]) => JSON.parse(String(line)))

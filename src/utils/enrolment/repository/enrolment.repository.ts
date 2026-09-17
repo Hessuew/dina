@@ -472,18 +472,6 @@ export async function findPeersForReviewers(
   return result
 }
 
-export async function updateInvitationToken(
-  invitationId: string,
-  token: string,
-  expiresAt: Date,
-) {
-  const db = await getDb()
-  await db
-    .update(invitations)
-    .set({ token, expiresAt, updatedAt: new Date() })
-    .where(eq(invitations.id, invitationId))
-}
-
 export async function findUnassignedEnrollmentIds(): Promise<Array<string>> {
   const db = await getDb()
 

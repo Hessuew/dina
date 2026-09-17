@@ -20,7 +20,7 @@ import {
   releaseEmailCampaignService,
   sendEmailCampaignService,
 } from '@/utils/email/service/email-campaign.service'
-import { findInvitationByEmail } from '@/utils/invitation/repository/invitations.repository'
+import { findInvitationByEmail } from '@/utils/repository'
 import { AuthorizationError } from '@/utils/errors'
 import * as emailCampaignRepository from '@/utils/email/repository/email-campaign.repository'
 import * as sharedRepository from '@/utils/repository'
@@ -445,10 +445,9 @@ describe('sendEmailCampaignService (integration)', () => {
     })
     await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
     const invitationError = new Error('private invitation database detail')
-    vi.spyOn(
-      emailCampaignRepository,
-      'insertCampaignInvitation',
-    ).mockRejectedValueOnce(invitationError)
+    vi.spyOn(sharedRepository, 'insertInvitation').mockRejectedValueOnce(
+      invitationError,
+    )
 
     try {
       await expect(

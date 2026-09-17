@@ -6,7 +6,7 @@ import type {
   SkipSummary,
 } from '@/utils/email/domain/bulk-invite.domain'
 import type { EmailType } from '@/utils/email/domain/campaigns.domain'
-import type { InvitationInsert } from '@/utils/email/repository/email-campaign.repository'
+import type { InvitationInsert } from '@/utils/repository/invitations.repository'
 import {
   planBulkInvites,
   summarizeInviteSkips,
@@ -16,21 +16,21 @@ import { sendInvitationEmail } from '@/utils/email'
 import {
   acquireEmailCampaignLock,
   checkEmailCampaignLockHeldBy,
-  deleteCampaignInvitation,
   findEmailCampaignRecipients,
   getLockedEmailCampaigns,
-  insertCampaignInvitation,
   insertEmailMessage,
   releaseEmailCampaignLock,
-  updateCampaignInvitationToken,
 } from '@/utils/email/repository/email-campaign.repository'
 import {
   calculateInvitationExpiry,
   generateSecureToken,
 } from '@/utils/invitation/domain/invitations.domain'
 import {
+  deleteInvitationById,
   findProfileById,
+  insertInvitation,
   markEnrollmentInvitationSent,
+  updateInvitationToken,
 } from '@/utils/repository'
 import { authz } from '@/utils/authz'
 import {
@@ -256,10 +256,10 @@ async function createInvitationForSend(
   const token = generateSecureToken()
   const expiresAt = calculateInvitationExpiry(new Date())
   if (planned.action === 'rotate' && planned.invitationId) {
-    await updateCampaignInvitationToken(planned.invitationId, token, expiresAt)
+    await updateInvitationToken(planned.invitationId, token, expiresAt)
     return { id: planned.invitationId, token, created: false }
   }
-  const invitation = await insertCampaignInvitation(
+  const invitation = await insertInvitation(
     buildInvitationRow({ email: planned.email, token, expiresAt, userId }),
   )
   return { id: invitation.id, token, created: true }
@@ -298,11 +298,11 @@ async function rollbackInvitationForSend(input: {
   oldExpiresAt: Date | null
 }) {
   if (input.created) {
-    await deleteCampaignInvitation(input.invitationId)
+    await deleteInvitationById(input.invitationId)
     return
   }
   if (input.planned.invitationId && input.oldToken && input.oldExpiresAt) {
-    await updateCampaignInvitationToken(
+    await updateInvitationToken(
       input.planned.invitationId,
       input.oldToken,
       input.oldExpiresAt,
