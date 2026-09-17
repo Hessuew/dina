@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { submissions } from '@/db/schema'
 
@@ -24,18 +24,4 @@ export async function findSubmissionsForStudents(studentIds: Array<string>) {
   })
 }
 
-export async function findSubmittedSubmissionsForStudent(
-  studentId: string,
-  assignmentIds: Array<string>,
-) {
-  if (assignmentIds.length === 0) return []
-  const db = await getDb()
-  return db.query.submissions.findMany({
-    where: and(
-      eq(submissions.studentId, studentId),
-      inArray(submissions.assignmentId, assignmentIds),
-      eq(submissions.status, 'submitted'),
-    ),
-  })
-}
 /* v8 ignore end */

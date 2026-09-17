@@ -18,7 +18,6 @@ import {
 import { canOpenUnpublishedAssignment } from '@/utils/assignments/domain/assignment-detail.domain'
 import {
   deleteAssignmentById,
-  findAssignmentSubmissionsWithStudent,
   findAssignmentWithFullDetail,
   findAssignmentWithLesson,
   findAssignmentWithLessonAndSubmissions,
@@ -36,12 +35,13 @@ import {
 } from '@/utils/assignments/repository/lessons.repository'
 import { findCompletedLessonIdsForStudent } from '@/utils/courses/repository'
 import {
+  findAssignmentSubmissionsWithStudent,
   findSubmissionByAssignmentAndStudent,
   findSubmissionById,
   updateSubmission,
   updateSubmissionGrade,
   upsertSubmission,
-} from '@/utils/assignments/repository/submissions.repository'
+} from '@/utils/repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'

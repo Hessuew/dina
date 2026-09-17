@@ -3,7 +3,4 @@ export {
   findAssignmentsWithDetails,
 } from './assignments.repository'
 export { findAllCourses, findAllCoursesDesc } from './courses.repository'
-export {
-  findSubmissionsForStudents,
-  findSubmittedSubmissionsForStudent,
-} from './submissions.repository'
+export { findSubmissionsForStudents } from './submissions.repository'

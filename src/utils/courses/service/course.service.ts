@@ -25,10 +25,10 @@ import {
   findCourseById,
   findCourseWithDetails,
   findPublishedAssignmentsByLessonIds,
-  findStudentSubmissions,
   insertCourse,
   updateCourseById,
 } from '@/utils/courses/repository'
+import { findStudentSubmissions } from '@/utils/repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'

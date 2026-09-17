@@ -1,5 +1,5 @@
 /* v8 ignore start */
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import type { SubmissionStatus } from '@/types/database.types'
 import { getDb } from '@/db'
 import { submissions } from '@/db/schema'
@@ -21,6 +21,46 @@ export async function findSubmissionByAssignmentAndStudent(
       eq(submissions.assignmentId, assignmentId),
       eq(submissions.studentId, studentId),
     ),
+  })
+}
+
+export async function findStudentSubmissions(
+  studentId: string,
+  assignmentIds: Array<string>,
+) {
+  if (assignmentIds.length === 0) return []
+  const db = await getDb()
+  return db.query.submissions.findMany({
+    where: and(
+      eq(submissions.studentId, studentId),
+      inArray(submissions.assignmentId, assignmentIds),
+    ),
+  })
+}
+
+export async function findSubmittedSubmissionsForStudent(
+  studentId: string,
+  assignmentIds: Array<string>,
+) {
+  if (assignmentIds.length === 0) return []
+  const db = await getDb()
+  return db.query.submissions.findMany({
+    where: and(
+      eq(submissions.studentId, studentId),
+      inArray(submissions.assignmentId, assignmentIds),
+      eq(submissions.status, 'submitted'),
+    ),
+  })
+}
+
+export async function findAssignmentSubmissionsWithStudent(
+  assignmentId: string,
+) {
+  const db = await getDb()
+  return db.query.submissions.findMany({
+    where: eq(submissions.assignmentId, assignmentId),
+    with: { student: true },
+    orderBy: (submission, { desc }) => [desc(submission.submittedAt)],
   })
 }
 

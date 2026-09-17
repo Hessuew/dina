@@ -145,17 +145,6 @@ export async function findAssignmentsForTeacherCatalog(
   })
 }
 
-export async function findAssignmentSubmissionsWithStudent(
-  assignmentId: string,
-) {
-  const db = await getDb()
-  return db.query.submissions.findMany({
-    where: eq(submissions.assignmentId, assignmentId),
-    with: { student: true },
-    orderBy: (t, { desc }) => [desc(t.submittedAt)],
-  })
-}
-
 export async function insertAssignment(values: {
   lessonId: string
   title: string

@@ -9,7 +9,7 @@ import {
 import { AuthorizationError } from '@/utils/errors'
 import { getDb } from '@/db'
 import { submissions as submissionsTable } from '@/db/schema'
-import { upsertSubmission } from '@/utils/assignments/repository/submissions.repository'
+import { upsertSubmission } from '@/utils/repository'
 import {
   createAssignmentService,
   createOrUpdateSubmissionService,
@@ -26,7 +26,7 @@ import {
 import { findAssignmentById } from '@/utils/assignments/repository/assignments.repository'
 import * as assignmentsRepository from '@/utils/assignments/repository/assignments.repository'
 import * as lessonsRepository from '@/utils/assignments/repository/lessons.repository'
-import * as submissionsRepository from '@/utils/assignments/repository/submissions.repository'
+import * as submissionsRepository from '@/utils/repository'
 import * as authUtils from '@/utils/auth/auth'
 import {
   seedAssignment,
