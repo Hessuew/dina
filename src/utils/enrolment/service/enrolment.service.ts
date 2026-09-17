@@ -38,17 +38,13 @@ import {
 } from '@/utils/enrolment/domain/enrolment.domain'
 import {
   bulkAssignEnrollments,
-  bulkUpdateEnrollmentStatuses,
   deleteCourseSubstituteByAbsent,
-  deleteEnrollmentById,
   findAbsentTeacherIdsWithActiveSubstitution,
   findAwaitingApprovalIdsWithSum,
   findCourseIdByTeacherId,
   findCourseIdsByTeacherIds,
   findCourseIdsForViewer,
   findCourseTeamIds,
-  findEnrollmentById,
-  findEnrollmentContactLookupCandidates,
   findEnrollmentEmailsByGroup,
   findEnrollmentsPage,
   findEvaluationsForEnrollments,
@@ -56,15 +52,22 @@ import {
   findReviewerAssignmentForEnrollment,
   findReviewerAssignmentsForEnrollments,
   findUnassignedEnrollmentIds,
-  insertEnrollment,
   insertSubstituteWithReassignment,
-  markEnrollmentInvitationSent,
-  updateEnrollmentSpecialCaseById,
-  updateEnrollmentStatusById,
   updateInvitationToken,
   upsertEvaluation,
 } from '@/utils/enrolment/repository/enrolment.repository'
-import { findAllTeacherIds, findProfileById } from '@/utils/repository'
+import {
+  bulkUpdateEnrollmentStatuses,
+  deleteEnrollmentById,
+  findAllTeacherIds,
+  findEnrollmentById,
+  findEnrollmentContactLookupCandidates,
+  findProfileById,
+  insertEnrollment,
+  markEnrollmentInvitationSent,
+  updateEnrollmentSpecialCaseById,
+  updateEnrollmentStatusById,
+} from '@/utils/repository'
 import {
   deleteInvitationById,
   findInvitationByEmail,

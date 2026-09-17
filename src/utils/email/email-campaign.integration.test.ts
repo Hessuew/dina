@@ -23,7 +23,7 @@ import {
 import { findInvitationByEmail } from '@/utils/invitation/repository/invitations.repository'
 import { AuthorizationError } from '@/utils/errors'
 import * as emailCampaignRepository from '@/utils/email/repository/email-campaign.repository'
-import * as profilesRepository from '@/utils/repository'
+import * as sharedRepository from '@/utils/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 afterEach(() => {
@@ -175,7 +175,7 @@ describe('sendEmailCampaignService (integration)', () => {
     const adminId = await seedProfile({ role: 'admin' })
     await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
     const profileError = new Error('private campaign sender profile detail')
-    vi.spyOn(profilesRepository, 'findProfileById').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findProfileById').mockRejectedValueOnce(
       profileError,
     )
 
@@ -485,8 +485,8 @@ describe('sendEmailCampaignService (integration)', () => {
     await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
     const markError = new Error('private enrollment update detail')
     vi.spyOn(
-      emailCampaignRepository,
-      'markCampaignEnrollmentInvited',
+      sharedRepository,
+      'markEnrollmentInvitationSent',
     ).mockRejectedValueOnce(markError)
 
     try {

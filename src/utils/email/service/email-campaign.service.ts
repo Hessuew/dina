@@ -21,7 +21,6 @@ import {
   getLockedEmailCampaigns,
   insertCampaignInvitation,
   insertEmailMessage,
-  markCampaignEnrollmentInvited,
   releaseEmailCampaignLock,
   updateCampaignInvitationToken,
 } from '@/utils/email/repository/email-campaign.repository'
@@ -29,7 +28,10 @@ import {
   calculateInvitationExpiry,
   generateSecureToken,
 } from '@/utils/invitation/domain/invitations.domain'
-import { findProfileById } from '@/utils/repository'
+import {
+  findProfileById,
+  markEnrollmentInvitationSent,
+} from '@/utils/repository'
 import { authz } from '@/utils/authz'
 import {
   CampaignLockedError,
@@ -342,7 +344,7 @@ async function tryDeliverAndMark(input: {
     }
   }
   try {
-    await markCampaignEnrollmentInvited(
+    await markEnrollmentInvitationSent(
       input.planned.enrollmentId,
       input.invitation.id,
     )

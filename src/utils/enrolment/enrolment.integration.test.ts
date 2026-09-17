@@ -28,11 +28,12 @@ import {
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 import * as staffPrivilegeRepository from '@/utils/staff-privilege/repository'
 import * as enrollmentRepository from '@/utils/enrolment/repository/enrolment.repository'
+import { findEnrollmentEmailsByGroup } from '@/utils/enrolment/repository/enrolment.repository'
+import * as sharedRepository from '@/utils/repository'
 import {
   findEnrollmentById,
-  findEnrollmentContactLookupCandidates,
-  findEnrollmentEmailsByGroup,
-} from '@/utils/enrolment/repository/enrolment.repository'
+  findEnrollmentContactLookupCandidates as findSharedEnrollmentContactLookupCandidates,
+} from '@/utils/repository'
 import { findInvitationByEmail } from '@/utils/invitation/repository/invitations.repository'
 import { AuthorizationError } from '@/utils/errors'
 import {
@@ -126,7 +127,7 @@ describe('createEnrollmentService telemetry (integration)', () => {
 
   it('logs a stable persistence failure without applicant data', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.spyOn(enrollmentRepository, 'insertEnrollment').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'insertEnrollment').mockRejectedValueOnce(
       new Error('enrollment database secret'),
     )
 
@@ -656,7 +657,7 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
     const deleteId = await seedEnrollment()
 
     vi.spyOn(
-      enrollmentRepository,
+      sharedRepository,
       'updateEnrollmentStatusById',
     ).mockRejectedValueOnce(new Error('status database secret'))
     await expect(
@@ -667,7 +668,7 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
     ).rejects.toThrow('status database secret')
 
     vi.spyOn(
-      enrollmentRepository,
+      sharedRepository,
       'updateEnrollmentSpecialCaseById',
     ).mockRejectedValueOnce(new Error('special-case database secret'))
     await expect(
@@ -677,10 +678,9 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
       ),
     ).rejects.toThrow('special-case database secret')
 
-    vi.spyOn(
-      enrollmentRepository,
-      'deleteEnrollmentById',
-    ).mockRejectedValueOnce(new Error('delete database secret'))
+    vi.spyOn(sharedRepository, 'deleteEnrollmentById').mockRejectedValueOnce(
+      new Error('delete database secret'),
+    )
     await expect(
       deleteEnrollmentService({ enrollmentId: deleteId }, adminId),
     ).rejects.toThrow('delete database secret')
@@ -1428,7 +1428,7 @@ describe('bulk enrollment grading telemetry (integration)', () => {
       'findAwaitingApprovalIdsWithSum',
     ).mockResolvedValue(rows)
     const updateSpy = vi
-      .spyOn(enrollmentRepository, 'bulkUpdateEnrollmentStatuses')
+      .spyOn(sharedRepository, 'bulkUpdateEnrollmentStatuses')
       .mockResolvedValue()
 
     await bulkGradeEnrollmentsService(
@@ -1461,7 +1461,7 @@ describe('bulk enrollment grading telemetry (integration)', () => {
 
     readSpy.mockResolvedValue(rows)
     vi.spyOn(
-      enrollmentRepository,
+      sharedRepository,
       'bulkUpdateEnrollmentStatuses',
     ).mockRejectedValueOnce(new Error('bulk grade update secret'))
 
@@ -1691,7 +1691,7 @@ describe('enrollment contact lookup by name (integration)', () => {
   it('finds candidates by full legal name and preferred name', async () => {
     await seedLookupEnrollments()
 
-    const rows = await findEnrollmentContactLookupCandidates([
+    const rows = await findSharedEnrollmentContactLookupCandidates([
       'Maria Santos',
       'Mia',
     ])
@@ -1795,7 +1795,7 @@ describe('enrollment contact lookup by name (integration)', () => {
       'connectionString=secret; email=private-lookup@test.dev',
     )
     vi.spyOn(
-      enrollmentRepository,
+      sharedRepository,
       'findEnrollmentContactLookupCandidates',
     ).mockRejectedValueOnce(repositoryError)
 

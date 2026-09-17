@@ -19,7 +19,6 @@ import type {
   ENROLLMENT_SORT_KEYS,
   GetEnrollmentEmailsInput,
 } from '@/schemas/enrollment.schema'
-import type { EnrollmentContactLookupCandidate } from '@/utils/enrolment/domain/email-lookup.domain'
 import { getDb } from '@/db'
 import {
   courseSubstitutes,
@@ -65,14 +64,6 @@ export type FindEnrollmentsPageInput = {
 }
 
 /* v8 ignore start */
-export async function insertEnrollment(
-  data: Omit<typeof enrollments.$inferInsert, 'id' | 'createdAt' | 'updatedAt'>,
-) {
-  const db = await getDb()
-  const [enrollment] = await db.insert(enrollments).values(data).returning()
-  return enrollment
-}
-
 function buildEnrollmentSearchFilter(search: string, includeEmail: boolean) {
   return search.trim().length > 0
     ? or(
@@ -258,13 +249,6 @@ export async function findEnrollmentsPage({
   return { rows, total }
 }
 
-export async function findEnrollmentById(enrollmentId: string) {
-  const db = await getDb()
-  return db.query.enrollments.findFirst({
-    where: eq(enrollments.id, enrollmentId),
-  })
-}
-
 export async function findEvaluationsForEnrollments(
   enrollmentIds: Array<string>,
 ): Promise<Array<EvaluationWithAuthor>> {
@@ -325,33 +309,6 @@ export async function upsertEvaluation(
         updatedAt: new Date(),
       },
     })
-}
-
-export async function updateEnrollmentStatusById(
-  enrollmentId: string,
-  status: (typeof enrollments.$inferSelect)['status'],
-) {
-  const db = await getDb()
-  await db
-    .update(enrollments)
-    .set({ status, updatedAt: new Date() })
-    .where(eq(enrollments.id, enrollmentId))
-}
-
-export async function updateEnrollmentSpecialCaseById(
-  enrollmentId: string,
-  specialCase: boolean,
-) {
-  const db = await getDb()
-  await db
-    .update(enrollments)
-    .set({ specialCase, updatedAt: new Date() })
-    .where(eq(enrollments.id, enrollmentId))
-}
-
-export async function deleteEnrollmentById(enrollmentId: string) {
-  const db = await getDb()
-  await db.delete(enrollments).where(eq(enrollments.id, enrollmentId))
 }
 
 /**
@@ -525,17 +482,6 @@ export async function updateInvitationToken(
     .update(invitations)
     .set({ token, expiresAt, updatedAt: new Date() })
     .where(eq(invitations.id, invitationId))
-}
-
-export async function markEnrollmentInvitationSent(
-  enrollmentId: string,
-  invitationId: string,
-) {
-  const db = await getDb()
-  await db
-    .update(enrollments)
-    .set({ invitationSent: true, invitationId, updatedAt: new Date() })
-    .where(eq(enrollments.id, enrollmentId))
 }
 
 export async function findUnassignedEnrollmentIds(): Promise<Array<string>> {
@@ -734,53 +680,6 @@ export async function findEnrollmentEmailsByGroup(
   return rows.map((r) => r.email)
 }
 
-function buildNameLookupPatterns(queries: Array<string>): Array<string> {
-  const patterns = new Set<string>()
-
-  for (const query of queries) {
-    const trimmed = query.trim().replace(/\s+/g, ' ')
-    if (trimmed.length >= 2) patterns.add(trimmed)
-    for (const token of trimmed.split(' ')) {
-      if (token.length >= 2) patterns.add(token)
-    }
-  }
-
-  return [...patterns]
-}
-
-/**
- * Fetches a bounded candidate set for admin name-to-contact lookup.
- * Ranking and ambiguity handling live in the pure contact-lookup domain module.
- */
-export async function findEnrollmentContactLookupCandidates(
-  queries: Array<string>,
-): Promise<Array<EnrollmentContactLookupCandidate>> {
-  const patterns = buildNameLookupPatterns(queries)
-  if (patterns.length === 0) return []
-
-  const conditions: Array<SQL> = patterns.flatMap((pattern) => [
-    ilike(enrollments.fullLegalName, `%${pattern}%`),
-    ilike(enrollments.preferredName, `%${pattern}%`),
-  ])
-
-  const db = await getDb()
-  const rows = await db
-    .select({
-      enrollmentId: enrollments.id,
-      fullLegalName: enrollments.fullLegalName,
-      preferredName: enrollments.preferredName,
-      email: enrollments.email,
-      phoneWhatsApp: enrollments.phoneWhatsApp,
-      status: enrollments.status,
-    })
-    .from(enrollments)
-    .where(or(...conditions))
-    .orderBy(desc(enrollments.createdAt))
-    .limit(300)
-
-  return rows
-}
-
 /**
  * Returns the evaluation sum (score total across all evaluators) and specialCase flag
  * for every `awaiting_approval` enrollment. Used by the bulk-grade feature to preview
@@ -808,34 +707,4 @@ export async function findAwaitingApprovalIdsWithSum(): Promise<
   return rows
 }
 
-/**
- * Batch-updates the status for a set of enrollments given as `{ id, status }`
- * pairs. Groups updates by target status and issues one UPDATE per group.
- * No-op when the array is empty.
- */
-export async function bulkUpdateEnrollmentStatuses(
-  updates: Array<{
-    id: string
-    status: (typeof enrollments.$inferSelect)['status']
-  }>,
-): Promise<void> {
-  if (updates.length === 0) return
-  const db = await getDb()
-  const now = new Date()
-  const grouped = new Map<
-    (typeof enrollments.$inferSelect)['status'],
-    Array<string>
-  >()
-  for (const { id, status } of updates) {
-    const ids = grouped.get(status) ?? []
-    ids.push(id)
-    grouped.set(status, ids)
-  }
-  for (const [status, ids] of grouped) {
-    await db
-      .update(enrollments)
-      .set({ status, updatedAt: now })
-      .where(inArray(enrollments.id, ids))
-  }
-}
 /* v8 ignore end */

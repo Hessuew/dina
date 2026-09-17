@@ -88,17 +88,6 @@ export async function updateCampaignInvitationToken(
     .where(eq(invitations.id, id))
 }
 
-export async function markCampaignEnrollmentInvited(
-  enrollmentId: string,
-  invitationId: string,
-): Promise<void> {
-  const db = await getDb()
-  await db
-    .update(enrollments)
-    .set({ invitationSent: true, invitationId, updatedAt: new Date() })
-    .where(eq(enrollments.id, enrollmentId))
-}
-
 const LOCK_TTL_MS = 5 * 60 * 1000
 
 export async function acquireEmailCampaignLock(
