@@ -6,7 +6,7 @@ import {
   markPostNotificationGroupReadService,
 } from '@/utils/post/notifications/service/notification.service'
 import { NotFoundError } from '@/utils/errors'
-import * as notificationRepository from '@/utils/post/notifications/repository/notification.repository'
+import * as notificationRepository from '@/utils/repository/post-notifications.repository'
 import * as authUtils from '@/utils/auth/auth'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 import {
