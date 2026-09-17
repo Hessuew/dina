@@ -1,4 +1,1 @@
-export {
-  findCourseAssignmentsForTeachers,
-  findCourseTeacher,
-} from './course-teachers.repository'
+export { findCourseAssignmentsForTeachers } from './course-teachers.repository'

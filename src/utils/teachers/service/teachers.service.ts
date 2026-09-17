@@ -2,11 +2,12 @@ import type { LogLevel } from '@/utils/observability/logger'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { sortTeachers } from '@/utils/teachers/domain/teachers.domain'
+import { findCourseAssignmentsForTeachers } from '@/utils/teachers/repository'
 import {
-  findCourseAssignmentsForTeachers,
+  findAllTeachers,
   findCourseTeacher,
-} from '@/utils/teachers/repository'
-import { findAllTeachers, findPrivilegesForUsers } from '@/utils/repository'
+  findPrivilegesForUsers,
+} from '@/utils/repository'
 import { authz } from '@/utils/authz'
 import { getUserProfile } from '@/utils/auth/auth'
 import { isAppError } from '@/utils/errors'

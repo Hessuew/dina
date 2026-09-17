@@ -7,12 +7,13 @@ import {
   validateSameTeacher,
   validateTeacherRoles,
 } from '@/utils/courses/domain/teacher-assignment.domain'
+import { findCourseTeachers } from '@/utils/courses/repository'
 import {
   findCourseAssignmentsByTeacherIds,
-  findCourseTeachers,
+  findCourseById,
+  findProfilesByIds,
   replaceTeacherAssignments,
-} from '@/utils/courses/repository'
-import { findCourseById, findProfilesByIds } from '@/utils/repository'
+} from '@/utils/repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { ConflictError, NotFoundError, isAppError } from '@/utils/errors'

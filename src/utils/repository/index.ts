@@ -1,6 +1,7 @@
 export * from './assignments.repository'
 export * from './account-security.repository'
 export * from './courses.repository'
+export * from './course-teachers.repository'
 export * from './enrollments.repository'
 export * from './invitations.repository'
 export * from './lessons.repository'

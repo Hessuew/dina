@@ -726,10 +726,9 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
       distributionError,
     )
 
-    vi.spyOn(
-      enrollmentRepository,
-      'findCourseIdByTeacherId',
-    ).mockRejectedValueOnce(substitutionError)
+    vi.spyOn(sharedRepository, 'findCourseIdByTeacherId').mockRejectedValueOnce(
+      substitutionError,
+    )
     await expect(
       substituteTeacherService(
         {

@@ -25,13 +25,11 @@ import {
   findPublishedAssignmentsForStudent,
 } from '@/utils/assignments/repository/assignments.repository'
 import { findLessonWithDetail } from '@/utils/assignments/repository/lessons.repository'
-import {
-  findCompletedLessonIdsForStudent,
-  findCourseIdsByTeacher,
-} from '@/utils/courses/repository'
+import { findCompletedLessonIdsForStudent } from '@/utils/courses/repository'
 import {
   deleteAssignmentById,
   findAssignmentSubmissionsWithStudent,
+  findCourseIdsByTeacher,
   findLessonById,
   findLessonIdsByCourseIds,
   findSubmissionByAssignmentAndStudent,

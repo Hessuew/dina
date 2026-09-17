@@ -493,44 +493,6 @@ export async function findUnassignedEnrollmentIds(): Promise<Array<string>> {
   return rows.map((r) => r.id)
 }
 
-/**
- * Returns the course_id for a teacher from course_teachers. Used when
- * enriching bulk assignments and initiating substitutions.
- */
-export async function findCourseIdByTeacherId(
-  teacherId: string,
-): Promise<string | null> {
-  const db = await getDb()
-  const row = await db.query.courseTeachers.findFirst({
-    where: eq(courseTeachers.teacherId, teacherId),
-    columns: { courseId: true },
-  })
-  return row?.courseId ?? null
-}
-
-/**
- * Fetches course IDs for a batch of teacher IDs in one query.
- * Returns a Map from teacherId → courseId (null if not found).
- */
-export async function findCourseIdsByTeacherIds(
-  teacherIds: Array<string>,
-): Promise<Map<string, string | null>> {
-  const result = new Map<string, string | null>(
-    teacherIds.map((id) => [id, null]),
-  )
-  if (teacherIds.length === 0) return result
-  const db = await getDb()
-  const rows = await db
-    .select({
-      teacherId: courseTeachers.teacherId,
-      courseId: courseTeachers.courseId,
-    })
-    .from(courseTeachers)
-    .where(inArray(courseTeachers.teacherId, teacherIds))
-  for (const row of rows) result.set(row.teacherId, row.courseId)
-  return result
-}
-
 export async function bulkAssignEnrollments(
   assignments: Array<{
     enrollmentId: string

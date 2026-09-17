@@ -1,5 +1,5 @@
 /* v8 ignore start */
-import { eq, inArray } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { courseTeachers } from '@/db/schema'
 
@@ -21,37 +21,4 @@ export async function findCourseTeachers(courseId: string) {
   })
 }
 
-export async function findCourseAssignmentsByTeacherIds(
-  teacherIds: Array<string>,
-) {
-  const db = await getDb()
-  return db.query.courseTeachers.findMany({
-    where: inArray(courseTeachers.teacherId, teacherIds),
-    columns: { teacherId: true },
-  })
-}
-
-export async function findCourseIdsByTeacher(teacherId: string) {
-  const db = await getDb()
-  const result = await db.query.courseTeachers.findMany({
-    where: eq(courseTeachers.teacherId, teacherId),
-    columns: { courseId: true },
-  })
-  return result.map((assignment) => assignment.courseId)
-}
-
-export async function replaceTeacherAssignments(
-  courseId: string,
-  teacher1Id: string,
-  teacher2Id: string,
-) {
-  const db = await getDb()
-  await db.transaction(async (tx) => {
-    await tx.delete(courseTeachers).where(eq(courseTeachers.courseId, courseId))
-    await tx.insert(courseTeachers).values([
-      { courseId, teacherId: teacher1Id },
-      { courseId, teacherId: teacher2Id },
-    ])
-  })
-}
 /* v8 ignore end */

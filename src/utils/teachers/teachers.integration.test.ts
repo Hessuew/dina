@@ -13,7 +13,7 @@ import {
 } from '@/../test/integration/seed'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 import * as teachersRepository from '@/utils/teachers/repository'
-import * as profilesRepository from '@/utils/repository'
+import * as sharedRepository from '@/utils/repository'
 import * as authUtils from '@/utils/auth/auth'
 import {
   DefaultAuthorizationService,
@@ -105,7 +105,7 @@ describe('teachers service (integration)', () => {
       const repositoryError = new Error(
         'connectionString=secret; email=private.teacher@test.dev',
       )
-      vi.spyOn(profilesRepository, 'findAllTeachers').mockRejectedValueOnce(
+      vi.spyOn(sharedRepository, 'findAllTeachers').mockRejectedValueOnce(
         repositoryError,
       )
 
@@ -296,7 +296,7 @@ describe('teachers service (integration)', () => {
       const repositoryError = new Error(
         'course teacher connectionString secret',
       )
-      vi.spyOn(teachersRepository, 'findCourseTeacher').mockRejectedValueOnce(
+      vi.spyOn(sharedRepository, 'findCourseTeacher').mockRejectedValueOnce(
         repositoryError,
       )
 
