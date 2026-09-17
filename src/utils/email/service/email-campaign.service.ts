@@ -308,22 +308,23 @@ async function rollbackInvitationForSend(input: {
   }
 }
 
-async function deliverAndMarkInvitation(input: {
+function emailCampaignErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+type DeliverAndMarkResult = {
+  providerMessageId: string | null
+  errorMessage?: string
+  errorCategory?: string
+}
+
+async function tryDeliverAndMark(input: {
   planned: PlannedInvitationEmail
   invitation: { id: string; token: string; created: boolean }
   senderName: string
   lecturerTitle: string | null
-}): Promise<{
-  providerMessageId: string | null
-  errorMessage?: string
-  errorCategory?: string
-}> {
-  const oldToken = input.planned.invitation?.token ?? null
-  const oldExpiresAt = input.planned.invitation?.expiresAt ?? null
-  let providerMessageId: string | null = null
-  let errorMessage: string | undefined
-  let errorCategory: string | undefined
-
+}): Promise<DeliverAndMarkResult> {
+  let providerMessageId: string | null
   try {
     providerMessageId = await sendInvitationEmail({
       to: input.planned.email,
@@ -334,33 +335,44 @@ async function deliverAndMarkInvitation(input: {
       appUrl: env.APP_URL || 'http://localhost:3000',
     })
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : String(error)
-    errorCategory = 'invitation_email_delivery'
-  }
-
-  if (!errorMessage) {
-    try {
-      await markCampaignEnrollmentInvited(
-        input.planned.enrollmentId,
-        input.invitation.id,
-      )
-    } catch (error) {
-      errorMessage = error instanceof Error ? error.message : String(error)
-      errorCategory = 'campaign_enrollment_persistence'
+    return {
+      providerMessageId: null,
+      errorMessage: emailCampaignErrorMessage(error),
+      errorCategory: 'invitation_email_delivery',
     }
   }
+  try {
+    await markCampaignEnrollmentInvited(
+      input.planned.enrollmentId,
+      input.invitation.id,
+    )
+    return { providerMessageId }
+  } catch (error) {
+    return {
+      providerMessageId,
+      errorMessage: emailCampaignErrorMessage(error),
+      errorCategory: 'campaign_enrollment_persistence',
+    }
+  }
+}
 
-  if (errorMessage) {
+async function deliverAndMarkInvitation(input: {
+  planned: PlannedInvitationEmail
+  invitation: { id: string; token: string; created: boolean }
+  senderName: string
+  lecturerTitle: string | null
+}): Promise<DeliverAndMarkResult> {
+  const result = await tryDeliverAndMark(input)
+  if (result.errorMessage) {
     await rollbackInvitationForSend({
       planned: input.planned,
       invitationId: input.invitation.id,
       created: input.invitation.created,
-      oldToken,
-      oldExpiresAt,
+      oldToken: input.planned.invitation?.token ?? null,
+      oldExpiresAt: input.planned.invitation?.expiresAt ?? null,
     })
   }
-
-  return { providerMessageId, errorMessage, errorCategory }
+  return result
 }
 
 async function insertEmailMessageWithTelemetry(
