@@ -7,29 +7,19 @@ import {
   courses,
   lessons,
 } from '@/db/schema'
-
-export type AttendanceSessionRow = typeof attendanceSessions.$inferSelect
+import {
+  findAttendanceSessionByLessonInTransaction,
+  findOpenAttendanceSessionInTransaction,
+  insertAttendanceSessionInTransaction,
+} from '@/utils/repository/attendance-sessions.repository'
+import {
+  deletePresentInTransaction,
+  findPresentInTransaction,
+  insertPresentInTransaction,
+} from '@/utils/repository/attendance-presents.repository'
 
 function firstOrNull<T>(rows: Array<T>): T | null {
   return rows.length === 0 ? null : rows[0]
-}
-
-export async function findOpenSessionOnCourse(
-  courseId: string,
-  now: Date,
-): Promise<AttendanceSessionRow | null> {
-  const db = await getDb()
-  const rows = await db
-    .select()
-    .from(attendanceSessions)
-    .where(
-      and(
-        eq(attendanceSessions.courseId, courseId),
-        gt(attendanceSessions.closesAt, now),
-      ),
-    )
-    .limit(1)
-  return firstOrNull(rows)
 }
 
 export async function findOpenSessionsForStudent(now: Date, studentId: string) {
@@ -97,104 +87,6 @@ export async function findLessonInCourse(lessonId: string, courseId: string) {
   return firstOrNull(rows)
 }
 
-export async function openAttendanceSessionAtomically(values: {
-  courseId: string
-  lessonId: string
-  openedBy: string
-}) {
-  const db = await getDb()
-  return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtext(${values.courseId}))`,
-    )
-    const now = new Date()
-    const openRows = await tx
-      .select()
-      .from(attendanceSessions)
-      .where(
-        and(
-          eq(attendanceSessions.courseId, values.courseId),
-          gt(attendanceSessions.closesAt, now),
-        ),
-      )
-      .limit(1)
-    const open = firstOrNull(openRows)
-    if (open) return { kind: 'conflict' as const, open }
-
-    const existingRows = await tx
-      .select()
-      .from(attendanceSessions)
-      .where(eq(attendanceSessions.lessonId, values.lessonId))
-      .limit(1)
-    const existing = firstOrNull(existingRows)
-    const window = {
-      openedAt: now,
-      closesAt: new Date(now.getTime() + 10 * 60_000),
-      openedBy: values.openedBy,
-      updatedAt: now,
-    }
-    const rows = existing
-      ? await tx
-          .update(attendanceSessions)
-          .set(window)
-          .where(eq(attendanceSessions.id, existing.id))
-          .returning()
-      : await tx
-          .insert(attendanceSessions)
-          .values({
-            ...window,
-            courseId: values.courseId,
-            lessonId: values.lessonId,
-          })
-          .returning()
-    const session = firstOrNull(rows)
-    if (!session) throw new Error('Failed to open attendance session')
-    return { kind: 'opened' as const, session }
-  })
-}
-
-export async function closeAttendanceSessionAtomically(
-  courseId: string,
-): Promise<AttendanceSessionRow | null> {
-  const db = await getDb()
-  return db.transaction(async (tx) => {
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${courseId}))`)
-    const now = new Date()
-    const rows = await tx
-      .update(attendanceSessions)
-      .set({ closesAt: now, updatedAt: now })
-      .where(
-        and(
-          eq(attendanceSessions.courseId, courseId),
-          gt(attendanceSessions.closesAt, now),
-        ),
-      )
-      .returning()
-    return firstOrNull(rows)
-  })
-}
-
-export async function findPresent(
-  sessionId: string,
-  studentId: string,
-): Promise<{ id: string; checkedInAt: Date } | null> {
-  const db = await getDb()
-  const rows = await db
-    .select({
-      id: attendancePresents.id,
-      checkedInAt: attendancePresents.checkedInAt,
-    })
-    .from(attendancePresents)
-    .where(
-      and(
-        eq(attendancePresents.sessionId, sessionId),
-        eq(attendancePresents.studentId, studentId),
-      ),
-    )
-    .limit(1)
-  return firstOrNull(rows)
-}
-
 /** Idempotent and serialized with open/close for the course. */
 export async function markPresentAtomically(values: {
   courseId: string
@@ -206,40 +98,25 @@ export async function markPresentAtomically(values: {
       sql`select pg_advisory_xact_lock(hashtext(${values.courseId}))`,
     )
     const now = new Date()
-    const sessionRows = await tx
-      .select()
-      .from(attendanceSessions)
-      .where(
-        and(
-          eq(attendanceSessions.courseId, values.courseId),
-          gt(attendanceSessions.closesAt, now),
-        ),
-      )
-      .limit(1)
-    const session = firstOrNull(sessionRows)
+    const session = await findOpenAttendanceSessionInTransaction(
+      tx,
+      values.courseId,
+      now,
+    )
     if (!session) return null
 
-    const inserted = await tx
-      .insert(attendancePresents)
-      .values({ sessionId: session.id, studentId: values.studentId })
-      .onConflictDoNothing({
-        target: [attendancePresents.sessionId, attendancePresents.studentId],
-      })
-      .returning()
-    const created = firstOrNull(inserted)
+    const created = await insertPresentInTransaction(
+      tx,
+      session.id,
+      values.studentId,
+    )
     if (created) return { session, present: created, created: true as const }
 
-    const existingRows = await tx
-      .select()
-      .from(attendancePresents)
-      .where(
-        and(
-          eq(attendancePresents.sessionId, session.id),
-          eq(attendancePresents.studentId, values.studentId),
-        ),
-      )
-      .limit(1)
-    const present = firstOrNull(existingRows)
+    const present = await findPresentInTransaction(
+      tx,
+      session.id,
+      values.studentId,
+    )
     if (!present) throw new Error('Present missing after conflict')
     return { session, present, created: false as const }
   })
@@ -296,52 +173,36 @@ export async function setPresentOverrideAtomically(values: {
     )
     const now = new Date()
 
-    const existingRows = await tx
-      .select()
-      .from(attendanceSessions)
-      .where(eq(attendanceSessions.lessonId, values.lessonId))
-      .limit(1)
-    let session = firstOrNull(existingRows)
+    let session = await findAttendanceSessionByLessonInTransaction(
+      tx,
+      values.lessonId,
+    )
 
     if (!session) {
-      const inserted = await tx
-        .insert(attendanceSessions)
-        .values({
-          courseId: values.courseId,
-          lessonId: values.lessonId,
-          openedAt: now,
-          closesAt: now,
-          openedBy: values.openedBy,
-          updatedAt: now,
-        })
-        .returning()
-      session = firstOrNull(inserted)
-      if (!session) throw new Error('Failed to create override session')
+      session = await insertAttendanceSessionInTransaction(tx, {
+        courseId: values.courseId,
+        lessonId: values.lessonId,
+        openedAt: now,
+        closesAt: now,
+        openedBy: values.openedBy,
+        updatedAt: now,
+      })
     }
 
-    const insertedPresent = await tx
-      .insert(attendancePresents)
-      .values({ sessionId: session.id, studentId: values.studentId })
-      .onConflictDoNothing({
-        target: [attendancePresents.sessionId, attendancePresents.studentId],
-      })
-      .returning()
-    const created = firstOrNull(insertedPresent)
+    const created = await insertPresentInTransaction(
+      tx,
+      session.id,
+      values.studentId,
+    )
     if (created) {
       return { session, present: created, created: true as const }
     }
 
-    const existingPresent = await tx
-      .select()
-      .from(attendancePresents)
-      .where(
-        and(
-          eq(attendancePresents.sessionId, session.id),
-          eq(attendancePresents.studentId, values.studentId),
-        ),
-      )
-      .limit(1)
-    const present = firstOrNull(existingPresent)
+    const present = await findPresentInTransaction(
+      tx,
+      session.id,
+      values.studentId,
+    )
     if (!present) throw new Error('Present missing after conflict')
     return { session, present, created: false as const }
   })
@@ -359,25 +220,19 @@ export async function clearPresentOverrideAtomically(values: {
       sql`select pg_advisory_xact_lock(hashtext(${values.courseId}))`,
     )
 
-    const sessionRows = await tx
-      .select()
-      .from(attendanceSessions)
-      .where(eq(attendanceSessions.lessonId, values.lessonId))
-      .limit(1)
-    const session = firstOrNull(sessionRows)
+    const session = await findAttendanceSessionByLessonInTransaction(
+      tx,
+      values.lessonId,
+    )
     if (!session) {
       return { session: null, cleared: false as const }
     }
 
-    const deleted = await tx
-      .delete(attendancePresents)
-      .where(
-        and(
-          eq(attendancePresents.sessionId, session.id),
-          eq(attendancePresents.studentId, values.studentId),
-        ),
-      )
-      .returning({ id: attendancePresents.id })
+    const deleted = await deletePresentInTransaction(
+      tx,
+      session.id,
+      values.studentId,
+    )
 
     return {
       session,

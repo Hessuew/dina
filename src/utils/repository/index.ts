@@ -1,5 +1,7 @@
 export * from './assignments.repository'
 export * from './account-security.repository'
+export * from './attendance-presents.repository'
+export * from './attendance-sessions.repository'
 export * from './calendar-events.repository'
 export * from './courses.repository'
 export * from './course-teachers.repository'

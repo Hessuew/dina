@@ -8,14 +8,10 @@ import type {
 import type { LogLevel } from '@/utils/observability/logger'
 import {
   clearPresentOverrideAtomically,
-  closeAttendanceSessionAtomically,
   findLessonInCourse,
   findLessonsWithSessionsByCourseId,
-  findOpenSessionOnCourse,
   findOpenSessionsForStudent,
-  findPresent,
   markPresentAtomically,
-  openAttendanceSessionAtomically,
   setPresentOverrideAtomically,
 } from '@/utils/attendance/repository/attendance.repository'
 import { assertCanOpenSession } from '@/utils/attendance/domain/attendance-session.domain'
@@ -37,7 +33,13 @@ import {
 } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
-import { findCourseById } from '@/utils/repository'
+import {
+  closeAttendanceSessionAtomically,
+  findCourseById,
+  findOpenSessionOnCourse,
+  findPresent,
+  openAttendanceSessionAtomically,
+} from '@/utils/repository'
 
 type AttendanceCheckInLogContext = {
   courseId: string
