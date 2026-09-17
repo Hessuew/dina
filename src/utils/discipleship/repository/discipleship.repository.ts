@@ -1,62 +1,12 @@
-import { eq, inArray } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { getDb } from '@/db'
 import {
   discipleshipAssignments,
   discipleshipGroups,
   discipleshipPairs,
-  profiles,
 } from '@/db/schema'
 
 /* v8 ignore start -- thin DB adapters; logic lives in domain/ */
-
-const staffColumns = {
-  id: true,
-  fullName: true,
-  email: true,
-  avatarUrl: true,
-} as const
-
-const publicPersonColumns = {
-  id: true,
-  fullName: true,
-  avatarUrl: true,
-} as const
-
-export async function findDiscipleshipTeachers() {
-  const db = await getDb()
-  return db.query.profiles.findMany({
-    where: inArray(profiles.role, ['teacher', 'admin']),
-    columns: staffColumns,
-    orderBy: (p, { asc }) => [asc(p.fullName)],
-  })
-}
-
-export async function findDiscipleshipStudents() {
-  const db = await getDb()
-  return db.query.profiles.findMany({
-    where: eq(profiles.role, 'student'),
-    columns: staffColumns,
-    orderBy: (p, { asc }) => [asc(p.fullName)],
-  })
-}
-
-export async function findPublicPersonById(id: string) {
-  const db = await getDb()
-  return db.query.profiles.findFirst({
-    where: eq(profiles.id, id),
-    columns: publicPersonColumns,
-  })
-}
-
-export async function findPublicPersonsByIds(ids: Array<string>) {
-  if (ids.length === 0) return []
-  const db = await getDb()
-  return db.query.profiles.findMany({
-    where: inArray(profiles.id, ids),
-    columns: publicPersonColumns,
-    orderBy: (p, { asc }) => [asc(p.fullName)],
-  })
-}
 
 export async function findAllAssignments() {
   const db = await getDb()

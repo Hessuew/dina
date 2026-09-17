@@ -3,6 +3,19 @@ import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 
 /* v8 ignore start */
+const staffProfileColumns = {
+  id: true,
+  fullName: true,
+  email: true,
+  avatarUrl: true,
+} as const
+
+const publicProfileColumns = {
+  id: true,
+  fullName: true,
+  avatarUrl: true,
+} as const
+
 export async function findProfileByEmail(email: string) {
   const db = await getDb()
   return db.query.profiles.findFirst({
@@ -18,9 +31,46 @@ export async function findProfileById(userId: string) {
 }
 
 export async function findProfilesByIds(ids: Array<string>) {
+  if (ids.length === 0) return []
   const db = await getDb()
   return db.query.profiles.findMany({
     where: inArray(profiles.id, ids),
+  })
+}
+
+export async function findStaffProfiles() {
+  const db = await getDb()
+  return db.query.profiles.findMany({
+    where: inArray(profiles.role, ['teacher', 'admin']),
+    columns: staffProfileColumns,
+    orderBy: (p, { asc }) => [asc(p.fullName)],
+  })
+}
+
+export async function findStudentProfiles() {
+  const db = await getDb()
+  return db.query.profiles.findMany({
+    where: eq(profiles.role, 'student'),
+    columns: staffProfileColumns,
+    orderBy: (p, { asc }) => [asc(p.fullName)],
+  })
+}
+
+export async function findPublicProfileById(profileId: string) {
+  const db = await getDb()
+  return db.query.profiles.findFirst({
+    where: eq(profiles.id, profileId),
+    columns: publicProfileColumns,
+  })
+}
+
+export async function findPublicProfilesByIds(ids: Array<string>) {
+  if (ids.length === 0) return []
+  const db = await getDb()
+  return db.query.profiles.findMany({
+    where: inArray(profiles.id, ids),
+    columns: publicProfileColumns,
+    orderBy: (p, { asc }) => [asc(p.fullName)],
   })
 }
 

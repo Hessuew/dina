@@ -39,13 +39,9 @@ import {
   findAssignmentByStudentId,
   findAssignmentsByPairId,
   findAssignmentsByTeacher,
-  findDiscipleshipStudents,
-  findDiscipleshipTeachers,
   findGroupsByTeacher,
   findPairById,
   findPairsByTeacher,
-  findPublicPersonById,
-  findPublicPersonsByIds,
   insertAssignment,
   insertPair,
   setAssignmentAnchor,
@@ -54,6 +50,12 @@ import {
   updateAssignmentTeacher,
   upsertGroupAnchor,
 } from '@/utils/discipleship/repository'
+import {
+  findPublicProfileById,
+  findPublicProfilesByIds,
+  findStaffProfiles,
+  findStudentProfiles,
+} from '@/utils/repository'
 import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
@@ -311,8 +313,8 @@ export async function getDiscipleshipBoardService(userId: string) {
 
       const [teachers, students, assignments, pairs, groups] =
         await Promise.all([
-          findDiscipleshipTeachers(),
-          findDiscipleshipStudents(),
+          findStaffProfiles(),
+          findStudentProfiles(),
           isAdmin ? findAllAssignments() : findAssignmentsByTeacher(userId),
           isAdmin ? findAllPairs() : findPairsByTeacher(userId),
           isAdmin ? findAllGroups() : findGroupsByTeacher(userId),
@@ -349,7 +351,7 @@ type StudentAssignmentRow = NonNullable<AssignmentRow>
 type PairRow = Awaited<ReturnType<typeof findPairsByTeacher>>[number]
 type GroupRow = Awaited<ReturnType<typeof findGroupsByTeacher>>[number]
 type PublicPerson = NonNullable<
-  Awaited<ReturnType<typeof findPublicPersonById>>
+  Awaited<ReturnType<typeof findPublicProfileById>>
 >
 
 // Privacy: only the viewer's individual / pair / group times enter the builder.
@@ -422,7 +424,7 @@ export async function getStudentDiscipleshipViewService(
       if (!assignment) return { kind: 'unassigned' }
 
       const [teacher, teacherAssignments, pairs, groups] = await Promise.all([
-        findPublicPersonById(assignment.teacherId),
+        findPublicProfileById(assignment.teacherId),
         findAssignmentsByTeacher(assignment.teacherId),
         findPairsByTeacher(assignment.teacherId),
         findGroupsByTeacher(assignment.teacherId),
@@ -433,7 +435,7 @@ export async function getStudentDiscipleshipViewService(
         .filter((id) => id !== userId)
       const [signedPeople, classmates] = await Promise.all([
         signAvatarRows(teacher ? [teacher] : []),
-        findPublicPersonsByIds(classmateIds).then(signAvatarRows),
+        findPublicProfilesByIds(classmateIds).then(signAvatarRows),
       ])
 
       return buildStudentDiscipleshipView(

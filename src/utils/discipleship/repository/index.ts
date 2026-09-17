@@ -1,8 +1,4 @@
 export {
-  findDiscipleshipTeachers,
-  findDiscipleshipStudents,
-  findPublicPersonById,
-  findPublicPersonsByIds,
   findAllAssignments,
   findAssignmentsByTeacher,
   findAssignmentByStudentId,

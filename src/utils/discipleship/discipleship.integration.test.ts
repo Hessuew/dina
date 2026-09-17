@@ -22,7 +22,7 @@ import {
   unpairStudentService,
 } from '@/utils/discipleship/service/discipleship.service'
 import { AuthorizationError } from '@/utils/errors'
-import * as discipleshipRepository from '@/utils/discipleship/repository'
+import * as profilesRepository from '@/utils/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 describe('getStudentDiscipleshipViewService (integration)', () => {
@@ -249,10 +249,9 @@ describe('discipleship read telemetry (integration)', () => {
     const repositoryError = new Error(
       'connectionString=secret; student email=private.student@test.dev',
     )
-    vi.spyOn(
-      discipleshipRepository,
-      'findDiscipleshipTeachers',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(profilesRepository, 'findStaffProfiles').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(
