@@ -11,17 +11,17 @@ import {
 } from '@/utils/password-reset/service/password-reset.service'
 
 export const requestPasswordResetFn = createServerFn({ method: 'POST' })
-  .inputValidator(requestPasswordResetSchema)
+  .validator(requestPasswordResetSchema)
   .handler(async ({ data }) =>
     requestPasswordResetService(data.email.toLowerCase().trim()),
   )
 
 export const validateResetTokenFn = createServerFn({ method: 'POST' })
-  .inputValidator(validateResetTokenSchema)
+  .validator(validateResetTokenSchema)
   .handler(async ({ data }) => validateResetTokenService(data.token))
 
 export const resetPasswordFn = createServerFn({ method: 'POST' })
-  .inputValidator(resetPasswordSchema)
+  .validator(resetPasswordSchema)
   .handler(async ({ data }) =>
     resetPasswordService(data.token, data.newPassword),
   )

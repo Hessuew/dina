@@ -9,14 +9,14 @@ import {
 } from '@/utils/whatsapp/service/whatsapp.service'
 
 export const previewWhatsAppCampaign = createServerFn({ method: 'POST' })
-  .inputValidator(sendWhatsAppCampaignSchema)
+  .validator(sendWhatsAppCampaignSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return previewWhatsAppCampaignService(data, user.id)
   })
 
 export const sendWhatsAppCampaign = createServerFn({ method: 'POST' })
-  .inputValidator(sendWhatsAppCampaignSchema)
+  .validator(sendWhatsAppCampaignSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return sendWhatsAppCampaignService(data, user.id)
@@ -30,7 +30,7 @@ export const getWhatsAppCampaignLocks = createServerFn({
 })
 
 export const releaseWhatsAppCampaign = createServerFn({ method: 'POST' })
-  .inputValidator(sendWhatsAppCampaignSchema)
+  .validator(sendWhatsAppCampaignSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     await releaseWhatsAppCampaignService(data, user.id)

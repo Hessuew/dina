@@ -22,21 +22,21 @@ export const getZoomLinks = createServerFn({ method: 'POST' }).handler(
 )
 
 export const createZoomLink = createServerFn({ method: 'POST' })
-  .inputValidator(createZoomLinkSchema)
+  .validator(createZoomLinkSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return createZoomLinkService(data, user.id)
   })
 
 export const updateZoomLink = createServerFn({ method: 'POST' })
-  .inputValidator(updateZoomLinkSchema)
+  .validator(updateZoomLinkSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return updateZoomLinkService(data, user.id)
   })
 
 export const deleteZoomLink = createServerFn({ method: 'POST' })
-  .inputValidator(deleteZoomLinkSchema)
+  .validator(deleteZoomLinkSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return deleteZoomLinkService(data, user.id)

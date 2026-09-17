@@ -12,7 +12,7 @@ import {
 } from '@/utils/profile/service/profile.service'
 
 export const updateProfileFn = createServerFn({ method: 'POST' })
-  .inputValidator(updateProfileSchema)
+  .validator(updateProfileSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
 
@@ -24,12 +24,12 @@ export const updateProfileFn = createServerFn({ method: 'POST' })
   })
 
 export const updatePasswordFn = createServerFn({ method: 'POST' })
-  .inputValidator(updatePasswordSchema)
+  .validator(updatePasswordSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     await updatePasswordService(data.newPassword, user.id)
   })
 
 export const verifyEmailChangeFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: { token: string }) => data)
+  .validator((data: { token: string }) => data)
   .handler(async ({ data }) => verifyEmailChangeService(data.token))

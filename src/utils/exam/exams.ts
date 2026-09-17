@@ -32,28 +32,28 @@ import {
 } from '@/utils/exam/service/exam.service'
 
 export const createExam = createServerFn({ method: 'POST' })
-  .inputValidator(createExamSchema)
+  .validator(createExamSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return createExamService(data, user.id)
   })
 
 export const publishExam = createServerFn({ method: 'POST' })
-  .inputValidator(publishExamSchema)
+  .validator(publishExamSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return publishExamService(data, user.id)
   })
 
 export const saveExamChanges = createServerFn({ method: 'POST' })
-  .inputValidator(saveExamChangesSchema)
+  .validator(saveExamChangesSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return saveExamChangesService(data, user.id)
   })
 
 export const getExamForAuthor = createServerFn({ method: 'GET' })
-  .inputValidator(getExamSchema)
+  .validator(getExamSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return getExamForAuthorService(data, user.id)
@@ -74,56 +74,56 @@ export const getExamsForStudent = createServerFn({ method: 'GET' }).handler(
 )
 
 export const startExamAttempt = createServerFn({ method: 'POST' })
-  .inputValidator(startAttemptSchema)
+  .validator(startAttemptSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return startAttemptService(data, user.id)
   })
 
 export const getExamAttemptForTaking = createServerFn({ method: 'GET' })
-  .inputValidator(getAttemptForTakingSchema)
+  .validator(getAttemptForTakingSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return getAttemptForTakingService(data, user.id)
   })
 
 export const saveExamAnswer = createServerFn({ method: 'POST' })
-  .inputValidator(saveAnswerSchema)
+  .validator(saveAnswerSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return saveAnswerService(data, user.id)
   })
 
 export const submitExamAttempt = createServerFn({ method: 'POST' })
-  .inputValidator(submitAttemptSchema)
+  .validator(submitAttemptSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return submitAttemptService(data, user.id)
   })
 
 export const listExamAttemptsForGrading = createServerFn({ method: 'GET' })
-  .inputValidator(listAttemptsForGradingSchema)
+  .validator(listAttemptsForGradingSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return listAttemptsForGradingService(data, user.id)
   })
 
 export const getExamAttemptForGrading = createServerFn({ method: 'GET' })
-  .inputValidator(getAttemptForGradingSchema)
+  .validator(getAttemptForGradingSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return getAttemptForGradingService(data, user.id)
   })
 
 export const gradeExamOpenAnswer = createServerFn({ method: 'POST' })
-  .inputValidator(gradeOpenAnswerSchema)
+  .validator(gradeOpenAnswerSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return gradeOpenAnswerService(data, user.id)
   })
 
 export const finalizeExamGrading = createServerFn({ method: 'POST' })
-  .inputValidator(finalizeGradingSchema)
+  .validator(finalizeGradingSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return finalizeGradingService(data, user.id)

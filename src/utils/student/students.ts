@@ -14,7 +14,7 @@ export const getStudents = createServerFn({ method: 'POST' }).handler(
 )
 
 export const getStudentDetail = createServerFn({ method: 'POST' })
-  .inputValidator(getStudentDetailSchema)
+  .validator(getStudentDetailSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return getStudentDetailService(data, user.id)

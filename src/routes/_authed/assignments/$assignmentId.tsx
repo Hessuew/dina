@@ -33,7 +33,7 @@ import { AssignmentDetailSections } from '@/components/assignment/assignment-det
 import { trackAssignmentSubmitted } from '@/utils/analytics'
 
 const getAssignmentData = createServerFn({ method: 'POST' })
-  .inputValidator((d: { assignmentId: string }) => d)
+  .validator((d: { assignmentId: string }) => d)
   .handler(async ({ data }) => {
     try {
       return await getAssignment({ data })
@@ -44,7 +44,7 @@ const getAssignmentData = createServerFn({ method: 'POST' })
   })
 
 const getSubmissionsData = createServerFn({ method: 'POST' })
-  .inputValidator((d: { assignmentId: string }) => d)
+  .validator((d: { assignmentId: string }) => d)
   .handler(async ({ data }) => {
     try {
       return await getAssignmentSubmissions({ data })

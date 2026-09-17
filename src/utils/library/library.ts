@@ -47,49 +47,49 @@ export const getLibraryMedia = createServerFn({ method: 'POST' }).handler(
 )
 
 export const getLibraryMediaItem = createServerFn({ method: 'POST' })
-  .inputValidator(getMediaSchema)
+  .validator(getMediaSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return getLibraryMediaItemService(data, user.id)
   })
 
 export const createLibraryMedia = createServerFn({ method: 'POST' })
-  .inputValidator(createMediaSchema)
+  .validator(createMediaSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return createLibraryMediaService(data, user.id)
   })
 
 export const updateLibraryMedia = createServerFn({ method: 'POST' })
-  .inputValidator(updateMediaSchema)
+  .validator(updateMediaSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return updateLibraryMediaService(data, user.id)
   })
 
 export const deleteLibraryMedia = createServerFn({ method: 'POST' })
-  .inputValidator(deleteMediaSchema)
+  .validator(deleteMediaSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return deleteLibraryMediaService(data, user.id)
   })
 
 export const requestMediaFileUploadFn = createServerFn({ method: 'POST' })
-  .inputValidator(requestMediaFileUploadSchema)
+  .validator(requestMediaFileUploadSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return requestMediaFileUploadService(data, user.id)
   })
 
 export const requestMediaThumbnailUploadFn = createServerFn({ method: 'POST' })
-  .inputValidator(requestMediaThumbnailUploadSchema)
+  .validator(requestMediaThumbnailUploadSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return requestMediaThumbnailUploadService(data, user.id)
   })
 
 export const uploadMediaThumbnailFn = createServerFn({ method: 'POST' })
-  .inputValidator(uploadMediaThumbnailSchema)
+  .validator(uploadMediaThumbnailSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return uploadMediaThumbnailService(data, user.id)

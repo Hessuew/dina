@@ -11,13 +11,13 @@ import {
 } from '@/utils/signup/service/signup.service'
 
 export const signupFn = createServerFn({ method: 'POST' })
-  .inputValidator(signupSchema)
+  .validator(signupSchema)
   .handler(async ({ data }) => signupService(data))
 
 export const verifyOtpFn = createServerFn({ method: 'POST' })
-  .inputValidator(verifyOtpSchema)
+  .validator(verifyOtpSchema)
   .handler(async ({ data }) => verifyOtpService(data))
 
 export const resendOtpFn = createServerFn({ method: 'POST' })
-  .inputValidator(resendOtpSchema)
+  .validator(resendOtpSchema)
   .handler(async ({ data }) => resendOtpService(data))

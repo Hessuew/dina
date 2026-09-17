@@ -17,28 +17,28 @@ import {
 } from '@/utils/attendance/service/attendance.service'
 
 export const getCourseAttendanceState = createServerFn({ method: 'POST' })
-  .inputValidator(courseIdSchema)
+  .validator(courseIdSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return getCourseAttendanceStateService(data, user.id)
   })
 
 export const startOrReopenAttendance = createServerFn({ method: 'POST' })
-  .inputValidator(startAttendanceSchema)
+  .validator(startAttendanceSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return startOrReopenAttendanceService(data, user.id)
   })
 
 export const closeAttendance = createServerFn({ method: 'POST' })
-  .inputValidator(closeAttendanceSchema)
+  .validator(closeAttendanceSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return closeAttendanceService(data, user.id)
   })
 
 export const markPresent = createServerFn({ method: 'POST' })
-  .inputValidator(markPresentSchema)
+  .validator(markPresentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return markPresentService(data, user.id)
@@ -52,7 +52,7 @@ export const listOpenAttendanceForStudent = createServerFn({
 })
 
 export const setStudentPresent = createServerFn({ method: 'POST' })
-  .inputValidator(setStudentPresentSchema)
+  .validator(setStudentPresentSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return setStudentPresentService(data, user.id)

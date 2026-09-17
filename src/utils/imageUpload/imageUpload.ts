@@ -14,28 +14,28 @@ import {
 } from '@/utils/imageUpload/service/imageUpload.service'
 
 export const requestAvatarUploadFn = createServerFn({ method: 'POST' })
-  .inputValidator(requestAvatarUploadSchema)
+  .validator(requestAvatarUploadSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return requestAvatarUploadService(data, user.id)
   })
 
 export const uploadAvatarFn = createServerFn({ method: 'POST' })
-  .inputValidator(uploadAvatarSchema)
+  .validator(uploadAvatarSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return uploadAvatarService(data, user.id)
   })
 
 export const requestCourseThumbnailUploadFn = createServerFn({ method: 'POST' })
-  .inputValidator(requestCourseThumbnailUploadSchema)
+  .validator(requestCourseThumbnailUploadSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return requestCourseThumbnailUploadService(data, user.id)
   })
 
 export const uploadCourseThumbnailFn = createServerFn({ method: 'POST' })
-  .inputValidator(uploadCourseThumbnailSchema)
+  .validator(uploadCourseThumbnailSchema)
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return uploadCourseThumbnailService(data, user.id)
