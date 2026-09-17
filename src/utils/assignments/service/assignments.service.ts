@@ -24,11 +24,7 @@ import {
   findAssignmentsForTeacherLessons,
   findPublishedAssignmentsForStudent,
 } from '@/utils/assignments/repository/assignments.repository'
-import {
-  findLessonById,
-  findLessonIdsByCourseIds,
-  findLessonWithDetail,
-} from '@/utils/assignments/repository/lessons.repository'
+import { findLessonWithDetail } from '@/utils/assignments/repository/lessons.repository'
 import {
   findCompletedLessonIdsForStudent,
   findCourseIdsByTeacher,
@@ -36,6 +32,8 @@ import {
 import {
   deleteAssignmentById,
   findAssignmentSubmissionsWithStudent,
+  findLessonById,
+  findLessonIdsByCourseIds,
   findSubmissionByAssignmentAndStudent,
   findSubmissionById,
   insertAssignment,

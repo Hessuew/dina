@@ -506,7 +506,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     and email-campaign services. The course-teacher repository owns
     course-teacher-only lookups reused by assignment services. New profile-only,
     enrollment-only, invitation-only, assignment-only, or submission-only access must use
-    `@/utils/repository`.
+    `@/utils/repository`. `lessons.repository.ts` now owns lesson-only reads and
+    writes reused across assignment and course services. New lesson-only access
+    must use `@/utils/repository`; joined lesson/course/assignment reads remain
+    in their feature repositories.
   - Lesson detail reads require a persisted profile and expose unpublished
     lessons/draft assignments only to course teachers or admins; non-managers
     receive published lesson/assignment data only.

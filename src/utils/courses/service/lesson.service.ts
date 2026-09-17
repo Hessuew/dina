@@ -7,14 +7,16 @@ import type { LogLevel } from '@/utils/observability/logger'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
-  deleteLessonById,
   findAllCourseIds,
   findAssignmentCalendarEvents,
   findLessonCalendarEvents,
   findUpcomingLessons,
+} from '@/utils/courses/repository'
+import {
+  deleteLessonById,
   insertLesson,
   updateLessonById,
-} from '@/utils/courses/repository'
+} from '@/utils/repository'
 import { buildCourseCalendarEvents } from '@/utils/courses/domain/course.domain'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'

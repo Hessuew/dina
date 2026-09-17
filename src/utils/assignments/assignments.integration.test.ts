@@ -24,8 +24,7 @@ import {
   updateAssignmentService,
 } from '@/utils/assignments/service/assignments.service'
 import * as assignmentsRepository from '@/utils/assignments/repository/assignments.repository'
-import * as lessonsRepository from '@/utils/assignments/repository/lessons.repository'
-import * as submissionsRepository from '@/utils/repository'
+import * as sharedRepository from '@/utils/repository'
 import * as authUtils from '@/utils/auth/auth'
 import {
   seedAssignment,
@@ -86,7 +85,7 @@ describe('createAssignmentService (integration)', () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const lessonId = randomUUID()
     const repositoryError = new Error('assignment lesson database detail')
-    vi.spyOn(lessonsRepository, 'findLessonById').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findLessonById').mockRejectedValueOnce(
       repositoryError,
     )
 
@@ -713,7 +712,7 @@ describe('createOrUpdateSubmissionService (integration)', () => {
     const studentId = await seedProfile({ role: 'student' })
     const repositoryError = new Error('existing submission lookup detail')
     vi.spyOn(
-      submissionsRepository,
+      sharedRepository,
       'findSubmissionByAssignmentAndStudent',
     ).mockRejectedValueOnce(repositoryError)
 
@@ -1356,7 +1355,7 @@ describe('gradeSubmissionService (integration)', () => {
     const assignmentId = await seedAssignment({ lessonId, status: 'published' })
     const submissionId = randomUUID()
     const repositoryError = new Error('grading submission lookup detail')
-    vi.spyOn(submissionsRepository, 'findSubmissionById').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findSubmissionById').mockRejectedValueOnce(
       repositoryError,
     )
 
@@ -1454,7 +1453,7 @@ describe('gradeSubmissionService (integration)', () => {
     const repositoryError = new Error(
       'connectionString=secret; feedback=private submission',
     )
-    vi.spyOn(submissionsRepository, 'updateSubmissionGrade').mockRejectedValue(
+    vi.spyOn(sharedRepository, 'updateSubmissionGrade').mockRejectedValue(
       repositoryError,
     )
 
