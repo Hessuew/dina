@@ -32,8 +32,8 @@ import {
   findEnrollmentById,
   findEnrollmentContactLookupCandidates,
   findEnrollmentEmailsByGroup,
-  findInvitationByEmail,
 } from '@/utils/enrolment/repository/enrolment.repository'
+import { findInvitationByEmail } from '@/utils/invitation/repository/invitations.repository'
 import { AuthorizationError } from '@/utils/errors'
 import {
   seedCourse,
