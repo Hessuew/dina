@@ -545,8 +545,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     media-library-only or post-notification-only access must use
     `@/utils/repository`. `discipleship-assignments.repository.ts` owns
     discipleship-assignment-only reads and writes reused by the discipleship and Zoom Link
-    services; pair and group operations remain in the discipleship feature repository. New
-    discipleship-assignment-only access must use `@/utils/repository`.
+    services. `discipleship-groups.repository.ts` owns group-only reads and writes used by
+    the discipleship service; pair operations remain in the feature repository for a later
+    migration slice. New group-only access must use `@/utils/repository`.
     `email-messages.repository.ts` owns email-message log inserts used by the bulk email
     campaign; campaign recipient planning and email-campaign lock access remain in the
     email feature repository. New email-message-only access must use `@/utils/repository`.

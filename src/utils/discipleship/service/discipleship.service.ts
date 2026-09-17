@@ -31,22 +31,21 @@ import {
 import { buildStudentDiscipleshipView } from '@/utils/discipleship/domain/discipleship-student-view.domain'
 import {
   deletePair,
-  findAllGroups,
   findAllPairs,
-  findGroupsByTeacher,
   findPairById,
   findPairsByTeacher,
   insertPair,
   setPairAnchor,
-  upsertGroupAnchor,
 } from '@/utils/discipleship/repository'
 import {
   clearDiscipleshipAssignmentPair as clearAssignmentPair,
   deleteDiscipleshipAssignmentByStudentId as deleteAssignmentByStudentId,
   findAllDiscipleshipAssignments as findAllAssignments,
+  findAllDiscipleshipGroups as findAllGroups,
   findDiscipleshipAssignmentByStudentId as findAssignmentByStudentId,
   findDiscipleshipAssignmentsByPairId as findAssignmentsByPairId,
   findDiscipleshipAssignmentsByTeacher as findAssignmentsByTeacher,
+  findDiscipleshipGroupsByTeacher as findGroupsByTeacher,
   findPublicProfileById,
   findPublicProfilesByIds,
   findStaffProfiles,
@@ -55,6 +54,7 @@ import {
   setDiscipleshipAssignmentAnchor as setAssignmentAnchor,
   setDiscipleshipAssignmentPair as setAssignmentPair,
   updateDiscipleshipAssignmentTeacher as updateAssignmentTeacher,
+  upsertDiscipleshipGroupAnchor as upsertGroupAnchor,
 } from '@/utils/repository'
 import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
 import { logServerEvent } from '@/utils/observability/logger'

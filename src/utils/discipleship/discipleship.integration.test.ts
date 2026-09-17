@@ -166,6 +166,18 @@ describe('getDiscipleshipBoardService (integration)', () => {
     expect(board.students.some((s) => s.id === studentId)).toBe(true)
   })
 
+  it('persists group schedules through the shared group repository', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const anchorAt = new Date('2026-09-11T10:00:00.000Z')
+
+    await setGroupScheduleService({ teacherId, anchorAt }, teacherId)
+
+    const board = await getDiscipleshipBoardService(teacherId)
+    expect(board.groups).toEqual([
+      { teacherId, anchorAt: anchorAt.toISOString() },
+    ])
+  })
+
   it('rejects students from the manage board', async () => {
     const studentId = await seedProfile({ role: 'student' })
 
