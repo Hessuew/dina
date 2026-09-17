@@ -2,9 +2,7 @@ import {
   findAllAssignments,
   findAllCourses,
   findAllCoursesDesc,
-  findAllStudents,
   findAssignmentsWithDetails,
-  findStudentById,
   findSubmissionsForStudents,
   findSubmittedSubmissionsForStudent,
 } from '../repository'
@@ -32,6 +30,7 @@ import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { getUserProfile } from '@/utils/auth/auth'
 import { hasStaffPrivilege, resolveAdminOrTeacherAccess } from '@/utils/authz'
 import { findCourseAssignmentsForTeachers } from '@/utils/teachers/repository/course-teachers.repository'
+import { findAllStudents, findStudentById } from '@/utils/repository'
 import { AuthorizationError, NotFoundError, isAppError } from '@/utils/errors'
 import {
   signAvatarRows,

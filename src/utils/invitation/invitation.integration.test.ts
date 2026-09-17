@@ -16,7 +16,7 @@ import {
   findInvitationById,
 } from '@/utils/invitation/repository/invitations.repository'
 import * as invitationsRepository from '@/utils/invitation/repository/invitations.repository'
-import * as profilesRepository from '@/utils/invitation/repository/profiles.repository'
+import * as profilesRepository from '@/utils/repository'
 import * as authUtils from '@/utils/auth/auth'
 import { seedInvitation, seedProfile } from '@/../test/integration/seed'
 import { setEmailSender } from '@/utils/email'

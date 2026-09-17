@@ -491,6 +491,12 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `postNotifications.ts` - Authenticated notification summary and
     mark-read operations; the service boundary requires a persisted profile
     before notification reads or read-state updates.
+  - `repository/` - Shared table-oriented database seams. `profiles.repository.ts`
+    is the single owner for profile-only reads and writes reused across features
+    (email, identity, student, teacher, and enrollment support). Feature
+    repositories remain responsible for aggregate or joined queries until their
+    tables are migrated to this shared layer; new profile-only access must use
+    `@/utils/repository`.
   - Lesson detail reads require a persisted profile and expose unpublished
     lessons/draft assignments only to course teachers or admins; non-managers
     receive published lesson/assignment data only.

@@ -7,11 +7,10 @@ import {
   signupService,
   verifyOtpService,
 } from '@/utils/signup/service/signup.service'
-import {
-  findInvitationByToken,
-  findProfileByEmail,
-} from '@/utils/signup/repository'
+import { findInvitationByToken } from '@/utils/signup/repository'
 import * as signupRepository from '@/utils/signup/repository'
+import { findProfileByEmail } from '@/utils/repository'
+import * as profilesRepository from '@/utils/repository'
 import { hashValue } from '@/utils/signup/domain/signup.domain'
 import { seedInvitation, seedProfile } from '@/../test/integration/seed'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
@@ -479,7 +478,7 @@ describe('verifyOtpService (integration)', () => {
       data: null,
       error: { code: 'email_exists', message: 'already exists' },
     })
-    vi.spyOn(signupRepository, 'findProfileByEmail').mockRejectedValueOnce(
+    vi.spyOn(profilesRepository, 'findProfileByEmail').mockRejectedValueOnce(
       repositoryError,
     )
 

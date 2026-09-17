@@ -42,7 +42,6 @@ import {
   deleteCourseSubstituteByAbsent,
   deleteEnrollmentById,
   findAbsentTeacherIdsWithActiveSubstitution,
-  findAllTeacherIds,
   findAwaitingApprovalIdsWithSum,
   findCourseIdByTeacherId,
   findCourseIdsByTeacherIds,
@@ -54,7 +53,6 @@ import {
   findEnrollmentsPage,
   findEvaluationsForEnrollments,
   findPeersForReviewers,
-  findProfileById,
   findReviewerAssignmentForEnrollment,
   findReviewerAssignmentsForEnrollments,
   findUnassignedEnrollmentIds,
@@ -66,6 +64,7 @@ import {
   updateInvitationToken,
   upsertEvaluation,
 } from '@/utils/enrolment/repository/enrolment.repository'
+import { findAllTeacherIds, findProfileById } from '@/utils/repository'
 import {
   deleteInvitationById,
   findInvitationByEmail,

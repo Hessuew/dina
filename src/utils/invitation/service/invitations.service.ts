@@ -22,7 +22,7 @@ import {
   revokeInvitationById,
   updateInvitationById,
 } from '@/utils/invitation/repository/invitations.repository'
-import { findProfileByEmail } from '@/utils/invitation/repository/profiles.repository'
+import { findProfileByEmail } from '@/utils/repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import {
   AppError,

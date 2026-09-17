@@ -11,9 +11,9 @@ import {
   findCourseAssignmentsByTeacherIds,
   findCourseById,
   findCourseTeachers,
-  findTeachersByIds,
   replaceTeacherAssignments,
 } from '@/utils/courses/repository'
+import { findProfilesByIds } from '@/utils/repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { ConflictError, NotFoundError, isAppError } from '@/utils/errors'
@@ -125,7 +125,7 @@ export async function validateTeacherPair(
   allowAdmin = false,
 ): Promise<void> {
   validateSameTeacher(teacher1Id, teacher2Id)
-  const teachers = await findTeachersByIds([teacher1Id, teacher2Id])
+  const teachers = await findProfilesByIds([teacher1Id, teacher2Id])
   validateTeacherRoles(teachers, teacher1Id, teacher2Id, allowAdmin)
 }
 

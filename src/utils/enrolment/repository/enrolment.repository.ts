@@ -515,13 +515,6 @@ export async function findPeersForReviewers(
   return result
 }
 
-export async function findProfileById(userId: string) {
-  const db = await getDb()
-  return db.query.profiles.findFirst({
-    where: eq(profiles.id, userId),
-  })
-}
-
 export async function updateInvitationToken(
   invitationId: string,
   token: string,
@@ -563,16 +556,6 @@ export async function findUnassignedEnrollmentIds(): Promise<Array<string>> {
     )
     .orderBy(asc(enrollments.createdAt))
 
-  return rows.map((r) => r.id)
-}
-
-export async function findAllTeacherIds(): Promise<Array<string>> {
-  const db = await getDb()
-  const rows = await db
-    .select({ id: profiles.id })
-    .from(profiles)
-    .where(inArray(profiles.role, ['teacher', 'admin']))
-    .orderBy(asc(profiles.createdAt))
   return rows.map((r) => r.id)
 }
 

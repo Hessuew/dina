@@ -29,7 +29,7 @@ import {
   calculateInvitationExpiry,
   generateSecureToken,
 } from '@/utils/invitation/domain/invitations.domain'
-import { findProfileById } from '@/utils/enrolment/repository/enrolment.repository'
+import { findProfileById } from '@/utils/repository'
 import { authz } from '@/utils/authz'
 import {
   CampaignLockedError,

@@ -3,11 +3,10 @@ import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { sortTeachers } from '@/utils/teachers/domain/teachers.domain'
 import {
-  findAllTeachers,
-  findAllTeachersSimple,
   findCourseAssignmentsForTeachers,
   findCourseTeacher,
 } from '@/utils/teachers/repository'
+import { findAllTeachers } from '@/utils/repository'
 import { authz } from '@/utils/authz'
 import { getUserProfile } from '@/utils/auth/auth'
 import { isAppError } from '@/utils/errors'
@@ -144,10 +143,23 @@ export async function getAllTeachersService(userId: string) {
     context,
     async () => {
       await authz(userId).hasRole('admin')
-      const rows = await signAvatarRows(await findAllTeachersSimple())
-      const teachers = rows.map(({ courseTeachers, ...teacher }) => ({
-        ...teacher,
-        courseId: courseTeachers[0]?.courseId ?? null,
+      const rows = await signAvatarRows(await findAllTeachers())
+      const assignments = await findCourseAssignmentsForTeachers(
+        rows.map((teacher) => teacher.id),
+      )
+      const courseIdByTeacherId = new Map<string, string>()
+      for (const assignment of assignments) {
+        if (!courseIdByTeacherId.has(assignment.teacherId)) {
+          courseIdByTeacherId.set(assignment.teacherId, assignment.courseId)
+        }
+      }
+      const teachers = rows.map((teacher) => ({
+        id: teacher.id,
+        fullName: teacher.fullName,
+        email: teacher.email,
+        role: teacher.role,
+        avatarUrl: teacher.avatarUrl,
+        courseId: courseIdByTeacherId.get(teacher.id) ?? null,
       }))
 
       return { teachers }

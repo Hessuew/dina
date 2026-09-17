@@ -13,7 +13,7 @@ import {
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 import { AuthorizationError, NotFoundError } from '@/utils/errors'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
-import * as studentRepository from '@/utils/student/repository'
+import * as profilesRepository from '@/utils/repository'
 import * as authorizationUtils from '@/utils/authz'
 
 afterEach(() => {
@@ -139,7 +139,7 @@ describe('getStudentsService (integration)', () => {
     const repositoryError = new Error(
       'connectionString=secret; email=private.student@test.dev',
     )
-    vi.spyOn(studentRepository, 'findAllStudents').mockRejectedValueOnce(
+    vi.spyOn(profilesRepository, 'findAllStudents').mockRejectedValueOnce(
       repositoryError,
     )
 
@@ -246,7 +246,7 @@ describe('getStudentDetailService (integration)', () => {
     const repositoryError = new Error(
       'student directory connectionString=secret; email=private@test.dev',
     )
-    vi.spyOn(studentRepository, 'findStudentById').mockRejectedValueOnce(
+    vi.spyOn(profilesRepository, 'findStudentById').mockRejectedValueOnce(
       repositoryError,
     )
 
