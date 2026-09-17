@@ -10,6 +10,7 @@ import {
 } from '@/utils/teachers/repository'
 import { authz } from '@/utils/authz'
 import { getUserProfile } from '@/utils/auth/auth'
+import { isAppError } from '@/utils/errors'
 import { findPrivilegesForUsers } from '@/utils/staff-privilege/repository'
 import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
 
@@ -18,6 +19,12 @@ type TeacherDirectoryReadAction = 'getTeachers' | 'getAllTeachers'
 type TeacherDirectoryReadContext = {
   action: TeacherDirectoryReadAction
   actorId: string
+  startedAt: number
+}
+
+type CourseTeacherCheckContext = {
+  actorId: string
+  courseId: string
   startedAt: number
 }
 
@@ -37,6 +44,20 @@ function logTeacherDirectoryEvent(
   })
 }
 
+function logCourseTeacherCheckFailure(
+  context: CourseTeacherCheckContext,
+): void {
+  logServerEvent('error', 'course_teacher_check_failed', {
+    requestId: getRequestId(),
+    path: 'service:isCourseTeacher',
+    status: 'failure',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    courseId: context.courseId,
+    errorCategory: 'course_teacher_read_persistence',
+  })
+}
+
 async function withTeacherDirectoryTelemetry<T>(
   context: TeacherDirectoryReadContext,
   read: () => Promise<T>,
@@ -49,18 +70,19 @@ async function withTeacherDirectoryTelemetry<T>(
     })
     return result
   } catch (error) {
-    logTeacherDirectoryEvent(
-      'error',
-      'teacher_directory_load_failed',
-      context,
-      { errorCategory: 'teacher_directory_read_persistence' },
-    )
+    if (!isAppError(error) || error.status >= 500) {
+      logTeacherDirectoryEvent(
+        'error',
+        'teacher_directory_load_failed',
+        context,
+        { errorCategory: 'teacher_directory_read_persistence' },
+      )
+    }
     throw error
   }
 }
 
 export async function getTeachersService(actorId: string) {
-  const profile = await getUserProfile(actorId)
   const context: TeacherDirectoryReadContext = {
     action: 'getTeachers',
     actorId,
@@ -70,6 +92,7 @@ export async function getTeachersService(actorId: string) {
   return withTeacherDirectoryTelemetry(
     context,
     async () => {
+      const profile = await getUserProfile(actorId)
       const teachers = await signAvatarRows(await findAllTeachers())
 
       const teacherIds = teachers.map((t) => t.id)
@@ -111,7 +134,6 @@ export async function getTeachersService(actorId: string) {
 }
 
 export async function getAllTeachersService(userId: string) {
-  await authz(userId).hasRole('admin')
   const context: TeacherDirectoryReadContext = {
     action: 'getAllTeachers',
     actorId: userId,
@@ -121,6 +143,7 @@ export async function getAllTeachersService(userId: string) {
   return withTeacherDirectoryTelemetry(
     context,
     async () => {
+      await authz(userId).hasRole('admin')
       const rows = await signAvatarRows(await findAllTeachersSimple())
       const teachers = rows.map(({ courseTeachers, ...teacher }) => ({
         ...teacher,
@@ -134,6 +157,17 @@ export async function getAllTeachersService(userId: string) {
 }
 
 export async function isCourseTeacherService(courseId: string, userId: string) {
-  const assignment = await findCourseTeacher(courseId, userId)
-  return { isCourseTeacher: Boolean(assignment) }
+  const context: CourseTeacherCheckContext = {
+    actorId: userId,
+    courseId,
+    startedAt: performance.now(),
+  }
+
+  try {
+    const assignment = await findCourseTeacher(courseId, userId)
+    return { isCourseTeacher: Boolean(assignment) }
+  } catch (error) {
+    logCourseTeacherCheckFailure(context)
+    throw error
+  }
 }

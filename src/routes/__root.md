@@ -24,8 +24,11 @@ Defines the root route for TanStack Router and establishes the global applicatio
 ## Key Entry Points
 
 - `fetchUser` server function
-  - Uses `getSupabaseServerClient()` to get Supabase auth user.
-  - Looks up the user profile via Drizzle to enrich the UI user object.
+  - Delegates to `getRootUserContext` in `src/utils/auth/auth.ts` for the
+    Supabase auth lookup and Drizzle profile enrichment.
+  - Unexpected session/profile persistence failures emit the existing redacted
+    auth lookup events with the `auth:fetchUser` path; unauthenticated users
+    still resolve to `null`.
 
 - `Route = createRootRoute({ beforeLoad })`
   - Calls `fetchUser` and returns `{ user }` to populate route context.

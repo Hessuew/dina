@@ -32,7 +32,7 @@ import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { getUserProfile } from '@/utils/auth/auth'
 import { hasStaffPrivilege, resolveAdminOrTeacherAccess } from '@/utils/authz'
 import { findCourseAssignmentsForTeachers } from '@/utils/teachers/repository/course-teachers.repository'
-import { AuthorizationError, NotFoundError } from '@/utils/errors'
+import { AuthorizationError, NotFoundError, isAppError } from '@/utils/errors'
 import {
   signAvatarRows,
   signPrivateStoragePath,
@@ -81,14 +81,16 @@ async function withStudentDirectoryTelemetry<T>(
     })
     return result
   } catch (error) {
-    logStudentDirectoryEvent(
-      'error',
-      'student_directory_load_failed',
-      context,
-      {
-        errorCategory: 'student_directory_read_persistence',
-      },
-    )
+    if (!isAppError(error) || error.status >= 500) {
+      logStudentDirectoryEvent(
+        'error',
+        'student_directory_load_failed',
+        context,
+        {
+          errorCategory: 'student_directory_read_persistence',
+        },
+      )
+    }
     throw error
   }
 }
@@ -135,15 +137,19 @@ async function loadStudents(): Promise<{ students: Array<StudentWithStats> }> {
 }
 
 export async function getStudentsService(actorId: string) {
-  await requireStaffViewer(actorId)
   const context: StudentDirectoryReadContext = {
     action: 'getStudents',
     actorId,
     startedAt: performance.now(),
   }
-  return withStudentDirectoryTelemetry(context, loadStudents, (result) => ({
-    studentCount: result.students.length,
-  }))
+  return withStudentDirectoryTelemetry(
+    context,
+    async () => {
+      await requireStaffViewer(actorId)
+      return loadStudents()
+    },
+    (result) => ({ studentCount: result.students.length }),
+  )
 }
 
 async function resolveManageableCourseIds(
@@ -220,24 +226,24 @@ export async function getStudentDetailService(
   data: GetStudentDetailInput,
   actorId: string,
 ) {
-  await requireStaffViewer(actorId)
-  const student = await findStudentById(data.studentId)
-
-  if (!student) {
-    throw new NotFoundError('Student not found', {
-      details: { studentId: data.studentId },
-    })
-  }
-
   const context: StudentDirectoryReadContext = {
     action: 'getStudentDetail',
     actorId,
-    targetStudentId: student.id,
+    targetStudentId: data.studentId,
     startedAt: performance.now(),
   }
   return withStudentDirectoryTelemetry(
     context,
-    () => loadStudentDetail(student, actorId),
+    async () => {
+      await requireStaffViewer(actorId)
+      const student = await findStudentById(data.studentId)
+      if (!student) {
+        throw new NotFoundError('Student not found', {
+          details: { studentId: data.studentId },
+        })
+      }
+      return loadStudentDetail(student, actorId)
+    },
     (result) => ({
       assignmentCount: result.student.assignments.length,
       enrollmentCount: result.student.enrollments.length,

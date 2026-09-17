@@ -23,7 +23,7 @@ import {
 import { buildCourseCalendarEvents } from '@/utils/courses/domain/course.domain'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
-import { AuthorizationError, NotFoundError } from '@/utils/errors'
+import { AuthorizationError, NotFoundError, isAppError } from '@/utils/errors'
 
 type LessonMutationAction =
   'createLesson' | 'updateLesson' | 'deleteLesson' | 'completeLesson'
@@ -33,6 +33,7 @@ type LessonMutationLogContext = {
   actorId: string
   courseId?: string
   lessonId?: string
+  failureEvent: string
   startedAt: number
 }
 
@@ -54,6 +55,72 @@ function logLessonMutationEvent(
   })
 }
 
+function shouldLogLessonPreflightFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function requireLessonAuthorization(
+  context: LessonMutationLogContext,
+  authorize: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    await authorize()
+  } catch (error) {
+    if (shouldLogLessonPreflightFailure(error)) {
+      logLessonMutationEvent('error', context.failureEvent, context, {
+        errorCategory: 'lesson_authorization_persistence',
+      })
+    }
+    throw error
+  }
+}
+
+async function loadLessonCompletionPreflight(
+  data: CompleteLessonInput,
+  userId: string,
+  context: LessonMutationLogContext,
+) {
+  let lesson: Awaited<ReturnType<typeof findLessonForCompletion>>
+  try {
+    lesson = await findLessonForCompletion(data.lessonId)
+  } catch (error) {
+    if (shouldLogLessonPreflightFailure(error)) {
+      logLessonMutationEvent('error', 'lesson_completion_failed', context, {
+        errorCategory: 'lesson_read_persistence',
+      })
+    }
+    throw error
+  }
+
+  if (!lesson) {
+    throw new NotFoundError('Lesson not found', {
+      code: 'LESSON_NOT_FOUND',
+      details: { lessonId: data.lessonId },
+    })
+  }
+  if (!lesson.isPublished) {
+    throw new AuthorizationError('Lesson not available', {
+      details: { lessonId: data.lessonId },
+    })
+  }
+
+  context.courseId = lesson.courseId
+
+  let progress: Awaited<ReturnType<typeof findLessonProgress>>
+  try {
+    progress = await findLessonProgress(userId, lesson.id)
+  } catch (error) {
+    if (shouldLogLessonPreflightFailure(error)) {
+      logLessonMutationEvent('error', 'lesson_completion_failed', context, {
+        errorCategory: 'lesson_progress_read_persistence',
+      })
+    }
+    throw error
+  }
+
+  return { lesson, progress }
+}
+
 export async function createLessonService(
   data: CreateLessonInput,
   userId: string,
@@ -62,9 +129,12 @@ export async function createLessonService(
     action: 'createLesson',
     actorId: userId,
     courseId: data.courseId,
+    failureEvent: 'lesson_create_failed',
     startedAt: performance.now(),
   }
-  await authz(userId).perform('createLesson').on('course', data.courseId)
+  await requireLessonAuthorization(context, () =>
+    authz(userId).perform('createLesson').on('course', data.courseId),
+  )
 
   try {
     const lesson = await insertLesson({
@@ -101,9 +171,12 @@ export async function updateLessonService(
     actorId: userId,
     courseId: data.courseId,
     lessonId: data.lessonId,
+    failureEvent: 'lesson_update_failed',
     startedAt: performance.now(),
   }
-  await authz(userId).perform('editLesson').on('course', data.courseId)
+  await requireLessonAuthorization(context, () =>
+    authz(userId).perform('editLesson').on('course', data.courseId),
+  )
 
   try {
     const lesson = await updateLessonById(data.lessonId, {
@@ -137,9 +210,12 @@ export async function deleteLessonService(
     actorId: userId,
     courseId: data.courseId,
     lessonId: data.lessonId,
+    failureEvent: 'lesson_delete_failed',
     startedAt: performance.now(),
   }
-  await authz(userId).perform('deleteLesson').on('course', data.courseId)
+  await requireLessonAuthorization(context, () =>
+    authz(userId).perform('deleteLesson').on('course', data.courseId),
+  )
   try {
     await deleteLessonById(data.lessonId)
     logLessonMutationEvent('info', 'lesson_deleted', context)
@@ -161,25 +237,18 @@ export async function completeLessonService(
     action: 'completeLesson',
     actorId: userId,
     lessonId: data.lessonId,
+    failureEvent: 'lesson_completion_failed',
     startedAt: performance.now(),
   }
-  await authz(userId).hasRole('student')
+  await requireLessonAuthorization(context, () =>
+    authz(userId).hasRole('student'),
+  )
 
-  const lesson = await findLessonForCompletion(data.lessonId)
-  if (!lesson) {
-    throw new NotFoundError('Lesson not found', {
-      code: 'LESSON_NOT_FOUND',
-      details: { lessonId: data.lessonId },
-    })
-  }
-  if (!lesson.isPublished) {
-    throw new AuthorizationError('Lesson not available', {
-      details: { lessonId: data.lessonId },
-    })
-  }
-
-  const progress = await findLessonProgress(userId, lesson.id)
-  context.courseId = lesson.courseId
+  const { lesson, progress } = await loadLessonCompletionPreflight(
+    data,
+    userId,
+    context,
+  )
 
   try {
     const updatedProgress = await completeLessonProgress(userId, lesson.id)
@@ -212,10 +281,10 @@ export async function completeLessonService(
 }
 
 export async function getUpcomingLessonsService(userId: string) {
-  await getUserProfile(userId)
   const startedAt = performance.now()
 
   try {
+    await getUserProfile(userId)
     const upcomingLessons = await findUpcomingLessons(new Date())
     const lessons = upcomingLessons.map((l) => ({
       id: l.id,
@@ -237,28 +306,71 @@ export async function getUpcomingLessonsService(userId: string) {
 
     return { lessons }
   } catch (error) {
-    logServerEvent('error', 'upcoming_lessons_load_failed', {
-      requestId: getRequestId(),
-      path: 'serverFn:getUpcomingLessons',
-      status: 'failure',
-      durationMs: elapsedMs(startedAt),
-      actorId: userId,
-      errorCategory: 'upcoming_lessons_read_persistence',
-    })
+    if (shouldLogLessonPreflightFailure(error)) {
+      logServerEvent('error', 'upcoming_lessons_load_failed', {
+        requestId: getRequestId(),
+        path: 'serverFn:getUpcomingLessons',
+        status: 'failure',
+        durationMs: elapsedMs(startedAt),
+        actorId: userId,
+        errorCategory: 'upcoming_lessons_read_persistence',
+      })
+    }
     throw error
   }
 }
 
 export async function getCalendarEventsService(userId: string) {
-  await getUserProfile(userId)
+  const startedAt = performance.now()
 
-  const courseIds = await findAllCourseIds()
-  if (courseIds.length === 0) return { events: [] }
+  try {
+    await getUserProfile(userId)
+    const courseIds = await findAllCourseIds()
+    if (courseIds.length === 0) {
+      logServerEvent('info', 'course_calendar_events_loaded', {
+        requestId: getRequestId(),
+        path: 'serverFn:getCalendarEvents',
+        status: 'success',
+        durationMs: elapsedMs(startedAt),
+        actorId: userId,
+        courseCount: 0,
+        lessonEventCount: 0,
+        assignmentEventCount: 0,
+        eventCount: 0,
+      })
+      return { events: [] }
+    }
 
-  const [lessonEvents, assignmentEvents] = await Promise.all([
-    findLessonCalendarEvents(courseIds),
-    findAssignmentCalendarEvents(courseIds),
-  ])
+    const [lessonEvents, assignmentEvents] = await Promise.all([
+      findLessonCalendarEvents(courseIds),
+      findAssignmentCalendarEvents(courseIds),
+    ])
+    const events = buildCourseCalendarEvents(lessonEvents, assignmentEvents)
 
-  return { events: buildCourseCalendarEvents(lessonEvents, assignmentEvents) }
+    logServerEvent('info', 'course_calendar_events_loaded', {
+      requestId: getRequestId(),
+      path: 'serverFn:getCalendarEvents',
+      status: 'success',
+      durationMs: elapsedMs(startedAt),
+      actorId: userId,
+      courseCount: courseIds.length,
+      lessonEventCount: lessonEvents.length,
+      assignmentEventCount: assignmentEvents.length,
+      eventCount: events.length,
+    })
+
+    return { events }
+  } catch (error) {
+    if (shouldLogLessonPreflightFailure(error)) {
+      logServerEvent('error', 'course_calendar_events_load_failed', {
+        requestId: getRequestId(),
+        path: 'serverFn:getCalendarEvents',
+        status: 'failure',
+        durationMs: elapsedMs(startedAt),
+        actorId: userId,
+        errorCategory: 'course_calendar_read_persistence',
+      })
+    }
+    throw error
+  }
 }

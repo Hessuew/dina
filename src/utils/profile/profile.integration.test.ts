@@ -13,6 +13,7 @@ import {
   updateProfileWithEmailChangeService,
   verifyEmailChangeService,
 } from '@/utils/profile/service/profile.service'
+import * as profileRepository from '@/utils/profile/repository'
 import { accountSecurity, profiles } from '@/db/schema'
 
 const sendEmail = vi.hoisted(() => vi.fn())
@@ -107,6 +108,35 @@ describe('updateProfileBasicService (integration)', () => {
 })
 
 describe('updateProfileWithEmailChangeService (integration)', () => {
+  it('categorizes request lookup failures without raw repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const userId = 'email-change-request-user'
+    const repositoryError = new Error('email change request database detail')
+    vi.spyOn(
+      profileRepository,
+      'findLastEmailChangeRequestAt',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      updateProfileWithEmailChangeService(makeInput(), makeUser(userId)),
+    ).rejects.toBe(repositoryError)
+
+    const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+    const event = serialized
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .find((entry) => entry.event === 'email_change_request_failed')
+    expect(event).toMatchObject({
+      event: 'email_change_request_failed',
+      path: 'serverFn:updateProfile',
+      status: 'failure',
+      errorCategory: 'email_change_read_persistence',
+      userId,
+    })
+    expect(serialized.join('\n')).not.toContain(
+      'email change request database detail',
+    )
+  })
+
   it('persists pending email + token and sends the verification email', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const id = await seedProfile({ email: 'old@test.dev' })
@@ -201,6 +231,39 @@ describe('updateProfileWithEmailChangeService (integration)', () => {
       'provider unavailable',
     )
   })
+
+  it('categorizes cleanup failures without exposing the delivery error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const id = await seedProfile({ email: 'old@test.dev' })
+    const cleanupError = new Error('email change cleanup database detail')
+    sendEmail.mockRejectedValue(new Error('provider unavailable'))
+    vi.spyOn(profileRepository, 'clearEmailChangeTokens').mockRejectedValueOnce(
+      cleanupError,
+    )
+
+    await expect(
+      updateProfileWithEmailChangeService(
+        makeInput({ email: 'pending@test.dev' }),
+        makeUser(id),
+      ),
+    ).rejects.toBe(cleanupError)
+
+    const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+    const event = serialized
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .find((entry) => entry.event === 'email_change_cleanup_failed')
+    expect(event).toMatchObject({
+      event: 'email_change_cleanup_failed',
+      path: 'serverFn:updateProfile',
+      status: 'failure',
+      errorCategory: 'email_change_cleanup_persistence',
+      userId: id,
+    })
+    expect(serialized.join('\n')).not.toContain(
+      'email change cleanup database detail',
+    )
+    expect(serialized.join('\n')).not.toContain('provider unavailable')
+  })
 })
 
 describe('updatePasswordService (integration)', () => {
@@ -289,6 +352,34 @@ describe('verifyEmailChangeService (integration)', () => {
     return { token, tokenHash }
   }
 
+  it('categorizes token lookup failures without exposing the token or repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const repositoryError = new Error('email change token database detail')
+    vi.spyOn(
+      profileRepository,
+      'findProfileByEmailChangeToken',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(verifyEmailChangeService('private-email-token')).rejects.toBe(
+      repositoryError,
+    )
+
+    const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+    const event = serialized
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .find((entry) => entry.event === 'email_change_token_lookup_failed')
+    expect(event).toMatchObject({
+      event: 'email_change_token_lookup_failed',
+      path: 'serverFn:verifyEmailChange',
+      status: 'failure',
+      errorCategory: 'email_change_token_read_persistence',
+    })
+    expect(serialized.join('\n')).not.toContain('private-email-token')
+    expect(serialized.join('\n')).not.toContain(
+      'email change token database detail',
+    )
+  })
+
   it('completes the email change for a valid token', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { token, tokenHash } = makeToken()
@@ -375,5 +466,39 @@ describe('verifyEmailChangeService (integration)', () => {
       userId: id,
     })
     expect(String(errorSpy.mock.calls.at(-1)?.[0])).not.toContain('boom')
+  })
+
+  it('categorizes attempt persistence failures without raw repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { token, tokenHash } = makeToken()
+    const id = await seedProfile({
+      pendingEmail: 'pending@test.dev',
+      emailChangeTokenHash: tokenHash,
+      emailChangeTokenExpiresAt: new Date(Date.now() + 60_000),
+    })
+    const repositoryError = new Error('email change attempt database detail')
+    vi.spyOn(
+      profileRepository,
+      'incrementEmailChangeAttempts',
+    ).mockRejectedValueOnce(repositoryError)
+    updateUserById.mockResolvedValue({ error: { message: 'provider detail' } })
+
+    await expect(verifyEmailChangeService(token)).rejects.toBe(repositoryError)
+
+    const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+    const event = serialized
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .find((entry) => entry.event === 'email_change_attempt_increment_failed')
+    expect(event).toMatchObject({
+      event: 'email_change_attempt_increment_failed',
+      path: 'serverFn:verifyEmailChange',
+      status: 'failure',
+      errorCategory: 'email_change_attempt_persistence',
+      userId: id,
+    })
+    expect(serialized.join('\n')).not.toContain(
+      'email change attempt database detail',
+    )
+    expect(serialized.join('\n')).not.toContain('provider detail')
   })
 })

@@ -1,4 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { AuthorizationService } from '@/utils/authz/types'
+import {
+  DefaultAuthorizationService,
+  setAuthorizationService,
+} from '@/utils/authz'
 import {
   seedDiscipleshipAssignment,
   seedDiscipleshipGroup,
@@ -10,7 +15,11 @@ import {
   getDiscipleshipBoardService,
   getStudentDiscipleshipViewService,
   pairStudentsService,
+  setGroupScheduleService,
   setIndividualScheduleService,
+  setPairScheduleService,
+  unassignStudentService,
+  unpairStudentService,
 } from '@/utils/discipleship/service/discipleship.service'
 import { AuthorizationError } from '@/utils/errors'
 import * as discipleshipRepository from '@/utils/discipleship/repository'
@@ -279,6 +288,7 @@ describe('discipleship read telemetry (integration)', () => {
 describe('discipleship mutation telemetry (integration)', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    setAuthorizationService(new DefaultAuthorizationService())
   })
 
   it('logs successful assignment and schedule mutations with safe fields', async () => {
@@ -327,4 +337,133 @@ describe('discipleship mutation telemetry (integration)', () => {
 
     expect(errorSpy).not.toHaveBeenCalled()
   })
+
+  it.each([
+    {
+      name: 'assignment',
+      action: 'assignStudentToTeacher',
+      run: async ({ actorId, studentId, teacherId }: DiscipleshipAuthFixture) =>
+        assignStudentToTeacherService({ studentId, teacherId }, actorId),
+    },
+    {
+      name: 'unassignment',
+      action: 'unassignStudent',
+      run: async ({ actorId, studentId }: DiscipleshipAuthFixture) =>
+        unassignStudentService({ studentId }, actorId),
+    },
+    {
+      name: 'pairing',
+      action: 'pairStudents',
+      run: async ({ actorId, studentId, teacherId }: DiscipleshipAuthFixture) =>
+        pairStudentsService(
+          {
+            studentIdA: studentId,
+            studentIdB: studentId,
+            teacherId,
+          },
+          actorId,
+        ),
+    },
+    {
+      name: 'unpairing',
+      action: 'unpairStudent',
+      run: async ({ actorId, studentId }: DiscipleshipAuthFixture) =>
+        unpairStudentService({ studentId }, actorId),
+    },
+    {
+      name: 'individual schedule',
+      action: 'setIndividualSchedule',
+      run: async ({ actorId, studentId }: DiscipleshipAuthFixture) =>
+        setIndividualScheduleService(
+          { studentId, anchorAt: new Date('2026-09-11T10:00:00.000Z') },
+          actorId,
+        ),
+    },
+    {
+      name: 'pair schedule',
+      action: 'setPairSchedule',
+      run: async ({ actorId, pairId }: DiscipleshipAuthFixture) =>
+        setPairScheduleService(
+          { pairId, anchorAt: new Date('2026-09-11T10:00:00.000Z') },
+          actorId,
+        ),
+    },
+    {
+      name: 'group schedule',
+      action: 'setGroupSchedule',
+      run: async ({ actorId, teacherId }: DiscipleshipAuthFixture) =>
+        setGroupScheduleService(
+          { teacherId, anchorAt: new Date('2026-09-11T10:00:00.000Z') },
+          actorId,
+        ),
+    },
+  ])(
+    'logs unexpected role-store persistence failures for $name without raw details',
+    async ({ action, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const teacherId = await seedProfile({ role: 'teacher' })
+      const studentId = await seedProfile({ role: 'student' })
+      const pairId = await seedDiscipleshipPair({ teacherId })
+      await seedDiscipleshipAssignment({ studentId, teacherId, pairId })
+      const actorId = 'discipleship-auth-failure-user'
+      const repositoryError = new Error(
+        'discipleship role connectionString=secret; email=private@test.dev',
+      )
+      setAuthorizationService({
+        getRole: vi.fn().mockRejectedValue(repositoryError),
+      } as unknown as AuthorizationService)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/discipleship', {
+            headers: { 'x-request-id': `discipleship-auth-${action}` },
+          }),
+          () => run({ actorId, studentId, teacherId, pairId }),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'discipleship_mutation_failed',
+        path: `serverFn:${action}`,
+        requestId: `discipleship-auth-${action}`,
+        actorId,
+        status: 'failure',
+        errorCategory: 'discipleship_authorization_persistence',
+        durationMs: expect.any(Number),
+      })
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('private@test.dev')
+    },
+  )
+
+  it('keeps expected role denials out of mutation telemetry', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const denial = new AuthorizationError('teacher access required')
+    setAuthorizationService({
+      getRole: vi.fn().mockRejectedValue(denial),
+    } as unknown as AuthorizationService)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/discipleship', {
+          headers: { 'x-request-id': 'discipleship-auth-denied' },
+        }),
+        () =>
+          assignStudentToTeacherService(
+            { studentId: 'student-id', teacherId: 'teacher-id' },
+            'actor-id',
+          ),
+      ),
+    ).rejects.toBe(denial)
+
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
 })
+
+type DiscipleshipAuthFixture = {
+  actorId: string
+  studentId: string
+  teacherId: string
+  pairId: string
+}

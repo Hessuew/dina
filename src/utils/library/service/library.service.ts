@@ -65,6 +65,9 @@ type LibraryMutationAction =
   | 'deleteLibraryMedia'
   | 'uploadMediaThumbnail'
 
+type LibraryUploadRequestAction =
+  'requestMediaFileUpload' | 'requestMediaThumbnailUpload'
+
 type LibraryMutationContext = {
   action: LibraryMutationAction
   actorId: string
@@ -78,6 +81,15 @@ type LibraryReadContext = {
   action: LibraryReadAction
   actorId: string
   mediaId?: string
+  startedAt: number
+}
+
+type LibraryUploadRequestContext = {
+  action: LibraryUploadRequestAction
+  actorId: string
+  bucket: 'media-library' | 'media-thumbnails'
+  mediaId?: string
+  mediaKind?: RequestMediaFileUploadInput['kind']
   startedAt: number
 }
 
@@ -115,6 +127,25 @@ function logLibraryRead(
   })
 }
 
+function logLibraryUploadRequest(
+  level: LogLevel,
+  event: string,
+  context: LibraryUploadRequestContext,
+  fields: Record<string, unknown> = {},
+): void {
+  logServerEvent(level, event, {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: level === 'error' ? 'failure' : 'success',
+    durationMs: elapsedMs(context.startedAt),
+    actorId: context.actorId,
+    bucket: context.bucket,
+    mediaId: context.mediaId,
+    mediaKind: context.mediaKind,
+    ...fields,
+  })
+}
+
 function shouldLogLibraryMutationFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
 }
@@ -137,6 +168,27 @@ async function withLibraryReadTelemetry<T>(
       logLibraryRead('error', 'library_media_load_failed', context, {
         errorCategory: 'library_media_read_persistence',
       })
+    }
+    throw error
+  }
+}
+
+async function withLibraryUploadRequestTelemetry<T>(
+  context: LibraryUploadRequestContext,
+  request: () => Promise<T>,
+): Promise<T> {
+  try {
+    const result = await request()
+    logLibraryUploadRequest('info', 'media_upload_url_issued', context)
+    return result
+  } catch (error) {
+    if (!isAppError(error) || error.status >= 500) {
+      logLibraryUploadRequest(
+        'error',
+        'media_upload_url_issue_failed',
+        context,
+        { errorCategory: 'media_upload_request_persistence' },
+      )
     }
     throw error
   }
@@ -318,8 +370,6 @@ export async function createLibraryMediaService(
   data: CreateMediaInput,
   userId: string,
 ): Promise<{ media: MediaLibraryRow }> {
-  await requireStaff(userId, 'create library media')
-  const source = mediaSource(data, userId)
   const context: LibraryMutationContext = {
     action: 'createLibraryMedia',
     actorId: userId,
@@ -327,6 +377,8 @@ export async function createLibraryMediaService(
   }
 
   try {
+    await requireStaff(userId, 'create library media')
+    const source = mediaSource(data, userId)
     const media = await insertMedia({
       uploaderId: userId,
       courseId: data.courseId ?? null,
@@ -377,6 +429,24 @@ async function requireManagedMedia(
   return existing
 }
 
+async function requireManagedMediaWithTelemetry(
+  mediaId: string,
+  userId: string,
+  action: string,
+  context: LibraryMutationContext,
+): Promise<MediaRecord> {
+  try {
+    return await requireManagedMedia(mediaId, userId, action)
+  } catch (error) {
+    if (shouldLogLibraryMutationFailure(error)) {
+      logLibraryMutation('error', 'media_mutation_failed', context, {
+        errorCategory: 'media_read_persistence',
+      })
+    }
+    throw error
+  }
+}
+
 async function removeReplacedMediaFile(
   previous: MediaRecord,
   nextPath: string | null,
@@ -389,14 +459,19 @@ export async function updateLibraryMediaService(
   data: UpdateMediaInput,
   userId: string,
 ): Promise<{ media: MediaLibraryRow }> {
-  const existing = await requireManagedMedia(data.mediaId, userId, 'edit')
-  const source = mediaSource(data, userId, existing.filePath)
   const context: LibraryMutationContext = {
     action: 'updateLibraryMedia',
     actorId: userId,
     mediaId: data.mediaId,
     startedAt: performance.now(),
   }
+  const existing = await requireManagedMediaWithTelemetry(
+    data.mediaId,
+    userId,
+    'edit',
+    context,
+  )
+  const source = mediaSource(data, userId, existing.filePath)
 
   try {
     const media = await updateMedia(data.mediaId, {
@@ -431,13 +506,18 @@ export async function deleteLibraryMediaService(
   data: DeleteMediaInput,
   userId: string,
 ): Promise<{ success: true }> {
-  const existing = await requireManagedMedia(data.mediaId, userId, 'delete')
   const context: LibraryMutationContext = {
     action: 'deleteLibraryMedia',
     actorId: userId,
     mediaId: data.mediaId,
     startedAt: performance.now(),
   }
+  const existing = await requireManagedMediaWithTelemetry(
+    data.mediaId,
+    userId,
+    'delete',
+    context,
+  )
 
   try {
     await deleteMedia(data.mediaId)
@@ -471,57 +551,83 @@ export async function requestMediaFileUploadService(
   data: RequestMediaFileUploadInput,
   userId: string,
 ): Promise<SignedUpload> {
-  await requireStaff(userId, 'request library file upload')
-  let extension: string
-  if (data.kind === 'video-file') {
-    validateVideoUpload(data.fileSize, data.fileType, data.fileName)
-    const mime =
-      resolveVideoMimeType(data.fileType, data.fileName) ?? 'video/mp4'
-    extension = resolveVideoFileExtension(mime, data.fileName)
-  } else {
-    validatePdfUpload(data.fileSize, data.fileType)
-    extension = resolveDocumentExtension(data.fileType)
-  }
-  const path = buildOwnedStoragePath(
-    userId,
-    extension,
-    Date.now(),
-    crypto.randomUUID(),
+  return withLibraryUploadRequestTelemetry(
+    {
+      action: 'requestMediaFileUpload',
+      actorId: userId,
+      bucket: 'media-library',
+      mediaKind: data.kind,
+      startedAt: performance.now(),
+    },
+    async () => {
+      await requireStaff(userId, 'request library file upload')
+      let extension: string
+      if (data.kind === 'video-file') {
+        validateVideoUpload(data.fileSize, data.fileType, data.fileName)
+        const mime =
+          resolveVideoMimeType(data.fileType, data.fileName) ?? 'video/mp4'
+        extension = resolveVideoFileExtension(mime, data.fileName)
+      } else {
+        validatePdfUpload(data.fileSize, data.fileType)
+        extension = resolveDocumentExtension(data.fileType)
+      }
+      const path = buildOwnedStoragePath(
+        userId,
+        extension,
+        Date.now(),
+        crypto.randomUUID(),
+      )
+      return createPrivateSignedUpload('media-library', path)
+    },
   )
-  return createPrivateSignedUpload('media-library', path)
 }
 
 export async function requestMediaThumbnailUploadService(
   data: RequestMediaThumbnailUploadInput,
   userId: string,
 ): Promise<SignedUpload> {
-  await requireManagedMedia(data.mediaId, userId, 'edit')
-  validateImageUpload(data.fileSize, data.fileType)
-  const extension = resolveFileExtension(data.fileType, data.fileName)
-  const path = buildOwnedStoragePath(
-    userId,
-    extension,
-    Date.now(),
-    crypto.randomUUID(),
+  return withLibraryUploadRequestTelemetry(
+    {
+      action: 'requestMediaThumbnailUpload',
+      actorId: userId,
+      bucket: 'media-thumbnails',
+      mediaId: data.mediaId,
+      startedAt: performance.now(),
+    },
+    async () => {
+      await requireManagedMedia(data.mediaId, userId, 'edit')
+      validateImageUpload(data.fileSize, data.fileType)
+      const extension = resolveFileExtension(data.fileType, data.fileName)
+      const path = buildOwnedStoragePath(
+        userId,
+        extension,
+        Date.now(),
+        crypto.randomUUID(),
+      )
+      return createPrivateSignedUpload('media-thumbnails', path)
+    },
   )
-  return createPrivateSignedUpload('media-thumbnails', path)
 }
 
 export async function uploadMediaThumbnailService(
   data: UploadMediaThumbnailInput,
   userId: string,
 ): Promise<{ thumbnailUrl: string | null }> {
-  const existing = await requireManagedMedia(data.mediaId, userId, 'edit')
-  const path = extractPrivateStoragePath(data.path, 'media-thumbnails')
-  if (!path || !isOwnedStoragePath(path, userId)) {
-    throw new ValidationError('Thumbnail path is not owned by this user')
-  }
-
   const context: LibraryMutationContext = {
     action: 'uploadMediaThumbnail',
     actorId: userId,
     mediaId: data.mediaId,
     startedAt: performance.now(),
+  }
+  const existing = await requireManagedMediaWithTelemetry(
+    data.mediaId,
+    userId,
+    'edit',
+    context,
+  )
+  const path = extractPrivateStoragePath(data.path, 'media-thumbnails')
+  if (!path || !isOwnedStoragePath(path, userId)) {
+    throw new ValidationError('Thumbnail path is not owned by this user')
   }
 
   try {

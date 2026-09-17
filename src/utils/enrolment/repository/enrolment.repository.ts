@@ -73,105 +73,109 @@ export async function insertEnrollment(
   return enrollment
 }
 
-export async function findEnrollmentsPage({
-  limit,
-  offset,
-  search,
-  sortBy,
-  sortDir,
-  includeEmail,
-  reviewerFilter,
-  viewerCourseIds = [],
-  requireReviewerAdmitted,
-}: FindEnrollmentsPageInput) {
-  const db = await getDb()
+function buildEnrollmentSearchFilter(search: string, includeEmail: boolean) {
+  return search.trim().length > 0
+    ? or(
+        ilike(enrollments.fullLegalName, `%${search}%`),
+        ilike(sql`${enrollments.status}::text`, `%${search}%`),
+        ...(includeEmail ? [ilike(enrollments.email, `%${search}%`)] : []),
+      )
+    : undefined
+}
 
-  const searchFilter =
-    search.trim().length > 0
-      ? or(
-          ilike(enrollments.fullLegalName, `%${search}%`),
-          ilike(sql`${enrollments.status}::text`, `%${search}%`),
-          ...(includeEmail ? [ilike(enrollments.email, `%${search}%`)] : []),
-        )
-      : undefined
+// Enrollments assigned to the viewer as their reviewer.
+function buildAssignedCondition(
+  db: Awaited<ReturnType<typeof getDb>>,
+  reviewerFilter: string | undefined,
+) {
+  return reviewerFilter !== undefined
+    ? inArray(
+        enrollments.id,
+        db
+          .select({ id: enrollmentReviewerAssignments.enrollmentId })
+          .from(enrollmentReviewerAssignments)
+          .where(eq(enrollmentReviewerAssignments.reviewerId, reviewerFilter)),
+      )
+    : undefined
+}
 
-  // Enrollments assigned to the viewer as their reviewer.
-  const assignedCondition =
-    reviewerFilter !== undefined
-      ? inArray(
-          enrollments.id,
-          db
-            .select({ id: enrollmentReviewerAssignments.enrollmentId })
-            .from(enrollmentReviewerAssignments)
-            .where(
-              eq(enrollmentReviewerAssignments.reviewerId, reviewerFilter),
-            ),
-        )
-      : undefined
-
-  // Peer-review queue: enrollments on the viewer's course team where a
-  // different reviewer (team member) has scored 3 or 4.
-  // Scoped through enrollment_reviewer_assignments.course_id (ADR 0007 rev 2).
-  // Legacy rows with course_id = NULL fall back to a LEFT JOIN on courseTeachers.
-  const peerCondition =
-    reviewerFilter !== undefined && viewerCourseIds.length > 0
-      ? inArray(
-          enrollments.id,
-          db
-            .select({ id: enrollmentReviewerAssignments.enrollmentId })
-            .from(enrollmentReviewerAssignments)
-            .innerJoin(
-              enrollmentEvaluations,
-              and(
-                eq(
-                  enrollmentEvaluations.enrollmentId,
-                  enrollmentReviewerAssignments.enrollmentId,
-                ),
-                eq(
-                  enrollmentEvaluations.evaluatorId,
-                  enrollmentReviewerAssignments.reviewerId,
-                ),
+// Peer-review queue: enrollments on the viewer's course team where a
+// different reviewer (team member) has scored 3 or 4.
+// Scoped through enrollment_reviewer_assignments.course_id (ADR 0007 rev 2).
+// Legacy rows with course_id = NULL fall back to a LEFT JOIN on courseTeachers.
+function buildPeerCondition(
+  db: Awaited<ReturnType<typeof getDb>>,
+  reviewerFilter: string | undefined,
+  viewerCourseIds: Array<string>,
+) {
+  return reviewerFilter !== undefined && viewerCourseIds.length > 0
+    ? inArray(
+        enrollments.id,
+        db
+          .select({ id: enrollmentReviewerAssignments.enrollmentId })
+          .from(enrollmentReviewerAssignments)
+          .innerJoin(
+            enrollmentEvaluations,
+            and(
+              eq(
+                enrollmentEvaluations.enrollmentId,
+                enrollmentReviewerAssignments.enrollmentId,
               ),
-            )
-            .leftJoin(
-              courseTeachers,
-              and(
-                isNull(enrollmentReviewerAssignments.courseId),
-                eq(
-                  courseTeachers.teacherId,
-                  enrollmentReviewerAssignments.reviewerId,
-                ),
-              ),
-            )
-            .where(
-              and(
-                or(
-                  and(
-                    isNotNull(enrollmentReviewerAssignments.courseId),
-                    inArray(
-                      enrollmentReviewerAssignments.courseId,
-                      viewerCourseIds,
-                    ),
-                  ),
-                  and(
-                    isNull(enrollmentReviewerAssignments.courseId),
-                    isNotNull(courseTeachers.courseId),
-                    inArray(courseTeachers.courseId, viewerCourseIds),
-                  ),
-                ),
-                ne(enrollmentReviewerAssignments.reviewerId, reviewerFilter),
-                inArray(enrollmentEvaluations.score, [3, 4]),
+              eq(
+                enrollmentEvaluations.evaluatorId,
+                enrollmentReviewerAssignments.reviewerId,
               ),
             ),
-        )
-      : undefined
+          )
+          .leftJoin(
+            courseTeachers,
+            and(
+              isNull(enrollmentReviewerAssignments.courseId),
+              eq(
+                courseTeachers.teacherId,
+                enrollmentReviewerAssignments.reviewerId,
+              ),
+            ),
+          )
+          .where(
+            and(
+              or(
+                and(
+                  isNotNull(enrollmentReviewerAssignments.courseId),
+                  inArray(
+                    enrollmentReviewerAssignments.courseId,
+                    viewerCourseIds,
+                  ),
+                ),
+                and(
+                  isNull(enrollmentReviewerAssignments.courseId),
+                  isNotNull(courseTeachers.courseId),
+                  inArray(courseTeachers.courseId, viewerCourseIds),
+                ),
+              ),
+              ne(enrollmentReviewerAssignments.reviewerId, reviewerFilter),
+              inArray(enrollmentEvaluations.score, [3, 4]),
+            ),
+          ),
+      )
+    : undefined
+}
 
-  const reviewerCondition =
-    assignedCondition && peerCondition
-      ? or(assignedCondition, peerCondition)
-      : assignedCondition
+function buildReviewerCondition(
+  db: Awaited<ReturnType<typeof getDb>>,
+  reviewerFilter: string | undefined,
+  viewerCourseIds: Array<string>,
+) {
+  const assigned = buildAssignedCondition(db, reviewerFilter)
+  const peer = buildPeerCondition(db, reviewerFilter, viewerCourseIds)
+  return assigned && peer ? or(assigned, peer) : assigned
+}
 
-  const reviewerAdmittedCondition = requireReviewerAdmitted
+function buildReviewerAdmittedCondition(
+  db: Awaited<ReturnType<typeof getDb>>,
+  requireReviewerAdmitted: boolean | undefined,
+) {
+  return requireReviewerAdmitted
     ? inArray(
         enrollments.id,
         db
@@ -193,24 +197,43 @@ export async function findEnrollmentsPage({
           .where(inArray(enrollmentEvaluations.score, [3, 4])),
       )
     : undefined
+}
+
+function buildEnrollmentPageOrder(
+  sortBy: FindEnrollmentsPageInput['sortBy'],
+  sortDir: 'asc' | 'desc',
+  evaluationSum: SQL<number>,
+) {
+  if (sortBy === 'evaluationSum') {
+    return sortDir === 'asc' ? asc(evaluationSum) : desc(evaluationSum)
+  }
+  return sortDir === 'asc'
+    ? asc(SORT_COLUMN_MAP[sortBy])
+    : desc(SORT_COLUMN_MAP[sortBy])
+}
+
+export async function findEnrollmentsPage({
+  limit,
+  offset,
+  search,
+  sortBy,
+  sortDir,
+  includeEmail,
+  reviewerFilter,
+  viewerCourseIds = [],
+  requireReviewerAdmitted,
+}: FindEnrollmentsPageInput) {
+  const db = await getDb()
 
   const whereClause = and(
-    searchFilter,
-    reviewerCondition,
-    reviewerAdmittedCondition,
+    buildEnrollmentSearchFilter(search, includeEmail),
+    buildReviewerCondition(db, reviewerFilter, viewerCourseIds),
+    buildReviewerAdmittedCondition(db, requireReviewerAdmitted),
   )
 
   const evaluationSum = sql<number>`coalesce(sum(${enrollmentEvaluations.score}), 0)::int`
   const evaluationCount = sql<number>`count(${enrollmentEvaluations.score})::int`
-
-  const primaryOrder =
-    sortBy === 'evaluationSum'
-      ? sortDir === 'asc'
-        ? asc(evaluationSum)
-        : desc(evaluationSum)
-      : sortDir === 'asc'
-        ? asc(SORT_COLUMN_MAP[sortBy])
-        : desc(SORT_COLUMN_MAP[sortBy])
+  const primaryOrder = buildEnrollmentPageOrder(sortBy, sortDir, evaluationSum)
 
   const [rows, [{ total }]] = await Promise.all([
     db
@@ -499,13 +522,6 @@ export async function findProfileById(userId: string) {
   })
 }
 
-export async function findInvitationByEmail(email: string) {
-  const db = await getDb()
-  return db.query.invitations.findFirst({
-    where: eq(invitations.email, email),
-  })
-}
-
 export async function updateInvitationToken(
   invitationId: string,
   token: string,
@@ -516,19 +532,6 @@ export async function updateInvitationToken(
     .update(invitations)
     .set({ token, expiresAt, updatedAt: new Date() })
     .where(eq(invitations.id, invitationId))
-}
-
-export async function insertInvitation(
-  data: Omit<typeof invitations.$inferInsert, 'id' | 'createdAt' | 'updatedAt'>,
-) {
-  const db = await getDb()
-  const [invitation] = await db.insert(invitations).values(data).returning()
-  return invitation
-}
-
-export async function deleteInvitationById(invitationId: string) {
-  const db = await getDb()
-  await db.delete(invitations).where(eq(invitations.id, invitationId))
 }
 
 export async function markEnrollmentInvitationSent(

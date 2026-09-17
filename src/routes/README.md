@@ -14,7 +14,10 @@ This folder defines:
 
 - **`__root.tsx`**
 - Defines the root route.
-- Fetches the current user on the server and exposes it via `context.user`.
+- Fetches the current user on the server through
+  `getRootUserContext` and exposes it via `context.user`.
+- Records redacted session/profile persistence failures with request
+  correlation while preserving the anonymous `null` context outcome.
 - Wraps the app with global providers and persistent UI (sidebar, header, toaster).
 - Initializes optional PostHog product analytics in the browser and identifies
   authenticated users by stable ID plus role only.

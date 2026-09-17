@@ -3,6 +3,8 @@ import { getAuthorizationService } from './service'
 import type { StaffPrivilege } from '@/utils/staff-privilege/domain/staff-privilege.domain'
 import { isLiveStaffPrivilege } from '@/utils/staff-privilege/domain/staff-privilege.domain'
 import { findPrivilegesForUser } from '@/utils/staff-privilege/repository'
+import { logServerEvent } from '@/utils/observability/logger'
+import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 export function authz(userId: string) {
   const service = getAuthorizationService()
@@ -23,7 +25,22 @@ export async function hasStaffPrivilege(
   const role = await getAuthorizationService().getRole(userId)
   if (role === 'admin') return true
   if (role !== 'teacher') return false
-  const privileges = await findPrivilegesForUser(userId)
+  const startedAt = performance.now()
+  let privileges: Array<StaffPrivilege>
+  try {
+    privileges = await findPrivilegesForUser(userId)
+  } catch (error) {
+    logServerEvent('error', 'authorization_lookup_failed', {
+      requestId: getRequestId(),
+      path: 'authz:staff_privilege',
+      status: 'failure',
+      durationMs: elapsedMs(startedAt),
+      userId,
+      privilege,
+      errorCategory: 'authorization_staff_privilege_read_persistence',
+    })
+    throw error
+  }
   return isLiveStaffPrivilege({ role, privileges, privilege })
 }
 

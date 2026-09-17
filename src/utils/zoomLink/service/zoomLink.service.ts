@@ -19,7 +19,7 @@ import {
   updateZoomLinkById,
 } from '@/utils/zoomLink/repository'
 import { authz } from '@/utils/authz'
-import { NotFoundError, ValidationError } from '@/utils/errors'
+import { NotFoundError, ValidationError, isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { getTeachersService } from '@/utils/teachers/service/teachers.service'
@@ -63,6 +63,26 @@ function logZoomLinkFailure(context: ZoomLinkMutationContext): void {
   })
 }
 
+function shouldLogZoomLinkFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+async function requireZoomLinkAdmin(
+  userId: string,
+  context: ZoomLinkMutationContext,
+): Promise<void> {
+  try {
+    await authz(userId).hasRole('admin')
+  } catch (error) {
+    if (shouldLogZoomLinkFailure(error)) {
+      logZoomLinkMutation('error', 'zoom_link_mutation_failed', context, {
+        errorCategory: 'zoom_link_authorization_persistence',
+      })
+    }
+    throw error
+  }
+}
+
 function logZoomLinkRead(
   level: LogLevel,
   event: string,
@@ -98,18 +118,29 @@ async function withZoomLinkReadTelemetry<T>(
 }
 
 export async function getZoomLinksService(userId: string) {
-  const profile = await findViewerRole(userId)
+  const context: ZoomLinkReadContext = {
+    actorId: userId,
+    role: 'unknown',
+    startedAt: performance.now(),
+  }
+
+  let profile: Awaited<ReturnType<typeof findViewerRole>>
+  try {
+    profile = await findViewerRole(userId)
+  } catch (error) {
+    logZoomLinkRead('error', 'zoom_links_load_failed', context, {
+      errorCategory: 'zoom_links_read_persistence',
+    })
+    throw error
+  }
+
   if (!profile) {
     throw new NotFoundError('Profile not found', {
       details: { userId },
     })
   }
 
-  const context: ZoomLinkReadContext = {
-    actorId: userId,
-    role: profile.role,
-    startedAt: performance.now(),
-  }
+  context.role = profile.role
 
   return withZoomLinkReadTelemetry(
     context,
@@ -153,15 +184,15 @@ export async function createZoomLinkService(
   data: CreateZoomLinkInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
-  await validateTeacherOwner(data)
   const context: ZoomLinkMutationContext = {
     action: 'createZoomLink',
     actorId: userId,
     startedAt: performance.now(),
   }
+  await requireZoomLinkAdmin(userId, context)
 
   try {
+    await validateTeacherOwner(data)
     const result = await insertZoomLink(buildCreateZoomLinkValues(data))
     context.zoomLinkId = result.link.id
     logZoomLinkMutation('info', 'zoom_link_created', context, {
@@ -170,7 +201,7 @@ export async function createZoomLinkService(
     })
     return result
   } catch (error) {
-    logZoomLinkFailure(context)
+    if (shouldLogZoomLinkFailure(error)) logZoomLinkFailure(context)
     throw error
   }
 }
@@ -179,16 +210,16 @@ export async function updateZoomLinkService(
   data: UpdateZoomLinkInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
-  await validateTeacherOwner(data)
   const context: ZoomLinkMutationContext = {
     action: 'updateZoomLink',
     actorId: userId,
     zoomLinkId: data.zoomLinkId,
     startedAt: performance.now(),
   }
+  await requireZoomLinkAdmin(userId, context)
 
   try {
+    await validateTeacherOwner(data)
     const result = await updateZoomLinkById(
       data.zoomLinkId,
       buildUpdateZoomLinkValues(data, new Date()),
@@ -201,7 +232,7 @@ export async function updateZoomLinkService(
     }
     return result
   } catch (error) {
-    logZoomLinkFailure(context)
+    if (shouldLogZoomLinkFailure(error)) logZoomLinkFailure(context)
     throw error
   }
 }
@@ -210,13 +241,13 @@ export async function deleteZoomLinkService(
   data: DeleteZoomLinkInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
   const context: ZoomLinkMutationContext = {
     action: 'deleteZoomLink',
     actorId: userId,
     zoomLinkId: data.zoomLinkId,
     startedAt: performance.now(),
   }
+  await requireZoomLinkAdmin(userId, context)
 
   try {
     await deleteZoomLinkById(data.zoomLinkId)

@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
+import type { AuthorizationService } from '@/utils/authz/types'
+import {
+  DefaultAuthorizationService,
+  setAuthorizationService,
+} from '@/utils/authz'
 import {
   bulkGradeEnrollmentsService,
   createEnrollmentService,
@@ -21,13 +26,14 @@ import {
   updateEnrollmentStatusService,
 } from '@/utils/enrolment/service/enrolment.service'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
+import * as staffPrivilegeRepository from '@/utils/staff-privilege/repository'
 import * as enrollmentRepository from '@/utils/enrolment/repository/enrolment.repository'
 import {
   findEnrollmentById,
   findEnrollmentContactLookupCandidates,
   findEnrollmentEmailsByGroup,
-  findInvitationByEmail,
 } from '@/utils/enrolment/repository/enrolment.repository'
+import { findInvitationByEmail } from '@/utils/invitation/repository/invitations.repository'
 import { AuthorizationError } from '@/utils/errors'
 import {
   seedCourse,
@@ -314,6 +320,253 @@ describe('setEvaluationScoreService (integration)', () => {
     ])
     expect(JSON.stringify(events)).not.toContain('private mentorship details')
   })
+
+  it('logs stable persistence failures for all evaluation fields', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { reviewerId, enrollmentId } = await seedPeerReviewScenario()
+    const repositoryError = new Error('evaluation database secret')
+    const upsertSpy = vi
+      .spyOn(enrollmentRepository, 'upsertEvaluation')
+      .mockRejectedValue(repositoryError)
+
+    const requests = [
+      {
+        action: 'setEvaluationScore',
+        run: () =>
+          setEvaluationScoreService({ enrollmentId, score: 4 }, reviewerId),
+      },
+      {
+        action: 'setEvaluationAdmissionCategory',
+        run: () =>
+          setEvaluationAdmissionCategoryService(
+            { enrollmentId, score: 4, admissionCategory: 'new' },
+            reviewerId,
+          ),
+      },
+      {
+        action: 'setEvaluationNote',
+        run: () =>
+          setEvaluationNoteService(
+            { enrollmentId, note: 'private evaluation note' },
+            reviewerId,
+          ),
+      },
+    ]
+
+    for (const { action, run } of requests) {
+      await expect(
+        withObservabilityRequest(
+          new Request(`https://christ-dina.org/${action}`, {
+            headers: { 'x-request-id': `${action}-failure` },
+          }),
+          run,
+        ),
+      ).rejects.toBe(repositoryError)
+    }
+
+    expect(upsertSpy).toHaveBeenCalledTimes(3)
+    const events = errorSpy.mock.calls.map(([line]) => {
+      const serialized = String(line)
+      return {
+        event: JSON.parse(serialized) as Record<string, unknown>,
+        serialized,
+      }
+    })
+    expect(events.map(({ event }) => event.event)).toEqual([
+      'enrollment_evaluation_update_failed',
+      'enrollment_evaluation_update_failed',
+      'enrollment_evaluation_update_failed',
+    ])
+    expect(events.map(({ event }) => event.evaluationField)).toEqual([
+      'score',
+      'admission_category',
+      'note',
+    ])
+    expect(events.map(({ event }) => event.errorCategory)).toEqual([
+      'enrollment_evaluation_persistence',
+      'enrollment_evaluation_persistence',
+      'enrollment_evaluation_persistence',
+    ])
+    expect(events.map(({ event }) => event.requestId)).toEqual([
+      'setEvaluationScore-failure',
+      'setEvaluationAdmissionCategory-failure',
+      'setEvaluationNote-failure',
+    ])
+    expect(
+      events.every(
+        ({ event }) =>
+          event.status === 'failure' &&
+          event.enrollmentId === enrollmentId &&
+          event.evaluatorId === reviewerId &&
+          typeof event.durationMs === 'number',
+      ),
+    ).toBe(true)
+    expect(
+      events.every(({ serialized }) => !serialized.includes('secret')),
+    ).toBe(true)
+    expect(
+      events.every(
+        ({ serialized }) => !serialized.includes('private evaluation note'),
+      ),
+    ).toBe(true)
+  })
+})
+
+describe('enrollment evaluation authorization telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    setAuthorizationService(new DefaultAuthorizationService())
+  })
+
+  it.each([
+    { name: 'reviewer assignment', source: 'assignment' },
+    { name: 'course team', source: 'courseTeam' },
+  ])('classifies unexpected $name lookup failures', async ({ source }) => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { reviewerId, courseId, enrollmentId } =
+      await seedPeerReviewScenario()
+    const repositoryError = new Error(
+      'evaluation authorization connectionString=secret; email=private@test.dev',
+    )
+    const assignmentSpy = vi
+      .spyOn(enrollmentRepository, 'findReviewerAssignmentForEnrollment')
+      .mockResolvedValue({ reviewerId, courseId })
+    if (source === 'assignment') {
+      assignmentSpy.mockRejectedValue(repositoryError)
+    } else {
+      vi.spyOn(enrollmentRepository, 'findCourseTeamIds').mockRejectedValue(
+        repositoryError,
+      )
+    }
+
+    const requests = [
+      {
+        action: 'setEvaluationScore',
+        run: () =>
+          setEvaluationScoreService({ enrollmentId, score: 4 }, reviewerId),
+      },
+      {
+        action: 'setEvaluationAdmissionCategory',
+        run: () =>
+          setEvaluationAdmissionCategoryService(
+            { enrollmentId, score: 4, admissionCategory: 'new' },
+            reviewerId,
+          ),
+      },
+      {
+        action: 'setEvaluationNote',
+        run: () =>
+          setEvaluationNoteService(
+            { enrollmentId, note: 'private evaluation note' },
+            reviewerId,
+          ),
+      },
+    ]
+
+    for (const { action, run } of requests) {
+      await expect(
+        withObservabilityRequest(
+          new Request(`https://christ-dina.org/${action}`, {
+            headers: { 'x-request-id': `${action}-authorization` },
+          }),
+          run,
+        ),
+      ).rejects.toBe(repositoryError)
+    }
+
+    expect(assignmentSpy).toHaveBeenCalledTimes(3)
+    const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+    const events = serialized.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining(
+        requests.map(({ action }) =>
+          expect.objectContaining({
+            event: 'enrollment_evaluation_update_failed',
+            path: `serverFn:${action}`,
+            errorCategory: 'enrollment_evaluation_authorization_persistence',
+            status: 'failure',
+            enrollmentId,
+            evaluatorId: reviewerId,
+            durationMs: expect.any(Number),
+          }),
+        ),
+      ),
+    )
+    expect(serialized.join('\n')).not.toContain('connectionString')
+    expect(serialized.join('\n')).not.toContain('private@test.dev')
+    expect(serialized.join('\n')).not.toContain('private evaluation note')
+  })
+
+  it('classifies unexpected role lookup failures for every evaluation field', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const repositoryError = new Error(
+      'evaluation role connectionString=secret; email=private@test.dev',
+    )
+    setAuthorizationService(rejectingEvaluationRoleService(repositoryError))
+
+    const requests = [
+      {
+        action: 'setEvaluationScore',
+        run: () =>
+          setEvaluationScoreService(
+            { enrollmentId: 'role-failure', score: 4 },
+            'evaluation-user',
+          ),
+      },
+      {
+        action: 'setEvaluationAdmissionCategory',
+        run: () =>
+          setEvaluationAdmissionCategoryService(
+            {
+              enrollmentId: 'role-failure',
+              score: 4,
+              admissionCategory: 'new',
+            },
+            'evaluation-user',
+          ),
+      },
+      {
+        action: 'setEvaluationNote',
+        run: () =>
+          setEvaluationNoteService(
+            { enrollmentId: 'role-failure', note: 'private note' },
+            'evaluation-user',
+          ),
+      },
+    ]
+
+    for (const { action, run } of requests) {
+      await expect(
+        withObservabilityRequest(
+          new Request(`https://christ-dina.org/${action}`, {
+            headers: { 'x-request-id': `${action}-role-failure` },
+          }),
+          run,
+        ),
+      ).rejects.toBe(repositoryError)
+    }
+
+    const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+    const events = serialized.map((line) => JSON.parse(line))
+    expect(events).toHaveLength(3)
+    expect(events).toEqual(
+      expect.arrayContaining(
+        requests.map(({ action }) =>
+          expect.objectContaining({
+            event: 'enrollment_evaluation_update_failed',
+            path: `serverFn:${action}`,
+            errorCategory: 'enrollment_evaluation_authorization_persistence',
+            status: 'failure',
+            enrollmentId: 'role-failure',
+            evaluatorId: 'evaluation-user',
+            durationMs: expect.any(Number),
+          }),
+        ),
+      ),
+    )
+    expect(serialized.join('\n')).not.toContain('connectionString')
+    expect(serialized.join('\n')).not.toContain('private@test.dev')
+  })
 })
 
 describe('enrollment lifecycle mutation telemetry (integration)', () => {
@@ -455,6 +708,249 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
     expect(
       events.every(({ serialized }) => !serialized.includes('secret')),
     ).toBe(true)
+  })
+
+  it('logs distribution and substitution read-preflight failures safely', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const absentTeacherId = await seedProfile({ role: 'teacher' })
+    const distributionError = new Error('distribution read database secret')
+    const substitutionError = new Error('substitution lookup database secret')
+
+    vi.spyOn(
+      enrollmentRepository,
+      'findUnassignedEnrollmentIds',
+    ).mockRejectedValueOnce(distributionError)
+    await expect(distributeEnrollmentsService(adminId)).rejects.toBe(
+      distributionError,
+    )
+
+    vi.spyOn(
+      enrollmentRepository,
+      'findCourseIdByTeacherId',
+    ).mockRejectedValueOnce(substitutionError)
+    await expect(
+      substituteTeacherService(
+        {
+          absentTeacherId,
+          substituteTeacherId: await seedProfile({ role: 'teacher' }),
+        },
+        adminId,
+      ),
+    ).rejects.toBe(substitutionError)
+
+    const events = errorSpy.mock.calls.map(([line]) => {
+      const serialized = String(line)
+      return {
+        event: JSON.parse(serialized) as Record<string, unknown>,
+        serialized,
+      }
+    })
+    expect(events.map(({ event }) => event)).toEqual([
+      expect.objectContaining({
+        event: 'enrollment_distribution_failed',
+        path: 'serverFn:distributeEnrollments',
+        actorId: adminId,
+        status: 'failure',
+        errorCategory: 'enrollment_distribution_read_persistence',
+      }),
+      expect.objectContaining({
+        event: 'enrollment_substitution_failed',
+        path: 'serverFn:substituteTeacher',
+        actorId: adminId,
+        absentTeacherId,
+        status: 'failure',
+        errorCategory: 'enrollment_substitution_read_persistence',
+      }),
+    ])
+    expect(
+      events.every(({ event }) => typeof event.durationMs === 'number'),
+    ).toBe(true)
+    expect(
+      events.every(({ serialized }) => !serialized.includes('database secret')),
+    ).toBe(true)
+  })
+})
+
+function rejectingAuthorizationService(error: unknown): AuthorizationService {
+  return {
+    hasRole: vi.fn().mockRejectedValue(error),
+    isRole: vi.fn(),
+    getRole: vi.fn(),
+    isAdmin: vi.fn(),
+    canPerformAction: vi.fn(),
+    isAllowedToPerformAction: vi.fn(),
+  }
+}
+
+function rejectingEvaluationRoleService(error: unknown): AuthorizationService {
+  return {
+    ...rejectingAuthorizationService(error),
+    getRole: vi.fn().mockRejectedValue(error),
+  }
+}
+
+describe('enrollment authorization preflight telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    setAuthorizationService(new DefaultAuthorizationService())
+  })
+
+  it.each([
+    {
+      name: 'status update',
+      event: 'enrollment_status_update_failed',
+      path: 'serverFn:updateEnrollmentStatus',
+      category: 'enrollment_status_authorization_persistence',
+      run: async (userId: string) => {
+        await updateEnrollmentStatusService(
+          { enrollmentId: 'enrollment-auth', status: 'approved' },
+          userId,
+        )
+      },
+    },
+    {
+      name: 'special-case update',
+      event: 'enrollment_special_case_update_failed',
+      path: 'serverFn:setEnrollmentSpecialCase',
+      category: 'enrollment_special_case_authorization_persistence',
+      run: async (userId: string) => {
+        await setEnrollmentSpecialCaseService(
+          { enrollmentId: 'enrollment-auth', specialCase: true },
+          userId,
+        )
+      },
+    },
+    {
+      name: 'deletion',
+      event: 'enrollment_delete_failed',
+      path: 'serverFn:deleteEnrollment',
+      category: 'enrollment_delete_authorization_persistence',
+      run: async (userId: string) => {
+        await deleteEnrollmentService(
+          { enrollmentId: 'enrollment-auth' },
+          userId,
+        )
+      },
+    },
+    {
+      name: 'invitation send',
+      event: 'enrollment_invitation_failed',
+      path: 'serverFn:sendInvitationForEnrollment',
+      category: 'enrollment_invitation_authorization_persistence',
+      run: async (userId: string) => {
+        await sendInvitationForEnrollmentService(
+          { enrollmentId: 'enrollment-auth' },
+          userId,
+          undefined,
+        )
+      },
+    },
+    {
+      name: 'distribution',
+      event: 'enrollment_distribution_failed',
+      path: 'serverFn:distributeEnrollments',
+      category: 'enrollment_distribution_authorization_persistence',
+      run: async (userId: string) => {
+        await distributeEnrollmentsService(userId)
+      },
+    },
+    {
+      name: 'substitution',
+      event: 'enrollment_substitution_failed',
+      path: 'serverFn:substituteTeacher',
+      category: 'enrollment_substitution_authorization_persistence',
+      run: async (userId: string) => {
+        await substituteTeacherService(
+          {
+            absentTeacherId: 'absent-teacher',
+            substituteTeacherId: 'substitute-teacher',
+          },
+          userId,
+        )
+      },
+    },
+    {
+      name: 'end substitution',
+      event: 'enrollment_substitution_end_failed',
+      path: 'serverFn:endSubstitution',
+      category: 'enrollment_substitution_end_authorization_persistence',
+      run: async (userId: string) => {
+        await endSubstitutionService(
+          { absentTeacherId: 'absent-teacher' },
+          userId,
+        )
+      },
+    },
+    {
+      name: 'active substitution read',
+      event: 'enrollment_substitutions_load_failed',
+      path: 'serverFn:getActiveSubstitutedTeacherIds',
+      category: 'enrollment_substitution_authorization_persistence',
+      run: async (userId: string) => {
+        await getActiveSubstitutedTeacherIdsService(userId)
+      },
+    },
+    {
+      name: 'bulk grading',
+      event: 'enrollment_bulk_grade_failed',
+      path: 'serverFn:bulkGradeEnrollments',
+      category: 'enrollment_bulk_grade_authorization_persistence',
+      run: async (userId: string) => {
+        await bulkGradeEnrollmentsService(
+          { approveMin: 6, dryRun: true },
+          userId,
+        )
+      },
+    },
+  ])(
+    'logs unexpected admin-role persistence failures for $name without raw details',
+    async ({ event, path, category, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const repositoryError = new Error(
+        'enrollment role connectionString=secret; email=private@test.dev',
+      )
+      setAuthorizationService(rejectingAuthorizationService(repositoryError))
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/enrollments', {
+            headers: { 'x-request-id': `enrollment-auth-${path}` },
+          }),
+          () => run('enrollment-auth-user'),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const eventLine = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.event === event)
+      expect(eventLine).toMatchObject({
+        event,
+        path,
+        requestId: `enrollment-auth-${path}`,
+        actorId: 'enrollment-auth-user',
+        status: 'failure',
+        errorCategory: category,
+        durationMs: expect.any(Number),
+      })
+      expect(serialized.join('\n')).not.toContain('connectionString')
+      expect(serialized.join('\n')).not.toContain('private@test.dev')
+    },
+  )
+
+  it('keeps expected admin-role denials out of operation telemetry', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const denial = new AuthorizationError('admin access required')
+    setAuthorizationService(rejectingAuthorizationService(denial))
+
+    await expect(
+      updateEnrollmentStatusService(
+        { enrollmentId: 'enrollment-denied', status: 'approved' },
+        'enrollment-denied-user',
+      ),
+    ).rejects.toBe(denial)
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })
 
@@ -1131,6 +1627,40 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
       durationMs: expect.any(Number),
     })
   })
+
+  it('logs unexpected privilege-read failures before export authorization', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const repositoryError = new Error(
+      'privilege database connectionString=secret; email=private@test.dev',
+    )
+    vi.spyOn(
+      staffPrivilegeRepository,
+      'findPrivilegesForUser',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/enrollments/emails', {
+          headers: { 'x-request-id': 'enrollment-contact-access-failure' },
+        }),
+        () => getEnrollmentEmailsService({ group: 'all' }, teacherId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const serialized = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(serialized).not.toContain('connectionString')
+    expect(serialized).not.toContain('private@test.dev')
+    expect(JSON.parse(serialized)).toMatchObject({
+      event: 'enrollment_contact_export_failed',
+      path: 'serverFn:getEnrollmentEmails',
+      requestId: 'enrollment-contact-access-failure',
+      actorId: teacherId,
+      status: 'failure',
+      errorCategory: 'enrollment_contact_access_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
 })
 
 describe('enrollment contact lookup by name (integration)', () => {
@@ -1292,6 +1822,44 @@ describe('enrollment contact lookup by name (integration)', () => {
       actorId: adminId,
       status: 'failure',
       errorCategory: 'enrollment_contact_lookup_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
+
+  it('logs unexpected privilege-read failures before name-lookup authorization', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const repositoryError = new Error(
+      'privilege database connectionString=secret; email=private@test.dev',
+    )
+    vi.spyOn(
+      staffPrivilegeRepository,
+      'findPrivilegesForUser',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/enrollments/contact-lookup', {
+          headers: { 'x-request-id': 'enrollment-lookup-access-failure' },
+        }),
+        () =>
+          searchEnrollmentContactsByNamesService(
+            { names: 'Private Applicant' },
+            teacherId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const serialized = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(serialized).not.toContain('connectionString')
+    expect(serialized).not.toContain('private@test.dev')
+    expect(JSON.parse(serialized)).toMatchObject({
+      event: 'enrollment_contact_lookup_failed',
+      path: 'serverFn:searchEnrollmentContactsByNames',
+      requestId: 'enrollment-lookup-access-failure',
+      actorId: teacherId,
+      status: 'failure',
+      errorCategory: 'enrollment_contact_access_persistence',
       durationMs: expect.any(Number),
     })
   })

@@ -52,6 +52,65 @@ function logProfileEvent(
   })
 }
 
+async function findLastEmailChangeRequestAtWithTelemetry(
+  userId: string,
+  context: ProfileLogContext,
+) {
+  try {
+    return await findLastEmailChangeRequestAt(userId)
+  } catch (error) {
+    logProfileEvent('error', 'email_change_request_failed', context, {
+      errorCategory: 'email_change_read_persistence',
+      userId,
+    })
+    throw error
+  }
+}
+
+async function clearEmailChangeTokensWithTelemetry(
+  userId: string,
+  context: ProfileLogContext,
+): Promise<void> {
+  try {
+    await clearEmailChangeTokens(userId)
+  } catch (error) {
+    logProfileEvent('error', 'email_change_cleanup_failed', context, {
+      errorCategory: 'email_change_cleanup_persistence',
+      userId,
+    })
+    throw error
+  }
+}
+
+async function findEmailChangeUserWithTelemetry(
+  tokenHash: string,
+  context: ProfileLogContext,
+) {
+  try {
+    return await findProfileByEmailChangeToken(tokenHash)
+  } catch (error) {
+    logProfileEvent('error', 'email_change_token_lookup_failed', context, {
+      errorCategory: 'email_change_token_read_persistence',
+    })
+    throw error
+  }
+}
+
+async function incrementEmailChangeAttemptsWithTelemetry(
+  userId: string,
+  context: ProfileLogContext,
+): Promise<void> {
+  try {
+    await incrementEmailChangeAttempts(userId)
+  } catch (error) {
+    logProfileEvent('error', 'email_change_attempt_increment_failed', context, {
+      errorCategory: 'email_change_attempt_persistence',
+      userId,
+    })
+    throw error
+  }
+}
+
 export async function updateProfileBasicService(
   data: z.infer<typeof updateProfileSchema>,
   user: User,
@@ -128,7 +187,8 @@ export async function updateProfileWithEmailChangeService(
     action: 'updateProfile',
     startedAt: performance.now(),
   }
-  const lastEmailChangeRequestAt = await findLastEmailChangeRequestAt(user.id)
+  const lastEmailChangeRequestAt =
+    await findLastEmailChangeRequestAtWithTelemetry(user.id, context)
 
   const waitSeconds = checkEmailChangeRateLimit(
     lastEmailChangeRequestAt,
@@ -171,7 +231,7 @@ export async function updateProfileWithEmailChangeService(
       errorCategory: 'email_change_email_delivery',
       userId: user.id,
     })
-    await clearEmailChangeTokens(user.id)
+    await clearEmailChangeTokensWithTelemetry(user.id, context)
     throw error
   }
 
@@ -190,7 +250,7 @@ export async function verifyEmailChangeService(
     startedAt: performance.now(),
   }
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
-  const user = await findProfileByEmailChangeToken(tokenHash)
+  const user = await findEmailChangeUserWithTelemetry(tokenHash, context)
 
   if (!user) {
     return { success: false, message: 'Invalid or expired verification link.' }
@@ -222,7 +282,7 @@ export async function verifyEmailChangeService(
       providerCode: updateError.code ?? 'unknown',
       userId: user.id,
     })
-    await incrementEmailChangeAttempts(user.id)
+    await incrementEmailChangeAttemptsWithTelemetry(user.id, context)
     return {
       success: false,
       message: 'Failed to update your email. Please try again.',

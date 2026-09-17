@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { AuthorizationService } from '@/utils/authz/types'
+import {
+  DefaultAuthorizationService,
+  setAuthorizationService,
+} from '@/utils/authz'
+import { AuthorizationError } from '@/utils/errors'
 import {
   createCommentBaseService,
   createPostBaseService,
@@ -24,6 +30,19 @@ import {
   seedProfile,
 } from '@/../test/integration/seed'
 import * as postRepository from '@/utils/post/repository/post.repository'
+import * as authUtils from '@/utils/auth/auth'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
+
+function rejectingAuthorizationService(error: Error): AuthorizationService {
+  return {
+    hasRole: vi.fn().mockRejectedValue(error),
+    isRole: vi.fn(),
+    getRole: vi.fn(),
+    isAdmin: vi.fn(),
+    canPerformAction: vi.fn().mockRejectedValue(error),
+    isAllowedToPerformAction: vi.fn(),
+  }
+}
 
 // Post services have no external IO. The DB is real (PGlite via the `@/db`
 // alias); post/comment authorization resolves ownership and staff roles from
@@ -516,6 +535,271 @@ describe('post read telemetry (integration)', () => {
     ).rejects.toMatchObject({ code: 'POST_NOT_FOUND', status: 404 })
 
     expect(infoSpy).not.toHaveBeenCalled()
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('post read actor-profile telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it.each([
+    {
+      name: 'channels',
+      requestId: 'post-channels-profile-failure',
+      path: 'serverFn:getPostChannels',
+      run: async (actorId: string) => {
+        await getPostChannelsService(actorId)
+      },
+    },
+    {
+      name: 'feed',
+      requestId: 'post-feed-profile-failure',
+      path: 'serverFn:getPosts',
+      run: async (actorId: string) => {
+        await getPostsService({ courseId: null, limit: 10 }, actorId)
+      },
+    },
+    {
+      name: 'detail',
+      requestId: 'post-detail-profile-failure',
+      path: 'serverFn:getPostById',
+      run: async (actorId: string) => {
+        await getPostByIdService({ postId: randomUUID() }, actorId)
+      },
+    },
+    {
+      name: 'comments',
+      requestId: 'post-comments-profile-failure',
+      path: 'serverFn:getComments',
+      run: async (actorId: string) => {
+        await getCommentsService({ postId: randomUUID(), limit: 10 }, actorId)
+      },
+    },
+  ])(
+    'logs unexpected $name actor-profile failures without raw details',
+    async ({ requestId, path, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const actorId = randomUUID()
+      const repositoryError = new Error(
+        'actor profile connectionString=secret; email=actor@test.dev',
+      )
+      vi.spyOn(authUtils, 'getUserProfile').mockRejectedValueOnce(
+        repositoryError,
+      )
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/post-reads', {
+            headers: { 'x-request-id': requestId },
+          }),
+          () => run(actorId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('actor@test.dev')
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'post_read_failed',
+        path,
+        requestId,
+        actorId,
+        status: 'failure',
+        errorCategory: 'post_read_persistence',
+        durationMs: expect.any(Number),
+      })
+    },
+  )
+})
+
+describe('post mutation preflight telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs redacted persistence failures for post and comment preflight reads', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const postActorId = await seedProfile({ role: 'student' })
+    const commentActorId = await seedProfile({ role: 'student' })
+    const postId = randomUUID()
+    const commentId = randomUUID()
+    const postError = new Error('post database connectionString=secret')
+    const commentError = new Error('comment database password=secret')
+    vi.spyOn(postRepository, 'findPostForWrite')
+      .mockRejectedValueOnce(postError)
+      .mockRejectedValueOnce(postError)
+      .mockRejectedValueOnce(postError)
+    vi.spyOn(postRepository, 'findCommentForWrite')
+      .mockRejectedValueOnce(commentError)
+      .mockRejectedValueOnce(commentError)
+
+    await expect(
+      updatePostService({ postId, content: 'private content' }, postActorId),
+    ).rejects.toBe(postError)
+    await expect(deletePostService({ postId }, postActorId)).rejects.toBe(
+      postError,
+    )
+    await expect(
+      createCommentBaseService(
+        { postId, content: 'private comment' },
+        postActorId,
+      ),
+    ).rejects.toBe(postError)
+    await expect(
+      updateCommentService(
+        { commentId, content: 'private update' },
+        commentActorId,
+      ),
+    ).rejects.toBe(commentError)
+    await expect(
+      deleteCommentService({ commentId }, commentActorId),
+    ).rejects.toBe(commentError)
+
+    const lines = errorSpy.mock.calls.map(([line]) => String(line))
+    const events = lines.map((line) => JSON.parse(line))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'post_mutation_failed',
+          path: 'serverFn:updatePost',
+          actorId: postActorId,
+          postId,
+          errorCategory: 'post_mutation_preflight_persistence',
+          status: 'failure',
+        }),
+        expect.objectContaining({
+          event: 'post_mutation_failed',
+          path: 'serverFn:deletePost',
+          actorId: postActorId,
+          postId,
+          errorCategory: 'post_mutation_preflight_persistence',
+          status: 'failure',
+        }),
+        expect.objectContaining({
+          event: 'post_mutation_failed',
+          path: 'serverFn:createComment',
+          actorId: postActorId,
+          postId,
+          errorCategory: 'post_mutation_preflight_persistence',
+          status: 'failure',
+        }),
+        expect.objectContaining({
+          event: 'post_mutation_failed',
+          path: 'serverFn:updateComment',
+          actorId: commentActorId,
+          commentId,
+          errorCategory: 'comment_mutation_preflight_persistence',
+          status: 'failure',
+        }),
+        expect.objectContaining({
+          event: 'post_mutation_failed',
+          path: 'serverFn:deleteComment',
+          actorId: commentActorId,
+          commentId,
+          errorCategory: 'comment_mutation_preflight_persistence',
+          status: 'failure',
+        }),
+      ]),
+    )
+    expect(lines.join('\n')).not.toContain('connectionString')
+    expect(lines.join('\n')).not.toContain('password=secret')
+    expect(events.every((event) => typeof event.durationMs === 'number')).toBe(
+      true,
+    )
+  })
+})
+
+describe('post mutation authorization telemetry (integration)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    setAuthorizationService(new DefaultAuthorizationService())
+  })
+
+  it.each([
+    {
+      name: 'post update',
+      path: 'serverFn:updatePost',
+      category: 'post_authorization_persistence',
+      requestId: 'post-update-authz-failure',
+      run: async (actorId: string): Promise<void> => {
+        const ownerId = await seedProfile({ role: 'student' })
+        const postId = await seedPost({ authorId: ownerId })
+        await updatePostService({ postId, content: 'private update' }, actorId)
+      },
+    },
+    {
+      name: 'post deletion',
+      path: 'serverFn:deletePost',
+      category: 'post_authorization_persistence',
+      requestId: 'post-delete-authz-failure',
+      run: async (actorId: string): Promise<void> => {
+        const ownerId = await seedProfile({ role: 'student' })
+        const postId = await seedPost({ authorId: ownerId })
+        await deletePostService({ postId }, actorId)
+      },
+    },
+    {
+      name: 'comment deletion',
+      path: 'serverFn:deleteComment',
+      category: 'comment_authorization_persistence',
+      requestId: 'comment-delete-authz-failure',
+      run: async (actorId: string): Promise<void> => {
+        const ownerId = await seedProfile({ role: 'student' })
+        const postId = await seedPost({ authorId: ownerId })
+        const commentId = await seedComment({ postId, authorId: ownerId })
+        await deleteCommentService({ commentId }, actorId)
+      },
+    },
+  ])(
+    'logs unexpected $name authorization failures without raw details',
+    async ({ category, path, requestId, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const actorId = await seedProfile({ role: 'student' })
+      const repositoryError = new Error(
+        'post authorization connectionString=secret; content=private',
+      )
+      setAuthorizationService(rejectingAuthorizationService(repositoryError))
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/posts', {
+            headers: { 'x-request-id': requestId },
+          }),
+          () => run(actorId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const serialized = errorSpy.mock.calls.map(([line]) => String(line))
+      const eventLine = serialized
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((entry) => entry.path === path)
+      expect(eventLine).toMatchObject({
+        event: 'post_mutation_failed',
+        path,
+        requestId,
+        actorId,
+        status: 'failure',
+        errorCategory: category,
+        durationMs: expect.any(Number),
+      })
+      expect(serialized.join('\n')).not.toContain('connectionString')
+      expect(serialized.join('\n')).not.toContain('content=private')
+    },
+  )
+
+  it('keeps expected authorization denials out of operation telemetry', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const actorId = await seedProfile({ role: 'student' })
+    const ownerId = await seedProfile({ role: 'student' })
+    const postId = await seedPost({ authorId: ownerId })
+    const denial = new AuthorizationError('post access required')
+    setAuthorizationService(rejectingAuthorizationService(denial))
+
+    await expect(
+      updatePostService({ postId, content: 'denied update' }, actorId),
+    ).rejects.toBe(denial)
     expect(errorSpy).not.toHaveBeenCalled()
   })
 })

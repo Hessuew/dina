@@ -26,7 +26,8 @@ import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 /* v8 ignore start */
-type PasswordResetAction = 'request_password_reset' | 'reset_password'
+type PasswordResetAction =
+  'request_password_reset' | 'validate_reset_token' | 'reset_password'
 
 type PasswordResetLogContext = {
   action: PasswordResetAction
@@ -48,6 +49,88 @@ function logPasswordResetEvent(
   })
 }
 
+async function findPasswordResetUser(
+  email: string,
+  context: PasswordResetLogContext,
+): Promise<Awaited<ReturnType<typeof findProfileByEmail>>> {
+  try {
+    return await findProfileByEmail(email)
+  } catch (error) {
+    logPasswordResetEvent('error', 'password_reset_request_failed', context, {
+      errorCategory: 'password_reset_read_persistence',
+    })
+    throw error
+  }
+}
+
+async function persistPasswordResetState(
+  userId: string,
+  values: Parameters<typeof updateProfileResetToken>[1],
+  context: PasswordResetLogContext,
+): Promise<void> {
+  try {
+    await updateProfileResetToken(userId, values)
+  } catch (error) {
+    logPasswordResetEvent('error', 'password_reset_request_failed', context, {
+      errorCategory: 'password_reset_write_persistence',
+      userId,
+    })
+    throw error
+  }
+}
+
+async function findPasswordResetUserForCompletion(
+  tokenHash: string,
+  context: PasswordResetLogContext,
+) {
+  try {
+    return await findProfileByResetTokenHash(tokenHash)
+  } catch (error) {
+    logPasswordResetEvent(
+      'error',
+      'password_reset_token_lookup_failed',
+      context,
+      { errorCategory: 'password_reset_token_read_persistence' },
+    )
+    throw error
+  }
+}
+
+async function incrementResetAttemptsWithTelemetry(
+  userId: string,
+  context: PasswordResetLogContext,
+): Promise<void> {
+  try {
+    await incrementResetTokenAttempts(userId)
+  } catch (error) {
+    logPasswordResetEvent(
+      'error',
+      'password_reset_attempt_increment_failed',
+      context,
+      {
+        errorCategory: 'password_reset_attempt_persistence',
+        userId,
+      },
+    )
+    throw error
+  }
+}
+
+async function clearPasswordResetStateWithTelemetry(
+  userId: string,
+  context: PasswordResetLogContext,
+): Promise<void> {
+  try {
+    await clearProfileResetToken(userId)
+  } catch (error) {
+    logPasswordResetEvent('error', 'password_reset_cleanup_failed', context, {
+      errorCategory: 'password_reset_cleanup_persistence',
+      userId,
+    })
+    throw error
+  }
+}
+
 export async function requestPasswordResetService(
   email: string,
 ): Promise<{ success: boolean; message: string }> {
@@ -55,7 +138,7 @@ export async function requestPasswordResetService(
     action: 'request_password_reset',
     startedAt: performance.now(),
   }
-  const user = await findProfileByEmail(email)
+  const user = await findPasswordResetUser(email, context)
 
   if (!user) {
     return { success: true, message: RESET_ANONYMOUS_MESSAGE }
@@ -72,13 +155,17 @@ export async function requestPasswordResetService(
   const { token, tokenHash } = generatePasswordResetToken()
   const expiresAt = calculatePasswordResetExpiry(new Date())
 
-  await updateProfileResetToken(user.id, {
-    resetTokenHash: tokenHash,
-    resetTokenExpiresAt: expiresAt,
-    resetTokenAttempts: 0,
-    lastResetRequestAt: new Date(),
-    updatedAt: new Date(),
-  })
+  await persistPasswordResetState(
+    user.id,
+    {
+      resetTokenHash: tokenHash,
+      resetTokenExpiresAt: expiresAt,
+      resetTokenAttempts: 0,
+      lastResetRequestAt: new Date(),
+      updatedAt: new Date(),
+    },
+    context,
+  )
 
   const resetLink = buildPasswordResetLink(env.APP_URL, token)
 
@@ -110,21 +197,42 @@ export async function requestPasswordResetService(
 export async function validateResetTokenService(
   token: string | undefined,
 ): Promise<{ valid: boolean; message: string }> {
+  const context: PasswordResetLogContext = {
+    action: 'validate_reset_token',
+    startedAt: performance.now(),
+  }
   if (!token) {
     return { valid: false, message: 'No reset token provided' }
   }
 
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
-  const user = await findProfileByResetTokenHash(tokenHash)
+  let user: Awaited<ReturnType<typeof findProfileByResetTokenHash>>
+  try {
+    user = await findProfileByResetTokenHash(tokenHash)
+  } catch (error) {
+    logPasswordResetEvent(
+      'error',
+      'password_reset_token_lookup_failed',
+      context,
+      { errorCategory: 'password_reset_token_read_persistence' },
+    )
+    throw error
+  }
 
   if (!user) {
     return { valid: false, message: 'Invalid reset token' }
   }
 
-  return checkPasswordResetTokenValid(
+  const result = checkPasswordResetTokenValid(
     { expiresAt: user.resetTokenExpiresAt, attempts: user.resetTokenAttempts },
     new Date(),
   )
+  if (result.valid) {
+    logPasswordResetEvent('info', 'password_reset_token_validated', context, {
+      userId: user.id,
+    })
+  }
+  return result
 }
 
 export async function resetPasswordService(
@@ -144,7 +252,7 @@ export async function resetPasswordService(
     .createHash('sha256')
     .update(input.token)
     .digest('hex')
-  const user = await findProfileByResetTokenHash(tokenHash)
+  const user = await findPasswordResetUserForCompletion(tokenHash, context)
 
   const resolved = resolveValidResetUser(user, new Date())
   if (!resolved.ok) {
@@ -165,14 +273,14 @@ export async function resetPasswordService(
       providerCode: updateError.code ?? 'unknown',
       userId: resolved.user.id,
     })
-    await incrementResetTokenAttempts(resolved.user.id)
+    await incrementResetAttemptsWithTelemetry(resolved.user.id, context)
     return {
       success: false,
       message: 'Failed to reset password. Please try again.',
     }
   }
 
-  await clearProfileResetToken(resolved.user.id)
+  await clearPasswordResetStateWithTelemetry(resolved.user.id, context)
 
   logPasswordResetEvent('info', 'password_reset_completed', context, {
     userId: resolved.user.id,

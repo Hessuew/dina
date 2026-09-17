@@ -1,6 +1,6 @@
 # Observability Architecture Implementation Plan
 
-**Status:** In progress
+**Status:** Repository implementation complete; hosted verification pending
 **Date:** 2026-07-04  
 **Context:** Engineering roadmap implementation plan and Better Stack transition record
 
@@ -25,6 +25,10 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 
 - **Better Stack-compatible error transport:** The existing Sentry SDK packages remain as the transition transport for Better Stack Errors. Browser and Worker telemetry include explicit environment/release identity, suppress expected errors, and attach active OpenTelemetry trace identifiers when available.
 - **Structured application telemetry:** Shared redacted JSON logging covers health/readiness plus high-value assignment authoring/submission/grading, auth, enrollment, course-authoring, storage, exam, attendance, notification, profile, discipleship, and Admin workflows. See [`STRUCTURED_LOGGING.md`](./STRUCTURED_LOGGING.md).
+  Assignment submission and student/teacher assignment-list actor-profile
+  persistence failures remain inside their existing redacted assignment
+  failure events with stable read-persistence categories; expected role and
+  missing-profile outcomes remain quiet.
   Password sign-in and sign-out now emit request-correlated success/failure
   events with stable authentication categories and no credentials or provider
   messages. Authenticated profile password changes emit the same redacted
@@ -33,7 +37,8 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   Calendar event create/update/delete mutations also emit redacted,
   request-correlated operational events; event content and meeting links are
   excluded from telemetry. Post and comment create/update/delete mutations now
-  emit redacted request-correlated events; post/comment content is excluded.
+  emit redacted request-correlated events; preflight persistence failures use
+  stable categories, and post/comment content is excluded.
   Post and comment reaction toggles also emit redacted request-correlated
   events with safe actor/target IDs, action, emoji, status, and duration.
   Post-notification read-state mutations emit redacted request-correlated
@@ -43,6 +48,16 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   create/update/delete mutations emit redacted request-correlated events with
   safe actor/media metadata; titles, descriptions, URLs, and private storage
   paths are excluded.
+  Post/comment notification fan-out also emits redacted recipient-resolution
+  success/failure events with request correlation, actor/post IDs, event type,
+  safe recipient counts, duration, and the stable
+  `notification_recipient_read_persistence` category; recipient identities,
+  notification content, and raw persistence details remain excluded, and
+  lookup plus delivery failures remain best effort.
+  Root route authentication bootstrap now records redacted session/profile
+  persistence failures through the shared auth event names, and the legacy
+  course-teacher boolean probe records stable assignment-read failures without
+  logging successful authorization checks.
   Exam create/save/publish mutations emit redacted request-correlated events
   with safe actor/exam metadata, exam state, question counters, and stable
   persistence-failure categories; titles, dates, prompts, option labels, and
@@ -60,6 +75,10 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
   Course attendance state and student open-session reads emit redacted,
   request-correlated events with safe role, count, and open-session metadata;
   attendance titles, timestamps, and raw persistence details remain excluded.
+  Shared staff-privilege authorization reads emit redacted lookup failures
+  with stable persistence categories; exam save/publish and grading role
+  preflights reuse their operation failure events without logging expected
+  denials or raw persistence details.
 
 - **Cloudflare Workers:** Basic observability
   - Logs enabled (100% sampling)
@@ -468,16 +487,13 @@ Implementation is successful when:
 
 ---
 
-## Next Steps
+## External Follow-up
 
-When ready to implement:
-
-1. Complete Better Stack and Cloudflare external setup in `GNHF-10.9.206.md`
-2. Set the public dashboard-link variables from `.env.example` in each deployment environment
-3. Complete prerequisites checklist (PostHog account, Slack workspace)
-4. Validate the admin observability hub and external links
-5. Update this document with actual implementation details
-6. Consider creating ADR 0015 to document the completed implementation
+1. Complete Better Stack and Cloudflare external setup and record dated evidence in `GNHF-10.9.206.md`.
+2. Set the public dashboard-link variables from `.env.example` in each deployment environment.
+3. Complete the PostHog project/dashboard and Slack alerting prerequisites.
+4. Validate the Admin observability hub and external links against the hosted destinations.
+5. Add dated source-map, alert-delivery, Uptime, and backup/restore evidence before promoting roadmap statuses.
 
 ---
 

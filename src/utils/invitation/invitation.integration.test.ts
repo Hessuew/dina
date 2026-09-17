@@ -16,6 +16,8 @@ import {
   findInvitationById,
 } from '@/utils/invitation/repository/invitations.repository'
 import * as invitationsRepository from '@/utils/invitation/repository/invitations.repository'
+import * as profilesRepository from '@/utils/invitation/repository/profiles.repository'
+import * as authUtils from '@/utils/auth/auth'
 import { seedInvitation, seedProfile } from '@/../test/integration/seed'
 import { setEmailSender } from '@/utils/email'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
@@ -150,16 +152,266 @@ describe('createInvitationService (integration)', () => {
   })
 })
 
+describe('invitation mutation preflight telemetry (integration)', () => {
+  it.each([
+    {
+      name: 'create',
+      requestId: 'invitation-create-actor-failure',
+      run: async (userId: string) => {
+        await createInvitationService(
+          { email: 'applicant@test.dev', role: 'student' },
+          userId,
+        )
+      },
+      event: 'invitation_create_failed',
+      path: 'serverFn:createInvitation',
+    },
+    {
+      name: 'resend',
+      requestId: 'invitation-resend-actor-failure',
+      run: async (userId: string) => {
+        await resendInvitationService({ id: randomUUID() }, userId)
+      },
+      event: 'invitation_resend_failed',
+      path: 'serverFn:resendInvitation',
+    },
+    {
+      name: 'list',
+      requestId: 'invitation-list-actor-failure',
+      run: async (userId: string) => {
+        await getInvitationsService(userId)
+      },
+      event: 'invitations_load_failed',
+      path: 'serverFn:getInvitations',
+    },
+    {
+      name: 'revoke',
+      requestId: 'invitation-revoke-actor-failure',
+      run: async (userId: string) => {
+        await revokeInvitationService({ id: randomUUID() }, userId)
+      },
+      event: 'invitation_revoke_failed',
+      path: 'serverFn:revokeInvitation',
+    },
+    {
+      name: 'delete',
+      requestId: 'invitation-delete-actor-failure',
+      run: async (userId: string) => {
+        await deleteInvitationService({ id: randomUUID() }, userId)
+      },
+      event: 'invitation_delete_failed',
+      path: 'serverFn:deleteInvitation',
+    },
+  ])(
+    'logs unexpected actor profile failures for $name without raw details',
+    async ({ requestId, run, event, path }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const adminId = await seedProfile({ role: 'admin' })
+      const repositoryError = new Error(
+        'actor profile connectionString=secret; email=admin@test.dev',
+      )
+      vi.spyOn(authUtils, 'getUserProfile').mockRejectedValueOnce(
+        repositoryError,
+      )
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/invitations', {
+            headers: { 'x-request-id': requestId },
+          }),
+          () => run(adminId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('admin@test.dev')
+      expect(JSON.parse(line)).toMatchObject({
+        event,
+        path,
+        requestId,
+        actorId: adminId,
+        status: 'failure',
+        errorCategory: 'invitation_actor_profile_read_persistence',
+        durationMs: expect.any(Number),
+      })
+    },
+  )
+
+  it('logs create invitation lookup failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const repositoryError = new Error(
+      'invitation lookup connectionString=secret for applicant@test.dev',
+    )
+    vi.spyOn(
+      invitationsRepository,
+      'findInvitationByEmail',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/invitations', {
+          headers: { 'x-request-id': 'invitation-create-read-failure' },
+        }),
+        () =>
+          createInvitationService(
+            { email: 'applicant@test.dev', role: 'student' },
+            adminId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('applicant@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_create_failed',
+      path: 'serverFn:createInvitation',
+      requestId: 'invitation-create-read-failure',
+      actorId: adminId,
+      status: 'failure',
+      errorCategory: 'invitation_read_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
+
+  it('logs create profile lookup failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const repositoryError = new Error(
+      'profile lookup connectionString=secret for applicant@test.dev',
+    )
+    vi.spyOn(
+      invitationsRepository,
+      'findInvitationByEmail',
+    ).mockResolvedValueOnce(undefined)
+    vi.spyOn(profilesRepository, 'findProfileByEmail').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/invitations', {
+          headers: { 'x-request-id': 'invitation-create-profile-failure' },
+        }),
+        () =>
+          createInvitationService(
+            { email: 'applicant@test.dev', role: 'student' },
+            adminId,
+          ),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('applicant@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_create_failed',
+      path: 'serverFn:createInvitation',
+      requestId: 'invitation-create-profile-failure',
+      actorId: adminId,
+      status: 'failure',
+      errorCategory: 'invitation_profile_read_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
+
+  it('logs resend invitation lookup failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const repositoryError = new Error(
+      'resend lookup connectionString=secret for invitation',
+    )
+    vi.spyOn(invitationsRepository, 'findInvitationById').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/invitations', {
+          headers: { 'x-request-id': 'invitation-resend-read-failure' },
+        }),
+        () => resendInvitationService({ id: randomUUID() }, adminId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_resend_failed',
+      path: 'serverFn:resendInvitation',
+      requestId: 'invitation-resend-read-failure',
+      actorId: adminId,
+      status: 'failure',
+      errorCategory: 'invitation_read_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
+
+  it('logs resend token rotation failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const { id } = await seedInvitation({ status: 'pending' })
+    const repositoryError = new Error(
+      'resend update connectionString=secret for invitation',
+    )
+    vi.spyOn(
+      invitationsRepository,
+      'updateInvitationById',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/invitations', {
+          headers: { 'x-request-id': 'invitation-resend-update-failure' },
+        }),
+        () => resendInvitationService({ id }, adminId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_resend_failed',
+      path: 'serverFn:resendInvitation',
+      requestId: 'invitation-resend-update-failure',
+      actorId: adminId,
+      invitationId: id,
+      role: 'student',
+      status: 'failure',
+      errorCategory: 'invitation_persistence',
+      durationMs: expect.any(Number),
+    })
+  })
+})
+
 describe('checkInvitationByEmailService (integration)', () => {
-  it('returns email + role for an active invitation', async () => {
+  it('returns email + role and logs safe validation metadata', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { email } = await seedInvitation({
       role: 'teacher',
       status: 'pending',
     })
 
-    const result = await checkInvitationByEmailService({ email })
+    const result = await withObservabilityRequest(
+      new Request('https://christ-dina.org/signup', {
+        headers: { 'x-request-id': 'invitation-email-read' },
+      }),
+      () => checkInvitationByEmailService({ email }),
+    )
 
     expect(result.invitation).toEqual({ email, role: 'teacher' })
+    const line = String(infoSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain(email)
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_email_validated',
+      path: 'serverFn:checkInvitationByEmail',
+      requestId: 'invitation-email-read',
+      role: 'teacher',
+      status: 'success',
+      durationMs: expect.any(Number),
+    })
   })
 
   it('throws when no invitation exists for the email', async () => {
@@ -185,6 +437,38 @@ describe('checkInvitationByEmailService (integration)', () => {
     await expect(
       checkInvitationByEmailService({ email }),
     ).rejects.toMatchObject({ code: 'INVITATION_EXPIRED', status: 400 })
+  })
+
+  it('logs unexpected lookup failures without email or provider details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const repositoryError = new Error(
+      'connectionString=secret while reading applicant@test.dev',
+    )
+    vi.spyOn(
+      invitationsRepository,
+      'findInvitationByEmail',
+    ).mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/signup', {
+          headers: { 'x-request-id': 'invitation-email-failure' },
+        }),
+        () => checkInvitationByEmailService({ email: 'applicant@test.dev' }),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('applicant@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'invitation_email_lookup_failed',
+      errorCategory: 'invitation_email_read_persistence',
+      path: 'serverFn:checkInvitationByEmail',
+      requestId: 'invitation-email-failure',
+      status: 'failure',
+      durationMs: expect.any(Number),
+    })
   })
 })
 

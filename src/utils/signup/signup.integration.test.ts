@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { EmailSender } from '@/utils/email/types'
 import { setEmailSender } from '@/utils/email'
 import {
@@ -11,8 +11,10 @@ import {
   findInvitationByToken,
   findProfileByEmail,
 } from '@/utils/signup/repository'
+import * as signupRepository from '@/utils/signup/repository'
 import { hashValue } from '@/utils/signup/domain/signup.domain'
 import { seedInvitation, seedProfile } from '@/../test/integration/seed'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 // Signup is the first integration-tested service with external IO (Supabase Auth,
 // Resend email) that PGlite can't run. We mock ONLY those two boundaries here; the
@@ -58,6 +60,19 @@ beforeEach(() => {
   }
   setEmailSender(sender)
 })
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+function findEvent(
+  calls: Array<Array<unknown>>,
+  eventName: string,
+): Record<string, unknown> | undefined {
+  return calls
+    .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+    .find((entry) => entry.event === eventName)
+}
 
 describe('signupService (integration)', () => {
   it('invalid token → error, no account touched', async () => {
@@ -181,6 +196,71 @@ describe('signupService (integration)', () => {
 
     errorSpy.mockRestore()
   })
+
+  it('categorizes invitation lookup failures and preserves the original error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const repositoryError = new Error('signup invitation database detail')
+    vi.spyOn(signupRepository, 'findInvitationByToken').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    try {
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org', {
+            headers: { 'x-request-id': 'signup-lookup-request' },
+          }),
+          () =>
+            signupService({
+              email: 'x@test.dev',
+              password: 'password123',
+              token: 'invitation-token',
+            }),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      expect(String(errorSpy.mock.calls[0]?.[0])).not.toContain(
+        'signup invitation database detail',
+      )
+      expect(
+        findEvent(errorSpy.mock.calls, 'signup_invitation_lookup_failed'),
+      ).toMatchObject({
+        requestId: 'signup-lookup-request',
+        errorCategory: 'signup_invitation_read_persistence',
+        status: 'failure',
+      })
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('categorizes OTP persistence failures and preserves the original error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { token, email } = await seedInvitation()
+    const repositoryError = new Error('signup OTP database detail')
+    vi.spyOn(signupRepository, 'updateInvitationOtp').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    try {
+      await expect(
+        signupService({ email, password: 'password123', token }),
+      ).rejects.toBe(repositoryError)
+
+      expect(
+        findEvent(errorSpy.mock.calls, 'signup_otp_update_failed'),
+      ).toMatchObject({
+        invitationId: expect.any(String),
+        errorCategory: 'signup_otp_persistence',
+        status: 'failure',
+      })
+      expect(String(errorSpy.mock.calls[0]?.[0])).not.toContain(
+        'signup OTP database detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
 })
 
 describe('verifyOtpService (integration)', () => {
@@ -233,6 +313,42 @@ describe('verifyOtpService (integration)', () => {
     expect(invitation?.otpAttempts).toBe(1)
   })
 
+  it('categorizes OTP-attempt persistence failures and preserves the original error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { token, email } = await seedInvitation({
+      otpHash: hashValue('123456'),
+      otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    })
+    const repositoryError = new Error('signup OTP attempt database detail')
+    vi.spyOn(signupRepository, 'incrementOtpAttempts').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    try {
+      await expect(
+        verifyOtpService({
+          email,
+          password: 'p',
+          otp: '000000',
+          invitationToken: token,
+        }),
+      ).rejects.toBe(repositoryError)
+
+      expect(
+        findEvent(errorSpy.mock.calls, 'signup_otp_attempt_update_failed'),
+      ).toMatchObject({
+        invitationId: expect.any(String),
+        errorCategory: 'signup_otp_attempt_persistence',
+        status: 'failure',
+      })
+      expect(String(errorSpy.mock.calls[0]?.[0])).not.toContain(
+        'signup OTP attempt database detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
   it('correct OTP → creates account, accepts invitation, clears OTP, logs in', async () => {
     const userId = randomUUID()
     const { token, email } = await seedInvitation({
@@ -268,6 +384,127 @@ describe('verifyOtpService (integration)', () => {
     expect(invitation?.status).toBe('accepted')
     expect(invitation?.acceptedAt).not.toBeNull()
     expect(invitation?.otpHash).toBeNull()
+  })
+
+  it('categorizes invitation acceptance persistence failures and preserves the original error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const userId = randomUUID()
+    const { token, email } = await seedInvitation({
+      otpHash: hashValue('123456'),
+      otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    })
+    const repositoryError = new Error('signup acceptance database detail')
+    mocks.createUser.mockResolvedValue({
+      data: { user: { id: userId, email } },
+      error: null,
+    })
+    vi.spyOn(signupRepository, 'markInvitationAccepted').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    try {
+      await expect(
+        verifyOtpService({
+          email,
+          password: 'password123',
+          otp: '123456',
+          invitationToken: token,
+        }),
+      ).rejects.toBe(repositoryError)
+
+      expect(
+        findEvent(errorSpy.mock.calls, 'signup_invitation_acceptance_failed'),
+      ).toMatchObject({
+        invitationId: expect.any(String),
+        errorCategory: 'signup_invitation_acceptance_persistence',
+        status: 'failure',
+      })
+      expect(String(errorSpy.mock.calls[0]?.[0])).not.toContain(
+        'signup acceptance database detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('categorizes verified OTP cleanup failures and preserves the original error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const userId = randomUUID()
+    const { token, email } = await seedInvitation({
+      otpHash: hashValue('123456'),
+      otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    })
+    const repositoryError = new Error('signup cleanup database detail')
+    mocks.createUser.mockResolvedValue({
+      data: { user: { id: userId, email } },
+      error: null,
+    })
+    vi.spyOn(signupRepository, 'clearInvitationOtp').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    try {
+      await expect(
+        verifyOtpService({
+          email,
+          password: 'password123',
+          otp: '123456',
+          invitationToken: token,
+        }),
+      ).rejects.toBe(repositoryError)
+
+      expect(
+        findEvent(errorSpy.mock.calls, 'signup_otp_cleanup_failed'),
+      ).toMatchObject({
+        invitationId: expect.any(String),
+        errorCategory: 'signup_otp_cleanup_persistence',
+        status: 'failure',
+      })
+      expect(String(errorSpy.mock.calls[0]?.[0])).not.toContain(
+        'signup cleanup database detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('categorizes duplicate-profile lookup failures and preserves the original error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { token, email } = await seedInvitation({
+      otpHash: hashValue('123456'),
+      otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    })
+    const repositoryError = new Error('signup profile database detail')
+    mocks.createUser.mockResolvedValue({
+      data: null,
+      error: { code: 'email_exists', message: 'already exists' },
+    })
+    vi.spyOn(signupRepository, 'findProfileByEmail').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    try {
+      await expect(
+        verifyOtpService({
+          email,
+          password: 'password123',
+          otp: '123456',
+          invitationToken: token,
+        }),
+      ).rejects.toBe(repositoryError)
+
+      expect(
+        findEvent(errorSpy.mock.calls, 'signup_profile_lookup_failed'),
+      ).toMatchObject({
+        errorCategory: 'signup_profile_read_persistence',
+        status: 'failure',
+      })
+      expect(String(errorSpy.mock.calls[0]?.[0])).not.toContain(
+        'signup profile database detail',
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 
   it('correct OTP but user already exists → confirms existing user, succeeds', async () => {

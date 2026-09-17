@@ -1,9 +1,33 @@
 # GNHF-10.9.206 — Engineering roadmap implementation handoff
 
-**Date:** 2026-09-12
-**Iteration:** 135
-**Scope:** add redacted Better Stack-ready telemetry for public invitation-token
-validation and record the remaining hosted observability evidence gate.
+**Date:** 2026-09-13
+**Iteration:** 192
+**Scope:** finalize the evidence-aware Engineering Roadmap handoff and align
+the canonical Notion observability signal wording after the completed batched
+structured-logging rollout through Iteration 190.
+
+## Final roadmap disposition
+
+The repository-side handoff is complete for the currently scoped engineering
+roadmap work. The live Engineering Roadmap uses the same evidence-aware
+disposition:
+
+| Phase                             | Current disposition                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Phase 1 — Production fundamentals | Repository implementation complete; hosted verification pending                                   |
+| Phase 2 — Reliability             | Repository procedures drafted; hosted verification pending                                        |
+| Phase 3 — Safe delivery           | Repository procedure implemented; hosted rehearsal pending                                        |
+| Phase 4 — Performance and scale   | Initial query/index review implemented; hosted measurement pending                                |
+| Phase 5 — Security                | Repository security baseline implemented; hosted verification and remaining RBAC/RLS work pending |
+| Phase 6 — Long-term architecture  | Planned                                                                                           |
+
+Closure requires dated external evidence for the applicable phase gates:
+Better Stack and Cloudflare ingestion, dashboards, alert routing, Uptime and
+source-map verification, PostHog project/dashboard verification, the first
+backup/restore drill, protected-environment rehearsal, representative hosted
+query plans and latency measurements, and hosted security/RLS verification.
+No dashboard, alert, SLO, readiness, or phase status is promoted from
+repository structure or local tests alone.
 
 ## Executive summary
 
@@ -41,15 +65,25 @@ shadcn@latest` intentionally.
   findings for routine review.
 - Assignment submission saves now emit structured Better Stack/Cloudflare-ready
   outcome events with request ID, status, duration, and stable error category.
+- Shared authorization role and resource persistence reads now emit one
+  redacted `authorization_lookup_failed` event with request correlation, safe
+  identifiers, action metadata, duration, and stable lookup categories while
+  preserving ordinary denials and missing-resource outcomes.
 - Enrollment distribution and teacher substitution mutations now emit
   structured Better Stack/Cloudflare-ready completion and failure events with
   safe actor/teacher/course identifiers, assignment counters, request ID,
-  status, duration, and stable error categories.
+  status, duration, and stable error categories. Their distribution and
+  substitution read-preflights also emit stable failure categories while
+  preserving original repository errors.
 - Signup and OTP flows now emit the same safe event shape for delivery,
-  provisioning, rollback, verification, auto-login, and resend outcomes.
+  provisioning, rollback, verification, auto-login, resend, and invitation/
+  profile/OTP persistence failure outcomes.
 - The admin invitation-email campaign now emits safe per-invitation delivery
   outcomes, campaign completion summaries, and lock-release failures with
-  request correlation and stable error categories.
+  request correlation and stable error categories. Unexpected Admin role-read
+  persistence failures reuse the matching operation failure event with the
+  stable `campaign_authorization_persistence` category; expected denials stay
+  quiet.
 - Teacher grading now emits a request-correlated completion event with stable
   status, duration, assignment, submission, and actor identifiers.
 - Enrollment evaluation score, admission-category, and note mutations now emit
@@ -61,12 +95,32 @@ shadcn@latest` intentionally.
   mode. Answer text and scores are excluded.
 - The admin WhatsApp campaign now emits redacted per-message delivery outcomes,
   campaign completion summaries, and lock-release failures with request
-  correlation and stable error categories. Recipient phone numbers, names, and
-  provider error text are excluded.
-- Post/comment notification persistence failures now emit a redacted
-  `notification_delivery_failed` event with request correlation, notification
-  type, recipient count, duration, and a stable error category. Best-effort
-  delivery semantics are unchanged.
+  correlation and stable error categories. Unexpected Admin role-read
+  persistence failures reuse the matching operation failure event with the
+  stable `campaign_authorization_persistence` category; expected denials stay
+  quiet. Recipient phone numbers, names, and provider error text are excluded.
+- Admin email and WhatsApp campaign previews now emit redacted
+  request-correlated success/failure events with safe send/skip counts and the
+  stable `campaign_preview_persistence` category. Recipient/contact values,
+  phone numbers, email addresses, invitation details, and provider errors
+  remain excluded; expected authorization and campaign-lock conflicts stay
+  quiet.
+- Post/comment notification fan-out now emits redacted
+  `notification_recipients_resolved` /
+  `notification_recipient_resolution_failed` events for safe recipient counts
+  and lookup failures; `notification_delivery_failed` continues to cover DB
+  delivery failures. Recipient identities, notification content, and raw
+  persistence details remain excluded, and lookup plus delivery stay
+  best-effort.
+- Root route authentication bootstrap now reuses redacted
+  `auth_session_lookup_failed` / `auth_profile_lookup_failed` events for
+  unexpected Supabase session and profile persistence failures, with the
+  `auth:fetchUser` path and request correlation; anonymous `null` context
+  behavior is unchanged.
+- The legacy course-teacher boolean probe now emits redacted
+  `course_teacher_check_failed` telemetry for unexpected assignment-read
+  persistence failures with safe actor/course IDs, request correlation,
+  duration, and the stable `course_teacher_read_persistence` category.
 - Media-thumbnail completion now emits redacted
   `media_thumbnail_uploaded` / `media_thumbnail_upload_failed` events with
   request correlation, actor/media IDs, replacement and signing outcomes,
@@ -76,8 +130,8 @@ shadcn@latest` intentionally.
   with request correlation, actor ID, source counts, total event count,
   status, and duration. Unexpected read failures emit
   `calendar_events_load_failed` with the stable
-  `calendar_read_persistence` category; calendar content, locations, links,
-  and timestamps are excluded.
+  `calendar_read_persistence` category, including actor-profile preflight
+  failures; calendar content, locations, links, and timestamps are excluded.
 - Student-directory list and detail reads now emit redacted
   `student_directory_loaded` / `student_directory_load_failed` events with
   request correlation, actor and target IDs where applicable, safe result
@@ -87,8 +141,9 @@ shadcn@latest` intentionally.
 - Teacher-directory list reads now emit redacted
   `teacher_directory_loaded` / `teacher_directory_load_failed` events with
   request correlation, actor ID, safe result counts, duration, and the stable
-  `teacher_directory_read_persistence` failure category; teacher names, email
-  addresses, bios, and privilege details remain excluded.
+  `teacher_directory_read_persistence` failure category, including actor-profile
+  preflight failures; teacher names, email addresses, bios, and privilege
+  details remain excluded.
 - Dashboard upcoming-lesson reads now emit redacted
   `upcoming_lessons_loaded` / `upcoming_lessons_load_failed` events with
   request correlation, actor ID, safe lesson counts, status, duration, and the
@@ -102,10 +157,26 @@ shadcn@latest` intentionally.
   text, grades, feedback, and raw persistence details remain excluded;
   unexpected failures use the stable `assignment_read_persistence` category
   while expected authorization and not-found outcomes remain quiet.
+- Assignment creation, update, deletion, and teacher grading authorization
+  preflights now reuse their redacted operation failure events with request
+  correlation, safe assignment/lesson/course identifiers, duration, and stable
+  authorization-persistence categories; expected denials remain quiet.
+- Assignment submission and student/teacher assignment-list actor-profile
+  lookups now remain inside their existing redacted failure boundaries, using
+  `submission_read_persistence` or `assignment_read_persistence` for unexpected
+  profile persistence errors while expected role and missing-profile outcomes
+  remain quiet.
 - Authenticated profile password changes now emit redacted
   `password_updated` / `password_update_failed` events with request
   correlation, user ID, status, duration, stable error category, and provider
   code; password values and provider messages remain excluded.
+- Password-reset request lookup/persistence failures and valid token checks now
+  emit redacted `password_reset_request_failed`,
+  `password_reset_token_validated`, and `password_reset_token_lookup_failed`
+  events with request correlation, safe user IDs when known, duration, and
+  stable read/write persistence categories. Email addresses, reset tokens,
+  passwords, and provider/database details remain excluded; anonymous,
+  cooldown, invalid, and expired-token outcomes stay quiet.
 - Public enrollment persistence now emits redacted `enrollment_created` /
   `enrollment_create_failed` events with request correlation, source, status,
   duration, and the persisted enrollment ID on success; applicant identity,
@@ -136,12 +207,24 @@ shadcn@latest` intentionally.
   server-function adapter into the service boundary, closing direct service
   calls that could otherwise bypass the profile check without changing the
   response shapes for authenticated roles.
+- Post update/delete and comment deletion ownership-moderation authorization
+  preflights now remain inside the existing redacted mutation telemetry
+  boundary. Unexpected authz persistence failures reuse `post_mutation_failed`
+  with stable `post_authorization_persistence` or
+  `comment_authorization_persistence` categories, request correlation, safe
+  actor/target identifiers, duration, and original-error preservation; expected
+  denials remain quiet and post/comment content stays excluded.
 - Post-notification group and mark-all read-state mutations now emit redacted
   `notification_group_marked_read` / `notifications_marked_read` events with
   request correlation, actor/target metadata, read scope, status, and duration.
   Unexpected persistence failures use the stable
-  `notification_read_state_persistence` category without notification content
-  or raw database details.
+  `notification_read_state_persistence` category, including actor-profile
+  preflight failures, without notification content or raw database details.
+- Notification summary reads keep their client-polled success path silent while
+  actor-profile preflight failures remain inside the redacted
+  `notification_summary_load_failed` boundary with request correlation,
+  requested limit, duration, and the stable
+  `notification_summary_read_persistence` category.
 - Student attendance check-ins now emit redacted completed, idempotent-retry,
   and unexpected-failure events with request correlation, safe
   course/session/lesson/student identifiers, status, duration, and a stable
@@ -154,12 +237,22 @@ shadcn@latest` intentionally.
   lesson counts, open-session flags, and duration. Attendance titles,
   timestamps, and raw persistence details remain excluded; unexpected read
   failures use the stable `attendance_read_persistence` category.
+- Attendance session open/close, student check-in, and teacher/admin override
+  paths now also observe unexpected authorization-boundary, profile, and
+  lesson preflight failures through their existing redacted failure events;
+  expected authorization, not-found, and validation outcomes remain quiet.
 - Calendar event-management list reads now emit redacted
   `calendar_event_list_loaded` / `calendar_event_list_load_failed` events with
   request correlation, actor ID, safe total/linked event counts, status, and
   duration. Event titles, descriptions, locations, meeting links, timestamps,
   and raw persistence details remain excluded; unexpected failures use the
   stable `calendar_event_read_persistence` category.
+- Admin Zoom-link create and update mutations now keep telemetry active through
+  teacher-owner preflight lookups. Unexpected repository failures emit the
+  redacted `zoom_link_mutation_failed` event with request correlation, actor/
+  link IDs where available, status, duration, and the stable
+  `zoom_link_persistence` category; expected owner-validation outcomes remain
+  quiet and credentials/raw persistence details remain excluded.
 - Profile updates and email-change verification now emit redacted success and
   failure events with request correlation, user ID, status, duration, and
   stable persistence/provider categories. Email addresses, verification tokens,
@@ -199,8 +292,10 @@ shadcn@latest` intentionally.
 - Course-teacher lesson creation, update, and deletion now emit redacted
   `lesson_created`, `lesson_updated`, and `lesson_deleted` events with request
   correlation, server-function path, actor/course/lesson IDs, status, and
-  duration. Persistence failures emit stable `lesson_persistence` categories;
-  lesson content, titles, and provider/database messages are excluded.
+  duration. Persistence failures emit stable `lesson_persistence` categories,
+  and unexpected authorization preflight persistence failures reuse the
+  matching operation event with `lesson_authorization_persistence`; lesson
+  content, titles, and provider/database messages are excluded.
 - Assignment create, update, and delete mutations now emit redacted
   `assignment_created`, `assignment_updated`, and `assignment_deleted` events
   with request correlation, server-function path, actor/course/lesson/
@@ -216,8 +311,11 @@ shadcn@latest` intentionally.
   `course_updated`, and `course_deleted` events with request correlation,
   server-function path, actor/course IDs, status, duration, and publication
   state where relevant. Unexpected persistence failures emit the stable
-  `course_persistence` category; expected authorization, validation, and
-  teacher-assignment conflict outcomes remain outside noisy error logs.
+  `course_persistence` category, while authorization/profile preflight
+  failures reuse the matching operation event with the stable
+  `course_authorization_persistence` category; expected authorization,
+  validation, and teacher-assignment conflict outcomes remain outside noisy
+  error logs.
 - Admins now have an authenticated `/admin/observability` hub that links to
   Better Stack, Cloudflare, Supabase, and Notion operations surfaces. Link URLs
   are public environment configuration only; no provider credentials are sent
@@ -252,7 +350,8 @@ shadcn@latest` intentionally.
   IDs, attempt/question status, question type, and duration. Selected option
   IDs, answer text, and raw persistence details remain excluded; unexpected
   failures use stable `exam_attempt_persistence` or
-  `exam_answer_persistence` categories.
+  `exam_answer_persistence` categories, including exam and attempt preflight
+  lookup failures.
 - The optional PostHog browser foundation now initializes from the root route
   when `VITE_POSTHOG_KEY` is configured. It identifies users by stable ID and
   role only, allow-lists the initial LMS journey event names, disables
@@ -2036,15 +2135,15 @@ Roadmap. Update the dashboard row’s URL only after a real URL exists.
 
 ### Phase 1 — Production fundamentals
 
-| Roadmap item          | Current state                                                                                                                                                                            | Next smallest verifiable slice                                                               |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                                                   | Verify `/healthz` and `/readyz` after deployment                                             |
-| Structured logging    | Shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, and Admin workflows                              | Migrate remaining high-value server-function families one at a time                          |
-| Error tracking        | Better Stack is the canonical DSN configuration with Sentry-compatible SDK wiring and explicit environment/release identity; provider verification is pending                            | Set `VITE_BETTER_STACK_DSN` and `BETTER_STACK_DSN`, then verify ingestion/source maps        |
-| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                                                  | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
-| Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                                                 | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
-| Alerting              | No verified production alert set                                                                                                                                                         | Configure Uptime, error-rate, readiness, and latency alerts; test them                       |
-| Product analytics     | Enrollment start/submission, assignment submission, course-start, teacher-review, lesson-completion, and course-completion events are instrumented; project verification remains pending | Verify events and create the initial funnel in PostHog                                       |
+| Roadmap item          | Current state                                                                                                                                                                                                                | Next smallest verifiable slice                                                               |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Health checks         | Implemented in `src/server.ts` and `src/utils/health/`                                                                                                                                                                       | Verify `/healthz` and `/readyz` after deployment                                             |
+| Structured logging    | Repository rollout complete through Iteration 190; shared redacted JSON logger covers health/readiness plus high-value auth, enrollment, student, storage, notification, course-authoring, discipleship, and Admin workflows | Verify hosted ingestion, dashboards, alerts, and source-map correlation                      |
+| Error tracking        | Better Stack is the canonical DSN configuration with Sentry-compatible SDK wiring and explicit environment/release identity; provider verification is pending                                                                | Set `VITE_BETTER_STACK_DSN` and `BETTER_STACK_DSN`, then verify ingestion/source maps        |
+| Basic metrics         | Cloudflare logs/traces are enabled; no app metrics dashboard is in repo                                                                                                                                                      | Create Better Stack/Cloudflare dashboard and extract stable log metrics                      |
+| Production dashboards | Admin link hub is implemented; Notion dashboard rows and provider URLs are still pending                                                                                                                                     | Create external dashboards, set the admin hub URL variables, and update existing Notion rows |
+| Alerting              | No verified production alert set                                                                                                                                                                                             | Configure Uptime, error-rate, readiness, and latency alerts; test them                       |
+| Product analytics     | Enrollment start/submission, assignment submission, course-start, teacher-review, lesson-completion, and course-completion events are instrumented; project verification remains pending                                     | Verify events and create the initial funnel in PostHog                                       |
 
 ### Phase 2 — Reliability
 
@@ -3683,3 +3782,1368 @@ Validation: focused invitation integration tests, formatting, typecheck,
 `bun run quality:gate`, and the production build are required before final
 handoff. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime
 monitors, and source-map verification remain external follow-up.
+
+## Iteration 136 — invitation-email and media-upload-request telemetry
+
+This iteration completed a batched Phase 1 structured-logging slice:
+
+- Public invitation-email validation now emits redacted
+  `invitation_email_validated` / `invitation_email_lookup_failed` events with
+  request correlation, role on success, duration, and the stable
+  `invitation_email_read_persistence` failure category. Missing, expired, and
+  revoked invitations remain quiet; email addresses and raw persistence
+  details stay outside telemetry.
+- Media-library file and thumbnail signed-upload requests now emit redacted
+  `media_upload_url_issued` / `media_upload_url_issue_failed` events with
+  request correlation, actor/media IDs where applicable, bucket, media kind,
+  status, duration, and the stable `media_upload_request_persistence` category.
+  Filenames, object paths, signed URLs, and raw provider details remain
+  excluded; expected authorization and validation failures remain quiet.
+- Added focused integration coverage for safe request correlation, success
+  metadata, persistence-failure categorization, raw-error exclusion, and
+  original-error preservation across all three paths.
+
+Validation: focused invitation and library integration tests (53 tests),
+formatting, typecheck, and `bun run quality:static` passed. Per the iterative
+telemetry workflow, the full build and full integration suite were not run.
+Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors,
+and source-map verification remain external follow-up.
+
+## Iteration 139 — evidence-aware roadmap closeout
+
+This iteration refreshed the final repository-side Phase 1 closeout record after
+the batched password-reset validation telemetry slice:
+
+- The current repository evidence now includes request-correlated,
+  privacy-safe telemetry for password-reset request failures and token
+  validation, with focused password-reset integration coverage passing 9 tests.
+- TypeScript validation, formatting, static checks, and `bun run quality:gate`
+  passed for the accumulated changes; the full build and full integration suite
+  remain intentionally deferred for the iterative telemetry workflow.
+- Better Stack/Cloudflare ingestion, dashboards, alert routing, Uptime
+  monitors, source maps, PostHog project verification, and backup/restore
+  evidence remain external operational gates, so the roadmap retains an
+  evidence-aware closeout rather than claiming hosted readiness.
+
+The Engineering Roadmap and Observability records were synchronized with this
+snapshot after local verification.
+
+## Iteration 137 — campaign-preview telemetry
+
+This iteration completed a batched Phase 1 structured-logging slice:
+
+- Admin email and WhatsApp campaign previews now emit redacted
+  `email_campaign_previewed` / `whatsapp_campaign_previewed` events with
+  request correlation, campaign, actor ID, safe send/skip counts, status, and
+  duration.
+- Unexpected lock-acquisition or recipient-planning persistence failures emit
+  `*_campaign_preview_failed` with the stable
+  `campaign_preview_persistence` category. Expected authorization and
+  campaign-lock conflicts remain quiet; recipient/contact values, phone
+  numbers, email addresses, invitation details, and provider errors remain
+  outside telemetry.
+- Added focused integration assertions for both preview event shapes while
+  preserving no-send and lock behavior.
+
+Validation: focused email and WhatsApp campaign integration tests passed 38
+tests; formatting, typecheck, `bun run quality:static`, `bun run quality:gate`,
+and diff checks passed. Per the iterative telemetry workflow, the full build
+and full integration suite were not run. Hosted Better Stack/Cloudflare
+ingestion, dashboards, alerts, Uptime monitors, and source-map verification
+remain external follow-up.
+
+## Iteration 138 — password-reset validation telemetry
+
+This iteration completed a batched Phase 1 auth-observability slice:
+
+- Password-reset request profile lookup and reset-state persistence failures
+  now emit `password_reset_request_failed` with request correlation, a safe user
+  ID when known, duration, and stable read/write persistence categories while
+  preserving the original repository error.
+- Valid reset-token checks now emit `password_reset_token_validated`; unexpected
+  token lookups emit `password_reset_token_lookup_failed` with a stable
+  persistence category. Anonymous, cooldown, invalid, and expired-token
+  outcomes remain quiet.
+- Added focused integration coverage for safe success metadata, request
+  correlation, persistence categories, original-error preservation, and raw
+  detail exclusion.
+
+Validation: the focused password-reset integration suite passed 9 tests;
+formatting, typecheck, `bun run quality:static`, and `bun run quality:gate` also
+passed. The full build and full integration suite were not run per the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, and source-map verification remain
+external follow-up.
+
+## Iteration 140 — batched auth and assignment grading failure telemetry
+
+This iteration completed the next batched Phase 1 structured-logging slice:
+
+- Unexpected password sign-in provider exceptions now emit redacted
+  `login_failed` error events with failure status and the stable `auth_sign_in`
+  category while preserving the original exception for the caller.
+- Assignment-grade persistence failures now emit redacted
+  `assignment_grading_failed` events with request correlation, safe
+  assignment/submission/actor IDs, duration, and the stable
+  `assignment_grading_persistence` category while preserving the original
+  repository error.
+- Added focused integration coverage for both failure paths, including raw
+  exception-detail exclusion and request correlation.
+
+Validation: focused login and assignment integration suites passed 50 tests;
+typecheck, formatting, `bun run quality:static`, and `git diff --check` passed.
+The full build and full integration suite were not run per the iterative
+telemetry workflow. Hosted Better Stack/Cloudflare ingestion, dashboards,
+alerts, Uptime monitors, source maps, and restore evidence remain external
+follow-up.
+
+## Iteration 141 — password-reset completion failure telemetry
+
+This iteration completed a batched password-reset completion slice:
+
+- Reset completion token lookups now emit the existing redacted
+  `password_reset_token_lookup_failed` event with the stable
+  `password_reset_token_read_persistence` category.
+- Reset-attempt accounting failures emit
+  `password_reset_attempt_increment_failed`, and successful-provider cleanup
+  failures emit `password_reset_cleanup_failed`; both include request
+  correlation, safe user IDs, duration, and stable persistence categories
+  while preserving the original repository errors.
+- Added focused integration coverage for all three completion failure paths;
+  reset tokens, passwords, provider messages, and raw repository details stay
+  outside telemetry.
+
+Validation: the focused password-reset integration suite passed; formatting,
+typecheck, `bun run quality:static`, and `git diff --check` passed. The full
+build and full integration suite were not run per the iterative telemetry
+workflow. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts,
+Uptime monitors, source maps, and restore evidence remain external follow-up.
+
+## Iteration 142 — shared auth-boundary failure telemetry
+
+This iteration completed a batched Phase 1 auth-boundary slice:
+
+- Unexpected Supabase session lookup exceptions now emit redacted
+  `auth_session_lookup_failed` events with request correlation, duration, and
+  the stable `auth_session_lookup` category while preserving the original
+  provider exception for the caller.
+- Unexpected persisted-profile lookup failures now emit redacted
+  `auth_profile_lookup_failed` events with request correlation, safe user ID,
+  duration, and the stable `auth_profile_read_persistence` category while
+  preserving the original repository error.
+- Expected unauthenticated and missing-profile outcomes remain unchanged;
+  provider/database exception details, credentials, and session material stay
+  outside telemetry. Added focused integration coverage for both failure paths.
+
+Validation: focused auth/profile integration passed 20 tests; formatting,
+typecheck, static checks, `git diff --check`, and `bun run quality:gate` passed
+with 1,953 unit tests. The full build and full integration suite were not run
+per the iterative telemetry workflow. Hosted Better Stack/Cloudflare
+ingestion, dashboards, alerts, Uptime monitors, source maps, PostHog
+verification, and restore evidence remain pending.
+
+## Iteration 143 — profile email-change persistence telemetry
+
+This iteration completed the next batched Phase 1 auth-observability slice:
+
+- Email-change request lookup, verification-token lookup, failed-attempt
+  accounting, and delivery-cleanup persistence failures now emit redacted
+  request-correlated events with safe user IDs where known, duration, and
+  stable persistence categories while preserving the original repository
+  errors.
+- Email addresses, verification tokens, provider messages, and raw repository
+  details remain outside operational telemetry; existing rate-limit,
+  invalid-token, and provider-failure user-facing behavior is unchanged.
+- Added four focused integration tests covering the new failure boundaries and
+  secret-free event payloads.
+
+Validation: focused profile integration passed 16 tests; formatting, static
+checks, typecheck, `git diff --check`, and `bun run quality:gate` passed with
+1,953 unit tests. The full build and full integration suite were intentionally
+skipped for the iterative telemetry workflow. Hosted Better Stack/Cloudflare
+ingestion, dashboards, alerts, Uptime monitors, source maps, PostHog
+verification, and restore evidence remain pending.
+
+## Iteration 144 — assignment preflight failure telemetry
+
+This iteration completed a batched Phase 1 assignment-observability slice:
+
+- Assignment create, update, and delete now emit their existing redacted
+  failure events when lesson/assignment preflight reads fail unexpectedly,
+  using the stable `assignment_read_persistence` category.
+- Assignment submission assignment/existing-submission lookups and teacher
+  grading assignment/submission lookups now emit redacted failure events with
+  `submission_read_persistence` and `assignment_grading_read_persistence`
+  categories while preserving the original repository errors.
+- Added six focused integration regressions covering request correlation,
+  safe identifiers, stable categories, and exclusion of raw persistence
+  details. Expected not-found, authorization, and validation outcomes remain
+  quiet.
+
+Validation: focused assignment integration passed 54 tests; typecheck,
+formatting, static checks, `git diff --check`, Cloudflare type generation, and
+`bun run quality:gate` passed with 1,953 unit tests. The full build and full
+integration suite were intentionally skipped for the iterative telemetry
+workflow. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime
+monitors, source maps, PostHog verification, and restore evidence remain
+pending.
+
+## Iteration 145 — batched read-preflight failure telemetry
+
+This iteration completed a batched Phase 1 structured-logging slice across
+remaining read boundaries:
+
+- Student detail profile lookup failures now reuse redacted
+  `student_directory_load_failed` telemetry with request correlation, the
+  target student ID, and stable `student_directory_read_persistence`
+  categorization; expected not-found outcomes remain quiet.
+- Zoom viewer-role lookup failures now emit the existing redacted
+  `zoom_links_load_failed` event with stable `zoom_links_read_persistence`
+  categorization while the role is unresolved; missing profiles remain quiet.
+- Managed-media update, delete, and thumbnail-upload preflight failures now
+  emit redacted `media_mutation_failed` events with stable
+  `media_read_persistence` categorization; expected authorization and
+  not-found outcomes remain quiet.
+- Lesson completion lesson/progress preflight failures now emit redacted
+  `lesson_completion_failed` events with stable `lesson_read_persistence` or
+  `lesson_progress_read_persistence` categorization; expected unpublished and
+  not-found outcomes remain quiet.
+- Added seven focused integration regressions covering request correlation,
+  safe identifiers, stable categories, raw-detail exclusion, and original
+  error preservation.
+
+Validation: focused student, Zoom-link, library, and course integration suites
+passed 118 tests; typecheck, formatting, static checks, `git diff --check`,
+Cloudflare type generation, and `bun run quality:gate` passed with 1,953 unit
+tests. The full build and full integration suite were intentionally skipped for
+the iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 163 — notification recipient-resolution telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for post/comment notification fan-out:
+
+- Recipient resolution now emits redacted
+  `notification_recipients_resolved` telemetry with request correlation,
+  actor/post IDs, notification type, safe recipient count, status, and duration.
+- Unexpected profile/course-teacher recipient lookup failures now emit
+  `notification_recipient_resolution_failed` with the stable
+  `notification_recipient_read_persistence` category. The failure is swallowed
+  so recipient lookup remains best effort, matching the existing DB-delivery
+  failure behavior.
+- Recipient identities, notification content, and raw persistence/provider
+  details remain outside structured telemetry; the original post/comment
+  mutation response is unchanged when notification fan-out cannot resolve.
+- Added focused unit coverage for successful resolution/delivery and redacted
+  failure swallowing.
+
+Validation: the focused notification unit suite, targeted formatting,
+typecheck, static checks, `bun run quality:gate`, and `git diff --check` passed.
+The full build and full integration suite remain intentionally skipped. Hosted
+Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source
+maps, PostHog verification, and restore evidence remain pending.
+
+## Iteration 146 — enrollment evaluation persistence telemetry
+
+This iteration completed the next batched Phase 1 structured-logging slice:
+
+- Enrollment evaluation score, admission-category, and note mutations now emit
+  redacted `enrollment_evaluation_update_failed` events when authorization-boundary
+  reads or evaluation persistence fails unexpectedly.
+- Failure events carry request correlation, evaluator/enrollment IDs, field type,
+  status, duration, and the stable `enrollment_evaluation_persistence` category;
+  scores, admission values, note text, and raw repository details remain excluded.
+- Expected authorization and validation outcomes remain quiet, and original
+  repository errors are preserved for the existing error boundary.
+- Added one batched integration regression covering all three evaluation fields,
+  request correlation, stable categories, redaction, and error preservation.
+
+Validation: focused enrollment integration passed 53 tests; typecheck, formatting,
+static checks, `git diff --check`, Cloudflare type generation, and
+`bun run quality:gate` passed with 1,953 unit tests. The full build and full
+integration suite remain intentionally skipped for the iterative telemetry
+workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
+
+## Iteration 147 — final evidence-aware roadmap handoff
+
+This iteration finalized the repository-side handoff after the batched
+telemetry work:
+
+- The high-value Phase 1 structured-logging families are implemented through
+  enrollment evaluation persistence boundaries, with redacted request
+  correlation, stable categories, safe identifiers/counts, and focused
+  regression coverage.
+- The roadmap remains evidence-aware rather than claiming operationalized
+  readiness. Better Stack and Cloudflare ingestion, dashboards, alert routing,
+  Uptime monitors, source maps, PostHog project verification, and backup/
+  restore evidence still require external setup or dated drills.
+- The Engineering Roadmap is synchronized to this handoff; dashboard and
+  SLI/SLO records remain Planned or Needs data until real hosted evidence is
+  available.
+
+Repository validation for the accumulated telemetry changes remains the
+focused suites, typecheck, formatting, static checks, diff checks, Cloudflare
+type generation, and `bun run quality:gate`. The full build and full
+integration suite remain intentionally deferred for the iterative telemetry
+workflow.
+
+## Iteration 148 — roadmap finalization and evidence boundary
+
+This iteration finalized the repository-side roadmap handoff without adding
+another one-at-a-time telemetry change:
+
+- Structured logging is now recorded as repository-implemented through the
+  Iteration 147 batched auth, profile, assignment preflight, read-preflight,
+  campaign-preview, password-reset, and enrollment-evaluation slices.
+- The local observability plans now distinguish completed repository work from
+  hosted operationalization. Better Stack/Cloudflare ingestion, dashboards,
+  alert routing, Uptime monitors, source maps, PostHog project verification,
+  and backup/restore evidence remain explicit external gates.
+- The live Engineering Roadmap and Observability hubs were updated with this
+  evidence-aware closeout state; no dashboard or SLO was promoted without
+  dated hosted evidence.
+
+Validation: documentation checks and `git diff --check` passed. The full build
+and full integration suite were not run because this iteration only finalized
+documentation and external-status records.
+
+## Iteration 149 — final roadmap disposition
+
+This iteration closed the local roadmap status so the repository and Notion
+handoff use the same evidence boundary:
+
+- Production fundamentals and observability are repository-implemented through
+  the latest batched telemetry and the Admin observability hub.
+- Hosted Better Stack/Cloudflare ingestion, dashboards, alert routing, Uptime
+  monitors, source maps, PostHog project verification, and backup/restore
+  evidence remain external gates; no provider or SLO status is promoted without
+  dated hosted evidence.
+- The Engineering Roadmap and Observability hub receive a final dated snapshot;
+  existing dashboard and SLI/SLO rows remain Planned or Needs data.
+
+Validation: Markdown formatting, `bun run docs:notion-check --json`, and
+`git diff --check` passed. The full build and full integration suite were not
+run because this iteration only aligned documentation and external-status
+records.
+
+## Iteration 150 — Phase 1 roadmap status finalized
+
+This iteration aligned the live Engineering Roadmap's Phase 1 status line with
+the evidence boundary already established in the repository handoff:
+
+- Phase 1 Production fundamentals is repository-implemented through health and
+  readiness checks, redacted structured logging, error tracking, the Admin
+  observability hub, and repository-owned operational runbooks.
+- Better Stack and Cloudflare hosted ingestion, dashboards, alert routing,
+  Uptime monitors, source maps, PostHog project/dashboard verification, and
+  backup/restore evidence remain external gates.
+- The Notion Phase 1 heading now reads `Repository implementation complete;
+hosted verification pending`; related dashboard and SLI/SLO rows remain
+  Planned or Needs data until dated hosted evidence exists.
+
+Validation: Markdown formatting, `bun run docs:notion-check --json`, and
+`git diff --check` passed. The full build and full integration suite were not
+run because this was a documentation and external-status alignment iteration.
+
+## Iteration 151 — remaining roadmap phase disposition
+
+This iteration aligned the remaining roadmap phase statuses with the repository
+evidence without promoting any hosted or operational claim:
+
+- Phase 2 Reliability has repository-owned SLI/SLO definitions, error-budget,
+  incident, observability, and restore procedures; production telemetry,
+  ownership, and the first restore drill remain pending.
+- Phase 3 Safe delivery has an implemented repository promotion, migration,
+  smoke-test, and rollback procedure; protected-environment controls and a
+  hosted rehearsal remain pending.
+- Phase 4 Performance and scale has an initial twelve-query index review and
+  additive migrations; hosted `EXPLAIN (ANALYZE, BUFFERS)` evidence and
+  production measurements remain pending.
+- Phase 5 Security has a clear high/critical audit baseline plus documented
+  authorization, secret-inventory, threat-model, and WAF follow-up; hosted
+  security verification and remaining RBAC/RLS work remain pending.
+- Phase 6 Long-term architecture remains Planned; repository structure exists
+  for ADRs, domain boundaries, contracts, and technical-debt tracking, but no
+  maturity claim is promoted from structure alone.
+
+Validation: Markdown formatting, `bun run docs:notion-check --json`, and
+`git diff --check` passed. The full build and full integration suite were not
+run because this was a documentation and external-status alignment iteration.
+
+## Iteration 152 — Engineering Roadmap final handoff
+
+This iteration finalized the repository-to-Notion roadmap handoff across all
+six maturity phases:
+
+- Phase 1 is repository implementation complete; hosted observability,
+  dashboards, alert routing, Uptime, source maps, PostHog verification, and
+  restore evidence remain pending.
+- Phase 2 has repository reliability procedures drafted; production telemetry,
+  named ownership, and the first restore drill remain pending.
+- Phase 3 has the repository safe-delivery procedure implemented; protected
+  environment controls and a hosted rehearsal remain pending.
+- Phase 4 has the initial query/index review implemented; hosted query plans
+  and production measurements remain pending.
+- Phase 5 has the repository security baseline implemented; hosted verification
+  and remaining RBAC/RLS work remain pending.
+- Phase 6 remains Planned; ADR, domain-boundary, contract, and technical-debt
+  structure does not by itself establish maturity completion.
+
+The Engineering Roadmap now carries the matching final disposition note. No
+dashboard, alert, SLO, or hosted operational status is promoted without dated
+provider or restore-drill evidence. Future work should resume from those
+explicit external gates or a newly scoped Linear roadmap item, rather than
+adding isolated telemetry slices to this handoff.
+
+Validation: Markdown formatting, `bun run docs:notion-check --json`, and
+`git diff --check` passed. The full build and full integration suite were not
+run because this was a documentation-only roadmap handoff.
+
+## Iteration 153 — final roadmap synchronization audit
+
+This iteration rechecked the live Engineering Roadmap against the repository
+handoff and confirmed that the final six-phase disposition is already aligned:
+
+- Phase 1 is repository implementation complete with hosted verification still
+  pending; dashboard and SLI/SLO rows remain Planned or Needs data.
+- Phases 2–5 retain their repository-evidence dispositions and explicit hosted
+  gates; Phase 6 remains Planned because repository structure alone is not a
+  maturity completion claim.
+- No production-readiness review was created because provider, ownership, and
+  restore-drill evidence is still absent.
+
+The matching dated confirmation was appended to the Engineering Roadmap page;
+no phase or hosted status was promoted. Validation: the live page was read
+back, `bun run docs:notion-check --json` returned no changed-file targets, and
+`git diff --check` passed. The full build and full integration suite were not
+run for this documentation-only audit.
+
+## Iteration 154 — self-contained final disposition
+
+This iteration added a concise phase-by-phase disposition and hosted closure
+checklist to the top of the handoff so its current state is unambiguous without
+reading the historical iteration log. The wording matches the live Notion
+Engineering Roadmap; no phase, dashboard, alert, SLO, readiness, or hosted
+status was promoted. Validation: Markdown formatting and `git diff --check`
+passed. The full build and full integration suite were not run for this
+documentation-only handoff clarification.
+
+## Iteration 155 — final live-roadmap synchronization
+
+This iteration synchronized the self-contained repository handoff with the
+live Engineering Roadmap:
+
+- The Roadmap now carries the same six-phase disposition and explicit hosted
+  closure checklist as this handoff, including the evidence boundary for
+  dashboards, alerts, SLOs, readiness, source maps, PostHog, and restore drills.
+- No phase, dashboard, alert, SLO, readiness, or hosted status was promoted;
+  remaining work is still gated on dated external evidence.
+
+Validation: the live Roadmap was read back after the append, `bun run
+docs:notion-check --json` returned no changed-file targets, and `git diff
+--check` passed. The full build and full integration suite were not run for
+this documentation-only synchronization.
+
+## Iteration 156 — signup and OTP persistence telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for the signup flow:
+
+- Invitation and duplicate-profile lookup failures now emit redacted
+  `signup_invitation_lookup_failed` and `signup_profile_lookup_failed` events
+  with request correlation and stable read-persistence categories.
+- OTP issuance/resend writes and failed-attempt accounting now emit
+  `signup_otp_update_failed` and `signup_otp_attempt_update_failed` events
+  with safe invitation IDs and stable persistence categories.
+- Verified signup invitation acceptance and OTP cleanup now emit
+  `signup_invitation_acceptance_failed` and `signup_otp_cleanup_failed` events
+  when their persistence boundaries fail; original errors remain unchanged.
+- Tokens, email addresses, passwords, provider messages, and raw database
+  details remain outside structured telemetry. Expected invalid, expired,
+  cooldown, and OTP-validation outcomes remain quiet.
+- Added six focused integration regressions covering request correlation,
+  redaction, stable categories, and original-error preservation across the
+  new failure boundaries.
+
+Validation: the focused signup integration suite passed 22 tests and targeted
+Prettier formatting passed. The full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
+
+## Iteration 157 — attendance preflight persistence telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for attendance:
+
+- Attendance session open/close, student check-in, and teacher/admin override
+  flows now initialize telemetry before authorization, profile, and lesson
+  preflight reads, so unexpected persistence failures use their existing
+  redacted failure events with request correlation and stable categories.
+- Expected authorization, not-found, validation, and closed-window outcomes
+  remain quiet; original repository errors are preserved for the existing
+  error boundary.
+- Added four focused integration regressions covering request correlation,
+  safe identifiers, stable categories, raw-detail exclusion, and original
+  error preservation across the new preflight boundaries.
+
+Validation: the focused attendance integration file passed all 25 tests.
+Targeted Prettier, typecheck, static checks, Cloudflare type generation, and
+`bun run quality:gate` passed with 1,953 unit tests; `git diff --check` passed.
+The full build and full integration suite remain intentionally skipped for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 158 — post/comment mutation preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for the community workflow:
+
+- Post update/delete and comment create/update/delete now initialize mutation
+  telemetry before their target preflight reads, so unexpected repository
+  failures emit the existing redacted `post_mutation_failed` event.
+- Post and comment preflight failures use stable
+  `post_mutation_preflight_persistence` and
+  `comment_mutation_preflight_persistence` categories; actor and target IDs,
+  request correlation, status, and duration remain safe fields.
+- Expected missing-target, authorization, and validation outcomes remain quiet,
+  while post/comment content and raw persistence details stay excluded.
+- Added one focused regression covering all five preflight boundaries,
+  request-safe identifiers, stable categories, duration, raw-detail exclusion,
+  and original-error preservation.
+
+Validation: targeted formatting, the focused post integration suite, typecheck,
+static checks, Cloudflare type generation, `bun run quality:gate`, and
+`git diff --check` passed. The full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
+
+## Iteration 159 — Zoom-link owner preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for Zoom-link administration:
+
+- Create and update mutations now initialize their telemetry context before
+  teacher-owner validation, so unexpected owner lookup persistence failures
+  emit the existing redacted `zoom_link_mutation_failed` event.
+- Expected owner validation errors remain quiet; unexpected failures carry
+  request correlation, actor/link IDs where available, status, duration, and
+  the stable `zoom_link_persistence` category. Credentials, URLs, titles, and
+  raw repository details remain excluded.
+- Added focused integration coverage for both create and update owner lookup
+  failures, redaction, request correlation, stable categorization, duration,
+  and original-error preservation.
+
+Validation: the focused Zoom-link integration file passed 16 tests;
+typecheck, static checks, Cloudflare type generation, targeted Prettier
+formatting, `bun run quality:gate` with 1,953 unit tests, and `git diff --check`
+passed. The full build and full integration suite remain intentionally skipped
+for the iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 160 — enrollment assignment read-preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for enrollment assignment administration:
+
+- Distribution preflight reads for unassigned enrollments, teacher IDs, and
+  reviewer-course enrichment now emit `enrollment_distribution_failed` with
+  the stable `enrollment_distribution_read_persistence` category when
+  persistence fails unexpectedly.
+- Teacher-substitution course lookup now emits
+  `enrollment_substitution_failed` with the stable
+  `enrollment_substitution_read_persistence` category before the existing
+  write-failure boundary. Expected missing-course outcomes remain quiet.
+- Events retain request correlation, actor and safe teacher identifiers,
+  status, and duration; applicant data and raw persistence details remain
+  excluded, and original repository errors are preserved.
+
+Validation: the focused enrollment integration file passed 54 tests;
+targeted formatting, typecheck, static checks, Cloudflare type generation,
+`bun run quality:gate` with 1,953 unit tests, and `git diff --check` passed.
+The full build and full integration suite remain intentionally deferred for
+the iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 161 — exam-taking read-preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for student exam taking:
+
+- Exam start now initializes its attempt telemetry before student authorization
+  and the published-exam lookup, so unexpected preflight persistence failures
+  emit `exam_attempt_start_failed` with the stable
+  `exam_attempt_persistence` category.
+- Exam submission now places the own-attempt lookup in its own failure boundary,
+  so unexpected lookup persistence failures emit
+  `exam_attempt_submission_failed` with the same stable category while keeping
+  the finalization failure path intact.
+- Events retain request correlation, student/attempt/exam identifiers where
+  available, status, and duration; exam content, answer values, and raw
+  persistence details remain excluded. Original repository errors are
+  preserved, and expected authorization/not-found outcomes remain quiet.
+
+Validation: the focused exam integration file passed 23 tests; targeted
+formatting, typecheck, static checks, Cloudflare type generation,
+`bun run quality:gate` with 1,953 unit tests, and `git diff --check` passed.
+The full build and full integration suite remain intentionally deferred for
+the iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 162 — shared authorization persistence telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for the shared authorization adapter:
+
+- Role and course/lesson/assignment/submission/post/comment resource lookups now
+  emit one redacted `authorization_lookup_failed` event when their persistence
+  reads fail unexpectedly. Events include request correlation, safe user and
+  resource identifiers, action metadata where applicable, duration, and a
+  stable lookup-specific persistence category.
+- Expected authorization denials and missing resources retain their existing
+  boolean or typed-error behavior without noisy telemetry; raw persistence
+  details remain excluded and original repository errors are preserved.
+- Added focused unit coverage for both role-read methods and all six resource
+  lookup branches, including redaction, request correlation, stable categories,
+  and error preservation.
+
+Validation: the focused authorization telemetry test passed 9 tests. The full
+build and full integration suite remain intentionally deferred for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 164 — root-auth and course-teacher telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for two remaining auth-related persistence boundaries:
+
+- Root route authentication bootstrap now emits the existing redacted
+  `auth_session_lookup_failed` and `auth_profile_lookup_failed` events when
+  unexpected Supabase session or profile persistence failures occur. Events
+  use the `auth:fetchUser` path, request correlation, safe user identity where
+  available, stable categories, and preserve the original error; anonymous
+  `null` context behavior is unchanged.
+- The legacy `isCourseTeacherService` boolean probe now emits redacted
+  `course_teacher_check_failed` telemetry for unexpected assignment-read
+  persistence failures with request correlation, actor/course IDs, duration,
+  and the stable `course_teacher_read_persistence` category. Successful
+  authorization results remain quiet and unchanged.
+- Added focused integration coverage for root session/profile failures and
+  course-teacher lookup failure redaction and error preservation.
+
+Validation: the focused auth and teacher integration suites, targeted
+formatting, typecheck, static checks, `bun run quality:gate`, and
+`git diff --check` passed. The full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
+
+## Iteration 165 — final Engineering Roadmap audit
+
+This iteration completes the repository-side roadmap handoff without making
+unsupported hosted-readiness claims:
+
+- Rechecked the live Engineering Roadmap against the six-phase disposition in
+  this handoff. Phase 1 remains repository implementation complete with hosted
+  verification pending; Phases 2–5 retain their repository-evidence
+  dispositions and explicit hosted gates; Phase 6 remains Planned.
+- Confirmed that the latest repository telemetry evidence is the Iteration 164
+  root-auth and course-teacher slice, while the remaining closure work is
+  external Better Stack/Cloudflare ingestion, dashboards, alert routing,
+  Uptime and source-map checks, PostHog verification, restore evidence,
+  protected-environment rehearsal, hosted performance measurements, and
+  security/RLS verification.
+- No phase, dashboard, alert, SLO, readiness, or hosted status was promoted.
+
+The live Notion Engineering Roadmap was synchronized with this final audit.
+Validation for this documentation-only closeout is targeted Markdown
+formatting, `bun run docs:notion-check --json`, and `git diff --check`; the full
+build and full integration suite remain intentionally skipped.
+
+## Iteration 166 — course calendar and mutation preflight telemetry
+
+This iteration completed another batched repository-owned structured-logging
+slice for course workflows:
+
+- Student course-calendar reads now emit redacted
+  `course_calendar_events_loaded` / `course_calendar_events_load_failed`
+  events across course-ID, lesson-calendar, and assignment-calendar reads.
+  Events retain request correlation, actor ID, safe source/event counts,
+  status, and duration; lesson and assignment content plus raw persistence
+  details remain excluded, and original repository errors are preserved.
+- Course create, update, delete, and Admin course-teacher assignment telemetry
+  now remains active through profile, authorization, course, and teacher
+  preflight reads. Expected authorization, validation, conflict, and not-found
+  outcomes remain quiet; unexpected failures retain stable persistence
+  categories and original errors.
+- Added focused integration coverage for calendar success/failure outcomes,
+  request correlation, safe counts, redaction, and error preservation.
+
+Validation: the six focused course-calendar integration tests passed and
+targeted Prettier formatting passed. The broader course integration file ran
+66 of 67 tests; its existing thumbnail-signing assertion failed because the
+storage mock returned no signed URL, while the new calendar tests passed. The
+full build and full integration suite remain intentionally skipped for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 167 — invitation mutation preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for Admin invitation mutations:
+
+- Invitation creation now observes unexpected duplicate-invitation and
+  existing-profile preflight persistence failures through the redacted
+  `invitation_create_failed` event with stable read categories.
+- Invitation resend now observes unexpected target lookup and token-rotation
+  persistence failures through `invitation_resend_failed`; actor/invitation/
+  role identifiers, request correlation, status, duration, and stable
+  categories remain safe, while email addresses, tokens, and raw repository
+  details remain excluded.
+- Original repository errors and expected authorization, conflict, not-found,
+  pending-state, and delivery outcomes remain unchanged. Added four focused
+  integration regressions covering redaction, request correlation, stable
+  categories, and error preservation across all four boundaries.
+
+Validation: the focused invitation integration file passed all 32 tests;
+targeted Prettier formatting and typecheck passed. The full build and full
+integration suite remain intentionally skipped for the iterative telemetry
+workflow. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts,
+Uptime monitors, source maps, PostHog verification, and restore evidence
+remain pending.
+
+## Iteration 168 — Admin actor-profile preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for Admin identity preflights:
+
+- Unexpected actor-profile lookup failures in invitation create, resend, list,
+  revoke, and delete flows now reuse each action's redacted failure event with
+  the stable `invitation_actor_profile_read_persistence` category. Expected
+  authorization and missing-profile outcomes remain quiet.
+- Unexpected staff-privilege target-profile lookup failures now emit
+  `staff_privilege_update_failed` with the stable
+  `staff_privilege_target_read_persistence` category; target IDs remain safe
+  correlation fields and raw profile/provider details remain excluded.
+- Added six focused integration regressions covering request correlation,
+  stable categories, redaction, and original-error preservation across the
+  batched boundaries.
+
+Validation: the focused invitation and staff-privilege integration suites
+passed all 42 tests; targeted Prettier formatting, typecheck, static quality,
+and `git diff --check` passed. The full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
+
+## Iteration 169 — course read actor-profile preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for authenticated course and lesson reads:
+
+- Course list/detail, upcoming-lesson, course-calendar, and course-teacher
+  reads now initialize their existing redacted read telemetry before persisted
+  actor-profile lookup. Unexpected profile persistence failures therefore emit
+  the same operation-specific failure event and stable read category as later
+  repository failures.
+- Expected missing-profile outcomes remain quiet and preserve their existing
+  typed errors. Request correlation, actor/course identifiers, status,
+  duration, and safe count metadata remain unchanged; profile fields,
+  calendar/lesson content, and raw persistence details stay outside telemetry.
+- Added one parameterized focused integration regression covering all five
+  preflight paths, redaction, request correlation, stable categories, and
+  original-error preservation.
+
+Validation: the five new focused integration cases passed. The broader course
+integration file passed 71 of 72 tests; its one failure is the existing
+thumbnail-signing storage-mock assertion, unrelated to this slice. Targeted
+formatting remains clean; the full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
+
+## Iteration 170 — post read actor-profile preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for community reads:
+
+- Post channel, feed, single-post, and comment reads now initialize their
+  existing redacted read telemetry before the persisted actor-profile lookup.
+  Unexpected profile persistence failures therefore emit `post_read_failed`
+  with the stable `post_read_persistence` category and the operation-specific
+  path.
+- Expected missing-profile outcomes remain quiet and preserve the existing
+  typed error. Request correlation, actor/post/course identifiers, read scope,
+  and safe result metadata remain unchanged; post/comment content, author
+  payloads, and raw persistence details remain excluded.
+- Added four parameterized focused integration regressions covering redaction,
+  request correlation, stable categorization, duration, and original-error
+  preservation across all four read paths.
+
+Validation: the focused post integration file passed all 54 tests. The full
+build and full integration suite remain intentionally skipped for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 171 — calendar, teacher, and notification actor-profile telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for authenticated read preflights:
+
+- Calendar overview reads now initialize their existing redacted failure
+  telemetry before the persisted actor-profile lookup. Unexpected profile
+  persistence failures emit `calendar_events_load_failed` with the stable
+  `calendar_read_persistence` category; expected missing-profile outcomes stay
+  quiet and the calendar response is unchanged.
+- Teacher-directory reads now keep the persisted actor-profile lookup inside
+  the existing `teacher_directory_load_failed` boundary. Unexpected failures
+  retain request correlation, actor ID, duration, stable categorization, and
+  original-error preservation; expected profile/not-found outcomes remain
+  quiet.
+- Notification summary, group read, and mark-all read services now initialize
+  telemetry before their persisted actor-profile checks. Unexpected failures
+  reuse the existing summary or read-state events with stable categories;
+  successful polled summaries remain silent and expected 4xx outcomes remain
+  outside noisy error telemetry.
+- Added focused integration coverage for all five actor-profile boundaries,
+  including redaction, request correlation, stable categories, duration, and
+  original-error preservation.
+
+Validation: the focused calendar, teacher, and notification integration files
+passed all 36 tests. Typecheck, static quality verification, targeted
+formatting, and `git diff --check` passed. The full build and full integration
+suite remain intentionally skipped for the iterative telemetry workflow.
+Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors,
+source maps, PostHog verification, and restore evidence remain pending.
+
+## Iteration 172 — assignment actor-profile telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for assignment workflows:
+
+- Assignment submission actor-profile lookup failures now reuse the redacted
+  `assignment_submission_failed` event with the existing
+  `submission_read_persistence` category, request correlation, assignment and
+  user identifiers, and original-error preservation.
+- Student and teacher assignment-list actor-profile lookups now occur inside
+  the existing `assignment_read_failed` boundary with the stable
+  `assignment_read_persistence` category. Public response shapes are unchanged.
+- Expected missing-profile and role authorization outcomes remain quiet, and
+  profile fields, credentials, and raw persistence details remain excluded.
+- Added three parameterized focused integration regressions covering redaction,
+  request correlation, stable categories, duration, and error preservation.
+
+Validation: the focused assignment integration file passed all 57 tests,
+targeted Prettier formatting passed, and `bun run typecheck` passed. The full
+build and full integration suite remain intentionally skipped for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 173 — directory and media authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for four authorization/profile persistence boundaries:
+
+- Student-directory list and detail authorization checks now run inside the
+  existing `student_directory_load_failed` boundary. Unexpected role/profile
+  persistence failures carry request correlation, actor/target IDs, the stable
+  `student_directory_read_persistence` category, and the original error;
+  expected authorization and not-found outcomes remain quiet.
+- The admin teacher-directory role preflight now runs inside the existing
+  `teacher_directory_load_failed` boundary with the stable
+  `teacher_directory_read_persistence` category. The list response and normal
+  role-denial behavior are unchanged.
+- Library-media creation now keeps its staff/profile preflight inside the
+  existing `media_mutation_failed` boundary with the stable
+  `media_persistence` category. Validation and authorization outcomes remain
+  quiet, and raw profile/provider details remain excluded.
+- Added four focused integration regressions covering redaction, request
+  correlation, stable categories, duration, and original-error preservation.
+
+Validation: the new student, teacher, and library preflight tests passed. The
+student and teacher integration files passed in the focused combined run. The
+library file retains ten unrelated storage-mock failures in its existing
+signing/upload tests; the new create preflight test passes in isolation. The
+full build and full integration suite remain intentionally skipped for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 174 — email campaign send persistence telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for the Admin email-campaign send path:
+
+- Unexpected send lock checks, sender-profile reads, and recipient planning
+  failures now emit `email_campaign_send_failed` with request correlation,
+  campaign, actor ID, duration, and stable persistence categories.
+- Invitation creation/rotation failures and enrollment-marking failures now
+  use stable categories on the per-invitation failure event. Email-message
+  record failures emit `email_campaign_message_record_failed`; provider
+  delivery failures retain `invitation_email_delivery`.
+- Existing campaign summaries, rollback behavior, failed message rows, and
+  original exceptions remain unchanged. Recipient email addresses, invitation
+  tokens, provider details, and raw persistence errors remain outside
+  structured telemetry.
+- Added five focused integration regressions covering categories, request
+  correlation, redaction, and error preservation.
+
+Validation: the focused email-campaign integration file passed all 24 tests;
+typecheck, targeted formatting, static quality, and `git diff --check` passed.
+Static quality reported only existing warnings in unrelated enrollment and
+WhatsApp test files. The full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
+
+## Iteration 175 — WhatsApp campaign send persistence telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for the Admin WhatsApp-campaign send path:
+
+- Unexpected send lock checks and recipient planning failures now emit
+  `whatsapp_campaign_send_failed` with request correlation, campaign, actor ID,
+  duration, and stable persistence categories.
+- Message-row persistence failures now emit
+  `whatsapp_campaign_message_record_failed` with request correlation, campaign,
+  enrollment/actor IDs, duration, and the stable
+  `campaign_message_persistence` category. Provider delivery failures retain
+  `whatsapp_message_delivery` and still remain best-effort per recipient.
+- Send-path planning failures now release the caller's held campaign lock before
+  returning the original repository error. Recipient phone numbers, names,
+  provider details, and raw persistence errors remain outside structured
+  telemetry.
+- Added focused integration regressions for lock lookup, planning, lock release,
+  message-row persistence, request correlation, redaction, and error
+  preservation.
+
+Validation: the focused WhatsApp integration suite and targeted typecheck,
+formatting, static quality, and diff checks are the verification scope for this
+iteration. The full build and full integration suite remain intentionally
+skipped for the iterative telemetry workflow. Hosted Better Stack/Cloudflare
+ingestion, dashboards, alerts, Uptime monitors, source maps, PostHog
+verification, and restore evidence remain pending.
+
+## Iteration 176 — calendar event authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for the teacher/admin calendar event-management boundary:
+
+- Calendar event listing, creation, update, and deletion now initialize their
+  existing redacted telemetry contexts before the teacher/admin role preflight.
+  Unexpected role/profile persistence failures therefore emit the matching
+  operation-specific failure event with request correlation, duration, and a
+  stable read or mutation persistence category.
+- Expected authorization outcomes remain quiet and preserve the existing
+  teacher/admin restriction. Event titles, descriptions, locations, meeting
+  links, timestamps, and raw authorization/database details remain outside
+  structured telemetry.
+- Added four parameterized focused integration regressions covering request
+  correlation, redaction, stable categories, duration, and original-error
+  preservation across the batched operations.
+
+Validation: the focused calendar-event integration suite and targeted
+typecheck, formatting, static quality, and diff checks are the verification
+scope for this iteration. The full build and full integration suite remain
+intentionally skipped for the iterative telemetry workflow. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
+
+## Iteration 177 — enrollment contact authorization telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for the two privileged enrollment-contact endpoints:
+
+- Enrollment email export and pasted-name contact lookup now initialize their
+  operation telemetry before checking the staff privilege. Unexpected
+  privilege-read persistence failures emit the matching redacted operation
+  failure event with request correlation, actor ID, duration, and the stable
+  `enrollment_contact_access_persistence` category.
+- Expected authorization denials and input validation outcomes remain quiet;
+  contact values, names, privilege details, and raw persistence errors remain
+  excluded from structured telemetry. Original exceptions are preserved.
+- Added two focused integration regressions covering both preflight boundaries,
+  request correlation, redaction, stable categorization, duration, and
+  original-error preservation.
+
+Validation: the focused enrollment integration suite passed 56 tests. The
+full build and full integration suite remain intentionally skipped for the
+iterative telemetry workflow. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 178 — lesson authorization preflight telemetry
+
+This iteration completed the next batched repository-owned structured-logging
+slice for lesson mutations and completion:
+
+- Lesson creation, update, and deletion now run their course authorization
+  preflights inside operation-aware telemetry boundaries. Student lesson
+  completion now does the same for its student-role preflight.
+- Unexpected authorization persistence failures reuse the matching redacted
+  operation failure event with request correlation, actor/course/lesson IDs
+  where available, duration, and the stable
+  `lesson_authorization_persistence` category. Expected authorization
+  denials remain quiet and preserve their existing errors.
+- Added a parameterized focused integration regression covering all four
+  authorization boundaries, raw-detail exclusion, request correlation,
+  category stability, duration, and original-error preservation.
+
+Validation: the new focused lesson telemetry cases passed all 5 tests;
+targeted Prettier formatting and `bun run typecheck` passed. The broader
+course integration file passed 76 of 77 tests; its one failure remains the
+existing thumbnail-signing storage-mock assertion and is unrelated to this
+slice. The full build and full integration suite remain intentionally skipped
+for the iterative telemetry workflow. Hosted Better Stack/Cloudflare
+ingestion, dashboards, alerts, Uptime monitors, source maps, PostHog
+verification, and restore evidence remain pending.
+
+## Iteration 179 — campaign authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for Admin campaign entrypoints:
+
+- Email and WhatsApp campaign lock inspection, explicit release, preview, and
+  send now initialize operation telemetry before their Admin role checks.
+- Unexpected role-read persistence failures reuse each operation's existing
+  redacted failure event with request correlation, campaign/path metadata where
+  applicable, duration, and the stable `campaign_authorization_persistence`
+  category. Expected authorization denials preserve their original errors and
+  remain outside operation error telemetry.
+- Added parameterized focused integration coverage for all eight authorization
+  boundaries, raw-detail exclusion, request correlation, duration, and error
+  identity preservation.
+
+Validation: focused email and WhatsApp campaign integration tests passed all 55
+tests. `bun run quality:gate` passed with 1,964 unit tests; typecheck, targeted
+formatting, ESLint, and `git diff --check` also passed, with only pre-existing
+warnings in unrelated enrollment and WhatsApp test code. The full build and
+full integration suite remain intentionally skipped for the iterative telemetry
+workflow. Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime
+monitors, source maps, PostHog verification, and restore evidence remain
+pending.
+
+## Iteration 180 — exam and Zoom authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for three previously uncovered Admin/teacher authorization boundaries:
+
+- Exam creation now initializes its mutation telemetry before the teacher/admin
+  role check. Unexpected role-read persistence failures emit the redacted
+  `exam_create_failed` event with request correlation, actor ID, duration, and
+  the stable `exam_authorization_persistence` category; expected denials remain
+  quiet and preserve their original error.
+- Zoom-link creation, update, and deletion now initialize mutation telemetry
+  before their Admin role checks. Unexpected role-read persistence failures
+  emit `zoom_link_mutation_failed` with the stable
+  `zoom_link_authorization_persistence` category, safe actor/link metadata,
+  request correlation, and duration; credentials and raw details remain
+  excluded.
+- Added focused integration coverage for all four authorization boundaries,
+  including raw-detail exclusion, request correlation, duration, and expected
+  denial silence.
+
+Validation: focused exam and Zoom-link integration tests passed all 45 tests;
+targeted formatting, typecheck, static quality, and `git diff --check` remain
+the verification scope for this iterative telemetry workflow. The full build
+and full integration suite remain intentionally skipped. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
+
+## Iteration 181 — final repository telemetry handoff
+
+This iteration reconciled the handoff metadata with the completed batched
+structured-logging rollout:
+
+- The roadmap status table now records repository telemetry as complete through
+  Iteration 180 and points the next slice at hosted ingestion, dashboard,
+  alert, and source-map verification.
+- The six-phase evidence-aware disposition remains unchanged. No dashboard,
+  alert, SLO, readiness, or phase status is promoted without dated external
+  evidence.
+- The live Notion Engineering Roadmap already contains the matching Iteration
+  180 closeout and phase statuses, so no redundant Notion append is required.
+
+Validation: targeted Markdown formatting, `bun run docs:notion-check --json`,
+and `git diff --check` are the verification scope for this documentation-only
+handoff. The full build and full integration suite remain intentionally
+skipped.
+
+## Iteration 182 — enrollment authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for the remaining enrollment Admin-role boundaries:
+
+- Enrollment status, special-case, and deletion mutations; enrollment
+  invitation sends; distribution; substitution start/end; active-substitution
+  reads; and bulk grading now initialize their operation telemetry before the
+  Admin-role check.
+- Unexpected role-store failures reuse the matching redacted operation event
+  with request correlation, duration, stable authorization-persistence
+  categories, and original-error preservation. Expected authorization denials
+  remain quiet; enrollment content, contact values, and raw persistence
+  details remain excluded.
+- Added one parameterized focused integration suite covering all nine
+  authorization boundaries plus expected-denial silence.
+
+Validation: the focused enrollment integration suite passed 66 tests;
+`bun run typecheck` and targeted Prettier checks passed. The full build and
+full integration suite remain intentionally skipped for the iterative
+telemetry workflow. Hosted Better Stack/Cloudflare ingestion, dashboards,
+alerts, Uptime monitors, source maps, PostHog verification, and restore
+evidence remain pending.
+
+## Iteration 183 — discipleship authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for the seven discipleship mutation entrypoints:
+
+- Assignment, unassignment, pairing, unpairing, and individual/pair/group
+  schedule mutations now classify unexpected role-store failures with the
+  stable `discipleship_authorization_persistence` category while preserving
+  the shared redacted mutation event shape.
+- Expected authorization denials remain quiet and preserve their original
+  errors. Student and teacher identifiers remain the only safe mutation
+  metadata; schedules, profile data, and raw persistence details stay excluded.
+- Added parameterized integration coverage for all seven role preflight
+  boundaries, request correlation, redaction, error identity, and denial
+  silence.
+
+Validation: the focused discipleship integration suite passed all 17 tests;
+targeted formatting and typecheck passed. The full build and full integration
+suite remain intentionally skipped for the iterative telemetry workflow.
+Hosted Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors,
+source maps, PostHog verification, and restore evidence remain pending.
+
+## Iteration 184 — final Engineering Roadmap synchronization audit
+
+This iteration closes the current repository-to-Notion roadmap handoff:
+
+- Confirmed that the local six-phase disposition and the live Engineering Roadmap
+  match through the Iteration 183 discipleship telemetry closeout.
+- Confirmed that Phase 1 remains repository implementation complete with hosted
+  verification pending; Phases 2–5 retain their repository-evidence dispositions
+  and explicit hosted gates; Phase 6 remains Planned.
+- Confirmed that the remaining closure work is dated external evidence for
+  Better Stack/Cloudflare ingestion, dashboards, alerts, Uptime and source maps,
+  PostHog, backup/restore, protected-environment rehearsal, hosted performance,
+  and security/RLS verification. No status is promoted from local evidence alone.
+
+Validation for this documentation-only synchronization is limited to targeted
+Markdown formatting, `bun run docs:notion-check --json`, and `git diff --check`.
+The full build and full integration suite remain intentionally skipped.
+
+## Iteration 185 — authorization persistence telemetry completion
+
+This iteration completed a batched repository-owned structured-logging slice
+for authorization persistence boundaries that remained generic or silent:
+
+- Shared teacher staff-privilege reads now emit redacted
+  `authorization_lookup_failed` events with request correlation, actor ID,
+  privilege, duration, and the stable
+  `authorization_staff_privilege_read_persistence` category. Admin and student
+  short-circuits remain silent, and raw persistence details remain excluded.
+- Exam save/publish and open-answer/finalize-grading role preflights now reuse
+  their operation-specific failure events with stable authorization-persistence
+  categories. Expected role denials remain quiet and original errors are
+  preserved.
+- Added focused coverage for redaction, request correlation, stable categories,
+  error identity, short-circuit behavior, and expected-denial silence across
+  the shared helper and four exam authorization boundaries.
+
+Validation: the focused authz unit suite passed 4 tests and the focused exam
+integration suite passed 33 tests. Targeted formatting and typecheck remain the
+verification scope for this iterative telemetry workflow. The full build and
+full integration suite remain intentionally skipped. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
+
+## Iteration 186 — assignment authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for assignment authorization persistence boundaries:
+
+- Assignment creation, update, and deletion now initialize their existing
+  mutation telemetry before course-scoped authorization. Unexpected authz
+  persistence failures reuse the matching operation failure event with the
+  stable `assignment_authorization_persistence` category, safe assignment,
+  lesson, and course identifiers, request correlation, and duration.
+- Teacher grading now keeps the course-scoped authorization preflight inside
+  `assignment_grading_failed` telemetry with the stable
+  `assignment_grading_authorization_persistence` category. Expected denials
+  remain quiet, original errors are preserved, and assignment content,
+  grades, feedback, and raw persistence details remain excluded.
+- Added focused integration coverage for all four authorization boundaries,
+  redaction, request correlation, stable categorization, duration, original
+  error preservation, and expected-denial silence.
+
+Validation: the focused assignment integration suite passed all 62 tests.
+Targeted formatting and typecheck remain the verification scope for this
+iterative telemetry workflow. The full build and full integration suite remain
+intentionally skipped. Hosted Better Stack/Cloudflare ingestion, dashboards,
+alerts, Uptime monitors, source maps, PostHog verification, and restore
+evidence remain pending.
+
+## Iteration 187 — course authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for course administration and course-thumbnail access:
+
+- Course creation now keeps its persisted-profile/admin-role preflight inside
+  `course_create_failed` telemetry. Course update and deletion keep both the
+  Admin-role and course-scoped authorization preflights inside their matching
+  operation failure events, using the stable
+  `course_authorization_persistence` category for unexpected persistence
+  failures.
+- Admin course-teacher assignment now keeps its role preflight inside
+  `course_teachers_update_failed` with the stable
+  `course_teacher_assignment_authorization_persistence` category.
+- Course-thumbnail signed-upload request and completion authorization failures
+  now use the stable `course_thumbnail_authorization_persistence` category on
+  the existing redacted `image_upload_failed` event. Expected authorization
+  denials remain quiet; course content, storage paths, provider details, and
+  raw persistence errors remain excluded, and original errors are preserved.
+- Added focused integration coverage for profile, role, resource, teacher-pair,
+  and thumbnail authorization boundaries, including request correlation,
+  redaction, stable categorization, and expected-denial silence.
+
+Validation: the new course authorization tests passed all 12 focused cases and
+the new thumbnail authorization tests passed all 3 focused cases. The broader
+course integration file passed 83 of 84 tests; its existing thumbnail-signing
+storage-mock assertion remains unrelated to this slice. The image-upload file
+retains five pre-existing storage-mock failures outside the new authorization
+cases. Targeted Prettier formatting and focused type/test checks remain the
+verification scope for this iterative telemetry workflow. The full build and
+full integration suite remain intentionally skipped. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
+
+## Iteration 188 — staff-privilege authorization telemetry
+
+This iteration completed the next bounded repository-owned structured-logging
+slice for the Admin staff-privilege mutation:
+
+- The Admin-role preflight now runs inside the existing
+  `staff_privilege_update_failed` telemetry boundary. Unexpected role-store
+  persistence failures carry request correlation, actor/target IDs, privilege,
+  grant direction, duration, and the stable
+  `staff_privilege_authorization_persistence` category; raw provider details
+  remain excluded.
+- Expected Admin-role denials remain quiet and preserve their original error.
+  Existing target-profile and mutation persistence telemetry is unchanged.
+- Added focused integration coverage for unexpected role-store failure,
+  redaction, request correlation, stable categorization, and denial silence.
+
+Validation: the focused staff-privilege integration suite passed all 7 tests;
+targeted formatting and typecheck remain the verification scope for this
+iterative telemetry workflow. The full build and full integration suite remain
+intentionally skipped. Hosted Better Stack/Cloudflare ingestion, dashboards,
+alerts, Uptime monitors, source maps, PostHog verification, and restore
+evidence remain pending.
+
+## Iteration 189 — post/comment authorization preflight telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for community moderation authorization boundaries:
+
+- Post update and deletion, plus comment deletion, now keep ownership-
+  moderation authorization inside the existing `post_mutation_failed`
+  telemetry boundary.
+- Unexpected authorization persistence failures use stable
+  `post_authorization_persistence` or `comment_authorization_persistence`
+  categories with request correlation, safe actor/target identifiers,
+  duration, and original-error preservation. Expected denials remain quiet;
+  post/comment content and raw persistence details remain excluded.
+- Added parameterized focused integration coverage for all three authorization
+  boundaries, redaction, request correlation, stable categorization, error
+  identity, and expected-denial silence.
+
+Validation: the focused post integration suite passed all 58 tests; targeted
+Prettier formatting passed. Typecheck, static quality, and Notion synchronization
+remain in the final verification scope. The full build and full integration
+suite remain intentionally skipped. Hosted Better Stack/Cloudflare ingestion,
+dashboards, alerts, Uptime monitors, source maps, PostHog verification, and
+restore evidence remain pending.
+
+## Iteration 190 — enrollment evaluation authorization telemetry
+
+This iteration completed a batched repository-owned structured-logging slice
+for the three enrollment evaluation mutations:
+
+- Score, admission-category, and note updates now distinguish unexpected role,
+  reviewer-assignment, and course-team authorization read failures with the
+  stable `enrollment_evaluation_authorization_persistence` category on the
+  existing redacted `enrollment_evaluation_update_failed` event.
+- Evaluation persistence failures retain the existing
+  `enrollment_evaluation_persistence` category. Expected authorization and
+  validation outcomes remain quiet; evaluator IDs, enrollment IDs, request
+  correlation, duration, and field type remain safe telemetry fields while
+  scores, notes, and raw persistence details stay excluded.
+- Added focused integration coverage for both role and evaluator-access
+  lookup failures across all three evaluation fields, including redaction,
+  request correlation, stable categorization, duration, and original-error
+  preservation.
+
+Validation: the focused enrollment integration suite passed 69 tests;
+`bun run quality:gate` passed with 1,968 unit tests, typecheck, static checks,
+Cloudflare type generation, formatting, and diff validation. The full build
+and full integration suite remain intentionally skipped. Hosted Better
+Stack/Cloudflare ingestion, dashboards, alerts, Uptime monitors, source maps,
+PostHog verification, and restore evidence remain pending.
+
+## Iteration 191 — final Engineering Roadmap handoff
+
+This iteration closes the repository-to-Notion roadmap handoff after the
+Iteration 190 telemetry slice:
+
+- The live Engineering Roadmap and this handoff agree on all six phase
+  dispositions. Phase 1 remains repository implementation complete with
+  hosted verification pending; Phases 2–5 retain their evidence-gated
+  dispositions; Phase 6 remains Planned.
+- Repository structured logging is complete through Iteration 190 for the
+  currently scoped migration. No further telemetry boundary is added in this
+  closeout iteration.
+- No SLI/SLO, dashboard, alert, readiness, ownership, or phase status is
+  promoted without dated external evidence. Remaining gates are Better
+  Stack/Cloudflare ingestion, dashboards, alert routing, Uptime and source
+  maps, PostHog verification, backup/restore, protected-environment
+  rehearsal, hosted performance, and security/RLS evidence.
+- The matching dated closeout note is appended to the live Engineering
+  Roadmap in Notion.
+
+Validation: the handoff Markdown was formatted and checked with
+`git diff --check`; the full build and full integration suite remain
+intentionally skipped because this is a documentation-only closeout.
+
+## Iteration 192 — observability signal naming audit
+
+This iteration completed a small documentation consistency correction after
+the final roadmap audit:
+
+- The canonical Notion Observability Signals section now names Better Stack
+  Errors and Cloudflare Logs & Traces as the operator-facing surfaces for
+  critical flows. The Sentry-compatible SDK transport remains an internal
+  implementation detail during the cutover.
+- The six Engineering Roadmap phase dispositions remain unchanged: Phase 1 is
+  repository implementation complete with hosted verification pending; Phases
+  2–5 retain their evidence-gated dispositions; Phase 6 remains Planned.
+- No telemetry boundary, SLO, dashboard, alert, readiness, ownership, or
+  hosted status was promoted.
+
+Validation: targeted Markdown formatting, `bun run docs:notion-check`, and
+`git diff --check` remain the verification scope. The full build and full
+integration suite remain intentionally skipped for this documentation-only
+audit.

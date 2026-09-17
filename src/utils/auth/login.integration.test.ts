@@ -80,4 +80,33 @@ describe('loginService (integration)', () => {
     })
     info.mockRestore()
   })
+
+  it('logs unexpected provider exceptions without leaking exception text', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mocks.signInWithPassword.mockRejectedValue(
+      new Error('connectionString=secret; user=user@test.dev'),
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org', {
+          headers: { 'x-request-id': 'request-2' },
+        }),
+        () => loginService({ email: 'user@test.dev', password: 'secret' }),
+      ),
+    ).rejects.toThrow('connectionString=secret; user=user@test.dev')
+
+    const line = error.mock.calls[0][0]
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('user@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      errorCategory: 'auth_sign_in',
+      event: 'login_failed',
+      level: 'error',
+      path: 'serverFn:login',
+      requestId: 'request-2',
+      status: 'failure',
+    })
+    error.mockRestore()
+  })
 })

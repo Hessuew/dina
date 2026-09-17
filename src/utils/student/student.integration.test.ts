@@ -14,6 +14,7 @@ import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-
 import { AuthorizationError, NotFoundError } from '@/utils/errors'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 import * as studentRepository from '@/utils/student/repository'
+import * as authorizationUtils from '@/utils/authz'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -156,6 +157,65 @@ describe('getStudentsService (integration)', () => {
       durationMs: expect.any(Number),
     })
   })
+
+  it.each<{
+    name: string
+    path: string
+    targetStudentId?: string
+    run: (actorId: string) => Promise<unknown>
+  }>([
+    {
+      name: 'list',
+      path: 'serverFn:getStudents',
+      run: async (actorId: string) => getStudentsService(actorId),
+    },
+    {
+      name: 'detail',
+      path: 'serverFn:getStudentDetail',
+      targetStudentId: '00000000-0000-4000-8000-000000000004',
+      run: async (actorId: string) =>
+        getStudentDetailService(
+          { studentId: '00000000-0000-4000-8000-000000000004' },
+          actorId,
+        ),
+    },
+  ])(
+    'logs unexpected $name actor-access preflight failures without raw details',
+    async ({ path, targetStudentId, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const actorId = '00000000-0000-4000-8000-000000000005'
+      const repositoryError = new Error(
+        'actor profile connectionString=secret; email=actor@test.dev',
+      )
+      vi.spyOn(
+        authorizationUtils,
+        'resolveAdminOrTeacherAccess',
+      ).mockRejectedValueOnce(repositoryError)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/students', {
+            headers: { 'x-request-id': `student-${path}` },
+          }),
+          () => run(actorId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('actor@test.dev')
+      expect(JSON.parse(line)).toMatchObject({
+        event: 'student_directory_load_failed',
+        path,
+        requestId: `student-${path}`,
+        actorId,
+        ...(targetStudentId ? { targetStudentId } : {}),
+        status: 'failure',
+        errorCategory: 'student_directory_read_persistence',
+        durationMs: expect.any(Number),
+      })
+    },
+  )
 })
 
 describe('getStudentDetailService (integration)', () => {
@@ -177,6 +237,41 @@ describe('getStudentDetailService (integration)', () => {
         viewerId,
       ),
     ).rejects.toBeInstanceOf(NotFoundError)
+  })
+
+  it('logs detail lookup failures without exposing repository details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const viewerId = await seedProfile({ role: 'admin' })
+    const studentId = '00000000-0000-4000-8000-000000000002'
+    const repositoryError = new Error(
+      'student directory connectionString=secret; email=private@test.dev',
+    )
+    vi.spyOn(studentRepository, 'findStudentById').mockRejectedValueOnce(
+      repositoryError,
+    )
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/student-detail', {
+          headers: { 'x-request-id': 'student-detail-read-failure' },
+        }),
+        () => getStudentDetailService({ studentId }, viewerId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('private@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'student_directory_load_failed',
+      path: 'serverFn:getStudentDetail',
+      requestId: 'student-detail-read-failure',
+      actorId: viewerId,
+      targetStudentId: studentId,
+      status: 'failure',
+      errorCategory: 'student_directory_read_persistence',
+      durationMs: expect.any(Number),
+    })
   })
 
   it('throws NotFoundError when the id belongs to a non-student profile', async () => {

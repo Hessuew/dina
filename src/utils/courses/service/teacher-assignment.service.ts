@@ -26,6 +26,7 @@ type CourseTeacherAssignmentLogContext = {
   courseId: string
   teacher1Id: string
   teacher2Id: string
+  failureEvent: string
   startedAt: number
 }
 
@@ -56,6 +57,22 @@ function logCourseTeacherAssignmentEvent(
 
 function shouldLogCourseTeacherAssignmentFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
+}
+
+async function withCourseTeacherAuthorizationTelemetry<T>(
+  context: CourseTeacherAssignmentLogContext,
+  authorize: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await authorize()
+  } catch (error) {
+    if (shouldLogCourseTeacherAssignmentFailure(error)) {
+      logCourseTeacherAssignmentEvent('error', context.failureEvent, context, {
+        errorCategory: 'course_teacher_assignment_authorization_persistence',
+      })
+    }
+    throw error
+  }
 }
 
 function logCourseTeacherReadEvent(
@@ -142,7 +159,6 @@ export async function getCourseTeachersService(
   data: GetCourseTeachersInput,
   userId: string,
 ) {
-  await getUserProfile(userId)
   const context: CourseTeacherReadContext = {
     actorId: userId,
     courseId: data.courseId,
@@ -152,6 +168,7 @@ export async function getCourseTeachersService(
   return withCourseTeacherReadTelemetry(
     context,
     async () => {
+      await getUserProfile(userId)
       const courseTeachersList = await findCourseTeachers(data.courseId)
       return {
         teachers: await signAvatarRows(
@@ -167,14 +184,17 @@ export async function updateCourseTeachersService(
   data: UpdateCourseTeachersInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
   const context: CourseTeacherAssignmentLogContext = {
     actorId: userId,
     courseId: data.courseId,
     teacher1Id: data.teacher1Id,
     teacher2Id: data.teacher2Id,
+    failureEvent: 'course_teachers_update_failed',
     startedAt: performance.now(),
   }
+  await withCourseTeacherAuthorizationTelemetry(context, () =>
+    authz(userId).hasRole('admin'),
+  )
 
   try {
     const course = await findCourseById(data.courseId)

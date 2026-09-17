@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   seedAssignment,
@@ -7,6 +8,8 @@ import {
   seedProfile,
 } from 'test/integration/seed'
 import { getCalendarEventsService } from './service/calendar.service'
+import * as authUtils from '@/utils/auth/auth'
+import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 async function getCalendarEventsForSeededViewer() {
   const viewerId = await seedProfile()
@@ -22,6 +25,37 @@ describe('getCalendarEventsService', () => {
     await expect(
       getCalendarEventsService('00000000-0000-4000-8000-000000000001'),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('logs unexpected actor-profile failures without raw details', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const actorId = randomUUID()
+    const repositoryError = new Error(
+      'calendar profile connectionString=secret; email=calendar@test.dev',
+    )
+    vi.spyOn(authUtils, 'getUserProfile').mockRejectedValueOnce(repositoryError)
+
+    await expect(
+      withObservabilityRequest(
+        new Request('https://christ-dina.org/calendar', {
+          headers: { 'x-request-id': 'calendar-profile-failure' },
+        }),
+        () => getCalendarEventsService(actorId),
+      ),
+    ).rejects.toBe(repositoryError)
+
+    const line = String(errorSpy.mock.calls.at(-1)?.[0])
+    expect(line).not.toContain('connectionString')
+    expect(line).not.toContain('calendar@test.dev')
+    expect(JSON.parse(line)).toMatchObject({
+      event: 'calendar_events_load_failed',
+      path: 'serverFn:getCalendarEvents',
+      requestId: 'calendar-profile-failure',
+      actorId,
+      status: 'failure',
+      errorCategory: 'calendar_read_persistence',
+      durationMs: expect.any(Number),
+    })
   })
 
   it('logs a redacted read outcome with safe event counts', async () => {

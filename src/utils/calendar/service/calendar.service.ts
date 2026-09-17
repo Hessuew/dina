@@ -1,5 +1,6 @@
 import { buildCalendarEvents } from '@/utils/calendar/domain/calendar.domain'
 import { getUserProfile } from '@/utils/auth/auth'
+import { isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
@@ -9,12 +10,12 @@ import {
 } from '@/utils/calendar/repository'
 
 export async function getCalendarEventsService(userId: string) {
-  // Keep the service safe for direct callers too: the route's auth boundary is
-  // not an API authorization boundary.
-  await getUserProfile(userId)
   const startedAt = performance.now()
 
   try {
+    // Keep the service safe for direct callers too: the route's auth boundary
+    // is not an API authorization boundary.
+    await getUserProfile(userId)
     const [lessons, assignments, specialEvents] = await Promise.all([
       findPublishedLessonsWithCourses(),
       findPublishedAssignmentsWithCourses(),
@@ -36,14 +37,16 @@ export async function getCalendarEventsService(userId: string) {
 
     return { events }
   } catch (error) {
-    logServerEvent('error', 'calendar_events_load_failed', {
-      requestId: getRequestId(),
-      path: 'serverFn:getCalendarEvents',
-      status: 'failure',
-      durationMs: elapsedMs(startedAt),
-      actorId: userId,
-      errorCategory: 'calendar_read_persistence',
-    })
+    if (!isAppError(error) || error.status >= 500) {
+      logServerEvent('error', 'calendar_events_load_failed', {
+        requestId: getRequestId(),
+        path: 'serverFn:getCalendarEvents',
+        status: 'failure',
+        durationMs: elapsedMs(startedAt),
+        actorId: userId,
+        errorCategory: 'calendar_read_persistence',
+      })
+    }
     throw error
   }
 }

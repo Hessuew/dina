@@ -41,7 +41,6 @@ import {
   bulkUpdateEnrollmentStatuses,
   deleteCourseSubstituteByAbsent,
   deleteEnrollmentById,
-  deleteInvitationById,
   findAbsentTeacherIdsWithActiveSubstitution,
   findAllTeacherIds,
   findAwaitingApprovalIdsWithSum,
@@ -54,14 +53,12 @@ import {
   findEnrollmentEmailsByGroup,
   findEnrollmentsPage,
   findEvaluationsForEnrollments,
-  findInvitationByEmail,
   findPeersForReviewers,
   findProfileById,
   findReviewerAssignmentForEnrollment,
   findReviewerAssignmentsForEnrollments,
   findUnassignedEnrollmentIds,
   insertEnrollment,
-  insertInvitation,
   insertSubstituteWithReassignment,
   markEnrollmentInvitationSent,
   updateEnrollmentSpecialCaseById,
@@ -69,6 +66,11 @@ import {
   updateInvitationToken,
   upsertEvaluation,
 } from '@/utils/enrolment/repository/enrolment.repository'
+import {
+  deleteInvitationById,
+  findInvitationByEmail,
+  insertInvitation,
+} from '@/utils/invitation/repository/invitations.repository'
 import {
   authz,
   hasStaffPrivilege,
@@ -96,6 +98,19 @@ import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 
 type EvaluationField = 'score' | 'admission_category' | 'note'
+
+type EvaluationFailureCategory =
+  | 'enrollment_evaluation_persistence'
+  | 'enrollment_evaluation_authorization_persistence'
+
+type EvaluationTelemetryContext = {
+  field: EvaluationField
+  action: string
+  enrollmentId: string
+  userId: string
+  startedAt: number
+  failureCategory: EvaluationFailureCategory
+}
 
 type EnrollmentMutationAction =
   'updateEnrollmentStatus' | 'setEnrollmentSpecialCase' | 'deleteEnrollment'
@@ -191,6 +206,10 @@ function logEnrollmentContactEvent(
   })
 }
 
+function shouldLogEnrollmentContactFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
 async function withEnrollmentReadTelemetry<T>(args: {
   context: EnrollmentReadLogContext
   read: () => Promise<T>
@@ -246,6 +265,37 @@ function logEnrollmentAssignmentMutation(
     actorId: context.actorId,
     ...fields,
   })
+}
+
+async function withEnrollmentAssignmentReadTelemetry<T>(args: {
+  context: EnrollmentAssignmentMutationContext
+  errorCategory: string
+  fields?: Record<string, unknown>
+  read: () => Promise<T>
+}): Promise<T> {
+  try {
+    return await args.read()
+  } catch (error) {
+    logEnrollmentAssignmentMutation(
+      'error',
+      `enrollment_${args.context.action === 'substituteTeacher' ? 'substitution' : 'distribution'}_failed`,
+      args.context,
+      { ...args.fields, errorCategory: args.errorCategory },
+    )
+    throw error
+  }
+}
+
+async function requireAdminWithTelemetry(
+  userId: string,
+  onUnexpectedFailure: () => void,
+): Promise<void> {
+  try {
+    await authz(userId).hasRole('admin')
+  } catch (error) {
+    if (shouldLogEnrollmentReadFailure(error)) onUnexpectedFailure()
+    throw error
+  }
 }
 
 function logEnrollmentSubstitutionReadEvent(
@@ -335,22 +385,65 @@ function logBulkGradeCompleted(
   )
 }
 
-function logEvaluationUpdated(
+function logEvaluationUpdated(context: EvaluationTelemetryContext): void {
+  logServerEvent('info', 'enrollment_evaluation_updated', {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: 'updated',
+    durationMs: elapsedMs(context.startedAt),
+    enrollmentId: context.enrollmentId,
+    evaluatorId: context.userId,
+    evaluationField: context.field,
+  })
+}
+
+function shouldLogEvaluationFailure(error: unknown): boolean {
+  return !isAppError(error) || error.status >= 500
+}
+
+function logEvaluationFailure(context: EvaluationTelemetryContext): void {
+  logServerEvent('error', 'enrollment_evaluation_update_failed', {
+    requestId: getRequestId(),
+    path: `serverFn:${context.action}`,
+    status: 'failure',
+    durationMs: elapsedMs(context.startedAt),
+    enrollmentId: context.enrollmentId,
+    evaluatorId: context.userId,
+    evaluationField: context.field,
+    errorCategory: context.failureCategory,
+  })
+}
+
+async function withEvaluationAuthorizationTelemetry<T>(
+  context: EvaluationTelemetryContext,
+  read: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await read()
+  } catch (error) {
+    if (shouldLogEvaluationFailure(error)) {
+      context.failureCategory =
+        'enrollment_evaluation_authorization_persistence'
+    }
+    throw error
+  }
+}
+
+function createEvaluationTelemetryContext(
   field: EvaluationField,
   action: string,
   enrollmentId: string,
   userId: string,
   startedAt: number,
-): void {
-  logServerEvent('info', 'enrollment_evaluation_updated', {
-    requestId: getRequestId(),
-    path: `serverFn:${action}`,
-    status: 'updated',
-    durationMs: elapsedMs(startedAt),
+): EvaluationTelemetryContext {
+  return {
+    field,
+    action,
     enrollmentId,
-    evaluatorId: userId,
-    evaluationField: field,
-  })
+    userId,
+    startedAt,
+    failureCategory: 'enrollment_evaluation_persistence',
+  }
 }
 
 /**
@@ -479,8 +572,12 @@ function buildBulkGradePlan(
 async function setEvaluationScoreWithAccess(
   data: SetEvaluationScoreInput,
   userId: string,
+  context: EvaluationTelemetryContext,
 ): Promise<void> {
-  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+  const { isAdmin, isTeacher } = await withEvaluationAuthorizationTelemetry(
+    context,
+    () => resolveAdminOrTeacherAccess(userId),
+  )
   if (!isAdmin && !isTeacher) {
     throw new AuthorizationError('admin or teacher access required', {
       code: 'ROLE_REQUIRED',
@@ -489,13 +586,15 @@ async function setEvaluationScoreWithAccess(
   }
 
   // Fetch assignment once — reused for authz check and status derivation.
-  const assignment = await findReviewerAssignmentForEnrollment(
-    data.enrollmentId,
+  const assignment = await withEvaluationAuthorizationTelemetry(context, () =>
+    findReviewerAssignmentForEnrollment(data.enrollmentId),
   )
   const reviewerId = assignment?.reviewerId ?? null
   const courseId = assignment?.courseId ?? null
   const teamIds = courseId
-    ? await findCourseTeamIds(courseId)
+    ? await withEvaluationAuthorizationTelemetry(context, () =>
+        findCourseTeamIds(courseId),
+      )
     : reviewerId
       ? [reviewerId]
       : []
@@ -533,14 +632,22 @@ export async function setEvaluationScoreService(
   userId: string,
 ) {
   const startedAt = performance.now()
-  await setEvaluationScoreWithAccess(data, userId)
-  logEvaluationUpdated(
+  const context = createEvaluationTelemetryContext(
     'score',
     'setEvaluationScore',
     data.enrollmentId,
     userId,
     startedAt,
   )
+  try {
+    await setEvaluationScoreWithAccess(data, userId, context)
+  } catch (error) {
+    if (shouldLogEvaluationFailure(error)) {
+      logEvaluationFailure(context)
+    }
+    throw error
+  }
+  logEvaluationUpdated(context)
 }
 
 export async function createEnrollmentService(data: CreateEnrollmentInput) {
@@ -582,6 +689,168 @@ export async function createEnrollmentService(data: CreateEnrollmentInput) {
   }
 }
 
+type EnrollmentsPageData = {
+  rows: Awaited<ReturnType<typeof findEnrollmentsPage>>['rows']
+  total: number
+  evaluations: Awaited<ReturnType<typeof findEvaluationsForEnrollments>>
+  reviewerAssignments: Awaited<
+    ReturnType<typeof findReviewerAssignmentsForEnrollments>
+  >
+  peersForReviewers: Awaited<ReturnType<typeof findPeersForReviewers>>
+  canExportContacts: boolean
+}
+
+// Legacy rows may have courseId = null (created before ADR 0007 rev 2).
+// Enrich them by falling back to the reviewer's course in course_teachers.
+async function resolveAssignmentCourseIds(
+  rawAssignments: EnrollmentsPageData['reviewerAssignments'],
+): Promise<EnrollmentsPageData['reviewerAssignments']> {
+  const nullReviewerIds = [
+    ...new Set(
+      rawAssignments
+        .filter((a) => a.courseId === null)
+        .map((a) => a.reviewerId),
+    ),
+  ]
+  const fallbackCourseByReviewer =
+    nullReviewerIds.length > 0
+      ? await findCourseIdsByTeacherIds(nullReviewerIds)
+      : new Map<string, string | null>()
+  return rawAssignments.map((a) => ({
+    ...a,
+    courseId: a.courseId ?? fallbackCourseByReviewer.get(a.reviewerId) ?? null,
+  }))
+}
+
+async function loadEnrollmentsPageData(
+  data: GetEnrollmentsInput,
+  userId: string,
+  isAdmin: boolean,
+): Promise<EnrollmentsPageData> {
+  const reviewerFilter = data.viewAll ? undefined : userId
+  const requireReviewerAdmitted = !isAdmin && data.viewAll
+
+  // Course IDs the viewer is on (as teacher or active substitute).
+  const viewerCourseIds =
+    reviewerFilter !== undefined ? await findCourseIdsForViewer(userId) : []
+
+  const { rows, total } = await findEnrollmentsPage({
+    limit: data.pageSize,
+    offset: (data.page - 1) * data.pageSize,
+    search: data.search,
+    sortBy: data.sortBy,
+    sortDir: data.sortDir,
+    includeEmail: isAdmin,
+    reviewerFilter,
+    viewerCourseIds,
+    requireReviewerAdmitted,
+  })
+  const enrollmentIds = rows.map((row) => row.id)
+
+  // Fetch evaluations and reviewer assignments in parallel.
+  const [evaluations, rawAssignments, canExportContacts] = await Promise.all([
+    findEvaluationsForEnrollments(enrollmentIds),
+    findReviewerAssignmentsForEnrollments(enrollmentIds),
+    hasStaffPrivilege(userId, 'enrollment_contact_export'),
+  ])
+
+  const reviewerAssignments = await resolveAssignmentCourseIds(rawAssignments)
+
+  // Batch-fetch team members for all distinct course IDs on this page.
+  const uniqueCourseIds = [
+    ...new Set(
+      reviewerAssignments
+        .map((a) => a.courseId)
+        .filter((id): id is string => id !== null),
+    ),
+  ]
+  const peersForReviewers = await findPeersForReviewers(uniqueCourseIds)
+
+  return {
+    rows,
+    total,
+    evaluations,
+    reviewerAssignments,
+    peersForReviewers,
+    canExportContacts,
+  }
+}
+
+function toEnrollmentListItem(
+  row: EnrollmentsPageData['rows'][number],
+  input: {
+    isAdmin: boolean
+    userId: string
+    reviewerAssignments: EnrollmentsPageData['reviewerAssignments']
+    evaluations: EnrollmentsPageData['evaluations']
+    peersForReviewers: EnrollmentsPageData['peersForReviewers']
+  },
+): EnrollmentWithEvaluation {
+  const { evaluationSum, evaluationCount, ...enrollment } = row
+  const base = input.isAdmin
+    ? (enrollment as MaybeRedactedEnrollment)
+    : redactEnrollmentForTeacher(enrollment)
+  const reviewHeading = deriveReviewHeading(
+    row.id,
+    input.reviewerAssignments,
+    input.evaluations,
+    input.peersForReviewers,
+    !input.isAdmin,
+  )
+  const assignment = input.reviewerAssignments.find(
+    (a) => a.enrollmentId === row.id,
+  )
+  const reviewerEval = assignment
+    ? input.evaluations.find(
+        (e) =>
+          e.enrollmentId === row.id && e.evaluatorId === assignment.reviewerId,
+      )
+    : undefined
+  const reviewerAdmissionCategory = reviewerEval?.admissionCategory ?? null
+  const canEvaluate = deriveCanEvaluate(
+    input.userId,
+    input.isAdmin,
+    assignment ?? null,
+    input.peersForReviewers,
+  )
+  return {
+    ...base,
+    evaluationSum,
+    evaluationCount,
+    reviewHeading,
+    reviewerAdmissionCategory,
+    canEvaluate,
+  }
+}
+
+async function readEnrollmentsPage(data: GetEnrollmentsInput, userId: string) {
+  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
+  if (!isAdmin && !isTeacher) {
+    throw new AuthorizationError('admin or teacher access required', {
+      code: 'ROLE_REQUIRED',
+      details: {},
+    })
+  }
+
+  const page = await loadEnrollmentsPageData(data, userId, isAdmin)
+  const enrollments = page.rows.map((row) =>
+    toEnrollmentListItem(row, {
+      isAdmin,
+      userId,
+      reviewerAssignments: page.reviewerAssignments,
+      evaluations: page.evaluations,
+      peersForReviewers: page.peersForReviewers,
+    }),
+  )
+
+  return {
+    enrollments,
+    total: page.total,
+    evaluations: page.evaluations,
+    canExportContacts: page.canExportContacts,
+  }
+}
+
 export async function getEnrollmentsService(
   data: GetEnrollmentsInput,
   userId: string,
@@ -594,122 +863,7 @@ export async function getEnrollmentsService(
 
   return withEnrollmentReadTelemetry({
     context,
-    read: async () => {
-      const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-      if (!isAdmin && !isTeacher) {
-        throw new AuthorizationError('admin or teacher access required', {
-          code: 'ROLE_REQUIRED',
-          details: {},
-        })
-      }
-
-      const reviewerFilter = data.viewAll ? undefined : userId
-      const requireReviewerAdmitted = !isAdmin && data.viewAll
-
-      // Course IDs the viewer is on (as teacher or active substitute).
-      const viewerCourseIds =
-        reviewerFilter !== undefined ? await findCourseIdsForViewer(userId) : []
-
-      const { rows, total } = await findEnrollmentsPage({
-        limit: data.pageSize,
-        offset: (data.page - 1) * data.pageSize,
-        search: data.search,
-        sortBy: data.sortBy,
-        sortDir: data.sortDir,
-        includeEmail: isAdmin,
-        reviewerFilter,
-        viewerCourseIds,
-        requireReviewerAdmitted,
-      })
-
-      const enrollmentIds = rows.map((row) => row.id)
-
-      // Fetch evaluations and reviewer assignments in parallel.
-      const [evaluations, rawAssignments, canExportContacts] =
-        await Promise.all([
-          findEvaluationsForEnrollments(enrollmentIds),
-          findReviewerAssignmentsForEnrollments(enrollmentIds),
-          hasStaffPrivilege(userId, 'enrollment_contact_export'),
-        ])
-
-      // Legacy rows may have courseId = null (created before ADR 0007 rev 2).
-      // Enrich them by falling back to the reviewer's course in course_teachers.
-      const nullReviewerIds = [
-        ...new Set(
-          rawAssignments
-            .filter((a) => a.courseId === null)
-            .map((a) => a.reviewerId),
-        ),
-      ]
-      const fallbackCourseByReviewer =
-        nullReviewerIds.length > 0
-          ? await findCourseIdsByTeacherIds(nullReviewerIds)
-          : new Map<string, string | null>()
-      const reviewerAssignments = rawAssignments.map((a) => ({
-        ...a,
-        courseId:
-          a.courseId ?? fallbackCourseByReviewer.get(a.reviewerId) ?? null,
-      }))
-
-      // Batch-fetch team members for all distinct course IDs on this page.
-      const uniqueCourseIds = [
-        ...new Set(
-          reviewerAssignments
-            .map((a) => a.courseId)
-            .filter((id): id is string => id !== null),
-        ),
-      ]
-      const peersForReviewers = await findPeersForReviewers(uniqueCourseIds)
-
-      const enrollmentsOut: Array<EnrollmentWithEvaluation> = rows.map(
-        (row) => {
-          const { evaluationSum, evaluationCount, ...enrollment } = row
-          const base = isAdmin
-            ? (enrollment as MaybeRedactedEnrollment)
-            : redactEnrollmentForTeacher(enrollment)
-          const reviewHeading = deriveReviewHeading(
-            row.id,
-            reviewerAssignments,
-            evaluations,
-            peersForReviewers,
-            !isAdmin,
-          )
-          const assignment = reviewerAssignments.find(
-            (a) => a.enrollmentId === row.id,
-          )
-          const reviewerEval = assignment
-            ? evaluations.find(
-                (e) =>
-                  e.enrollmentId === row.id &&
-                  e.evaluatorId === assignment.reviewerId,
-              )
-            : undefined
-          const reviewerAdmissionCategory =
-            reviewerEval?.admissionCategory ?? null
-          const canEvaluate = deriveCanEvaluate(
-            userId,
-            isAdmin,
-            assignment ?? null,
-            peersForReviewers,
-          )
-          return {
-            ...base,
-            evaluationSum,
-            evaluationCount,
-            reviewHeading,
-            reviewerAdmissionCategory,
-            canEvaluate,
-          }
-        },
-      )
-
-      return {
-        enrollments: enrollmentsOut,
-        total,
-        evaluations,
-        canExportContacts,
-      }
-    },
+    read: () => readEnrollmentsPage(data, userId),
     fields: (result) => ({
       page: data.page,
       pageSize: data.pageSize,
@@ -775,14 +929,17 @@ export async function updateEnrollmentStatusService(
   data: UpdateEnrollmentStatusInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
-
   const context: EnrollmentMutationContext = {
     action: 'updateEnrollmentStatus',
     actorId: userId,
     enrollmentId: data.enrollmentId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentMutation('error', 'enrollment_status_update_failed', context, {
+      errorCategory: 'enrollment_status_authorization_persistence',
+    }),
+  )
   try {
     await updateEnrollmentStatusById(data.enrollmentId, data.status)
     logEnrollmentMutation('info', 'enrollment_status_updated', context, {
@@ -802,14 +959,20 @@ export async function setEnrollmentSpecialCaseService(
   data: SetEnrollmentSpecialCaseInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
-
   const context: EnrollmentMutationContext = {
     action: 'setEnrollmentSpecialCase',
     actorId: userId,
     enrollmentId: data.enrollmentId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentMutation(
+      'error',
+      'enrollment_special_case_update_failed',
+      context,
+      { errorCategory: 'enrollment_special_case_authorization_persistence' },
+    ),
+  )
   try {
     await updateEnrollmentSpecialCaseById(data.enrollmentId, data.specialCase)
     logEnrollmentMutation('info', 'enrollment_special_case_updated', context, {
@@ -832,14 +995,17 @@ export async function deleteEnrollmentService(
   data: DeleteEnrollmentInput,
   userId: string,
 ) {
-  await authz(userId).hasRole('admin')
-
   const context: EnrollmentMutationContext = {
     action: 'deleteEnrollment',
     actorId: userId,
     enrollmentId: data.enrollmentId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentMutation('error', 'enrollment_delete_failed', context, {
+      errorCategory: 'enrollment_delete_authorization_persistence',
+    }),
+  )
   try {
     await deleteEnrollmentById(data.enrollmentId)
     logEnrollmentMutation('info', 'enrollment_deleted', context)
@@ -956,13 +1122,19 @@ export async function sendInvitationForEnrollmentService(
   userId: string,
   userEmail: string | undefined,
 ) {
-  await authz(userId).hasRole('admin')
-
   const context: EnrollmentInvitationLogContext = {
     actorId: userId,
     enrollmentId: data.enrollmentId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentInvitationEvent(
+      'error',
+      'enrollment_invitation_failed',
+      context,
+      { errorCategory: 'enrollment_invitation_authorization_persistence' },
+    ),
+  )
 
   try {
     return await sendEnrollmentInvitation(data, userId, userEmail, context)
@@ -1090,27 +1262,40 @@ export async function setEvaluationAdmissionCategoryService(
   userId: string,
 ) {
   const startedAt = performance.now()
-  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-  if (!isAdmin && !isTeacher) {
-    throw new AuthorizationError('admin or teacher access required', {
-      code: 'ROLE_REQUIRED',
-      details: {},
-    })
-  }
-
-  await assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin)
-
-  await upsertEvaluation(data.enrollmentId, userId, {
-    admissionCategory: data.admissionCategory,
-  })
-
-  logEvaluationUpdated(
+  const context = createEvaluationTelemetryContext(
     'admission_category',
     'setEvaluationAdmissionCategory',
     data.enrollmentId,
     userId,
     startedAt,
   )
+  try {
+    const { isAdmin, isTeacher } = await withEvaluationAuthorizationTelemetry(
+      context,
+      () => resolveAdminOrTeacherAccess(userId),
+    )
+    if (!isAdmin && !isTeacher) {
+      throw new AuthorizationError('admin or teacher access required', {
+        code: 'ROLE_REQUIRED',
+        details: {},
+      })
+    }
+
+    await withEvaluationAuthorizationTelemetry(context, () =>
+      assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin),
+    )
+
+    await upsertEvaluation(data.enrollmentId, userId, {
+      admissionCategory: data.admissionCategory,
+    })
+  } catch (error) {
+    if (shouldLogEvaluationFailure(error)) {
+      logEvaluationFailure(context)
+    }
+    throw error
+  }
+
+  logEvaluationUpdated(context)
 }
 
 export async function setEvaluationNoteService(
@@ -1118,38 +1303,55 @@ export async function setEvaluationNoteService(
   userId: string,
 ) {
   const startedAt = performance.now()
-  const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(userId)
-  if (!isAdmin && !isTeacher) {
-    throw new AuthorizationError('admin or teacher access required', {
-      code: 'ROLE_REQUIRED',
-      details: {},
-    })
-  }
-
-  await assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin)
-
-  await upsertEvaluation(data.enrollmentId, userId, { note: data.note })
-
-  logEvaluationUpdated(
+  const context = createEvaluationTelemetryContext(
     'note',
     'setEvaluationNote',
     data.enrollmentId,
     userId,
     startedAt,
   )
+  try {
+    const { isAdmin, isTeacher } = await withEvaluationAuthorizationTelemetry(
+      context,
+      () => resolveAdminOrTeacherAccess(userId),
+    )
+    if (!isAdmin && !isTeacher) {
+      throw new AuthorizationError('admin or teacher access required', {
+        code: 'ROLE_REQUIRED',
+        details: {},
+      })
+    }
+
+    await withEvaluationAuthorizationTelemetry(context, () =>
+      assertEvaluationAuthorized(data.enrollmentId, userId, isAdmin),
+    )
+
+    await upsertEvaluation(data.enrollmentId, userId, { note: data.note })
+  } catch (error) {
+    if (shouldLogEvaluationFailure(error)) {
+      logEvaluationFailure(context)
+    }
+    throw error
+  }
+
+  logEvaluationUpdated(context)
 }
 
-export async function distributeEnrollmentsService(userId: string) {
-  await authz(userId).hasRole('admin')
-  const context = {
-    action: 'distributeEnrollments' as const,
-    actorId: userId,
-    startedAt: performance.now(),
-  }
-  const [unassignedIds, teacherIds] = await Promise.all([
-    findUnassignedEnrollmentIds(),
-    findAllTeacherIds(),
-  ])
+/**
+ * Reads the distribution inputs and builds course-enriched reviewer
+ * assignments. Returns `null` — after logging a zero-assignment completion —
+ * when there are no teachers or no unassigned enrollments.
+ */
+async function planEnrollmentDistribution(
+  context: EnrollmentAssignmentMutationContext,
+) {
+  const [unassignedIds, teacherIds] =
+    await withEnrollmentAssignmentReadTelemetry({
+      context,
+      errorCategory: 'enrollment_distribution_read_persistence',
+      read: () =>
+        Promise.all([findUnassignedEnrollmentIds(), findAllTeacherIds()]),
+    })
   if (teacherIds.length === 0 || unassignedIds.length === 0) {
     logEnrollmentDistributionCompleted(
       context,
@@ -1157,21 +1359,47 @@ export async function distributeEnrollmentsService(userId: string) {
       unassignedIds.length,
       teacherIds.length,
     )
-    return { assigned: 0 }
+    return null
   }
   const assignments = buildEnrollmentAssignments(unassignedIds, teacherIds)
 
   // Enrich each assignment with the reviewer's course_id so the course namespace
   // is recorded on the assignment row (used for peer-review scoping, ADR 0007 rev 2).
   const uniqueReviewerIds = [...new Set(assignments.map((a) => a.reviewerId))]
-  const courseByReviewer = await findCourseIdsByTeacherIds(uniqueReviewerIds)
-  const enriched = assignments.map((a) => ({
-    ...a,
-    courseId: courseByReviewer.get(a.reviewerId) ?? null,
-  }))
+  const courseByReviewer = await withEnrollmentAssignmentReadTelemetry({
+    context,
+    errorCategory: 'enrollment_distribution_read_persistence',
+    read: () => findCourseIdsByTeacherIds(uniqueReviewerIds),
+  })
+  return {
+    assignments: assignments.map((a) => ({
+      ...a,
+      courseId: courseByReviewer.get(a.reviewerId) ?? null,
+    })),
+    unassignedCount: unassignedIds.length,
+    reviewerCount: teacherIds.length,
+  }
+}
+
+export async function distributeEnrollmentsService(userId: string) {
+  const context = {
+    action: 'distributeEnrollments' as const,
+    actorId: userId,
+    startedAt: performance.now(),
+  }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentAssignmentMutation(
+      'error',
+      'enrollment_distribution_failed',
+      context,
+      { errorCategory: 'enrollment_distribution_authorization_persistence' },
+    ),
+  )
+  const plan = await planEnrollmentDistribution(context)
+  if (plan === null) return { assigned: 0 }
 
   try {
-    await bulkAssignEnrollments(enriched)
+    await bulkAssignEnrollments(plan.assignments)
   } catch (error) {
     logEnrollmentAssignmentMutation(
       'error',
@@ -1190,11 +1418,45 @@ export async function distributeEnrollmentsService(userId: string) {
   }
   logEnrollmentDistributionCompleted(
     context,
-    assignments.length,
-    unassignedIds.length,
-    teacherIds.length,
+    plan.assignments.length,
+    plan.unassignedCount,
+    plan.reviewerCount,
   )
-  return { assigned: assignments.length }
+  return { assigned: plan.assignments.length }
+}
+
+async function insertSubstitutionWithTelemetry(
+  data: SubstituteTeacherInput,
+  courseId: string,
+  context: EnrollmentAssignmentMutationContext,
+): Promise<{ reassigned: number }> {
+  const fields = {
+    absentTeacherId: data.absentTeacherId,
+    substituteTeacherId: data.substituteTeacherId,
+    courseId,
+  }
+  try {
+    const result = await insertSubstituteWithReassignment(
+      courseId,
+      data.substituteTeacherId,
+      data.absentTeacherId,
+    )
+    logEnrollmentAssignmentMutation(
+      'info',
+      'enrollment_substitution_completed',
+      context,
+      { ...fields, reassignedCount: result.reassigned },
+    )
+    return result
+  } catch (error) {
+    logEnrollmentAssignmentMutation(
+      'error',
+      'enrollment_substitution_failed',
+      context,
+      { ...fields, errorCategory: 'enrollment_substitution_persistence' },
+    )
+    throw error
+  }
 }
 
 /**
@@ -1206,14 +1468,26 @@ export async function substituteTeacherService(
   data: SubstituteTeacherInput,
   adminUserId: string,
 ): Promise<{ reassigned: number }> {
-  await authz(adminUserId).hasRole('admin')
   const context = {
     action: 'substituteTeacher' as const,
     actorId: adminUserId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(adminUserId, () =>
+    logEnrollmentAssignmentMutation(
+      'error',
+      'enrollment_substitution_failed',
+      context,
+      { errorCategory: 'enrollment_substitution_authorization_persistence' },
+    ),
+  )
 
-  const courseId = await findCourseIdByTeacherId(data.absentTeacherId)
+  const courseId = await withEnrollmentAssignmentReadTelemetry({
+    context,
+    errorCategory: 'enrollment_substitution_read_persistence',
+    fields: { absentTeacherId: data.absentTeacherId },
+    read: () => findCourseIdByTeacherId(data.absentTeacherId),
+  })
   if (!courseId) {
     throw new NotFoundError('Absent teacher has no course assignment', {
       code: 'NOT_FOUND',
@@ -1221,38 +1495,7 @@ export async function substituteTeacherService(
     })
   }
 
-  try {
-    const result = await insertSubstituteWithReassignment(
-      courseId,
-      data.substituteTeacherId,
-      data.absentTeacherId,
-    )
-    logEnrollmentAssignmentMutation(
-      'info',
-      'enrollment_substitution_completed',
-      context,
-      {
-        absentTeacherId: data.absentTeacherId,
-        substituteTeacherId: data.substituteTeacherId,
-        courseId,
-        reassignedCount: result.reassigned,
-      },
-    )
-    return result
-  } catch (error) {
-    logEnrollmentAssignmentMutation(
-      'error',
-      'enrollment_substitution_failed',
-      context,
-      {
-        absentTeacherId: data.absentTeacherId,
-        substituteTeacherId: data.substituteTeacherId,
-        courseId,
-        errorCategory: 'enrollment_substitution_persistence',
-      },
-    )
-    throw error
-  }
+  return insertSubstitutionWithTelemetry(data, courseId, context)
 }
 
 /**
@@ -1263,12 +1506,21 @@ export async function endSubstitutionService(
   data: EndSubstitutionInput,
   adminUserId: string,
 ): Promise<void> {
-  await authz(adminUserId).hasRole('admin')
   const context = {
     action: 'endSubstitution' as const,
     actorId: adminUserId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(adminUserId, () =>
+    logEnrollmentAssignmentMutation(
+      'error',
+      'enrollment_substitution_end_failed',
+      context,
+      {
+        errorCategory: 'enrollment_substitution_end_authorization_persistence',
+      },
+    ),
+  )
   let deleted: number
   try {
     deleted = await deleteCourseSubstituteByAbsent(data.absentTeacherId)
@@ -1304,11 +1556,18 @@ export async function endSubstitutionService(
  * server-function boundary.
  */
 export async function getActiveSubstitutedTeacherIdsService(userId: string) {
-  await authz(userId).hasRole('admin')
   const context: EnrollmentSubstitutionReadContext = {
     actorId: userId,
     startedAt: performance.now(),
   }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentSubstitutionReadEvent(
+      'error',
+      'enrollment_substitutions_load_failed',
+      context,
+      { errorCategory: 'enrollment_substitution_authorization_persistence' },
+    ),
+  )
 
   try {
     const teacherIds = await findAbsentTeacherIdsWithActiveSubstitution()
@@ -1345,12 +1604,25 @@ export async function getEnrollmentEmailsService(
   data: GetEnrollmentEmailsInput,
   userId: string,
 ): Promise<{ emails: Array<string> }> {
-  await requireEnrollmentContactExport(userId)
   const context: EnrollmentContactLogContext = {
     actorId: userId,
     action: 'getEnrollmentEmails',
     group: data.group,
     startedAt: performance.now(),
+  }
+
+  try {
+    await requireEnrollmentContactExport(userId)
+  } catch (error) {
+    if (shouldLogEnrollmentContactFailure(error)) {
+      logEnrollmentContactEvent(
+        'error',
+        'enrollment_contact_export_failed',
+        context,
+        { errorCategory: 'enrollment_contact_access_persistence' },
+      )
+    }
+    throw error
   }
 
   try {
@@ -1378,19 +1650,30 @@ export async function searchEnrollmentContactsByNamesService(
   data: SearchEnrollmentContactsByNamesInput,
   userId: string,
 ) {
-  await requireEnrollmentContactExport(userId)
-
-  const queries = parseEnrollmentContactLookupNames(data.names)
-  if (queries.length === 0) {
-    throw new ValidationError('Enter at least one name')
-  }
-
   const context: EnrollmentContactLogContext = {
     actorId: userId,
     action: 'searchEnrollmentContactsByNames',
     startedAt: performance.now(),
   }
 
+  try {
+    await requireEnrollmentContactExport(userId)
+  } catch (error) {
+    if (shouldLogEnrollmentContactFailure(error)) {
+      logEnrollmentContactEvent(
+        'error',
+        'enrollment_contact_lookup_failed',
+        context,
+        { errorCategory: 'enrollment_contact_access_persistence' },
+      )
+    }
+    throw error
+  }
+
+  const queries = parseEnrollmentContactLookupNames(data.names)
+  if (queries.length === 0) {
+    throw new ValidationError('Enter at least one name')
+  }
   try {
     const candidates = await findEnrollmentContactLookupCandidates(queries)
     const groups = buildEnrollmentContactLookupGroups(queries, candidates)
@@ -1432,24 +1715,11 @@ export async function searchEnrollmentContactsByNamesService(
  * - `dryRun: true` → count how many would be approved/waitlisted/rejected.
  * - `dryRun: false` (default) → apply statuses and return the counts written.
  */
-export async function bulkGradeEnrollmentsService(
-  data: BulkGradeEnrollmentsInput,
-  userId: string,
-): Promise<BulkGradeResult> {
-  await authz(userId).hasRole('admin')
-
-  const context: EnrollmentBulkGradeContext = {
-    actorId: userId,
-    startedAt: performance.now(),
-  }
-  const thresholds = {
-    approveMin: data.approveMin,
-    waitlistMin: data.waitlistMin ?? undefined,
-  }
-
-  let rows: Awaited<ReturnType<typeof findAwaitingApprovalIdsWithSum>>
+async function findAwaitingApprovalRowsWithTelemetry(
+  context: EnrollmentBulkGradeContext,
+) {
   try {
-    rows = await findAwaitingApprovalIdsWithSum()
+    return await findAwaitingApprovalIdsWithSum()
   } catch (error) {
     logEnrollmentBulkGradeMutation(
       'error',
@@ -1459,7 +1729,30 @@ export async function bulkGradeEnrollmentsService(
     )
     throw error
   }
+}
 
+export async function bulkGradeEnrollmentsService(
+  data: BulkGradeEnrollmentsInput,
+  userId: string,
+): Promise<BulkGradeResult> {
+  const context: EnrollmentBulkGradeContext = {
+    actorId: userId,
+    startedAt: performance.now(),
+  }
+  await requireAdminWithTelemetry(userId, () =>
+    logEnrollmentBulkGradeMutation(
+      'error',
+      'enrollment_bulk_grade_failed',
+      context,
+      { errorCategory: 'enrollment_bulk_grade_authorization_persistence' },
+    ),
+  )
+  const thresholds = {
+    approveMin: data.approveMin,
+    waitlistMin: data.waitlistMin ?? undefined,
+  }
+
+  const rows = await findAwaitingApprovalRowsWithTelemetry(context)
   const plan = buildBulkGradePlan(rows, thresholds)
 
   if (data.dryRun) {

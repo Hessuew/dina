@@ -7,6 +7,7 @@ import {
   updateEventService,
 } from './service/event.service'
 import * as database from '@/db'
+import * as authorizationUtils from '@/utils/authz'
 import { AuthorizationError } from '@/utils/errors'
 import {
   seedCalendarEvent,
@@ -104,6 +105,97 @@ describe('calendar event mutation telemetry (integration)', () => {
     })
     expect(line).not.toContain('calendar event database secret')
   })
+
+  it.each([
+    {
+      name: 'event listing',
+      event: 'calendar_event_list_load_failed',
+      path: 'serverFn:getEvents',
+      category: 'calendar_event_read_persistence',
+      requestId: 'calendar-event-list-profile-failure',
+      run: async (actorId: string): Promise<void> => {
+        await getEventsService(actorId)
+      },
+    },
+    {
+      name: 'event creation',
+      event: 'calendar_event_create_failed',
+      path: 'serverFn:createEvent',
+      category: 'calendar_event_persistence',
+      requestId: 'calendar-event-create-profile-failure',
+      run: async (actorId: string): Promise<void> => {
+        await createEventService(
+          {
+            title: 'Private title',
+            startTime: new Date('2026-09-11T09:00:00Z'),
+          },
+          actorId,
+        )
+      },
+    },
+    {
+      name: 'event update',
+      event: 'calendar_event_update_failed',
+      path: 'serverFn:updateEvent',
+      category: 'calendar_event_persistence',
+      requestId: 'calendar-event-update-profile-failure',
+      run: async (actorId: string): Promise<void> => {
+        await updateEventService(
+          {
+            eventId: randomUUID(),
+            title: 'Private title',
+            startTime: new Date('2026-09-11T09:00:00Z'),
+          },
+          actorId,
+        )
+      },
+    },
+    {
+      name: 'event deletion',
+      event: 'calendar_event_delete_failed',
+      path: 'serverFn:deleteEvent',
+      category: 'calendar_event_persistence',
+      requestId: 'calendar-event-delete-profile-failure',
+      run: async (actorId: string): Promise<void> => {
+        await deleteEventService({ eventId: randomUUID() }, actorId)
+      },
+    },
+  ])(
+    'logs unexpected $name authorization failures without raw details',
+    async ({ event, path, category, requestId, run }) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const actorId = randomUUID()
+      const repositoryError = new Error(
+        'event authorization connectionString=secret; email=actor@test.dev',
+      )
+      vi.spyOn(
+        authorizationUtils,
+        'resolveAdminOrTeacherAccess',
+      ).mockRejectedValueOnce(repositoryError)
+
+      await expect(
+        withObservabilityRequest(
+          new Request('https://christ-dina.org/events', {
+            headers: { 'x-request-id': requestId },
+          }),
+          () => run(actorId),
+        ),
+      ).rejects.toBe(repositoryError)
+
+      const line = String(errorSpy.mock.calls.at(-1)?.[0])
+      expect(line).not.toContain('connectionString')
+      expect(line).not.toContain('actor@test.dev')
+      expect(JSON.parse(line)).toMatchObject({
+        event,
+        path,
+        requestId,
+        actorId,
+        status: 'failure',
+        errorCategory: category,
+        durationMs: expect.any(Number),
+      })
+    },
+  )
 
   it('keeps event mutations restricted to teachers and admins', async () => {
     const studentId = await seedProfile({ role: 'student' })
