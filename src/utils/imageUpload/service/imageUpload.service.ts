@@ -17,10 +17,6 @@ import {
   resolveFileExtension,
   validateImageUpload,
 } from '@/utils/imageUpload/domain/imageUpload.domain'
-import {
-  findProfileAvatarPath,
-  updateProfileAvatarPath,
-} from '@/utils/imageUpload/repository/imageUpload.repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { getSupabaseAdminClient } from '@/utils/supabase'
@@ -35,7 +31,12 @@ import {
 } from '@/utils/storage/service/private-storage.service'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
-import { findCourseById, updateCourseThumbnailPath } from '@/utils/repository'
+import {
+  findCourseById,
+  findProfileAvatarPath,
+  updateCourseThumbnailPath,
+  updateProfileAvatarPath,
+} from '@/utils/repository'
 
 type ImageUploadAction =
   | 'request_avatar_upload'

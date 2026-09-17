@@ -493,7 +493,7 @@ This folder is primarily where TanStack Start server functions live (via `create
     before notification reads or read-state updates.
   - `repository/` - Shared table-oriented database seams. `profiles.repository.ts`
     is the single owner for profile-only reads and writes reused across features
-    (email, identity, student, teacher, and enrollment support). Feature
+    (email, identity, avatar, student, teacher, and enrollment support). Feature
     repositories remain responsible for aggregate or joined queries until their
     tables are migrated to this shared layer. `account-security.repository.ts`
     owns account-security-only email-change and password-reset state reads and
