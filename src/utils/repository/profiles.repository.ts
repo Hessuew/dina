@@ -30,6 +30,14 @@ export async function findProfileById(userId: string) {
   })
 }
 
+export async function findProfileRoleById(userId: string) {
+  const db = await getDb()
+  return db.query.profiles.findFirst({
+    where: eq(profiles.id, userId),
+    columns: { role: true },
+  })
+}
+
 export async function findProfilesByIds(ids: Array<string>) {
   if (ids.length === 0) return []
   const db = await getDb()

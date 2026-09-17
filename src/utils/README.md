@@ -532,9 +532,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     student-directory services. New course-only access must use `@/utils/repository`;
     joined course/lesson/media/teacher reads and course-plus-teacher creation remain
     in their feature repositories. `zoom-links.repository.ts` owns zoom-link-only
-    writes; joined zoom-link/teacher reads and profile or discipleship lookups remain
-    in the Zoom Link feature repository. New zoom-link-only access must use
-    `@/utils/repository`. `enrollment-evaluations.repository.ts` owns
+    writes; joined zoom-link/teacher reads remain in the Zoom Link feature repository,
+    while profile-only role lookups use `profiles.repository.ts`. New zoom-link-only
+    or profile-only access must use `@/utils/repository`. `enrollment-evaluations.repository.ts` owns
     enrollment-evaluation-only writes reused by the enrollment review service;
     joined evaluation/profile reads remain in the enrolment feature repository.
     `media-library.repository.ts` owns media-library-only reads and writes reused by

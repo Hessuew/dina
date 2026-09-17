@@ -1,5 +1,1 @@
-export {
-  findZoomLinkOwner,
-  findViewerRole,
-  findZoomLinksWithTeachers,
-} from './zoomLink.repository'
+export { findZoomLinksWithTeachers } from './zoomLink.repository'

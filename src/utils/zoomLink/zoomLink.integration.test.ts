@@ -12,6 +12,7 @@ import {
   getZoomLinksService,
   updateZoomLinkService,
 } from '@/utils/zoomLink/service/zoomLink.service'
+import * as profilesRepository from '@/utils/repository'
 import { updateDiscipleshipAssignmentTeacher } from '@/utils/repository'
 import { AuthorizationError, ValidationError } from '@/utils/errors'
 import { zoomLinks } from '@/db/schema'
@@ -206,7 +207,7 @@ describe('zoomLink service (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const viewerId = await seedProfile({ role: 'admin' })
     const repositoryError = new Error('viewer role connectionString=secret')
-    vi.spyOn(zoomLinkRepository, 'findViewerRole').mockRejectedValueOnce(
+    vi.spyOn(profilesRepository, 'findProfileRoleById').mockRejectedValueOnce(
       repositoryError,
     )
 
@@ -238,7 +239,7 @@ describe('zoomLink service (integration)', () => {
     const adminId = await seedProfile({ role: 'admin' })
     const teacherId = await seedProfile({ role: 'teacher' })
     const createError = new Error('zoom owner database password')
-    vi.spyOn(zoomLinkRepository, 'findZoomLinkOwner').mockRejectedValueOnce(
+    vi.spyOn(profilesRepository, 'findProfileRoleById').mockRejectedValueOnce(
       createError,
     )
 
@@ -256,7 +257,7 @@ describe('zoomLink service (integration)', () => {
       adminId,
     )
     const updateError = new Error('zoom owner connectionString secret')
-    vi.spyOn(zoomLinkRepository, 'findZoomLinkOwner').mockRejectedValueOnce(
+    vi.spyOn(profilesRepository, 'findProfileRoleById').mockRejectedValueOnce(
       updateError,
     )
 

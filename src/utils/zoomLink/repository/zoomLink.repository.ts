@@ -3,22 +3,6 @@ import { getDb } from '@/db'
 import { profiles, zoomLinks } from '@/db/schema'
 
 /* v8 ignore start */
-export async function findViewerRole(userId: string) {
-  const db = await getDb()
-  return db.query.profiles.findFirst({
-    where: eq(profiles.id, userId),
-    columns: { role: true },
-  })
-}
-
-export async function findZoomLinkOwner(teacherId: string) {
-  const db = await getDb()
-  return db.query.profiles.findFirst({
-    where: eq(profiles.id, teacherId),
-    columns: { role: true },
-  })
-}
-
 export async function findZoomLinksWithTeachers() {
   const db = await getDb()
   return db

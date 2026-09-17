@@ -12,14 +12,11 @@ import {
 import {
   deleteZoomLinkById,
   findDiscipleshipTeacherIdByStudentId,
+  findProfileRoleById,
   insertZoomLink,
   updateZoomLinkById,
 } from '@/utils/repository'
-import {
-  findViewerRole,
-  findZoomLinkOwner,
-  findZoomLinksWithTeachers,
-} from '@/utils/zoomLink/repository'
+import { findZoomLinksWithTeachers } from '@/utils/zoomLink/repository'
 import { authz } from '@/utils/authz'
 import { NotFoundError, ValidationError, isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
@@ -126,9 +123,9 @@ export async function getZoomLinksService(userId: string) {
     startedAt: performance.now(),
   }
 
-  let profile: Awaited<ReturnType<typeof findViewerRole>>
+  let profile: Awaited<ReturnType<typeof findProfileRoleById>>
   try {
-    profile = await findViewerRole(userId)
+    profile = await findProfileRoleById(userId)
   } catch (error) {
     logZoomLinkRead('error', 'zoom_links_load_failed', context, {
       errorCategory: 'zoom_links_read_persistence',
@@ -177,7 +174,7 @@ async function validateTeacherOwner(
   data: CreateZoomLinkInput | UpdateZoomLinkInput,
 ) {
   if (data.section !== 'teacher') return
-  const owner = await findZoomLinkOwner(data.teacherId)
+  const owner = await findProfileRoleById(data.teacherId)
   if (owner?.role === 'teacher' || owner?.role === 'admin') return
   throw new ValidationError('Zoom link owner must be a teacher or admin')
 }
