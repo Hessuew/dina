@@ -1,5 +1,4 @@
 import type {
-  CompleteLessonInput,
   CreateLessonInput,
   DeleteLessonInput,
   UpdateLessonInput,
@@ -8,25 +7,20 @@ import type { LogLevel } from '@/utils/observability/logger'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
-  completeLessonProgress,
   deleteLessonById,
   findAllCourseIds,
   findAssignmentCalendarEvents,
   findLessonCalendarEvents,
-  findLessonForCompletion,
-  findLessonProgress,
   findUpcomingLessons,
   insertLesson,
-  isCourseCompleted,
   updateLessonById,
 } from '@/utils/courses/repository'
 import { buildCourseCalendarEvents } from '@/utils/courses/domain/course.domain'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
-import { AuthorizationError, NotFoundError, isAppError } from '@/utils/errors'
+import { isAppError } from '@/utils/errors'
 
-type LessonMutationAction =
-  'createLesson' | 'updateLesson' | 'deleteLesson' | 'completeLesson'
+type LessonMutationAction = 'createLesson' | 'updateLesson' | 'deleteLesson'
 
 type LessonMutationLogContext = {
   action: LessonMutationAction
@@ -73,52 +67,6 @@ async function requireLessonAuthorization(
     }
     throw error
   }
-}
-
-async function loadLessonCompletionPreflight(
-  data: CompleteLessonInput,
-  userId: string,
-  context: LessonMutationLogContext,
-) {
-  let lesson: Awaited<ReturnType<typeof findLessonForCompletion>>
-  try {
-    lesson = await findLessonForCompletion(data.lessonId)
-  } catch (error) {
-    if (shouldLogLessonPreflightFailure(error)) {
-      logLessonMutationEvent('error', 'lesson_completion_failed', context, {
-        errorCategory: 'lesson_read_persistence',
-      })
-    }
-    throw error
-  }
-
-  if (!lesson) {
-    throw new NotFoundError('Lesson not found', {
-      code: 'LESSON_NOT_FOUND',
-      details: { lessonId: data.lessonId },
-    })
-  }
-  if (!lesson.isPublished) {
-    throw new AuthorizationError('Lesson not available', {
-      details: { lessonId: data.lessonId },
-    })
-  }
-
-  context.courseId = lesson.courseId
-
-  let progress: Awaited<ReturnType<typeof findLessonProgress>>
-  try {
-    progress = await findLessonProgress(userId, lesson.id)
-  } catch (error) {
-    if (shouldLogLessonPreflightFailure(error)) {
-      logLessonMutationEvent('error', 'lesson_completion_failed', context, {
-        errorCategory: 'lesson_progress_read_persistence',
-      })
-    }
-    throw error
-  }
-
-  return { lesson, progress }
 }
 
 export async function createLessonService(
@@ -227,57 +175,6 @@ export async function deleteLessonService(
   }
 
   return { success: true, lessonId: data.lessonId }
-}
-
-export async function completeLessonService(
-  data: CompleteLessonInput,
-  userId: string,
-) {
-  const context: LessonMutationLogContext = {
-    action: 'completeLesson',
-    actorId: userId,
-    lessonId: data.lessonId,
-    failureEvent: 'lesson_completion_failed',
-    startedAt: performance.now(),
-  }
-  await requireLessonAuthorization(context, () =>
-    authz(userId).hasRole('student'),
-  )
-
-  const { lesson, progress } = await loadLessonCompletionPreflight(
-    data,
-    userId,
-    context,
-  )
-
-  try {
-    const updatedProgress = await completeLessonProgress(userId, lesson.id)
-    const alreadyCompleted = Boolean(progress?.completed)
-    const courseCompleted =
-      !alreadyCompleted && (await isCourseCompleted(userId, lesson.courseId))
-    logLessonMutationEvent(
-      'info',
-      alreadyCompleted ? 'lesson_completion_ignored' : 'lesson_completed',
-      context,
-      {
-        status: alreadyCompleted ? 'ignored' : 'success',
-        alreadyCompleted,
-        courseCompleted,
-      },
-    )
-    return {
-      lessonId: lesson.id,
-      completed: true,
-      alreadyCompleted,
-      courseCompleted,
-      progress: updatedProgress,
-    }
-  } catch (error) {
-    logLessonMutationEvent('error', 'lesson_completion_failed', context, {
-      errorCategory: 'lesson_progress_persistence',
-    })
-    throw error
-  }
 }
 
 export async function getUpcomingLessonsService(userId: string) {

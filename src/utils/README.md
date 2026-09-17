@@ -206,15 +206,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     preflight persistence failures reuse each operation's redacted failure
     event with `lesson_authorization_persistence`; expected denials remain
     quiet.
-  - Student lesson completion is persisted through the `completeLesson` server
-    function only for published lessons. Completion uses an idempotent
-    `(studentId, lessonId)` upsert and emits redacted `lesson_completed`,
-    `lesson_completion_ignored`, or `lesson_completion_failed` events without
-    lesson content. Lesson/progress preflight failures use stable
-    `lesson_read_persistence` / `lesson_progress_read_persistence` categories;
-    expected not-found and unpublished outcomes remain quiet. The response
-    includes a transition-only `courseCompleted` flag when the request
-    completes every published lesson in the course.
+  - Student lesson completion is derived at read time (ADR 0024): a lesson is
+    complete for a student when it has at least one published assignment and
+    every published assignment has a submission by that student with a non-null
+    grade. There is no stored progress row and no student-facing completion
+    mutation; the lesson page renders a passive status only.
   - Calendar overview reads emit redacted `calendar_events_loaded` events with
     request correlation, actor ID, source counts, total event count, status,
     and duration. Unexpected read failures use the stable

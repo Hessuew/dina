@@ -30,69 +30,30 @@ type LessonDetailSectionsProps = {
   }
   showContent: boolean
   isCompleted: boolean
-  isCompleting: boolean
   onCreateAssignment: () => void
   onEditAssignment: (assignment: Assignment) => void
   onDeleteAssignment: (assignment: Assignment) => void
   onOpenAssignment: (assignmentId: string) => void
-  onComplete: () => void
 }
 
-const LESSON_COMPLETION_STATES = {
-  completed: {
-    description: 'This lesson is part of your completed journey.',
-    buttonLabel: 'Completed',
-    disabled: true,
-  },
-  saving: {
-    description: 'Saving this lesson to your completed journey.',
-    buttonLabel: 'Saving…',
-    disabled: true,
-  },
-  ready: {
-    description: 'Mark this lesson complete when you are ready to continue.',
-    buttonLabel: 'Mark complete',
-    disabled: false,
-  },
-} as const
-
-function getLessonCompletionState(
-  isCompleted: boolean,
-  isCompleting: boolean,
-): keyof typeof LESSON_COMPLETION_STATES {
-  if (isCompleted) return 'completed'
-  return isCompleting ? 'saving' : 'ready'
-}
-
-function LessonCompletionControl({
-  isCompleted,
-  isCompleting,
-  onComplete,
-}: Pick<
-  LessonDetailSectionsProps,
-  'isCompleted' | 'isCompleting' | 'onComplete'
->) {
-  const state =
-    LESSON_COMPLETION_STATES[
-      getLessonCompletionState(isCompleted, isCompleting)
-    ]
-
+function LessonCompletionStatus({ isCompleted }: { isCompleted: boolean }) {
   return (
     <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-white/8 pt-5">
       <div>
         <div className="text-[0.62rem] font-medium tracking-[0.25em] text-[#8E816D] uppercase">
           Lesson progress
         </div>
-        <p className="mt-1 text-sm text-[#CFC6B7]">{state.description}</p>
+        <p className="mt-1 text-sm text-[#CFC6B7]">
+          {isCompleted
+            ? 'This lesson is part of your completed journey.'
+            : 'Completes once all assignments are graded.'}
+        </p>
       </div>
-      <Button
-        theme="dark"
-        size="sm"
-        disabled={state.disabled}
-        onClick={onComplete}
-      >
-        {state.buttonLabel}
-      </Button>
+      {isCompleted && (
+        <span className="border border-[#C5A059]/40 px-2.5 py-1 text-[0.6rem] font-medium tracking-[0.18em] text-[#9B7A41] uppercase">
+          Completed
+        </span>
+      )}
     </div>
   )
 }
@@ -102,15 +63,11 @@ function LessonContentCard({
   showContent,
   showCompletion,
   isCompleted,
-  isCompleting,
-  onComplete,
 }: {
   content: string | null
   showContent: boolean
   showCompletion: boolean
   isCompleted: boolean
-  isCompleting: boolean
-  onComplete: () => void
 }) {
   return (
     <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
@@ -132,11 +89,7 @@ function LessonContentCard({
             </p>
           )}
           {showCompletion && (
-            <LessonCompletionControl
-              isCompleted={isCompleted}
-              isCompleting={isCompleting}
-              onComplete={onComplete}
-            />
+            <LessonCompletionStatus isCompleted={isCompleted} />
           )}
         </div>
       </DarkCard>
@@ -299,22 +252,20 @@ export function LessonDetailSections({
   permissions,
   showContent,
   isCompleted,
-  isCompleting,
   onCreateAssignment,
   onEditAssignment,
   onDeleteAssignment,
   onOpenAssignment,
-  onComplete,
 }: LessonDetailSectionsProps) {
   return (
     <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
       <LessonContentCard
         content={lesson.content}
         showContent={showContent}
-        showCompletion={showContent && role === 'student'}
+        showCompletion={
+          showContent && role === 'student' && lesson.assignments.length > 0
+        }
         isCompleted={isCompleted}
-        isCompleting={isCompleting}
-        onComplete={onComplete}
       />
       <AssignmentsSection
         assignments={lesson.assignments}

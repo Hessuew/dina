@@ -39,7 +39,7 @@ function MediaCardWithActions({
   )
 
   return (
-    <div className="group relative w-full shrink-0 sm:w-auto">
+    <div className="group relative w-80 shrink-0 snap-start sm:w-auto">
       <MediaCard item={item} viewerRole={viewerRole} />
       {canManage && permissions && onEditMedia && onDeleteMedia && (
         <div
@@ -84,7 +84,7 @@ function ShelfSection({
       <p className="text-[0.68rem] font-medium tracking-[0.25em] text-[#9B7A41] uppercase">
         {label}
       </p>
-      <div className="flex flex-col gap-4 pb-2 sm:flex-row sm:items-start sm:overflow-x-auto sm:pb-4">
+      <div className="-mx-6 flex items-start gap-4 overflow-x-auto px-6 pb-2 max-sm:snap-x max-sm:snap-mandatory sm:mx-0 sm:px-0 sm:pb-4">
         {items.map((item) => (
           <MediaCardWithActions
             key={item.id}

@@ -77,18 +77,13 @@ select
   to_regclass('public.courses') is not null as courses_present,
   to_regclass('public.lessons') is not null as lessons_present,
   to_regclass('public.enrollments') is not null as enrollments_present,
-  to_regclass('public.submissions') is not null as submissions_present,
-  to_regclass('public.lesson_progress') is not null as lesson_progress_present;
+  to_regclass('public.submissions') is not null as submissions_present;
 
 select
   exists (
     select 1 from pg_indexes
     where indexname = 'submissions_assignment_student_unique'
-  ) as submission_idempotency_index_present,
-  exists (
-    select 1 from pg_indexes
-    where indexname = 'lesson_progress_student_lesson_unique'
-  ) as lesson_completion_index_present;
+  ) as submission_idempotency_index_present;
 ```
 
 Also verify, without copying values into the evidence record:

@@ -631,6 +631,39 @@ describe('getLessonService (integration)', () => {
     expect(result.lesson.assignments).toHaveLength(1)
     expect(result.permissions.canManage).toBe(true)
   })
+
+  it('derives isCompleted from graded submissions for students', async () => {
+    const { courseId } = await seedCourseWithTeacher()
+    const lessonId = await seedLesson({ courseId, isPublished: true })
+    const firstAssignmentId = await seedAssignment({
+      lessonId,
+      status: 'published',
+    })
+    const secondAssignmentId = await seedAssignment({
+      lessonId,
+      status: 'published',
+    })
+    const studentId = await seedProfile({ role: 'student' })
+    await seedSubmission({
+      assignmentId: firstAssignmentId,
+      studentId,
+      status: 'submitted',
+      grade: 90,
+    })
+
+    const incomplete = await getLessonService({ lessonId }, studentId)
+    expect(incomplete.isCompleted).toBe(false)
+
+    await seedSubmission({
+      assignmentId: secondAssignmentId,
+      studentId,
+      status: 'submitted',
+      grade: 85,
+    })
+
+    const complete = await getLessonService({ lessonId }, studentId)
+    expect(complete.isCompleted).toBe(true)
+  })
 })
 
 describe('createOrUpdateSubmissionService (integration)', () => {

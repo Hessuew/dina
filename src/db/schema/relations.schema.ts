@@ -8,7 +8,6 @@ import {
   courseSubstitutes,
   courseTeachers,
   courses,
-  lessonProgress,
   lessons,
 } from './course.schema'
 import { enrollmentReviewerAssignments, enrollments } from './enrollment.schema'
@@ -143,7 +142,6 @@ export const lessonsRelations = relations(lessons, ({ one, many }) => ({
     fields: [lessons.courseId],
     references: [courses.id],
   }),
-  progress: many(lessonProgress),
   assignments: many(assignments),
   attendanceSession: one(attendanceSessions, {
     fields: [lessons.id],
@@ -183,17 +181,6 @@ export const attendancePresentsRelations = relations(
     }),
   }),
 )
-
-export const lessonProgressRelations = relations(lessonProgress, ({ one }) => ({
-  student: one(profiles, {
-    fields: [lessonProgress.studentId],
-    references: [profiles.id],
-  }),
-  lesson: one(lessons, {
-    fields: [lessonProgress.lessonId],
-    references: [lessons.id],
-  }),
-}))
 
 export const assignmentsRelations = relations(assignments, ({ one, many }) => ({
   lesson: one(lessons, {

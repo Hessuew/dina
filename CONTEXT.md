@@ -53,6 +53,10 @@ A user with `profiles.role = 'student'` (default). Enrolled via an admin-sent in
 
 While an assignment's status is **`published`**, Students may save drafts and submit (or re-submit) at any time — **before or after the due date**. The due date is a soft target for urgency and teacher visibility (`submittedAt`); it is not a hard lock. Teachers hard-close the window by setting assignment status to **`closed`** (or back to **`draft`**); only `published` accepts student saves.
 
+### Lesson Completion
+
+A **derived** state, never stored: a Lesson is complete for a Student when it has **at least one `published` Assignment** and **every** published Assignment has a Submission by that Student with `grade IS NOT NULL` (grading sets `grade`/`gradedAt`, never `status = 'graded'`). There is no `lesson_progress` table and no student "mark complete" action — Course Teachers and Admins complete a lesson for a student by grading. A lesson with zero published assignments is never completable. Completion re-derives on every read, so adding a new published assignment un-completes a lesson automatically. See ADR 0024.
+
 ### Invitation lifecycle
 
 An invitation (`invitations` table) is the single, admin-issued gate into signup — there is no open registration. Its `status` enum has three values, and their precise meaning is:

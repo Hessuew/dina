@@ -78,10 +78,6 @@ Database access layer and schema definitions.
     - `email_messages` / `email_campaign_locks`
       - Audit/failure logging and per-campaign locking for admin bulk email campaigns.
       - `email_messages` logs bulk campaign attempts only; one-off invitation emails are not backfilled.
-    - `lesson_progress`
-      - Stores student completion state for lessons.
-      - Enforces one progress row per `(student_id, lesson_id)` so completion
-        writes can use an idempotent upsert.
     - `lessons`
       - Course lesson reads are indexed by `(course_id, order_index, id)` for
         ordered course detail, authoring, attendance, and completion queries.
@@ -95,6 +91,9 @@ Database access layer and schema definitions.
       - Teacher lesson assignment reads that scope by lesson and order by due
         date use `(lesson_id, due_date)`; the Phase 4 performance migration
         `0053_youthful_rafael_vega` adds `assignments_lesson_due_date_idx`.
+      - Lesson completion is derived from `assignments` × `submissions`
+        (grade non-null), not stored — `lesson_progress` was dropped in
+        migration `0058_hesitant_spencer_smythe` (ADR 0024).
       - Student assignment lists filter published rows and order by due date;
         the Phase 4 performance migration `0057_thin_mandrill` adds
         `assignments_status_due_date_idx`.
