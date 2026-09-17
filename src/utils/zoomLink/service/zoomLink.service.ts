@@ -11,12 +11,14 @@ import {
 } from '@/utils/zoomLink/domain/zoomLink.domain'
 import {
   deleteZoomLinkById,
+  insertZoomLink,
+  updateZoomLinkById,
+} from '@/utils/repository'
+import {
   findDiscipleshipTeacherId,
   findViewerRole,
   findZoomLinkOwner,
   findZoomLinksWithTeachers,
-  insertZoomLink,
-  updateZoomLinkById,
 } from '@/utils/zoomLink/repository'
 import { authz } from '@/utils/authz'
 import { NotFoundError, ValidationError, isAppError } from '@/utils/errors'
