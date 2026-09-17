@@ -17,27 +17,29 @@ import {
 } from '@/domain/assignment.service'
 import { canOpenUnpublishedAssignment } from '@/utils/assignments/domain/assignment-detail.domain'
 import {
-  deleteAssignmentById,
   findAssignmentWithFullDetail,
   findAssignmentWithLesson,
   findAssignmentWithLessonAndSubmissions,
   findAssignmentsForTeacherCatalog,
   findAssignmentsForTeacherLessons,
-  findCourseIdsByTeacher,
   findPublishedAssignmentsForStudent,
-  insertAssignment,
-  updateAssignmentById,
 } from '@/utils/assignments/repository/assignments.repository'
 import {
   findLessonById,
   findLessonIdsByCourseIds,
   findLessonWithDetail,
 } from '@/utils/assignments/repository/lessons.repository'
-import { findCompletedLessonIdsForStudent } from '@/utils/courses/repository'
 import {
+  findCompletedLessonIdsForStudent,
+  findCourseIdsByTeacher,
+} from '@/utils/courses/repository'
+import {
+  deleteAssignmentById,
   findAssignmentSubmissionsWithStudent,
   findSubmissionByAssignmentAndStudent,
   findSubmissionById,
+  insertAssignment,
+  updateAssignmentById,
   updateSubmission,
   updateSubmissionGrade,
   upsertSubmission,

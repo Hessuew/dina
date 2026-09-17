@@ -31,6 +31,15 @@ export async function findCourseAssignmentsByTeacherIds(
   })
 }
 
+export async function findCourseIdsByTeacher(teacherId: string) {
+  const db = await getDb()
+  const result = await db.query.courseTeachers.findMany({
+    where: eq(courseTeachers.teacherId, teacherId),
+    columns: { courseId: true },
+  })
+  return result.map((assignment) => assignment.courseId)
+}
+
 export async function replaceTeacherAssignments(
   courseId: string,
   teacher1Id: string,

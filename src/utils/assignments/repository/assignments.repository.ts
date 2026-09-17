@@ -1,15 +1,7 @@
 /* v8 ignore start */
 import { eq, inArray, or } from 'drizzle-orm'
-import type { AssignmentStatus } from '@/types/database.types'
 import { getDb } from '@/db'
-import { assignments, courseTeachers, submissions } from '@/db/schema'
-
-export async function findAssignmentById(assignmentId: string) {
-  const db = await getDb()
-  return db.query.assignments.findFirst({
-    where: eq(assignments.id, assignmentId),
-  })
-}
+import { assignments, submissions } from '@/db/schema'
 
 export async function findAssignmentWithLesson(assignmentId: string) {
   const db = await getDb()
@@ -71,15 +63,6 @@ export async function findPublishedAssignmentsForStudent(studentId: string) {
     },
     orderBy: (t, { asc }) => [asc(t.dueDate)],
   })
-}
-
-export async function findCourseIdsByTeacher(teacherId: string) {
-  const db = await getDb()
-  const result = await db.query.courseTeachers.findMany({
-    where: eq(courseTeachers.teacherId, teacherId),
-    columns: { courseId: true },
-  })
-  return result.map((ta) => ta.courseId)
 }
 
 export async function findAssignmentsForTeacherLessons(
@@ -145,41 +128,4 @@ export async function findAssignmentsForTeacherCatalog(
   })
 }
 
-export async function insertAssignment(values: {
-  lessonId: string
-  title: string
-  description: string | null
-  dueDate: Date
-  maxGrade: number
-  status: 'draft'
-}) {
-  const db = await getDb()
-  const [assignment] = await db.insert(assignments).values(values).returning()
-  return assignment
-}
-
-export async function updateAssignmentById(
-  assignmentId: string,
-  values: {
-    title: string
-    description: string | null
-    dueDate: Date
-    maxGrade: number
-    status?: AssignmentStatus
-    updatedAt: Date
-  },
-) {
-  const db = await getDb()
-  const [assignment] = await db
-    .update(assignments)
-    .set(values)
-    .where(eq(assignments.id, assignmentId))
-    .returning()
-  return assignment
-}
-
-export async function deleteAssignmentById(assignmentId: string) {
-  const db = await getDb()
-  await db.delete(assignments).where(eq(assignments.id, assignmentId))
-}
 /* v8 ignore end */

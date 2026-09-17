@@ -495,10 +495,13 @@ This folder is primarily where TanStack Start server functions live (via `create
     is the single owner for profile-only reads and writes reused across features
     (email, identity, student, teacher, and enrollment support). Feature
     repositories remain responsible for aggregate or joined queries until their
-    tables are migrated to this shared layer. `submissions.repository.ts` now
-    owns submission-only reads and writes reused across assignments, courses,
-    and student-directory services. New profile-only or submission-only access
-    must use `@/utils/repository`.
+    tables are migrated to this shared layer. `assignments.repository.ts` now
+    owns assignment-only reads and writes reused across assignment and course
+    services. `submissions.repository.ts` owns submission-only reads and writes
+    reused across assignments, courses,
+    and student-directory services. The course-teacher repository owns
+    course-teacher-only lookups reused by assignment services. New profile-only,
+    assignment-only, or submission-only access must use `@/utils/repository`.
   - Lesson detail reads require a persisted profile and expose unpublished
     lessons/draft assignments only to course teachers or admins; non-managers
     receive published lesson/assignment data only.
