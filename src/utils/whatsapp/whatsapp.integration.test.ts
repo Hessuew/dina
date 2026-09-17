@@ -38,12 +38,12 @@ afterEach(() => {
 function installFakeSender(failFor: Array<string> = []) {
   const calls: Array<WhatsAppTemplateMessage> = []
   const sender: WhatsAppSender = {
-    async send(message) {
+    send(message) {
       calls.push(message)
       if (failFor.includes(message.toE164)) {
-        throw new Error('provider rejected message')
+        return Promise.reject(new Error('provider rejected message'))
       }
-      return { providerMessageId: `wamid.${calls.length}` }
+      return Promise.resolve({ providerMessageId: `wamid.${calls.length}` })
     },
   }
   setWhatsAppSender(sender)
