@@ -1,7 +1,5 @@
 import {
   findAllAssignments,
-  findAllCourses,
-  findAllCoursesDesc,
   findAssignmentsWithDetails,
   findSubmissionsForStudents,
 } from '../repository'
@@ -30,6 +28,8 @@ import { getUserProfile } from '@/utils/auth/auth'
 import { hasStaffPrivilege, resolveAdminOrTeacherAccess } from '@/utils/authz'
 import { findCourseAssignmentsForTeachers } from '@/utils/teachers/repository/course-teachers.repository'
 import {
+  findAllCourses,
+  findAllCoursesDesc,
   findAllStudents,
   findStudentById,
   findSubmittedSubmissionsForStudent,

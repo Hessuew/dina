@@ -27,7 +27,6 @@ import {
 import { getUserProfile } from '@/utils/auth/auth'
 import { hasStaffPrivilege } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
-import { findCourseById } from '@/utils/courses/repository'
 import { findCourseTeachers } from '@/utils/courses/repository/course-teachers.repository'
 import {
   AuthorizationError,
@@ -38,6 +37,7 @@ import {
 } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+import { findCourseById } from '@/utils/repository'
 
 type AttendanceCheckInLogContext = {
   courseId: string

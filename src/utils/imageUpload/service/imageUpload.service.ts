@@ -18,9 +18,7 @@ import {
   validateImageUpload,
 } from '@/utils/imageUpload/domain/imageUpload.domain'
 import {
-  findCourseForThumbnail,
   findProfileAvatarPath,
-  updateCourseThumbnailPath,
   updateProfileAvatarPath,
 } from '@/utils/imageUpload/repository/imageUpload.repository'
 import { getUserProfile } from '@/utils/auth/auth'
@@ -37,6 +35,7 @@ import {
 } from '@/utils/storage/service/private-storage.service'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+import { findCourseById, updateCourseThumbnailPath } from '@/utils/repository'
 
 type ImageUploadAction =
   | 'request_avatar_upload'
@@ -211,7 +210,7 @@ async function requireCourseThumbnailAccess(
   userId: string,
   context: ImageUploadLogContext,
 ) {
-  const course = await findCourseForThumbnail(courseId)
+  const course = await findCourseById(courseId)
   if (!course) {
     throw new NotFoundError('Course not found', {
       code: 'COURSE_NOT_FOUND',

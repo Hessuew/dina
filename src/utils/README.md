@@ -515,6 +515,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     `@/utils/repository`. `lessons.repository.ts` now owns lesson-only reads and
     writes reused across assignment and course services. New lesson-only access
     must use `@/utils/repository`; joined lesson/course/assignment reads remain
+    in their feature repositories. `courses.repository.ts` owns course-only reads and
+    writes reused across course, image-upload, lesson-calendar, attendance, and
+    student-directory services. New course-only access must use `@/utils/repository`;
+    joined course/lesson/media/teacher reads and course-plus-teacher creation remain
     in their feature repositories.
   - Lesson detail reads require a persisted profile and expose unpublished
     lessons/draft assignments only to course teachers or admins; non-managers

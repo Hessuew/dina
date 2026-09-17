@@ -19,17 +19,17 @@ import {
   resolveOptionalTeacherPair,
 } from '@/utils/courses/domain/teacher-assignment.domain'
 import {
-  deleteCourseById,
   findAllCourses,
   findCompletedLessonIdsForStudent,
-  findCourseById,
   findCourseWithDetails,
   insertCourse,
-  updateCourseById,
 } from '@/utils/courses/repository'
 import {
+  deleteCourseById,
+  findCourseById,
   findPublishedAssignmentsByLessonIds,
   findStudentSubmissions,
+  updateCourseById,
 } from '@/utils/repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'

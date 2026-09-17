@@ -7,13 +7,13 @@ import type { LogLevel } from '@/utils/observability/logger'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
-  findAllCourseIds,
   findAssignmentCalendarEvents,
   findLessonCalendarEvents,
   findUpcomingLessons,
 } from '@/utils/courses/repository'
 import {
   deleteLessonById,
+  findAllCourseIds,
   insertLesson,
   updateLessonById,
 } from '@/utils/repository'

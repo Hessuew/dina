@@ -9,11 +9,10 @@ import {
 } from '@/utils/courses/domain/teacher-assignment.domain'
 import {
   findCourseAssignmentsByTeacherIds,
-  findCourseById,
   findCourseTeachers,
   replaceTeacherAssignments,
 } from '@/utils/courses/repository'
-import { findProfilesByIds } from '@/utils/repository'
+import { findCourseById, findProfilesByIds } from '@/utils/repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { ConflictError, NotFoundError, isAppError } from '@/utils/errors'

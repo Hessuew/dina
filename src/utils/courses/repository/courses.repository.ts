@@ -46,19 +46,6 @@ export async function findCourseWithDetails(
   })
 }
 
-export async function findCourseById(courseId: string) {
-  const db = await getDb()
-  return db.query.courses.findFirst({
-    where: eq(courses.id, courseId),
-  })
-}
-
-export async function findAllCourseIds() {
-  const db = await getDb()
-  const result = await db.query.courses.findMany({ columns: { id: true } })
-  return result.map((c) => c.id)
-}
-
 export async function insertCourse(
   values: {
     title: string
@@ -83,28 +70,4 @@ export async function insertCourse(
   })
 }
 
-export async function updateCourseById(
-  courseId: string,
-  values: {
-    title: string
-    description: string
-    thumbnailUrl: string | null
-    isPublished?: boolean
-    orderIndex?: number
-    updatedAt: Date
-  },
-) {
-  const db = await getDb()
-  const [course] = await db
-    .update(courses)
-    .set(values)
-    .where(eq(courses.id, courseId))
-    .returning()
-  return course
-}
-
-export async function deleteCourseById(courseId: string) {
-  const db = await getDb()
-  await db.delete(courses).where(eq(courses.id, courseId))
-}
 /* v8 ignore end */

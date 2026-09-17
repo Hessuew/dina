@@ -9,11 +9,12 @@ import { AuthorizationError } from '@/utils/errors'
 import * as authUtils from '@/utils/auth/auth'
 import {
   findAllCourses,
-  findCourseById,
   findCourseTeachers,
   insertCourse,
 } from '@/utils/courses/repository'
 import * as coursesRepository from '@/utils/courses/repository'
+import { findCourseById } from '@/utils/repository'
+import * as sharedRepository from '@/utils/repository'
 import {
   createCourseService,
   deleteCourseService,
@@ -1394,7 +1395,7 @@ describe('getCalendarEventsService (integration)', () => {
       category: 'course_calendar_read_persistence',
       mock: (error: Error) =>
         vi
-          .spyOn(coursesRepository, 'findAllCourseIds')
+          .spyOn(sharedRepository, 'findAllCourseIds')
           .mockRejectedValueOnce(error),
       seedCourse: false,
     },
