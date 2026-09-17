@@ -463,6 +463,7 @@ Landscape `aspect-3/2 w-80` card in horizontal-scroll shelves. Full-bleed thumbn
 - All category badges use **gold** accent only (`border-[#C5A059]/40`, `text-[#D4B373]`); icon varies per category.
 - Thumbnail scale: `duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105`.
 - Course chip border: `border-[#C5A059]/30`. Draft badge: `border-[#9B7A41]/30`.
+- Shelf rows scroll horizontally at every breakpoint. Below `sm` the row bleeds to the screen edge (`-mx-6 px-6`, reverting via `sm:mx-0 sm:px-0`) with `snap-x snap-mandatory` + `snap-start` on each card; cards render `w-80` on mobile and `w-96` on desktop.
 
 ### Testimonial Card
 

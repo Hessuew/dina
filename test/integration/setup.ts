@@ -5,10 +5,13 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { beforeEach } from 'vitest'
 import { getPgliteClient, truncateAll } from 'test/integration/db'
-import {
-  DefaultAuthorizationService,
-  setAuthorizationService,
-} from '@/utils/authz'
+// Import leaf modules, not the '@/utils/authz' barrel: its `protectRoute`
+// re-export pulls auth.ts -> private-storage.service -> '@/utils/supabase'
+// into the setup module graph, where those real modules are evaluated and
+// cached before any test file's `vi.mock` can register (vitest-dev/vitest#10104)
+// — silently defeating per-file supabase mocks.
+import { DefaultAuthorizationService } from '@/utils/authz/default-adapter'
+import { setAuthorizationService } from '@/utils/authz/service'
 
 // Use the real DB-backed authz so role checks exercise seeded `profiles` rows.
 // (Reset in case another test swapped in a TestAuthorizationService.)

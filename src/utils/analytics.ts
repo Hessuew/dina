@@ -10,10 +10,8 @@ export type AnalyticsEventName =
   | 'enrollment_submitted'
   | 'student_activated'
   | 'course_started'
-  | 'lesson_completed'
   | 'assignment_submitted'
   | 'teacher_review_completed'
-  | 'course_completed'
 
 export type AnalyticsEventProperties = Readonly<
   Record<string, string | number | boolean | null | undefined>
@@ -124,16 +122,6 @@ export function trackStudentActivated(
   const tracked = trackAnalyticsEvent('student_activated', { courseId })
   if (tracked) rememberStudentActivation(userId)
   return tracked
-}
-
-/** Captures a first lesson completion without including lesson content. */
-export function trackLessonCompleted(lessonId: string): boolean {
-  return trackAnalyticsEvent('lesson_completed', { lessonId })
-}
-
-/** Captures a course completion without including course content. */
-export function trackCourseCompleted(courseId: string): boolean {
-  return trackAnalyticsEvent('course_completed', { courseId })
 }
 
 /** Captures a completed teacher review without including grade or feedback. */

@@ -9,7 +9,6 @@ export {
 
 // Lesson aggregate
 export {
-  completeLesson,
   createLesson,
   updateLesson,
   deleteLesson,

@@ -34,7 +34,7 @@ import {
   findLessonIdsByCourseIds,
   findLessonWithDetail,
 } from '@/utils/assignments/repository/lessons.repository'
-import { findLessonProgress } from '@/utils/courses/repository'
+import { findCompletedLessonIdsForStudent } from '@/utils/courses/repository'
 import {
   findSubmissionByAssignmentAndStudent,
   findSubmissionById,
@@ -180,10 +180,12 @@ async function loadLessonForViewer(data: GetLessonInput, userId: string) {
   }
 
   const profile = await getUserProfile(userId)
-  const progress =
+  const isCompleted =
     profile.role === 'student'
-      ? await findLessonProgress(userId, data.lessonId)
-      : null
+      ? (
+          await findCompletedLessonIdsForStudent(userId, [data.lessonId])
+        ).includes(data.lessonId)
+      : false
   const courseWithTeachers = {
     id: lesson.course.id,
     teacherIds: lesson.course.courseTeachers.map(
@@ -222,7 +224,7 @@ async function loadLessonForViewer(data: GetLessonInput, userId: string) {
     },
     role: profile.role,
     permissions,
-    isCompleted: Boolean(progress?.completed),
+    isCompleted,
   }
 }
 

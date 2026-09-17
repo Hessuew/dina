@@ -375,17 +375,10 @@ Never log passwords, tokens, cookies, Supabase service-role keys, connection str
    duration, and stable delivery or persistence categories. Recipient email
    addresses, invitation tokens, provider errors, and expected user-facing
    authorization/conflict/not-found outcomes remain excluded.
-   Student completion of published lessons now persists through an idempotent
-   progress upsert and emits redacted `lesson_completed` on first completion,
-   `lesson_completion_ignored` on repeat requests, and
-   `lesson_completion_failed` for unexpected persistence errors. Events carry
-   request correlation, actor/course/lesson IDs, status, duration,
-   `courseCompleted`, and stable persistence categories; lesson content remains
-   excluded. Lesson and progress preflight reads reuse the failure event with
-   stable `lesson_read_persistence` and `lesson_progress_read_persistence`
-   categories; expected not-found and unpublished outcomes remain quiet. The
-   course-completion flag is true only for the request that completes the final
-   published lesson.
+   Lesson completion is derived at read time from graded submissions
+   (ADR 0024); the former `completeLesson` mutation and its
+   `lesson_completed`/`lesson_completion_*` telemetry were removed with the
+   `lesson_progress` table.
    Calendar overview reads now emit redacted `calendar_events_loaded` events
    with request correlation, actor ID, source counts, total event count,
    status, and duration. Unexpected read failures emit

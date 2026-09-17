@@ -21,7 +21,7 @@ import {
 import {
   deleteCourseById,
   findAllCourses,
-  findCompletedLessonProgress,
+  findCompletedLessonIdsForStudent,
   findCourseById,
   findCourseWithDetails,
   findPublishedAssignmentsByLessonIds,
@@ -244,14 +244,16 @@ function restrictCourseListForViewer(
 }
 
 async function loadStudentCourseData(userId: string, course: CourseDetail) {
-  const progress = await findCompletedLessonProgress(userId)
   const lessonIds = course.lessons.map((lesson) => lesson.id)
-  const courseAssignments = await findPublishedAssignmentsByLessonIds(lessonIds)
+  const [completedLessonIds, courseAssignments] = await Promise.all([
+    findCompletedLessonIdsForStudent(userId, lessonIds),
+    findPublishedAssignmentsByLessonIds(lessonIds),
+  ])
   const assignmentIds = courseAssignments.map((assignment) => assignment.id)
   const studentSubmissions = await findStudentSubmissions(userId, assignmentIds)
 
   return {
-    progress,
+    completedLessonIds,
     assignmentData: buildAssignmentStats(courseAssignments, studentSubmissions),
   }
 }
@@ -294,17 +296,13 @@ async function loadCourse(
     profile.role === 'student'
       ? await loadStudentCourseData(userId, visibleCourse)
       : {
-          progress: [],
+          completedLessonIds: [] as Array<string>,
           assignmentData: {
             totalAssignments: 0,
             submittedCount: 0,
             gradedCount: 0,
           },
         }
-
-  const completedLessonIds = new Set(
-    courseData.progress.map((item) => item.lessonId),
-  )
   const [signedCourse] = await signCourseAssets([visibleCourse])
   const courseWithTeachers = {
     ...signedCourse,
@@ -315,7 +313,7 @@ async function loadCourse(
   return {
     course: courseWithTeachers,
     role: profile.role,
-    completedLessonIds: Array.from(completedLessonIds),
+    completedLessonIds: courseData.completedLessonIds,
     assignmentData: courseData.assignmentData,
     permissions,
   }

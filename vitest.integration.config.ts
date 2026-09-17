@@ -24,6 +24,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    fsModuleCache: true,
     include: ['src/**/*.integration.test.ts'],
     setupFiles: ['./test/integration/setup.ts'],
     // No coverage block: the 100% gate stays scoped to the unit project.

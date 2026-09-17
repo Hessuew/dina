@@ -11,7 +11,6 @@ import {
   findAllCourses,
   findCourseById,
   findCourseTeachers,
-  findLessonProgress,
   insertCourse,
 } from '@/utils/courses/repository'
 import * as coursesRepository from '@/utils/courses/repository'
@@ -23,7 +22,6 @@ import {
   updateCourseService,
 } from '@/utils/courses/service/course.service'
 import {
-  completeLessonService,
   createLessonService,
   deleteLessonService,
   getCalendarEventsService,
@@ -41,7 +39,6 @@ import {
   seedCourse,
   seedCourseTeacher,
   seedLesson,
-  seedLessonProgress,
   seedMedia,
   seedProfile,
   seedSubmission,
@@ -398,10 +395,15 @@ describe('getCourseService (integration)', () => {
     const courseId = await seedCourse()
     const publishedLessonId = await seedLesson({ courseId, isPublished: true })
     await seedLesson({ courseId, isPublished: false })
-    await seedLessonProgress({
-      studentId,
+    const assignmentId = await seedAssignment({
       lessonId: publishedLessonId,
-      completed: true,
+      status: 'published',
+    })
+    await seedSubmission({
+      assignmentId,
+      studentId,
+      status: 'submitted',
+      grade: 90,
     })
 
     const result = await getCourseService({ courseId }, studentId)
@@ -409,6 +411,93 @@ describe('getCourseService (integration)', () => {
     expect(result.role).toBe('student')
     expect(result.course.lessons).toHaveLength(1)
     expect(result.completedLessonIds).toContain(publishedLessonId)
+  })
+
+  it('keeps a lesson incomplete while any published assignment is ungraded', async () => {
+    const studentId = await seedProfile({ role: 'student' })
+    const courseId = await seedCourse()
+    const lessonId = await seedLesson({ courseId, isPublished: true })
+    const gradedAssignmentId = await seedAssignment({
+      lessonId,
+      status: 'published',
+    })
+    await seedAssignment({ lessonId, status: 'published' })
+    await seedSubmission({
+      assignmentId: gradedAssignmentId,
+      studentId,
+      status: 'submitted',
+      grade: 90,
+    })
+
+    const result = await getCourseService({ courseId }, studentId)
+
+    expect(result.completedLessonIds).not.toContain(lessonId)
+  })
+
+  it('keeps a lesson incomplete when a submission exists but is ungraded', async () => {
+    const studentId = await seedProfile({ role: 'student' })
+    const courseId = await seedCourse()
+    const lessonId = await seedLesson({ courseId, isPublished: true })
+    const assignmentId = await seedAssignment({
+      lessonId,
+      status: 'published',
+    })
+    await seedSubmission({
+      assignmentId,
+      studentId,
+      status: 'submitted',
+    })
+
+    const result = await getCourseService({ courseId }, studentId)
+
+    expect(result.completedLessonIds).not.toContain(lessonId)
+  })
+
+  it('ignores draft and closed assignments when deriving lesson completion', async () => {
+    const studentId = await seedProfile({ role: 'student' })
+    const courseId = await seedCourse()
+    const lessonId = await seedLesson({ courseId, isPublished: true })
+    const publishedId = await seedAssignment({ lessonId, status: 'published' })
+    await seedAssignment({ lessonId, status: 'draft' })
+    await seedAssignment({ lessonId, status: 'closed' })
+    await seedSubmission({
+      assignmentId: publishedId,
+      studentId,
+      status: 'submitted',
+      grade: 90,
+    })
+
+    const result = await getCourseService({ courseId }, studentId)
+
+    expect(result.completedLessonIds).toContain(lessonId)
+  })
+
+  it('never completes a lesson that has no published assignments', async () => {
+    const studentId = await seedProfile({ role: 'student' })
+    const courseId = await seedCourse()
+    const lessonId = await seedLesson({ courseId, isPublished: true })
+
+    const result = await getCourseService({ courseId }, studentId)
+
+    expect(result.completedLessonIds).not.toContain(lessonId)
+  })
+
+  it('scopes completion to the viewing student', async () => {
+    const studentId = await seedProfile({ role: 'student' })
+    const otherStudentId = await seedProfile({ role: 'student' })
+    const courseId = await seedCourse()
+    const lessonId = await seedLesson({ courseId, isPublished: true })
+    const assignmentId = await seedAssignment({ lessonId, status: 'published' })
+    await seedSubmission({
+      assignmentId,
+      studentId: otherStudentId,
+      status: 'submitted',
+      grade: 90,
+    })
+
+    const result = await getCourseService({ courseId }, studentId)
+
+    expect(result.completedLessonIds).not.toContain(lessonId)
   })
 
   it('student course detail counts only published assignments', async () => {
@@ -437,156 +526,6 @@ describe('getCourseService (integration)', () => {
       gradedCount: 1,
     })
   })
-})
-
-describe('completeLessonService (integration)', () => {
-  it('marks a published lesson complete and emits safe telemetry', async () => {
-    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
-    const { courseId, lessonId } = await seedCourseWithTeacher()
-    const studentId = await seedProfile({ role: 'student' })
-
-    const result = await completeLessonService({ lessonId }, studentId)
-
-    expect(result).toMatchObject({
-      lessonId,
-      completed: true,
-      alreadyCompleted: false,
-      courseCompleted: true,
-    })
-    expect(await findLessonProgress(studentId, lessonId)).toMatchObject({
-      studentId,
-      lessonId,
-      completed: true,
-    })
-    expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
-      event: 'lesson_completed',
-      path: 'serverFn:completeLesson',
-      status: 'success',
-      actorId: studentId,
-      courseId,
-      lessonId,
-      alreadyCompleted: false,
-    })
-    infoSpy.mockRestore()
-  })
-
-  it('keeps repeated completion idempotent', async () => {
-    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
-    const { lessonId } = await seedCourseWithTeacher()
-    const studentId = await seedProfile({ role: 'student' })
-
-    await completeLessonService({ lessonId }, studentId)
-    const result = await completeLessonService({ lessonId }, studentId)
-
-    expect(result.alreadyCompleted).toBe(true)
-    expect(result.courseCompleted).toBe(false)
-    expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
-      event: 'lesson_completion_ignored',
-      status: 'ignored',
-      alreadyCompleted: true,
-    })
-    infoSpy.mockRestore()
-  })
-
-  it('reports course completion only after the final published lesson', async () => {
-    const { courseId, lessonId: firstLessonId } = await seedCourseWithTeacher()
-    const secondLessonId = await seedLesson({
-      courseId,
-      isPublished: true,
-    })
-    const studentId = await seedProfile({ role: 'student' })
-
-    const firstResult = await completeLessonService(
-      { lessonId: firstLessonId },
-      studentId,
-    )
-    const finalResult = await completeLessonService(
-      { lessonId: secondLessonId },
-      studentId,
-    )
-
-    expect(firstResult.courseCompleted).toBe(false)
-    expect(finalResult.courseCompleted).toBe(true)
-  })
-
-  it('rejects unpublished lessons and non-student callers', async () => {
-    const { courseId, lessonId } = await seedCourseWithTeacher()
-    const unpublishedLessonId = await seedLesson({
-      courseId,
-      isPublished: false,
-    })
-    const studentId = await seedProfile({ role: 'student' })
-    const teacherId = await seedProfile({ role: 'teacher' })
-
-    await expect(
-      completeLessonService({ lessonId: unpublishedLessonId }, studentId),
-    ).rejects.toMatchObject({ code: 'AUTHORIZATION_FAILED', status: 403 })
-    await expect(
-      completeLessonService({ lessonId }, teacherId),
-    ).rejects.toMatchObject({ code: 'ROLE_REQUIRED', status: 403 })
-  })
-
-  it.each([
-    {
-      name: 'lesson',
-      category: 'lesson_read_persistence',
-      setup: async () => {
-        const { lessonId } = await seedCourseWithTeacher()
-        return { courseId: undefined, lessonId }
-      },
-      mock: (error: Error) =>
-        vi
-          .spyOn(coursesRepository, 'findLessonForCompletion')
-          .mockRejectedValueOnce(error),
-    },
-    {
-      name: 'progress',
-      category: 'lesson_progress_read_persistence',
-      setup: async () => {
-        const { courseId, lessonId } = await seedCourseWithTeacher()
-        return { courseId, lessonId }
-      },
-      mock: (error: Error) =>
-        vi
-          .spyOn(coursesRepository, 'findLessonProgress')
-          .mockRejectedValueOnce(error),
-    },
-  ])(
-    'logs $name preflight persistence failures without raw details',
-    async ({ category, setup, mock }) => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const studentId = await seedProfile({ role: 'student' })
-      const lesson = await setup()
-      const repositoryError = new Error(
-        `${category} connectionString=secret; answer=private`,
-      )
-      mock(repositoryError)
-
-      await expect(
-        withObservabilityRequest(
-          new Request('https://christ-dina.org/complete-lesson', {
-            headers: { 'x-request-id': `lesson-${category}` },
-          }),
-          () => completeLessonService({ lessonId: lesson.lessonId }, studentId),
-        ),
-      ).rejects.toBe(repositoryError)
-
-      const line = String(errorSpy.mock.calls.at(-1)?.[0])
-      expect(line).not.toContain('connectionString')
-      expect(line).not.toContain('answer=private')
-      expect(JSON.parse(line)).toMatchObject({
-        event: 'lesson_completion_failed',
-        path: 'serverFn:completeLesson',
-        requestId: `lesson-${category}`,
-        actorId: studentId,
-        lessonId: lesson.lessonId,
-        ...(lesson.courseId ? { courseId: lesson.courseId } : {}),
-        status: 'failure',
-        errorCategory: category,
-        durationMs: expect.any(Number),
-      })
-    },
-  )
 })
 
 describe('lesson authorization preflight telemetry (integration)', () => {
@@ -626,14 +565,6 @@ describe('lesson authorization preflight telemetry (integration)', () => {
           { courseId: randomUUID(), lessonId: randomUUID() },
           actorId,
         )
-      },
-    },
-    {
-      name: 'lesson completion',
-      event: 'lesson_completion_failed',
-      path: 'serverFn:completeLesson',
-      run: async (actorId: string) => {
-        await completeLessonService({ lessonId: randomUUID() }, actorId)
       },
     },
   ])(

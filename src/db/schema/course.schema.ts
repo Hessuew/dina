@@ -208,66 +208,6 @@ export const lessons = pgTable(
   ],
 )
 
-export const lessonProgress = pgTable(
-  'lesson_progress',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    studentId: uuid('student_id')
-      .notNull()
-      .references(() => profiles.id, { onDelete: 'cascade' }),
-    lessonId: uuid('lesson_id')
-      .notNull()
-      .references(() => lessons.id, { onDelete: 'cascade' }),
-    completed: boolean('completed').default(false),
-    completedAt: timestamp('completed_at'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (table) => [
-    uniqueIndex('lesson_progress_student_lesson_unique').on(
-      table.studentId,
-      table.lessonId,
-    ),
-    // Students can view their own progress
-    pgPolicy('students_view_own_progress', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`student_id = auth.uid()`,
-    }),
-    // Teachers can view progress for students in their courses
-    pgPolicy('teachers_view_course_progress', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`
-        lesson_id IN (
-          SELECT l.id FROM lessons l
-          JOIN course_teachers ct ON l.course_id = ct.course_id
-          WHERE ct.teacher_id = auth.uid()
-        )
-      `,
-    }),
-    // Admins can view all progress
-    pgPolicy('admins_view_all_progress', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'`,
-    }),
-    // Students can update their own progress
-    pgPolicy('students_update_own_progress', {
-      for: 'update',
-      to: authenticatedRole,
-      using: sql`student_id = auth.uid()`,
-      withCheck: sql`student_id = auth.uid()`,
-    }),
-    // Students can insert their own progress
-    pgPolicy('students_insert_own_progress', {
-      for: 'insert',
-      to: authenticatedRole,
-      withCheck: sql`student_id = auth.uid()`,
-    }),
-  ],
-)
-
 /**
  * Temporary substitution records: Teacher A covers Teacher B's Reviewer
  * duties on a specific course without being added to course_teachers.

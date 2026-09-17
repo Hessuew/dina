@@ -1,13 +1,11 @@
 import { createServerFn } from '@tanstack/react-start'
 import {
-  completeLessonService,
   createLessonService,
   deleteLessonService,
   getUpcomingLessonsService,
   updateLessonService,
 } from './service/lesson.service'
 import {
-  completeLessonSchema,
   createLessonSchema,
   deleteLessonSchema,
   updateLessonSchema,
@@ -19,13 +17,6 @@ export const createLesson = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return createLessonService(data, user.id)
-  })
-
-export const completeLesson = createServerFn({ method: 'POST' })
-  .inputValidator(completeLessonSchema)
-  .handler(async ({ data }) => {
-    const user = await getCurrentUser()
-    return completeLessonService(data, user.id)
   })
 
 export const updateLesson = createServerFn({ method: 'POST' })
