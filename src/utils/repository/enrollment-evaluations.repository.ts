@@ -49,6 +49,17 @@ export async function findEnrollmentEvaluationScoresByEnrollmentIds(
     .where(inArray(enrollmentEvaluations.enrollmentId, enrollmentIds))
 }
 
+export async function findAllEnrollmentEvaluationScores() {
+  const db = await getDb()
+  return db
+    .select({
+      enrollmentId: enrollmentEvaluations.enrollmentId,
+      evaluatorId: enrollmentEvaluations.evaluatorId,
+      score: enrollmentEvaluations.score,
+    })
+    .from(enrollmentEvaluations)
+}
+
 export async function upsertEnrollmentEvaluation(
   enrollmentId: string,
   evaluatorId: string,

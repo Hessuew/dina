@@ -41,6 +41,7 @@ import {
   redactEnrollmentForTeacher,
 } from '@/utils/enrolment/domain/enrolment.domain'
 import { buildReviewerTeams } from '@/utils/enrolment/domain/reviewer-teams.domain'
+import { selectReviewerAdmittedEnrollmentIds } from '@/utils/enrolment/domain/reviewer-admission.domain'
 import { selectEnrollmentEmailsByGroup } from '@/utils/enrolment/domain/email-export.domain'
 import { findEnrollmentsPage } from '@/utils/enrolment/repository/enrolment.repository'
 import { getDb } from '@/db'
@@ -51,6 +52,8 @@ import {
   deleteEnrollmentById,
   deleteInvitationById,
   findAbsentTeacherIdsWithActiveSubstitution,
+  findAllEnrollmentEvaluationScores,
+  findAllReviewerAssignments,
   findAllTeacherIds,
   findAwaitingApprovalEnrollments,
   findCourseIdByTeacherId,
@@ -258,6 +261,14 @@ async function findReviewerEnrollmentIds(
   if (reviewerId === undefined) return undefined
   const assignments = await findReviewerAssignmentsByReviewerIds([reviewerId])
   return assignments.map(({ enrollmentId }) => enrollmentId)
+}
+
+async function findReviewerAdmittedEnrollmentIds(): Promise<Array<string>> {
+  const [assignments, evaluations] = await Promise.all([
+    findAllReviewerAssignments(),
+    findAllEnrollmentEvaluationScores(),
+  ])
+  return selectReviewerAdmittedEnrollmentIds(assignments, evaluations)
 }
 
 // Legacy reviewer assignments may not have course_id; resolve those through
@@ -890,8 +901,9 @@ async function loadEnrollmentsPageData(
     viewerCourseIds,
   )
   const assignedEnrollmentIds = await findReviewerEnrollmentIds(reviewerFilter)
-  const reviewerEnrollmentIds =
-    assignedEnrollmentIds === undefined
+  const reviewerEnrollmentIds = requireReviewerAdmitted
+    ? await findReviewerAdmittedEnrollmentIds()
+    : assignedEnrollmentIds === undefined
       ? undefined
       : [...new Set([...assignedEnrollmentIds, ...peerEnrollmentIds])]
 
@@ -903,7 +915,6 @@ async function loadEnrollmentsPageData(
     sortDir: data.sortDir,
     includeEmail: isAdmin,
     reviewerEnrollmentIds,
-    requireReviewerAdmitted,
   })
   const enrollmentIds = rows.map((row) => row.id)
 

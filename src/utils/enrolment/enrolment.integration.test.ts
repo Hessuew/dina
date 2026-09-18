@@ -1194,6 +1194,39 @@ describe('teacher substitution — Review heading peer resolution (integration)'
   })
 })
 
+describe('reviewer-admitted enrollment filtering (integration)', () => {
+  it('composes the view-all filter from shared assignment and evaluation readers', async () => {
+    const {
+      reviewerId,
+      courseId,
+      enrollmentId: admittedId,
+    } = await seedPeerReviewScenario()
+    const pendingId = await seedEnrollment({ status: 'pending' })
+    await seedReviewerAssignment(pendingId, reviewerId, courseId)
+
+    await setEvaluationScoreService(
+      { enrollmentId: admittedId, score: 4 },
+      reviewerId,
+    )
+    await setEvaluationScoreService(
+      { enrollmentId: pendingId, score: 2 },
+      reviewerId,
+    )
+
+    const result = await getEnrollmentsService(
+      { ...LIST_INPUT, viewAll: true },
+      reviewerId,
+    )
+
+    expect(result.enrollments.map((enrollment) => enrollment.id)).toContain(
+      admittedId,
+    )
+    expect(result.enrollments.map((enrollment) => enrollment.id)).not.toContain(
+      pendingId,
+    )
+  })
+})
+
 describe('active substitution lookup authorization (integration)', () => {
   afterEach(() => {
     vi.restoreAllMocks()

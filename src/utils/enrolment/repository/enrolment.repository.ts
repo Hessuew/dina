@@ -13,11 +13,7 @@ import {
 import type { SQL } from 'drizzle-orm'
 import type { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
-import {
-  enrollmentEvaluations,
-  enrollmentReviewerAssignments,
-  enrollments,
-} from '@/db/schema'
+import { enrollmentEvaluations, enrollments } from '@/db/schema'
 
 const SORT_COLUMN_MAP = {
   fullLegalName: enrollments.fullLegalName,
@@ -39,7 +35,6 @@ export type FindEnrollmentsPageInput = {
   sortDir: 'asc' | 'desc'
   includeEmail: boolean
   reviewerEnrollmentIds?: Array<string>
-  requireReviewerAdmitted?: boolean
 }
 
 /* v8 ignore start */
@@ -64,34 +59,6 @@ function buildReviewerCondition(
     : inArray(enrollments.id, reviewerEnrollmentIds)
 }
 
-function buildReviewerAdmittedCondition(
-  db: Awaited<ReturnType<typeof getDb>>,
-  requireReviewerAdmitted: boolean | undefined,
-) {
-  return requireReviewerAdmitted
-    ? inArray(
-        enrollments.id,
-        db
-          .select({ id: enrollmentReviewerAssignments.enrollmentId })
-          .from(enrollmentReviewerAssignments)
-          .innerJoin(
-            enrollmentEvaluations,
-            and(
-              eq(
-                enrollmentEvaluations.enrollmentId,
-                enrollmentReviewerAssignments.enrollmentId,
-              ),
-              eq(
-                enrollmentEvaluations.evaluatorId,
-                enrollmentReviewerAssignments.reviewerId,
-              ),
-            ),
-          )
-          .where(inArray(enrollmentEvaluations.score, [3, 4])),
-      )
-    : undefined
-}
-
 function buildEnrollmentPageOrder(
   sortBy: FindEnrollmentsPageInput['sortBy'],
   sortDir: 'asc' | 'desc',
@@ -113,14 +80,12 @@ export async function findEnrollmentsPage({
   sortDir,
   includeEmail,
   reviewerEnrollmentIds,
-  requireReviewerAdmitted,
 }: FindEnrollmentsPageInput) {
   const db = await getDb()
 
   const whereClause = and(
     buildEnrollmentSearchFilter(search, includeEmail),
     buildReviewerCondition(reviewerEnrollmentIds),
-    buildReviewerAdmittedCondition(db, requireReviewerAdmitted),
   )
 
   const evaluationSum = sql<number>`coalesce(sum(${enrollmentEvaluations.score}), 0)::int`

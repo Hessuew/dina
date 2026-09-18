@@ -74,6 +74,18 @@ export async function findReviewerAssignmentsByReviewerIds(
   return rows.map((row) => ({ ...row, courseId: row.courseId ?? null }))
 }
 
+export async function findAllReviewerAssignments(): Promise<
+  Array<{ enrollmentId: string; reviewerId: string }>
+> {
+  const db = await getDb()
+  return db
+    .select({
+      enrollmentId: enrollmentReviewerAssignments.enrollmentId,
+      reviewerId: enrollmentReviewerAssignments.reviewerId,
+    })
+    .from(enrollmentReviewerAssignments)
+}
+
 export async function findReviewerAssignmentsByReviewerIdInTransaction(
   tx: EnrollmentReviewerAssignmentsTransactionClient,
   reviewerId: string,
