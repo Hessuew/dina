@@ -83,8 +83,9 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
 1. **Schema** — input validation in `src/schemas/<feature>.schema.ts` (Zod).
 2. **Repository seam** — prefer `src/utils/repository/<table>.repository.ts`
    for table-only `getDb()` calls, wrapped in `/* v8 ignore */` and re-exported
-   via `src/utils/repository/index.ts`; keep feature-local repositories for
-   joined projections and cross-table orchestration.
+   via `src/utils/repository/index.ts`; keep joined projections and cross-table
+   orchestration in feature services, domains, or explicit transaction modules.
+   The boundary is regression-tested by `scripts/repository-boundary.test.ts`.
 3. **Domain** — `domain/<feature>.domain.ts`: pure mapping/normalization/rule
    functions. Inject time/IDs as params.
 4. **Service** — `service/<feature>.service.ts`: auth + orchestration; call
