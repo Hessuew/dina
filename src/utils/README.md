@@ -42,8 +42,9 @@ Runtime schema-table imports, including dynamic imports, are likewise reserved
 for `repository/`; domain
 modules may import schema tables only with `import type` for inferred row types.
 The boundary test scans the full application tree for runtime table imports and
-pins the two currently unused legacy schema tables (`announcements` and
-`notifications`) as the only schema definitions without a shared adapter.
+pins the one currently unused legacy schema table (`notifications`) as the only
+schema definition without a shared adapter. `announcements.repository.ts` owns
+the legacy announcements table even though no current feature consumes it.
 
 ## What Lives Here
 
@@ -530,7 +531,9 @@ pins the two currently unused legacy schema tables (`announcements` and
   - `postNotifications.ts` - Authenticated notification summary and
     mark-read operations; the service boundary requires a persisted profile
     before notification reads or read-state updates.
-  - `repository/` - Shared table-oriented database seams. `profiles.repository.ts`
+  - `repository/` - Shared table-oriented database seams. `announcements.repository.ts`
+    owns the legacy announcements table with table-only lookup, listing, and CRUD
+    adapters; no feature service currently consumes it. `profiles.repository.ts`
     is the single owner for profile-only reads and writes reused across features
     (authentication, authorization, email, identity, avatar, student, teacher, discipleship,
     enrollment support, and notification recipient resolution).
