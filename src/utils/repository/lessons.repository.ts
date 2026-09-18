@@ -49,6 +49,15 @@ export async function findLessonIdsByCourseIds(courseIds: Array<string>) {
   return result.map((lesson) => lesson.id)
 }
 
+export async function findLessonsByCourseIds(courseIds: Array<string>) {
+  if (courseIds.length === 0) return []
+  const db = await getDb()
+  return db.query.lessons.findMany({
+    where: inArray(lessons.courseId, courseIds),
+    columns: { id: true, title: true, courseId: true, scheduledTime: true },
+  })
+}
+
 export async function findLessonsByIds(lessonIds: Array<string>) {
   if (lessonIds.length === 0) return []
   const db = await getDb()

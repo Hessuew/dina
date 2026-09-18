@@ -32,6 +32,14 @@ export async function findAssignmentsByLessonId(lessonId: string) {
   })
 }
 
+export async function findAssignmentsByLessonIds(lessonIds: Array<string>) {
+  if (lessonIds.length === 0) return []
+  const db = await getDb()
+  return db.query.assignments.findMany({
+    where: inArray(assignments.lessonId, lessonIds),
+  })
+}
+
 export async function findPublishedAssignmentsByLessonIds(
   lessonIds: Array<string>,
 ) {

@@ -551,8 +551,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     `post-comments.repository.ts` as well. Authorization course membership checks use
     `findCourseTeacher` from the shared course-teachers seam. `lessons.repository.ts`
     owns lesson-only reads and writes reused across assignment and course services. New lesson-only access
-    must use `@/utils/repository`; aggregate joined reads remain in their feature
-    repositories, except assignment lesson-detail loading which composes shared
+    must use `@/utils/repository`; the course calendar composes lesson rows with
+    shared course and assignment adapters in the lesson service rather than joining
+    those tables in a feature repository. Remaining aggregate joined reads stay in
+    their feature repositories, except assignment lesson-detail loading which composes shared
     table adapters in the assignment service. `courses.repository.ts` owns course-only reads and
     writes reused across course, image-upload, lesson-calendar, attendance, and
     student-directory services. New course-only access must use `@/utils/repository`;

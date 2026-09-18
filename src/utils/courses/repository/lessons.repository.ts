@@ -1,5 +1,5 @@
 /* v8 ignore start */
-import { and, eq, gt, inArray } from 'drizzle-orm'
+import { and, eq, gt } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { courses, lessons } from '@/db/schema'
 
@@ -28,18 +28,4 @@ export async function findUpcomingLessons(now: Date) {
     .limit(5)
 }
 
-export async function findLessonCalendarEvents(courseIds: Array<string>) {
-  const db = await getDb()
-  return db
-    .select({
-      id: lessons.id,
-      title: lessons.title,
-      scheduledTime: lessons.scheduledTime,
-      courseId: lessons.courseId,
-      courseName: courses.title,
-    })
-    .from(lessons)
-    .innerJoin(courses, eq(lessons.courseId, courses.id))
-    .where(inArray(courses.id, courseIds))
-}
 /* v8 ignore end */

@@ -1410,7 +1410,7 @@ describe('getCalendarEventsService (integration)', () => {
       category: 'course_calendar_read_persistence',
       mock: (error: Error) =>
         vi
-          .spyOn(coursesRepository, 'findLessonCalendarEvents')
+          .spyOn(sharedRepository, 'findLessonsByCourseIds')
           .mockRejectedValueOnce(error),
       seedCourse: true,
     },
@@ -1419,7 +1419,7 @@ describe('getCalendarEventsService (integration)', () => {
       category: 'course_calendar_read_persistence',
       mock: (error: Error) =>
         vi
-          .spyOn(coursesRepository, 'findAssignmentCalendarEvents')
+          .spyOn(sharedRepository, 'findAssignmentsByLessonIds')
           .mockRejectedValueOnce(error),
       seedCourse: true,
     },

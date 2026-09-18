@@ -6,14 +6,13 @@ import type {
 import type { LogLevel } from '@/utils/observability/logger'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
-import {
-  findAssignmentCalendarEvents,
-  findLessonCalendarEvents,
-  findUpcomingLessons,
-} from '@/utils/courses/repository'
+import { findUpcomingLessons } from '@/utils/courses/repository'
 import {
   deleteLessonById,
   findAllCourseIds,
+  findAssignmentsByLessonIds,
+  findCoursesByIds,
+  findLessonsByCourseIds,
   insertLesson,
   updateLessonById,
 } from '@/utils/repository'
@@ -240,11 +239,14 @@ export async function getCalendarEventsService(userId: string) {
       return { events: [] }
     }
 
-    const [lessonEvents, assignmentEvents] = await Promise.all([
-      findLessonCalendarEvents(courseIds),
-      findAssignmentCalendarEvents(courseIds),
+    const [courses, lessons] = await Promise.all([
+      findCoursesByIds(courseIds),
+      findLessonsByCourseIds(courseIds),
     ])
-    const events = buildCourseCalendarEvents(lessonEvents, assignmentEvents)
+    const assignments = await findAssignmentsByLessonIds(
+      lessons.map((lesson) => lesson.id),
+    )
+    const events = buildCourseCalendarEvents(lessons, assignments, courses)
 
     logServerEvent('info', 'course_calendar_events_loaded', {
       requestId: getRequestId(),
@@ -253,8 +255,8 @@ export async function getCalendarEventsService(userId: string) {
       durationMs: elapsedMs(startedAt),
       actorId: userId,
       courseCount: courseIds.length,
-      lessonEventCount: lessonEvents.length,
-      assignmentEventCount: assignmentEvents.length,
+      lessonEventCount: lessons.length,
+      assignmentEventCount: assignments.length,
       eventCount: events.length,
     })
 
