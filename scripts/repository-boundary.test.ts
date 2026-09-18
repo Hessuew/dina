@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const utilsDirectory = join(process.cwd(), 'src/utils')
@@ -20,6 +20,12 @@ function findUtilityFiles(directory: string): Array<string> {
       ? [path]
       : []
   })
+}
+
+function findTransactionFiles(directory: string): Array<string> {
+  return findUtilityFiles(directory).filter((file) =>
+    file.includes(`${sep}transaction${sep}`),
+  )
 }
 
 function findSchemaTableImports(source: string): Array<string> {
@@ -95,5 +101,21 @@ describe('utils repository boundaries', () => {
       )
 
     expect(offenders).toEqual([])
+  })
+
+  it('keeps transaction modules as orchestration-only seams', () => {
+    const transactionFiles = findTransactionFiles(utilsDirectory)
+
+    expect(transactionFiles.length).toBeGreaterThan(0)
+
+    for (const transactionPath of transactionFiles) {
+      const source = readFileSync(transactionPath, 'utf8')
+      const file = transactionPath.slice(utilsDirectory.length + 1)
+
+      expect(findSchemaTableImports(source), file).toHaveLength(0)
+      expect(source, file).not.toMatch(
+        /\b(?:db|tx)\.(?:query|select|insert|update|delete)\b/,
+      )
+    }
   })
 })

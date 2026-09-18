@@ -85,6 +85,9 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    for table-only `getDb()` calls, wrapped in `/* v8 ignore */` and re-exported
    via `src/utils/repository/index.ts`; keep joined projections and cross-table
    orchestration in feature services, domains, or explicit transaction modules.
+   Transaction modules may open `db.transaction`, but must coordinate table
+   adapters rather than importing schema tables or issuing Drizzle CRUD/query
+   calls themselves.
    Keep one shared owner per table, and keep relation-backed `db.query.<table>`
    reads aligned with that repository's imported table. The boundary is
    regression-tested by `scripts/repository-boundary.test.ts`. Feature modules

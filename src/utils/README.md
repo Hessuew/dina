@@ -11,7 +11,9 @@ This folder is primarily where TanStack Start server functions live (via `create
 Table persistence is centralized under `repository/`, with one shared repository
 owner per database table. Feature services compose repository reads and pure
 domain logic; joined projections and multi-table atomic writes stay in feature
-services or explicit `transaction/` modules. Feature modules do not import
+services or explicit `transaction/` modules. Transaction modules may open a
+database transaction, but only coordinate table adapters; they do not import
+schema tables or issue Drizzle CRUD/query calls. Feature modules do not import
 `getDb()` or `withDbConnection()` directly. The repository ownership and client
 access contracts are regression-tested by `scripts/repository-boundary.test.ts`.
 
@@ -667,8 +669,8 @@ access contracts are regression-tested by `scripts/repository-boundary.test.ts`.
     exam-row update delegates to the transaction-scoped adapter in
     `exams.repository.ts`, question persistence delegates to `exam-questions.repository.ts`,
     and option persistence delegates to `exam-question-options.repository.ts`. The transaction
-    module is not a table repository; it coordinates the three table adapters without owning
-    table-specific queries. New exam-only,
+    module is not a table repository; it coordinates the three table adapters without importing
+    schema tables or issuing table-specific queries. New exam-only,
     exam-question-only, exam-question-option-only, exam-attempt-only, or exam-answer-only
     access must use `@/utils/repository`.
     `whatsapp-messages.repository.ts` owns WhatsApp message dedupe reads and delivery-log
