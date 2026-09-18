@@ -117,6 +117,7 @@ async function saveQuestionsInTransaction(
   }
 }
 
+/** Saves an exam and its questions/options as one atomic authoring operation. */
 export async function saveExamChanges(
   data: SaveExamChangesData,
 ): Promise<{ missingQuestionId?: string }> {

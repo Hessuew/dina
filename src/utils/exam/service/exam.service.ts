@@ -20,7 +20,7 @@ import type {
   ExamRow,
 } from '@/utils/repository'
 import type { StudentAttempt } from '@/utils/exam/domain/exam-redaction.domain'
-import { saveExamChanges } from '@/utils/exam/repository/exam.repository'
+import { saveExamChanges } from '@/utils/exam/transaction/exam.transaction'
 import {
   applyAutoGradeResults,
   countAttemptsByExam,

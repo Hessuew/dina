@@ -650,10 +650,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     status transitions, counts, and exam-scoped ordering. `exam-answers.repository.ts` owns
     standalone answer reads, writes, and grading updates. The exam service composes the shared
     question, option, attempt, and profile adapters for authoring and grading reads; the exam
-    feature repository retains only the atomic exam-plus-question save orchestration. Its
+    transaction module retains only the atomic exam-plus-question save orchestration. Its
     exam-row update delegates to the transaction-scoped adapter in
     `exams.repository.ts`, question persistence delegates to `exam-questions.repository.ts`,
-    and option persistence delegates to `exam-question-options.repository.ts`. New exam-only,
+    and option persistence delegates to `exam-question-options.repository.ts`. The transaction
+    module is not a table repository; it coordinates the three table adapters without owning
+    table-specific queries. New exam-only,
     exam-question-only, exam-question-option-only, exam-attempt-only, or exam-answer-only
     access must use `@/utils/repository`.
     `whatsapp-messages.repository.ts` owns WhatsApp message dedupe reads and delivery-log
