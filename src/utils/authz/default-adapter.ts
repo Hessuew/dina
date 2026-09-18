@@ -13,12 +13,12 @@ import {
   lessons,
   postComments,
   posts,
-  profiles,
   submissions,
 } from '@/db/schema'
 import { AuthorizationError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+import { findProfileRoleById } from '@/utils/repository'
 
 type AuthorizationLookup =
   | 'role'
@@ -82,13 +82,7 @@ export class DefaultAuthorizationService implements AuthorizationService {
       lookup: 'role',
       userId,
       fields: { role },
-      read: async () => {
-        const db = await getDb()
-        return db.query.profiles.findFirst({
-          where: eq(profiles.id, userId),
-          columns: { role: true },
-        })
-      },
+      read: () => findProfileRoleById(userId),
     })
 
     const result = user?.role === role
@@ -100,13 +94,7 @@ export class DefaultAuthorizationService implements AuthorizationService {
     const user = await readAuthorizationData({
       lookup: 'role',
       userId,
-      read: async () => {
-        const db = await getDb()
-        return db.query.profiles.findFirst({
-          where: eq(profiles.id, userId),
-          columns: { role: true },
-        })
-      },
+      read: () => findProfileRoleById(userId),
     })
     return user?.role ?? null
   }
