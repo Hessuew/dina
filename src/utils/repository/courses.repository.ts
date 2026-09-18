@@ -37,7 +37,8 @@ export async function findAllCourseIds() {
 export async function findAllCourses() {
   const db = await getDb()
   return db.query.courses.findMany({
-    columns: { id: true, title: true },
+    columns: { id: true, title: true, orderIndex: true, isPublished: true },
+    orderBy: (course, { asc }) => [asc(course.orderIndex), asc(course.title)],
   })
 }
 

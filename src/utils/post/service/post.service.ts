@@ -24,10 +24,10 @@ import {
   transformPostWithDetails,
 } from '@/utils/post/domain/post.domain'
 import {
-  findChannels,
   findPostById,
   findPosts,
 } from '@/utils/post/repository/post.repository'
+import { findAllCourses, findCourseIdsByTeacher } from '@/utils/repository'
 import {
   calculateCommentCounts,
   findCommentForWrite,
@@ -238,15 +238,16 @@ export async function getPostChannelsService(actorId: string): Promise<{
     },
     read: async () => {
       const profile = await getUserProfile(actorId)
-      const rows = await findChannels()
+      const [rows, teacherCourseIds] = await Promise.all([
+        findAllCourses(),
+        profile.role === 'admin'
+          ? Promise.resolve([] as Array<string>)
+          : findCourseIdsByTeacher(actorId),
+      ])
       const visibleRows =
         profile.role === 'admin'
           ? rows
-          : rows.filter(
-              (c) =>
-                c.isPublished ||
-                c.courseTeachers.some((t) => t.teacherId === actorId),
-            )
+          : rows.filter((c) => c.isPublished || teacherCourseIds.includes(c.id))
       const channels: Array<PostChannel> = [
         { id: 'general', name: 'General', courseId: null },
         ...visibleRows.map((c) => ({

@@ -46,15 +46,6 @@ function buildPostWhereConditions(filters: {
 
 /* v8 ignore start */
 
-export async function findChannels() {
-  const db = await getDb()
-  return db.query.courses.findMany({
-    columns: { id: true, title: true, orderIndex: true, isPublished: true },
-    with: { courseTeachers: { columns: { teacherId: true } } },
-    orderBy: (c, { asc }) => [asc(c.orderIndex), asc(c.title)],
-  })
-}
-
 export async function findPosts(filters: {
   courseId?: string | null
   cursor?: { createdAt: string; id: string } | null
