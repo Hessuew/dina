@@ -3,7 +3,6 @@ import type { z } from 'zod'
 import type { User } from '@supabase/supabase-js'
 import type { updateProfileSchema } from '@/schemas/profile.schema'
 import type { LogLevel } from '@/utils/observability/logger'
-import { getDb } from '@/db'
 import {
   calculateTokenExpiry,
   checkEmailChangeRateLimit,
@@ -15,15 +14,15 @@ import {
   sendEmailChangeVerification,
 } from '@/utils/profile/service/email.service'
 import {
+  completeEmailChange,
+  requestEmailChange,
+} from '@/utils/profile/transaction/profile.transaction'
+import {
   clearEmailChangeTokens,
-  clearEmailChangeTokensInTransaction,
-  completeEmailChangeInTransaction,
   findEmailChangeToken,
   findLastEmailChangeRequestAt,
   incrementEmailChangeAttempts,
   updateProfileBasic,
-  updateProfileWithEmailChangeInTransaction,
-  upsertEmailChangeTokensInTransaction,
 } from '@/utils/repository'
 import { AppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
@@ -210,18 +209,18 @@ export async function updateProfileWithEmailChangeService(
   const expiresAt = calculateTokenExpiry()
 
   try {
-    const db = await getDb()
-    await db.transaction(async (tx) => {
-      await updateProfileWithEmailChangeInTransaction(tx, user.id, {
+    await requestEmailChange(
+      user.id,
+      {
         fullName: data.fullName,
         bio: data.bio ?? null,
-      })
-      await upsertEmailChangeTokensInTransaction(tx, user.id, {
+      },
+      {
         pendingEmail: data.email,
         emailChangeTokenHash: tokenHash,
         emailChangeTokenExpiresAt: expiresAt,
-      })
-    })
+      },
+    )
   } catch (error) {
     logProfileEvent('error', 'email_change_request_failed', context, {
       errorCategory: 'email_change_persistence',
@@ -298,11 +297,7 @@ export async function verifyEmailChangeService(
   }
 
   try {
-    const db = await getDb()
-    await db.transaction(async (tx) => {
-      await completeEmailChangeInTransaction(tx, user.id, user.pendingEmail!)
-      await clearEmailChangeTokensInTransaction(tx, user.id)
-    })
+    await completeEmailChange(user.id, user.pendingEmail!)
   } catch (error) {
     logProfileEvent('error', 'email_change_completion_failed', context, {
       errorCategory: 'email_change_persistence',
