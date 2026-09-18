@@ -37,7 +37,6 @@ import {
   startAttemptService,
   submitAttemptService,
 } from '@/utils/exam/service/exam.service'
-import * as examRepository from '@/utils/exam/repository/exam.repository'
 import * as sharedRepository from '@/utils/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 import {
@@ -493,9 +492,10 @@ describe('exam reads (integration)', () => {
       title: 'Private exam title',
       status: 'published',
     })
-    vi.spyOn(examRepository, 'findQuestionsWithOptions').mockRejectedValueOnce(
-      new Error('exam prompt database secret'),
-    )
+    vi.spyOn(
+      sharedRepository,
+      'findExamQuestionsByExamId',
+    ).mockRejectedValueOnce(new Error('exam prompt database secret'))
 
     await expect(
       getExamForAuthorService({ examId }, teacherId),

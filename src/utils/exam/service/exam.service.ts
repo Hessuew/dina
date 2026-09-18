@@ -20,10 +20,7 @@ import type {
   ExamRow,
 } from '@/utils/repository'
 import type { StudentAttempt } from '@/utils/exam/domain/exam-redaction.domain'
-import {
-  findQuestionsWithOptions,
-  saveExamChanges,
-} from '@/utils/exam/repository/exam.repository'
+import { saveExamChanges } from '@/utils/exam/repository/exam.repository'
 import {
   applyAutoGradeResults,
   countAttemptsByExam,
@@ -35,6 +32,8 @@ import {
   findExamAnswerById,
   findExamAnswersByAttempt,
   findExamById,
+  findExamQuestionOptionsByQuestionIds,
+  findExamQuestionsByExamId,
   findExamTotalPointsMap,
   findProfilesByIds,
   findPublishedExams,
@@ -129,6 +128,14 @@ type ExamReadLogContext = {
   attemptId?: string
   role?: 'admin' | 'teacher' | 'student'
   startedAt: number
+}
+
+async function findQuestionsWithOptions(examId: string) {
+  const questions = await findExamQuestionsByExamId(examId)
+  const options = await findExamQuestionOptionsByQuestionIds(
+    questions.map((question) => question.id),
+  )
+  return { questions, options }
 }
 
 function logExamAttemptEvent(

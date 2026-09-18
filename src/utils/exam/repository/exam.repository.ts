@@ -1,14 +1,11 @@
 import type {
   ExamQuestionOptionInput,
-  ExamQuestionOptionRow,
   ExamQuestionRow,
   ExamQuestionsTransactionClient,
 } from '@/utils/repository'
 import { getDb } from '@/db'
 import {
   deleteExamQuestionsInTransaction,
-  findExamQuestionOptionsByQuestionIds,
-  findExamQuestionsByExamId,
   findExistingExamQuestionIdsInTransaction,
   insertExamQuestionInTransaction,
   replaceExamQuestionOptionsInTransaction,
@@ -17,16 +14,6 @@ import {
 } from '@/utils/repository'
 
 /* v8 ignore start */
-export async function findQuestionsWithOptions(examId: string): Promise<{
-  questions: Array<ExamQuestionRow>
-  options: Array<ExamQuestionOptionRow>
-}> {
-  const questions = await findExamQuestionsByExamId(examId)
-  const questionIds = questions.map((question) => question.id)
-  const options = await findExamQuestionOptionsByQuestionIds(questionIds)
-  return { questions, options }
-}
-
 type ExamChangesQuestion = {
   questionId?: string
   type: ExamQuestionRow['type']
