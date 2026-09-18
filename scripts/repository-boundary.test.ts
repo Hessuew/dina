@@ -136,7 +136,8 @@ function findRawSqlTableReferences(
     .filter((symbol): symbol is string => Boolean(symbol))
 }
 
-const databaseHandle = String.raw`\b(?:db|tx)`
+const objectHandle = String.raw`\b[A-Za-z_$][A-Za-z0-9_$]*`
+const databaseHandle = String.raw`\b(?:db|tx|database|connection|dbClient|txClient)`
 const memberAccess = String.raw`(?:\?\s*\.\s*|\.\s*)`
 const computedMemberAccess = String.raw`(?:\?\s*\.\s*)?\[\s*['"]`
 const queryAccess = String.raw`(?:${memberAccess}query|${computedMemberAccess}query['"]\s*\])`
@@ -145,13 +146,13 @@ function findTableReferences(source: string): Array<string> {
   return [
     ...source.matchAll(
       new RegExp(
-        `${databaseHandle}\\s*${queryAccess}\\s*${memberAccess}([A-Za-z0-9_]+)`,
+        `${objectHandle}\\s*${queryAccess}\\s*${memberAccess}([A-Za-z0-9_]+)`,
         'g',
       ),
     ),
     ...source.matchAll(
       new RegExp(
-        `${databaseHandle}\\s*${queryAccess}\\s*${computedMemberAccess}([A-Za-z0-9_]+)['"]\\s*\\]`,
+        `${objectHandle}\\s*${queryAccess}\\s*${computedMemberAccess}([A-Za-z0-9_]+)['"]\\s*\\]`,
         'g',
       ),
     ),
@@ -161,7 +162,7 @@ function findTableReferences(source: string): Array<string> {
 }
 
 function findDirectDatabaseOperations(source: string): Array<string> {
-  const handle = String.raw`\b(?:db|tx|database|connection|dbClient|txClient)`
+  const handle = databaseHandle
   const queryMember = String.raw`\s*${queryAccess}\s*(?:${memberAccess}[A-Za-z0-9_]+|${computedMemberAccess}[A-Za-z0-9_]+['"]\s*\])`
   const operationMember = String.raw`(?:${memberAccess}(?:select|insert|update|delete|execute|transaction)|${computedMemberAccess}(?:select|insert|update|delete|execute|transaction)['"]\s*\])`
 
@@ -327,6 +328,11 @@ describe('utils repository boundaries', () => {
         'db["query"].assignments.findFirst(); tx?.["query"]?.["profiles"].findFirst()',
       ),
     ).toEqual(['assignments', 'profiles'])
+    expect(
+      findTableReferences(
+        'repositoryClient.query.courses.findMany(); injectedTx?.query?.["lessons"].findFirst()',
+      ),
+    ).toEqual(['courses', 'lessons'])
   })
 
   it('detects table references hidden in SQL templates', () => {
@@ -584,6 +590,26 @@ describe('utils repository boundaries', () => {
       .filter(
         ({ file, operations }) =>
           operations.length > 0 && !isDatabaseSeam(file),
+      )
+
+    expect(offenders).toEqual([])
+  })
+
+  it('keeps direct schema-table references behind repository or infrastructure seams', () => {
+    const schemaTables = findSchemaTables()
+    const offenders = findSourceFilesIncludingTests(sourceDirectory)
+      .filter((sourcePath) => !sourcePath.endsWith('.test.ts'))
+      .map((sourcePath) => ({
+        file: sourcePath.slice(sourceDirectory.length + 1),
+        references: findTableReferences(
+          readFileSync(sourcePath, 'utf8'),
+        ).filter((reference) =>
+          schemaTables.some(({ symbol }) => symbol === reference),
+        ),
+      }))
+      .filter(
+        ({ file, references }) =>
+          references.length > 0 && !isDatabaseSeam(file),
       )
 
     expect(offenders).toEqual([])
