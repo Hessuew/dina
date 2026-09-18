@@ -566,9 +566,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     `exam-question-options.repository.ts`. New exam-only or exam-question-option-only access
     must use `@/utils/repository`.
     `whatsapp-messages.repository.ts` owns WhatsApp message dedupe reads and delivery-log
-    inserts used by the bulk WhatsApp campaign; recipient planning and campaign-lock access
-    remain in the WhatsApp feature repository. New WhatsApp-message-only access must use
-    `@/utils/repository`. `attendance-sessions.repository.ts` owns attendance-session
+    inserts used by the bulk WhatsApp campaign. `whatsapp-campaign-locks.repository.ts` owns
+    campaign mutex reads and writes; recipient planning remains in the WhatsApp feature
+    repository because it joins enrollments and invitations. New WhatsApp-message-only or
+    WhatsApp-campaign-lock-only access must use `@/utils/repository`.
+    `attendance-sessions.repository.ts` owns attendance-session
     reads and atomic open/close persistence, while `attendance-presents.repository.ts`
     owns present-only reads and transaction-scoped present writes. Attendance feature
     repositories retain only course/lesson/student projections and orchestration that

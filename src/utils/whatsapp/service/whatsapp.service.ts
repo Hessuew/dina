@@ -15,16 +15,14 @@ import {
 } from '@/utils/whatsapp/domain/bulk-send.domain'
 import { resolveCampaign } from '@/utils/whatsapp/domain/templates.domain'
 import { getWhatsAppSender } from '@/utils/whatsapp'
+import { findEnrollmentRecipientsByCampaign } from '@/utils/whatsapp/repository/whatsapp.repository'
 import {
   acquireWhatsAppCampaignLock,
   checkWhatsAppCampaignLockHeldBy,
-  findEnrollmentRecipientsByCampaign,
-  getLockedCampaigns,
-  releaseWhatsAppCampaignLock,
-} from '@/utils/whatsapp/repository/whatsapp.repository'
-import {
   findSentEnrollmentIdsByTemplate,
+  getLockedWhatsAppCampaigns,
   insertWhatsAppMessage,
+  releaseWhatsAppCampaignLock,
 } from '@/utils/repository'
 import { authz } from '@/utils/authz'
 import { CampaignLockedError, isAppError } from '@/utils/errors'
@@ -96,7 +94,7 @@ export async function getWhatsAppCampaignLocksService(
   }
   await requireWhatsAppCampaignAdmin(userId, context)
   try {
-    const campaigns = await getLockedCampaigns()
+    const campaigns = await getLockedWhatsAppCampaigns()
     logWhatsAppCampaignEvent(
       'info',
       'whatsapp_campaign_locks_loaded',

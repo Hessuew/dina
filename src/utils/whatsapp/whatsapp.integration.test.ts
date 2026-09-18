@@ -229,7 +229,7 @@ describe('sendWhatsAppCampaignService (integration)', () => {
     const adminId = await seedProfile({ role: 'admin' })
     const lockError = new Error('private WhatsApp lock connectionString detail')
     vi.spyOn(
-      whatsappRepository,
+      sharedRepository,
       'checkWhatsAppCampaignLockHeldBy',
     ).mockRejectedValueOnce(lockError)
 
@@ -640,9 +640,10 @@ describe('campaign lock (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const readError = new Error('private WhatsApp lock database detail')
-    vi.spyOn(whatsappRepository, 'getLockedCampaigns').mockRejectedValueOnce(
-      readError,
-    )
+    vi.spyOn(
+      sharedRepository,
+      'getLockedWhatsAppCampaigns',
+    ).mockRejectedValueOnce(readError)
 
     await expect(getWhatsAppCampaignLocksService(adminId)).rejects.toBe(
       readError,
@@ -650,7 +651,7 @@ describe('campaign lock (integration)', () => {
 
     const releaseError = new Error('private WhatsApp release database detail')
     vi.spyOn(
-      whatsappRepository,
+      sharedRepository,
       'releaseWhatsAppCampaignLock',
     ).mockRejectedValueOnce(releaseError)
     await expect(

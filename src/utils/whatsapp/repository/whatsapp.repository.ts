@@ -1,9 +1,9 @@
 /* v8 ignore start */
-import { and, asc, eq, gt, isNull, lt, ne, or } from 'drizzle-orm'
+import { and, asc, eq, isNull, ne, or } from 'drizzle-orm'
 import type { CampaignRecipient } from '../domain/bulk-send.domain'
-import type { CampaignCohort, CampaignType } from '../domain/templates.domain'
+import type { CampaignCohort } from '../domain/templates.domain'
 import { getDb } from '@/db'
-import { enrollments, invitations, whatsappCampaignLocks } from '@/db/schema'
+import { enrollments, invitations } from '@/db/schema'
 
 /**
  * WHERE predicate per campaign cohort — same shape as `emailGroupWhere` in
@@ -40,80 +40,5 @@ export async function findEnrollmentRecipientsByCampaign(
     .leftJoin(invitations, eq(enrollments.invitationId, invitations.id))
     .where(campaignCohortWhere(cohort))
     .orderBy(asc(enrollments.createdAt))
-}
-
-const LOCK_TTL_MS = 5 * 60 * 1000
-
-/**
- * Atomically acquires the per-campaign lock for userId.
- * Returns true if acquired (inserted or renewed), false if held by another admin.
- * Uses INSERT … ON CONFLICT DO UPDATE WHERE (expired OR same user) RETURNING —
- * empty RETURNING means the conflict row was left untouched (held by someone else).
- */
-export async function acquireWhatsAppCampaignLock(
-  campaign: CampaignType,
-  userId: string,
-): Promise<boolean> {
-  const db = await getDb()
-  const now = new Date()
-  const expiresAt = new Date(now.getTime() + LOCK_TTL_MS)
-  const rows = await db
-    .insert(whatsappCampaignLocks)
-    .values({ campaign, lockedByUserId: userId, lockedAt: now, expiresAt })
-    .onConflictDoUpdate({
-      target: whatsappCampaignLocks.campaign,
-      set: { lockedByUserId: userId, lockedAt: now, expiresAt },
-      // Compare against a JS Date param, not SQL NOW(): the column is
-      // timestamp-without-timezone storing drizzle-serialized UTC wall time,
-      // while NOW() renders in the session timezone.
-      where: or(
-        lt(whatsappCampaignLocks.expiresAt, now),
-        eq(whatsappCampaignLocks.lockedByUserId, userId),
-      ),
-    })
-    .returning({ lockedByUserId: whatsappCampaignLocks.lockedByUserId })
-  return rows.length > 0
-}
-
-export async function releaseWhatsAppCampaignLock(
-  campaign: CampaignType,
-  userId: string,
-): Promise<void> {
-  const db = await getDb()
-  await db
-    .delete(whatsappCampaignLocks)
-    .where(
-      and(
-        eq(whatsappCampaignLocks.campaign, campaign),
-        eq(whatsappCampaignLocks.lockedByUserId, userId),
-      ),
-    )
-}
-
-export async function checkWhatsAppCampaignLockHeldBy(
-  campaign: CampaignType,
-  userId: string,
-): Promise<boolean> {
-  const db = await getDb()
-  const rows = await db
-    .select({ campaign: whatsappCampaignLocks.campaign })
-    .from(whatsappCampaignLocks)
-    .where(
-      and(
-        eq(whatsappCampaignLocks.campaign, campaign),
-        eq(whatsappCampaignLocks.lockedByUserId, userId),
-        gt(whatsappCampaignLocks.expiresAt, new Date()),
-      ),
-    )
-  return rows.length > 0
-}
-
-export async function getLockedCampaigns(): Promise<Array<CampaignType>> {
-  const db = await getDb()
-  const rows = await db
-    .select({ campaign: whatsappCampaignLocks.campaign })
-    .from(whatsappCampaignLocks)
-    .where(gt(whatsappCampaignLocks.expiresAt, new Date()))
-  return rows.map((r) => r.campaign as CampaignType)
 }
 /* v8 ignore end */
