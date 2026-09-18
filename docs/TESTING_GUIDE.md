@@ -16,12 +16,12 @@ as the worked example. Read this before adding tests for a new endpoint.
 Each `src/utils/<feature>/` module is split into four layers (reference:
 `src/utils/courses/`, `src/utils/zoomLink/`):
 
-| Layer      | File                                | Responsibility                                         | Tested?        |
-| ---------- | ----------------------------------- | ------------------------------------------------------ | -------------- |
-| Server fn  | `zoomLink.ts`                       | `createServerFn` → `getCurrentUser()` → service. Thin. | No (excluded)  |
-| Service    | `service/zoomLink.service.ts`       | Auth (`authz`/`hasRole`), orchestration, typed errors. | No (excluded)  |
-| Repository | `repository/zoomLink.repository.ts` | DB access via `getDb()`. Wrapped in `/* v8 ignore */`. | No (excluded)  |
-| Domain     | `domain/zoomLink.domain.ts`         | Pure functions — mapping, normalization, rules. No IO. | **Yes — 100%** |
+| Layer      | File                                            | Responsibility                                                             | Tested?        |
+| ---------- | ----------------------------------------------- | -------------------------------------------------------------------------- | -------------- |
+| Server fn  | `zoomLink.ts`                                   | `createServerFn` → `getCurrentUser()` → service. Thin.                     | No (excluded)  |
+| Service    | `service/zoomLink.service.ts`                   | Auth (`authz`/`hasRole`), orchestration, typed errors.                     | No (excluded)  |
+| Repository | `src/utils/repository/zoom-links.repository.ts` | Shared zoom-link table access via `getDb()`. Wrapped in `/* v8 ignore */`. | No (excluded)  |
+| Domain     | `domain/zoomLink.domain.ts`                     | Pure functions — mapping, normalization, rules. No IO.                     | **Yes — 100%** |
 
 Because the `domain/` layer has no database or network calls, its functions are
 deterministic and can be unit-tested with plain inputs and outputs — no mocks,
@@ -81,8 +81,10 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
 ## Checklist: adding a new endpoint (test-ready)
 
 1. **Schema** — input validation in `src/schemas/<feature>.schema.ts` (Zod).
-2. **Repository** — `repository/<feature>.repository.ts`: all `getDb()` calls,
-   wrapped in `/* v8 ignore */`. Re-export via `repository/index.ts`.
+2. **Repository seam** — prefer `src/utils/repository/<table>.repository.ts`
+   for table-only `getDb()` calls, wrapped in `/* v8 ignore */` and re-exported
+   via `src/utils/repository/index.ts`; keep feature-local repositories for
+   joined projections and cross-table orchestration.
 3. **Domain** — `domain/<feature>.domain.ts`: pure mapping/normalization/rule
    functions. Inject time/IDs as params.
 4. **Service** — `service/<feature>.service.ts`: auth + orchestration; call

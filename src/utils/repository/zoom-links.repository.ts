@@ -5,6 +5,17 @@ import { zoomLinks } from '@/db/schema'
 export type ZoomLinkInsert = typeof zoomLinks.$inferInsert
 
 /* v8 ignore start */
+export async function findAllZoomLinks() {
+  const db = await getDb()
+  return db.query.zoomLinks.findMany({
+    orderBy: (link, { asc }) => [
+      asc(link.section),
+      asc(link.orderIndex),
+      asc(link.title),
+    ],
+  })
+}
+
 export async function insertZoomLink(values: ZoomLinkInsert) {
   const db = await getDb()
   const [link] = await db.insert(zoomLinks).values(values).returning()

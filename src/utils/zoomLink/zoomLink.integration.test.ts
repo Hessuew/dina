@@ -22,7 +22,7 @@ import {
   seedDiscipleshipAssignment,
   seedProfile,
 } from '@/../test/integration/seed'
-import * as zoomLinkRepository from '@/utils/zoomLink/repository'
+import * as zoomLinksRepository from '@/utils/repository/zoom-links.repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 const makeGeneralInput = (
@@ -67,6 +67,7 @@ async function seedOwners() {
 describe('zoomLink service (integration)', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    setAuthorizationService(new DefaultAuthorizationService())
   })
 
   it('logs redacted Admin CRUD telemetry with safe ownership fields', async () => {
@@ -175,10 +176,9 @@ describe('zoomLink service (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const repositoryError = new Error('zoom passcode database secret')
-    vi.spyOn(
-      zoomLinkRepository,
-      'findZoomLinksWithTeachers',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(zoomLinksRepository, 'findAllZoomLinks').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(
@@ -236,6 +236,9 @@ describe('zoomLink service (integration)', () => {
 
   it('logs unexpected teacher-owner lookup failures for create and update', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    setAuthorizationService({
+      hasRole: vi.fn().mockResolvedValue(undefined),
+    } as unknown as AuthorizationService)
     const adminId = await seedProfile({ role: 'admin' })
     const teacherId = await seedProfile({ role: 'teacher' })
     const createError = new Error('zoom owner database password')

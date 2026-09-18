@@ -5,18 +5,20 @@ import type {
 } from '@/schemas/zoomLink.schema'
 import type { LogLevel } from '@/utils/observability/logger'
 import {
+  attachZoomLinkTeacherNames,
   buildCreateZoomLinkValues,
   buildUpdateZoomLinkValues,
   buildZoomLinksPayload,
 } from '@/utils/zoomLink/domain/zoomLink.domain'
 import {
   deleteZoomLinkById,
+  findAllZoomLinks,
   findDiscipleshipTeacherIdByStudentId,
   findProfileRoleById,
+  findProfilesByIds,
   insertZoomLink,
   updateZoomLinkById,
 } from '@/utils/repository'
-import { findZoomLinksWithTeachers } from '@/utils/zoomLink/repository'
 import { authz } from '@/utils/authz'
 import { NotFoundError, ValidationError, isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
@@ -144,7 +146,16 @@ export async function getZoomLinksService(userId: string) {
   return withZoomLinkReadTelemetry(
     context,
     async () => {
-      const rows = await findZoomLinksWithTeachers()
+      const linkRows = await findAllZoomLinks()
+      const teacherIds = [
+        ...new Set(
+          linkRows.flatMap((link) =>
+            link.teacherId === null ? [] : [link.teacherId],
+          ),
+        ),
+      ]
+      const teachers = await findProfilesByIds(teacherIds)
+      const rows = attachZoomLinkTeacherNames(linkRows, teachers)
       const assignment =
         profile.role === 'student'
           ? await findDiscipleshipTeacherIdByStudentId(userId)
