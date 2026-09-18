@@ -30,6 +30,7 @@ import {
   seedProfile,
 } from '@/../test/integration/seed'
 import * as postRepository from '@/utils/post/repository/post.repository'
+import * as postsRepository from '@/utils/repository/posts.repository'
 import * as postCommentsRepository from '@/utils/repository/post-comments.repository'
 import * as authUtils from '@/utils/auth/auth'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
@@ -628,7 +629,7 @@ describe('post mutation preflight telemetry (integration)', () => {
     const commentId = randomUUID()
     const postError = new Error('post database connectionString=secret')
     const commentError = new Error('comment database password=secret')
-    vi.spyOn(postRepository, 'findPostForWrite')
+    vi.spyOn(postsRepository, 'findPostForWrite')
       .mockRejectedValueOnce(postError)
       .mockRejectedValueOnce(postError)
       .mockRejectedValueOnce(postError)

@@ -26,11 +26,7 @@ import {
 import {
   findChannels,
   findPostById,
-  findPostForWrite,
   findPosts,
-  insertPost,
-  softDeletePost,
-  updatePostContent,
 } from '@/utils/post/repository/post.repository'
 import {
   calculateCommentCounts,
@@ -53,6 +49,12 @@ import {
   insertPostReaction,
   updatePostReaction,
 } from '@/utils/repository/post-reactions.repository'
+import {
+  findPostForWrite,
+  insertPost,
+  softDeletePost,
+  updatePostContent,
+} from '@/utils/repository/posts.repository'
 import { AuthorizationError, NotFoundError, isAppError } from '@/utils/errors'
 import { authz } from '@/utils/authz'
 import { getUserProfile } from '@/utils/auth/auth'
