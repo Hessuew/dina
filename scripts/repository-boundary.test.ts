@@ -2,7 +2,15 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const repositoryDirectory = join(process.cwd(), 'src/utils/repository')
+const utilsDirectory = join(process.cwd(), 'src/utils')
+
+function findRepositoryFiles(directory: string): Array<string> {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) return findRepositoryFiles(path)
+    return entry.name.endsWith('.repository.ts') ? [path] : []
+  })
+}
 
 function findSchemaTableImports(source: string): Array<string> {
   return [
@@ -19,17 +27,16 @@ function findQueryTableReferences(source: string): Array<string> {
   )
 }
 
-describe('shared repository boundaries', () => {
-  it('keeps every repository bound to one table without relation joins', () => {
-    const repositoryFiles = readdirSync(repositoryDirectory).filter((file) =>
-      file.endsWith('.repository.ts'),
-    )
+describe('utils repository boundaries', () => {
+  it('keeps every utils repository bound to one table without relation joins', () => {
+    const repositoryFiles = findRepositoryFiles(utilsDirectory)
 
     expect(repositoryFiles.length).toBeGreaterThan(0)
     const tableOwners = new Map<string, string>()
 
-    for (const file of repositoryFiles) {
-      const source = readFileSync(join(repositoryDirectory, file), 'utf8')
+    for (const repositoryPath of repositoryFiles) {
+      const source = readFileSync(repositoryPath, 'utf8')
+      const file = repositoryPath.slice(utilsDirectory.length + 1)
       const importedTables = findSchemaTableImports(source)
       expect(importedTables, file).toHaveLength(1)
       const [table] = importedTables
