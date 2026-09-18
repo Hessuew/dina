@@ -99,9 +99,11 @@ function findRawSqlTableReferences(
 
 function findTableReferences(source: string): Array<string> {
   return [
-    ...source.matchAll(/\b(?:db|tx)\s*\.\s*query\s*\.\s*([A-Za-z0-9_]+)/g),
     ...source.matchAll(
-      /\b(?:db|tx)\s*\.\s*query\s*\[\s*['"]([A-Za-z0-9_]+)['"]\s*\]/g,
+      /\b(?:db|tx)\s*(?:\?\s*\.\s*|\.\s*)query\s*(?:\?\s*\.\s*|\.\s*)([A-Za-z0-9_]+)/g,
+    ),
+    ...source.matchAll(
+      /\b(?:db|tx)\s*(?:\?\s*\.\s*|\.\s*)query\s*(?:\?\s*\.\s*)?\[\s*['"]([A-Za-z0-9_]+)['"]\s*\]/g,
     ),
     ...source.matchAll(/\b(?:insert|update|delete)\(\s*([A-Za-z0-9_]+)\s*\)/g),
     ...source.matchAll(/\.from\(\s*([A-Za-z0-9_]+)\s*\)/g),
@@ -110,8 +112,10 @@ function findTableReferences(source: string): Array<string> {
 
 function findDirectDatabaseOperations(source: string): Array<string> {
   const handle = String.raw`\b(?:db|tx|database|connection|dbClient|txClient)`
-  const queryMember = String.raw`\s*\.\s*query\s*(?:\.\s*[A-Za-z0-9_]+|\[\s*['"][A-Za-z0-9_]+['"]\s*\])`
-  const operationMember = String.raw`(?:\.\s*(?:select|insert|update|delete|execute|transaction)|\[\s*['"](?:select|insert|update|delete|execute|transaction)['"]\s*\])`
+  const member = String.raw`(?:\?\s*\.\s*|\.\s*)`
+  const computedMember = String.raw`(?:\?\s*\.\s*)?\[\s*['"]`
+  const queryMember = String.raw`\s*${member}query\s*(?:${member}[A-Za-z0-9_]+|${computedMember}[A-Za-z0-9_]+['"]\s*\])`
+  const operationMember = String.raw`(?:${member}(?:select|insert|update|delete|execute|transaction)|${computedMember}(?:select|insert|update|delete|execute|transaction)['"]\s*\])`
 
   return [
     ...source.matchAll(new RegExp(`${handle}${queryMember}`, 'g')),
@@ -224,6 +228,11 @@ describe('utils repository boundaries', () => {
     expect(
       findTableReferences('db\n  . query\n  . courses.findFirst()'),
     ).toEqual(['courses'])
+    expect(
+      findTableReferences(
+        'db?.query?.courses.findFirst(); tx?.query["profiles"].findFirst()',
+      ),
+    ).toEqual(['courses', 'profiles'])
   })
 
   it('detects table references hidden in SQL templates', () => {
@@ -263,6 +272,11 @@ describe('utils repository boundaries', () => {
       ),
     ).toHaveLength(3)
     expect(findDirectDatabaseOperations('db\n  . select()')).toHaveLength(1)
+    expect(
+      findDirectDatabaseOperations(
+        'db?.query?.profiles.findFirst(); tx?.select()?.from(profiles); database?.["execute"](sql)',
+      ),
+    ).toHaveLength(3)
   })
 
   it('detects aliased and relative direct repository imports', () => {
