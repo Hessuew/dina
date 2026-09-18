@@ -24,7 +24,7 @@ compose repository results but may not issue `query`, CRUD, `execute`, or
 `transaction` calls themselves.
 All utility callers, including integration tests, import table adapters through
 `@/utils/repository`, the shared barrel seam, rather than reaching into individual
-repository files.
+repository files through aliased, relative, dynamic-import, or CommonJS paths.
 Every shared repository file is re-exported by that barrel, and the repository-boundary
 regression test keeps the file set and barrel exports in sync.
 Runtime schema-table imports, including dynamic imports, are likewise reserved

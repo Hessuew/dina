@@ -88,7 +88,9 @@ function findNonNamedSchemaImports(source: string): Array<string> {
 
 function findDirectRepositoryImports(source: string): Array<string> {
   return [
-    ...source.matchAll(/from\s*['"]@\/utils\/repository\/[^'"]+['"]/g),
+    ...source.matchAll(
+      /(?:from\s*|import\s*\(|require\s*\()\s*['"](?:@\/utils\/repository\/|(?:\.\.?\/)+repository\/)[^'"]+['"]/g,
+    ),
   ].map(([match]) => match)
 }
 
@@ -158,6 +160,29 @@ describe('utils repository boundaries', () => {
         'supabase.auth.admin.updateUser(id); crypto.createHash("sha256").update(value)',
       ),
     ).toEqual([])
+  })
+
+  it('detects aliased and relative direct repository imports', () => {
+    expect(
+      findDirectRepositoryImports(
+        "import { findProfileById } from '@/utils/repository/profiles.repository'",
+      ),
+    ).toHaveLength(1)
+    expect(
+      findDirectRepositoryImports(
+        "import('../repository/profiles.repository')",
+      ),
+    ).toHaveLength(1)
+    expect(
+      findDirectRepositoryImports(
+        "require('../../repository/profiles.repository')",
+      ),
+    ).toHaveLength(1)
+    expect(
+      findDirectRepositoryImports(
+        "import { findProfileById } from '@/utils/repository'",
+      ),
+    ).toHaveLength(0)
   })
 
   it('keeps repository modules in the shared repository seam', () => {
