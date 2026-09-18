@@ -21,12 +21,12 @@ import {
   findAssignmentsForTeacherCatalog,
   findAssignmentsForTeacherLessons,
 } from '@/utils/assignments/repository/assignments.repository'
-import { findLessonWithDetail } from '@/utils/assignments/repository/lessons.repository'
 import { findCompletedLessonIdsForStudent } from '@/utils/courses/service/lesson-completion.service'
 import {
   deleteAssignmentById,
   findAssignmentById,
   findAssignmentSubmissionsWithStudent,
+  findAssignmentsByLessonId,
   findCourseById,
   findCourseIdsByTeacher,
   findCoursesByIds,
@@ -174,7 +174,7 @@ async function withAssignmentReadTelemetry<T>(
 }
 
 async function loadLessonForViewer(data: GetLessonInput, userId: string) {
-  const lesson = await findLessonWithDetail(data.lessonId)
+  const lesson = await findLessonWithDetails(data.lessonId)
   if (!lesson) {
     throw new NotFoundError('Lesson not found', {
       code: 'LESSON_NOT_FOUND',
@@ -228,6 +228,27 @@ async function loadLessonForViewer(data: GetLessonInput, userId: string) {
     role: profile.role,
     permissions,
     isCompleted,
+  }
+}
+
+async function findLessonWithDetails(lessonId: string) {
+  const lesson = await findLessonById(lessonId)
+  if (!lesson) return undefined
+
+  const [course, teacherIds, assignments] = await Promise.all([
+    findCourseById(lesson.courseId),
+    findTeacherIdsByCourseId(lesson.courseId),
+    findAssignmentsByLessonId(lesson.id),
+  ])
+  if (!course) return undefined
+
+  return {
+    ...lesson,
+    course: {
+      ...course,
+      courseTeachers: teacherIds.map((teacherId) => ({ teacherId })),
+    },
+    assignments,
   }
 }
 

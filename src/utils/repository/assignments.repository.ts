@@ -24,6 +24,14 @@ export async function findAssignmentById(assignmentId: string) {
   })
 }
 
+export async function findAssignmentsByLessonId(lessonId: string) {
+  const db = await getDb()
+  return db.query.assignments.findMany({
+    where: eq(assignments.lessonId, lessonId),
+    orderBy: (assignment, { desc }) => [desc(assignment.createdAt)],
+  })
+}
+
 export async function findPublishedAssignmentsByLessonIds(
   lessonIds: Array<string>,
 ) {

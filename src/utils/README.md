@@ -519,8 +519,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     mutation, deletion, submission-count, and grading preflights likewise compose
     `findAssignmentById` with shared lesson, course, course-teacher, and submission
     adapters in the assignment service. Student assignment lists compose published
-    assignment, lesson, course, and student-submission rows in that service; the
-    feature repository retains only teacher-list aggregate reads.
+    assignment, lesson, course, and student-submission rows in that service;
+    assignment lesson-detail reads compose shared lesson, course, course-teacher,
+    and assignment adapters there, leaving the feature repository with only
+    teacher-list aggregate reads.
     `submissions.repository.ts` owns
     submission-only reads and writes plus the
     student-directory submission projection reused across assignments, courses,
@@ -549,8 +551,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     `post-comments.repository.ts` as well. Authorization course membership checks use
     `findCourseTeacher` from the shared course-teachers seam. `lessons.repository.ts`
     owns lesson-only reads and writes reused across assignment and course services. New lesson-only access
-    must use `@/utils/repository`; joined lesson/course/assignment reads remain
-    in their feature repositories. `courses.repository.ts` owns course-only reads and
+    must use `@/utils/repository`; aggregate joined reads remain in their feature
+    repositories, except assignment lesson-detail loading which composes shared
+    table adapters in the assignment service. `courses.repository.ts` owns course-only reads and
     writes reused across course, image-upload, lesson-calendar, attendance, and
     student-directory services. New course-only access must use `@/utils/repository`;
     joined course/lesson/media/teacher reads remain in their feature repositories.
