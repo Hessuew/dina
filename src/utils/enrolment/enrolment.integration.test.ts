@@ -26,7 +26,6 @@ import {
   updateEnrollmentStatusService,
 } from '@/utils/enrolment/service/enrolment.service'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
-import * as enrollmentRepository from '@/utils/enrolment/repository/enrolment.repository'
 import * as enrollmentEvaluationsRepository from '@/utils/repository/enrollment-evaluations.repository'
 import * as sharedRepository from '@/utils/repository'
 import { AuthorizationError } from '@/utils/errors'
@@ -44,13 +43,16 @@ import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 // Seeds a pending enrollment with an assigned reviewer plus a peer evaluator.
 // Both teachers share the same course, making peerId a valid peer evaluator.
-async function seedPeerReviewScenario() {
+async function seedPeerReviewScenario(enrollmentName = 'Applicant Test') {
   const reviewerId = await seedProfile({ role: 'teacher' })
   const peerId = await seedProfile({ role: 'teacher' })
   const courseId = await seedCourse()
   await seedCourseTeacher(courseId, reviewerId)
   await seedCourseTeacher(courseId, peerId)
-  const enrollmentId = await seedEnrollment({ status: 'pending' })
+  const enrollmentId = await seedEnrollment({
+    status: 'pending',
+    fullLegalName: enrollmentName,
+  })
   await seedReviewerAssignment(enrollmentId, reviewerId, courseId)
   return { reviewerId, peerId, courseId, enrollmentId }
 }
@@ -1033,7 +1035,7 @@ describe('enrollment read telemetry (integration)', () => {
   it('logs unexpected enrollment read failures with a stable category', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
-    vi.spyOn(enrollmentRepository, 'findEnrollmentsPage').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findEnrollmentsPage').mockRejectedValueOnce(
       new Error('enrollment database secret'),
     )
 
@@ -1224,6 +1226,47 @@ describe('reviewer-admitted enrollment filtering (integration)', () => {
     expect(result.enrollments.map((enrollment) => enrollment.id)).not.toContain(
       pendingId,
     )
+  })
+})
+
+describe('enrollment page evaluation sorting (integration)', () => {
+  it('sorts enrollment rows by evaluation totals after table-specific reads', async () => {
+    const {
+      reviewerId,
+      courseId,
+      enrollmentId: lowId,
+    } = await seedPeerReviewScenario('Sort Low')
+    const adminId = await seedProfile({ role: 'admin' })
+    const highId = await seedEnrollment({ fullLegalName: 'Sort High' })
+    await seedReviewerAssignment(highId, reviewerId, courseId)
+
+    await setEvaluationScoreService(
+      { enrollmentId: lowId, score: 1 },
+      reviewerId,
+    )
+    await setEvaluationScoreService(
+      { enrollmentId: highId, score: 4 },
+      reviewerId,
+    )
+
+    const result = await getEnrollmentsService(
+      {
+        ...LIST_INPUT,
+        search: 'Sort',
+        sortBy: 'evaluationSum',
+        sortDir: 'desc',
+        viewAll: true,
+      },
+      adminId,
+    )
+
+    expect(result.enrollments.map((enrollment) => enrollment.id)).toEqual([
+      highId,
+      lowId,
+    ])
+    expect(
+      result.enrollments.map((enrollment) => enrollment.evaluationSum),
+    ).toEqual([4, 1])
   })
 })
 

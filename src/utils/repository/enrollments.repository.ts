@@ -1,8 +1,133 @@
 /* v8 ignore start */
-import { asc, desc, eq, ilike, inArray, notLike, or, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  ilike,
+  inArray,
+  notLike,
+  or,
+  sql,
+} from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
+import type { EnrollmentSortKey } from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
 import { enrollments } from '@/db/schema'
+
+type EnrollmentTableSortKey = Exclude<EnrollmentSortKey, 'evaluationSum'>
+
+const SORT_COLUMN_MAP = {
+  fullLegalName: enrollments.fullLegalName,
+  nationalityCitizenship: enrollments.nationalityCitizenship,
+  yearOfBirth: enrollments.yearOfBirth,
+  gender: enrollments.gender,
+  status: enrollments.status,
+  invitationSent: enrollments.invitationSent,
+  createdAt: enrollments.createdAt,
+} as const
+
+export type FindEnrollmentsPageInput = {
+  limit: number
+  offset: number
+  search: string
+  sortBy: EnrollmentTableSortKey
+  sortDir: 'asc' | 'desc'
+  includeEmail: boolean
+  reviewerEnrollmentIds?: Array<string>
+}
+
+function buildEnrollmentSearchFilter(search: string, includeEmail: boolean) {
+  return search.trim().length > 0
+    ? or(
+        ilike(enrollments.fullLegalName, `%${search}%`),
+        ilike(sql`${enrollments.status}::text`, `%${search}%`),
+        ...(includeEmail ? [ilike(enrollments.email, `%${search}%`)] : []),
+      )
+    : undefined
+}
+
+function buildReviewerCondition(
+  reviewerEnrollmentIds: Array<string> | undefined,
+) {
+  return reviewerEnrollmentIds === undefined
+    ? undefined
+    : inArray(enrollments.id, reviewerEnrollmentIds)
+}
+
+function buildEnrollmentPageOrder(
+  sortBy: FindEnrollmentsPageInput['sortBy'],
+  sortDir: 'asc' | 'desc',
+) {
+  return sortDir === 'asc'
+    ? asc(SORT_COLUMN_MAP[sortBy])
+    : desc(SORT_COLUMN_MAP[sortBy])
+}
+
+export async function findEnrollmentsPage({
+  limit,
+  offset,
+  search,
+  sortBy,
+  sortDir,
+  includeEmail,
+  reviewerEnrollmentIds,
+}: FindEnrollmentsPageInput) {
+  const db = await getDb()
+  const whereClause = and(
+    buildEnrollmentSearchFilter(search, includeEmail),
+    buildReviewerCondition(reviewerEnrollmentIds),
+  )
+
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select(getTableColumns(enrollments))
+      .from(enrollments)
+      .where(whereClause)
+      .orderBy(
+        buildEnrollmentPageOrder(sortBy, sortDir),
+        desc(enrollments.createdAt),
+      )
+      .limit(limit)
+      .offset(offset),
+    db.select({ total: count() }).from(enrollments).where(whereClause),
+  ])
+
+  return { rows, total }
+}
+
+export type EnrollmentReviewCandidate = {
+  id: string
+  createdAt: Date
+}
+
+export async function findEnrollmentReviewCandidates(input: {
+  search: string
+  includeEmail: boolean
+  reviewerEnrollmentIds?: Array<string>
+}): Promise<Array<EnrollmentReviewCandidate>> {
+  const db = await getDb()
+  const whereClause = and(
+    buildEnrollmentSearchFilter(input.search, input.includeEmail),
+    buildReviewerCondition(input.reviewerEnrollmentIds),
+  )
+  return db
+    .select({ id: enrollments.id, createdAt: enrollments.createdAt })
+    .from(enrollments)
+    .where(whereClause)
+    .orderBy(desc(enrollments.createdAt))
+}
+
+export async function findEnrollmentsByIds(enrollmentIds: Array<string>) {
+  if (enrollmentIds.length === 0) return []
+  const db = await getDb()
+  return db
+    .select(getTableColumns(enrollments))
+    .from(enrollments)
+    .where(inArray(enrollments.id, enrollmentIds))
+}
 
 export async function insertEnrollment(
   data: Omit<typeof enrollments.$inferInsert, 'id' | 'createdAt' | 'updatedAt'>,

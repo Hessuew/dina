@@ -99,6 +99,8 @@ export const ENROLLMENT_SORT_KEYS = [
   'evaluationSum',
 ] as const
 
+export type EnrollmentSortKey = (typeof ENROLLMENT_SORT_KEYS)[number]
+
 export const getEnrollmentsSchema = z.object({
   page: z.number().int().min(1).default(1),
   pageSize: z

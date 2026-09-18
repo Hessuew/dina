@@ -26,6 +26,12 @@ import type {
   BulkGradeThresholds,
 } from '@/utils/enrolment/domain/bulk-grade.domain'
 import type { ReviewerTeamMember } from '@/utils/enrolment/domain/reviewer-teams.domain'
+import type { EnrollmentPageRow } from '@/utils/enrolment/domain/enrollments-page.domain'
+import {
+  attachEnrollmentEvaluationTotals,
+  orderEnrollmentRowsByIds,
+  sortEnrollmentIdsByEvaluation,
+} from '@/utils/enrolment/domain/enrollments-page.domain'
 import { selectUnscoredReviewerEnrollmentIds } from '@/utils/enrolment/domain/substitution.domain'
 import {
   assignBulkGradeStatus,
@@ -43,7 +49,6 @@ import {
 import { buildReviewerTeams } from '@/utils/enrolment/domain/reviewer-teams.domain'
 import { selectReviewerAdmittedEnrollmentIds } from '@/utils/enrolment/domain/reviewer-admission.domain'
 import { selectEnrollmentEmailsByGroup } from '@/utils/enrolment/domain/email-export.domain'
-import { findEnrollmentsPage } from '@/utils/enrolment/repository/enrolment.repository'
 import { getDb } from '@/db'
 import {
   bulkAssignEnrollments,
@@ -64,10 +69,14 @@ import {
   findEnrollmentById,
   findEnrollmentContactLookupCandidates,
   findEnrollmentEvaluationScoresByEnrollmentIds,
+  findEnrollmentEvaluationTotalsByEnrollmentIds,
   findEnrollmentEvaluationsByEnrollmentIds,
   findEnrollmentEvaluationsByEnrollmentIdsInTransaction,
   findEnrollmentIdsExcludingDuplicates,
+  findEnrollmentReviewCandidates,
+  findEnrollmentsByIds,
   findEnrollmentsForEmailExport,
+  findEnrollmentsPage,
   findInvitationByEmail,
   findInvitationsByIds,
   findProfileById,
@@ -838,7 +847,7 @@ export async function createEnrollmentService(data: CreateEnrollmentInput) {
 }
 
 type EnrollmentsPageData = {
-  rows: Awaited<ReturnType<typeof findEnrollmentsPage>>['rows']
+  rows: Array<EnrollmentPageRow>
   total: number
   evaluations: Awaited<ReturnType<typeof findEvaluationsForEnrollments>>
   reviewerAssignments: Awaited<
@@ -846,6 +855,68 @@ type EnrollmentsPageData = {
   >
   peersForReviewers: Map<string, Array<ReviewerTeamMember>>
   canExportContacts: boolean
+}
+
+async function loadEvaluationSortedRows(input: {
+  page: number
+  pageSize: number
+  search: string
+  sortDir: 'asc' | 'desc'
+  includeEmail: boolean
+  reviewerEnrollmentIds?: Array<string>
+}): Promise<{ rows: Array<EnrollmentPageRow>; total: number }> {
+  const candidates = await findEnrollmentReviewCandidates(input)
+  const candidateIds = candidates.map((candidate) => candidate.id)
+  const totals =
+    await findEnrollmentEvaluationTotalsByEnrollmentIds(candidateIds)
+  const orderedIds = sortEnrollmentIdsByEvaluation(
+    candidates,
+    totals,
+    input.sortDir,
+  )
+  const pageIds = orderedIds.slice(
+    (input.page - 1) * input.pageSize,
+    input.page * input.pageSize,
+  )
+  const rows = await findEnrollmentsByIds(pageIds)
+  return {
+    rows: attachEnrollmentEvaluationTotals(
+      orderEnrollmentRowsByIds(rows, pageIds),
+      totals,
+    ),
+    total: candidates.length,
+  }
+}
+
+async function loadEnrollmentRows(input: {
+  page: number
+  pageSize: number
+  search: string
+  sortBy: GetEnrollmentsInput['sortBy']
+  sortDir: 'asc' | 'desc'
+  includeEmail: boolean
+  reviewerEnrollmentIds?: Array<string>
+}): Promise<{ rows: Array<EnrollmentPageRow>; total: number }> {
+  if (input.sortBy === 'evaluationSum') {
+    return loadEvaluationSortedRows(input)
+  }
+
+  const { rows, total } = await findEnrollmentsPage({
+    limit: input.pageSize,
+    offset: (input.page - 1) * input.pageSize,
+    search: input.search,
+    sortBy: input.sortBy,
+    sortDir: input.sortDir,
+    includeEmail: input.includeEmail,
+    reviewerEnrollmentIds: input.reviewerEnrollmentIds,
+  })
+  const evaluationTotals = await findEnrollmentEvaluationTotalsByEnrollmentIds(
+    rows.map((row) => row.id),
+  )
+  return {
+    rows: attachEnrollmentEvaluationTotals(rows, evaluationTotals),
+    total,
+  }
 }
 
 // Legacy rows may have courseId = null (created before ADR 0007 rev 2).
@@ -907,9 +978,9 @@ async function loadEnrollmentsPageData(
       ? undefined
       : [...new Set([...assignedEnrollmentIds, ...peerEnrollmentIds])]
 
-  const { rows, total } = await findEnrollmentsPage({
-    limit: data.pageSize,
-    offset: (data.page - 1) * data.pageSize,
+  const { rows, total } = await loadEnrollmentRows({
+    page: data.page,
+    pageSize: data.pageSize,
     search: data.search,
     sortBy: data.sortBy,
     sortDir: data.sortDir,

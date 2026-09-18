@@ -1,4 +1,4 @@
-import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.repository'
+import type { EnrollmentSortKey } from '@/schemas/enrollment.schema'
 import { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
 
 const PAGE_SIZES: Array<number> = [10, 20, 50, 100]

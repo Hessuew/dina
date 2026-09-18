@@ -1,4 +1,4 @@
-import { asc, inArray } from 'drizzle-orm'
+import { asc, inArray, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { enrollmentEvaluations } from '@/db/schema'
 
@@ -47,6 +47,24 @@ export async function findEnrollmentEvaluationScoresByEnrollmentIds(
     })
     .from(enrollmentEvaluations)
     .where(inArray(enrollmentEvaluations.enrollmentId, enrollmentIds))
+}
+
+export async function findEnrollmentEvaluationTotalsByEnrollmentIds(
+  enrollmentIds: Array<string>,
+) {
+  if (enrollmentIds.length === 0) return []
+  const db = await getDb()
+  const evaluationSum = sql<number>`coalesce(sum(${enrollmentEvaluations.score}), 0)::int`
+  const evaluationCount = sql<number>`count(${enrollmentEvaluations.score})::int`
+  return db
+    .select({
+      enrollmentId: enrollmentEvaluations.enrollmentId,
+      evaluationSum,
+      evaluationCount,
+    })
+    .from(enrollmentEvaluations)
+    .where(inArray(enrollmentEvaluations.enrollmentId, enrollmentIds))
+    .groupBy(enrollmentEvaluations.enrollmentId)
 }
 
 export async function findAllEnrollmentEvaluationScores() {

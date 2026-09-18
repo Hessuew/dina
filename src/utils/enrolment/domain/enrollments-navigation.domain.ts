@@ -1,4 +1,4 @@
-import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.repository'
+import type { EnrollmentSortKey } from '@/schemas/enrollment.schema'
 
 export type EnrollmentsNavParams = {
   page: number
@@ -11,8 +11,7 @@ export type EnrollmentsNavParams = {
 export type EnrollmentsNavRequest = Partial<EnrollmentsNavParams>
 
 export type EnrollmentsNavDecision =
-  | { kind: 'noop' }
-  | { kind: 'navigate'; next: EnrollmentsNavParams }
+  { kind: 'noop' } | { kind: 'navigate'; next: EnrollmentsNavParams }
 
 /**
  * Resolve the next enrollments-list navigation state from the current params and

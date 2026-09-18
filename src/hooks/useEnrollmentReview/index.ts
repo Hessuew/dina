@@ -12,7 +12,7 @@ import {
   navigateForward,
 } from './domain/enrollment-review.domain'
 import type { EnrollmentWithEvaluation } from '@/utils/enrolment/domain/enrolment.domain'
-import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.repository'
+import type { EnrollmentSortKey } from '@/schemas/enrollment.schema'
 import type { EvalMap } from './domain/enrollment-review.domain'
 import type {
   EvaluationPatch,
