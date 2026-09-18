@@ -56,19 +56,24 @@ function findSchemaTableImports(source: string): Array<string> {
 
 function findTableReferences(source: string): Array<string> {
   return [
-    ...source.matchAll(/\b(?:db|tx)\.query\.([A-Za-z0-9_]+)/g),
+    ...source.matchAll(/\b(?:db|tx)\s*\.\s*query\s*\.\s*([A-Za-z0-9_]+)/g),
+    ...source.matchAll(
+      /\b(?:db|tx)\s*\.\s*query\s*\[\s*['"]([A-Za-z0-9_]+)['"]\s*\]/g,
+    ),
     ...source.matchAll(/\b(?:insert|update|delete)\(\s*([A-Za-z0-9_]+)\s*\)/g),
     ...source.matchAll(/\.from\(\s*([A-Za-z0-9_]+)\s*\)/g),
   ].map(([, table]) => table)
 }
 
 function findDirectDatabaseOperations(source: string): Array<string> {
+  const handle = String.raw`\b(?:db|tx|database|connection|dbClient|txClient)`
+  const queryMember = String.raw`\s*\.\s*query\s*(?:\.\s*[A-Za-z0-9_]+|\[\s*['"][A-Za-z0-9_]+['"]\s*\])`
+  const operationMember = String.raw`(?:\.\s*(?:select|insert|update|delete|execute|transaction)|\[\s*['"](?:select|insert|update|delete|execute|transaction)['"]\s*\])`
+
   return [
+    ...source.matchAll(new RegExp(`${handle}${queryMember}`, 'g')),
     ...source.matchAll(
-      /\b(?:db|tx|database|connection|dbClient|txClient)\.query\.[A-Za-z0-9_]+/g,
-    ),
-    ...source.matchAll(
-      /\b(?:db|tx|database|connection|dbClient|txClient)\.(?:select|insert|update|delete|execute|transaction)\s*\(/g,
+      new RegExp(String.raw`${handle}\s*${operationMember}\s*\(`, 'g'),
     ),
   ].map(([match]) => match)
 }
@@ -151,9 +156,12 @@ describe('utils repository boundaries', () => {
   it('detects direct Drizzle table references outside relation queries', () => {
     expect(
       findTableReferences(
-        'db.insert(assignments).values(values); db.update(profiles); db.delete(courses); db.select().from(lessons)',
+        "db.insert(assignments).values(values); db.update(profiles); db.delete(courses); db.select().from(lessons); db.query['profiles'].findFirst()",
       ),
-    ).toEqual(['assignments', 'profiles', 'courses', 'lessons'])
+    ).toEqual(['profiles', 'assignments', 'profiles', 'courses', 'lessons'])
+    expect(
+      findTableReferences('db\n  . query\n  . courses.findFirst()'),
+    ).toEqual(['courses'])
   })
 
   it('detects direct Drizzle operations on database handles', () => {
@@ -173,6 +181,12 @@ describe('utils repository boundaries', () => {
         'supabase.auth.admin.updateUser(id); crypto.createHash("sha256").update(value)',
       ),
     ).toEqual([])
+    expect(
+      findDirectDatabaseOperations(
+        "db['select'](); tx[\"execute\"](sql); database . query [ 'profiles' ].findFirst()",
+      ),
+    ).toHaveLength(3)
+    expect(findDirectDatabaseOperations('db\n  . select()')).toHaveLength(1)
   })
 
   it('detects aliased and relative direct repository imports', () => {

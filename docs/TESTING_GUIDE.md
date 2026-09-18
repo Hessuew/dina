@@ -102,7 +102,8 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    (`query`, CRUD, `execute`, or `transaction`) are likewise forbidden outside
    those seams, even when a handle is injected rather than imported; the
    regression guard scans the whole application source tree for import and
-   operation paths. Integration tests may use the real database for fixtures,
+   operation paths, including formatted member access and computed
+   `db['select']` / `db.query['table']` forms. Integration tests may use the real database for fixtures,
    but should import repository adapters through the shared barrel
    as well, so test spies exercise the same public seam as production callers;
    direct file imports are forbidden through aliased, relative, dynamic-import,
