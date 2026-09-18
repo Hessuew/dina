@@ -28,7 +28,7 @@ optional-chaining member access plus computed `db['select']` /
 `db.query['table']` access as well as the usual dot notation.
 All utility callers, including integration tests, import table adapters through
 `@/utils/repository`, the shared barrel seam, rather than reaching into individual
-repository files through aliased, relative, dynamic-import, or CommonJS paths.
+repository files through aliased, relative, dynamic-import, CommonJS, or feature-named `*.repository` paths.
 Every shared repository file is re-exported by that barrel, and the repository-boundary
 regression test keeps the file set and barrel exports in sync. That guard also checks
 table names referenced through SQL templates and interpolated table expressions, so raw

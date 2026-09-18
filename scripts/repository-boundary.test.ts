@@ -148,15 +148,20 @@ function findNonNamedSchemaImports(source: string): Array<string> {
 }
 
 function findDirectRepositoryImports(source: string): Array<string> {
+  const repositoryPath = String.raw`(?:@/utils/repository/[^'"]+|@/utils/(?:[^'"]+/)*[^'"]+\.repository|(?:\.\.?/)+(?:[^'"]+/)*(?:repository/[^'"]+|[^'"]+\.repository))`
+
   return [
     ...source.matchAll(
-      /(?:from\s*|import\s*\(|require\s*\()\s*['"](?:@\/utils\/repository\/|(?:\.\.?\/)+(?:[^'"]+\/)*repository\/)[^'"]+['"]/g,
+      new RegExp(
+        String.raw`(?:from\s*|import\s*\(|require\s*\()\s*['"]${repositoryPath}['"]`,
+        'g',
+      ),
     ),
   ].map(([match]) => match)
 }
 
 function findRuntimeRepositoryImports(source: string): Array<string> {
-  const repositoryPath = String.raw`(?:@/utils/repository(?:/[^'"]+)?|(?:\.\.?/)+(?:[^'"]+/)*repository(?:/[^'"]+)?|(?:\.\.?/)+[^'"]+\.repository)`
+  const repositoryPath = String.raw`(?:@/utils/repository(?:/[^'"]+)?|@/utils/(?:[^'"]+/)*[^'"]+\.repository|(?:\.\.?/)+(?:[^'"]+/)*(?:repository(?:/[^'"]+)?|[^'"]+\.repository))`
 
   return [
     ...source.matchAll(
@@ -312,6 +317,17 @@ describe('utils repository boundaries', () => {
     ).toHaveLength(1)
     expect(
       findDirectRepositoryImports(
+        "import { findAssignmentById } from '@/utils/assignments/assignments.repository'",
+      ),
+    ).toHaveLength(1)
+    expect(
+      findDirectRepositoryImports("import('../assignments.repository')"),
+    ).toHaveLength(1)
+    expect(
+      findDirectRepositoryImports("require('../../assignments.repository')"),
+    ).toHaveLength(1)
+    expect(
+      findDirectRepositoryImports(
         "import { findProfileById } from '@/utils/repository'",
       ),
     ).toHaveLength(0)
@@ -331,6 +347,16 @@ describe('utils repository boundaries', () => {
     expect(
       findRuntimeRepositoryImports(
         "import('./attendance-sessions.repository')",
+      ),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeRepositoryImports(
+        "import { findAssignmentById } from '@/utils/assignments/assignments.repository'",
+      ),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeRepositoryImports(
+        "import('@/utils/assignments/assignments.repository')",
       ),
     ).toHaveLength(1)
     expect(
