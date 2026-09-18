@@ -3,6 +3,7 @@ import {
   buildAssignmentStats,
   buildCourseCalendarEvents,
   buildCoursesWithProgress,
+  buildUpcomingLessons,
   extractTeacherIds,
 } from './course.domain'
 
@@ -280,5 +281,60 @@ describe('buildCourseCalendarEvents', () => {
     )
 
     expect(result.map((event) => event.id)).toEqual(['l1', 'a1'])
+  })
+})
+
+describe('buildUpcomingLessons', () => {
+  const scheduledTime = new Date('2099-01-01')
+  const lessons = [
+    {
+      id: 'l1',
+      title: 'Lesson 1',
+      scheduledTime,
+      thumbnailUrl: null,
+      courseId: 'c1',
+    },
+  ]
+
+  it('enriches lessons from published courses', () => {
+    expect(
+      buildUpcomingLessons(lessons, [
+        { id: 'c1', title: 'Course 1', isPublished: true },
+      ]),
+    ).toEqual([
+      {
+        ...lessons[0],
+        courseName: 'Course 1',
+      },
+    ])
+  })
+
+  it('drops lessons from unpublished or missing courses', () => {
+    expect(
+      buildUpcomingLessons(lessons, [
+        { id: 'c1', title: 'Draft course', isPublished: false },
+      ]),
+    ).toEqual([])
+    expect(buildUpcomingLessons(lessons, [])).toEqual([])
+  })
+
+  it('preserves published courses with an empty title', () => {
+    expect(
+      buildUpcomingLessons(lessons, [
+        { id: 'c1', title: '', isPublished: true },
+      ]),
+    ).toEqual([{ ...lessons[0], courseName: '' }])
+  })
+
+  it('limits the result after course filtering', () => {
+    const manyLessons = Array.from({ length: 6 }, (_, index) => ({
+      ...lessons[0],
+      id: `l${index}`,
+    }))
+    expect(
+      buildUpcomingLessons(manyLessons, [
+        { id: 'c1', title: 'Course 1', isPublished: true },
+      ]),
+    ).toHaveLength(5)
   })
 })

@@ -9,6 +9,7 @@ import { AuthorizationError } from '@/utils/errors'
 import * as authUtils from '@/utils/auth/auth'
 import { findAllCourses } from '@/utils/courses/repository'
 import * as coursesRepository from '@/utils/courses/repository'
+import * as sharedRepository from '@/utils/repository'
 import { getDb } from '@/db'
 import {
   findCourseById,
@@ -16,7 +17,6 @@ import {
   insertCourseInTransaction,
   insertCourseTeacherAssignmentsInTransaction,
 } from '@/utils/repository'
-import * as sharedRepository from '@/utils/repository'
 import {
   createCourseService,
   deleteCourseService,
@@ -1312,7 +1312,7 @@ describe('getUpcomingLessonsService (integration)', () => {
   it('logs persistence failures without changing the original error', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const repositoryError = new Error('upcoming lesson database secret')
-    vi.spyOn(coursesRepository, 'findUpcomingLessons').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findUpcomingLessons').mockRejectedValueOnce(
       repositoryError,
     )
     const userId = await seedProfile({ role: 'student' })

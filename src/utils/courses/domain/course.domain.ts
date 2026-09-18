@@ -17,6 +17,27 @@ type AssignmentEventRow = {
 }
 
 type CourseEventRow = { id: string; title: string }
+type UpcomingLessonRow = {
+  id: string
+  title: string
+  scheduledTime: Date | null
+  thumbnailUrl: string | null
+  courseId: string
+}
+type UpcomingCourseRow = {
+  id: string
+  title: string
+  isPublished: boolean | null
+}
+
+export type UpcomingLesson = {
+  id: string
+  title: string
+  scheduledTime: Date
+  thumbnailUrl: string | null
+  courseId: string
+  courseName: string
+}
 
 export type CourseCalendarEvent = {
   id: string
@@ -135,4 +156,23 @@ export function buildCourseCalendarEvents(
       ]
     }),
   ].sort((a, b) => a.date.getTime() - b.date.getTime())
+}
+
+export function buildUpcomingLessons(
+  lessons: Array<UpcomingLessonRow>,
+  courses: Array<UpcomingCourseRow>,
+): Array<UpcomingLesson> {
+  const courseNames = new Map(
+    courses
+      .filter((course) => course.isPublished === true)
+      .map((course) => [course.id, course.title]),
+  )
+
+  return lessons
+    .flatMap((lesson) => {
+      const courseName = courseNames.get(lesson.courseId)
+      if (courseName === undefined || !lesson.scheduledTime) return []
+      return [{ ...lesson, scheduledTime: lesson.scheduledTime, courseName }]
+    })
+    .slice(0, 5)
 }

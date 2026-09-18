@@ -6,17 +6,20 @@ import type {
 import type { LogLevel } from '@/utils/observability/logger'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
-import { findUpcomingLessons } from '@/utils/courses/repository'
 import {
   deleteLessonById,
   findAllCourseIds,
   findAssignmentsByLessonIds,
   findCoursesByIds,
   findLessonsByCourseIds,
+  findUpcomingLessons,
   insertLesson,
   updateLessonById,
 } from '@/utils/repository'
-import { buildCourseCalendarEvents } from '@/utils/courses/domain/course.domain'
+import {
+  buildCourseCalendarEvents,
+  buildUpcomingLessons,
+} from '@/utils/courses/domain/course.domain'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { isAppError } from '@/utils/errors'
@@ -184,14 +187,10 @@ export async function getUpcomingLessonsService(userId: string) {
   try {
     await getUserProfile(userId)
     const upcomingLessons = await findUpcomingLessons(new Date())
-    const lessons = upcomingLessons.map((l) => ({
-      id: l.id,
-      title: l.title,
-      scheduledTime: l.scheduledTime!,
-      thumbnailUrl: l.thumbnailUrl,
-      courseId: l.courseId,
-      courseName: l.courseName,
-    }))
+    const courses = await findCoursesByIds(
+      upcomingLessons.map((lesson) => lesson.courseId),
+    )
+    const lessons = buildUpcomingLessons(upcomingLessons, courses)
 
     logServerEvent('info', 'upcoming_lessons_loaded', {
       requestId: getRequestId(),

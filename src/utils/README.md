@@ -499,8 +499,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     discipleship view. `calendar-events.repository.ts`
     owns calendar-event-only reads and writes reused across calendar and event services;
     the event feature service composes those rows with course names from
-    `courses.repository.ts` before returning its teacher/admin view. Feature
-    repositories remain responsible for aggregate or joined queries until their
+    `courses.repository.ts` before returning its teacher/admin view. Upcoming
+    lesson reads compose shared lesson rows with published course names in the
+    courses lesson service, so they do not retain a mixed feature repository.
+    Feature repositories remain responsible for aggregate or joined queries until their
     tables are migrated to this shared layer. The calendar overview composes
     shared lesson, assignment, and course rows in its domain layer; it has no
     feature-local mixed repository. `account-security.repository.ts`
@@ -553,7 +555,7 @@ This folder is primarily where TanStack Start server functions live (via `create
     `post-comments.repository.ts` as well. Authorization course membership checks use
     `findCourseTeacher` from the shared course-teachers seam. `lessons.repository.ts`
     owns lesson-only reads and writes reused across assignment and course services. New lesson-only access
-    must use `@/utils/repository`; the course calendar composes lesson rows with
+    must use `@/utils/repository`; upcoming lesson and course-calendar reads compose lesson rows with
     shared course and assignment adapters in the lesson service rather than joining
     those tables in a feature repository. Remaining aggregate joined reads stay in
     their feature repositories, except assignment lesson-detail loading which composes shared

@@ -1,5 +1,5 @@
 /* v8 ignore start */
-import { and, eq, inArray, isNotNull } from 'drizzle-orm'
+import { and, eq, gt, inArray, isNotNull } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { lessons } from '@/db/schema'
 
@@ -22,6 +22,21 @@ export async function findPublishedScheduledLessons() {
       content: true,
       duration: true,
     },
+  })
+}
+
+export async function findUpcomingLessons(now: Date) {
+  const db = await getDb()
+  return db.query.lessons.findMany({
+    where: and(gt(lessons.scheduledTime, now), eq(lessons.isPublished, true)),
+    columns: {
+      id: true,
+      title: true,
+      scheduledTime: true,
+      thumbnailUrl: true,
+      courseId: true,
+    },
+    orderBy: (lesson, { asc }) => [asc(lesson.scheduledTime)],
   })
 }
 
