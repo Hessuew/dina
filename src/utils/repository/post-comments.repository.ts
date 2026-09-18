@@ -1,9 +1,6 @@
 import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm'
-import type { RawComment } from '@/utils/post/domain/post.domain'
 import { getDb } from '@/db'
 import { postComments } from '@/db/schema'
-
-type RawCommentRow = RawComment
 
 export type PostCommentRow = Pick<
   typeof postComments.$inferSelect,
@@ -117,19 +114,23 @@ export async function findComments(filters: {
   postId: string
   cursor?: { createdAt: string; id: string } | null
   limit: number
-}): Promise<Array<RawCommentRow>> {
+}): Promise<Array<PostCommentRow>> {
   const db = await getDb()
   const conditions = buildCommentWhereConditions(filters.postId, filters.cursor)
 
-  return db.query.postComments.findMany({
-    where: and(...conditions),
-    orderBy: [desc(postComments.createdAt), desc(postComments.id)],
-    limit: filters.limit + 1,
-    with: {
-      author: { columns: { id: true, fullName: true, avatarUrl: true } },
-      reactions: { columns: { id: true, emoji: true, userId: true } },
-    },
-  }) as Promise<Array<RawCommentRow>>
+  return db
+    .select({
+      id: postComments.id,
+      postId: postComments.postId,
+      authorId: postComments.authorId,
+      content: postComments.content,
+      createdAt: postComments.createdAt,
+      updatedAt: postComments.updatedAt,
+    })
+    .from(postComments)
+    .where(and(...conditions))
+    .orderBy(desc(postComments.createdAt), desc(postComments.id))
+    .limit(filters.limit + 1)
 }
 
 export async function findCommentForWrite(commentId: string) {
@@ -148,19 +149,6 @@ export async function insertComment(values: {
   const row = (await db.insert(postComments).values(values).returning()).at(0)
   if (!row) throw new Error('Insert returned no rows for comment')
   return row
-}
-
-export async function findCommentWithAuthor(
-  commentId: string,
-): Promise<RawCommentRow | undefined> {
-  const db = await getDb()
-  return db.query.postComments.findFirst({
-    where: and(eq(postComments.id, commentId), isNull(postComments.deletedAt)),
-    with: {
-      author: { columns: { id: true, fullName: true, avatarUrl: true } },
-      reactions: { columns: { id: true, emoji: true, userId: true } },
-    },
-  }) as Promise<RawCommentRow | undefined>
 }
 
 export async function updateCommentContent(

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  composeCommentsWithAuthors,
   composePostWithDetails,
   composePostsWithDetails,
   determineReactionAction,
@@ -31,6 +32,52 @@ describe('determineReactionAction', () => {
 
   it('returns updated when a different emoji is used', () => {
     expect(determineReactionAction({ emoji: '👍' }, '❤️')).toBe('updated')
+  })
+})
+
+describe('composeCommentsWithAuthors', () => {
+  it('composes comment authors and reactions while omitting incomplete rows', () => {
+    const now = new Date('2025-01-01T00:00:00Z')
+    expect(
+      composeCommentsWithAuthors(
+        [
+          {
+            id: 'comment-1',
+            postId: 'post-1',
+            authorId: 'author-1',
+            content: 'A comment',
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'orphan-comment',
+            postId: 'post-1',
+            authorId: 'missing-author',
+            content: 'Orphan',
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+        [{ id: 'author-1', fullName: 'Author', avatarUrl: null }],
+        [
+          {
+            id: 'reaction-1',
+            commentId: 'comment-1',
+            emoji: '👍',
+            userId: 'user-1',
+          },
+        ],
+      ),
+    ).toEqual([
+      {
+        id: 'comment-1',
+        content: 'A comment',
+        createdAt: now,
+        updatedAt: now,
+        author: { id: 'author-1', fullName: 'Author', avatarUrl: null },
+        reactions: [{ id: 'reaction-1', emoji: '👍', userId: 'user-1' }],
+      },
+    ])
   })
 })
 

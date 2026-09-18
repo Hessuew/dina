@@ -21,6 +21,7 @@ import type {
   ReactionAction,
 } from '@/utils/post/domain/post.domain'
 import {
+  composeCommentsWithAuthors,
   composePostWithDetails,
   composePostsWithDetails,
   determineReactionAction,
@@ -37,7 +38,6 @@ import {
 import {
   calculateCommentCounts,
   findCommentForWrite,
-  findCommentWithAuthor,
   findComments,
   findPostCommentRows,
   findPostCommentRowsByPostIds,
@@ -235,6 +235,19 @@ async function signCommentAvatars(
       avatarUrl: urls.get(comment.author.avatarUrl ?? '') ?? null,
     },
   }))
+}
+
+async function findComposedComment(
+  commentId: string,
+): Promise<CommentWithAuthor | undefined> {
+  const full = await findCommentForWrite(commentId)
+  if (!full) return undefined
+
+  const [profiles, reactions] = await Promise.all([
+    findProfilesByIds([full.authorId]),
+    findPostCommentReactionsByCommentIds([full.id]),
+  ])
+  return composeCommentsWithAuthors([full], profiles, reactions)[0]
 }
 
 async function findPostWithDetails(postId: string) {
@@ -586,8 +599,19 @@ export async function getCommentsService(
 
       const hasMore = rows.length > limit
       const commentsSlice = hasMore ? rows.slice(0, limit) : rows
+      const [profiles, reactions] = await Promise.all([
+        findProfilesByIds(commentsSlice.map((comment) => comment.authorId)),
+        findPostCommentReactionsByCommentIds(
+          commentsSlice.map((comment) => comment.id),
+        ),
+      ])
+      const comments = composeCommentsWithAuthors(
+        commentsSlice,
+        profiles,
+        reactions,
+      )
 
-      const transformed = commentsSlice
+      const transformed = comments
         .slice()
         .reverse()
         .map((c) => transformCommentWithAuthor(c))
@@ -639,7 +663,7 @@ export async function createCommentBaseService(
     })
     context.commentId = inserted.id
 
-    const full = await findCommentWithAuthor(inserted.id)
+    const full = await findComposedComment(inserted.id)
     if (!full) {
       throw new NotFoundError('Comment not found after insert', {
         code: 'COMMENT_NOT_FOUND',

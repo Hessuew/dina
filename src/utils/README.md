@@ -604,7 +604,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     lookup and mutation plus batch reaction rows for post detail composition, while
     `post-comment-reactions.repository.ts` owns standalone comment-reaction lookup and
     mutation plus batch rows for comment detail composition. `post-comments.repository.ts`
-    owns standalone comment reads, counts, mutations, and table-only preview rows.
+    owns standalone comment reads, counts, mutations, and table-only preview rows; the post
+    service composes comment rows with shared profile and comment-reaction adapters for comment
+    list and create responses.
     `posts.repository.ts` owns standalone post lookup, the paginated feed's post-row
     selection, and mutation. Post detail and feed reads compose these shared post, course,
     profile, comment, and reaction rows in the post service; no feature-local mixed post

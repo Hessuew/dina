@@ -76,6 +76,30 @@ export type CommentWithAuthor = RawComment
 
 export type ReactionAction = 'added' | 'updated' | 'removed'
 
+export function composeCommentsWithAuthors(
+  comments: ReadonlyArray<PostCommentSource>,
+  profiles: ReadonlyArray<PostProfileSource>,
+  commentReactions: ReadonlyArray<PostCommentReactionSource>,
+): Array<RawComment> {
+  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]))
+  return comments.flatMap((comment) => {
+    const author = profilesById.get(comment.authorId)
+    if (!author) return []
+    return [
+      {
+        id: comment.id,
+        content: comment.content,
+        createdAt: comment.createdAt,
+        updatedAt: comment.updatedAt,
+        author,
+        reactions: commentReactions
+          .filter((reaction) => reaction.commentId === comment.id)
+          .map(({ id, emoji, userId }) => ({ id, emoji, userId })),
+      },
+    ]
+  })
+}
+
 export function composePostWithDetails(
   post: PostSource,
   courses: ReadonlyArray<PostCourseSource>,
@@ -94,24 +118,11 @@ export function composePostWithDetails(
   const reactions = postReactions
     .filter((reaction) => reaction.postId === post.id)
     .map(({ id, emoji, userId }) => ({ id, emoji, userId }))
-  const rawComments = comments
-    .filter((comment) => comment.postId === post.id)
-    .flatMap((comment) => {
-      const commentAuthor = profilesById.get(comment.authorId)
-      if (!commentAuthor) return []
-      return [
-        {
-          id: comment.id,
-          content: comment.content,
-          createdAt: comment.createdAt,
-          updatedAt: comment.updatedAt,
-          author: commentAuthor,
-          reactions: commentReactions
-            .filter((reaction) => reaction.commentId === comment.id)
-            .map(({ id, emoji, userId }) => ({ id, emoji, userId })),
-        },
-      ]
-    })
+  const rawComments = composeCommentsWithAuthors(
+    comments.filter((comment) => comment.postId === post.id),
+    profiles,
+    commentReactions,
+  )
 
   return {
     id: post.id,
