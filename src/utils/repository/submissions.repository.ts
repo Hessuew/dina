@@ -38,6 +38,26 @@ export async function findStudentSubmissions(
   })
 }
 
+export async function findStudentSubmissionGrades(
+  studentId: string,
+  assignmentIds: Array<string>,
+) {
+  if (assignmentIds.length === 0) return []
+  const db = await getDb()
+  return db
+    .select({
+      assignmentId: submissions.assignmentId,
+      grade: submissions.grade,
+    })
+    .from(submissions)
+    .where(
+      and(
+        eq(submissions.studentId, studentId),
+        inArray(submissions.assignmentId, assignmentIds),
+      ),
+    )
+}
+
 export async function findSubmittedSubmissionsForStudent(
   studentId: string,
   assignmentIds: Array<string>,

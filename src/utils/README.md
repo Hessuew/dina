@@ -548,6 +548,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     writes reused across course, image-upload, lesson-calendar, attendance, and
     student-directory services. New course-only access must use `@/utils/repository`;
     joined course/lesson/media/teacher reads remain in their feature repositories.
+    Lesson completion composes published assignment rows and student submission rows
+    through the courses service and `lesson-completion.domain.ts`; no feature repository
+    joins assignments to submissions for this derived status.
     Course creation orchestration remains in the course service and composes
     transaction-scoped course and course-teacher adapters from `@/utils/repository`
     so the two table writes stay atomic. `zoom-links.repository.ts` owns zoom-link-only

@@ -15,13 +15,13 @@ import {
   buildCoursesWithProgress,
   extractTeacherIds,
 } from '@/utils/courses/domain/course.domain'
+import { findCompletedLessonIdsForStudent } from '@/utils/courses/service/lesson-completion.service'
 import {
   isTeacherAssignmentConflict,
   resolveOptionalTeacherPair,
 } from '@/utils/courses/domain/teacher-assignment.domain'
 import {
   findAllCourses,
-  findCompletedLessonIdsForStudent,
   findCourseWithDetails,
 } from '@/utils/courses/repository'
 import {
