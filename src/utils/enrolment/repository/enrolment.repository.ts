@@ -17,10 +17,6 @@ import type { SQL } from 'drizzle-orm'
 import type { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
 import {
-  findCourseIdsBySubstituteTeacher,
-  findCourseIdsByTeacher,
-  findSubstituteTeacherIdsByCourse,
-  findTeacherIdsByCourseId,
   insertCourseSubstituteInTransaction,
   updateReviewerAssignmentsInTransaction,
 } from '@/utils/repository'
@@ -239,34 +235,6 @@ export async function findEnrollmentsPage({
   ])
 
   return { rows, total }
-}
-
-/**
- * Returns all course member IDs (regular teachers + active substitutes) for a
- * given course. Used for peer-review authz and status derivation.
- */
-export async function findCourseTeamIds(
-  courseId: string,
-): Promise<Array<string>> {
-  const [teacherIds, substituteTeacherIds] = await Promise.all([
-    findTeacherIdsByCourseId(courseId),
-    findSubstituteTeacherIdsByCourse(courseId),
-  ])
-  return [...new Set([...teacherIds, ...substituteTeacherIds])]
-}
-
-/**
- * Returns all course IDs the viewer is active on — either as a regular teacher
- * or as an active substitute. Used to build viewerCourseIds for page filtering.
- */
-export async function findCourseIdsForViewer(
-  userId: string,
-): Promise<Array<string>> {
-  const [teacherCourseIds, substituteCourseIds] = await Promise.all([
-    findCourseIdsByTeacher(userId),
-    findCourseIdsBySubstituteTeacher(userId),
-  ])
-  return [...new Set([...teacherCourseIds, ...substituteCourseIds])]
 }
 
 /**

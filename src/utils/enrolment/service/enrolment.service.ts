@@ -42,8 +42,6 @@ import {
 import { buildReviewerTeams } from '@/utils/enrolment/domain/reviewer-teams.domain'
 import { selectEnrollmentEmailsByGroup } from '@/utils/enrolment/domain/email-export.domain'
 import {
-  findCourseIdsForViewer,
-  findCourseTeamIds,
   findEnrollmentsPage,
   insertSubstituteWithReassignment,
 } from '@/utils/enrolment/repository/enrolment.repository'
@@ -57,6 +55,8 @@ import {
   findAllTeacherIds,
   findAwaitingApprovalEnrollments,
   findCourseIdByTeacherId,
+  findCourseIdsBySubstituteTeacher,
+  findCourseIdsByTeacher,
   findCourseIdsByTeacherIds,
   findCourseSubstitutesByCourseIds,
   findEnrollmentById,
@@ -71,6 +71,8 @@ import {
   findProfilesByIds,
   findReviewerAssignmentForEnrollment,
   findReviewerAssignmentsByEnrollmentIds,
+  findSubstituteTeacherIdsByCourse,
+  findTeacherIdsByCourseId,
   findTeacherIdsByCourseIds,
   insertEnrollment,
   insertInvitation,
@@ -227,6 +229,22 @@ async function findUnassignedEnrollmentIds(): Promise<Array<string>> {
     assignments.map(({ enrollmentId }) => enrollmentId),
   )
   return enrollmentIds.filter((enrollmentId) => !assignedIds.has(enrollmentId))
+}
+
+async function findCourseTeamIds(courseId: string): Promise<Array<string>> {
+  const [teacherIds, substituteTeacherIds] = await Promise.all([
+    findTeacherIdsByCourseId(courseId),
+    findSubstituteTeacherIdsByCourse(courseId),
+  ])
+  return [...new Set([...teacherIds, ...substituteTeacherIds])]
+}
+
+async function findCourseIdsForViewer(userId: string): Promise<Array<string>> {
+  const [teacherCourseIds, substituteCourseIds] = await Promise.all([
+    findCourseIdsByTeacher(userId),
+    findCourseIdsBySubstituteTeacher(userId),
+  ])
+  return [...new Set([...teacherCourseIds, ...substituteCourseIds])]
 }
 
 async function withEnrollmentReadTelemetry<T>(args: {

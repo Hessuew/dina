@@ -558,7 +558,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     across enrolment substitution services and enrollment team membership composition; the
     atomic substitution transaction keeps its reviewer reassignment orchestration in the
     enrolment feature repository and delegates the table write through a transaction-scoped
-    adapter. Enrollment review-heading team composition now loads course-teacher rows,
+    adapter. Enrollment evaluation authorization and viewer-course filtering compose
+    course-teacher and course-substitute rows in the enrolment service. Enrollment review-heading
+    team composition now loads course-teacher rows,
     course-substitute rows, and profile rows through their shared table adapters and combines
     them in `enrolment/domain/reviewer-teams.domain.ts`; the feature repository no longer joins
     those tables. New course-substitute-only access must use `@/utils/repository`.

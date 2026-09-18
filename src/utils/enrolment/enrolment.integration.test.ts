@@ -430,7 +430,7 @@ describe('enrollment evaluation authorization telemetry (integration)', () => {
     if (source === 'assignment') {
       assignmentSpy.mockRejectedValue(repositoryError)
     } else {
-      vi.spyOn(enrollmentRepository, 'findCourseTeamIds').mockRejectedValue(
+      vi.spyOn(sharedRepository, 'findTeacherIdsByCourseId').mockRejectedValue(
         repositoryError,
       )
     }
@@ -1097,10 +1097,10 @@ describe('enrollment course membership repository seams (integration)', () => {
     const { absentC, peerB, subA, courseId } = await seedSubstitutionScenario()
 
     await expect(
-      enrollmentRepository.findCourseTeamIds(courseId),
-    ).resolves.toEqual(expect.arrayContaining([absentC, peerB, subA]))
+      sharedRepository.findTeacherIdsByCourseId(courseId),
+    ).resolves.toEqual(expect.arrayContaining([absentC, peerB]))
     await expect(
-      enrollmentRepository.findCourseIdsForViewer(subA),
+      sharedRepository.findCourseIdsBySubstituteTeacher(subA),
     ).resolves.toEqual([courseId])
     await expect(
       sharedRepository.findSubstituteTeacherIdsByCourse(courseId),
