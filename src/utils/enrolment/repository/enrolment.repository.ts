@@ -20,7 +20,10 @@ import type {
   GetEnrollmentEmailsInput,
 } from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
-import { insertCourseSubstituteInTransaction } from '@/utils/repository'
+import {
+  insertCourseSubstituteInTransaction,
+  updateReviewerAssignmentsInTransaction,
+} from '@/utils/repository'
 import {
   courseSubstitutes,
   courseTeachers,
@@ -271,23 +274,6 @@ export async function findEvaluationsForEnrollments(
 }
 
 /**
- * Returns the reviewer ID and course namespace for a single enrollment's
- * assignment. Used by authz helpers that need course-scoped peer resolution.
- */
-export async function findReviewerAssignmentForEnrollment(
-  enrollmentId: string,
-): Promise<{ reviewerId: string; courseId: string | null } | null> {
-  const db = await getDb()
-  const row = await db.query.enrollmentReviewerAssignments.findFirst({
-    where: eq(enrollmentReviewerAssignments.enrollmentId, enrollmentId),
-    columns: { reviewerId: true, courseId: true },
-  })
-  return row
-    ? { reviewerId: row.reviewerId, courseId: row.courseId ?? null }
-    : null
-}
-
-/**
  * Fetches reviewer assignments with reviewer names and course namespace for a
  * batch of enrollments in a single query (used to build the Review heading column).
  */
@@ -452,21 +438,6 @@ export async function findUnassignedEnrollmentIds(): Promise<Array<string>> {
   return rows.map((r) => r.id)
 }
 
-export async function bulkAssignEnrollments(
-  assignments: Array<{
-    enrollmentId: string
-    reviewerId: string
-    courseId?: string | null
-  }>,
-): Promise<void> {
-  if (assignments.length === 0) return
-  const db = await getDb()
-  await db
-    .insert(enrollmentReviewerAssignments)
-    .values(assignments)
-    .onConflictDoNothing()
-}
-
 /**
  * Transactionally inserts a course_substitutes record and bulk-reassigns all
  * unscored assignments from the absent teacher to the substitute.
@@ -510,16 +481,12 @@ export async function insertSubstituteWithReassignment(
       )
 
     if (rows.length > 0) {
-      await tx
-        .update(enrollmentReviewerAssignments)
-        .set({ reviewerId: substituteTeacherId, courseId })
-        .where(
-          inArray(
-            enrollmentReviewerAssignments.enrollmentId,
-            rows.map((r) => r.enrollmentId),
-          ),
-        )
-      reassigned = rows.length
+      reassigned = await updateReviewerAssignmentsInTransaction(
+        tx,
+        rows.map((r) => r.enrollmentId),
+        substituteTeacherId,
+        courseId,
+      )
     }
   })
   return { reassigned }

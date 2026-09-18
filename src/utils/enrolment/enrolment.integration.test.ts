@@ -426,7 +426,7 @@ describe('enrollment evaluation authorization telemetry (integration)', () => {
       'evaluation authorization connectionString=secret; email=private@test.dev',
     )
     const assignmentSpy = vi
-      .spyOn(enrollmentRepository, 'findReviewerAssignmentForEnrollment')
+      .spyOn(sharedRepository, 'findReviewerAssignmentForEnrollment')
       .mockResolvedValue({ reviewerId, courseId })
     if (source === 'assignment') {
       assignmentSpy.mockRejectedValue(repositoryError)
@@ -1314,10 +1314,9 @@ describe('enrollment distribution and substitution telemetry (integration)', () 
       courseId,
     )
 
-    vi.spyOn(
-      enrollmentRepository,
-      'bulkAssignEnrollments',
-    ).mockRejectedValueOnce(new Error('distribution database secret'))
+    vi.spyOn(sharedRepository, 'bulkAssignEnrollments').mockRejectedValueOnce(
+      new Error('distribution database secret'),
+    )
     await expect(distributeEnrollmentsService(adminId)).rejects.toThrow(
       'Failed to distribute enrollments',
     )

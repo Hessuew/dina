@@ -37,7 +37,6 @@ import {
   redactEnrollmentForTeacher,
 } from '@/utils/enrolment/domain/enrolment.domain'
 import {
-  bulkAssignEnrollments,
   findAwaitingApprovalIdsWithSum,
   findCourseIdsForViewer,
   findCourseTeamIds,
@@ -45,12 +44,12 @@ import {
   findEnrollmentsPage,
   findEvaluationsForEnrollments,
   findPeersForReviewers,
-  findReviewerAssignmentForEnrollment,
   findReviewerAssignmentsForEnrollments,
   findUnassignedEnrollmentIds,
   insertSubstituteWithReassignment,
 } from '@/utils/enrolment/repository/enrolment.repository'
 import {
+  bulkAssignEnrollments,
   bulkUpdateEnrollmentStatuses,
   deleteCourseSubstituteByAbsent,
   deleteEnrollmentById,
@@ -63,6 +62,7 @@ import {
   findEnrollmentContactLookupCandidates,
   findInvitationByEmail,
   findProfileById,
+  findReviewerAssignmentForEnrollment,
   insertEnrollment,
   insertInvitation,
   markEnrollmentInvitationSent,
