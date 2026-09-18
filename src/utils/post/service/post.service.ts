@@ -26,7 +26,6 @@ import {
 import {
   calculateCommentCounts,
   deleteCommentReaction,
-  deletePostReaction,
   findChannels,
   findCommentForWrite,
   findCommentReaction,
@@ -34,19 +33,22 @@ import {
   findComments,
   findPostById,
   findPostForWrite,
-  findPostReaction,
   findPosts,
   insertComment,
   insertCommentReaction,
   insertPost,
-  insertPostReaction,
   softDeleteComment,
   softDeletePost,
   updateCommentContent,
   updateCommentReaction,
   updatePostContent,
-  updatePostReaction,
 } from '@/utils/post/repository/post.repository'
+import {
+  deletePostReaction,
+  findPostReaction,
+  insertPostReaction,
+  updatePostReaction,
+} from '@/utils/repository/post-reactions.repository'
 import { AuthorizationError, NotFoundError, isAppError } from '@/utils/errors'
 import { authz } from '@/utils/authz'
 import { getUserProfile } from '@/utils/auth/auth'
