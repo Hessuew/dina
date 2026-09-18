@@ -512,8 +512,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     owns enrollment-only reads and writes reused across enrollment and campaign
     services. `assignments.repository.ts` now
     owns assignment-only reads and writes reused across assignment and course
-    services. `submissions.repository.ts` owns submission-only reads and writes
-    reused across assignments, courses,
+    services. `submissions.repository.ts` owns submission-only reads and writes plus the
+    student-directory submission projection reused across assignments, courses,
     and student-directory services. `invitations.repository.ts` owns
     invitation-only reads and writes reused across invitation, signup, enrollment,
     and email-campaign services. `course-teachers.repository.ts` owns

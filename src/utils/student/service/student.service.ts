@@ -1,8 +1,4 @@
-import {
-  findAllAssignments,
-  findAssignmentsWithDetails,
-  findSubmissionsForStudents,
-} from '../repository'
+import { findAllAssignments, findAssignmentsWithDetails } from '../repository'
 import {
   buildAssignmentsWithSubmissions,
   buildStudentWithStats,
@@ -32,6 +28,7 @@ import {
   findAllStudents,
   findLessonsForAttendance,
   findStudentById,
+  findSubmissionsForStudents,
   findSubmittedSubmissionsForStudent,
 } from '@/utils/repository'
 import { AuthorizationError, NotFoundError, isAppError } from '@/utils/errors'
