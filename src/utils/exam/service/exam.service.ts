@@ -21,7 +21,6 @@ import type {
 } from '@/utils/repository'
 import type { StudentAttempt } from '@/utils/exam/domain/exam-redaction.domain'
 import {
-  findAttemptsForGrading,
   findQuestionsWithOptions,
   saveExamChanges,
 } from '@/utils/exam/repository/exam.repository'
@@ -31,11 +30,13 @@ import {
   findAllExams,
   findAttemptByExamAndStudent,
   findAttemptById,
+  findAttemptsByExam,
   findAttemptsByStudent,
   findExamAnswerById,
   findExamAnswersByAttempt,
   findExamById,
   findExamTotalPointsMap,
+  findProfilesByIds,
   findPublishedExams,
   insertAttemptIfAbsent,
   insertExam,
@@ -582,6 +583,20 @@ async function finalizeAttempt(
   const current = await findAttemptById(attempt.id)
   if (!current) throw new NotFoundError('Attempt not found')
   return current
+}
+
+async function findAttemptsForGrading(examId: string) {
+  const attempts = await findAttemptsByExam(examId)
+  const profiles = await findProfilesByIds(
+    attempts.map((attempt) => attempt.studentId),
+  )
+  const namesByProfileId = new Map(
+    profiles.map((profile) => [profile.id, profile.fullName]),
+  )
+  return attempts.flatMap((attempt) => {
+    const studentName = namesByProfileId.get(attempt.studentId)
+    return studentName === undefined ? [] : [{ ...attempt, studentName }]
+  })
 }
 
 async function loadOwnAttempt(

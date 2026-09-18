@@ -1,6 +1,4 @@
-import { asc, eq } from 'drizzle-orm'
 import type {
-  ExamAttemptRow,
   ExamQuestionOptionInput,
   ExamQuestionOptionRow,
   ExamQuestionRow,
@@ -17,7 +15,6 @@ import {
   updateExamInTransaction,
   updateExamQuestionInTransaction,
 } from '@/utils/repository'
-import { examAttempts, profiles } from '@/db/schema'
 
 /* v8 ignore start */
 export async function findQuestionsWithOptions(examId: string): Promise<{
@@ -151,19 +148,6 @@ export async function saveExamChanges(
     await saveQuestionsInTransaction(tx, data)
     return {}
   })
-}
-
-export async function findAttemptsForGrading(
-  examId: string,
-): Promise<Array<ExamAttemptRow & { studentName: string }>> {
-  const db = await getDb()
-  const rows = await db
-    .select({ attempt: examAttempts, studentName: profiles.fullName })
-    .from(examAttempts)
-    .innerJoin(profiles, eq(examAttempts.studentId, profiles.id))
-    .where(eq(examAttempts.examId, examId))
-    .orderBy(asc(examAttempts.startedAt))
-  return rows.map(({ attempt, studentName }) => ({ ...attempt, studentName }))
 }
 
 /* v8 ignore end */

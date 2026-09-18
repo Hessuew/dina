@@ -606,10 +606,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     total-point aggregation, and transaction-scoped question persistence.
     `exam-question-options.repository.ts` owns option-only reads and transaction-scoped
     replacement. `exam-attempts.repository.ts` owns standalone exam-attempt reads, writes,
-    status transitions, and counts. `exam-answers.repository.ts` owns standalone answer reads,
-    writes, and grading updates. The exam feature repository retains question/option aggregate
-    reads, attempt/profile joined grading reads, and the atomic exam-plus-question save
-    orchestration; its exam-row update delegates to the transaction-scoped adapter in
+    status transitions, counts, and exam-scoped ordering. `exam-answers.repository.ts` owns
+    standalone answer reads, writes, and grading updates. The exam service composes the shared
+    attempt and profile adapters for grading rows; the exam feature repository retains
+    question/option aggregate reads and the atomic exam-plus-question save orchestration. Its
+    exam-row update delegates to the transaction-scoped adapter in
     `exams.repository.ts`, question persistence delegates to `exam-questions.repository.ts`,
     and option persistence delegates to `exam-question-options.repository.ts`. New exam-only,
     exam-question-only, exam-question-option-only, exam-attempt-only, or exam-answer-only

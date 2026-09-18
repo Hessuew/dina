@@ -55,6 +55,17 @@ export async function findAttemptById(
   return attempt
 }
 
+export async function findAttemptsByExam(
+  examId: string,
+): Promise<Array<ExamAttemptRow>> {
+  const db = await getDb()
+  return db
+    .select()
+    .from(examAttempts)
+    .where(eq(examAttempts.examId, examId))
+    .orderBy(asc(examAttempts.startedAt))
+}
+
 export async function findAttemptsByStudent(
   studentId: string,
 ): Promise<Array<ExamAttemptRow>> {
