@@ -3,6 +3,10 @@ import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 
 /* v8 ignore start */
+export type ProfilesTransactionClient = Parameters<
+  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
+>[0]
+
 const staffProfileColumns = {
   id: true,
   fullName: true,
@@ -146,6 +150,28 @@ export async function updateProfileBasic(
       bio: data.bio,
       updatedAt: new Date(),
     })
+    .where(eq(profiles.id, userId))
+}
+
+export async function updateProfileWithEmailChangeInTransaction(
+  tx: ProfilesTransactionClient,
+  userId: string,
+  data: { fullName: string; bio: string | null },
+): Promise<void> {
+  await tx
+    .update(profiles)
+    .set({ fullName: data.fullName, bio: data.bio, updatedAt: new Date() })
+    .where(eq(profiles.id, userId))
+}
+
+export async function completeEmailChangeInTransaction(
+  tx: ProfilesTransactionClient,
+  userId: string,
+  newEmail: string,
+): Promise<void> {
+  await tx
+    .update(profiles)
+    .set({ email: newEmail, updatedAt: new Date() })
     .where(eq(profiles.id, userId))
 }
 
