@@ -563,16 +563,18 @@ This folder is primarily where TanStack Start server functions live (via `create
     it joins enrollments and invitations. New email-message-only or email-campaign-lock-only
     access must use `@/utils/repository`.
     `exams.repository.ts` owns standalone exam reads and writes reused by exam authoring,
-    publishing, and student listing. `exam-question-options.repository.ts` owns option-only
-    reads and transaction-scoped replacement. `exam-attempts.repository.ts` owns standalone
-    exam-attempt reads, writes, status transitions, and counts. `exam-answers.repository.ts`
-    owns standalone answer reads, writes, and grading updates. The exam feature repository
-    retains question/option aggregate reads, attempt/profile joined grading reads, and the
-    atomic exam-plus-question save orchestration; its exam-row update
-    delegates to the transaction-scoped adapter in `exams.repository.ts`, and option
-    persistence delegates to `exam-question-options.repository.ts`. New exam-only,
-    exam-question-option-only, exam-attempt-only, or exam-answer-only access must use
-    `@/utils/repository`.
+    publishing, and student listing. `exam-questions.repository.ts` owns question-only reads,
+    total-point aggregation, and transaction-scoped question persistence.
+    `exam-question-options.repository.ts` owns option-only reads and transaction-scoped
+    replacement. `exam-attempts.repository.ts` owns standalone exam-attempt reads, writes,
+    status transitions, and counts. `exam-answers.repository.ts` owns standalone answer reads,
+    writes, and grading updates. The exam feature repository retains question/option aggregate
+    reads, attempt/profile joined grading reads, and the atomic exam-plus-question save
+    orchestration; its exam-row update delegates to the transaction-scoped adapter in
+    `exams.repository.ts`, question persistence delegates to `exam-questions.repository.ts`,
+    and option persistence delegates to `exam-question-options.repository.ts`. New exam-only,
+    exam-question-only, exam-question-option-only, exam-attempt-only, or exam-answer-only
+    access must use `@/utils/repository`.
     `whatsapp-messages.repository.ts` owns WhatsApp message dedupe reads and delivery-log
     inserts used by the bulk WhatsApp campaign. `whatsapp-campaign-locks.repository.ts` owns
     campaign mutex reads and writes; recipient planning remains in the WhatsApp feature

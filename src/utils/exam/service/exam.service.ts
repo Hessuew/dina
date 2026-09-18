@@ -13,12 +13,15 @@ import type {
   SubmitAttemptInput,
 } from '@/schemas/exam.schema'
 import type { LogLevel } from '@/utils/observability/logger'
-import type { ExamQuestionRow } from '@/utils/exam/repository/exam.repository'
-import type { ExamAnswerRow, ExamAttemptRow, ExamRow } from '@/utils/repository'
+import type {
+  ExamAnswerRow,
+  ExamAttemptRow,
+  ExamQuestionRow,
+  ExamRow,
+} from '@/utils/repository'
 import type { StudentAttempt } from '@/utils/exam/domain/exam-redaction.domain'
 import {
   findAttemptsForGrading,
-  findExamTotalPointsMap,
   findQuestionsWithOptions,
   saveExamChanges,
 } from '@/utils/exam/repository/exam.repository'
@@ -32,6 +35,7 @@ import {
   findExamAnswerById,
   findExamAnswersByAttempt,
   findExamById,
+  findExamTotalPointsMap,
   findPublishedExams,
   insertAttemptIfAbsent,
   insertExam,

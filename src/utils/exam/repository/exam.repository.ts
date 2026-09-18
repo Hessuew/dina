@@ -1,39 +1,34 @@
-import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import type {
   ExamAttemptRow,
   ExamQuestionOptionInput,
   ExamQuestionOptionRow,
+  ExamQuestionRow,
+  ExamQuestionsTransactionClient,
 } from '@/utils/repository'
 import { getDb } from '@/db'
 import {
+  deleteExamQuestionsInTransaction,
   findExamQuestionOptionsByQuestionIds,
+  findExamQuestionsByExamId,
+  findExistingExamQuestionIdsInTransaction,
+  insertExamQuestionInTransaction,
   replaceExamQuestionOptionsInTransaction,
   updateExamInTransaction,
+  updateExamQuestionInTransaction,
 } from '@/utils/repository'
-import { examAttempts, examQuestions, profiles } from '@/db/schema'
-
-export type ExamQuestionRow = typeof examQuestions.$inferSelect
-export type { ExamQuestionOptionRow } from '@/utils/repository'
+import { examAttempts, profiles } from '@/db/schema'
 
 /* v8 ignore start */
 export async function findQuestionsWithOptions(examId: string): Promise<{
   questions: Array<ExamQuestionRow>
   options: Array<ExamQuestionOptionRow>
 }> {
-  const db = await getDb()
-  const questions = await db
-    .select()
-    .from(examQuestions)
-    .where(eq(examQuestions.examId, examId))
-    .orderBy(asc(examQuestions.orderIndex))
+  const questions = await findExamQuestionsByExamId(examId)
   const questionIds = questions.map((question) => question.id)
   const options = await findExamQuestionOptionsByQuestionIds(questionIds)
   return { questions, options }
 }
-
-type TransactionClient = Parameters<
-  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
->[0]
 
 type ExamChangesQuestion = {
   questionId?: string
@@ -55,7 +50,7 @@ type SaveExamChangesData = {
 }
 
 async function findMissingQuestionId(
-  tx: TransactionClient,
+  tx: ExamQuestionsTransactionClient,
   data: SaveExamChangesData,
 ): Promise<string | undefined> {
   const referencedIds = [
@@ -65,54 +60,38 @@ async function findMissingQuestionId(
     ...data.deletedQuestionIds,
   ]
   if (referencedIds.length === 0) return undefined
-  const existingRows = await tx
-    .select({ id: examQuestions.id })
-    .from(examQuestions)
-    .where(
-      and(
-        eq(examQuestions.examId, data.examId),
-        inArray(examQuestions.id, referencedIds),
-      ),
-    )
-  const existingIds = new Set(existingRows.map((row) => row.id))
+  const existingIds = new Set(
+    await findExistingExamQuestionIdsInTransaction(
+      tx,
+      data.examId,
+      referencedIds,
+    ),
+  )
   return referencedIds.find((questionId) => !existingIds.has(questionId))
 }
 
 async function deleteQuestionsInTransaction(
-  tx: TransactionClient,
+  tx: ExamQuestionsTransactionClient,
   data: SaveExamChangesData,
 ): Promise<void> {
-  if (data.deletedQuestionIds.length === 0) return
-  await tx
-    .delete(examQuestions)
-    .where(
-      and(
-        eq(examQuestions.examId, data.examId),
-        inArray(examQuestions.id, data.deletedQuestionIds),
-      ),
-    )
+  await deleteExamQuestionsInTransaction(
+    tx,
+    data.examId,
+    data.deletedQuestionIds,
+  )
 }
 
 async function updateQuestionInTransaction(
-  tx: TransactionClient,
+  tx: ExamQuestionsTransactionClient,
   examId: string,
   question: ExamChangesQuestion & { questionId: string },
 ): Promise<void> {
-  await tx
-    .update(examQuestions)
-    .set({
-      type: question.type,
-      prompt: question.prompt,
-      orderIndex: question.orderIndex,
-      points: question.points,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(examQuestions.id, question.questionId),
-        eq(examQuestions.examId, examId),
-      ),
-    )
+  await updateExamQuestionInTransaction(tx, examId, question.questionId, {
+    type: question.type,
+    prompt: question.prompt,
+    orderIndex: question.orderIndex,
+    points: question.points,
+  })
   await replaceExamQuestionOptionsInTransaction(
     tx,
     question.questionId,
@@ -121,20 +100,16 @@ async function updateQuestionInTransaction(
 }
 
 async function insertQuestionInTransaction(
-  tx: TransactionClient,
+  tx: ExamQuestionsTransactionClient,
   examId: string,
   question: ExamChangesQuestion,
 ): Promise<void> {
-  const [inserted] = await tx
-    .insert(examQuestions)
-    .values({
-      examId,
-      type: question.type,
-      prompt: question.prompt,
-      orderIndex: question.orderIndex,
-      points: question.points,
-    })
-    .returning()
+  const inserted = await insertExamQuestionInTransaction(tx, examId, {
+    type: question.type,
+    prompt: question.prompt,
+    orderIndex: question.orderIndex,
+    points: question.points,
+  })
   await replaceExamQuestionOptionsInTransaction(
     tx,
     inserted.id,
@@ -143,7 +118,7 @@ async function insertQuestionInTransaction(
 }
 
 async function saveQuestionsInTransaction(
-  tx: TransactionClient,
+  tx: ExamQuestionsTransactionClient,
   data: SaveExamChangesData,
 ): Promise<void> {
   for (const question of data.questions) {
@@ -191,19 +166,4 @@ export async function findAttemptsForGrading(
   return rows.map(({ attempt, studentName }) => ({ ...attempt, studentName }))
 }
 
-export async function findExamTotalPointsMap(
-  examIds: Array<string>,
-): Promise<Map<string, number>> {
-  if (examIds.length === 0) return new Map()
-  const db = await getDb()
-  const rows = await db
-    .select({
-      examId: examQuestions.examId,
-      totalPoints: sql<number>`coalesce(sum(${examQuestions.points}), 0)::int`,
-    })
-    .from(examQuestions)
-    .where(inArray(examQuestions.examId, examIds))
-    .groupBy(examQuestions.examId)
-  return new Map(rows.map((row) => [row.examId, Number(row.totalPoints)]))
-}
 /* v8 ignore end */
