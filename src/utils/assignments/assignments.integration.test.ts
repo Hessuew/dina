@@ -1267,7 +1267,7 @@ describe('getAssignmentSubmissionsService (integration)', () => {
   })
 
   it('returns submissions with student detail for a course teacher', async () => {
-    const { teacherId, assignmentId } =
+    const { teacherId, assignmentId, studentId } =
       await seedPublishedAssignmentWithSubmission()
 
     const { submissions } = await getAssignmentSubmissionsService(
@@ -1275,7 +1275,12 @@ describe('getAssignmentSubmissionsService (integration)', () => {
       teacherId,
     )
 
-    expect(submissions.length).toBe(1)
+    expect(submissions).toHaveLength(1)
+    expect(submissions[0].student).toMatchObject({
+      id: studentId,
+      fullName: 'Test User',
+      email: `${studentId}@test.dev`,
+    })
   })
 
   it('rejects a teacher not assigned to the course', async () => {

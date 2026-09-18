@@ -532,9 +532,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     assignment, lesson, course, course-teacher, and submission rows in the
     assignment service; no feature-local assignment repository remains.
     `submissions.repository.ts` owns
-    submission-only reads and writes plus the
-    student-directory submission projection reused across assignments, courses,
-    and student-directory services. `invitations.repository.ts` owns
+    submission-only reads and writes. Assignment submission lists compose
+    submission rows with profile rows in the assignment service; the remaining
+    student-directory submission projection is a separate migration slice.
+    `invitations.repository.ts` owns
     invitation-only reads and writes reused across invitation, signup, enrollment,
     and email-campaign services; the admin invitation list composes invitation rows
     with profile-only inviter rows in the invitation service. `course-teachers.repository.ts` owns

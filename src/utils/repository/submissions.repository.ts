@@ -45,6 +45,16 @@ export async function findSubmissionsByAssignmentId(assignmentId: string) {
   })
 }
 
+export async function findSubmissionsByAssignmentIdOrdered(
+  assignmentId: string,
+) {
+  const db = await getDb()
+  return db.query.submissions.findMany({
+    where: eq(submissions.assignmentId, assignmentId),
+    orderBy: (submission, { desc }) => [desc(submission.submittedAt)],
+  })
+}
+
 export async function findSubmissionsByAssignmentIds(
   assignmentIds: Array<string>,
 ) {
@@ -108,17 +118,6 @@ export async function findSubmissionsForStudents(studentIds: Array<string>) {
         },
       },
     },
-  })
-}
-
-export async function findAssignmentSubmissionsWithStudent(
-  assignmentId: string,
-) {
-  const db = await getDb()
-  return db.query.submissions.findMany({
-    where: eq(submissions.assignmentId, assignmentId),
-    with: { student: true },
-    orderBy: (submission, { desc }) => [desc(submission.submittedAt)],
   })
 }
 

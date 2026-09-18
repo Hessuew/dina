@@ -25,7 +25,6 @@ import { findCompletedLessonIdsForStudent } from '@/utils/courses/service/lesson
 import {
   deleteAssignmentById,
   findAssignmentById,
-  findAssignmentSubmissionsWithStudent,
   findAssignmentsByLessonId,
   findAssignmentsByLessonIdsOrdered,
   findCourseById,
@@ -34,11 +33,13 @@ import {
   findLessonById,
   findLessonIdsByCourseIds,
   findLessonsByIds,
+  findProfilesByIds,
   findPublishedAssignments,
   findStudentSubmissions,
   findSubmissionByAssignmentAndStudent,
   findSubmissionById,
   findSubmissionsByAssignmentId,
+  findSubmissionsByAssignmentIdOrdered,
   findSubmissionsByAssignmentIds,
   findTeacherIdsByCourseId,
   findTeacherIdsByCourseIds,
@@ -494,6 +495,20 @@ async function loadTeacherAssignmentRows<
     courseTeachers,
     includeSubmissions ? submissions : undefined,
   )
+}
+
+async function loadAssignmentSubmissions(assignmentId: string) {
+  const submissions = await findSubmissionsByAssignmentIdOrdered(assignmentId)
+  const profiles = await findProfilesByIds([
+    ...new Set(submissions.map((submission) => submission.studentId)),
+  ])
+  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]))
+
+  return submissions.map((submission) => {
+    const student = profilesById.get(submission.studentId)
+    if (!student) throw new Error('Submission student profile missing')
+    return { ...submission, student }
+  })
 }
 
 export async function createAssignmentService(
@@ -1045,9 +1060,7 @@ export async function getAssignmentSubmissionsService(
         .perform('editLesson')
         .on('course', assignment.lesson.courseId)
 
-      const submissions = await findAssignmentSubmissionsWithStudent(
-        data.assignmentId,
-      )
+      const submissions = await loadAssignmentSubmissions(data.assignmentId)
       return { submissions }
     },
     (result) => ({ submissionCount: result.submissions.length }),
