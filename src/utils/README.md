@@ -555,9 +555,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     `staff-privileges.repository.ts` owns the shared table-only reads and writes reused
     across authorization, teacher-directory, enrolment, and staff privilege services. New
     `course-substitutes.repository.ts` owns course-substitute-only reads and writes reused
-    across enrolment substitution services and enrollment team membership composition; the
-    enrolment service keeps the substitution transaction atomic while composing reviewer
-    assignment and evaluation rows through transaction-scoped table adapters. Enrollment
+    across enrolment substitution services and enrollment team membership composition. The
+    `enrolment/transaction/substitution.transaction.ts` module keeps substitution activation
+    atomic while composing reviewer assignment and evaluation rows through transaction-scoped
+    table adapters. Enrollment
     evaluation authorization and viewer-course filtering compose
     course-teacher and course-substitute rows in the enrolment service. Enrollment review-heading
     team composition now loads course-teacher rows,
@@ -604,8 +605,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     and aggregate composition happen in the enrolment service/domain layer, while
     reviewer-admitted IDs and peer-review candidate IDs are composed in the service from shared
     reviewer-assignment/evaluation and course-teacher adapters. Reviewer queue enrollment IDs are composed in the service from
-    the shared reviewer-assignment adapter before the page query. Substitution orchestration
-    lives in the service with shared table adapters. The enrolment service composes reviewer
+    the shared reviewer-assignment adapter before the page query. Substitution activation
+    orchestration lives in `enrolment/transaction/substitution.transaction.ts` with shared
+    table adapters; the enrolment service handles authorization, telemetry, and input
+    composition. The enrolment service composes reviewer
     assignment rows with profile names for the
     Review heading and filters assigned enrollment IDs for distribution. New
     reviewer-assignment-only access
