@@ -615,6 +615,25 @@ describe('utils repository boundaries', () => {
     expect(offenders).toEqual([])
   })
 
+  it('keeps raw SQL table references behind repository or infrastructure seams', () => {
+    const schemaTables = findSchemaTables()
+    const offenders = findSourceFilesIncludingTests(sourceDirectory)
+      .filter((sourcePath) => !sourcePath.endsWith('.test.ts'))
+      .map((sourcePath) => ({
+        file: sourcePath.slice(sourceDirectory.length + 1),
+        references: findRawSqlTableReferences(
+          readFileSync(sourcePath, 'utf8'),
+          schemaTables,
+        ),
+      }))
+      .filter(
+        ({ file, references }) =>
+          references.length > 0 && !isDatabaseSeam(file),
+      )
+
+    expect(offenders).toEqual([])
+  })
+
   it('keeps runtime schema imports behind shared repositories', () => {
     const offenders = findUtilityFiles(utilsDirectory)
       .map((utilityPath) => ({

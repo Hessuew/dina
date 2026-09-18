@@ -37,8 +37,9 @@ SQL cannot bypass one-table ownership.
 Repositories must not import another repository at runtime; services and transaction modules
 compose table adapters instead. Type-only imports are allowed for shared transaction-client
 types without creating a runtime dependency between table owners.
-The same regression guard scans all application source files, so routes, components,
-schemas, and other non-utility modules cannot bypass these database or repository seams.
+The same regression guard scans all application source files, including raw SQL table
+references, so routes, components, schemas, and other non-utility modules cannot bypass
+these database or repository seams.
 Runtime schema-table imports, including dynamic imports, are likewise reserved
 for `repository/`; domain
 modules may import schema tables only with `import type` for inferred row types.

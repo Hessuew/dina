@@ -108,7 +108,9 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    regression guard scans the whole application source tree for import and
    operation paths, including injected handles with arbitrary names, formatted
    member access and computed `db['select']` / `db.query['table']` forms and
-   optional-chaining access.
+   optional-chaining access. Raw SQL table references are checked across the
+   application source tree as well, so an injected handle cannot bypass the
+   repository seam through raw SQL execute calls.
    Integration tests may use the real database for fixtures,
    but should import repository adapters through the shared barrel
    as well, so test spies exercise the same public seam as production callers;
