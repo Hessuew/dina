@@ -272,10 +272,9 @@ describe('deleteAssignmentService (integration)', () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const assignmentId = randomUUID()
     const repositoryError = new Error('assignment delete lookup detail')
-    vi.spyOn(
-      assignmentsRepository,
-      'findAssignmentWithLessonAndSubmissions',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findAssignmentById').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(

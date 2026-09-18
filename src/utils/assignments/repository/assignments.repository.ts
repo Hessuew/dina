@@ -3,19 +3,6 @@ import { eq, inArray, or } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { assignments, submissions } from '@/db/schema'
 
-export async function findAssignmentWithLessonAndSubmissions(
-  assignmentId: string,
-) {
-  const db = await getDb()
-  return db.query.assignments.findFirst({
-    where: eq(assignments.id, assignmentId),
-    with: {
-      lesson: true,
-      submissions: true,
-    },
-  })
-}
-
 export async function findPublishedAssignmentsForStudent(studentId: string) {
   const db = await getDb()
   return db.query.assignments.findMany({

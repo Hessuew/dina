@@ -17,7 +17,6 @@ import {
 } from '@/domain/assignment.service'
 import { canOpenUnpublishedAssignment } from '@/utils/assignments/domain/assignment-detail.domain'
 import {
-  findAssignmentWithLessonAndSubmissions,
   findAssignmentsForTeacherCatalog,
   findAssignmentsForTeacherLessons,
   findPublishedAssignmentsForStudent,
@@ -34,6 +33,7 @@ import {
   findLessonIdsByCourseIds,
   findSubmissionByAssignmentAndStudent,
   findSubmissionById,
+  findSubmissionsByAssignmentId,
   findTeacherIdsByCourseId,
   insertAssignment,
   updateAssignmentById,
@@ -235,6 +235,19 @@ async function findAssignmentWithLesson(assignmentId: string) {
   if (!lesson) return undefined
 
   return { ...assignment, lesson }
+}
+
+async function findAssignmentWithLessonAndSubmissions(assignmentId: string) {
+  const assignment = await findAssignmentById(assignmentId)
+  if (!assignment) return undefined
+
+  const [lesson, submissions] = await Promise.all([
+    findLessonById(assignment.lessonId),
+    findSubmissionsByAssignmentId(assignment.id),
+  ])
+  if (!lesson) return undefined
+
+  return { ...assignment, lesson, submissions }
 }
 
 async function findAssignmentWithCourseTeachers(assignmentId: string) {
