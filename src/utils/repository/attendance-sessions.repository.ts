@@ -20,6 +20,21 @@ export async function findAttendanceSessionsByIds(sessionIds: Array<string>) {
     .where(inArray(attendanceSessions.id, sessionIds))
 }
 
+export async function findAttendanceSessionsByLessonIds(
+  lessonIds: Array<string>,
+) {
+  if (lessonIds.length === 0) return []
+  const db = await getDb()
+  return db
+    .select({
+      id: attendanceSessions.id,
+      lessonId: attendanceSessions.lessonId,
+      closesAt: attendanceSessions.closesAt,
+    })
+    .from(attendanceSessions)
+    .where(inArray(attendanceSessions.lessonId, lessonIds))
+}
+
 export async function findOpenAttendanceSessions(now: Date) {
   const db = await getDb()
   return db

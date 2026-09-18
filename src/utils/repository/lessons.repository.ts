@@ -69,6 +69,21 @@ export async function findLessonsForAttendance() {
     .from(lessons)
 }
 
+export async function findLessonsByCourseId(courseId: string) {
+  const db = await getDb()
+  return db.query.lessons.findMany({
+    where: eq(lessons.courseId, courseId),
+    columns: {
+      id: true,
+      title: true,
+      orderIndex: true,
+      courseId: true,
+      isPublished: true,
+    },
+    orderBy: (lesson, { asc }) => [asc(lesson.orderIndex)],
+  })
+}
+
 export async function findLessonIdsByCourseIds(courseIds: Array<string>) {
   if (courseIds.length === 0) return []
   const db = await getDb()

@@ -1,7 +1,6 @@
 /* v8 ignore start */
-import { and, eq, gt, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { getDb } from '@/db'
-import { attendancePresents, attendanceSessions, lessons } from '@/db/schema'
 import {
   findAttendanceSessionByLessonInTransaction,
   findOpenAttendanceSessionInTransaction,
@@ -12,24 +11,6 @@ import {
   findPresentInTransaction,
   insertPresentInTransaction,
 } from '@/utils/repository/attendance-presents.repository'
-
-export async function findLessonsWithSessionsByCourseId(courseId: string) {
-  const db = await getDb()
-  return db
-    .select({
-      id: lessons.id,
-      title: lessons.title,
-      orderIndex: lessons.orderIndex,
-      courseId: lessons.courseId,
-      isPublished: lessons.isPublished,
-      sessionId: attendanceSessions.id,
-      closesAt: attendanceSessions.closesAt,
-    })
-    .from(lessons)
-    .leftJoin(attendanceSessions, eq(attendanceSessions.lessonId, lessons.id))
-    .where(eq(lessons.courseId, courseId))
-    .orderBy(lessons.orderIndex)
-}
 
 /** Idempotent and serialized with open/close for the course. */
 export async function markPresentAtomically(values: {

@@ -8,10 +8,10 @@ import type {
 import type { LogLevel } from '@/utils/observability/logger'
 import {
   clearPresentOverrideAtomically,
-  findLessonsWithSessionsByCourseId,
   markPresentAtomically,
   setPresentOverrideAtomically,
 } from '@/utils/attendance/repository/attendance.repository'
+import { mergeCourseLessonsWithSessions } from '@/utils/attendance/domain/course-attendance-state.domain'
 import { buildOpenAttendanceRows } from '@/utils/attendance/domain/open-attendance.domain'
 import { assertCanOpenSession } from '@/utils/attendance/domain/attendance-session.domain'
 import {
@@ -33,9 +33,11 @@ import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
   closeAttendanceSessionAtomically,
+  findAttendanceSessionsByLessonIds,
   findCourseById,
   findCourseTeachers,
   findLessonByIdAndCourseId,
+  findLessonsByCourseId,
   findOpenAttendanceSessions,
   findOpenSessionOnCourse,
   findPresent,
@@ -248,7 +250,7 @@ function mapOpenSession(
 }
 
 function mapLessonsWithSessions(
-  lessonRows: Awaited<ReturnType<typeof findLessonsWithSessionsByCourseId>>,
+  lessonRows: ReturnType<typeof mergeCourseLessonsWithSessions>,
   now: Date,
 ) {
   return lessonRows.map((lesson) => ({
@@ -260,12 +262,20 @@ function mapLessonsWithSessions(
   }))
 }
 
+async function loadLessonsWithSessions(courseId: string) {
+  const lessons = await findLessonsByCourseId(courseId)
+  const sessions = await findAttendanceSessionsByLessonIds(
+    lessons.map((lesson) => lesson.id),
+  )
+  return mergeCourseLessonsWithSessions(lessons, sessions)
+}
+
 async function loadCourseAttendanceState(data: CourseIdInput, userId: string) {
   const profile = await getUserProfile(userId)
   const now = new Date()
   const [openSession, lessonRows, courseTeachers] = await Promise.all([
     findOpenSessionOnCourse(data.courseId, now),
-    findLessonsWithSessionsByCourseId(data.courseId),
+    loadLessonsWithSessions(data.courseId),
     findCourseTeachers(data.courseId),
   ])
 
