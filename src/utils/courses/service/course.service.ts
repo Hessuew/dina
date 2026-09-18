@@ -5,6 +5,7 @@ import type {
   UpdateCourseInput,
 } from '@/schemas/course.schema'
 import type { LogLevel } from '@/utils/observability/logger'
+import { getDb } from '@/db'
 import {
   assignTeachersToCourse,
   validateNewCourseTeacherPair,
@@ -22,13 +23,14 @@ import {
   findAllCourses,
   findCompletedLessonIdsForStudent,
   findCourseWithDetails,
-  insertCourse,
 } from '@/utils/courses/repository'
 import {
   deleteCourseById,
   findCourseById,
   findPublishedAssignmentsByLessonIds,
   findStudentSubmissions,
+  insertCourseInTransaction,
+  insertCourseTeacherAssignmentsInTransaction,
   updateCourseById,
 } from '@/utils/repository'
 import { getUserProfile } from '@/utils/auth/auth'
@@ -55,6 +57,7 @@ type CourseAssetRow = Awaited<ReturnType<typeof findAllCourses>>[number]
 type CourseDetail = NonNullable<
   Awaited<ReturnType<typeof findCourseWithDetails>>
 >
+type CourseInsertValues = Parameters<typeof insertCourseInTransaction>[1]
 
 type CourseReadAction = 'getCourses' | 'getCourse'
 
@@ -216,6 +219,24 @@ function buildCourseUpdateValues(data: UpdateCourseInput) {
     orderIndex: data.orderIndex,
     updatedAt: new Date(),
   }
+}
+
+async function insertCourseWithTeachers(
+  values: CourseInsertValues,
+  teacherIds?: [string, string],
+) {
+  const db = await getDb()
+  return db.transaction(async (tx) => {
+    const course = await insertCourseInTransaction(tx, values)
+    if (teacherIds) {
+      await insertCourseTeacherAssignmentsInTransaction(
+        tx,
+        course.id,
+        teacherIds,
+      )
+    }
+    return course
+  })
 }
 
 function restrictCourseToPublishedContent(course: CourseDetail): CourseDetail {
@@ -423,7 +444,7 @@ export async function createCourseService(
       await validateNewCourseTeacherPair(...teacherIds)
     }
 
-    const course = await insertCourse(
+    const course = await insertCourseWithTeachers(
       {
         title: data.title,
         description: data.description,

@@ -3,6 +3,20 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { courseTeachers } from '@/db/schema'
 
+export type CourseTeachersTransactionClient = Parameters<
+  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
+>[0]
+
+export async function insertCourseTeacherAssignmentsInTransaction(
+  tx: CourseTeachersTransactionClient,
+  courseId: string,
+  teacherIds: [string, string],
+) {
+  await tx
+    .insert(courseTeachers)
+    .values(teacherIds.map((teacherId) => ({ courseId, teacherId })))
+}
+
 export async function findCourseAssignmentsByTeacherIds(
   teacherIds: Array<string>,
 ) {

@@ -7,13 +7,14 @@ import {
 } from '@/utils/authz'
 import { AuthorizationError } from '@/utils/errors'
 import * as authUtils from '@/utils/auth/auth'
-import {
-  findAllCourses,
-  findCourseTeachers,
-  insertCourse,
-} from '@/utils/courses/repository'
+import { findAllCourses, findCourseTeachers } from '@/utils/courses/repository'
 import * as coursesRepository from '@/utils/courses/repository'
-import { findCourseById } from '@/utils/repository'
+import { getDb } from '@/db'
+import {
+  findCourseById,
+  insertCourseInTransaction,
+  insertCourseTeacherAssignmentsInTransaction,
+} from '@/utils/repository'
 import * as sharedRepository from '@/utils/repository'
 import {
   createCourseService,
@@ -749,17 +750,21 @@ describe('createCourseService (integration)', () => {
     const existingCourseId = await seedCourse()
     await seedCourseTeacher(existingCourseId, assignedTeacherId)
 
+    const db = await getDb()
     await expect(
-      insertCourse(
-        {
+      db.transaction(async (tx) => {
+        const course = await insertCourseInTransaction(tx, {
           title: 'Atomic Course',
           description: 'desc',
           thumbnailUrl: null,
           isPublished: false,
           orderIndex: 0,
-        },
-        [assignedTeacherId, availableTeacherId],
-      ),
+        })
+        await insertCourseTeacherAssignmentsInTransaction(tx, course.id, [
+          assignedTeacherId,
+          availableTeacherId,
+        ])
+      }),
     ).rejects.toThrow()
 
     expect(await findAllCourses(true)).not.toContainEqual(

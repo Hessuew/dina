@@ -3,6 +3,24 @@ import { eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { courses } from '@/db/schema'
 
+export type CoursesTransactionClient = Parameters<
+  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
+>[0]
+
+export async function insertCourseInTransaction(
+  tx: CoursesTransactionClient,
+  values: {
+    title: string
+    description: string
+    thumbnailUrl: string | null
+    isPublished: boolean
+    orderIndex: number
+  },
+) {
+  const [course] = await tx.insert(courses).values(values).returning()
+  return course
+}
+
 export async function findCourseById(courseId: string) {
   const db = await getDb()
   return db.query.courses.findFirst({
