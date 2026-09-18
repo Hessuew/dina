@@ -162,8 +162,8 @@ describe('getPostNotificationsSummaryService (integration)', () => {
 
     const result = await getPostNotificationsSummaryService({}, userId)
 
-    // findPostsForNotifications filters out the soft-deleted post, so only the
-    // live group is returned; unread count still reflects both groups.
+    // The shared posts repository filters out the soft-deleted post, so only
+    // the live group is returned; unread count still reflects both groups.
     expect(result.groups).toHaveLength(1)
     expect(result.groups[0].postId).toBe(livePostId)
     expect(result.unreadGroupCount).toBe(2)

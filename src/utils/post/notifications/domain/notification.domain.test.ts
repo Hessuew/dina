@@ -1,5 +1,78 @@
 import { describe, expect, it } from 'vitest'
-import { buildPostExcerpt } from '@/utils/post/notifications/domain/notification.domain'
+import {
+  buildNotificationPostRows,
+  buildPostExcerpt,
+} from '@/utils/post/notifications/domain/notification.domain'
+
+describe('buildNotificationPostRows', () => {
+  it('composes course and author data while retaining posts without courses', () => {
+    expect(
+      buildNotificationPostRows(
+        [
+          {
+            id: 'post-1',
+            content: 'Course update',
+            courseId: 'course-1',
+            authorId: 'author-1',
+          },
+          {
+            id: 'post-2',
+            content: 'General update',
+            courseId: null,
+            authorId: 'author-1',
+          },
+          {
+            id: 'post-3',
+            content: 'Missing course',
+            courseId: 'course-missing',
+            authorId: 'author-1',
+          },
+        ],
+        [{ id: 'course-1', title: 'Discipleship' }],
+        [{ id: 'author-1', fullName: 'Alice Smith' }],
+      ),
+    ).toEqual([
+      {
+        id: 'post-1',
+        content: 'Course update',
+        courseId: 'course-1',
+        courseTitle: 'Discipleship',
+        authorName: 'Alice Smith',
+      },
+      {
+        id: 'post-2',
+        content: 'General update',
+        courseId: null,
+        courseTitle: null,
+        authorName: 'Alice Smith',
+      },
+      {
+        id: 'post-3',
+        content: 'Missing course',
+        courseId: 'course-missing',
+        courseTitle: null,
+        authorName: 'Alice Smith',
+      },
+    ])
+  })
+
+  it('drops posts whose author profile is missing', () => {
+    expect(
+      buildNotificationPostRows(
+        [
+          {
+            id: 'post-1',
+            content: 'Orphaned post',
+            courseId: null,
+            authorId: 'missing-author',
+          },
+        ],
+        [],
+        [],
+      ),
+    ).toEqual([])
+  })
+})
 
 describe('buildPostExcerpt', () => {
   it('returns content unchanged when 72 chars or fewer', () => {

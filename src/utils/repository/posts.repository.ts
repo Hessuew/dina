@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { posts } from '@/db/schema'
 
@@ -11,6 +11,15 @@ export async function findPostForWrite(
   const db = await getDb()
   return db.query.posts.findFirst({
     where: and(eq(posts.id, postId), isNull(posts.deletedAt)),
+  })
+}
+
+export async function findPostsByIds(postIds: Array<string>) {
+  if (postIds.length === 0) return []
+  const db = await getDb()
+  return db.query.posts.findMany({
+    where: and(inArray(posts.id, postIds), isNull(posts.deletedAt)),
+    columns: { id: true, content: true, courseId: true, authorId: true },
   })
 }
 

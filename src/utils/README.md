@@ -589,8 +589,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     the library service; its course-enriched listing composes media rows with
     `courses.repository.ts` rather than joining tables in a feature repository.
     `post-notifications.repository.ts` owns post-notification
-    delivery inserts, group reads, and read-state writes; the post/course/profile-
-    enriched notification summary rows remain in the notification feature repository. New
+    delivery inserts, group reads, and read-state writes; the notification summary
+    composes post, course, and public-profile rows through their shared table
+    repositories. New
     media-library-only or post-notification-only access must use
     `@/utils/repository`. `post-reactions.repository.ts` owns standalone
     post-reaction lookup and mutation, while `post-comment-reactions.repository.ts`
