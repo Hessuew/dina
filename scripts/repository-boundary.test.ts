@@ -492,7 +492,7 @@ describe('utils repository boundaries', () => {
       .filter((symbol) => !tableOwners.has(symbol))
       .sort()
 
-    expect(schemaOnlyTables).toEqual(['notifications'])
+    expect(schemaOnlyTables).toEqual([])
   })
 
   it('keeps runtime schema-table imports behind shared repositories across application source', () => {
