@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { postCommentReactions } from '@/db/schema'
 
@@ -16,6 +16,22 @@ export async function findPostCommentReaction(
       eq(postCommentReactions.userId, userId),
     ),
   })
+}
+
+export async function findPostCommentReactionsByCommentIds(
+  commentIds: Array<string>,
+) {
+  if (commentIds.length === 0) return []
+  const db = await getDb()
+  return db
+    .select({
+      id: postCommentReactions.id,
+      commentId: postCommentReactions.commentId,
+      emoji: postCommentReactions.emoji,
+      userId: postCommentReactions.userId,
+    })
+    .from(postCommentReactions)
+    .where(inArray(postCommentReactions.commentId, commentIds))
 }
 
 export async function insertPostCommentReaction(

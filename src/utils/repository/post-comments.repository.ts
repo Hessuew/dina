@@ -5,6 +5,11 @@ import { postComments } from '@/db/schema'
 
 type RawCommentRow = RawComment
 
+export type PostCommentRow = Pick<
+  typeof postComments.$inferSelect,
+  'id' | 'postId' | 'authorId' | 'content' | 'createdAt' | 'updatedAt'
+>
+
 function buildCommentWhereConditions(
   postId: string,
   cursor?: { createdAt: string; id: string } | null,
@@ -52,6 +57,26 @@ export async function calculateCommentCounts(
     .groupBy(postComments.postId)
 
   return Object.fromEntries(countRows.map((row) => [row.postId, row.count]))
+}
+
+export async function findPostCommentRows(
+  postId: string,
+  limit: number,
+): Promise<Array<PostCommentRow>> {
+  const db = await getDb()
+  return db
+    .select({
+      id: postComments.id,
+      postId: postComments.postId,
+      authorId: postComments.authorId,
+      content: postComments.content,
+      createdAt: postComments.createdAt,
+      updatedAt: postComments.updatedAt,
+    })
+    .from(postComments)
+    .where(and(eq(postComments.postId, postId), isNull(postComments.deletedAt)))
+    .orderBy(desc(postComments.createdAt), desc(postComments.id))
+    .limit(limit)
 }
 
 export async function findComments(filters: {

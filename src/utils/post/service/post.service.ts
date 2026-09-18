@@ -19,20 +19,24 @@ import type {
   ReactionAction,
 } from '@/utils/post/domain/post.domain'
 import {
+  composePostWithDetails,
   determineReactionAction,
   transformCommentWithAuthor,
   transformPostWithDetails,
 } from '@/utils/post/domain/post.domain'
+import { findPosts } from '@/utils/post/repository/post.repository'
 import {
-  findPostById,
-  findPosts,
-} from '@/utils/post/repository/post.repository'
-import { findAllCourses, findCourseIdsByTeacher } from '@/utils/repository'
+  findAllCourses,
+  findCourseById,
+  findCourseIdsByTeacher,
+  findProfilesByIds,
+} from '@/utils/repository'
 import {
   calculateCommentCounts,
   findCommentForWrite,
   findCommentWithAuthor,
   findComments,
+  findPostCommentRows,
   insertComment,
   softDeleteComment,
   updateCommentContent,
@@ -40,12 +44,14 @@ import {
 import {
   deletePostCommentReaction,
   findPostCommentReaction,
+  findPostCommentReactionsByCommentIds,
   insertPostCommentReaction,
   updatePostCommentReaction,
 } from '@/utils/repository/post-comment-reactions.repository'
 import {
   deletePostReaction,
   findPostReaction,
+  findPostReactionsByPostIds,
   insertPostReaction,
   updatePostReaction,
 } from '@/utils/repository/post-reactions.repository'
@@ -226,6 +232,32 @@ async function signCommentAvatars(
   }))
 }
 
+async function findPostWithDetails(postId: string) {
+  const post = await findPostForWrite(postId)
+  if (!post) return undefined
+
+  const [course, authorProfiles, postReactions, comments] = await Promise.all([
+    post.courseId ? findCourseById(post.courseId) : Promise.resolve(undefined),
+    findProfilesByIds([post.authorId]),
+    findPostReactionsByPostIds([post.id]),
+    findPostCommentRows(post.id, 3),
+  ])
+  const commentIds = comments.map((comment) => comment.id)
+  const [commentProfiles, commentReactions] = await Promise.all([
+    findProfilesByIds(comments.map((comment) => comment.authorId)),
+    findPostCommentReactionsByCommentIds(commentIds),
+  ])
+
+  return composePostWithDetails(
+    post,
+    course ? [course] : [],
+    [...authorProfiles, ...commentProfiles],
+    postReactions,
+    comments,
+    commentReactions,
+  )
+}
+
 export async function getPostChannelsService(actorId: string): Promise<{
   channels: Array<PostChannel>
 }> {
@@ -327,7 +359,7 @@ export async function getPostByIdService(
     },
     read: async () => {
       await getUserProfile(actorId)
-      const row = await findPostById(data.postId)
+      const row = await findPostWithDetails(data.postId)
 
       if (!row) {
         throw new NotFoundError('Post not found', {
@@ -370,7 +402,7 @@ export async function createPostBaseService(
     })
     context.postId = inserted.id
 
-    const full = await findPostById(inserted.id)
+    const full = await findPostWithDetails(inserted.id)
     if (!full) {
       throw new NotFoundError('Post not found after insert', {
         code: 'POST_NOT_FOUND',

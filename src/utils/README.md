@@ -594,19 +594,18 @@ This folder is primarily where TanStack Start server functions live (via `create
     composes post, course, and public-profile rows through their shared table
     repositories. New
     media-library-only or post-notification-only access must use
-    `@/utils/repository`. `post-reactions.repository.ts` owns standalone
-    post-reaction lookup and mutation, while `post-comment-reactions.repository.ts`
-    owns standalone comment-reaction lookup and mutation; post-feed/detail reaction
-    projections remain in the post feature repository. New post-reaction-only or
-    comment-reaction-only access must use `@/utils/repository`. `post-comments.repository.ts`
-    owns standalone comment reads, counts, and mutations; post-feed/detail comment
-    projections remain in the post feature repository. New post-comment-only access must
-    use `@/utils/repository`. `posts.repository.ts` owns standalone post lookup and
-    mutation; post-feed/detail projections remain in the post feature repository.
-    New post-only access must use `@/utils/repository`. Post channel
+    `@/utils/repository`. `post-reactions.repository.ts` owns standalone post-reaction
+    lookup and mutation plus batch reaction rows for post detail composition, while
+    `post-comment-reactions.repository.ts` owns standalone comment-reaction lookup and
+    mutation plus batch rows for comment detail composition. `post-comments.repository.ts`
+    owns standalone comment reads, counts, mutations, and table-only preview rows.
+    `posts.repository.ts` owns standalone post lookup and mutation. Post detail reads
+    compose these shared post, course, profile, comment, and reaction rows in the post
+    service; only the paginated feed remains an aggregate projection in the feature
+    repository. New post-only, post-comment-only, post-reaction-only, or
+    post-comment-reaction-only access must use `@/utils/repository`. Post channel
     lists compose shared course rows with shared teacher membership rows in the post
-    service; feed/detail reads remain aggregate projections in the post feature
-    repository.
+    service.
     `discipleship-assignments.repository.ts` owns
     discipleship-assignment-only reads and writes reused by the discipleship and Zoom Link
     services. `discipleship-groups.repository.ts` owns group-only reads and writes used by
