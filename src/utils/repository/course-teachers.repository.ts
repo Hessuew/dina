@@ -86,6 +86,18 @@ export async function findTeacherIdsByCourseId(courseId: string) {
   return result.map((assignment) => assignment.teacherId)
 }
 
+export async function findTeacherIdsByCourseIds(courseIds: Array<string>) {
+  if (courseIds.length === 0) return []
+  const db = await getDb()
+  return db
+    .select({
+      courseId: courseTeachers.courseId,
+      teacherId: courseTeachers.teacherId,
+    })
+    .from(courseTeachers)
+    .where(inArray(courseTeachers.courseId, courseIds))
+}
+
 export async function findCourseTeacher(courseId: string, teacherId: string) {
   const db = await getDb()
   return db.query.courseTeachers.findFirst({

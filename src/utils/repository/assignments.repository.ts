@@ -40,6 +40,17 @@ export async function findAssignmentsByLessonIds(lessonIds: Array<string>) {
   })
 }
 
+export async function findAssignmentsByLessonIdsOrdered(
+  lessonIds: Array<string>,
+) {
+  if (lessonIds.length === 0) return []
+  const db = await getDb()
+  return db.query.assignments.findMany({
+    where: inArray(assignments.lessonId, lessonIds),
+    orderBy: (assignment, { asc }) => [asc(assignment.dueDate)],
+  })
+}
+
 export async function findPublishedAssignmentsByLessonIds(
   lessonIds: Array<string>,
 ) {

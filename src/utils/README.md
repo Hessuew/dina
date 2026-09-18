@@ -528,8 +528,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     adapters in the assignment service. Student assignment lists compose published
     assignment, lesson, course, and student-submission rows in that service;
     assignment lesson-detail reads compose shared lesson, course, course-teacher,
-    and assignment adapters there, leaving the feature repository with only
-    teacher-list aggregate reads.
+    and assignment adapters there. Teacher assignment lists compose shared
+    assignment, lesson, course, course-teacher, and submission rows in the
+    assignment service; no feature-local assignment repository remains.
     `submissions.repository.ts` owns
     submission-only reads and writes plus the
     student-directory submission projection reused across assignments, courses,

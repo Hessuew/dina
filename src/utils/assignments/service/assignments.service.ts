@@ -18,15 +18,16 @@ import {
 import { canOpenUnpublishedAssignment } from '@/utils/assignments/domain/assignment-detail.domain'
 import { buildStudentAssignments } from '@/utils/assignments/domain/student-assignments.domain'
 import {
-  findAssignmentsForTeacherCatalog,
-  findAssignmentsForTeacherLessons,
-} from '@/utils/assignments/repository/assignments.repository'
+  buildTeacherAssignmentRows,
+  mergeTeacherCatalogAssignments,
+} from '@/utils/assignments/domain/teacher-assignments.domain'
 import { findCompletedLessonIdsForStudent } from '@/utils/courses/service/lesson-completion.service'
 import {
   deleteAssignmentById,
   findAssignmentById,
   findAssignmentSubmissionsWithStudent,
   findAssignmentsByLessonId,
+  findAssignmentsByLessonIdsOrdered,
   findCourseById,
   findCourseIdsByTeacher,
   findCoursesByIds,
@@ -38,7 +39,9 @@ import {
   findSubmissionByAssignmentAndStudent,
   findSubmissionById,
   findSubmissionsByAssignmentId,
+  findSubmissionsByAssignmentIds,
   findTeacherIdsByCourseId,
+  findTeacherIdsByCourseIds,
   insertAssignment,
   updateAssignmentById,
   updateSubmission,
@@ -421,9 +424,9 @@ export async function getAssignmentService(
 
 export type TeacherAssignmentListScope = 'owned' | 'catalog'
 
-type TeacherListAssignment =
-  | Awaited<ReturnType<typeof findAssignmentsForTeacherLessons>>[number]
-  | Awaited<ReturnType<typeof findAssignmentsForTeacherCatalog>>[number]
+type TeacherListAssignment = Awaited<
+  ReturnType<typeof loadTeacherAssignmentRows>
+>[number]
 
 function mapTeacherAssignmentRow(
   assignment: TeacherListAssignment,
@@ -462,6 +465,35 @@ function courseTeachersFromRow(assignment: TeacherListAssignment): {
       .map((teacher) => teacher.teacherId)
       .filter((id): id is string => typeof id === 'string' && id.length > 0),
   }
+}
+
+async function loadTeacherAssignmentRows<
+  TAssignment extends Awaited<
+    ReturnType<typeof findAssignmentsByLessonIdsOrdered>
+  >[number],
+>(assignments: ReadonlyArray<TAssignment>, includeSubmissions = false) {
+  const lessonIds = [
+    ...new Set(assignments.map((assignment) => assignment.lessonId)),
+  ]
+  const lessons = await findLessonsByIds(lessonIds)
+  const courseIds = [...new Set(lessons.map((lesson) => lesson.courseId))]
+  const [courses, courseTeachers, submissions] = await Promise.all([
+    findCoursesByIds(courseIds),
+    findTeacherIdsByCourseIds(courseIds),
+    includeSubmissions
+      ? findSubmissionsByAssignmentIds(
+          assignments.map((assignment) => assignment.id),
+        )
+      : Promise.resolve([]),
+  ])
+
+  return buildTeacherAssignmentRows(
+    assignments,
+    lessons,
+    courses,
+    courseTeachers,
+    includeSubmissions ? submissions : undefined,
+  )
 }
 
 export async function createAssignmentService(
@@ -943,7 +975,8 @@ async function getTeacherOwnedAssignments(
   const lessonIds = await findLessonIdsByCourseIds(courseIds)
   if (lessonIds.length === 0) return { assignments: [] }
 
-  const allAssignments = await findAssignmentsForTeacherLessons(lessonIds)
+  const assignments = await findAssignmentsByLessonIdsOrdered(lessonIds)
+  const allAssignments = await loadTeacherAssignmentRows(assignments, true)
 
   return {
     assignments: allAssignments.map((assignment) => {
@@ -963,10 +996,16 @@ async function getTeacherCatalogAssignments(
     managedCourseIds.length > 0
       ? await findLessonIdsByCourseIds(managedCourseIds)
       : []
-  // SQL already scopes: published campus-wide + drafts/closed on managed lessons.
+  const [publishedAssignments, managedAssignments] = await Promise.all([
+    findPublishedAssignments(),
+    findAssignmentsByLessonIdsOrdered(managedLessonIds),
+  ])
+  const assignments = mergeTeacherCatalogAssignments(
+    publishedAssignments,
+    managedAssignments,
+  )
   // No submission rows loaded for catalog.
-  const allAssignments =
-    await findAssignmentsForTeacherCatalog(managedLessonIds)
+  const allAssignments = await loadTeacherAssignmentRows(assignments)
 
   return {
     assignments: allAssignments.flatMap((assignment) => {

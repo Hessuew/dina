@@ -45,6 +45,16 @@ export async function findSubmissionsByAssignmentId(assignmentId: string) {
   })
 }
 
+export async function findSubmissionsByAssignmentIds(
+  assignmentIds: Array<string>,
+) {
+  if (assignmentIds.length === 0) return []
+  const db = await getDb()
+  return db.query.submissions.findMany({
+    where: inArray(submissions.assignmentId, assignmentIds),
+  })
+}
+
 export async function findStudentSubmissionGrades(
   studentId: string,
   assignmentIds: Array<string>,
