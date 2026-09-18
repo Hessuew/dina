@@ -921,7 +921,7 @@ describe('exam taking (integration)', () => {
     expect(JSON.stringify(answerEvents)).not.toContain(correctOptionId)
     expect(JSON.stringify(answerEvents)).not.toContain('private exam response')
 
-    vi.spyOn(examRepository, 'upsertAnswer').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'upsertExamAnswer').mockRejectedValueOnce(
       new Error('answer database secret'),
     )
     await expect(
@@ -1287,7 +1287,7 @@ describe('exam grading (integration)', () => {
     )
     expect(openAnswer).toBeDefined()
 
-    vi.spyOn(examRepository, 'updateAnswerGrade').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'updateExamAnswerGrade').mockRejectedValueOnce(
       new Error('grading database secret'),
     )
     await expect(

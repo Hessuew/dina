@@ -13,29 +13,24 @@ import type {
   SubmitAttemptInput,
 } from '@/schemas/exam.schema'
 import type { LogLevel } from '@/utils/observability/logger'
-import type {
-  ExamAnswerRow,
-  ExamQuestionRow,
-} from '@/utils/exam/repository/exam.repository'
-import type { ExamAttemptRow, ExamRow } from '@/utils/repository'
+import type { ExamQuestionRow } from '@/utils/exam/repository/exam.repository'
+import type { ExamAnswerRow, ExamAttemptRow, ExamRow } from '@/utils/repository'
 import type { StudentAttempt } from '@/utils/exam/domain/exam-redaction.domain'
 import {
-  applyAutoGradeResults,
-  findAnswerById,
-  findAnswersByAttempt,
   findAttemptsForGrading,
   findExamTotalPointsMap,
   findQuestionsWithOptions,
   saveExamChanges,
-  updateAnswerGrade,
-  upsertAnswer,
 } from '@/utils/exam/repository/exam.repository'
 import {
+  applyAutoGradeResults,
   countAttemptsByExam,
   findAllExams,
   findAttemptByExamAndStudent,
   findAttemptById,
   findAttemptsByStudent,
+  findExamAnswerById,
+  findExamAnswersByAttempt,
   findExamById,
   findPublishedExams,
   insertAttemptIfAbsent,
@@ -43,6 +38,8 @@ import {
   markAttemptGraded,
   markAttemptSubmittedIfInProgress,
   setExamStatus,
+  updateExamAnswerGrade,
+  upsertExamAnswer,
 } from '@/utils/repository'
 import {
   computeDeadline,
@@ -567,7 +564,7 @@ async function finalizeAttempt(
 ): Promise<ExamAttemptRow> {
   const [{ questions, options }, answers] = await Promise.all([
     findQuestionsWithOptions(attempt.examId),
-    findAnswersByAttempt(attempt.id),
+    findExamAnswersByAttempt(attempt.id),
   ])
   const results = autoGradeMultipleChoice(answers, questions, options)
   await applyAutoGradeResults(results)
@@ -607,7 +604,7 @@ async function buildTakingPayload(
 ): Promise<TakingPayload> {
   const [{ questions, options }, answers] = await Promise.all([
     findQuestionsWithOptions(attempt.examId),
-    findAnswersByAttempt(attempt.id),
+    findExamAnswersByAttempt(attempt.id),
   ])
   return {
     attempt: redactAttemptForStudent(attempt),
@@ -651,7 +648,7 @@ async function saveAnswerForAttempt(
       'Selected option does not belong to this question',
     )
   }
-  const answer = await upsertAnswer({
+  const answer = await upsertExamAnswer({
     attemptId: attempt.id,
     questionId: question.id,
     selectedOptionId: data.selectedOptionId ?? null,
@@ -907,7 +904,7 @@ export async function getAttemptForGradingService(
       const finalized = await finalizeIfExpired(attempt, new Date())
       const [{ questions, options }, answers] = await Promise.all([
         findQuestionsWithOptions(finalized.examId),
-        findAnswersByAttempt(finalized.id),
+        findExamAnswersByAttempt(finalized.id),
       ])
       return { attempt: finalized, questions, options, answers }
     },
@@ -933,7 +930,7 @@ export async function gradeOpenAnswerService(
   }
   await requireExamGrader(userId, context)
   try {
-    const answer = await findAnswerById(data.answerId)
+    const answer = await findExamAnswerById(data.answerId)
     if (!answer) throw new NotFoundError('Answer not found')
     context.attemptId = answer.attemptId
     const attempt = await findAttemptById(answer.attemptId)
@@ -957,7 +954,7 @@ export async function gradeOpenAnswerService(
         `Points cannot exceed the question maximum (${question.points})`,
       )
     }
-    await updateAnswerGrade(data.answerId, data.awardedPoints)
+    await updateExamAnswerGrade(data.answerId, data.awardedPoints)
     logExamGradingEvent('info', 'exam_open_answer_graded', context, {
       status: 'graded',
       questionType: question.type,
@@ -993,7 +990,7 @@ export async function finalizeGradingService(
     }
     const [{ questions }, answers] = await Promise.all([
       findQuestionsWithOptions(attempt.examId),
-      findAnswersByAttempt(attempt.id),
+      findExamAnswersByAttempt(attempt.id),
     ])
     if (!allOpenAnswersGraded(answers, questions)) {
       throw new ValidationError(
