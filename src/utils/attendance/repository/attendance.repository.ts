@@ -1,5 +1,5 @@
 /* v8 ignore start */
-import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import {
   attendancePresents,
@@ -102,28 +102,6 @@ export async function markPresentAtomically(values: {
     if (!present) throw new Error('Present missing after conflict')
     return { session, present, created: false as const }
   })
-}
-
-export async function findPresentsForStudents(studentIds: Array<string>) {
-  if (studentIds.length === 0) return []
-  const db = await getDb()
-  return db
-    .select({
-      studentId: attendancePresents.studentId,
-      lessonId: attendanceSessions.lessonId,
-      sessionId: attendancePresents.sessionId,
-      checkedInAt: attendancePresents.checkedInAt,
-    })
-    .from(attendancePresents)
-    .innerJoin(
-      attendanceSessions,
-      eq(attendanceSessions.id, attendancePresents.sessionId),
-    )
-    .where(inArray(attendancePresents.studentId, studentIds))
-}
-
-export async function findPresentsForStudent(studentId: string) {
-  return findPresentsForStudents([studentId])
 }
 
 /**

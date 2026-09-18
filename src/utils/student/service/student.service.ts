@@ -10,13 +10,10 @@ import type {
 import type { GetStudentDetailInput } from '@/schemas/student.schema'
 import type { LogLevel } from '@/utils/observability/logger'
 import {
+  buildAttendancePresentRefs,
   buildCourseAttendanceScores,
   withAttendanceManageFlags,
 } from '@/utils/attendance/domain/attendance-score.domain'
-import {
-  findPresentsForStudent,
-  findPresentsForStudents,
-} from '@/utils/attendance/repository/attendance.repository'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { getUserProfile } from '@/utils/auth/auth'
@@ -26,8 +23,10 @@ import {
   findAllCourses,
   findAllCoursesDesc,
   findAllStudents,
+  findAttendanceSessionsByIds,
   findCourseAssignmentsForTeacherIds,
   findLessonsForAttendance,
+  findPresentsByStudentIds,
   findStudentById,
   findSubmissionsForStudents,
   findSubmittedSubmissionsForStudent,
@@ -95,6 +94,14 @@ async function withStudentDirectoryTelemetry<T>(
   }
 }
 
+async function findAttendancePresentRefsForStudents(studentIds: Array<string>) {
+  const presents = await findPresentsByStudentIds(studentIds)
+  const sessions = await findAttendanceSessionsByIds([
+    ...new Set(presents.map((present) => present.sessionId)),
+  ])
+  return buildAttendancePresentRefs(presents, sessions)
+}
+
 async function loadStudents(): Promise<{ students: Array<StudentWithStats> }> {
   const [allStudents, courses, allAssignments, allLessons] = await Promise.all([
     findAllStudents(),
@@ -107,7 +114,7 @@ async function loadStudents(): Promise<{ students: Array<StudentWithStats> }> {
   const studentIds = signedStudents.map((s) => s.id)
   const [allSubmissions, allPresents] = await Promise.all([
     findSubmissionsForStudents(studentIds),
-    findPresentsForStudents(studentIds),
+    findAttendancePresentRefsForStudents(studentIds),
   ])
 
   const submissionsByStudent = new Map<string, typeof allSubmissions>()
@@ -176,7 +183,7 @@ async function loadStudentDetail(
     findAllCoursesDesc(),
     findAllAssignments(),
     findLessonsForAttendance(),
-    findPresentsForStudent(student.id),
+    findAttendancePresentRefsForStudents([student.id]),
   ])
 
   const allAssignments = buildAssignmentDetails(

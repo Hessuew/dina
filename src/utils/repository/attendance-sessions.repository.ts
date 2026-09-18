@@ -1,4 +1,4 @@
-import { and, eq, gt, sql } from 'drizzle-orm'
+import { and, eq, gt, inArray, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { attendanceSessions } from '@/db/schema'
 
@@ -7,6 +7,18 @@ export type AttendanceSessionRow = typeof attendanceSessions.$inferSelect
 export type AttendanceSessionsTransactionClient = Parameters<
   Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
 >[0]
+
+export async function findAttendanceSessionsByIds(sessionIds: Array<string>) {
+  if (sessionIds.length === 0) return []
+  const db = await getDb()
+  return db
+    .select({
+      id: attendanceSessions.id,
+      lessonId: attendanceSessions.lessonId,
+    })
+    .from(attendanceSessions)
+    .where(inArray(attendanceSessions.id, sessionIds))
+}
 
 function firstOrNull<T>(rows: Array<T>): T | null {
   return rows.length === 0 ? null : rows[0]

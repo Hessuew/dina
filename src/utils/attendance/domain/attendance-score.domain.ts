@@ -14,6 +14,30 @@ export type PresentRef = {
   studentId: string
 }
 
+type AttendancePresentRow = {
+  studentId: string
+  sessionId: string
+}
+
+type AttendanceSessionRow = {
+  id: string
+  lessonId: string
+}
+
+export function buildAttendancePresentRefs(
+  presents: Array<AttendancePresentRow>,
+  sessions: Array<AttendanceSessionRow>,
+): Array<PresentRef> {
+  const lessonIdBySessionId = new Map(
+    sessions.map((session) => [session.id, session.lessonId]),
+  )
+
+  return presents.flatMap((present) => {
+    const lessonId = lessonIdBySessionId.get(present.sessionId)
+    return lessonId ? [{ lessonId, studentId: present.studentId }] : []
+  })
+}
+
 /**
  * Denominator = all lessons for the course (including drafts).
  * Numerator = present marks for that student on sessions for those lessons.

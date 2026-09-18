@@ -1,9 +1,22 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import type { AttendanceSessionsTransactionClient } from './attendance-sessions.repository'
 import { getDb } from '@/db'
 import { attendancePresents } from '@/db/schema'
 
 export type AttendancePresentRow = typeof attendancePresents.$inferSelect
+
+export async function findPresentsByStudentIds(studentIds: Array<string>) {
+  if (studentIds.length === 0) return []
+  const db = await getDb()
+  return db
+    .select({
+      studentId: attendancePresents.studentId,
+      sessionId: attendancePresents.sessionId,
+      checkedInAt: attendancePresents.checkedInAt,
+    })
+    .from(attendancePresents)
+    .where(inArray(attendancePresents.studentId, studentIds))
+}
 
 function firstOrNull<T>(rows: Array<T>): T | null {
   return rows.length === 0 ? null : rows[0]

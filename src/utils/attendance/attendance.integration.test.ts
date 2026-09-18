@@ -14,7 +14,8 @@ import {
   setStudentPresentService,
   startOrReopenAttendanceService,
 } from '@/utils/attendance/service/attendance.service'
-import { findPresentsForStudent } from '@/utils/attendance/repository/attendance.repository'
+import { findPresentsByStudentIds } from '@/utils/repository/attendance-presents.repository'
+import { findAttendanceSessionsByIds } from '@/utils/repository/attendance-sessions.repository'
 import { getDb } from '@/db'
 import { attendanceSessions } from '@/db/schema'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
@@ -578,8 +579,11 @@ describe('setStudentPresentService override (integration)', () => {
     expect(result.present).toBe(true)
     expect(result.created).toBe(true)
 
-    const presents = await findPresentsForStudent(studentId)
-    expect(presents.some((p) => p.lessonId === lesson1)).toBe(true)
+    const presents = await findPresentsByStudentIds([studentId])
+    const sessions = await findAttendanceSessionsByIds(
+      presents.map((present) => present.sessionId),
+    )
+    expect(sessions.some((session) => session.lessonId === lesson1)).toBe(true)
 
     const db = await getDb()
     const [session] = await db
@@ -605,8 +609,11 @@ describe('setStudentPresentService override (integration)', () => {
     )
     expect(cleared.present).toBe(false)
     expect(cleared.cleared).toBe(true)
-    const presents = await findPresentsForStudent(studentId)
-    expect(presents.some((p) => p.lessonId === lesson1)).toBe(false)
+    const presents = await findPresentsByStudentIds([studentId])
+    const sessions = await findAttendanceSessionsByIds(
+      presents.map((present) => present.sessionId),
+    )
+    expect(sessions.some((session) => session.lessonId === lesson1)).toBe(false)
   })
 
   it('admin can override; outsider teacher cannot', async () => {
