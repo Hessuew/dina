@@ -98,7 +98,10 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    bypass the one-table ownership check. Feature modules
    must not import `getDb()` or `withDbConnection()` directly; those clients
    belong to shared repositories, explicit transaction modules, and the health /
-   request-scope infrastructure.
+   request-scope infrastructure. Direct Drizzle operations on `db`/`tx` handles
+   (`query`, CRUD, `execute`, or `transaction`) are likewise forbidden outside
+   those seams, even when a handle is injected rather than imported; the
+   regression guard scans both import and operation paths.
 3. **Domain** — `domain/<feature>.domain.ts`: pure mapping/normalization/rule
    functions. Inject time/IDs as params.
 4. **Service** — `service/<feature>.service.ts`: auth + orchestration; call

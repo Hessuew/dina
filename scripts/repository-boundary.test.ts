@@ -45,6 +45,17 @@ function findTableReferences(source: string): Array<string> {
   ].map(([, table]) => table)
 }
 
+function findDirectDatabaseOperations(source: string): Array<string> {
+  return [
+    ...source.matchAll(
+      /\b(?:db|tx|database|connection|dbClient|txClient)\.query\.[A-Za-z0-9_]+/g,
+    ),
+    ...source.matchAll(
+      /\b(?:db|tx|database|connection|dbClient|txClient)\.(?:select|insert|update|delete|execute|transaction)\s*\(/g,
+    ),
+  ].map(([match]) => match)
+}
+
 function findDatabaseClientImports(source: string): Array<string> {
   return [
     ...source.matchAll(
@@ -112,6 +123,25 @@ describe('utils repository boundaries', () => {
     ).toEqual(['assignments', 'profiles', 'courses', 'lessons'])
   })
 
+  it('detects direct Drizzle operations on database handles', () => {
+    expect(
+      findDirectDatabaseOperations(
+        'db.query.profiles.findFirst(); db.select().from(profiles); tx.insert(profiles); database.execute(sql); connection.transaction(run)',
+      ),
+    ).toEqual([
+      'db.query.profiles',
+      'db.select(',
+      'tx.insert(',
+      'database.execute(',
+      'connection.transaction(',
+    ])
+    expect(
+      findDirectDatabaseOperations(
+        'supabase.auth.admin.updateUser(id); crypto.createHash("sha256").update(value)',
+      ),
+    ).toEqual([])
+  })
+
   it('keeps repository modules in the shared repository seam', () => {
     const misplacedRepositories = findRepositoryFiles(utilsDirectory)
       .map((repositoryPath) => repositoryPath.slice(utilsDirectory.length + 1))
@@ -162,6 +192,22 @@ describe('utils repository boundaries', () => {
       }))
       .filter(
         ({ file, imports }) => imports.length > 0 && !isDatabaseSeam(file),
+      )
+
+    expect(offenders).toEqual([])
+  })
+
+  it('keeps direct Drizzle operations behind repository or infrastructure seams', () => {
+    const offenders = findUtilityFiles(utilsDirectory)
+      .map((utilityPath) => ({
+        file: utilityPath.slice(utilsDirectory.length + 1),
+        operations: findDirectDatabaseOperations(
+          readFileSync(utilityPath, 'utf8'),
+        ),
+      }))
+      .filter(
+        ({ file, operations }) =>
+          operations.length > 0 && !isDatabaseSeam(file),
       )
 
     expect(offenders).toEqual([])
