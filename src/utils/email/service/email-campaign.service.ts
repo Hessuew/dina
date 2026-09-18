@@ -6,7 +6,7 @@ import type {
   SkipSummary,
 } from '@/utils/email/domain/bulk-invite.domain'
 import type { EmailType } from '@/utils/email/domain/campaigns.domain'
-import type { InvitationInsert } from '@/utils/repository/invitations.repository'
+import type { InvitationInsert } from '@/utils/repository'
 import {
   planBulkInvites,
   summarizeInviteSkips,

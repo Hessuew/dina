@@ -12,7 +12,6 @@ import type {
   UpdatePostInput,
 } from '@/schemas/post.schema'
 import type { LogLevel } from '@/utils/observability/logger'
-import type { PostRow } from '@/utils/repository/posts.repository'
 import type {
   CommentWithAuthor,
   PostChannel,
@@ -20,6 +19,7 @@ import type {
   RawPostWithDetails,
   ReactionAction,
 } from '@/utils/post/domain/post.domain'
+import type { PostRow } from '@/utils/repository'
 import {
   composeCommentsWithAuthors,
   composePostWithDetails,
@@ -29,43 +29,35 @@ import {
   transformPostWithDetails,
 } from '@/utils/post/domain/post.domain'
 import {
+  calculateCommentCounts,
+  deletePostCommentReaction,
+  deletePostReaction,
   findAllCourses,
+  findCommentForWrite,
+  findComments,
   findCourseById,
   findCourseIdsByTeacher,
   findCoursesByIds,
-  findProfilesByIds,
-} from '@/utils/repository'
-import {
-  calculateCommentCounts,
-  findCommentForWrite,
-  findComments,
-  findPostCommentRows,
-  findPostCommentRowsByPostIds,
-  insertComment,
-  softDeleteComment,
-  updateCommentContent,
-} from '@/utils/repository/post-comments.repository'
-import {
-  deletePostCommentReaction,
   findPostCommentReaction,
   findPostCommentReactionsByCommentIds,
-  insertPostCommentReaction,
-  updatePostCommentReaction,
-} from '@/utils/repository/post-comment-reactions.repository'
-import {
-  deletePostReaction,
+  findPostCommentRows,
+  findPostCommentRowsByPostIds,
+  findPostForWrite,
   findPostReaction,
   findPostReactionsByPostIds,
-  insertPostReaction,
-  updatePostReaction,
-} from '@/utils/repository/post-reactions.repository'
-import {
-  findPostForWrite,
   findPosts,
+  findProfilesByIds,
+  insertComment,
   insertPost,
+  insertPostCommentReaction,
+  insertPostReaction,
+  softDeleteComment,
   softDeletePost,
+  updateCommentContent,
+  updatePostCommentReaction,
   updatePostContent,
-} from '@/utils/repository/posts.repository'
+  updatePostReaction,
+} from '@/utils/repository'
 import { AuthorizationError, NotFoundError, isAppError } from '@/utils/errors'
 import { authz } from '@/utils/authz'
 import { getUserProfile } from '@/utils/auth/auth'

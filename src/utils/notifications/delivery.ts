@@ -6,7 +6,7 @@ import type {
 } from './types'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
-import { insertPostNotifications } from '@/utils/repository/post-notifications.repository'
+import { insertPostNotifications } from '@/utils/repository'
 
 export class DatabaseDeliveryAdapter implements DeliveryAdapter {
   async deliver(

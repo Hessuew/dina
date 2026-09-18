@@ -16,6 +16,8 @@ database transaction, but only coordinate table adapters; they do not import
 schema tables or issue Drizzle CRUD/query calls. Feature modules do not import
 `getDb()` or `withDbConnection()` directly. The repository ownership and client
 access contracts are regression-tested by `scripts/repository-boundary.test.ts`.
+Production utility callers import table adapters through `@/utils/repository`,
+the shared barrel seam, rather than reaching into individual repository files.
 
 ## What Lives Here
 

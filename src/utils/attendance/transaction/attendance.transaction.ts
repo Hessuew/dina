@@ -2,15 +2,13 @@
 import { sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import {
+  deletePresentInTransaction,
   findAttendanceSessionByLessonInTransaction,
   findOpenAttendanceSessionInTransaction,
-  insertAttendanceSessionInTransaction,
-} from '@/utils/repository/attendance-sessions.repository'
-import {
-  deletePresentInTransaction,
   findPresentInTransaction,
+  insertAttendanceSessionInTransaction,
   insertPresentInTransaction,
-} from '@/utils/repository/attendance-presents.repository'
+} from '@/utils/repository'
 
 /** Idempotent and serialized with open/close for the course. */
 export async function markPresentAtomically(values: {

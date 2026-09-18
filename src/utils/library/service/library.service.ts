@@ -10,7 +10,7 @@ import type {
 import type { LogLevel } from '@/utils/observability/logger'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import type { Role } from '@/utils/authz'
-import type { MediaRecord } from '@/utils/repository/media-library.repository'
+import type { MediaRecord } from '@/utils/repository'
 import type { SignedUpload } from '@/utils/storage/service/private-storage.service'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { logServerEvent } from '@/utils/observability/logger'
@@ -27,12 +27,12 @@ import {
 import {
   deleteMedia,
   findAllMedia,
+  findCoursesByIds,
   findMediaById,
   insertMedia,
   updateMedia,
   updateMediaThumbnailPath,
-} from '@/utils/repository/media-library.repository'
-import { findCoursesByIds } from '@/utils/repository/courses.repository'
+} from '@/utils/repository'
 import {
   AuthorizationError,
   NotFoundError,

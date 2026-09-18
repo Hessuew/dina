@@ -50,6 +50,12 @@ function findDatabaseClientImports(source: string): Array<string> {
     .filter((binding) => binding === 'getDb' || binding === 'withDbConnection')
 }
 
+function findDirectRepositoryImports(source: string): Array<string> {
+  return [
+    ...source.matchAll(/from\s*['"]@\/utils\/repository\/[^'"]+['"]/g),
+  ].map(([match]) => match)
+}
+
 function isDatabaseSeam(file: string): boolean {
   return (
     file.startsWith('repository/') ||
@@ -109,6 +115,20 @@ describe('utils repository boundaries', () => {
       }))
       .filter(
         ({ file, imports }) => imports.length > 0 && !isDatabaseSeam(file),
+      )
+
+    expect(offenders).toEqual([])
+  })
+
+  it('routes production utility callers through the shared repository barrel', () => {
+    const offenders = findUtilityFiles(utilsDirectory)
+      .map((utilityPath) => ({
+        file: utilityPath.slice(utilsDirectory.length + 1),
+        imports: findDirectRepositoryImports(readFileSync(utilityPath, 'utf8')),
+      }))
+      .filter(
+        ({ file, imports }) =>
+          !file.startsWith(`repository${sep}`) && imports.length > 0,
       )
 
     expect(offenders).toEqual([])

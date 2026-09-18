@@ -17,15 +17,13 @@ import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
   findCoursesByIds,
+  findNotificationGroups,
   findPostsByIds,
   findPublicProfilesByIds,
-} from '@/utils/repository'
-import {
-  findNotificationGroups,
   findUnreadGroupCount,
   markAllNotificationsRead,
   markNotificationGroupRead,
-} from '@/utils/repository/post-notifications.repository'
+} from '@/utils/repository'
 
 type NotificationReadLogContext = {
   action: 'markPostNotificationGroupRead' | 'markAllPostNotificationsRead'
