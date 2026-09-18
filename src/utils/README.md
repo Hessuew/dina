@@ -41,6 +41,9 @@ schemas, and other non-utility modules cannot bypass these database or repositor
 Runtime schema-table imports, including dynamic imports, are likewise reserved
 for `repository/`; domain
 modules may import schema tables only with `import type` for inferred row types.
+The boundary test scans the full application tree for runtime table imports and
+pins the two currently unused legacy schema tables (`announcements` and
+`notifications`) as the only schema definitions without a shared adapter.
 
 ## What Lives Here
 

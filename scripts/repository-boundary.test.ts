@@ -6,7 +6,7 @@ const utilsDirectory = join(process.cwd(), 'src/utils')
 const sourceDirectory = join(process.cwd(), 'src')
 const schemaDirectory = join(process.cwd(), 'src/db/schema')
 
-type SchemaTable = { symbol: string; sqlName: string }
+type SchemaTable = { module: string; symbol: string; sqlName: string }
 
 function findRepositoryFiles(directory: string): Array<string> {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -57,6 +57,41 @@ function findSchemaTableImports(source: string): Array<string> {
     .filter(Boolean)
 }
 
+function findRuntimeSchemaTableImports(
+  source: string,
+  schemaTables: Array<SchemaTable>,
+): Array<string> {
+  const tableSymbols = new Set(schemaTables.map(({ symbol }) => symbol))
+  const tableModules = new Set(
+    schemaTables.map(({ module }) => module.replace(/\.ts$/, '')),
+  )
+
+  return findRuntimeSchemaImports(source).flatMap((statement) => {
+    const importPath = statement.match(
+      /['"]((?:@\/db\/schema|(?:\.\.?\/)+db\/schema)(?:\/[^'"]+)?)['"]/,
+    )?.[1]
+    if (!importPath) return []
+
+    const isSchemaBarrel = /(?:@\/db\/schema|(?:\.\.?\/)+db\/schema)$/.test(
+      importPath,
+    )
+    const moduleName = isSchemaBarrel
+      ? undefined
+      : importPath.split('/').at(-1)?.replace(/\.ts$/, '')
+    const isTableModule = moduleName ? tableModules.has(moduleName) : false
+    const bindings = statement.match(/import\s+(?!type\b)\{([^}]*)\}/)?.[1]
+
+    if (bindings) {
+      return bindings
+        .split(',')
+        .map((binding) => binding.trim().split(/\s+as\s+/)[0])
+        .filter((binding) => tableSymbols.has(binding))
+    }
+
+    return isSchemaBarrel || isTableModule ? [statement] : []
+  })
+}
+
 function findSchemaTables(): Array<SchemaTable> {
   return readdirSync(schemaDirectory, { withFileTypes: true }).flatMap(
     (entry) => {
@@ -66,7 +101,11 @@ function findSchemaTables(): Array<SchemaTable> {
         ...source.matchAll(
           /export const (\w+)\s*=\s*pgTable\(\s*['"]([^'"]+)['"]/gs,
         ),
-      ].map(([, symbol, sqlName]) => ({ symbol, sqlName }))
+      ].map(([, symbol, sqlName]) => ({
+        module: entry.name,
+        symbol,
+        sqlName,
+      }))
     },
   )
 }
@@ -210,6 +249,8 @@ describe('utils repository boundaries', () => {
   })
 
   it('detects namespace and relative database imports', () => {
+    const schemaTables = findSchemaTables()
+
     expect(
       findDatabaseClientImports("import * as database from '@/db'"),
     ).toHaveLength(1)
@@ -232,6 +273,30 @@ describe('utils repository boundaries', () => {
     expect(
       findNonNamedSchemaImports("import { profiles } from '@/db/schema'"),
     ).toHaveLength(0)
+    expect(
+      findRuntimeSchemaTableImports(
+        "import { profiles as profileTable } from '../db/schema/profile.schema'",
+        schemaTables,
+      ),
+    ).toEqual(['profiles'])
+    expect(
+      findRuntimeSchemaTableImports(
+        "import type { profiles } from '@/db/schema'",
+        schemaTables,
+      ),
+    ).toEqual([])
+    expect(
+      findRuntimeSchemaTableImports(
+        "import * as schema from '../db/schema'",
+        schemaTables,
+      ),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeSchemaTableImports(
+        "import('@/db/schema/profile.schema')",
+        schemaTables,
+      ),
+    ).toHaveLength(1)
   })
 
   it('detects direct Drizzle table references outside relation queries', () => {
@@ -384,6 +449,7 @@ describe('utils repository boundaries', () => {
   it('keeps every utils repository bound to one table without relation joins', () => {
     const repositoryFiles = findRepositoryFiles(utilsDirectory)
     const schemaTables = findSchemaTables()
+    const schemaTableSymbols = new Set(schemaTables.map(({ symbol }) => symbol))
 
     expect(repositoryFiles.length).toBeGreaterThan(0)
     const tableOwners = new Map<string, string>()
@@ -401,6 +467,10 @@ describe('utils repository boundaries', () => {
       expect(importedTables, file).toHaveLength(1)
       const [table] = importedTables
       expect(
+        schemaTableSymbols.has(table),
+        `${table} is not a schema table`,
+      ).toBe(true)
+      expect(
         tableOwners.get(table),
         `${table} is already owned`,
       ).toBeUndefined()
@@ -416,6 +486,32 @@ describe('utils repository boundaries', () => {
         /\b(?:innerJoin|leftJoin|rightJoin|fullJoin|crossJoin)\s*\(/,
       )
     }
+
+    const schemaOnlyTables = schemaTables
+      .map(({ symbol }) => symbol)
+      .filter((symbol) => !tableOwners.has(symbol))
+      .sort()
+
+    expect(schemaOnlyTables).toEqual(['announcements', 'notifications'])
+  })
+
+  it('keeps runtime schema-table imports behind shared repositories across application source', () => {
+    const schemaTables = findSchemaTables()
+    const offenders = findSourceFilesIncludingTests(sourceDirectory)
+      .filter((sourcePath) => !sourcePath.endsWith('.test.ts'))
+      .map((sourcePath) => ({
+        file: sourcePath.slice(sourceDirectory.length + 1),
+        imports: findRuntimeSchemaTableImports(
+          readFileSync(sourcePath, 'utf8'),
+          schemaTables,
+        ),
+      }))
+      .filter(
+        ({ file, imports }) =>
+          !file.startsWith(`utils/repository${sep}`) && imports.length > 0,
+      )
+
+    expect(offenders).toEqual([])
   })
 
   it('keeps repositories independent from other runtime repository modules', () => {
