@@ -606,10 +606,9 @@ describe('getInvitationsService (integration)', () => {
     const repositoryError = new Error(
       'database connectionString secret for invitee@test.dev',
     )
-    vi.spyOn(
-      invitationsRepository,
-      'findAllInvitationsWithInviter',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(invitationsRepository, 'findAllInvitations').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(

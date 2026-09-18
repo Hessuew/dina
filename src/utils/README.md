@@ -535,7 +535,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     student-directory submission projection reused across assignments, courses,
     and student-directory services. `invitations.repository.ts` owns
     invitation-only reads and writes reused across invitation, signup, enrollment,
-    and email-campaign services. `course-teachers.repository.ts` owns
+    and email-campaign services; the admin invitation list composes invitation rows
+    with profile-only inviter rows in the invitation service. `course-teachers.repository.ts` owns
     course-teacher membership, course-teacher/profile detail reads, and writes reused
     across course, assignment, teacher, attendance, student, enrolment, and notification
     services, including the teacher-directory course assignment lookup. Enrollment team

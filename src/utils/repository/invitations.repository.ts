@@ -44,17 +44,9 @@ export async function findInvitationById(id: string) {
   })
 }
 
-export async function findAllInvitationsWithInviter() {
+export async function findAllInvitations() {
   const db = await getDb()
   return db.query.invitations.findMany({
-    with: {
-      inviter: {
-        columns: {
-          fullName: true,
-          email: true,
-        },
-      },
-    },
     orderBy: (inv, { desc }) => [desc(inv.invitedAt)],
   })
 }
