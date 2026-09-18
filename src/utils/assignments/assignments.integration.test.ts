@@ -180,10 +180,9 @@ describe('updateAssignmentService (integration)', () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const assignmentId = randomUUID()
     const repositoryError = new Error('assignment update lookup detail')
-    vi.spyOn(
-      assignmentsRepository,
-      'findAssignmentWithLesson',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findAssignmentById').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(
@@ -1318,10 +1317,9 @@ describe('gradeSubmissionService (integration)', () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const assignmentId = randomUUID()
     const repositoryError = new Error('grading assignment lookup detail')
-    vi.spyOn(
-      assignmentsRepository,
-      'findAssignmentWithLesson',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findAssignmentById').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(

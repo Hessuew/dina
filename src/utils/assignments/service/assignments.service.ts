@@ -18,7 +18,6 @@ import {
 import { canOpenUnpublishedAssignment } from '@/utils/assignments/domain/assignment-detail.domain'
 import {
   findAssignmentWithFullDetail,
-  findAssignmentWithLesson,
   findAssignmentWithLessonAndSubmissions,
   findAssignmentsForTeacherCatalog,
   findAssignmentsForTeacherLessons,
@@ -28,6 +27,7 @@ import { findLessonWithDetail } from '@/utils/assignments/repository/lessons.rep
 import { findCompletedLessonIdsForStudent } from '@/utils/courses/service/lesson-completion.service'
 import {
   deleteAssignmentById,
+  findAssignmentById,
   findAssignmentSubmissionsWithStudent,
   findCourseIdsByTeacher,
   findLessonById,
@@ -224,6 +224,16 @@ async function loadLessonForViewer(data: GetLessonInput, userId: string) {
     permissions,
     isCompleted,
   }
+}
+
+async function findAssignmentWithLesson(assignmentId: string) {
+  const assignment = await findAssignmentById(assignmentId)
+  if (!assignment) return undefined
+
+  const lesson = await findLessonById(assignment.lessonId)
+  if (!lesson) return undefined
+
+  return { ...assignment, lesson }
 }
 
 export async function getLessonService(data: GetLessonInput, userId: string) {
