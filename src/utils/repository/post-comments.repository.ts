@@ -79,6 +79,40 @@ export async function findPostCommentRows(
     .limit(limit)
 }
 
+export async function findPostCommentRowsByPostIds(
+  postIds: Array<string>,
+  limitPerPost: number,
+): Promise<Array<PostCommentRow>> {
+  if (postIds.length === 0 || limitPerPost <= 0) return []
+
+  const db = await getDb()
+  const rows = await db
+    .select({
+      id: postComments.id,
+      postId: postComments.postId,
+      authorId: postComments.authorId,
+      content: postComments.content,
+      createdAt: postComments.createdAt,
+      updatedAt: postComments.updatedAt,
+    })
+    .from(postComments)
+    .where(
+      and(
+        inArray(postComments.postId, postIds),
+        isNull(postComments.deletedAt),
+      ),
+    )
+    .orderBy(desc(postComments.createdAt), desc(postComments.id))
+
+  const counts = new Map<string, number>()
+  return rows.filter((row) => {
+    const count = counts.get(row.postId) ?? 0
+    if (count >= limitPerPost) return false
+    counts.set(row.postId, count + 1)
+    return true
+  })
+}
+
 export async function findComments(filters: {
   postId: string
   cursor?: { createdAt: string; id: string } | null

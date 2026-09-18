@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   composePostWithDetails,
+  composePostsWithDetails,
   determineReactionAction,
   transformCommentWithAuthor,
   transformPostWithDetails,
@@ -147,6 +148,42 @@ describe('composePostWithDetails', () => {
 
   it('returns undefined when the post author profile is missing', () => {
     expect(composePostWithDetails(post, [], [], [], [], [])).toBeUndefined()
+  })
+})
+
+describe('composePostsWithDetails', () => {
+  const now = new Date('2025-01-01T00:00:00Z')
+  const post = {
+    id: 'post-1',
+    authorId: 'author-1',
+    courseId: null,
+    content: 'Hello world',
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  it('composes every complete post and omits posts without an author', () => {
+    expect(
+      composePostsWithDetails(
+        [post, { ...post, id: 'post-2', authorId: 'missing-author' }],
+        [],
+        [{ id: 'author-1', fullName: 'Author', avatarUrl: null }],
+        [],
+        [],
+        [],
+      ),
+    ).toEqual([
+      {
+        id: 'post-1',
+        course: null,
+        content: 'Hello world',
+        createdAt: now,
+        updatedAt: now,
+        author: { id: 'author-1', fullName: 'Author', avatarUrl: null },
+        reactions: [],
+        comments: [],
+      },
+    ])
   })
 })
 

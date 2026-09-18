@@ -599,10 +599,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     `post-comment-reactions.repository.ts` owns standalone comment-reaction lookup and
     mutation plus batch rows for comment detail composition. `post-comments.repository.ts`
     owns standalone comment reads, counts, mutations, and table-only preview rows.
-    `posts.repository.ts` owns standalone post lookup and mutation. Post detail reads
-    compose these shared post, course, profile, comment, and reaction rows in the post
-    service; only the paginated feed remains an aggregate projection in the feature
-    repository. New post-only, post-comment-only, post-reaction-only, or
+    `posts.repository.ts` owns standalone post lookup, the paginated feed's post-row
+    selection, and mutation. Post detail and feed reads compose these shared post, course,
+    profile, comment, and reaction rows in the post service; no feature-local mixed post
+    repository remains. New post-only, post-comment-only, post-reaction-only, or
     post-comment-reaction-only access must use `@/utils/repository`. Post channel
     lists compose shared course rows with shared teacher membership rows in the post
     service.

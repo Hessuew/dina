@@ -12,23 +12,26 @@ import type {
   UpdatePostInput,
 } from '@/schemas/post.schema'
 import type { LogLevel } from '@/utils/observability/logger'
+import type { PostRow } from '@/utils/repository/posts.repository'
 import type {
   CommentWithAuthor,
   PostChannel,
   PostWithDetails,
+  RawPostWithDetails,
   ReactionAction,
 } from '@/utils/post/domain/post.domain'
 import {
   composePostWithDetails,
+  composePostsWithDetails,
   determineReactionAction,
   transformCommentWithAuthor,
   transformPostWithDetails,
 } from '@/utils/post/domain/post.domain'
-import { findPosts } from '@/utils/post/repository/post.repository'
 import {
   findAllCourses,
   findCourseById,
   findCourseIdsByTeacher,
+  findCoursesByIds,
   findProfilesByIds,
 } from '@/utils/repository'
 import {
@@ -37,6 +40,7 @@ import {
   findCommentWithAuthor,
   findComments,
   findPostCommentRows,
+  findPostCommentRowsByPostIds,
   insertComment,
   softDeleteComment,
   updateCommentContent,
@@ -57,6 +61,7 @@ import {
 } from '@/utils/repository/post-reactions.repository'
 import {
   findPostForWrite,
+  findPosts,
   insertPost,
   softDeletePost,
   updatePostContent,
@@ -294,6 +299,44 @@ export async function getPostChannelsService(actorId: string): Promise<{
   })
 }
 
+async function findPostFeedDetails(
+  posts: ReadonlyArray<PostRow>,
+): Promise<Array<RawPostWithDetails>> {
+  const postIds = posts.map((post) => post.id)
+  const [courses, postReactions, comments] = await Promise.all([
+    findCoursesByIds(
+      Array.from(
+        new Set(
+          posts.flatMap((post) => (post.courseId ? [post.courseId] : [])),
+        ),
+      ),
+    ),
+    findPostReactionsByPostIds(postIds),
+    findPostCommentRowsByPostIds(postIds, 3),
+  ])
+  const commentIds = comments.map((comment) => comment.id)
+  const [profiles, commentReactions] = await Promise.all([
+    findProfilesByIds(
+      Array.from(
+        new Set([
+          ...posts.map((post) => post.authorId),
+          ...comments.map((comment) => comment.authorId),
+        ]),
+      ),
+    ),
+    findPostCommentReactionsByCommentIds(commentIds),
+  ])
+
+  return composePostsWithDetails(
+    posts,
+    courses,
+    profiles,
+    postReactions,
+    comments,
+    commentReactions,
+  )
+}
+
 export async function getPostsService(
   data: GetPostsInput,
   actorId: string,
@@ -323,8 +366,8 @@ export async function getPostsService(
       const postIds = postsSlice.map((p) => p.id)
       const commentCounts = await calculateCommentCounts(postIds)
 
-      const transformed = postsSlice.map((p) =>
-        transformPostWithDetails(p, commentCounts[p.id] ?? 0),
+      const transformed = (await findPostFeedDetails(postsSlice)).map((post) =>
+        transformPostWithDetails(post, commentCounts[post.id] ?? 0),
       )
       const result = await signPostAvatars(transformed)
 

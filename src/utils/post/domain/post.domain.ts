@@ -125,6 +125,27 @@ export function composePostWithDetails(
   }
 }
 
+export function composePostsWithDetails(
+  posts: ReadonlyArray<PostSource>,
+  courses: ReadonlyArray<PostCourseSource>,
+  profiles: ReadonlyArray<PostProfileSource>,
+  postReactions: ReadonlyArray<PostReactionSource>,
+  comments: ReadonlyArray<PostCommentSource>,
+  commentReactions: ReadonlyArray<PostCommentReactionSource>,
+): Array<RawPostWithDetails> {
+  return posts.flatMap((post) => {
+    const composed = composePostWithDetails(
+      post,
+      courses,
+      profiles,
+      postReactions,
+      comments,
+      commentReactions,
+    )
+    return composed ? [composed] : []
+  })
+}
+
 export function transformPostWithDetails(
   post: RawPostWithDetails,
   commentCount: number,
