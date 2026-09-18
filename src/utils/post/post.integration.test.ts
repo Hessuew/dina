@@ -29,8 +29,7 @@ import {
   seedPostReaction,
   seedProfile,
 } from '@/../test/integration/seed'
-import * as postsRepository from '@/utils/repository/posts.repository'
-import * as postCommentsRepository from '@/utils/repository/post-comments.repository'
+import * as repository from '@/utils/repository'
 import * as authUtils from '@/utils/auth/auth'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
@@ -505,7 +504,7 @@ describe('post read telemetry (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const actorId = await seedProfile({ role: 'student' })
     const courseId = await seedCourse()
-    vi.spyOn(postsRepository, 'findPosts').mockRejectedValueOnce(
+    vi.spyOn(repository, 'findPosts').mockRejectedValueOnce(
       new Error('private post database secret'),
     )
 
@@ -628,11 +627,11 @@ describe('post mutation preflight telemetry (integration)', () => {
     const commentId = randomUUID()
     const postError = new Error('post database connectionString=secret')
     const commentError = new Error('comment database password=secret')
-    vi.spyOn(postsRepository, 'findPostForWrite')
+    vi.spyOn(repository, 'findPostForWrite')
       .mockRejectedValueOnce(postError)
       .mockRejectedValueOnce(postError)
       .mockRejectedValueOnce(postError)
-    vi.spyOn(postCommentsRepository, 'findCommentForWrite')
+    vi.spyOn(repository, 'findCommentForWrite')
       .mockRejectedValueOnce(commentError)
       .mockRejectedValueOnce(commentError)
 

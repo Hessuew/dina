@@ -102,6 +102,8 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    (`query`, CRUD, `execute`, or `transaction`) are likewise forbidden outside
    those seams, even when a handle is injected rather than imported; the
    regression guard scans both import and operation paths.
+   Integration tests should import repository adapters through the shared barrel
+   as well, so test spies exercise the same public seam as production callers.
 3. **Domain** — `domain/<feature>.domain.ts`: pure mapping/normalization/rule
    functions. Inject time/IDs as params.
 4. **Service** — `service/<feature>.service.ts`: auth + orchestration; call

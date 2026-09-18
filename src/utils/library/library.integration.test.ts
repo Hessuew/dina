@@ -21,7 +21,7 @@ import {
   uploadMediaThumbnailService,
 } from '@/utils/library/service/library.service'
 import { mediaLibrary } from '@/db/schema'
-import * as mediaRepository from '@/utils/repository/media-library.repository'
+import * as mediaRepository from '@/utils/repository'
 
 const mocks = vi.hoisted(() => ({
   createSignedUploadUrl: vi.fn(),

@@ -22,6 +22,14 @@ function findUtilityFiles(directory: string): Array<string> {
   })
 }
 
+function findUtilityFilesIncludingTests(directory: string): Array<string> {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) return findUtilityFilesIncludingTests(path)
+    return entry.name.endsWith('.ts') ? [path] : []
+  })
+}
+
 function findTransactionFiles(directory: string): Array<string> {
   return findUtilityFiles(directory).filter((file) =>
     file.includes(`${sep}transaction${sep}`),
@@ -237,8 +245,8 @@ describe('utils repository boundaries', () => {
     expect(offenders).toEqual([])
   })
 
-  it('routes production utility callers through the shared repository barrel', () => {
-    const offenders = findUtilityFiles(utilsDirectory)
+  it('routes all utility callers through the shared repository barrel', () => {
+    const offenders = findUtilityFilesIncludingTests(utilsDirectory)
       .map((utilityPath) => ({
         file: utilityPath.slice(utilsDirectory.length + 1),
         imports: findDirectRepositoryImports(readFileSync(utilityPath, 'utf8')),

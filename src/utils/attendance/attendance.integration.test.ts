@@ -14,16 +14,12 @@ import {
   setStudentPresentService,
   startOrReopenAttendanceService,
 } from '@/utils/attendance/service/attendance.service'
-import { findPresentsByStudentIds } from '@/utils/repository/attendance-presents.repository'
-import { findAttendanceSessionsByIds } from '@/utils/repository/attendance-sessions.repository'
+import * as repository from '@/utils/repository'
 import { getDb } from '@/db'
 import { attendanceSessions } from '@/db/schema'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
-import * as attendanceSessionsRepository from '@/utils/repository/attendance-sessions.repository'
-import * as lessonsRepository from '@/utils/repository/lessons.repository'
 import * as authUtils from '@/utils/auth/auth'
-import * as courseTeachersRepository from '@/utils/repository'
 import {
   AuthorizationError,
   ConflictError,
@@ -231,10 +227,9 @@ describe('attendance preflight telemetry (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { teacherId, courseId, lesson1 } = await seedManagedCourse()
     const repositoryError = new Error('attendance lesson database secret')
-    vi.spyOn(
-      lessonsRepository,
-      'findLessonByIdAndCourseId',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(repository, 'findLessonByIdAndCourseId').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     try {
       await expect(
@@ -272,10 +267,9 @@ describe('attendance preflight telemetry (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { teacherId, courseId } = await seedManagedCourse()
     const repositoryError = new Error('attendance teachers database secret')
-    vi.spyOn(
-      courseTeachersRepository,
-      'findTeacherIdsByCourseId',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(repository, 'findTeacherIdsByCourseId').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     try {
       await expect(
@@ -308,10 +302,9 @@ describe('attendance preflight telemetry (integration)', () => {
     const { teacherId, studentId, courseId, lesson1 } =
       await seedManagedCourse()
     const repositoryError = new Error('attendance override lesson secret')
-    vi.spyOn(
-      lessonsRepository,
-      'findLessonByIdAndCourseId',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(repository, 'findLessonByIdAndCourseId').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     try {
       await expect(
@@ -535,10 +528,9 @@ describe('attendance read telemetry (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { studentId } = await seedManagedCourse()
     const repositoryError = new Error('attendance database secret')
-    vi.spyOn(
-      attendanceSessionsRepository,
-      'findOpenAttendanceSessions',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(repository, 'findOpenAttendanceSessions').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(
@@ -579,8 +571,8 @@ describe('setStudentPresentService override (integration)', () => {
     expect(result.present).toBe(true)
     expect(result.created).toBe(true)
 
-    const presents = await findPresentsByStudentIds([studentId])
-    const sessions = await findAttendanceSessionsByIds(
+    const presents = await repository.findPresentsByStudentIds([studentId])
+    const sessions = await repository.findAttendanceSessionsByIds(
       presents.map((present) => present.sessionId),
     )
     expect(sessions.some((session) => session.lessonId === lesson1)).toBe(true)
@@ -609,8 +601,8 @@ describe('setStudentPresentService override (integration)', () => {
     )
     expect(cleared.present).toBe(false)
     expect(cleared.cleared).toBe(true)
-    const presents = await findPresentsByStudentIds([studentId])
-    const sessions = await findAttendanceSessionsByIds(
+    const presents = await repository.findPresentsByStudentIds([studentId])
+    const sessions = await repository.findAttendanceSessionsByIds(
       presents.map((present) => present.sessionId),
     )
     expect(sessions.some((session) => session.lessonId === lesson1)).toBe(false)

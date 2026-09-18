@@ -26,7 +26,6 @@ import {
   updateEnrollmentStatusService,
 } from '@/utils/enrolment/service/enrolment.service'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
-import * as enrollmentEvaluationsRepository from '@/utils/repository/enrollment-evaluations.repository'
 import * as sharedRepository from '@/utils/repository'
 import { AuthorizationError } from '@/utils/errors'
 import {
@@ -324,7 +323,7 @@ describe('setEvaluationScoreService (integration)', () => {
     const { reviewerId, enrollmentId } = await seedPeerReviewScenario()
     const repositoryError = new Error('evaluation database secret')
     const upsertSpy = vi
-      .spyOn(enrollmentEvaluationsRepository, 'upsertEnrollmentEvaluation')
+      .spyOn(sharedRepository, 'upsertEnrollmentEvaluation')
       .mockRejectedValue(repositoryError)
 
     const requests = [
