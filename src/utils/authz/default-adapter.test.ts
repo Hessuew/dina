@@ -5,7 +5,7 @@ import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 const queries = vi.hoisted(() => ({
   profiles: vi.fn(),
-  courseTeachers: vi.fn(),
+  courseTeacher: vi.fn(),
   lessons: vi.fn(),
   assignments: vi.fn(),
   submissions: vi.fn(),
@@ -17,7 +17,6 @@ vi.mock('@/db', () => ({
   getDb: vi.fn(() => ({
     query: {
       profiles: { findFirst: queries.profiles },
-      courseTeachers: { findFirst: queries.courseTeachers },
       lessons: { findFirst: queries.lessons },
       assignments: { findFirst: queries.assignments },
       submissions: { findFirst: queries.submissions },
@@ -29,6 +28,7 @@ vi.mock('@/db', () => ({
 
 vi.mock('@/utils/repository', () => ({
   findAssignmentById: queries.assignments,
+  findCourseTeacher: queries.courseTeacher,
   findLessonById: queries.lessons,
   findProfileRoleById: queries.profiles,
 }))
@@ -93,7 +93,7 @@ describe('authorization persistence telemetry', () => {
       name: 'course',
       action: 'editCourse' as const,
       resourceId: 'course-1',
-      query: queries.courseTeachers,
+      query: queries.courseTeacher,
       category: 'authorization_course_read_persistence',
     },
     {
@@ -178,7 +178,7 @@ describe('authorization persistence telemetry', () => {
   it('keeps expected resource denials out of error telemetry', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     queries.profiles.mockResolvedValueOnce({ role: 'student' })
-    queries.courseTeachers.mockResolvedValueOnce(undefined)
+    queries.courseTeacher.mockResolvedValueOnce(undefined)
 
     try {
       await expect(

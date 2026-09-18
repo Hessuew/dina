@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import {
   getCachedResourceCheck,
   getCachedRole,
@@ -7,12 +7,13 @@ import {
 } from './cache'
 import type { Action, AuthorizationService, ResourceType, Role } from './types'
 import { getDb } from '@/db'
-import { courseTeachers, postComments, posts, submissions } from '@/db/schema'
+import { postComments, posts, submissions } from '@/db/schema'
 import { AuthorizationError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
   findAssignmentById,
+  findCourseTeacher,
   findLessonById,
   findProfileRoleById,
 } from '@/utils/repository'
@@ -176,15 +177,7 @@ export class DefaultAuthorizationService implements AuthorizationService {
       lookup: 'course',
       userId,
       fields: { action, resourceType: 'course', resourceId: courseId },
-      read: async () => {
-        const db = await getDb()
-        return db.query.courseTeachers.findFirst({
-          where: and(
-            eq(courseTeachers.courseId, courseId),
-            eq(courseTeachers.teacherId, userId),
-          ),
-        })
-      },
+      read: () => findCourseTeacher(courseId, userId),
     })
 
     if (isTeacher) return true
