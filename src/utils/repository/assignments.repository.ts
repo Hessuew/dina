@@ -9,6 +9,14 @@ export async function findAllAssignments() {
   return db.query.assignments.findMany()
 }
 
+export async function findPublishedAssignments() {
+  const db = await getDb()
+  return db.query.assignments.findMany({
+    where: eq(assignments.status, 'published'),
+    orderBy: (assignment, { asc }) => [asc(assignment.dueDate)],
+  })
+}
+
 export async function findAssignmentById(assignmentId: string) {
   const db = await getDb()
   return db.query.assignments.findFirst({

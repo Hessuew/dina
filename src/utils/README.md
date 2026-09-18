@@ -518,7 +518,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     than joining those tables in a feature repository. Assignment detail loading,
     mutation, deletion, submission-count, and grading preflights likewise compose
     `findAssignmentById` with shared lesson, course, course-teacher, and submission
-    adapters in the assignment service.
+    adapters in the assignment service. Student assignment lists compose published
+    assignment, lesson, course, and student-submission rows in that service; the
+    feature repository retains only teacher-list aggregate reads.
     `submissions.repository.ts` owns
     submission-only reads and writes plus the
     student-directory submission projection reused across assignments, courses,

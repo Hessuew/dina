@@ -23,7 +23,6 @@ import {
   gradeSubmissionService,
   updateAssignmentService,
 } from '@/utils/assignments/service/assignments.service'
-import * as assignmentsRepository from '@/utils/assignments/repository/assignments.repository'
 import * as sharedRepository from '@/utils/repository'
 import * as authUtils from '@/utils/auth/auth'
 import {
@@ -1071,8 +1070,8 @@ describe('getAllAssignmentsForStudentService (integration)', () => {
       'connectionString=secret; content=private submission',
     )
     vi.spyOn(
-      assignmentsRepository,
-      'findPublishedAssignmentsForStudent',
+      sharedRepository,
+      'findPublishedAssignments',
     ).mockRejectedValueOnce(repositoryError)
 
     await expect(

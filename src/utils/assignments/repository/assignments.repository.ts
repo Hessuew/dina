@@ -1,24 +1,7 @@
 /* v8 ignore start */
 import { eq, inArray, or } from 'drizzle-orm'
 import { getDb } from '@/db'
-import { assignments, submissions } from '@/db/schema'
-
-export async function findPublishedAssignmentsForStudent(studentId: string) {
-  const db = await getDb()
-  return db.query.assignments.findMany({
-    where: eq(assignments.status, 'published'),
-    with: {
-      lesson: {
-        columns: { id: true, scheduledTime: true, title: true },
-        with: { course: true },
-      },
-      submissions: {
-        where: eq(submissions.studentId, studentId),
-      },
-    },
-    orderBy: (t, { asc }) => [asc(t.dueDate)],
-  })
-}
+import { assignments } from '@/db/schema'
 
 export async function findAssignmentsForTeacherLessons(
   lessonIds: Array<string>,

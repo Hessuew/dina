@@ -16,10 +16,10 @@ import {
   validateSubmissionWindow,
 } from '@/domain/assignment.service'
 import { canOpenUnpublishedAssignment } from '@/utils/assignments/domain/assignment-detail.domain'
+import { buildStudentAssignments } from '@/utils/assignments/domain/student-assignments.domain'
 import {
   findAssignmentsForTeacherCatalog,
   findAssignmentsForTeacherLessons,
-  findPublishedAssignmentsForStudent,
 } from '@/utils/assignments/repository/assignments.repository'
 import { findLessonWithDetail } from '@/utils/assignments/repository/lessons.repository'
 import { findCompletedLessonIdsForStudent } from '@/utils/courses/service/lesson-completion.service'
@@ -29,8 +29,12 @@ import {
   findAssignmentSubmissionsWithStudent,
   findCourseById,
   findCourseIdsByTeacher,
+  findCoursesByIds,
   findLessonById,
   findLessonIdsByCourseIds,
+  findLessonsByIds,
+  findPublishedAssignments,
+  findStudentSubmissions,
   findSubmissionByAssignmentAndStudent,
   findSubmissionById,
   findSubmissionsByAssignmentId,
@@ -273,6 +277,20 @@ async function findAssignmentWithCourseTeachers(assignmentId: string) {
       },
     },
   }
+}
+
+async function findPublishedAssignmentsForStudent(studentId: string) {
+  const assignments = await findPublishedAssignments()
+  const assignmentIds = assignments.map((assignment) => assignment.id)
+  const [lessons, submissions] = await Promise.all([
+    findLessonsByIds(assignments.map((assignment) => assignment.lessonId)),
+    findStudentSubmissions(studentId, assignmentIds),
+  ])
+  const courses = await findCoursesByIds(
+    lessons.map((lesson) => lesson.courseId),
+  )
+
+  return buildStudentAssignments(assignments, lessons, courses, submissions)
 }
 
 export async function getLessonService(data: GetLessonInput, userId: string) {
@@ -823,9 +841,7 @@ export async function getAllAssignmentsForStudentService(userId: string) {
         })
       }
 
-      const allAssignments = (
-        await findPublishedAssignmentsForStudent(userId)
-      ).filter((assignment) => assignment.lesson.course.isPublished)
+      const allAssignments = await findPublishedAssignmentsForStudent(userId)
 
       const assignmentsWithSubmission = allAssignments.map((assignment) => ({
         ...assignment,
