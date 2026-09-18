@@ -245,38 +245,6 @@ export async function findEnrollmentsPage({
 }
 
 /**
- * Fetches reviewer assignments with reviewer names and course namespace for a
- * batch of enrollments in a single query (used to build the Review heading column).
- */
-export async function findReviewerAssignmentsForEnrollments(
-  enrollmentIds: Array<string>,
-): Promise<
-  Array<{
-    enrollmentId: string
-    reviewerId: string
-    reviewerName: string
-    courseId: string | null
-  }>
-> {
-  if (enrollmentIds.length === 0) return []
-  const db = await getDb()
-  const rows = await db
-    .select({
-      enrollmentId: enrollmentReviewerAssignments.enrollmentId,
-      reviewerId: enrollmentReviewerAssignments.reviewerId,
-      reviewerName: profiles.fullName,
-      courseId: enrollmentReviewerAssignments.courseId,
-    })
-    .from(enrollmentReviewerAssignments)
-    .innerJoin(
-      profiles,
-      eq(profiles.id, enrollmentReviewerAssignments.reviewerId),
-    )
-    .where(inArray(enrollmentReviewerAssignments.enrollmentId, enrollmentIds))
-  return rows.map((r) => ({ ...r, courseId: r.courseId ?? null }))
-}
-
-/**
  * Returns all course member IDs (regular teachers + active substitutes) for a
  * given course. Used for peer-review authz and status derivation.
  */

@@ -44,7 +44,6 @@ import {
   findCourseTeamIds,
   findEnrollmentsPage,
   findPeersForReviewers,
-  findReviewerAssignmentsForEnrollments,
   findUnassignedEnrollmentIds,
   insertSubstituteWithReassignment,
 } from '@/utils/enrolment/repository/enrolment.repository'
@@ -67,6 +66,7 @@ import {
   findProfileById,
   findProfilesByIds,
   findReviewerAssignmentForEnrollment,
+  findReviewerAssignmentsByEnrollmentIds,
   insertEnrollment,
   insertInvitation,
   markEnrollmentInvitationSent,
@@ -545,6 +545,24 @@ async function findEvaluationsForEnrollments(
   return evaluations.flatMap((evaluation) => {
     const evaluatorName = namesByProfileId.get(evaluation.evaluatorId)
     return evaluatorName === undefined ? [] : [{ ...evaluation, evaluatorName }]
+  })
+}
+
+async function findReviewerAssignmentsForEnrollments(
+  enrollmentIds: Array<string>,
+) {
+  const assignments =
+    await findReviewerAssignmentsByEnrollmentIds(enrollmentIds)
+  const profiles = await findProfilesByIds(
+    assignments.map((assignment) => assignment.reviewerId),
+  )
+  const namesByProfileId = new Map(
+    profiles.map((profile) => [profile.id, profile.fullName]),
+  )
+
+  return assignments.flatMap((assignment) => {
+    const reviewerName = namesByProfileId.get(assignment.reviewerId)
+    return reviewerName === undefined ? [] : [{ ...assignment, reviewerName }]
   })
 }
 

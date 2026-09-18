@@ -20,6 +20,24 @@ export async function findReviewerAssignmentForEnrollment(
     : null
 }
 
+export async function findReviewerAssignmentsByEnrollmentIds(
+  enrollmentIds: Array<string>,
+): Promise<
+  Array<{ enrollmentId: string; reviewerId: string; courseId: string | null }>
+> {
+  if (enrollmentIds.length === 0) return []
+  const db = await getDb()
+  const rows = await db
+    .select({
+      enrollmentId: enrollmentReviewerAssignments.enrollmentId,
+      reviewerId: enrollmentReviewerAssignments.reviewerId,
+      courseId: enrollmentReviewerAssignments.courseId,
+    })
+    .from(enrollmentReviewerAssignments)
+    .where(inArray(enrollmentReviewerAssignments.enrollmentId, enrollmentIds))
+  return rows.map((row) => ({ ...row, courseId: row.courseId ?? null }))
+}
+
 export async function bulkAssignEnrollments(
   assignments: Array<
     Pick<

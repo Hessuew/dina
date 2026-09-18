@@ -580,10 +580,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     `profiles.repository.ts` rather than keeping a mixed evaluation/profile
     projection in its feature repository.
     `enrollment-reviewer-assignments.repository.ts` owns reviewer-assignment-only
-    lookup, bulk assignment, and transaction-scoped reassignment writes; enrollment
-    page filters, reviewer/profile projections, and substitution orchestration remain
-    in the enrolment feature repository. New reviewer-assignment-only access must use
-    `@/utils/repository`.
+    lookup, batch reads, bulk assignment, and transaction-scoped reassignment writes;
+    enrollment page filters and substitution orchestration remain in the enrolment
+    feature repository, while the enrolment service composes reviewer assignment rows
+    with profile names for the Review heading. New reviewer-assignment-only access
+    must use `@/utils/repository`.
     `media-library.repository.ts` owns media-library-only reads and writes reused by
     the library service; its course-enriched listing composes media rows with
     `courses.repository.ts` rather than joining tables in a feature repository.
