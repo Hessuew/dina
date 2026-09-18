@@ -1,12 +1,9 @@
-import { asc, eq } from 'drizzle-orm'
 import type {
   CreateEventInput,
   DeleteEventInput,
   UpdateEventInput,
 } from '@/schemas/event.schema'
 import type { LogLevel } from '@/utils/observability/logger'
-import { getDb } from '@/db'
-import { calendarEvents, courses } from '@/db/schema'
 import { buildEventValues } from '@/utils/event/domain/event-input.domain'
 import { resolveAdminOrTeacherAccess } from '@/utils/authz'
 import { AuthorizationError, isAppError } from '@/utils/errors'
@@ -14,6 +11,8 @@ import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
   deleteCalendarEvent,
+  findAllCalendarEvents,
+  findCoursesByIds,
   insertCalendarEvent,
   updateCalendarEvent,
 } from '@/utils/repository'
@@ -58,30 +57,25 @@ export async function getEventsService(actorId: string) {
 
   try {
     await requireEventManager(actorId)
-    const db = await getDb()
-    const rows = await db
-      .select({
-        id: calendarEvents.id,
-        title: calendarEvents.title,
-        description: calendarEvents.description,
-        startTime: calendarEvents.startTime,
-        endTime: calendarEvents.endTime,
-        location: calendarEvents.location,
-        zoomLink: calendarEvents.zoomLink,
-        category: calendarEvents.category,
-        courseId: calendarEvents.courseId,
-        courseName: courses.title,
-        createdAt: calendarEvents.createdAt,
-        updatedAt: calendarEvents.updatedAt,
-      })
-      .from(calendarEvents)
-      .leftJoin(courses, eq(calendarEvents.courseId, courses.id))
-      .orderBy(asc(calendarEvents.startTime))
-
-    const events = rows.map((row) => ({
-      ...row,
-      courseName: row.courseName ?? null,
-    }))
+    const rows = await findAllCalendarEvents()
+    const courseIds = [
+      ...new Set(rows.flatMap((row) => (row.courseId ? [row.courseId] : []))),
+    ]
+    const courseRows = await findCoursesByIds(courseIds)
+    const courseNames = new Map(
+      courseRows.map((course) => [course.id, course.title]),
+    )
+    const events = rows
+      .slice()
+      .sort(
+        (left, right) => left.startTime.getTime() - right.startTime.getTime(),
+      )
+      .map((row) => ({
+        ...row,
+        courseName: row.courseId
+          ? (courseNames.get(row.courseId) ?? null)
+          : null,
+      }))
     logCalendarEventRead('info', 'calendar_event_list_loaded', context, {
       eventCount: events.length,
       linkedEventCount: events.filter((event) => event.courseId !== null)

@@ -498,7 +498,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     It also owns the restricted staff/public identity projections used by the
     discipleship view. `calendar-events.repository.ts`
     owns calendar-event-only reads and writes reused across calendar and event services;
-    the course-joined event listing remains in the event feature service. Feature
+    the event feature service composes those rows with course names from
+    `courses.repository.ts` before returning its teacher/admin view. Feature
     repositories remain responsible for aggregate or joined queries until their
     tables are migrated to this shared layer. `account-security.repository.ts`
     owns account-security-only email-change and password-reset state reads and
