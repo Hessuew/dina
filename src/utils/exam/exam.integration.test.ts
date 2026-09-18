@@ -1102,7 +1102,7 @@ describe('exam taking (integration)', () => {
     const studentId = await seedProfile({ role: 'student' })
     const attemptId = randomUUID()
     const repositoryError = new Error('attempt lookup database secret')
-    vi.spyOn(examRepository, 'findAttemptById').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findAttemptById').mockRejectedValueOnce(
       repositoryError,
     )
 
@@ -1315,7 +1315,7 @@ describe('exam grading (integration)', () => {
       { answerId: openAnswer!.id, awardedPoints: 4 },
       teacherId,
     )
-    vi.spyOn(examRepository, 'markAttemptGraded').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'markAttemptGraded').mockRejectedValueOnce(
       new Error('finalize database secret'),
     )
     await expect(

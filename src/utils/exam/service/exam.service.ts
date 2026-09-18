@@ -15,34 +15,33 @@ import type {
 import type { LogLevel } from '@/utils/observability/logger'
 import type {
   ExamAnswerRow,
-  ExamAttemptRow,
   ExamQuestionRow,
 } from '@/utils/exam/repository/exam.repository'
-import type { ExamRow } from '@/utils/repository'
+import type { ExamAttemptRow, ExamRow } from '@/utils/repository'
 import type { StudentAttempt } from '@/utils/exam/domain/exam-redaction.domain'
 import {
   applyAutoGradeResults,
-  countAttemptsByExam,
   findAnswerById,
   findAnswersByAttempt,
-  findAttemptByExamAndStudent,
-  findAttemptById,
-  findAttemptsByStudent,
   findAttemptsForGrading,
   findExamTotalPointsMap,
   findQuestionsWithOptions,
-  insertAttemptIfAbsent,
-  markAttemptGraded,
-  markAttemptSubmittedIfInProgress,
   saveExamChanges,
   updateAnswerGrade,
   upsertAnswer,
 } from '@/utils/exam/repository/exam.repository'
 import {
+  countAttemptsByExam,
   findAllExams,
+  findAttemptByExamAndStudent,
+  findAttemptById,
+  findAttemptsByStudent,
   findExamById,
   findPublishedExams,
+  insertAttemptIfAbsent,
   insertExam,
+  markAttemptGraded,
+  markAttemptSubmittedIfInProgress,
   setExamStatus,
 } from '@/utils/repository'
 import {
