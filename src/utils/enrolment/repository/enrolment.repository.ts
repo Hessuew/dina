@@ -38,8 +38,7 @@ export type FindEnrollmentsPageInput = {
   sortBy: EnrollmentSortKey
   sortDir: 'asc' | 'desc'
   includeEmail: boolean
-  reviewerFilter?: string
-  peerEnrollmentIds?: Array<string>
+  reviewerEnrollmentIds?: Array<string>
   requireReviewerAdmitted?: boolean
 }
 
@@ -54,41 +53,15 @@ function buildEnrollmentSearchFilter(search: string, includeEmail: boolean) {
     : undefined
 }
 
-// Enrollments assigned to the viewer as their reviewer.
-function buildAssignedCondition(
-  db: Awaited<ReturnType<typeof getDb>>,
-  reviewerFilter: string | undefined,
-) {
-  return reviewerFilter !== undefined
-    ? inArray(
-        enrollments.id,
-        db
-          .select({ id: enrollmentReviewerAssignments.enrollmentId })
-          .from(enrollmentReviewerAssignments)
-          .where(eq(enrollmentReviewerAssignments.reviewerId, reviewerFilter)),
-      )
-    : undefined
-}
-
-// Peer-review candidate IDs are composed from table-specific adapters in the
-// enrolment service before this enrollment/evaluation page query runs.
-function buildPeerCondition(
-  reviewerFilter: string | undefined,
-  peerEnrollmentIds: Array<string>,
-) {
-  return reviewerFilter !== undefined && peerEnrollmentIds.length > 0
-    ? inArray(enrollments.id, peerEnrollmentIds)
-    : undefined
-}
-
+// Assigned and peer-review enrollment IDs are composed from table-specific
+// adapters in the enrolment service before this enrollment/evaluation page
+// query runs. An empty list intentionally matches no rows for a reviewer view.
 function buildReviewerCondition(
-  db: Awaited<ReturnType<typeof getDb>>,
-  reviewerFilter: string | undefined,
-  peerEnrollmentIds: Array<string>,
+  reviewerEnrollmentIds: Array<string> | undefined,
 ) {
-  const assigned = buildAssignedCondition(db, reviewerFilter)
-  const peer = buildPeerCondition(reviewerFilter, peerEnrollmentIds)
-  return assigned && peer ? or(assigned, peer) : assigned
+  return reviewerEnrollmentIds === undefined
+    ? undefined
+    : inArray(enrollments.id, reviewerEnrollmentIds)
 }
 
 function buildReviewerAdmittedCondition(
@@ -139,15 +112,14 @@ export async function findEnrollmentsPage({
   sortBy,
   sortDir,
   includeEmail,
-  reviewerFilter,
-  peerEnrollmentIds = [],
+  reviewerEnrollmentIds,
   requireReviewerAdmitted,
 }: FindEnrollmentsPageInput) {
   const db = await getDb()
 
   const whereClause = and(
     buildEnrollmentSearchFilter(search, includeEmail),
-    buildReviewerCondition(db, reviewerFilter, peerEnrollmentIds),
+    buildReviewerCondition(reviewerEnrollmentIds),
     buildReviewerAdmittedCondition(db, requireReviewerAdmitted),
   )
 

@@ -252,6 +252,14 @@ async function findCourseIdsForViewer(userId: string): Promise<Array<string>> {
   return [...new Set([...teacherCourseIds, ...substituteCourseIds])]
 }
 
+async function findReviewerEnrollmentIds(
+  reviewerId: string | undefined,
+): Promise<Array<string> | undefined> {
+  if (reviewerId === undefined) return undefined
+  const assignments = await findReviewerAssignmentsByReviewerIds([reviewerId])
+  return assignments.map(({ enrollmentId }) => enrollmentId)
+}
+
 // Legacy reviewer assignments may not have course_id; resolve those through
 // course-teacher membership before applying the peer-review page filter.
 async function findPeerEnrollmentIds(
@@ -881,6 +889,11 @@ async function loadEnrollmentsPageData(
     reviewerFilter,
     viewerCourseIds,
   )
+  const assignedEnrollmentIds = await findReviewerEnrollmentIds(reviewerFilter)
+  const reviewerEnrollmentIds =
+    assignedEnrollmentIds === undefined
+      ? undefined
+      : [...new Set([...assignedEnrollmentIds, ...peerEnrollmentIds])]
 
   const { rows, total } = await findEnrollmentsPage({
     limit: data.pageSize,
@@ -889,8 +902,7 @@ async function loadEnrollmentsPageData(
     sortBy: data.sortBy,
     sortDir: data.sortDir,
     includeEmail: isAdmin,
-    reviewerFilter,
-    peerEnrollmentIds,
+    reviewerEnrollmentIds,
     requireReviewerAdmitted,
   })
   const enrollmentIds = rows.map((row) => row.id)

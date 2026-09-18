@@ -1112,6 +1112,19 @@ describe('enrollment course membership repository seams (integration)', () => {
 })
 
 describe('teacher substitution — Review heading peer resolution (integration)', () => {
+  it('keeps assigned enrollments in the reviewer queue', async () => {
+    const { peerB, bEnrollmentId } = await seedSubstitutionScenario()
+
+    const { enrollments } = await getEnrollmentsService(
+      { ...LIST_INPUT, viewAll: false },
+      peerB,
+    )
+
+    expect(
+      enrollments.some((enrollment) => enrollment.id === bEnrollmentId),
+    ).toBe(true)
+  })
+
   it('peer slot shows the substitute, never the absent teacher (Bug 1)', async () => {
     const { adminId, bEnrollmentId } = await seedSubstitutionScenario()
 

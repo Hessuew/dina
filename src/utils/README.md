@@ -601,9 +601,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     enrollment/evaluation join in the feature repository. Enrollment page filters retain their
     final enrollment/evaluation SQL in the enrolment feature repository, while peer-review
     candidate IDs are composed in the service from shared course-teacher, reviewer-assignment,
-    and evaluation adapters. Substitution orchestration lives in the service with shared table
-    adapters. The enrolment service composes reviewer assignment rows with
-    profile names for the
+    and evaluation adapters. Reviewer queue enrollment IDs are composed in the service from
+    the shared reviewer-assignment adapter before the page query. Substitution orchestration
+    lives in the service with shared table adapters. The enrolment service composes reviewer
+    assignment rows with profile names for the
     Review heading and filters assigned enrollment IDs for distribution. New
     reviewer-assignment-only access
     must use `@/utils/repository`.
