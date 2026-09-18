@@ -502,9 +502,12 @@ This folder is primarily where TanStack Start server functions live (via `create
     repositories remain responsible for aggregate or joined queries until their
     tables are migrated to this shared layer. `account-security.repository.ts`
     owns account-security-only email-change and password-reset state reads and
-    writes; profile email-change transactions use its transaction-scoped table
-    helpers alongside transaction-scoped profile updates from
-    `profiles.repository.ts`, with the profile service preserving atomicity.
+    writes; password-reset user lookup composes `profiles.repository.ts` with
+    its account-security cooldown read instead of maintaining a feature-local
+    profile repository. Profile email-change transactions use its
+    transaction-scoped table helpers alongside transaction-scoped profile
+    updates from `profiles.repository.ts`, with the profile service preserving
+    atomicity.
     `enrollments.repository.ts` now
     owns enrollment-only reads and writes reused across enrollment and campaign
     services. `assignments.repository.ts` now

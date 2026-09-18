@@ -100,6 +100,15 @@ export async function findResetToken(tokenHash: string) {
   }
 }
 
+export async function findLastPasswordResetRequestAt(userId: string) {
+  const db = await getDb()
+  const row = await db.query.accountSecurity.findFirst({
+    where: eq(accountSecurity.profileId, userId),
+    columns: { lastResetRequestAt: true },
+  })
+  return row?.lastResetRequestAt ?? null
+}
+
 export async function upsertResetToken(
   userId: string,
   values: {

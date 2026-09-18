@@ -15,9 +15,10 @@ import {
   resolveCooldownMessage,
   resolveValidResetUser,
 } from '@/utils/password-reset/domain/password-reset-flow.domain'
-import { findProfileByEmail } from '@/utils/password-reset/repository'
 import {
   clearResetToken,
+  findLastPasswordResetRequestAt,
+  findProfileByEmail,
   findResetToken,
   incrementResetTokenAttempts,
   upsertResetToken,
@@ -52,9 +53,14 @@ function logPasswordResetEvent(
 async function findPasswordResetUser(
   email: string,
   context: PasswordResetLogContext,
-): Promise<Awaited<ReturnType<typeof findProfileByEmail>>> {
+): Promise<{ id: string; lastResetRequestAt: Date | null } | undefined> {
   try {
-    return await findProfileByEmail(email)
+    const profile = await findProfileByEmail(email)
+    if (!profile) return undefined
+    return {
+      id: profile.id,
+      lastResetRequestAt: await findLastPasswordResetRequestAt(profile.id),
+    }
   } catch (error) {
     logPasswordResetEvent('error', 'password_reset_request_failed', context, {
       errorCategory: 'password_reset_read_persistence',
@@ -144,10 +150,10 @@ export async function requestPasswordResetService(
     return { success: true, message: RESET_ANONYMOUS_MESSAGE }
   }
 
-  const lastResetRequestAt = (
-    user.accountSecurity as { lastResetRequestAt: Date } | null
-  )?.lastResetRequestAt
-  const cooldownMessage = resolveCooldownMessage(lastResetRequestAt, new Date())
+  const cooldownMessage = resolveCooldownMessage(
+    user.lastResetRequestAt,
+    new Date(),
+  )
   if (cooldownMessage) {
     return { success: false, message: cooldownMessage }
   }
