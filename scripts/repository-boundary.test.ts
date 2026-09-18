@@ -59,6 +59,12 @@ function findRuntimeSchemaImports(source: string): Array<string> {
   ].map(([match]) => match)
 }
 
+function findNonNamedSchemaImports(source: string): Array<string> {
+  return findRuntimeSchemaImports(source).filter(
+    (statement) => !/^import\s*\{/.test(statement),
+  )
+}
+
 function findDirectRepositoryImports(source: string): Array<string> {
   return [
     ...source.matchAll(/from\s*['"]@\/utils\/repository\/[^'"]+['"]/g),
@@ -88,6 +94,12 @@ describe('utils repository boundaries', () => {
     expect(
       findRuntimeSchemaImports("import type { profiles } from '@/db/schema'"),
     ).toHaveLength(0)
+    expect(
+      findNonNamedSchemaImports("import * as schema from '@/db/schema'"),
+    ).toHaveLength(1)
+    expect(
+      findNonNamedSchemaImports("import { profiles } from '@/db/schema'"),
+    ).toHaveLength(0)
   })
 
   it('keeps repository modules in the shared repository seam', () => {
@@ -111,6 +123,7 @@ describe('utils repository boundaries', () => {
       const source = readFileSync(repositoryPath, 'utf8')
       const file = repositoryPath.slice(utilsDirectory.length + 1)
       const importedTables = findSchemaTableImports(source)
+      expect(findNonNamedSchemaImports(source), file).toHaveLength(0)
       expect(importedTables, file).toHaveLength(1)
       const [table] = importedTables
       expect(

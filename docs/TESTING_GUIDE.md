@@ -92,7 +92,9 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    calls themselves.
    Keep one shared owner per table, and keep relation-backed `db.query.<table>`
    reads aligned with that repository's imported table. The boundary is
-   regression-tested by `scripts/repository-boundary.test.ts`. Feature modules
+   regression-tested by `scripts/repository-boundary.test.ts`; repositories use
+   named schema-table imports so namespace imports cannot bypass the one-table
+   ownership check. Feature modules
    must not import `getDb()` or `withDbConnection()` directly; those clients
    belong to shared repositories, explicit transaction modules, and the health /
    request-scope infrastructure.

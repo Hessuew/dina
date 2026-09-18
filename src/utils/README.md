@@ -9,7 +9,8 @@ This folder is primarily where TanStack Start server functions live (via `create
 ## Persistence seams
 
 Table persistence is centralized under `repository/`, with one shared repository
-owner per database table. Feature services compose repository reads and pure
+owner per database table. Each repository uses a named runtime import for its
+single schema table; feature services compose repository reads and pure
 domain logic; joined projections and multi-table atomic writes stay in feature
 services or explicit `transaction/` modules. Transaction modules may open a
 database transaction, but only coordinate table adapters; they do not import
