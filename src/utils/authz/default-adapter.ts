@@ -1,4 +1,3 @@
-import { eq } from 'drizzle-orm'
 import {
   getCachedResourceCheck,
   getCachedRole,
@@ -6,15 +5,15 @@ import {
   setCachedRole,
 } from './cache'
 import type { Action, AuthorizationService, ResourceType, Role } from './types'
-import { getDb } from '@/db'
-import { postComments, posts } from '@/db/schema'
 import { AuthorizationError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
   findAssignmentById,
+  findCommentForWrite,
   findCourseTeacher,
   findLessonById,
+  findPostForWrite,
   findProfileRoleById,
   findSubmissionById,
 } from '@/utils/repository'
@@ -283,13 +282,7 @@ export class DefaultAuthorizationService implements AuthorizationService {
       lookup: 'post',
       userId,
       fields: { action, resourceType: 'post', resourceId: postId },
-      read: async () => {
-        const db = await getDb()
-        return db.query.posts.findFirst({
-          where: eq(posts.id, postId),
-          columns: { authorId: true },
-        })
-      },
+      read: () => findPostForWrite(postId),
     })
 
     if (!post) return false
@@ -308,13 +301,7 @@ export class DefaultAuthorizationService implements AuthorizationService {
       lookup: 'comment',
       userId,
       fields: { action, resourceType: 'comment', resourceId: commentId },
-      read: async () => {
-        const db = await getDb()
-        return db.query.postComments.findFirst({
-          where: eq(postComments.id, commentId),
-          columns: { authorId: true },
-        })
-      },
+      read: () => findCommentForWrite(commentId),
     })
 
     if (!comment) return false

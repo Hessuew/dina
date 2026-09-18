@@ -13,22 +13,12 @@ const queries = vi.hoisted(() => ({
   comments: vi.fn(),
 }))
 
-vi.mock('@/db', () => ({
-  getDb: vi.fn(() => ({
-    query: {
-      profiles: { findFirst: queries.profiles },
-      lessons: { findFirst: queries.lessons },
-      assignments: { findFirst: queries.assignments },
-      posts: { findFirst: queries.posts },
-      postComments: { findFirst: queries.comments },
-    },
-  })),
-}))
-
 vi.mock('@/utils/repository', () => ({
   findAssignmentById: queries.assignments,
+  findCommentForWrite: queries.comments,
   findCourseTeacher: queries.courseTeacher,
   findLessonById: queries.lessons,
+  findPostForWrite: queries.posts,
   findProfileRoleById: queries.profiles,
   findSubmissionById: queries.submissions,
 }))
