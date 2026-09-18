@@ -7,10 +7,10 @@ import {
   validateSameTeacher,
   validateTeacherRoles,
 } from '@/utils/courses/domain/teacher-assignment.domain'
-import { findCourseTeachers } from '@/utils/courses/repository'
 import {
   findCourseAssignmentsByTeacherIds,
   findCourseById,
+  findCourseTeachers,
   findProfilesByIds,
   replaceTeacherAssignments,
 } from '@/utils/repository'

@@ -7,11 +7,12 @@ import {
 } from '@/utils/authz'
 import { AuthorizationError } from '@/utils/errors'
 import * as authUtils from '@/utils/auth/auth'
-import { findAllCourses, findCourseTeachers } from '@/utils/courses/repository'
+import { findAllCourses } from '@/utils/courses/repository'
 import * as coursesRepository from '@/utils/courses/repository'
 import { getDb } from '@/db'
 import {
   findCourseById,
+  findCourseTeachers,
   insertCourseInTransaction,
   insertCourseTeacherAssignmentsInTransaction,
 } from '@/utils/repository'
@@ -1692,7 +1693,7 @@ describe('getCourseTeachersService (integration)', () => {
     const userId = await seedProfile({ role: 'student' })
     const courseId = await seedCourse()
     const repositoryError = new Error('course teacher database secret')
-    vi.spyOn(coursesRepository, 'findCourseTeachers').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findCourseTeachers').mockRejectedValueOnce(
       repositoryError,
     )
 

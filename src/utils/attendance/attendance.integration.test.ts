@@ -22,7 +22,7 @@ import { withObservabilityRequest } from '@/utils/observability/request-context'
 import * as attendanceRepository from '@/utils/attendance/repository/attendance.repository'
 import * as lessonsRepository from '@/utils/repository/lessons.repository'
 import * as authUtils from '@/utils/auth/auth'
-import * as courseTeachersRepository from '@/utils/courses/repository/course-teachers.repository'
+import * as courseTeachersRepository from '@/utils/repository'
 import {
   AuthorizationError,
   ConflictError,

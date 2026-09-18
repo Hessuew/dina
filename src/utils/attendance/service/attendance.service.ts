@@ -22,7 +22,6 @@ import {
 import { getUserProfile } from '@/utils/auth/auth'
 import { hasStaffPrivilege } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
-import { findCourseTeachers } from '@/utils/courses/repository/course-teachers.repository'
 import {
   AuthorizationError,
   ConflictError,
@@ -35,6 +34,7 @@ import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
   closeAttendanceSessionAtomically,
   findCourseById,
+  findCourseTeachers,
   findLessonByIdAndCourseId,
   findOpenSessionOnCourse,
   findPresent,
