@@ -598,8 +598,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     `@/utils/repository`.
     `email-messages.repository.ts` owns email-message log inserts used by the bulk email
     campaign. `email-campaign-locks.repository.ts` owns email-campaign mutex reads and
-    writes; campaign recipient planning remains in the email feature repository because
-    it joins enrollments and invitations. New email-message-only or email-campaign-lock-only
+    writes; email campaign recipient planning composes the shared enrollment and invitation
+    table adapters in the email service. New email-message-only or email-campaign-lock-only
     access must use `@/utils/repository`.
     `exams.repository.ts` owns standalone exam reads and writes reused by exam authoring,
     publishing, and student listing. `exam-questions.repository.ts` owns question-only reads,

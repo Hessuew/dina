@@ -22,7 +22,6 @@ import {
 } from '@/utils/email/service/email-campaign.service'
 import { findInvitationByEmail } from '@/utils/repository'
 import { AuthorizationError } from '@/utils/errors'
-import * as emailCampaignRepository from '@/utils/email/repository/email-campaign.repository'
 import * as sharedRepository from '@/utils/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
@@ -127,10 +126,9 @@ describe('previewEmailCampaignService (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const planningError = new Error('private email recipient database detail')
-    vi.spyOn(
-      emailCampaignRepository,
-      'findEmailCampaignRecipients',
-    ).mockRejectedValueOnce(planningError)
+    vi.spyOn(sharedRepository, 'findApprovedEnrollments').mockRejectedValueOnce(
+      planningError,
+    )
 
     try {
       await expect(
@@ -209,10 +207,9 @@ describe('sendEmailCampaignService (integration)', () => {
     const adminId = await seedProfile({ role: 'admin' })
     await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
     const planningError = new Error('private send planning database detail')
-    vi.spyOn(
-      emailCampaignRepository,
-      'findEmailCampaignRecipients',
-    ).mockRejectedValueOnce(planningError)
+    vi.spyOn(sharedRepository, 'findApprovedEnrollments').mockRejectedValueOnce(
+      planningError,
+    )
 
     try {
       await expect(

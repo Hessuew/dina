@@ -11,9 +11,11 @@ import {
   planBulkInvites,
   summarizeInviteSkips,
 } from '@/utils/email/domain/bulk-invite.domain'
-import { resolveEmailCampaign } from '@/utils/email/domain/campaigns.domain'
+import {
+  buildEmailCampaignRecipients,
+  resolveEmailCampaign,
+} from '@/utils/email/domain/campaigns.domain'
 import { sendInvitationEmail } from '@/utils/email'
-import { findEmailCampaignRecipients } from '@/utils/email/repository/email-campaign.repository'
 import {
   calculateInvitationExpiry,
   generateSecureToken,
@@ -22,6 +24,8 @@ import {
   acquireEmailCampaignLock,
   checkEmailCampaignLockHeldBy,
   deleteInvitationById,
+  findApprovedEnrollments,
+  findInvitationsByEmails,
   findProfileById,
   getLockedEmailCampaigns,
   insertEmailMessage,
@@ -188,8 +192,15 @@ function logInvitationOutcome(input: {
 async function planCampaign(
   data: SendEmailCampaignInput,
 ): Promise<{ emailType: EmailType; plan: BulkInvitePlan }> {
-  const { emailType, cohort } = resolveEmailCampaign(data.campaign)
-  const recipients = await findEmailCampaignRecipients(cohort)
+  const { emailType } = resolveEmailCampaign(data.campaign)
+  const enrollments = await findApprovedEnrollments()
+  const invitations = await findInvitationsByEmails(
+    enrollments.map((enrollment) => enrollment.email),
+  )
+  const recipients = buildEmailCampaignRecipients({
+    enrollments,
+    invitations,
+  })
   const plan = planBulkInvites({
     recipients,
     now: new Date(),

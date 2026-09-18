@@ -1,5 +1,5 @@
 /* v8 ignore start */
-import { desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
+import { asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { enrollments } from '@/db/schema'
@@ -16,6 +16,14 @@ export async function findEnrollmentById(enrollmentId: string) {
   const db = await getDb()
   return db.query.enrollments.findFirst({
     where: eq(enrollments.id, enrollmentId),
+  })
+}
+
+export async function findApprovedEnrollments() {
+  const db = await getDb()
+  return db.query.enrollments.findMany({
+    where: eq(enrollments.status, 'approved'),
+    orderBy: (enrollment) => [asc(enrollment.createdAt)],
   })
 }
 

@@ -1,5 +1,5 @@
 /* v8 ignore start */
-import { eq, sql } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { invitations } from '@/db/schema'
 
@@ -10,6 +10,14 @@ export async function findInvitationByEmail(email: string) {
   return db.query.invitations.findFirst({
     where: eq(invitations.email, email),
     orderBy: (inv, { desc }) => [desc(inv.invitedAt)],
+  })
+}
+
+export async function findInvitationsByEmails(emails: Array<string>) {
+  if (emails.length === 0) return []
+  const db = await getDb()
+  return db.query.invitations.findMany({
+    where: inArray(invitations.email, emails),
   })
 }
 
