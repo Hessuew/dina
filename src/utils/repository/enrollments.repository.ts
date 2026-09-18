@@ -27,6 +27,14 @@ export async function findApprovedEnrollments() {
   })
 }
 
+export async function findAwaitingApprovalEnrollments() {
+  const db = await getDb()
+  return db
+    .select({ id: enrollments.id, specialCase: enrollments.specialCase })
+    .from(enrollments)
+    .where(eq(enrollments.status, 'awaiting_approval'))
+}
+
 export async function findEnrollmentsWithInvitationSent() {
   const db = await getDb()
   return db.query.enrollments.findMany({

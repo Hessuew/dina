@@ -28,6 +28,7 @@ import type {
 import type { ReviewerTeamMember } from '@/utils/enrolment/domain/reviewer-teams.domain'
 import {
   assignBulkGradeStatus,
+  buildBulkGradeRows,
   computeBulkGradePreview,
 } from '@/utils/enrolment/domain/bulk-grade.domain'
 import {
@@ -41,7 +42,6 @@ import {
 import { buildReviewerTeams } from '@/utils/enrolment/domain/reviewer-teams.domain'
 import { selectEnrollmentEmailsByGroup } from '@/utils/enrolment/domain/email-export.domain'
 import {
-  findAwaitingApprovalIdsWithSum,
   findCourseIdsForViewer,
   findCourseTeamIds,
   findEnrollmentsPage,
@@ -55,11 +55,13 @@ import {
   deleteInvitationById,
   findAbsentTeacherIdsWithActiveSubstitution,
   findAllTeacherIds,
+  findAwaitingApprovalEnrollments,
   findCourseIdByTeacherId,
   findCourseIdsByTeacherIds,
   findCourseSubstitutesByCourseIds,
   findEnrollmentById,
   findEnrollmentContactLookupCandidates,
+  findEnrollmentEvaluationScoresByEnrollmentIds,
   findEnrollmentEvaluationsByEnrollmentIds,
   findEnrollmentIdsExcludingDuplicates,
   findEnrollmentsForEmailExport,
@@ -1804,7 +1806,11 @@ async function findAwaitingApprovalRowsWithTelemetry(
   context: EnrollmentBulkGradeContext,
 ) {
   try {
-    return await findAwaitingApprovalIdsWithSum()
+    const enrollments = await findAwaitingApprovalEnrollments()
+    const evaluations = await findEnrollmentEvaluationScoresByEnrollmentIds(
+      enrollments.map((enrollment) => enrollment.id),
+    )
+    return buildBulkGradeRows(enrollments, evaluations)
   } catch (error) {
     logEnrollmentBulkGradeMutation(
       'error',

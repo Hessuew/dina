@@ -323,31 +323,4 @@ export async function insertSubstituteWithReassignment(
   return { reassigned }
 }
 
-/**
- * Returns the evaluation sum (score total across all evaluators) and specialCase flag
- * for every `awaiting_approval` enrollment. Used by the bulk-grade feature to preview
- * and execute score-threshold-based status decisions. SpecialCase enrollments are
- * auto-approved regardless of score.
- */
-export async function findAwaitingApprovalIdsWithSum(): Promise<
-  Array<{ id: string; sum: number; specialCase: boolean }>
-> {
-  const db = await getDb()
-  const evalSum = sql<number>`coalesce(sum(${enrollmentEvaluations.score}), 0)::int`
-  const rows = await db
-    .select({
-      id: enrollments.id,
-      sum: evalSum,
-      specialCase: enrollments.specialCase,
-    })
-    .from(enrollments)
-    .leftJoin(
-      enrollmentEvaluations,
-      eq(enrollmentEvaluations.enrollmentId, enrollments.id),
-    )
-    .where(eq(enrollments.status, 'awaiting_approval'))
-    .groupBy(enrollments.id)
-  return rows
-}
-
 /* v8 ignore end */

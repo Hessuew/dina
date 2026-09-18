@@ -1,9 +1,33 @@
 import { describe, expect, it } from 'vitest'
 import {
   assignBulkGradeStatus,
+  buildBulkGradeRows,
   computeBulkGradePreview,
   validateBulkGradeThresholds,
 } from './bulk-grade.domain'
+
+describe('buildBulkGradeRows', () => {
+  it('groups evaluation scores by enrollment and defaults missing scores to zero', () => {
+    expect(
+      buildBulkGradeRows(
+        [
+          { id: 'first', specialCase: false },
+          { id: 'second', specialCase: true },
+          { id: 'unscored', specialCase: false },
+        ],
+        [
+          { enrollmentId: 'first', score: 3 },
+          { enrollmentId: 'first', score: null },
+          { enrollmentId: 'second', score: 4 },
+        ],
+      ),
+    ).toEqual([
+      { id: 'first', specialCase: false, sum: 3 },
+      { id: 'second', specialCase: true, sum: 4 },
+      { id: 'unscored', specialCase: false, sum: 0 },
+    ])
+  })
+})
 
 describe('validateBulkGradeThresholds', () => {
   it('returns empty array for valid 2-band thresholds', () => {

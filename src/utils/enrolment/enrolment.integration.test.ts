@@ -1423,14 +1423,29 @@ describe('bulk enrollment grading telemetry (integration)', () => {
     { id: 'enrollment-rejected', sum: 1, specialCase: false },
     { id: 'enrollment-special', sum: 0, specialCase: true },
   ]
+  const evaluations = [
+    { enrollmentId: 'enrollment-approved', score: 4 },
+    { enrollmentId: 'enrollment-approved', score: 4 },
+    { enrollmentId: 'enrollment-waitlisted', score: 2 },
+    { enrollmentId: 'enrollment-waitlisted', score: 3 },
+    { enrollmentId: 'enrollment-rejected', score: 1 },
+  ]
+
+  function mockBulkGradeRead() {
+    vi.spyOn(
+      sharedRepository,
+      'findAwaitingApprovalEnrollments',
+    ).mockResolvedValue(rows)
+    vi.spyOn(
+      sharedRepository,
+      'findEnrollmentEvaluationScoresByEnrollmentIds',
+    ).mockResolvedValue(evaluations)
+  }
 
   it('logs a redacted preview event with thresholds and safe counters', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
-    vi.spyOn(
-      enrollmentRepository,
-      'findAwaitingApprovalIdsWithSum',
-    ).mockResolvedValue(rows)
+    mockBulkGradeRead()
 
     const result = await bulkGradeEnrollmentsService(
       { approveMin: 6, waitlistMin: 3, dryRun: true },
@@ -1469,10 +1484,7 @@ describe('bulk enrollment grading telemetry (integration)', () => {
   it('logs execute completion and applies threshold statuses', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
-    vi.spyOn(
-      enrollmentRepository,
-      'findAwaitingApprovalIdsWithSum',
-    ).mockResolvedValue(rows)
+    mockBulkGradeRead()
     const updateSpy = vi
       .spyOn(sharedRepository, 'bulkUpdateEnrollmentStatuses')
       .mockResolvedValue()
@@ -1498,7 +1510,7 @@ describe('bulk enrollment grading telemetry (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const readSpy = vi
-      .spyOn(enrollmentRepository, 'findAwaitingApprovalIdsWithSum')
+      .spyOn(sharedRepository, 'findAwaitingApprovalEnrollments')
       .mockRejectedValueOnce(new Error('bulk grade read secret'))
 
     await expect(
@@ -1506,6 +1518,10 @@ describe('bulk enrollment grading telemetry (integration)', () => {
     ).rejects.toThrow('bulk grade read secret')
 
     readSpy.mockResolvedValue(rows)
+    vi.spyOn(
+      sharedRepository,
+      'findEnrollmentEvaluationScoresByEnrollmentIds',
+    ).mockResolvedValue(evaluations)
     vi.spyOn(
       sharedRepository,
       'bulkUpdateEnrollmentStatuses',
