@@ -18,6 +18,8 @@ schema tables or issue Drizzle CRUD/query calls. Feature modules do not import
 access contracts are regression-tested by `scripts/repository-boundary.test.ts`.
 Production utility callers import table adapters through `@/utils/repository`,
 the shared barrel seam, rather than reaching into individual repository files.
+Runtime schema-table imports are likewise reserved for `repository/`; domain
+modules may import schema tables only with `import type` for inferred row types.
 
 ## What Lives Here
 

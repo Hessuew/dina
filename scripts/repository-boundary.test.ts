@@ -50,6 +50,17 @@ function findDatabaseClientImports(source: string): Array<string> {
     .filter((binding) => binding === 'getDb' || binding === 'withDbConnection')
 }
 
+function findRuntimeSchemaImports(source: string): Array<string> {
+  return [
+    ...source.matchAll(
+      /import\s*(?!type\b)\{([^}]*)\}\s*from\s*['"]@\/db\/schema['"]/g,
+    ),
+  ]
+    .flatMap(([, bindings]) => bindings.split(','))
+    .map((binding) => binding.trim())
+    .filter((binding) => binding.length > 0 && !binding.startsWith('type '))
+}
+
 function findDirectRepositoryImports(source: string): Array<string> {
   return [
     ...source.matchAll(/from\s*['"]@\/utils\/repository\/[^'"]+['"]/g),
@@ -115,6 +126,20 @@ describe('utils repository boundaries', () => {
       }))
       .filter(
         ({ file, imports }) => imports.length > 0 && !isDatabaseSeam(file),
+      )
+
+    expect(offenders).toEqual([])
+  })
+
+  it('keeps runtime schema imports behind shared repositories', () => {
+    const offenders = findUtilityFiles(utilsDirectory)
+      .map((utilityPath) => ({
+        file: utilityPath.slice(utilsDirectory.length + 1),
+        imports: findRuntimeSchemaImports(readFileSync(utilityPath, 'utf8')),
+      }))
+      .filter(
+        ({ file, imports }) =>
+          !file.startsWith(`repository${sep}`) && imports.length > 0,
       )
 
     expect(offenders).toEqual([])
