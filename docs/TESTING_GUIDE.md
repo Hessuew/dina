@@ -90,11 +90,12 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    Transaction modules may open `db.transaction`, but must coordinate table
    adapters rather than importing schema tables or issuing Drizzle CRUD/query
    calls themselves.
-   Keep one shared owner per table, and keep relation-backed `db.query.<table>`
-   reads aligned with that repository's imported table. The boundary is
-   regression-tested by `scripts/repository-boundary.test.ts`; repositories use
-   named schema-table imports so namespace imports cannot bypass the one-table
-   ownership check. Feature modules
+   Keep one shared owner per table, and keep every Drizzle table reference —
+   including relation-backed `db.query.<table>` reads, direct CRUD calls, and
+   `.from(<table>)` sources — aligned with that repository's imported table.
+   The boundary is regression-tested by `scripts/repository-boundary.test.ts`;
+   repositories use named schema-table imports so namespace imports cannot
+   bypass the one-table ownership check. Feature modules
    must not import `getDb()` or `withDbConnection()` directly; those clients
    belong to shared repositories, explicit transaction modules, and the health /
    request-scope infrastructure.

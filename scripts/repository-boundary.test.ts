@@ -37,10 +37,12 @@ function findSchemaTableImports(source: string): Array<string> {
     .filter(Boolean)
 }
 
-function findQueryTableReferences(source: string): Array<string> {
-  return [...source.matchAll(/\b(?:db|tx)\.query\.([A-Za-z0-9_]+)/g)].map(
-    ([, table]) => table,
-  )
+function findTableReferences(source: string): Array<string> {
+  return [
+    ...source.matchAll(/\b(?:db|tx)\.query\.([A-Za-z0-9_]+)/g),
+    ...source.matchAll(/\b(?:insert|update|delete)\(\s*([A-Za-z0-9_]+)\s*\)/g),
+    ...source.matchAll(/\.from\(\s*([A-Za-z0-9_]+)\s*\)/g),
+  ].map(([, table]) => table)
 }
 
 function findDatabaseClientImports(source: string): Array<string> {
@@ -102,6 +104,14 @@ describe('utils repository boundaries', () => {
     ).toHaveLength(0)
   })
 
+  it('detects direct Drizzle table references outside relation queries', () => {
+    expect(
+      findTableReferences(
+        'db.insert(assignments).values(values); db.update(profiles); db.delete(courses); db.select().from(lessons)',
+      ),
+    ).toEqual(['assignments', 'profiles', 'courses', 'lessons'])
+  })
+
   it('keeps repository modules in the shared repository seam', () => {
     const misplacedRepositories = findRepositoryFiles(utilsDirectory)
       .map((repositoryPath) => repositoryPath.slice(utilsDirectory.length + 1))
@@ -132,7 +142,7 @@ describe('utils repository boundaries', () => {
       ).toBeUndefined()
       tableOwners.set(table, file)
       expect(
-        findQueryTableReferences(source).every((queryTable) =>
+        findTableReferences(source).every((queryTable) =>
           importedTables.includes(queryTable),
         ),
         `${file} queries a table it does not import`,
