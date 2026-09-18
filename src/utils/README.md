@@ -598,9 +598,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     lookup, batch reads, bulk assignment, and transaction-scoped reassignment writes;
     bulk-grade reads compose awaiting-approval enrollment rows with evaluation rows
     in the enrolment service through `bulk-grade.domain.ts`; they do not retain an
-    enrollment/evaluation join in the feature repository. Enrollment page filters remain in
-    the enrolment feature repository, while substitution orchestration lives in the service
-    with shared table adapters. The enrolment service composes reviewer assignment rows with
+    enrollment/evaluation join in the feature repository. Enrollment page filters retain their
+    final enrollment/evaluation SQL in the enrolment feature repository, while peer-review
+    candidate IDs are composed in the service from shared course-teacher, reviewer-assignment,
+    and evaluation adapters. Substitution orchestration lives in the service with shared table
+    adapters. The enrolment service composes reviewer assignment rows with
     profile names for the
     Review heading and filters assigned enrollment IDs for distribution. New
     reviewer-assignment-only access

@@ -70,8 +70,10 @@ import {
   findProfileById,
   findProfilesByIds,
   findReviewerAssignmentForEnrollment,
+  findReviewerAssignmentsByCourseIds,
   findReviewerAssignmentsByEnrollmentIds,
   findReviewerAssignmentsByReviewerIdInTransaction,
+  findReviewerAssignmentsByReviewerIds,
   findSubstituteTeacherIdsByCourse,
   findTeacherIdsByCourseId,
   findTeacherIdsByCourseIds,
@@ -248,6 +250,55 @@ async function findCourseIdsForViewer(userId: string): Promise<Array<string>> {
     findCourseIdsBySubstituteTeacher(userId),
   ])
   return [...new Set([...teacherCourseIds, ...substituteCourseIds])]
+}
+
+// Legacy reviewer assignments may not have course_id; resolve those through
+// course-teacher membership before applying the peer-review page filter.
+async function findPeerEnrollmentIds(
+  reviewerId: string | undefined,
+  viewerCourseIds: Array<string>,
+): Promise<Array<string>> {
+  if (reviewerId === undefined || viewerCourseIds.length === 0) return []
+
+  const courseTeacherRows = await findTeacherIdsByCourseIds(viewerCourseIds)
+  const teacherIds = [...new Set(courseTeacherRows.map((row) => row.teacherId))]
+  const [courseAssignments, legacyAssignments] = await Promise.all([
+    findReviewerAssignmentsByCourseIds(viewerCourseIds),
+    findReviewerAssignmentsByReviewerIds(teacherIds),
+  ])
+  const courseIdSet = new Set(viewerCourseIds)
+  const teacherIdSet = new Set(teacherIds)
+  const assignmentsByEnrollmentId = new Map(
+    [...courseAssignments, ...legacyAssignments]
+      .filter(
+        (assignment) =>
+          assignment.reviewerId !== reviewerId &&
+          ((assignment.courseId !== null &&
+            courseIdSet.has(assignment.courseId)) ||
+            (assignment.courseId === null &&
+              teacherIdSet.has(assignment.reviewerId))),
+      )
+      .map((assignment) => [assignment.enrollmentId, assignment]),
+  )
+  if (assignmentsByEnrollmentId.size === 0) return []
+
+  const evaluations = await findEnrollmentEvaluationsByEnrollmentIds([
+    ...assignmentsByEnrollmentId.keys(),
+  ])
+  const stronglyScored = new Set(
+    evaluations
+      .filter(
+        (evaluation) => evaluation.score !== null && evaluation.score >= 3,
+      )
+      .map(
+        (evaluation) => `${evaluation.enrollmentId}:${evaluation.evaluatorId}`,
+      ),
+  )
+  return [...assignmentsByEnrollmentId.values()]
+    .filter((assignment) =>
+      stronglyScored.has(`${assignment.enrollmentId}:${assignment.reviewerId}`),
+    )
+    .map((assignment) => assignment.enrollmentId)
 }
 
 async function withEnrollmentReadTelemetry<T>(args: {
@@ -826,6 +877,10 @@ async function loadEnrollmentsPageData(
   // Course IDs the viewer is on (as teacher or active substitute).
   const viewerCourseIds =
     reviewerFilter !== undefined ? await findCourseIdsForViewer(userId) : []
+  const peerEnrollmentIds = await findPeerEnrollmentIds(
+    reviewerFilter,
+    viewerCourseIds,
+  )
 
   const { rows, total } = await findEnrollmentsPage({
     limit: data.pageSize,
@@ -835,7 +890,7 @@ async function loadEnrollmentsPageData(
     sortDir: data.sortDir,
     includeEmail: isAdmin,
     reviewerFilter,
-    viewerCourseIds,
+    peerEnrollmentIds,
     requireReviewerAdmitted,
   })
   const enrollmentIds = rows.map((row) => row.id)

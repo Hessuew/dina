@@ -7,9 +7,6 @@ import {
   getTableColumns,
   ilike,
   inArray,
-  isNotNull,
-  isNull,
-  ne,
   or,
   sql,
 } from 'drizzle-orm'
@@ -17,7 +14,6 @@ import type { SQL } from 'drizzle-orm'
 import type { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
 import {
-  courseTeachers,
   enrollmentEvaluations,
   enrollmentReviewerAssignments,
   enrollments,
@@ -43,7 +39,7 @@ export type FindEnrollmentsPageInput = {
   sortDir: 'asc' | 'desc'
   includeEmail: boolean
   reviewerFilter?: string
-  viewerCourseIds?: Array<string>
+  peerEnrollmentIds?: Array<string>
   requireReviewerAdmitted?: boolean
 }
 
@@ -74,75 +70,24 @@ function buildAssignedCondition(
     : undefined
 }
 
-// Peer-review queue: enrollments on the viewer's course team where a
-// different reviewer (team member) has scored 3 or 4.
-// Scoped through enrollment_reviewer_assignments.course_id (ADR 0007 rev 2).
-// Legacy rows with course_id = NULL fall back to a LEFT JOIN on courseTeachers.
+// Peer-review candidate IDs are composed from table-specific adapters in the
+// enrolment service before this enrollment/evaluation page query runs.
 function buildPeerCondition(
-  db: Awaited<ReturnType<typeof getDb>>,
   reviewerFilter: string | undefined,
-  viewerCourseIds: Array<string>,
+  peerEnrollmentIds: Array<string>,
 ) {
-  return reviewerFilter !== undefined && viewerCourseIds.length > 0
-    ? inArray(
-        enrollments.id,
-        db
-          .select({ id: enrollmentReviewerAssignments.enrollmentId })
-          .from(enrollmentReviewerAssignments)
-          .innerJoin(
-            enrollmentEvaluations,
-            and(
-              eq(
-                enrollmentEvaluations.enrollmentId,
-                enrollmentReviewerAssignments.enrollmentId,
-              ),
-              eq(
-                enrollmentEvaluations.evaluatorId,
-                enrollmentReviewerAssignments.reviewerId,
-              ),
-            ),
-          )
-          .leftJoin(
-            courseTeachers,
-            and(
-              isNull(enrollmentReviewerAssignments.courseId),
-              eq(
-                courseTeachers.teacherId,
-                enrollmentReviewerAssignments.reviewerId,
-              ),
-            ),
-          )
-          .where(
-            and(
-              or(
-                and(
-                  isNotNull(enrollmentReviewerAssignments.courseId),
-                  inArray(
-                    enrollmentReviewerAssignments.courseId,
-                    viewerCourseIds,
-                  ),
-                ),
-                and(
-                  isNull(enrollmentReviewerAssignments.courseId),
-                  isNotNull(courseTeachers.courseId),
-                  inArray(courseTeachers.courseId, viewerCourseIds),
-                ),
-              ),
-              ne(enrollmentReviewerAssignments.reviewerId, reviewerFilter),
-              inArray(enrollmentEvaluations.score, [3, 4]),
-            ),
-          ),
-      )
+  return reviewerFilter !== undefined && peerEnrollmentIds.length > 0
+    ? inArray(enrollments.id, peerEnrollmentIds)
     : undefined
 }
 
 function buildReviewerCondition(
   db: Awaited<ReturnType<typeof getDb>>,
   reviewerFilter: string | undefined,
-  viewerCourseIds: Array<string>,
+  peerEnrollmentIds: Array<string>,
 ) {
   const assigned = buildAssignedCondition(db, reviewerFilter)
-  const peer = buildPeerCondition(db, reviewerFilter, viewerCourseIds)
+  const peer = buildPeerCondition(reviewerFilter, peerEnrollmentIds)
   return assigned && peer ? or(assigned, peer) : assigned
 }
 
@@ -195,14 +140,14 @@ export async function findEnrollmentsPage({
   sortDir,
   includeEmail,
   reviewerFilter,
-  viewerCourseIds = [],
+  peerEnrollmentIds = [],
   requireReviewerAdmitted,
 }: FindEnrollmentsPageInput) {
   const db = await getDb()
 
   const whereClause = and(
     buildEnrollmentSearchFilter(search, includeEmail),
-    buildReviewerCondition(db, reviewerFilter, viewerCourseIds),
+    buildReviewerCondition(db, reviewerFilter, peerEnrollmentIds),
     buildReviewerAdmittedCondition(db, requireReviewerAdmitted),
   )
 

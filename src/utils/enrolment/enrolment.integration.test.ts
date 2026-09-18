@@ -1158,6 +1158,27 @@ describe('teacher substitution — Review heading peer resolution (integration)'
     expect(row?.reviewHeading.reviewerHasEvaluated).toBe(true)
     expect(row?.reviewHeading.peerFirstName).toBe('Bella')
   })
+
+  it('keeps legacy reviewer assignments without course IDs in the peer queue', async () => {
+    const viewerId = await seedProfile({ role: 'teacher' })
+    const reviewerId = await seedProfile({ role: 'teacher' })
+    const courseId = await seedCourse()
+    await seedCourseTeacher(courseId, viewerId)
+    await seedCourseTeacher(courseId, reviewerId)
+    const enrollmentId = await seedEnrollment({ status: 'pending' })
+    await seedReviewerAssignment(enrollmentId, reviewerId)
+
+    await setEvaluationScoreService({ enrollmentId, score: 4 }, reviewerId)
+
+    const { enrollments } = await getEnrollmentsService(
+      { ...LIST_INPUT, viewAll: false },
+      viewerId,
+    )
+
+    expect(
+      enrollments.some((enrollment) => enrollment.id === enrollmentId),
+    ).toBe(true)
+  })
 })
 
 describe('active substitution lookup authorization (integration)', () => {

@@ -38,6 +38,42 @@ export async function findReviewerAssignmentsByEnrollmentIds(
   return rows.map((row) => ({ ...row, courseId: row.courseId ?? null }))
 }
 
+export async function findReviewerAssignmentsByCourseIds(
+  courseIds: Array<string>,
+): Promise<
+  Array<{ enrollmentId: string; reviewerId: string; courseId: string | null }>
+> {
+  if (courseIds.length === 0) return []
+  const db = await getDb()
+  const rows = await db
+    .select({
+      enrollmentId: enrollmentReviewerAssignments.enrollmentId,
+      reviewerId: enrollmentReviewerAssignments.reviewerId,
+      courseId: enrollmentReviewerAssignments.courseId,
+    })
+    .from(enrollmentReviewerAssignments)
+    .where(inArray(enrollmentReviewerAssignments.courseId, courseIds))
+  return rows.map((row) => ({ ...row, courseId: row.courseId ?? null }))
+}
+
+export async function findReviewerAssignmentsByReviewerIds(
+  reviewerIds: Array<string>,
+): Promise<
+  Array<{ enrollmentId: string; reviewerId: string; courseId: string | null }>
+> {
+  if (reviewerIds.length === 0) return []
+  const db = await getDb()
+  const rows = await db
+    .select({
+      enrollmentId: enrollmentReviewerAssignments.enrollmentId,
+      reviewerId: enrollmentReviewerAssignments.reviewerId,
+      courseId: enrollmentReviewerAssignments.courseId,
+    })
+    .from(enrollmentReviewerAssignments)
+    .where(inArray(enrollmentReviewerAssignments.reviewerId, reviewerIds))
+  return rows.map((row) => ({ ...row, courseId: row.courseId ?? null }))
+}
+
 export async function findReviewerAssignmentsByReviewerIdInTransaction(
   tx: EnrollmentReviewerAssignmentsTransactionClient,
   reviewerId: string,
