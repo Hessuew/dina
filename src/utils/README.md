@@ -672,9 +672,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     session rows in `attendance-score.domain.ts`, and the student open-session read
     composes shared session, course, lesson, and present rows in the attendance service.
     Course attendance state composes shared lesson and session rows through
-    `course-attendance-state.domain.ts`; the attendance feature repository retains
-    only orchestration that spans both attendance tables. New table-only attendance
-    or lesson access must use `@/utils/repository`.
+    `course-attendance-state.domain.ts`; the attendance transaction module retains
+    only atomic orchestration that spans both attendance tables. New table-only
+    attendance or lesson access must use `@/utils/repository`.
   - Lesson detail reads require a persisted profile and expose unpublished
     lessons/draft assignments only to course teachers or admins; non-managers
     receive published lesson/assignment data only.

@@ -10,7 +10,7 @@ import {
   clearPresentOverrideAtomically,
   markPresentAtomically,
   setPresentOverrideAtomically,
-} from '@/utils/attendance/repository/attendance.repository'
+} from '@/utils/attendance/transaction/attendance.transaction'
 import { mergeCourseLessonsWithSessions } from '@/utils/attendance/domain/course-attendance-state.domain'
 import { buildOpenAttendanceRows } from '@/utils/attendance/domain/open-attendance.domain'
 import { assertCanOpenSession } from '@/utils/attendance/domain/attendance-session.domain'
