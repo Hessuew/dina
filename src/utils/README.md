@@ -555,7 +555,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     post-reaction lookup and mutation, while `post-comment-reactions.repository.ts`
     owns standalone comment-reaction lookup and mutation; post-feed/detail reaction
     projections remain in the post feature repository. New post-reaction-only or
-    comment-reaction-only access must use `@/utils/repository`.
+    comment-reaction-only access must use `@/utils/repository`. `post-comments.repository.ts`
+    owns standalone comment reads, counts, and mutations; post-feed/detail comment
+    projections remain in the post feature repository. New post-comment-only access must
+    use `@/utils/repository`.
     `discipleship-assignments.repository.ts` owns
     discipleship-assignment-only reads and writes reused by the discipleship and Zoom Link
     services. `discipleship-groups.repository.ts` owns group-only reads and writes used by

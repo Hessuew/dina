@@ -30,6 +30,7 @@ import {
   seedProfile,
 } from '@/../test/integration/seed'
 import * as postRepository from '@/utils/post/repository/post.repository'
+import * as postCommentsRepository from '@/utils/repository/post-comments.repository'
 import * as authUtils from '@/utils/auth/auth'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
@@ -631,7 +632,7 @@ describe('post mutation preflight telemetry (integration)', () => {
       .mockRejectedValueOnce(postError)
       .mockRejectedValueOnce(postError)
       .mockRejectedValueOnce(postError)
-    vi.spyOn(postRepository, 'findCommentForWrite')
+    vi.spyOn(postCommentsRepository, 'findCommentForWrite')
       .mockRejectedValueOnce(commentError)
       .mockRejectedValueOnce(commentError)
 

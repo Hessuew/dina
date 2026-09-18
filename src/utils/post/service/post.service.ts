@@ -24,21 +24,23 @@ import {
   transformPostWithDetails,
 } from '@/utils/post/domain/post.domain'
 import {
-  calculateCommentCounts,
   findChannels,
-  findCommentForWrite,
-  findCommentWithAuthor,
-  findComments,
   findPostById,
   findPostForWrite,
   findPosts,
-  insertComment,
   insertPost,
-  softDeleteComment,
   softDeletePost,
-  updateCommentContent,
   updatePostContent,
 } from '@/utils/post/repository/post.repository'
+import {
+  calculateCommentCounts,
+  findCommentForWrite,
+  findCommentWithAuthor,
+  findComments,
+  insertComment,
+  softDeleteComment,
+  updateCommentContent,
+} from '@/utils/repository/post-comments.repository'
 import {
   deletePostCommentReaction,
   findPostCommentReaction,
