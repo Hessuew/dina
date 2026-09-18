@@ -18,10 +18,6 @@ import {
   insertPresentInTransaction,
 } from '@/utils/repository/attendance-presents.repository'
 
-function firstOrNull<T>(rows: Array<T>): T | null {
-  return rows.length === 0 ? null : rows[0]
-}
-
 export async function findOpenSessionsForStudent(now: Date, studentId: string) {
   const db = await getDb()
   return db
@@ -73,20 +69,6 @@ export async function findLessonsWithSessionsByCourseId(courseId: string) {
     .orderBy(lessons.orderIndex)
 }
 
-export async function findLessonInCourse(lessonId: string, courseId: string) {
-  const db = await getDb()
-  const rows = await db
-    .select({
-      id: lessons.id,
-      title: lessons.title,
-      courseId: lessons.courseId,
-    })
-    .from(lessons)
-    .where(and(eq(lessons.id, lessonId), eq(lessons.courseId, courseId)))
-    .limit(1)
-  return firstOrNull(rows)
-}
-
 /** Idempotent and serialized with open/close for the course. */
 export async function markPresentAtomically(values: {
   courseId: string
@@ -120,18 +102,6 @@ export async function markPresentAtomically(values: {
     if (!present) throw new Error('Present missing after conflict')
     return { session, present, created: false as const }
   })
-}
-
-export async function findAllLessonsForAttendance() {
-  const db = await getDb()
-  return db
-    .select({
-      id: lessons.id,
-      title: lessons.title,
-      orderIndex: lessons.orderIndex,
-      courseId: lessons.courseId,
-    })
-    .from(lessons)
 }
 
 export async function findPresentsForStudents(studentIds: Array<string>) {

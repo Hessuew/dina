@@ -1,5 +1,5 @@
 /* v8 ignore start */
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { lessons } from '@/db/schema'
 
@@ -8,6 +8,35 @@ export async function findLessonById(lessonId: string) {
   return db.query.lessons.findFirst({
     where: eq(lessons.id, lessonId),
   })
+}
+
+export async function findLessonByIdAndCourseId(
+  lessonId: string,
+  courseId: string,
+) {
+  const db = await getDb()
+  const rows = await db
+    .select({
+      id: lessons.id,
+      title: lessons.title,
+      courseId: lessons.courseId,
+    })
+    .from(lessons)
+    .where(and(eq(lessons.id, lessonId), eq(lessons.courseId, courseId)))
+    .limit(1)
+  return rows.length === 0 ? null : rows[0]
+}
+
+export async function findLessonsForAttendance() {
+  const db = await getDb()
+  return db
+    .select({
+      id: lessons.id,
+      title: lessons.title,
+      orderIndex: lessons.orderIndex,
+      courseId: lessons.courseId,
+    })
+    .from(lessons)
 }
 
 export async function findLessonIdsByCourseIds(courseIds: Array<string>) {

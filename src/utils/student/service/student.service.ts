@@ -18,7 +18,6 @@ import {
   withAttendanceManageFlags,
 } from '@/utils/attendance/domain/attendance-score.domain'
 import {
-  findAllLessonsForAttendance,
   findPresentsForStudent,
   findPresentsForStudents,
 } from '@/utils/attendance/repository/attendance.repository'
@@ -31,6 +30,7 @@ import {
   findAllCourses,
   findAllCoursesDesc,
   findAllStudents,
+  findLessonsForAttendance,
   findStudentById,
   findSubmittedSubmissionsForStudent,
 } from '@/utils/repository'
@@ -102,7 +102,7 @@ async function loadStudents(): Promise<{ students: Array<StudentWithStats> }> {
     findAllStudents(),
     findAllCourses(),
     findAllAssignments(),
-    findAllLessonsForAttendance(),
+    findLessonsForAttendance(),
   ])
 
   const signedStudents = await signAvatarRows(allStudents)
@@ -178,7 +178,7 @@ async function loadStudentDetail(
     [
       findAllCoursesDesc(),
       findAssignmentsWithDetails(),
-      findAllLessonsForAttendance(),
+      findLessonsForAttendance(),
       findPresentsForStudent(student.id),
     ],
   )

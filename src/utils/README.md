@@ -580,10 +580,11 @@ This folder is primarily where TanStack Start server functions live (via `create
     WhatsApp-campaign-lock-only access must use `@/utils/repository`.
     `attendance-sessions.repository.ts` owns attendance-session
     reads and atomic open/close persistence, while `attendance-presents.repository.ts`
-    owns present-only reads and transaction-scoped present writes. Attendance feature
-    repositories retain only course/lesson/student projections and orchestration that
-    spans both attendance tables; new table-only attendance access must use
-    `@/utils/repository`.
+    owns present-only reads and transaction-scoped present writes. The shared
+    `lessons.repository.ts` also owns attendance's lesson-only validation and
+    directory reads. Attendance feature repositories retain only course/lesson/student
+    projections and orchestration that spans both attendance tables; new table-only
+    attendance or lesson access must use `@/utils/repository`.
   - Lesson detail reads require a persisted profile and expose unpublished
     lessons/draft assignments only to course teachers or admins; non-managers
     receive published lesson/assignment data only.

@@ -8,7 +8,6 @@ import type {
 import type { LogLevel } from '@/utils/observability/logger'
 import {
   clearPresentOverrideAtomically,
-  findLessonInCourse,
   findLessonsWithSessionsByCourseId,
   findOpenSessionsForStudent,
   markPresentAtomically,
@@ -36,6 +35,7 @@ import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
   closeAttendanceSessionAtomically,
   findCourseById,
+  findLessonByIdAndCourseId,
   findOpenSessionOnCourse,
   findPresent,
   openAttendanceSessionAtomically,
@@ -338,10 +338,10 @@ export async function startOrReopenAttendanceService(
     failureCategory: 'attendance_session_open_persistence',
     startedAt: performance.now(),
   }
-  let lesson: Awaited<ReturnType<typeof findLessonInCourse>>
+  let lesson: Awaited<ReturnType<typeof findLessonByIdAndCourseId>>
   try {
     await requireCourseManage(userId, data.courseId)
-    lesson = await findLessonInCourse(data.lessonId, data.courseId)
+    lesson = await findLessonByIdAndCourseId(data.lessonId, data.courseId)
     if (!lesson) {
       throw new NotFoundError('Lesson not found on this course', {
         code: 'LESSON_NOT_FOUND',
@@ -610,7 +610,7 @@ export async function setStudentPresentService(
       })
     }
 
-    const lesson = await findLessonInCourse(data.lessonId, data.courseId)
+    const lesson = await findLessonByIdAndCourseId(data.lessonId, data.courseId)
     if (!lesson) {
       throw new NotFoundError('Lesson not found on this course', {
         code: 'LESSON_NOT_FOUND',

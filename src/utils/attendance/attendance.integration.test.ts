@@ -20,6 +20,7 @@ import { attendanceSessions } from '@/db/schema'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 import * as attendanceRepository from '@/utils/attendance/repository/attendance.repository'
+import * as lessonsRepository from '@/utils/repository/lessons.repository'
 import * as authUtils from '@/utils/auth/auth'
 import * as courseTeachersRepository from '@/utils/courses/repository/course-teachers.repository'
 import {
@@ -229,9 +230,10 @@ describe('attendance preflight telemetry (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { teacherId, courseId, lesson1 } = await seedManagedCourse()
     const repositoryError = new Error('attendance lesson database secret')
-    vi.spyOn(attendanceRepository, 'findLessonInCourse').mockRejectedValueOnce(
-      repositoryError,
-    )
+    vi.spyOn(
+      lessonsRepository,
+      'findLessonByIdAndCourseId',
+    ).mockRejectedValueOnce(repositoryError)
 
     try {
       await expect(
@@ -305,9 +307,10 @@ describe('attendance preflight telemetry (integration)', () => {
     const { teacherId, studentId, courseId, lesson1 } =
       await seedManagedCourse()
     const repositoryError = new Error('attendance override lesson secret')
-    vi.spyOn(attendanceRepository, 'findLessonInCourse').mockRejectedValueOnce(
-      repositoryError,
-    )
+    vi.spyOn(
+      lessonsRepository,
+      'findLessonByIdAndCourseId',
+    ).mockRejectedValueOnce(repositoryError)
 
     try {
       await expect(
