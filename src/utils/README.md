@@ -24,8 +24,9 @@ Direct Drizzle operations on `db`/`tx` handles are also reserved for those seams
 including when a handle is injected rather than imported; feature services may
 compose repository results but may not issue `query`, CRUD, `execute`, or
 `transaction` calls themselves. The regression guard covers formatted and
-optional-chaining member access plus computed `db['select']` /
-`db.query['table']` access as well as the usual dot notation.
+optional-chaining member access plus computed `db['select']`,
+`db['query'].table`, and `db.query['table']` access as well as the usual dot
+notation.
 All utility callers, including integration tests, import table adapters through
 `@/utils/repository`, the shared barrel seam, rather than reaching into individual
 repository files through aliased, relative, dynamic-import, CommonJS, or feature-named `*.repository` paths.
