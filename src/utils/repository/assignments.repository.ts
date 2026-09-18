@@ -4,6 +4,11 @@ import type { AssignmentStatus } from '@/types/database.types'
 import { getDb } from '@/db'
 import { assignments } from '@/db/schema'
 
+export async function findAllAssignments() {
+  const db = await getDb()
+  return db.query.assignments.findMany()
+}
+
 export async function findAssignmentById(assignmentId: string) {
   const db = await getDb()
   return db.query.assignments.findFirst({

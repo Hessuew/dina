@@ -1,5 +1,5 @@
-import { findAllAssignments, findAssignmentsWithDetails } from '../repository'
 import {
+  buildAssignmentDetails,
   buildAssignmentsWithSubmissions,
   buildStudentWithStats,
 } from '../domain/student.domain'
@@ -22,6 +22,7 @@ import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { getUserProfile } from '@/utils/auth/auth'
 import { hasStaffPrivilege, resolveAdminOrTeacherAccess } from '@/utils/authz'
 import {
+  findAllAssignments,
   findAllCourses,
   findAllCoursesDesc,
   findAllStudents,
@@ -171,13 +172,17 @@ async function loadStudentDetail(
   student: NonNullable<Awaited<ReturnType<typeof findStudentById>>>,
   actorId: string,
 ): Promise<{ student: StudentDetailWithAssignments }> {
-  const [enrollments, allAssignments, allLessons, presents] = await Promise.all(
-    [
-      findAllCoursesDesc(),
-      findAssignmentsWithDetails(),
-      findLessonsForAttendance(),
-      findPresentsForStudent(student.id),
-    ],
+  const [enrollments, assignments, allLessons, presents] = await Promise.all([
+    findAllCoursesDesc(),
+    findAllAssignments(),
+    findLessonsForAttendance(),
+    findPresentsForStudent(student.id),
+  ])
+
+  const allAssignments = buildAssignmentDetails(
+    assignments,
+    allLessons,
+    enrollments,
   )
 
   const assignmentIds = allAssignments.map((a) => a.assignmentId)

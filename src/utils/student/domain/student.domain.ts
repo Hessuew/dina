@@ -24,6 +24,25 @@ type AssignmentRow = {
   lessonTitle: string
 }
 
+type AssignmentRecord = {
+  id: string
+  title: string
+  dueDate: Date
+  maxGrade: number | null
+  lessonId: string
+}
+
+type LessonRecord = {
+  id: string
+  title: string
+  courseId: string
+}
+
+type CourseRecord = {
+  id: string
+  title: string
+}
+
 type SubmissionRow = {
   id: string
   assignmentId: string
@@ -90,6 +109,38 @@ export function buildStudentWithStats(
     },
     attendanceByCourse,
   }
+}
+
+export function buildAssignmentDetails(
+  assignments: Array<AssignmentRecord>,
+  lessons: Array<LessonRecord>,
+  courses: Array<CourseRecord>,
+): Array<AssignmentRow> {
+  const lessonsById = new Map(lessons.map((lesson) => [lesson.id, lesson]))
+  const coursesById = new Map(courses.map((course) => [course.id, course]))
+
+  return assignments
+    .flatMap((assignment) => {
+      const lesson = lessonsById.get(assignment.lessonId)
+      const course = lesson ? coursesById.get(lesson.courseId) : undefined
+      if (!lesson || !course) return []
+      return [
+        {
+          assignmentId: assignment.id,
+          assignmentTitle: assignment.title,
+          assignmentDueDate: assignment.dueDate,
+          assignmentMaxGrade: assignment.maxGrade,
+          courseId: course.id,
+          courseTitle: course.title,
+          lessonId: lesson.id,
+          lessonTitle: lesson.title,
+        },
+      ]
+    })
+    .sort(
+      (first, second) =>
+        first.assignmentDueDate.getTime() - second.assignmentDueDate.getTime(),
+    )
 }
 
 export function buildAssignmentsWithSubmissions(

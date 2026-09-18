@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildAssignmentDetails,
   buildAssignmentsWithSubmissions,
   buildAverageGradeByCourse,
   buildStudentWithStats,
@@ -189,6 +190,66 @@ describe('buildStudentWithStats', () => {
       0,
     )
     expect(result.assignmentStats.averageGradeByCourse).toEqual([])
+  })
+})
+
+describe('buildAssignmentDetails', () => {
+  it('joins shared table rows and orders by due date', () => {
+    const result = buildAssignmentDetails(
+      [
+        {
+          id: 'a-2',
+          title: 'Later',
+          dueDate: new Date('2099-02-01'),
+          maxGrade: 80,
+          lessonId: 'l-1',
+        },
+        {
+          id: 'a-1',
+          title: 'Earlier',
+          dueDate: new Date('2099-01-01'),
+          maxGrade: 100,
+          lessonId: 'l-1',
+        },
+      ],
+      [{ id: 'l-1', title: 'Lesson 1', courseId: 'c-1' }],
+      [{ id: 'c-1', title: 'Course 1' }],
+    )
+
+    expect(result.map((assignment) => assignment.assignmentId)).toEqual([
+      'a-1',
+      'a-2',
+    ])
+    expect(result[0]).toMatchObject({
+      assignmentTitle: 'Earlier',
+      courseTitle: 'Course 1',
+      lessonTitle: 'Lesson 1',
+    })
+  })
+
+  it('omits assignments whose lesson or course is missing', () => {
+    const result = buildAssignmentDetails(
+      [
+        {
+          id: 'a-1',
+          title: 'Missing lesson',
+          dueDate: new Date('2099-01-01'),
+          maxGrade: 100,
+          lessonId: 'missing-lesson',
+        },
+        {
+          id: 'a-2',
+          title: 'Missing course',
+          dueDate: new Date('2099-01-02'),
+          maxGrade: 100,
+          lessonId: 'l-1',
+        },
+      ],
+      [{ id: 'l-1', title: 'Lesson 1', courseId: 'missing-course' }],
+      [],
+    )
+
+    expect(result).toEqual([])
   })
 })
 
