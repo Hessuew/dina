@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildCalendarEvents,
+  composeCalendarEventRows,
   deriveCalendarCourses,
   deriveUpcomingEvents,
   deriveUpcomingSpecials,
@@ -45,6 +46,7 @@ const makeAssignment = (
     id: string
     title: string
     dueDate: Date
+    lessonId: string
     courseId: string
     courseName: string
     description: string | null
@@ -54,6 +56,7 @@ const makeAssignment = (
   id: 'a-1',
   title: 'Assignment 1',
   dueDate: new Date('2024-06-02T10:00:00Z'),
+  lessonId: 'l-1',
   courseId: 'c-1',
   courseName: 'Course 1',
   description: null,
@@ -167,6 +170,48 @@ describe('buildCalendarEvents', () => {
     expect(result[0].type).toBe('assignment')
     expect(result[1].type).toBe('special')
     expect(result[2].type).toBe('lesson')
+  })
+})
+
+describe('composeCalendarEventRows', () => {
+  it('adds published course names and excludes unpublished course content', () => {
+    const result = composeCalendarEventRows(
+      [
+        makeLesson({ courseId: 'published' }),
+        makeLesson({ id: 'l-2', courseId: 'draft' }),
+      ],
+      [
+        makeAssignment({ lessonId: 'l-1' }),
+        makeAssignment({ id: 'a-2', lessonId: 'l-2' }),
+      ],
+      [
+        { id: 'published', title: 'Published course', isPublished: true },
+        { id: 'draft', title: 'Draft course', isPublished: false },
+      ],
+    )
+
+    expect(result.lessons).toEqual([
+      expect.objectContaining({
+        courseId: 'published',
+        courseName: 'Published course',
+      }),
+    ])
+    expect(result.assignments).toEqual([
+      expect.objectContaining({
+        courseId: 'published',
+        courseName: 'Published course',
+      }),
+    ])
+  })
+
+  it('drops assignments whose lesson or course is unavailable', () => {
+    const result = composeCalendarEventRows(
+      [],
+      [makeAssignment({ lessonId: 'missing' })],
+      [{ id: 'published', title: 'Published course', isPublished: true }],
+    )
+
+    expect(result).toEqual({ lessons: [], assignments: [] })
   })
 })
 
