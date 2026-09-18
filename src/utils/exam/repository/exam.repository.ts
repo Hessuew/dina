@@ -1,15 +1,14 @@
 import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
+import { updateExamInTransaction } from '@/utils/repository'
 import {
   examAnswers,
   examAttempts,
   examQuestionOptions,
   examQuestions,
-  exams,
   profiles,
 } from '@/db/schema'
 
-export type ExamRow = typeof exams.$inferSelect
 export type ExamQuestionRow = typeof examQuestions.$inferSelect
 export type ExamQuestionOptionRow = typeof examQuestionOptions.$inferSelect
 export type ExamAttemptRow = typeof examAttempts.$inferSelect
@@ -23,47 +22,6 @@ type QuestionOptionInput = {
 }
 
 /* v8 ignore start */
-export async function insertExam(
-  data: Omit<typeof exams.$inferInsert, 'id' | 'createdAt' | 'updatedAt'>,
-): Promise<ExamRow> {
-  const db = await getDb()
-  const [exam] = await db.insert(exams).values(data).returning()
-  return exam
-}
-
-export async function findExamById(
-  examId: string,
-): Promise<ExamRow | undefined> {
-  const db = await getDb()
-  const [exam] = await db.select().from(exams).where(eq(exams.id, examId))
-  return exam
-}
-
-export async function findAllExams(): Promise<Array<ExamRow>> {
-  const db = await getDb()
-  return db.select().from(exams).orderBy(asc(exams.opensAt))
-}
-
-export async function findPublishedExams(): Promise<Array<ExamRow>> {
-  const db = await getDb()
-  return db
-    .select()
-    .from(exams)
-    .where(eq(exams.status, 'published'))
-    .orderBy(asc(exams.opensAt))
-}
-
-export async function setExamStatus(
-  examId: string,
-  status: ExamRow['status'],
-): Promise<void> {
-  const db = await getDb()
-  await db
-    .update(exams)
-    .set({ status, updatedAt: new Date() })
-    .where(eq(exams.id, examId))
-}
-
 export async function findQuestionsWithOptions(examId: string): Promise<{
   questions: Array<ExamQuestionRow>
   options: Array<ExamQuestionOptionRow>
@@ -187,22 +145,6 @@ async function findMissingQuestionId(
   return referencedIds.find((questionId) => !existingIds.has(questionId))
 }
 
-async function updateExamInTransaction(
-  tx: TransactionClient,
-  data: SaveExamChangesData,
-): Promise<void> {
-  await tx
-    .update(exams)
-    .set({
-      title: data.title,
-      durationMinutes: data.durationMinutes,
-      opensAt: data.opensAt,
-      closesAt: data.closesAt,
-      updatedAt: new Date(),
-    })
-    .where(eq(exams.id, data.examId))
-}
-
 async function deleteQuestionsInTransaction(
   tx: TransactionClient,
   data: SaveExamChangesData,
@@ -282,7 +224,13 @@ export async function saveExamChanges(
   return db.transaction(async (tx) => {
     const missingQuestionId = await findMissingQuestionId(tx, data)
     if (missingQuestionId) return { missingQuestionId }
-    await updateExamInTransaction(tx, data)
+    await updateExamInTransaction(tx, {
+      examId: data.examId,
+      title: data.title,
+      durationMinutes: data.durationMinutes,
+      opensAt: data.opensAt,
+      closesAt: data.closesAt,
+    })
     await deleteQuestionsInTransaction(tx, data)
     await saveQuestionsInTransaction(tx, data)
     return {}

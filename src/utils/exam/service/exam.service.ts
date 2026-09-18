@@ -17,32 +17,34 @@ import type {
   ExamAnswerRow,
   ExamAttemptRow,
   ExamQuestionRow,
-  ExamRow,
 } from '@/utils/exam/repository/exam.repository'
+import type { ExamRow } from '@/utils/repository'
 import type { StudentAttempt } from '@/utils/exam/domain/exam-redaction.domain'
 import {
   applyAutoGradeResults,
   countAttemptsByExam,
-  findAllExams,
   findAnswerById,
   findAnswersByAttempt,
   findAttemptByExamAndStudent,
   findAttemptById,
   findAttemptsByStudent,
   findAttemptsForGrading,
-  findExamById,
   findExamTotalPointsMap,
-  findPublishedExams,
   findQuestionsWithOptions,
   insertAttemptIfAbsent,
-  insertExam,
   markAttemptGraded,
   markAttemptSubmittedIfInProgress,
   saveExamChanges,
-  setExamStatus,
   updateAnswerGrade,
   upsertAnswer,
 } from '@/utils/exam/repository/exam.repository'
+import {
+  findAllExams,
+  findExamById,
+  findPublishedExams,
+  insertExam,
+  setExamStatus,
+} from '@/utils/repository'
 import {
   computeDeadline,
   isAttemptExpired,

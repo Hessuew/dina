@@ -38,6 +38,7 @@ import {
   submitAttemptService,
 } from '@/utils/exam/service/exam.service'
 import * as examRepository from '@/utils/exam/repository/exam.repository'
+import * as sharedRepository from '@/utils/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 import {
   AuthorizationError,
@@ -294,7 +295,7 @@ describe('exam authoring (integration)', () => {
     const questionId = await seedExamQuestion({ examId, orderIndex: 0 })
     await seedExamOption({ questionId, orderIndex: 0, isCorrect: true })
     await seedExamOption({ questionId, orderIndex: 1 })
-    vi.spyOn(examRepository, 'setExamStatus').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'setExamStatus').mockRejectedValueOnce(
       new Error('database connection secret'),
     )
 
@@ -811,7 +812,7 @@ describe('exam taking (integration)', () => {
     const studentId = await seedProfile({ role: 'student' })
     const { examId } = await seedPublishedMcExam(teacherId)
     const repositoryError = new Error('exam lookup database secret')
-    vi.spyOn(examRepository, 'findExamById').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findExamById').mockRejectedValueOnce(
       repositoryError,
     )
 
