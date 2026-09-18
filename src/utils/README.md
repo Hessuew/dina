@@ -538,12 +538,14 @@ This folder is primarily where TanStack Start server functions live (via `create
     invitation-only reads and writes reused across invitation, signup, enrollment,
     and email-campaign services; the admin invitation list composes invitation rows
     with profile-only inviter rows in the invitation service. `course-teachers.repository.ts` owns
-    course-teacher membership, course-teacher/profile detail reads, and writes reused
+    course-teacher membership rows and writes reused
     across course, assignment, teacher, attendance, student, enrolment, and notification
     services, including the teacher-directory course assignment lookup. Enrollment team
     and viewer-course membership composition uses its table-only
     adapters; broader joined course/lesson/media/teacher views remain in their feature
-    repositories. New profile-only,
+    repositories. Course-teacher detail reads compose ordered rows with
+    `profiles.repository.ts` in the course service; attendance authorization uses teacher
+    IDs directly. New profile-only,
     course-teachers-only,
     Staff Privilege-only access must use `@/utils/repository`; its
     `staff-privileges.repository.ts` owns the shared table-only reads and writes reused

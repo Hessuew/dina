@@ -275,7 +275,7 @@ describe('attendance preflight telemetry (integration)', () => {
     const repositoryError = new Error('attendance teachers database secret')
     vi.spyOn(
       courseTeachersRepository,
-      'findCourseTeachers',
+      'findTeacherIdsByCourseId',
     ).mockRejectedValueOnce(repositoryError)
 
     try {

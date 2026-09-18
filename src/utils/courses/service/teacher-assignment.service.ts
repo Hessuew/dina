@@ -10,7 +10,8 @@ import {
 import {
   findCourseAssignmentsByTeacherIds,
   findCourseById,
-  findCourseTeachers,
+  findCourseTeacherRows,
+  findCoursesByIds,
   findProfilesByIds,
   replaceTeacherAssignments,
 } from '@/utils/repository'
@@ -169,10 +170,19 @@ export async function getCourseTeachersService(
     context,
     async () => {
       await getUserProfile(userId)
-      const courseTeachersList = await findCourseTeachers(data.courseId)
+      const courseTeachersList = await findCourseTeacherRows(data.courseId)
+      const profiles = await findProfilesByIds(
+        courseTeachersList.map((courseTeacher) => courseTeacher.teacherId),
+      )
+      const profilesById = new Map(
+        profiles.map((profile) => [profile.id, profile]),
+      )
       return {
         teachers: await signAvatarRows(
-          courseTeachersList.map((ct) => ct.teacher),
+          courseTeachersList.flatMap((courseTeacher) => {
+            const profile = profilesById.get(courseTeacher.teacherId)
+            return profile ? [profile] : []
+          }),
         ),
       }
     },

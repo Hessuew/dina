@@ -35,7 +35,6 @@ import {
   closeAttendanceSessionAtomically,
   findAttendanceSessionsByLessonIds,
   findCourseById,
-  findCourseTeachers,
   findLessonByIdAndCourseId,
   findLessonsByCourseId,
   findOpenAttendanceSessions,
@@ -44,6 +43,7 @@ import {
   findPresentsByStudentAndSessionIds,
   findPublishedCoursesByIds,
   findPublishedLessonsByIds,
+  findTeacherIdsByCourseId,
   openAttendanceSessionAtomically,
 } from '@/utils/repository'
 
@@ -192,10 +192,10 @@ async function requireCourseManage(userId: string, courseId: string) {
       details: { courseId },
     })
   }
-  const teachers = await findCourseTeachers(courseId)
+  const teacherIds = await findTeacherIdsByCourseId(courseId)
   const permissions = calculateEntityPermissions(
     profile.role,
-    { teacherIds: teachers.map((t) => t.teacherId) },
+    { teacherIds },
     userId,
   )
   if (!permissions.canManage) {
@@ -276,12 +276,12 @@ async function loadCourseAttendanceState(data: CourseIdInput, userId: string) {
   const [openSession, lessonRows, courseTeachers] = await Promise.all([
     findOpenSessionOnCourse(data.courseId, now),
     loadLessonsWithSessions(data.courseId),
-    findCourseTeachers(data.courseId),
+    findTeacherIdsByCourseId(data.courseId),
   ])
 
   const { canManage } = calculateEntityPermissions(
     profile.role,
-    { teacherIds: courseTeachers.map((t) => t.teacherId) },
+    { teacherIds: courseTeachers },
     userId,
   )
   const lessons = mapLessonsWithSessions(

@@ -34,37 +34,15 @@ export async function findCourseAssignmentsForTeacherIds(
   const db = await getDb()
   return db.query.courseTeachers.findMany({
     where: inArray(courseTeachers.teacherId, teacherIds),
-    with: {
-      course: {
-        columns: {
-          id: true,
-          title: true,
-          description: true,
-          isPublished: true,
-          createdAt: true,
-          orderIndex: true,
-        },
-      },
-    },
     orderBy: (ct, { desc }) => [desc(ct.createdAt)],
   })
 }
 
-export async function findCourseTeachers(courseId: string) {
+export async function findCourseTeacherRows(courseId: string) {
   const db = await getDb()
   return db.query.courseTeachers.findMany({
     where: eq(courseTeachers.courseId, courseId),
     orderBy: (ct, { asc }) => [asc(ct.createdAt)],
-    with: {
-      teacher: {
-        columns: {
-          id: true,
-          fullName: true,
-          email: true,
-          avatarUrl: true,
-        },
-      },
-    },
   })
 }
 

@@ -47,7 +47,14 @@ export async function findCoursesByIds(courseIds: Array<string>) {
   const db = await getDb()
   return db.query.courses.findMany({
     where: inArray(courses.id, courseIds),
-    columns: { id: true, title: true, orderIndex: true, isPublished: true },
+    columns: {
+      id: true,
+      title: true,
+      description: true,
+      createdAt: true,
+      orderIndex: true,
+      isPublished: true,
+    },
   })
 }
 

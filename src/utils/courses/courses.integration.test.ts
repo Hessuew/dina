@@ -13,7 +13,7 @@ import * as sharedRepository from '@/utils/repository'
 import { getDb } from '@/db'
 import {
   findCourseById,
-  findCourseTeachers,
+  findTeacherIdsByCourseId,
   insertCourseInTransaction,
   insertCourseTeacherAssignmentsInTransaction,
 } from '@/utils/repository'
@@ -694,8 +694,8 @@ describe('createCourseService (integration)', () => {
       adminId,
     )
 
-    const teachers = await findCourseTeachers(course.id)
-    expect(teachers).toHaveLength(2)
+    const teacherIds = await findTeacherIdsByCourseId(course.id)
+    expect(teacherIds).toHaveLength(2)
   })
 
   it('admin creates a course with an admin in the teacher pair', async () => {
@@ -714,8 +714,8 @@ describe('createCourseService (integration)', () => {
       creatorAdminId,
     )
 
-    const teachers = await findCourseTeachers(course.id)
-    expect(teachers.map((entry) => entry.teacher.id)).toEqual(
+    const teacherIds = await findTeacherIdsByCourseId(course.id)
+    expect(teacherIds).toEqual(
       expect.arrayContaining([teacherAdminId, teacherId]),
     )
   })
@@ -860,8 +860,8 @@ describe('updateCourseService (integration)', () => {
       courseId,
       status: 'success',
     })
-    const teachers = await findCourseTeachers(courseId)
-    expect(teachers).toHaveLength(2)
+    const teacherIds = await findTeacherIdsByCourseId(courseId)
+    expect(teacherIds).toHaveLength(2)
   })
 
   it('course teacher (non-admin) may update via editCourse permission', async () => {
@@ -1635,12 +1635,11 @@ describe('assignTeachersToCourse (integration)', () => {
 
     await assignTeachersToCourse(courseId, t1, t2)
 
-    const teachers = await findCourseTeachers(courseId)
-    const ids = teachers.map((ct) => ct.teacher.id)
-    expect(ids).toHaveLength(2)
-    expect(ids).toContain(t1)
-    expect(ids).toContain(t2)
-    expect(ids).not.toContain(oldTeacher)
+    const teacherIds = await findTeacherIdsByCourseId(courseId)
+    expect(teacherIds).toHaveLength(2)
+    expect(teacherIds).toContain(t1)
+    expect(teacherIds).toContain(t2)
+    expect(teacherIds).not.toContain(oldTeacher)
   })
 })
 
@@ -1693,7 +1692,7 @@ describe('getCourseTeachersService (integration)', () => {
     const userId = await seedProfile({ role: 'student' })
     const courseId = await seedCourse()
     const repositoryError = new Error('course teacher database secret')
-    vi.spyOn(sharedRepository, 'findCourseTeachers').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findCourseTeacherRows').mockRejectedValueOnce(
       repositoryError,
     )
 
@@ -1735,7 +1734,7 @@ describe('updateCourseTeachersService (integration)', () => {
     )
 
     expect(result).toEqual({ success: true })
-    expect(await findCourseTeachers(courseId)).toHaveLength(2)
+    expect(await findTeacherIdsByCourseId(courseId)).toHaveLength(2)
     expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
       event: 'course_teachers_updated',
       path: 'serverFn:updateCourseTeachers',

@@ -6,6 +6,7 @@ import {
   findAllTeachers,
   findCourseAssignmentsForTeacherIds,
   findCourseTeacher,
+  findCoursesByIds,
   findPrivilegesForUsers,
 } from '@/utils/repository'
 import { authz } from '@/utils/authz'
@@ -101,15 +102,19 @@ export async function getTeachersService(actorId: string) {
         : new Map<string, Array<never>>()
       const allAssignments =
         await findCourseAssignmentsForTeacherIds(teacherIds)
+      const courses = await findCoursesByIds(
+        Array.from(
+          new Set(allAssignments.map((assignment) => assignment.courseId)),
+        ),
+      )
+      const courseById = new Map(courses.map((course) => [course.id, course]))
 
       // Results are ordered by createdAt desc; first occurrence per teacher = most recent.
-      const assignmentByTeacher = new Map<
-        string,
-        (typeof allAssignments)[number]
-      >()
+      const assignmentByTeacher = new Map<string, (typeof courses)[number]>()
       for (const a of allAssignments) {
-        if (!assignmentByTeacher.has(a.teacherId)) {
-          assignmentByTeacher.set(a.teacherId, a)
+        const course = courseById.get(a.courseId)
+        if (course && !assignmentByTeacher.has(a.teacherId)) {
+          assignmentByTeacher.set(a.teacherId, course)
         }
       }
 
@@ -121,7 +126,7 @@ export async function getTeachersService(actorId: string) {
         avatarUrl: teacher.avatarUrl,
         createdAt: teacher.createdAt,
         role: teacher.role,
-        course: assignmentByTeacher.get(teacher.id)?.course,
+        course: assignmentByTeacher.get(teacher.id),
         lecturerTitle: teacher.lecturerTitle,
         gemstone: teacher.gemstone ?? null,
         staffPrivileges: isAdmin ? (granted.get(teacher.id) ?? []) : undefined,
