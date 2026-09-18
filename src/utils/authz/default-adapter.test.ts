@@ -29,6 +29,7 @@ vi.mock('@/db', () => ({
 
 vi.mock('@/utils/repository', () => ({
   findAssignmentById: queries.assignments,
+  findLessonById: queries.lessons,
   findProfileRoleById: queries.profiles,
 }))
 

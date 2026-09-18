@@ -7,17 +7,15 @@ import {
 } from './cache'
 import type { Action, AuthorizationService, ResourceType, Role } from './types'
 import { getDb } from '@/db'
-import {
-  courseTeachers,
-  lessons,
-  postComments,
-  posts,
-  submissions,
-} from '@/db/schema'
+import { courseTeachers, postComments, posts, submissions } from '@/db/schema'
 import { AuthorizationError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
-import { findAssignmentById, findProfileRoleById } from '@/utils/repository'
+import {
+  findAssignmentById,
+  findLessonById,
+  findProfileRoleById,
+} from '@/utils/repository'
 
 type AuthorizationLookup =
   | 'role'
@@ -210,13 +208,7 @@ export class DefaultAuthorizationService implements AuthorizationService {
       lookup: 'lesson',
       userId,
       fields: { action, resourceType: 'lesson', resourceId: lessonId },
-      read: async () => {
-        const db = await getDb()
-        return db.query.lessons.findFirst({
-          where: eq(lessons.id, lessonId),
-          columns: { courseId: true },
-        })
-      },
+      read: async () => findLessonById(lessonId),
     })
 
     if (!lesson) return false
