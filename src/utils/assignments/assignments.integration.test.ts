@@ -669,10 +669,9 @@ describe('createOrUpdateSubmissionService (integration)', () => {
     const studentId = await seedProfile({ role: 'student' })
     const assignmentId = randomUUID()
     const repositoryError = new Error('submission assignment lookup detail')
-    vi.spyOn(
-      assignmentsRepository,
-      'findAssignmentWithFullDetail',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findAssignmentById').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(

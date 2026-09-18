@@ -515,9 +515,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     owns assignment-only reads and writes reused across assignment, course, and
     student-directory services. Student-directory assignment details compose
     assignment rows with shared lesson/course rows in the student domain rather
-    than joining those tables in a feature repository. Assignment mutation and
-    grading preflights likewise compose `findAssignmentById` with
-    `findLessonById` in the assignment service. `submissions.repository.ts` owns
+    than joining those tables in a feature repository. Assignment detail loading,
+    mutation, and grading preflights likewise compose `findAssignmentById` with
+    shared lesson, course, and course-teacher adapters in the assignment service.
+    `submissions.repository.ts` owns
     submission-only reads and writes plus the
     student-directory submission projection reused across assignments, courses,
     and student-directory services. `invitations.repository.ts` owns

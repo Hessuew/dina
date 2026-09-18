@@ -17,7 +17,6 @@ import {
 } from '@/domain/assignment.service'
 import { canOpenUnpublishedAssignment } from '@/utils/assignments/domain/assignment-detail.domain'
 import {
-  findAssignmentWithFullDetail,
   findAssignmentWithLessonAndSubmissions,
   findAssignmentsForTeacherCatalog,
   findAssignmentsForTeacherLessons,
@@ -29,11 +28,13 @@ import {
   deleteAssignmentById,
   findAssignmentById,
   findAssignmentSubmissionsWithStudent,
+  findCourseById,
   findCourseIdsByTeacher,
   findLessonById,
   findLessonIdsByCourseIds,
   findSubmissionByAssignmentAndStudent,
   findSubmissionById,
+  findTeacherIdsByCourseId,
   insertAssignment,
   updateAssignmentById,
   updateSubmission,
@@ -236,6 +237,31 @@ async function findAssignmentWithLesson(assignmentId: string) {
   return { ...assignment, lesson }
 }
 
+async function findAssignmentWithCourseTeachers(assignmentId: string) {
+  const assignment = await findAssignmentById(assignmentId)
+  if (!assignment) return undefined
+
+  const lesson = await findLessonById(assignment.lessonId)
+  if (!lesson) return undefined
+
+  const [course, teacherIds] = await Promise.all([
+    findCourseById(lesson.courseId),
+    findTeacherIdsByCourseId(lesson.courseId),
+  ])
+  if (!course) return undefined
+
+  return {
+    ...assignment,
+    lesson: {
+      ...lesson,
+      course: {
+        ...course,
+        courseTeachers: teacherIds.map((teacherId) => ({ teacherId })),
+      },
+    },
+  }
+}
+
 export async function getLessonService(data: GetLessonInput, userId: string) {
   const context: AssignmentReadLogContext = {
     action: 'getLesson',
@@ -260,7 +286,7 @@ async function loadAssignmentForViewer(
   data: GetAssignmentInput,
   userId: string,
 ) {
-  const assignment = await findAssignmentWithFullDetail(data.assignmentId)
+  const assignment = await findAssignmentWithCourseTeachers(data.assignmentId)
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
       code: 'ASSIGNMENT_NOT_FOUND',
@@ -725,7 +751,7 @@ export async function createOrUpdateSubmissionService(
     data.assignmentId,
     userId,
     startedAt,
-    () => findAssignmentWithFullDetail(data.assignmentId),
+    () => findAssignmentWithCourseTeachers(data.assignmentId),
   )
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
