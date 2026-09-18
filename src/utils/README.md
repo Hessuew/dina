@@ -558,10 +558,13 @@ This folder is primarily where TanStack Start server functions live (via `create
     it joins enrollments and invitations. New email-message-only or email-campaign-lock-only
     access must use `@/utils/repository`.
     `exams.repository.ts` owns standalone exam reads and writes reused by exam authoring,
-    publishing, and student listing. The exam feature repository retains question/option
-    aggregates, attempt/answer persistence, and the atomic exam-plus-question save
-    orchestration; its exam-row update delegates to the transaction-scoped adapter in
-    `exams.repository.ts`. New exam-only access must use `@/utils/repository`.
+    publishing, and student listing. `exam-question-options.repository.ts` owns option-only
+    reads and transaction-scoped replacement. The exam feature repository retains
+    question/option aggregate reads, attempt/answer persistence, and the atomic
+    exam-plus-question save orchestration; its exam-row update delegates to the
+    transaction-scoped adapter in `exams.repository.ts`, and option persistence delegates to
+    `exam-question-options.repository.ts`. New exam-only or exam-question-option-only access
+    must use `@/utils/repository`.
     `whatsapp-messages.repository.ts` owns WhatsApp message dedupe reads and delivery-log
     inserts used by the bulk WhatsApp campaign; recipient planning and campaign-lock access
     remain in the WhatsApp feature repository. New WhatsApp-message-only access must use

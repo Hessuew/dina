@@ -1,25 +1,20 @@
-import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import type {
+  ExamQuestionOptionInput,
+  ExamQuestionOptionRow,
+} from '@/utils/repository'
 import { getDb } from '@/db'
-import { updateExamInTransaction } from '@/utils/repository'
 import {
-  examAnswers,
-  examAttempts,
-  examQuestionOptions,
-  examQuestions,
-  profiles,
-} from '@/db/schema'
+  findExamQuestionOptionsByQuestionIds,
+  replaceExamQuestionOptionsInTransaction,
+  updateExamInTransaction,
+} from '@/utils/repository'
+import { examAnswers, examAttempts, examQuestions, profiles } from '@/db/schema'
 
 export type ExamQuestionRow = typeof examQuestions.$inferSelect
-export type ExamQuestionOptionRow = typeof examQuestionOptions.$inferSelect
 export type ExamAttemptRow = typeof examAttempts.$inferSelect
 export type ExamAnswerRow = typeof examAnswers.$inferSelect
-
-type QuestionOptionInput = {
-  id?: string
-  label: string
-  orderIndex: number
-  isCorrect: boolean
-}
+export type { ExamQuestionOptionRow } from '@/utils/repository'
 
 /* v8 ignore start */
 export async function findQuestionsWithOptions(examId: string): Promise<{
@@ -33,14 +28,7 @@ export async function findQuestionsWithOptions(examId: string): Promise<{
     .where(eq(examQuestions.examId, examId))
     .orderBy(asc(examQuestions.orderIndex))
   const questionIds = questions.map((question) => question.id)
-  const options =
-    questionIds.length > 0
-      ? await db
-          .select()
-          .from(examQuestionOptions)
-          .where(inArray(examQuestionOptions.questionId, questionIds))
-          .orderBy(asc(examQuestionOptions.orderIndex))
-      : []
+  const options = await findExamQuestionOptionsByQuestionIds(questionIds)
   return { questions, options }
 }
 
@@ -48,67 +36,13 @@ type TransactionClient = Parameters<
   Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
 >[0]
 
-async function replaceOptionsPreservingIds(
-  tx: TransactionClient,
-  questionId: string,
-  options: Array<QuestionOptionInput>,
-) {
-  const optionsWithId = options.filter(
-    (o): o is QuestionOptionInput & { id: string } => Boolean(o.id),
-  )
-  if (optionsWithId.length > 0) {
-    const keepIds = optionsWithId.map((o) => o.id)
-    await tx
-      .delete(examQuestionOptions)
-      .where(
-        and(
-          eq(examQuestionOptions.questionId, questionId),
-          notInArray(examQuestionOptions.id, keepIds),
-        ),
-      )
-    await tx
-      .update(examQuestionOptions)
-      .set({ isCorrect: false })
-      .where(eq(examQuestionOptions.questionId, questionId))
-    for (const option of options) {
-      if (option.id) {
-        await tx
-          .update(examQuestionOptions)
-          .set({
-            label: option.label,
-            orderIndex: option.orderIndex,
-            isCorrect: option.isCorrect,
-          })
-          .where(eq(examQuestionOptions.id, option.id))
-      } else {
-        await tx.insert(examQuestionOptions).values({
-          questionId,
-          label: option.label,
-          orderIndex: option.orderIndex,
-          isCorrect: option.isCorrect,
-        })
-      }
-    }
-    return
-  }
-
-  await tx
-    .delete(examQuestionOptions)
-    .where(eq(examQuestionOptions.questionId, questionId))
-  if (options.length > 0) {
-    await tx
-      .insert(examQuestionOptions)
-      .values(options.map((option) => ({ ...option, questionId })))
-  }
-}
-
 type ExamChangesQuestion = {
   questionId?: string
   type: ExamQuestionRow['type']
   prompt: string
   orderIndex: number
   points: number
-  options: Array<QuestionOptionInput>
+  options: Array<ExamQuestionOptionInput>
 }
 
 type SaveExamChangesData = {
@@ -180,7 +114,11 @@ async function updateQuestionInTransaction(
         eq(examQuestions.examId, examId),
       ),
     )
-  await replaceOptionsPreservingIds(tx, question.questionId, question.options)
+  await replaceExamQuestionOptionsInTransaction(
+    tx,
+    question.questionId,
+    question.options,
+  )
 }
 
 async function insertQuestionInTransaction(
@@ -198,7 +136,11 @@ async function insertQuestionInTransaction(
       points: question.points,
     })
     .returning()
-  await replaceOptionsPreservingIds(tx, inserted.id, question.options)
+  await replaceExamQuestionOptionsInTransaction(
+    tx,
+    inserted.id,
+    question.options,
+  )
 }
 
 async function saveQuestionsInTransaction(
