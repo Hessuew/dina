@@ -105,19 +105,6 @@ export async function findSubmissionsForStudents(studentIds: Array<string>) {
   const db = await getDb()
   return db.query.submissions.findMany({
     where: inArray(submissions.studentId, studentIds),
-    with: {
-      assignment: {
-        with: {
-          lesson: {
-            with: {
-              course: {
-                columns: { id: true, title: true },
-              },
-            },
-          },
-        },
-      },
-    },
   })
 }
 

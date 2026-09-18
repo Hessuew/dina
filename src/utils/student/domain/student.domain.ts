@@ -13,6 +13,23 @@ type SubmissionWithCourse = {
   }
 }
 
+type SubmissionStatsRow = {
+  assignmentId: string
+  status: SubmissionStatus
+  grade: number | null
+}
+
+type AssignmentStatsRow = {
+  id: string
+  lessonId: string
+  maxGrade: number | null
+}
+
+type LessonStatsRow = {
+  id: string
+  courseId: string
+}
+
 type AssignmentRow = {
   assignmentId: string
   assignmentTitle: string
@@ -59,6 +76,31 @@ type StudentProfile = {
   email: string
   avatarUrl: string | null
   createdAt: Date
+}
+
+export function buildSubmissionStats(
+  submissions: Array<SubmissionStatsRow>,
+  assignments: Array<AssignmentStatsRow>,
+  lessons: Array<LessonStatsRow>,
+): Array<SubmissionWithCourse> {
+  const assignmentsById = new Map(assignments.map((a) => [a.id, a]))
+  const lessonsById = new Map(lessons.map((lesson) => [lesson.id, lesson]))
+
+  return submissions.flatMap((submission) => {
+    const assignment = assignmentsById.get(submission.assignmentId)
+    const lesson = assignment ? lessonsById.get(assignment.lessonId) : undefined
+    if (!assignment || !lesson) return []
+    return [
+      {
+        status: submission.status,
+        grade: submission.grade,
+        assignment: {
+          maxGrade: assignment.maxGrade,
+          lesson: { course: { id: lesson.courseId } },
+        },
+      },
+    ]
+  })
 }
 
 export function buildAverageGradeByCourse(

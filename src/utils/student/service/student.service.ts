@@ -2,6 +2,7 @@ import {
   buildAssignmentDetails,
   buildAssignmentsWithSubmissions,
   buildStudentWithStats,
+  buildSubmissionStats,
 } from '../domain/student.domain'
 import type {
   StudentDetailWithAssignments,
@@ -129,7 +130,11 @@ async function loadStudents(): Promise<{ students: Array<StudentWithStats> }> {
       buildStudentWithStats(
         student,
         courses,
-        submissionsByStudent.get(student.id) ?? [],
+        buildSubmissionStats(
+          submissionsByStudent.get(student.id) ?? [],
+          allAssignments,
+          allLessons,
+        ),
         allAssignments.length,
         buildCourseAttendanceScores(
           courses,

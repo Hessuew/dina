@@ -4,6 +4,7 @@ import {
   buildAssignmentsWithSubmissions,
   buildAverageGradeByCourse,
   buildStudentWithStats,
+  buildSubmissionStats,
 } from './student.domain'
 import type { SubmissionStatus } from '@/types/database.types'
 
@@ -143,6 +144,40 @@ describe('buildAverageGradeByCourse', () => {
       ],
     )
     expect(result[0].averageGrade).toBe(80)
+  })
+})
+
+describe('buildSubmissionStats', () => {
+  it('joins submission rows with assignment and lesson rows', () => {
+    const result = buildSubmissionStats(
+      [{ assignmentId: 'a-1', status: 'submitted', grade: 80 }],
+      [{ id: 'a-1', lessonId: 'l-1', maxGrade: 100 }],
+      [{ id: 'l-1', courseId: 'c-1' }],
+    )
+
+    expect(result).toEqual([
+      {
+        status: 'submitted',
+        grade: 80,
+        assignment: {
+          maxGrade: 100,
+          lesson: { course: { id: 'c-1' } },
+        },
+      },
+    ])
+  })
+
+  it('omits submissions whose assignment or lesson is missing', () => {
+    const result = buildSubmissionStats(
+      [
+        { assignmentId: 'missing-assignment', status: 'submitted', grade: 80 },
+        { assignmentId: 'a-1', status: 'draft', grade: null },
+      ],
+      [{ id: 'a-1', lessonId: 'missing-lesson', maxGrade: 100 }],
+      [],
+    )
+
+    expect(result).toEqual([])
   })
 })
 
