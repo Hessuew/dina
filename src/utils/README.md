@@ -520,7 +520,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     and email-campaign services. `course-teachers.repository.ts` owns
     course-teacher membership, course-teacher/profile detail reads, and writes reused
     across course, assignment, teacher, attendance, student, enrolment, and notification
-    services. Enrollment team and viewer-course membership composition uses its table-only
+    services, including the teacher-directory course assignment lookup. Enrollment team
+    and viewer-course membership composition uses its table-only
     adapters; broader joined course/lesson/media/teacher views remain in their feature
     repositories. New profile-only,
     course-teachers-only,

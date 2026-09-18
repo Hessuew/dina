@@ -2,9 +2,9 @@ import type { LogLevel } from '@/utils/observability/logger'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { sortTeachers } from '@/utils/teachers/domain/teachers.domain'
-import { findCourseAssignmentsForTeachers } from '@/utils/teachers/repository'
 import {
   findAllTeachers,
+  findCourseAssignmentsForTeacherIds,
   findCourseTeacher,
   findPrivilegesForUsers,
 } from '@/utils/repository'
@@ -99,7 +99,8 @@ export async function getTeachersService(actorId: string) {
       const granted = isAdmin
         ? await findPrivilegesForUsers(teacherIds)
         : new Map<string, Array<never>>()
-      const allAssignments = await findCourseAssignmentsForTeachers(teacherIds)
+      const allAssignments =
+        await findCourseAssignmentsForTeacherIds(teacherIds)
 
       // Results are ordered by createdAt desc; first occurrence per teacher = most recent.
       const assignmentByTeacher = new Map<
@@ -144,7 +145,7 @@ export async function getAllTeachersService(userId: string) {
     async () => {
       await authz(userId).hasRole('admin')
       const rows = await signAvatarRows(await findAllTeachers())
-      const assignments = await findCourseAssignmentsForTeachers(
+      const assignments = await findCourseAssignmentsForTeacherIds(
         rows.map((teacher) => teacher.id),
       )
       const courseIdByTeacherId = new Map<string, string>()

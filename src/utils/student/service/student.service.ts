@@ -21,11 +21,11 @@ import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { getUserProfile } from '@/utils/auth/auth'
 import { hasStaffPrivilege, resolveAdminOrTeacherAccess } from '@/utils/authz'
-import { findCourseAssignmentsForTeachers } from '@/utils/teachers/repository/course-teachers.repository'
 import {
   findAllCourses,
   findAllCoursesDesc,
   findAllStudents,
+  findCourseAssignmentsForTeacherIds,
   findLessonsForAttendance,
   findStudentById,
   findSubmissionsForStudents,
@@ -162,7 +162,7 @@ async function resolveManageableCourseIds(
   if (await hasStaffPrivilege(actorId, 'attendance_override')) {
     return new Set(courseIds)
   }
-  const assignments = await findCourseAssignmentsForTeachers([actorId])
+  const assignments = await findCourseAssignmentsForTeacherIds([actorId])
   const managed = new Set(assignments.map((a) => a.courseId))
   return new Set(courseIds.filter((id) => managed.has(id)))
 }

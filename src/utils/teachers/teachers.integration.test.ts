@@ -12,7 +12,6 @@ import {
   seedProfile,
 } from '@/../test/integration/seed'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
-import * as teachersRepository from '@/utils/teachers/repository'
 import * as sharedRepository from '@/utils/repository'
 import * as authUtils from '@/utils/auth/auth'
 import {
