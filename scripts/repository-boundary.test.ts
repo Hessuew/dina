@@ -4,6 +4,9 @@ import { describe, expect, it } from 'vitest'
 
 const utilsDirectory = join(process.cwd(), 'src/utils')
 const sourceDirectory = join(process.cwd(), 'src')
+const schemaDirectory = join(process.cwd(), 'src/db/schema')
+
+type SchemaTable = { symbol: string; sqlName: string }
 
 function findRepositoryFiles(directory: string): Array<string> {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -52,6 +55,46 @@ function findSchemaTableImports(source: string): Array<string> {
     .flatMap(([, bindings]) => bindings.split(','))
     .map((binding) => binding.trim().split(/\s+as\s+/)[0])
     .filter(Boolean)
+}
+
+function findSchemaTables(): Array<SchemaTable> {
+  return readdirSync(schemaDirectory, { withFileTypes: true }).flatMap(
+    (entry) => {
+      if (!entry.isFile() || !entry.name.endsWith('.ts')) return []
+      const source = readFileSync(join(schemaDirectory, entry.name), 'utf8')
+      return [
+        ...source.matchAll(
+          /export const (\w+)\s*=\s*pgTable\(\s*['"]([^'"]+)['"]/gs,
+        ),
+      ].map(([, symbol, sqlName]) => ({ symbol, sqlName }))
+    },
+  )
+}
+
+function findInterpolatedTableReferences(
+  source: string,
+  schemaTables: Array<SchemaTable>,
+): Array<string> {
+  const symbols = new Set(schemaTables.map(({ symbol }) => symbol))
+  return [...source.matchAll(/\$\{\s*([A-Za-z0-9_]+)/g)]
+    .map(([, symbol]) => symbol)
+    .filter((symbol) => symbols.has(symbol))
+}
+
+function findRawSqlTableReferences(
+  source: string,
+  schemaTables: Array<SchemaTable>,
+): Array<string> {
+  const symbolsBySqlName = new Map(
+    schemaTables.map(({ symbol, sqlName }) => [sqlName, symbol]),
+  )
+  return [
+    ...source.matchAll(
+      /\b(?:from|join|update|into)\s+["']?([a-z_][a-z0-9_]*)/gi,
+    ),
+  ]
+    .map(([, sqlName]) => symbolsBySqlName.get(sqlName.toLowerCase()))
+    .filter((symbol): symbol is string => Boolean(symbol))
 }
 
 function findTableReferences(source: string): Array<string> {
@@ -183,6 +226,20 @@ describe('utils repository boundaries', () => {
     ).toEqual(['courses'])
   })
 
+  it('detects table references hidden in SQL templates', () => {
+    const schemaTables = findSchemaTables()
+
+    expect(
+      findInterpolatedTableReferences('sql`${profiles.id}`', schemaTables),
+    ).toEqual(['profiles'])
+    expect(
+      findRawSqlTableReferences(
+        'sql`select * from enrollments join profiles on profiles.id = enrollments.id`',
+        schemaTables,
+      ),
+    ).toEqual(['enrollments', 'profiles'])
+  })
+
   it('detects direct Drizzle operations on database handles', () => {
     expect(
       findDirectDatabaseOperations(
@@ -272,6 +329,7 @@ describe('utils repository boundaries', () => {
 
   it('keeps every utils repository bound to one table without relation joins', () => {
     const repositoryFiles = findRepositoryFiles(utilsDirectory)
+    const schemaTables = findSchemaTables()
 
     expect(repositoryFiles.length).toBeGreaterThan(0)
     const tableOwners = new Map<string, string>()
@@ -280,6 +338,11 @@ describe('utils repository boundaries', () => {
       const source = readFileSync(repositoryPath, 'utf8')
       const file = repositoryPath.slice(utilsDirectory.length + 1)
       const importedTables = findSchemaTableImports(source)
+      const referencedTables = [
+        ...findTableReferences(source),
+        ...findInterpolatedTableReferences(source, schemaTables),
+        ...findRawSqlTableReferences(source, schemaTables),
+      ]
       expect(findNonNamedSchemaImports(source), file).toHaveLength(0)
       expect(importedTables, file).toHaveLength(1)
       const [table] = importedTables
@@ -289,7 +352,7 @@ describe('utils repository boundaries', () => {
       ).toBeUndefined()
       tableOwners.set(table, file)
       expect(
-        findTableReferences(source).every((queryTable) =>
+        referencedTables.every((queryTable) =>
           importedTables.includes(queryTable),
         ),
         `${file} queries a table it does not import`,

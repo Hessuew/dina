@@ -28,7 +28,9 @@ All utility callers, including integration tests, import table adapters through
 `@/utils/repository`, the shared barrel seam, rather than reaching into individual
 repository files through aliased, relative, dynamic-import, or CommonJS paths.
 Every shared repository file is re-exported by that barrel, and the repository-boundary
-regression test keeps the file set and barrel exports in sync.
+regression test keeps the file set and barrel exports in sync. That guard also checks
+table names referenced through SQL templates and interpolated table expressions, so raw
+SQL cannot bypass one-table ownership.
 Repositories must not import another repository at runtime; services and transaction modules
 compose table adapters instead. Type-only imports are allowed for shared transaction-client
 types without creating a runtime dependency between table owners.
