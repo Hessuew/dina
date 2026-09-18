@@ -25,24 +25,26 @@ import {
 } from '@/utils/post/domain/post.domain'
 import {
   calculateCommentCounts,
-  deleteCommentReaction,
   findChannels,
   findCommentForWrite,
-  findCommentReaction,
   findCommentWithAuthor,
   findComments,
   findPostById,
   findPostForWrite,
   findPosts,
   insertComment,
-  insertCommentReaction,
   insertPost,
   softDeleteComment,
   softDeletePost,
   updateCommentContent,
-  updateCommentReaction,
   updatePostContent,
 } from '@/utils/post/repository/post.repository'
+import {
+  deletePostCommentReaction,
+  findPostCommentReaction,
+  insertPostCommentReaction,
+  updatePostCommentReaction,
+} from '@/utils/repository/post-comment-reactions.repository'
 import {
   deletePostReaction,
   findPostReaction,
@@ -737,22 +739,22 @@ export async function toggleCommentReactionService(
   }
 
   try {
-    const existing = await findCommentReaction(data.commentId, userId)
+    const existing = await findPostCommentReaction(data.commentId, userId)
     const action = determineReactionAction(existing, data.emoji)
 
     switch (action) {
       case 'added':
-        await insertCommentReaction({
+        await insertPostCommentReaction({
           commentId: data.commentId,
           userId,
           emoji: data.emoji,
         })
         break
       case 'removed':
-        if (existing) await deleteCommentReaction(existing.id)
+        if (existing) await deletePostCommentReaction(existing.id)
         break
       case 'updated':
-        if (existing) await updateCommentReaction(existing.id, data.emoji)
+        if (existing) await updatePostCommentReaction(existing.id, data.emoji)
         break
     }
 

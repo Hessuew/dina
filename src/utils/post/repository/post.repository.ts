@@ -5,7 +5,7 @@ import type {
   RawComment,
 } from '@/utils/post/domain/post.domain'
 import { getDb } from '@/db'
-import { postCommentReactions, postComments, posts } from '@/db/schema'
+import { postComments, posts } from '@/db/schema'
 
 type RawPostRow = {
   id: string
@@ -281,41 +281,6 @@ export async function softDeleteComment(
     .update(postComments)
     .set({ deletedAt: new Date(), deletedBy })
     .where(eq(postComments.id, commentId))
-}
-
-export async function findCommentReaction(commentId: string, userId: string) {
-  const db = await getDb()
-  return db.query.postCommentReactions.findFirst({
-    where: and(
-      eq(postCommentReactions.commentId, commentId),
-      eq(postCommentReactions.userId, userId),
-    ),
-  })
-}
-
-export async function insertCommentReaction(values: {
-  commentId: string
-  userId: string
-  emoji: string
-}): Promise<void> {
-  const db = await getDb()
-  await db.insert(postCommentReactions).values(values)
-}
-
-export async function updateCommentReaction(
-  id: string,
-  emoji: string,
-): Promise<void> {
-  const db = await getDb()
-  await db
-    .update(postCommentReactions)
-    .set({ emoji })
-    .where(eq(postCommentReactions.id, id))
-}
-
-export async function deleteCommentReaction(id: string): Promise<void> {
-  const db = await getDb()
-  await db.delete(postCommentReactions).where(eq(postCommentReactions.id, id))
 }
 
 /* v8 ignore end */
