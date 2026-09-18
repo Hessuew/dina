@@ -518,17 +518,18 @@ This folder is primarily where TanStack Start server functions live (via `create
     invitation-only reads and writes reused across invitation, signup, enrollment,
     and email-campaign services. `course-teachers.repository.ts` owns
     course-teachers-only reads and writes reused across course, assignment,
-    teacher, attendance, student, and enrolment services. Joined course/teacher
-    views remain in their feature repositories. New profile-only,
+    teacher, attendance, student, and enrolment services. Enrollment team and
+    viewer-course membership composition uses its table-only adapters; joined
+    course/teacher views remain in their feature repositories. New profile-only,
     course-teachers-only,
     Staff Privilege-only access must use `@/utils/repository`; its
     `staff-privileges.repository.ts` owns the shared table-only reads and writes reused
     across authorization, teacher-directory, enrolment, and staff privilege services. New
     `course-substitutes.repository.ts` owns course-substitute-only reads and writes reused
-    across enrolment substitution services; the atomic substitution transaction keeps its
-    reviewer reassignment orchestration in the enrolment feature repository and delegates
-    the table write through a transaction-scoped adapter. New course-substitute-only access
-    must use `@/utils/repository`.
+    across enrolment substitution services and enrollment team membership composition; the
+    atomic substitution transaction keeps its reviewer reassignment orchestration in the
+    enrolment feature repository and delegates the table write through a transaction-scoped
+    adapter. New course-substitute-only access must use `@/utils/repository`.
     enrollment-only, invitation-only, assignment-only, or submission-only access must use
     `@/utils/repository`; authorization assignment and lesson lookups delegate to
     `assignments.repository.ts` and `lessons.repository.ts` as well. `lessons.repository.ts`

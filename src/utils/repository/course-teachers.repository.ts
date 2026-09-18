@@ -22,6 +22,15 @@ export async function findCourseIdsByTeacher(teacherId: string) {
   return result.map((assignment) => assignment.courseId)
 }
 
+export async function findTeacherIdsByCourseId(courseId: string) {
+  const db = await getDb()
+  const result = await db.query.courseTeachers.findMany({
+    where: eq(courseTeachers.courseId, courseId),
+    columns: { teacherId: true },
+  })
+  return result.map((assignment) => assignment.teacherId)
+}
+
 export async function findCourseTeacher(courseId: string, teacherId: string) {
   const db = await getDb()
   return db.query.courseTeachers.findFirst({

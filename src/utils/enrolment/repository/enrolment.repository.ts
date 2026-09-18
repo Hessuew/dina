@@ -21,6 +21,10 @@ import type {
 } from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
 import {
+  findCourseIdsBySubstituteTeacher,
+  findCourseIdsByTeacher,
+  findSubstituteTeacherIdsByCourse,
+  findTeacherIdsByCourseId,
   insertCourseSubstituteInTransaction,
   updateReviewerAssignmentsInTransaction,
 } from '@/utils/repository'
@@ -312,23 +316,11 @@ export async function findReviewerAssignmentsForEnrollments(
 export async function findCourseTeamIds(
   courseId: string,
 ): Promise<Array<string>> {
-  const db = await getDb()
-  const [teacherRows, substituteRows] = await Promise.all([
-    db
-      .select({ id: courseTeachers.teacherId })
-      .from(courseTeachers)
-      .where(eq(courseTeachers.courseId, courseId)),
-    db
-      .select({ id: courseSubstitutes.substituteTeacherId })
-      .from(courseSubstitutes)
-      .where(eq(courseSubstitutes.courseId, courseId)),
+  const [teacherIds, substituteTeacherIds] = await Promise.all([
+    findTeacherIdsByCourseId(courseId),
+    findSubstituteTeacherIdsByCourse(courseId),
   ])
-  return [
-    ...new Set([
-      ...teacherRows.map((r) => r.id),
-      ...substituteRows.map((r) => r.id),
-    ]),
-  ]
+  return [...new Set([...teacherIds, ...substituteTeacherIds])]
 }
 
 /**
@@ -338,23 +330,11 @@ export async function findCourseTeamIds(
 export async function findCourseIdsForViewer(
   userId: string,
 ): Promise<Array<string>> {
-  const db = await getDb()
-  const [teacherRows, substituteRows] = await Promise.all([
-    db
-      .select({ courseId: courseTeachers.courseId })
-      .from(courseTeachers)
-      .where(eq(courseTeachers.teacherId, userId)),
-    db
-      .select({ courseId: courseSubstitutes.courseId })
-      .from(courseSubstitutes)
-      .where(eq(courseSubstitutes.substituteTeacherId, userId)),
+  const [teacherCourseIds, substituteCourseIds] = await Promise.all([
+    findCourseIdsByTeacher(userId),
+    findCourseIdsBySubstituteTeacher(userId),
   ])
-  return [
-    ...new Set([
-      ...teacherRows.map((r) => r.courseId),
-      ...substituteRows.map((r) => r.courseId),
-    ]),
-  ]
+  return [...new Set([...teacherCourseIds, ...substituteCourseIds])]
 }
 
 /**

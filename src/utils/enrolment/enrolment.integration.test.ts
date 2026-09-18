@@ -1093,6 +1093,25 @@ async function seedSubstitutionScenario() {
   }
 }
 
+describe('enrollment course membership repository seams (integration)', () => {
+  it('composes teacher and substitute table adapters for team lookups', async () => {
+    const { absentC, peerB, subA, courseId } = await seedSubstitutionScenario()
+
+    await expect(
+      enrollmentRepository.findCourseTeamIds(courseId),
+    ).resolves.toEqual(expect.arrayContaining([absentC, peerB, subA]))
+    await expect(
+      enrollmentRepository.findCourseIdsForViewer(subA),
+    ).resolves.toEqual([courseId])
+    await expect(
+      sharedRepository.findSubstituteTeacherIdsByCourse(courseId),
+    ).resolves.toEqual([subA])
+    await expect(
+      sharedRepository.findCourseIdsBySubstituteTeacher(subA),
+    ).resolves.toEqual([courseId])
+  })
+})
+
 describe('teacher substitution — Review heading peer resolution (integration)', () => {
   it('peer slot shows the substitute, never the absent teacher (Bug 1)', async () => {
     const { adminId, bEnrollmentId } = await seedSubstitutionScenario()
