@@ -87,7 +87,10 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    orchestration in feature services, domains, or explicit transaction modules.
    Keep one shared owner per table, and keep relation-backed `db.query.<table>`
    reads aligned with that repository's imported table. The boundary is
-   regression-tested by `scripts/repository-boundary.test.ts`.
+   regression-tested by `scripts/repository-boundary.test.ts`. Feature modules
+   must not import `getDb()` or `withDbConnection()` directly; those clients
+   belong to shared repositories, explicit transaction modules, and the health /
+   request-scope infrastructure.
 3. **Domain** — `domain/<feature>.domain.ts`: pure mapping/normalization/rule
    functions. Inject time/IDs as params.
 4. **Service** — `service/<feature>.service.ts`: auth + orchestration; call

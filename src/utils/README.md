@@ -6,6 +6,15 @@ Server-side utilities and server functions used by routes and components.
 
 This folder is primarily where TanStack Start server functions live (via `createServerFn`), along with shared helpers (auth, Supabase client creation, SEO).
 
+## Persistence seams
+
+Table persistence is centralized under `repository/`, with one shared repository
+owner per database table. Feature services compose repository reads and pure
+domain logic; joined projections and multi-table atomic writes stay in feature
+services or explicit `transaction/` modules. Feature modules do not import
+`getDb()` or `withDbConnection()` directly. The repository ownership and client
+access contracts are regression-tested by `scripts/repository-boundary.test.ts`.
+
 ## What Lives Here
 
 - **Authorization module** (`authz/`)

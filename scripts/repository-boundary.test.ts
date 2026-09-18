@@ -12,6 +12,16 @@ function findRepositoryFiles(directory: string): Array<string> {
   })
 }
 
+function findUtilityFiles(directory: string): Array<string> {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) return findUtilityFiles(path)
+    return entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts')
+      ? [path]
+      : []
+  })
+}
+
 function findSchemaTableImports(source: string): Array<string> {
   return [
     ...source.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]@\/db\/schema['"]/g),
@@ -24,6 +34,22 @@ function findSchemaTableImports(source: string): Array<string> {
 function findQueryTableReferences(source: string): Array<string> {
   return [...source.matchAll(/\b(?:db|tx)\.query\.([A-Za-z0-9_]+)/g)].map(
     ([, table]) => table,
+  )
+}
+
+function findDatabaseClientImports(source: string): Array<string> {
+  return [...source.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]@\/db['"]/g)]
+    .flatMap(([, bindings]) => bindings.split(','))
+    .map((binding) => binding.trim().split(/\s+as\s+/)[0])
+    .filter((binding) => binding === 'getDb' || binding === 'withDbConnection')
+}
+
+function isDatabaseSeam(file: string): boolean {
+  return (
+    file.startsWith('repository/') ||
+    file.includes('/transaction/') ||
+    file === 'health/db-readiness.ts' ||
+    file === 'request-scope.ts'
   )
 }
 
@@ -56,5 +82,18 @@ describe('utils repository boundaries', () => {
         /\b(?:innerJoin|leftJoin|rightJoin|fullJoin|crossJoin)\s*\(/,
       )
     }
+  })
+
+  it('keeps database clients behind repository or infrastructure seams', () => {
+    const offenders = findUtilityFiles(utilsDirectory)
+      .map((utilityPath) => ({
+        file: utilityPath.slice(utilsDirectory.length + 1),
+        imports: findDatabaseClientImports(readFileSync(utilityPath, 'utf8')),
+      }))
+      .filter(
+        ({ file, imports }) => imports.length > 0 && !isDatabaseSeam(file),
+      )
+
+    expect(offenders).toEqual([])
   })
 })
