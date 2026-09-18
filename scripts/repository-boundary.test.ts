@@ -60,6 +60,17 @@ function isDatabaseSeam(file: string): boolean {
 }
 
 describe('utils repository boundaries', () => {
+  it('keeps repository modules in the shared repository seam', () => {
+    const misplacedRepositories = findRepositoryFiles(utilsDirectory)
+      .map((repositoryPath) => repositoryPath.slice(utilsDirectory.length + 1))
+      .filter((file) => {
+        const pathParts = file.split(sep)
+        return pathParts.length !== 2 || pathParts[0] !== 'repository'
+      })
+
+    expect(misplacedRepositories).toEqual([])
+  })
+
   it('keeps every utils repository bound to one table without relation joins', () => {
     const repositoryFiles = findRepositoryFiles(utilsDirectory)
 

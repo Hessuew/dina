@@ -513,8 +513,8 @@ access contracts are regression-tested by `scripts/repository-boundary.test.ts`.
     `courses.repository.ts` before returning its teacher/admin view. Upcoming
     lesson reads compose shared lesson rows with published course names in the
     courses lesson service, so they do not retain a mixed feature repository.
-    Feature repositories remain responsible for aggregate or joined queries until their
-    tables are migrated to this shared layer. The calendar overview composes
+    Feature services remain responsible for aggregate or joined queries while their
+    table rows come from this shared layer. The calendar overview composes
     shared lesson, assignment, and course rows in its domain layer; it has no
     feature-local mixed repository. `account-security.repository.ts`
     owns account-security-only email-change and password-reset state reads and
