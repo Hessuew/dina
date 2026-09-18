@@ -1,6 +1,37 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_PER_RUN, planBulkSend, summarizeSkips } from './bulk-send.domain'
+import {
+  MAX_PER_RUN,
+  buildWhatsAppCampaignRecipients,
+  planBulkSend,
+  summarizeSkips,
+} from './bulk-send.domain'
 import type { CampaignRecipient } from './bulk-send.domain'
+
+type CampaignEnrollment = Parameters<
+  typeof buildWhatsAppCampaignRecipients
+>[0]['enrollments'][number]
+type CampaignInvitation = Parameters<
+  typeof buildWhatsAppCampaignRecipients
+>[0]['invitations'][number]
+
+function enrollment(
+  overrides: Partial<CampaignEnrollment> = {},
+): CampaignEnrollment {
+  return {
+    id: 'e-1',
+    phoneWhatsApp: '+358401234567',
+    preferredName: null,
+    fullLegalName: 'Maria de la Cruz',
+    invitationId: null,
+    ...overrides,
+  }
+}
+
+function invitation(
+  overrides: Partial<CampaignInvitation> = {},
+): CampaignInvitation {
+  return { id: 'i-1', status: 'pending', ...overrides }
+}
 
 function recipient(
   overrides: Partial<CampaignRecipient> = {},
@@ -13,6 +44,38 @@ function recipient(
     ...overrides,
   }
 }
+
+describe('buildWhatsAppCampaignRecipients', () => {
+  it('projects approved enrollments into campaign recipients', () => {
+    expect(
+      buildWhatsAppCampaignRecipients({
+        cohort: 'approved',
+        enrollments: [enrollment()],
+        invitations: [],
+      }),
+    ).toEqual([recipient()])
+  })
+
+  it('excludes accepted invitations from the not-registered cohort', () => {
+    expect(
+      buildWhatsAppCampaignRecipients({
+        cohort: 'not_registered',
+        enrollments: [
+          enrollment({ invitationId: 'i-1' }),
+          enrollment({ id: 'e-2', invitationId: 'i-2' }),
+          enrollment({ id: 'e-3', invitationId: null }),
+        ],
+        invitations: [
+          invitation({ id: 'i-1', status: 'accepted' }),
+          invitation({ id: 'i-2', status: 'pending' }),
+        ],
+      }),
+    ).toEqual([
+      recipient({ enrollmentId: 'e-2' }),
+      recipient({ enrollmentId: 'e-3' }),
+    ])
+  })
+})
 
 describe('planBulkSend', () => {
   it('plans a send with normalized phone and resolved recipient name', () => {

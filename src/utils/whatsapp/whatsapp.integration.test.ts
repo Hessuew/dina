@@ -26,7 +26,6 @@ import {
   sendWhatsAppCampaignService,
 } from '@/utils/whatsapp/service/whatsapp.service'
 import { AuthorizationError } from '@/utils/errors'
-import * as whatsappRepository from '@/utils/whatsapp/repository/whatsapp.repository'
 import * as sharedRepository from '@/utils/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
@@ -267,10 +266,9 @@ describe('sendWhatsAppCampaignService (integration)', () => {
     const planningError = new Error(
       'private WhatsApp recipient database detail',
     )
-    vi.spyOn(
-      whatsappRepository,
-      'findEnrollmentRecipientsByCampaign',
-    ).mockRejectedValueOnce(planningError)
+    vi.spyOn(sharedRepository, 'findApprovedEnrollments').mockRejectedValueOnce(
+      planningError,
+    )
 
     await expect(
       withObservabilityRequest(
@@ -472,10 +470,9 @@ describe('previewWhatsAppCampaignService (integration)', () => {
     const planningError = new Error(
       'private WhatsApp recipient database detail',
     )
-    vi.spyOn(
-      whatsappRepository,
-      'findEnrollmentRecipientsByCampaign',
-    ).mockRejectedValueOnce(planningError)
+    vi.spyOn(sharedRepository, 'findApprovedEnrollments').mockRejectedValueOnce(
+      planningError,
+    )
 
     try {
       await expect(

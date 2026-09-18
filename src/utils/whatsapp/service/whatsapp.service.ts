@@ -10,15 +10,18 @@ import type {
   WhatsAppTemplateName,
 } from '@/utils/whatsapp/domain/templates.domain'
 import {
+  buildWhatsAppCampaignRecipients,
   planBulkSend,
   summarizeSkips,
 } from '@/utils/whatsapp/domain/bulk-send.domain'
 import { resolveCampaign } from '@/utils/whatsapp/domain/templates.domain'
 import { getWhatsAppSender } from '@/utils/whatsapp'
-import { findEnrollmentRecipientsByCampaign } from '@/utils/whatsapp/repository/whatsapp.repository'
 import {
   acquireWhatsAppCampaignLock,
   checkWhatsAppCampaignLockHeldBy,
+  findApprovedEnrollments,
+  findEnrollmentsWithInvitationSent,
+  findInvitationsByIds,
   findSentEnrollmentIdsByTemplate,
   getLockedWhatsAppCampaigns,
   insertWhatsAppMessage,
@@ -175,7 +178,20 @@ async function planCampaign(
   data: SendWhatsAppCampaignInput,
 ): Promise<{ templateName: WhatsAppTemplateName; plan: BulkSendPlan }> {
   const { templateName, cohort } = resolveCampaign(data.campaign)
-  const recipients = await findEnrollmentRecipientsByCampaign(cohort)
+  const enrollments =
+    cohort === 'approved'
+      ? await findApprovedEnrollments()
+      : await findEnrollmentsWithInvitationSent()
+  const invitationIds = enrollments.flatMap((enrollment) =>
+    enrollment.invitationId ? [enrollment.invitationId] : [],
+  )
+  const invitations =
+    cohort === 'not_registered' ? await findInvitationsByIds(invitationIds) : []
+  const recipients = buildWhatsAppCampaignRecipients({
+    cohort,
+    enrollments,
+    invitations,
+  })
   const alreadySentEnrollmentIds =
     await findSentEnrollmentIdsByTemplate(templateName)
   const plan = planBulkSend({ recipients, alreadySentEnrollmentIds })

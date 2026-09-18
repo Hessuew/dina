@@ -21,6 +21,15 @@ export async function findInvitationsByEmails(emails: Array<string>) {
   })
 }
 
+export async function findInvitationsByIds(invitationIds: Array<string>) {
+  if (invitationIds.length === 0) return []
+  const db = await getDb()
+  return db.query.invitations.findMany({
+    where: inArray(invitations.id, invitationIds),
+    columns: { id: true, status: true },
+  })
+}
+
 export async function findInvitationByToken(token: string) {
   const db = await getDb()
   return db.query.invitations.findFirst({

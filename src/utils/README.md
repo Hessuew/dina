@@ -617,9 +617,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     access must use `@/utils/repository`.
     `whatsapp-messages.repository.ts` owns WhatsApp message dedupe reads and delivery-log
     inserts used by the bulk WhatsApp campaign. `whatsapp-campaign-locks.repository.ts` owns
-    campaign mutex reads and writes; recipient planning remains in the WhatsApp feature
-    repository because it joins enrollments and invitations. New WhatsApp-message-only or
-    WhatsApp-campaign-lock-only access must use `@/utils/repository`.
+    campaign mutex reads and writes; recipient planning composes shared enrollment and
+    invitation table adapters in the WhatsApp service, with cohort filtering in its domain
+    module. New WhatsApp-message-only or WhatsApp-campaign-lock-only access must use
+    `@/utils/repository`.
     `attendance-sessions.repository.ts` owns attendance-session
     reads and atomic open/close persistence, while `attendance-presents.repository.ts`
     owns present-only reads and transaction-scoped present writes. The shared

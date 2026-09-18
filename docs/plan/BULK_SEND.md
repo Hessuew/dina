@@ -28,7 +28,10 @@ picks up here.
 Key source files:
 
 - Service: `src/utils/whatsapp/service/whatsapp.service.ts`
-- Repository: `src/utils/whatsapp/repository/whatsapp.repository.ts`
+- Shared repositories: `src/utils/repository/whatsapp-messages.repository.ts`,
+  `src/utils/repository/whatsapp-campaign-locks.repository.ts`,
+  `src/utils/repository/enrollments.repository.ts`, and
+  `src/utils/repository/invitations.repository.ts`
 - DB schema: `src/db/schema/whatsapp.schema.ts`
 - Server fns: `src/utils/whatsapp/whatsapp.ts`
 - Dialog: `src/components/enrollment/whatsapp-campaign-dialog/WhatsAppCampaignDialog.tsx`
@@ -155,7 +158,7 @@ bash
 bun run drizzle-kit generate
 Commit the generated file in drizzle/.
 
-4. Repository functions — src/utils/whatsapp/repository/whatsapp.repository.ts
+4. Repository functions — src/utils/repository/whatsapp-campaign-locks.repository.ts
 Add imports: whatsappCampaignLocks from @/db/schema; lt, gt from drizzle-orm.
 
 Add inside the /* v8 ignore */ block:
@@ -354,7 +357,7 @@ Action	Path
 Modify	src/utils/errors.ts
 Modify	src/db/schema/whatsapp.schema.ts
 Generate	drizzle/<next-migration>.sql + snapshot
-Modify	src/utils/whatsapp/repository/whatsapp.repository.ts
+Modify	src/utils/repository/whatsapp-campaign-locks.repository.ts
 Modify	src/utils/whatsapp/service/whatsapp.service.ts
 Modify	src/utils/whatsapp/whatsapp.ts
 Modify	src/components/enrollment/whatsapp-campaign-dialog/WhatsAppCampaignDialog.tsx
