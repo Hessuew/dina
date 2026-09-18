@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, ne } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 
@@ -48,6 +48,19 @@ export async function findProfilesByIds(ids: Array<string>) {
   return db.query.profiles.findMany({
     where: inArray(profiles.id, ids),
   })
+}
+
+export async function findProfileIdsByRolesExcluding(
+  roles: Array<(typeof profiles.$inferSelect)['role']>,
+  excludedId: string,
+): Promise<Array<string>> {
+  if (roles.length === 0) return []
+  const db = await getDb()
+  const rows = await db
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(and(inArray(profiles.role, roles), ne(profiles.id, excludedId)))
+  return rows.map((row) => row.id)
 }
 
 export async function findStaffProfiles() {

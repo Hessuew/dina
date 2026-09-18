@@ -494,7 +494,7 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `repository/` - Shared table-oriented database seams. `profiles.repository.ts`
     is the single owner for profile-only reads and writes reused across features
     (authentication, authorization, email, identity, avatar, student, teacher, discipleship,
-    and enrollment support).
+    enrollment support, and notification recipient resolution).
     It also owns the restricted staff/public identity projections used by the
     discipleship view. `calendar-events.repository.ts`
     owns calendar-event-only reads and writes reused across calendar and event services;
@@ -518,7 +518,7 @@ This folder is primarily where TanStack Start server functions live (via `create
     invitation-only reads and writes reused across invitation, signup, enrollment,
     and email-campaign services. `course-teachers.repository.ts` owns
     course-teachers-only reads and writes reused across course, assignment,
-    teacher, attendance, student, and enrolment services. Enrollment team and
+    teacher, attendance, student, enrolment, and notification services. Enrollment team and
     viewer-course membership composition uses its table-only adapters; joined
     course/teacher views remain in their feature repositories. New profile-only,
     course-teachers-only,

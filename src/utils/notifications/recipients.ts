@@ -1,59 +1,49 @@
-import { eq, sql } from 'drizzle-orm'
 import type {
   CommentCreatedEvent,
   NotificationEvent,
   PostCreatedEvent,
   RecipientResult,
 } from './types'
-import { getDb } from '@/db'
-import { courseTeachers, profiles } from '@/db/schema'
+import {
+  findProfileIdsByRolesExcluding,
+  findTeacherIdsByCourseId,
+} from '@/utils/repository'
 
 async function addStudentRecipients(
-  db: Awaited<ReturnType<typeof getDb>>,
   recipients: Set<string>,
   actorId: string,
 ): Promise<void> {
-  const studentRows = await db
-    .select({ id: profiles.id })
-    .from(profiles)
-    .where(sql`${profiles.role} = 'student' AND ${profiles.id} <> ${actorId}`)
+  const studentIds = await findProfileIdsByRolesExcluding(['student'], actorId)
 
-  for (const row of studentRows) {
-    recipients.add(row.id)
+  for (const studentId of studentIds) {
+    recipients.add(studentId)
   }
 }
 
 async function addStaffRecipients(
-  db: Awaited<ReturnType<typeof getDb>>,
   recipients: Set<string>,
   actorId: string,
 ): Promise<void> {
-  const staffRows = await db
-    .select({ id: profiles.id })
-    .from(profiles)
-    .where(
-      sql`${profiles.role} IN ('teacher','admin') AND ${profiles.id} <> ${actorId}`,
-    )
+  const staffIds = await findProfileIdsByRolesExcluding(
+    ['teacher', 'admin'],
+    actorId,
+  )
 
-  for (const row of staffRows) {
-    recipients.add(row.id)
+  for (const staffId of staffIds) {
+    recipients.add(staffId)
   }
 }
 
 async function addCourseTeacherRecipients(
-  db: Awaited<ReturnType<typeof getDb>>,
   recipients: Set<string>,
   courseId: string,
   actorId: string,
 ): Promise<void> {
-  const teacherRows = await db
-    .select({ id: courseTeachers.teacherId })
-    .from(courseTeachers)
-    .where(eq(courseTeachers.courseId, courseId))
+  const teacherIds = await findTeacherIdsByCourseId(courseId)
 
-  for (const row of teacherRows) {
-    if (row.id !== actorId) {
-      recipients.add(row.id)
+  for (const teacherId of teacherIds) {
+    if (teacherId !== actorId) {
+      recipients.add(teacherId)
     }
   }
 }
@@ -61,20 +51,19 @@ async function addCourseTeacherRecipients(
 async function getRecipientsForPostCreated(
   event: PostCreatedEvent,
 ): Promise<RecipientResult> {
-  const db = await getDb()
   const recipients = new Set<string>()
   const { actorId, courseId, canModerate } = event
 
   if (canModerate) {
-    await addStudentRecipients(db, recipients, actorId)
+    await addStudentRecipients(recipients, actorId)
 
     if (courseId === null) {
-      await addStaffRecipients(db, recipients, actorId)
+      await addStaffRecipients(recipients, actorId)
     }
   }
 
   if (courseId) {
-    await addCourseTeacherRecipients(db, recipients, courseId, actorId)
+    await addCourseTeacherRecipients(recipients, courseId, actorId)
   }
 
   return { recipientIds: Array.from(recipients) }
