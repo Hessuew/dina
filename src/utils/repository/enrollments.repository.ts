@@ -42,6 +42,19 @@ export async function findEnrollmentsWithInvitationSent() {
   })
 }
 
+export async function findEnrollmentsForEmailExport() {
+  const db = await getDb()
+  return db.query.enrollments.findMany({
+    columns: {
+      email: true,
+      status: true,
+      invitationSent: true,
+      invitationId: true,
+    },
+    orderBy: (enrollment) => [asc(enrollment.createdAt)],
+  })
+}
+
 export async function updateEnrollmentStatusById(
   enrollmentId: string,
   status: (typeof enrollments.$inferSelect)['status'],

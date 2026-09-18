@@ -515,7 +515,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     atomicity.
     `enrollments.repository.ts` now
     owns enrollment-only reads and writes reused across enrollment and campaign
-    services. `assignments.repository.ts` now
+    services. Enrollment contact export composes its enrollment rows with
+    invitation status from `invitations.repository.ts` in the enrolment service;
+    it does not retain an enrollment/invitation join in the feature repository.
+    `assignments.repository.ts` now
     owns assignment-only reads and writes reused across assignment, course, and
     student-directory services. Student-directory assignment details compose
     assignment rows with shared lesson/course rows in the student domain rather

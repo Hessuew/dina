@@ -37,11 +37,11 @@ import {
   isInvitationResendable,
   redactEnrollmentForTeacher,
 } from '@/utils/enrolment/domain/enrolment.domain'
+import { selectEnrollmentEmailsByGroup } from '@/utils/enrolment/domain/email-export.domain'
 import {
   findAwaitingApprovalIdsWithSum,
   findCourseIdsForViewer,
   findCourseTeamIds,
-  findEnrollmentEmailsByGroup,
   findEnrollmentsPage,
   findPeersForReviewers,
   findReviewerAssignmentsForEnrollments,
@@ -61,7 +61,9 @@ import {
   findEnrollmentById,
   findEnrollmentContactLookupCandidates,
   findEnrollmentEvaluationsByEnrollmentIds,
+  findEnrollmentsForEmailExport,
   findInvitationByEmail,
+  findInvitationsByIds,
   findProfileById,
   findProfilesByIds,
   findReviewerAssignmentForEnrollment,
@@ -1650,7 +1652,20 @@ export async function getEnrollmentEmailsService(
   }
 
   try {
-    const emails = await findEnrollmentEmailsByGroup(data.group)
+    const enrollments = await findEnrollmentsForEmailExport()
+    const invitations =
+      data.group === 'all' || data.group === 'approved'
+        ? []
+        : await findInvitationsByIds(
+            enrollments.flatMap((enrollment) =>
+              enrollment.invitationId ? [enrollment.invitationId] : [],
+            ),
+          )
+    const emails = selectEnrollmentEmailsByGroup({
+      group: data.group,
+      enrollments,
+      invitations,
+    })
     logEnrollmentContactEvent('info', 'enrollment_contact_exported', context, {
       contactCount: emails.length,
     })

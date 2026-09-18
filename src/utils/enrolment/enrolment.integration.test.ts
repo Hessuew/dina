@@ -28,7 +28,6 @@ import {
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 import * as enrollmentRepository from '@/utils/enrolment/repository/enrolment.repository'
 import * as enrollmentEvaluationsRepository from '@/utils/repository/enrollment-evaluations.repository'
-import { findEnrollmentEmailsByGroup } from '@/utils/enrolment/repository/enrolment.repository'
 import * as sharedRepository from '@/utils/repository'
 import { AuthorizationError } from '@/utils/errors'
 import {
@@ -1506,7 +1505,7 @@ describe('bulk enrollment grading telemetry (integration)', () => {
   })
 })
 
-describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
+describe('enrollment email export cohorts (integration)', () => {
   // Seeds four enrollments spanning every cohort boundary:
   // - registered@   approved + linked invitation accepted   → registered
   // - notreg@       approved + invitation_sent, still pending → not_registered
@@ -1555,8 +1554,9 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
   it.each(cases)(
     '$group cohort returns the right emails',
     async ({ group, expected }) => {
+      const adminId = await seedProfile({ role: 'admin' })
       await seedExportCohorts()
-      const emails = await findEnrollmentEmailsByGroup(group)
+      const { emails } = await getEnrollmentEmailsService({ group }, adminId)
       expect([...emails].sort()).toEqual([...expected].sort())
     },
   )
@@ -1625,8 +1625,8 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
       'connectionString=secret; email=private-export@test.dev',
     )
     vi.spyOn(
-      enrollmentRepository,
-      'findEnrollmentEmailsByGroup',
+      sharedRepository,
+      'findEnrollmentsForEmailExport',
     ).mockRejectedValueOnce(repositoryError)
 
     await expect(
