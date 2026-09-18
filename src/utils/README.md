@@ -15,15 +15,17 @@ domain logic; joined projections and multi-table atomic writes stay in feature
 services or explicit `transaction/` modules. Transaction modules may open a
 database transaction, but only coordinate table adapters; they do not import
 schema tables or issue Drizzle CRUD/query calls. Feature modules do not import
-`getDb()` or `withDbConnection()` directly. The repository ownership and client
-access contracts are regression-tested by `scripts/repository-boundary.test.ts`.
+`getDb()` or `withDbConnection()` directly. Static, dynamic, and CommonJS
+database imports are reserved for those seams and are regression-tested by
+`scripts/repository-boundary.test.ts`.
 Direct Drizzle operations on `db`/`tx` handles are also reserved for those seams,
 including when a handle is injected rather than imported; feature services may
 compose repository results but may not issue `query`, CRUD, `execute`, or
 `transaction` calls themselves.
 Production utility callers import table adapters through `@/utils/repository`,
 the shared barrel seam, rather than reaching into individual repository files.
-Runtime schema-table imports are likewise reserved for `repository/`; domain
+Runtime schema-table imports, including dynamic imports, are likewise reserved
+for `repository/`; domain
 modules may import schema tables only with `import type` for inferred row types.
 
 ## What Lives Here

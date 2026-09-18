@@ -59,7 +59,7 @@ function findDirectDatabaseOperations(source: string): Array<string> {
 function findDatabaseClientImports(source: string): Array<string> {
   return [
     ...source.matchAll(
-      /import\s+(?!type\b)(?:(?:(?!\bimport\b)[\s\S])*?\s+from\s+)?['"](?:@\/db|(?:\.\.?\/)+db)(?:\/index)?['"]/g,
+      /(?:import\s+(?!type\b)(?:(?:(?!\bimport\b)[\s\S])*?\s+from\s+)?['"](?:@\/db|(?:\.\.?\/)+db)(?:\/index)?['"]|(?:import|require)\s*\(\s*['"](?:@\/db|(?:\.\.?\/)+db)(?:\/index)?['"]\s*\))/g,
     ),
   ].map(([match]) => match)
 }
@@ -67,7 +67,7 @@ function findDatabaseClientImports(source: string): Array<string> {
 function findRuntimeSchemaImports(source: string): Array<string> {
   return [
     ...source.matchAll(
-      /import\s+(?!type\b)(?:(?:(?!\bimport\b)[\s\S])*?\s+from\s+)?['"](?:@\/db\/schema(?:\/[^'"]+)?|(?:\.\.?\/)+db\/schema(?:\/[^'"]+)?)['"]/g,
+      /(?:import\s+(?!type\b)(?:(?:(?!\bimport\b)[\s\S])*?\s+from\s+)?['"](?:@\/db\/schema(?:\/[^'"]+)?|(?:\.\.?\/)+db\/schema(?:\/[^'"]+)?)['"]|(?:import|require)\s*\(\s*['"](?:@\/db\/schema(?:\/[^'"]+)?|(?:\.\.?\/)+db\/schema(?:\/[^'"]+)?)['"]\s*\))/g,
     ),
   ].map(([match]) => match)
 }
@@ -101,9 +101,13 @@ describe('utils repository boundaries', () => {
     expect(
       findDatabaseClientImports("import { getDb } from '../../db'"),
     ).toHaveLength(1)
+    expect(findDatabaseClientImports("import('@/db')")).toHaveLength(1)
+    expect(findDatabaseClientImports("require('../db')")).toHaveLength(1)
     expect(
       findRuntimeSchemaImports("import * as schema from '../db/schema'"),
     ).toHaveLength(1)
+    expect(findRuntimeSchemaImports("import('@/db/schema')")).toHaveLength(1)
+    expect(findRuntimeSchemaImports("require('../db/schema')")).toHaveLength(1)
     expect(
       findRuntimeSchemaImports("import type { profiles } from '@/db/schema'"),
     ).toHaveLength(0)
