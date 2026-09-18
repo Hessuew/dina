@@ -559,8 +559,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     in the enrolment feature repository. New reviewer-assignment-only access must use
     `@/utils/repository`.
     `media-library.repository.ts` owns media-library-only reads and writes reused by
-    the library service; the course-enriched media listing remains in the library
-    feature repository. `post-notifications.repository.ts` owns post-notification
+    the library service; its course-enriched listing composes media rows with
+    `courses.repository.ts` rather than joining tables in a feature repository.
+    `post-notifications.repository.ts` owns post-notification
     delivery inserts, group reads, and read-state writes; the post/course/profile-
     enriched notification summary rows remain in the notification feature repository. New
     media-library-only or post-notification-only access must use

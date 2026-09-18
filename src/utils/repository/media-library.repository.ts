@@ -6,6 +6,14 @@ import { mediaLibrary } from '@/db/schema'
 export type MediaRecord = typeof mediaLibrary.$inferSelect
 export type InsertMediaValues = typeof mediaLibrary.$inferInsert
 
+export async function findAllMedia(studentOnly: boolean) {
+  const db = await getDb()
+  return db.query.mediaLibrary.findMany({
+    where: studentOnly ? eq(mediaLibrary.isPublished, true) : undefined,
+    orderBy: (media, { desc }) => [desc(media.createdAt)],
+  })
+}
+
 export async function findMediaById(
   mediaId: string,
 ): Promise<MediaRecord | undefined> {

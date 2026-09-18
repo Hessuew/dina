@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { getDb } from '../../../test/integration/db'
-import { seedMedia, seedProfile } from '../../../test/integration/seed'
+import {
+  seedCourse,
+  seedMedia,
+  seedProfile,
+} from '../../../test/integration/seed'
 import { resetCreateSignedUrlsMock } from '../../../test/integration/storage-mocks'
 import type { CreateMediaInput } from '@/schemas/media.schema'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
@@ -70,6 +74,20 @@ beforeEach(() => {
 })
 
 describe('library reads', () => {
+  it('composes course metadata from the shared course repository', async () => {
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const courseId = await seedCourse({ title: 'Course A', orderIndex: 2 })
+    await seedMedia({ uploaderId: ownerId, courseId })
+
+    const result = await getLibraryMediaService(ownerId)
+
+    expect(result.media[0]).toMatchObject({
+      courseId,
+      courseName: 'Course A',
+      courseNumber: 3,
+    })
+  })
+
   it('logs redacted list and detail read telemetry', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const ownerId = await seedProfile({ role: 'teacher' })
