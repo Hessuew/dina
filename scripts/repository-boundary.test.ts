@@ -177,7 +177,7 @@ function findDirectDatabaseOperations(source: string): Array<string> {
 function findDatabaseClientImports(source: string): Array<string> {
   return [
     ...source.matchAll(
-      /(?:import\s+(?!type\b)(?:(?:(?!\bimport\b)[\s\S])*?\s+from\s+)?['"](?:@\/db|(?:\.\.?\/)+db)(?:\/index)?['"]|(?:import|require)\s*\(\s*['"](?:@\/db|(?:\.\.?\/)+db)(?:\/index)?['"]\s*\))/g,
+      /(?:(?:import|export)\s+(?!type\b)(?:(?:(?!\b(?:import|export)\b)[\s\S])*?\s+from\s+)?['"](?:@\/db|(?:\.\.?\/)+db)(?:\/index)?['"]|(?:import|require)\s*\(\s*['"](?:@\/db|(?:\.\.?\/)+db)(?:\/index)?['"]\s*\))/g,
     ),
   ].map(([match]) => match)
 }
@@ -185,7 +185,7 @@ function findDatabaseClientImports(source: string): Array<string> {
 function findRuntimeSchemaImports(source: string): Array<string> {
   return [
     ...source.matchAll(
-      /(?:import\s+(?!type\b)(?:(?:(?!\bimport\b)[\s\S])*?\s+from\s+)?['"](?:@\/db\/schema(?:\/[^'"]+)?|(?:\.\.?\/)+db\/schema(?:\/[^'"]+)?)['"]|(?:import|require)\s*\(\s*['"](?:@\/db\/schema(?:\/[^'"]+)?|(?:\.\.?\/)+db\/schema(?:\/[^'"]+)?)['"]\s*\))/g,
+      /(?:(?:import|export)\s+(?!type\b)(?:(?:(?!\b(?:import|export)\b)[\s\S])*?\s+from\s+)?['"](?:@\/db\/schema(?:\/[^'"]+)?|(?:\.\.?\/)+db\/schema(?:\/[^'"]+)?)['"]|(?:import|require)\s*\(\s*['"](?:@\/db\/schema(?:\/[^'"]+)?|(?:\.\.?\/)+db\/schema(?:\/[^'"]+)?)['"]\s*\))/g,
     ),
   ].map(([match]) => match)
 }
@@ -215,7 +215,7 @@ function findRuntimeRepositoryImports(source: string): Array<string> {
   return [
     ...source.matchAll(
       new RegExp(
-        String.raw`import\s+(?!type\b)(?:(?!\bimport\b)[\s\S])*?\s+from\s*['"]${repositoryPath}['"]`,
+        String.raw`(?:import|export)\s+(?!type\b)(?:(?!\b(?:import|export)\b)[\s\S])*?\s+from\s*['"]${repositoryPath}['"]`,
         'g',
       ),
     ),
@@ -270,10 +270,22 @@ describe('utils repository boundaries', () => {
     expect(findDatabaseClientImports("import('@/db')")).toHaveLength(1)
     expect(findDatabaseClientImports("require('../db')")).toHaveLength(1)
     expect(
+      findDatabaseClientImports("export { getDb } from '@/db'"),
+    ).toHaveLength(1)
+    expect(
+      findDatabaseClientImports("export type { Db } from '@/db'"),
+    ).toHaveLength(0)
+    expect(
       findRuntimeSchemaImports("import * as schema from '../db/schema'"),
     ).toHaveLength(1)
     expect(findRuntimeSchemaImports("import('@/db/schema')")).toHaveLength(1)
     expect(findRuntimeSchemaImports("require('../db/schema')")).toHaveLength(1)
+    expect(
+      findRuntimeSchemaImports("export { profiles } from '@/db/schema'"),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeSchemaImports("export type { profiles } from '@/db/schema'"),
+    ).toHaveLength(0)
     expect(
       findRuntimeSchemaImports("import type { profiles } from '@/db/schema'"),
     ).toHaveLength(0)
@@ -464,6 +476,14 @@ describe('utils repository boundaries', () => {
     expect(
       findRuntimeRepositoryImports(
         "import type { AttendanceSessionsTransactionClient } from './attendance-sessions.repository'",
+      ),
+    ).toHaveLength(0)
+    expect(
+      findRuntimeRepositoryImports("export * from './profiles.repository'"),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeRepositoryImports(
+        "export type { AttendanceSessionsTransactionClient } from './attendance-sessions.repository'",
       ),
     ).toHaveLength(0)
   })

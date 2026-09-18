@@ -95,13 +95,13 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    `.from(<table>)` sources, and raw SQL/interpolated table expressions — aligned
    with that repository's imported table. The raw-SQL guard also recognizes
    qualified names and `USING`, `TRUNCATE`, and table-DDL references.
-   Repositories must not import other repositories at runtime; services and explicit
-   transaction modules compose table adapters. Type-only imports remain allowed for shared
-   transaction-client types.
+   Repositories must not import or re-export other repositories at runtime; services and explicit
+   transaction modules compose table adapters. Type-only imports and re-exports remain allowed
+   for shared transaction-client types.
    The boundary is regression-tested by `scripts/repository-boundary.test.ts`;
    repositories use named schema-table imports so namespace imports cannot
    bypass the one-table ownership check. Feature modules
-   must not import `getDb()` or `withDbConnection()` directly; those clients
+   must not import or runtime-re-export `getDb()` or `withDbConnection()` directly; those clients
    belong to shared repositories, explicit transaction modules, and the health /
    request-scope infrastructure across `src/`. Direct Drizzle operations on `db`/`tx` handles
    (`query`, CRUD, `execute`, or `transaction`) are likewise forbidden outside

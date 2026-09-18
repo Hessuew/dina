@@ -15,8 +15,8 @@ domain logic; joined projections and multi-table atomic writes stay in feature
 services or explicit `transaction/` modules. Transaction modules may open a
 database transaction, but only coordinate table adapters; they do not import
 schema tables or issue Drizzle CRUD/query calls. Feature modules do not import
-`getDb()` or `withDbConnection()` directly. Static, dynamic, and CommonJS
-database imports are reserved for those seams and are regression-tested by
+`getDb()` or `withDbConnection()` directly. Static, dynamic, CommonJS, and
+runtime re-export database imports are reserved for those seams and are regression-tested by
 `scripts/repository-boundary.test.ts`.
 Only `*.repository.ts` files in `repository/` are database seams; the shared
 barrel and helper files cannot issue persistence calls.
@@ -35,9 +35,9 @@ regression test keeps the file set and barrel exports in sync. That guard also c
 table names referenced through SQL templates and interpolated table expressions, including
 qualified names and `USING`, `TRUNCATE`, and table-DDL forms, so raw SQL cannot bypass
 one-table ownership.
-Repositories must not import another repository at runtime; services and transaction modules
-compose table adapters instead. Type-only imports are allowed for shared transaction-client
-types without creating a runtime dependency between table owners.
+Repositories must not import or re-export another repository at runtime; services and transaction
+modules compose table adapters instead. Type-only imports and re-exports are allowed for shared
+transaction-client types without creating a runtime dependency between table owners.
 The same regression guard scans all application source files, including raw SQL table
 references, so routes, components, schemas, and other non-utility modules cannot bypass
 these database or repository seams.
