@@ -44,21 +44,19 @@ function findQueryTableReferences(source: string): Array<string> {
 }
 
 function findDatabaseClientImports(source: string): Array<string> {
-  return [...source.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]@\/db['"]/g)]
-    .flatMap(([, bindings]) => bindings.split(','))
-    .map((binding) => binding.trim().split(/\s+as\s+/)[0])
-    .filter((binding) => binding === 'getDb' || binding === 'withDbConnection')
+  return [
+    ...source.matchAll(
+      /import\s+(?!type\b)(?:(?:(?!\bimport\b)[\s\S])*?\s+from\s+)?['"](?:@\/db|(?:\.\.?\/)+db)(?:\/index)?['"]/g,
+    ),
+  ].map(([match]) => match)
 }
 
 function findRuntimeSchemaImports(source: string): Array<string> {
   return [
     ...source.matchAll(
-      /import\s*(?!type\b)\{([^}]*)\}\s*from\s*['"]@\/db\/schema['"]/g,
+      /import\s+(?!type\b)(?:(?:(?!\bimport\b)[\s\S])*?\s+from\s+)?['"](?:@\/db\/schema(?:\/[^'"]+)?|(?:\.\.?\/)+db\/schema(?:\/[^'"]+)?)['"]/g,
     ),
-  ]
-    .flatMap(([, bindings]) => bindings.split(','))
-    .map((binding) => binding.trim())
-    .filter((binding) => binding.length > 0 && !binding.startsWith('type '))
+  ].map(([match]) => match)
 }
 
 function findDirectRepositoryImports(source: string): Array<string> {
@@ -77,6 +75,21 @@ function isDatabaseSeam(file: string): boolean {
 }
 
 describe('utils repository boundaries', () => {
+  it('detects namespace and relative database imports', () => {
+    expect(
+      findDatabaseClientImports("import * as database from '@/db'"),
+    ).toHaveLength(1)
+    expect(
+      findDatabaseClientImports("import { getDb } from '../../db'"),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeSchemaImports("import * as schema from '../db/schema'"),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeSchemaImports("import type { profiles } from '@/db/schema'"),
+    ).toHaveLength(0)
+  })
+
   it('keeps repository modules in the shared repository seam', () => {
     const misplacedRepositories = findRepositoryFiles(utilsDirectory)
       .map((repositoryPath) => repositoryPath.slice(utilsDirectory.length + 1))
