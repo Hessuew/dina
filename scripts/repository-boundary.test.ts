@@ -523,10 +523,18 @@ describe('utils repository boundaries', () => {
       expect(findNonNamedSchemaImports(source), file).toHaveLength(0)
       expect(importedTables, file).toHaveLength(1)
       const [table] = importedTables
+      const tableMetadata = schemaTables.find(({ symbol }) => symbol === table)
       expect(
         schemaTableSymbols.has(table),
         `${table} is not a schema table`,
       ).toBe(true)
+      expect(
+        file
+          .split(sep)
+          .at(-1)
+          ?.replace(/\.repository\.ts$/, ''),
+        `${file} must be named after its owned SQL table`,
+      ).toBe(tableMetadata?.sqlName.replaceAll('_', '-'))
       expect(
         tableOwners.get(table),
         `${table} is already owned`,
