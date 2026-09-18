@@ -27,6 +27,11 @@ vi.mock('@/db', () => ({
   })),
 }))
 
+vi.mock('@/utils/repository', () => ({
+  findAssignmentById: queries.assignments,
+  findProfileRoleById: queries.profiles,
+}))
+
 beforeEach(() => {
   Object.values(queries).forEach((query) => query.mockReset())
 })

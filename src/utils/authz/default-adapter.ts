@@ -8,7 +8,6 @@ import {
 import type { Action, AuthorizationService, ResourceType, Role } from './types'
 import { getDb } from '@/db'
 import {
-  assignments,
   courseTeachers,
   lessons,
   postComments,
@@ -18,7 +17,7 @@ import {
 import { AuthorizationError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
-import { findProfileRoleById } from '@/utils/repository'
+import { findAssignmentById, findProfileRoleById } from '@/utils/repository'
 
 type AuthorizationLookup =
   | 'role'
@@ -240,11 +239,10 @@ export class DefaultAuthorizationService implements AuthorizationService {
         resourceId: assignmentId,
       },
       read: async () => {
-        const db = await getDb()
-        return db.query.assignments.findFirst({
-          where: eq(assignments.id, assignmentId),
-          columns: { lessonId: true },
-        })
+        const assignmentRecord = await findAssignmentById(assignmentId)
+        return assignmentRecord
+          ? { lessonId: assignmentRecord.lessonId }
+          : undefined
       },
     })
 

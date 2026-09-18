@@ -530,7 +530,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     the table write through a transaction-scoped adapter. New course-substitute-only access
     must use `@/utils/repository`.
     enrollment-only, invitation-only, assignment-only, or submission-only access must use
-    `@/utils/repository`. `lessons.repository.ts` now owns lesson-only reads and
+    `@/utils/repository`; authorization assignment lookups delegate to
+    `assignments.repository.ts` as well. `lessons.repository.ts` now owns lesson-only reads and
     writes reused across assignment and course services. New lesson-only access
     must use `@/utils/repository`; joined lesson/course/assignment reads remain
     in their feature repositories. `courses.repository.ts` owns course-only reads and
