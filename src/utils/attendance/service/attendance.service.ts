@@ -9,10 +9,10 @@ import type { LogLevel } from '@/utils/observability/logger'
 import {
   clearPresentOverrideAtomically,
   findLessonsWithSessionsByCourseId,
-  findOpenSessionsForStudent,
   markPresentAtomically,
   setPresentOverrideAtomically,
 } from '@/utils/attendance/repository/attendance.repository'
+import { buildOpenAttendanceRows } from '@/utils/attendance/domain/open-attendance.domain'
 import { assertCanOpenSession } from '@/utils/attendance/domain/attendance-session.domain'
 import {
   formatRemaining,
@@ -36,8 +36,12 @@ import {
   findCourseById,
   findCourseTeachers,
   findLessonByIdAndCourseId,
+  findOpenAttendanceSessions,
   findOpenSessionOnCourse,
   findPresent,
+  findPresentsByStudentAndSessionIds,
+  findPublishedCoursesByIds,
+  findPublishedLessonsByIds,
   openAttendanceSessionAtomically,
 } from '@/utils/repository'
 
@@ -559,7 +563,20 @@ async function loadOpenAttendanceForStudent(userId: string) {
   }
 
   const now = new Date()
-  const open = await findOpenSessionsForStudent(now, userId)
+  const openSessions = await findOpenAttendanceSessions(now)
+  const [courses, lessons, presents] = await Promise.all([
+    findPublishedCoursesByIds([
+      ...new Set(openSessions.map((session) => session.courseId)),
+    ]),
+    findPublishedLessonsByIds([
+      ...new Set(openSessions.map((session) => session.lessonId)),
+    ]),
+    findPresentsByStudentAndSessionIds(
+      userId,
+      openSessions.map((session) => session.id),
+    ),
+  ])
+  const open = buildOpenAttendanceRows(openSessions, courses, lessons, presents)
   const sessions = open.map((row) => ({
     ...mapOpenSession(row, now, {
       lessonTitle: row.lessonTitle,

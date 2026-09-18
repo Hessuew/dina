@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { attendanceSessions } from '@/db/schema'
 
@@ -18,6 +18,15 @@ export async function findAttendanceSessionsByIds(sessionIds: Array<string>) {
     })
     .from(attendanceSessions)
     .where(inArray(attendanceSessions.id, sessionIds))
+}
+
+export async function findOpenAttendanceSessions(now: Date) {
+  const db = await getDb()
+  return db
+    .select()
+    .from(attendanceSessions)
+    .where(gt(attendanceSessions.closesAt, now))
+    .orderBy(desc(attendanceSessions.openedAt))
 }
 
 function firstOrNull<T>(rows: Array<T>): T | null {

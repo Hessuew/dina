@@ -21,6 +21,7 @@ import { attendanceSessions } from '@/db/schema'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 import * as attendanceRepository from '@/utils/attendance/repository/attendance.repository'
+import * as attendanceSessionsRepository from '@/utils/repository/attendance-sessions.repository'
 import * as lessonsRepository from '@/utils/repository/lessons.repository'
 import * as authUtils from '@/utils/auth/auth'
 import * as courseTeachersRepository from '@/utils/repository'
@@ -536,8 +537,8 @@ describe('attendance read telemetry (integration)', () => {
     const { studentId } = await seedManagedCourse()
     const repositoryError = new Error('attendance database secret')
     vi.spyOn(
-      attendanceRepository,
-      'findOpenSessionsForStudent',
+      attendanceSessionsRepository,
+      'findOpenAttendanceSessions',
     ).mockRejectedValueOnce(repositoryError)
 
     await expect(

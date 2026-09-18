@@ -10,12 +10,33 @@ export async function findPresentsByStudentIds(studentIds: Array<string>) {
   const db = await getDb()
   return db
     .select({
+      id: attendancePresents.id,
       studentId: attendancePresents.studentId,
       sessionId: attendancePresents.sessionId,
       checkedInAt: attendancePresents.checkedInAt,
     })
     .from(attendancePresents)
     .where(inArray(attendancePresents.studentId, studentIds))
+}
+
+export async function findPresentsByStudentAndSessionIds(
+  studentId: string,
+  sessionIds: Array<string>,
+) {
+  if (sessionIds.length === 0) return []
+  const db = await getDb()
+  return db
+    .select({
+      id: attendancePresents.id,
+      sessionId: attendancePresents.sessionId,
+    })
+    .from(attendancePresents)
+    .where(
+      and(
+        eq(attendancePresents.studentId, studentId),
+        inArray(attendancePresents.sessionId, sessionIds),
+      ),
+    )
 }
 
 function firstOrNull<T>(rows: Array<T>): T | null {

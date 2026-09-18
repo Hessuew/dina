@@ -1,5 +1,5 @@
 /* v8 ignore start */
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { courses } from '@/db/schema'
 
@@ -48,6 +48,15 @@ export async function findCoursesByIds(courseIds: Array<string>) {
   return db.query.courses.findMany({
     where: inArray(courses.id, courseIds),
     columns: { id: true, title: true, orderIndex: true, isPublished: true },
+  })
+}
+
+export async function findPublishedCoursesByIds(courseIds: Array<string>) {
+  if (courseIds.length === 0) return []
+  const db = await getDb()
+  return db.query.courses.findMany({
+    where: and(inArray(courses.id, courseIds), eq(courses.isPublished, true)),
+    columns: { id: true, title: true },
   })
 }
 

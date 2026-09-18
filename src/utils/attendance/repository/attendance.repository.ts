@@ -1,12 +1,7 @@
 /* v8 ignore start */
-import { and, desc, eq, gt, sql } from 'drizzle-orm'
+import { and, eq, gt, sql } from 'drizzle-orm'
 import { getDb } from '@/db'
-import {
-  attendancePresents,
-  attendanceSessions,
-  courses,
-  lessons,
-} from '@/db/schema'
+import { attendancePresents, attendanceSessions, lessons } from '@/db/schema'
 import {
   findAttendanceSessionByLessonInTransaction,
   findOpenAttendanceSessionInTransaction,
@@ -17,39 +12,6 @@ import {
   findPresentInTransaction,
   insertPresentInTransaction,
 } from '@/utils/repository/attendance-presents.repository'
-
-export async function findOpenSessionsForStudent(now: Date, studentId: string) {
-  const db = await getDb()
-  return db
-    .select({
-      id: attendanceSessions.id,
-      courseId: attendanceSessions.courseId,
-      lessonId: attendanceSessions.lessonId,
-      openedAt: attendanceSessions.openedAt,
-      closesAt: attendanceSessions.closesAt,
-      courseTitle: courses.title,
-      lessonTitle: lessons.title,
-      presentId: attendancePresents.id,
-    })
-    .from(attendanceSessions)
-    .innerJoin(courses, eq(courses.id, attendanceSessions.courseId))
-    .innerJoin(lessons, eq(lessons.id, attendanceSessions.lessonId))
-    .leftJoin(
-      attendancePresents,
-      and(
-        eq(attendancePresents.sessionId, attendanceSessions.id),
-        eq(attendancePresents.studentId, studentId),
-      ),
-    )
-    .where(
-      and(
-        gt(attendanceSessions.closesAt, now),
-        eq(courses.isPublished, true),
-        eq(lessons.isPublished, true),
-      ),
-    )
-    .orderBy(desc(attendanceSessions.openedAt))
-}
 
 export async function findLessonsWithSessionsByCourseId(courseId: string) {
   const db = await getDb()

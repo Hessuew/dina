@@ -97,6 +97,15 @@ export async function findLessonsByIds(lessonIds: Array<string>) {
   })
 }
 
+export async function findPublishedLessonsByIds(lessonIds: Array<string>) {
+  if (lessonIds.length === 0) return []
+  const db = await getDb()
+  return db.query.lessons.findMany({
+    where: and(inArray(lessons.id, lessonIds), eq(lessons.isPublished, true)),
+    columns: { id: true, title: true },
+  })
+}
+
 export async function insertLesson(values: {
   courseId: string
   title: string
