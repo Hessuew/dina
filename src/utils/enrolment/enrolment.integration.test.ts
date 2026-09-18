@@ -1368,8 +1368,8 @@ describe('enrollment distribution and substitution telemetry (integration)', () 
     )
 
     vi.spyOn(
-      enrollmentRepository,
-      'insertSubstituteWithReassignment',
+      sharedRepository,
+      'insertCourseSubstituteInTransaction',
     ).mockRejectedValueOnce(new Error('substitution database secret'))
     await expect(
       substituteTeacherService(

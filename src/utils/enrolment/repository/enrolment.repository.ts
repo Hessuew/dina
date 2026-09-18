@@ -17,10 +17,6 @@ import type { SQL } from 'drizzle-orm'
 import type { ENROLLMENT_SORT_KEYS } from '@/schemas/enrollment.schema'
 import { getDb } from '@/db'
 import {
-  insertCourseSubstituteInTransaction,
-  updateReviewerAssignmentsInTransaction,
-} from '@/utils/repository'
-import {
   courseTeachers,
   enrollmentEvaluations,
   enrollmentReviewerAssignments,
@@ -235,60 +231,6 @@ export async function findEnrollmentsPage({
   ])
 
   return { rows, total }
-}
-
-/**
- * Transactionally inserts a course_substitutes record and bulk-reassigns all
- * unscored assignments from the absent teacher to the substitute.
- * Returns the count of reassigned assignments.
- */
-export async function insertSubstituteWithReassignment(
-  courseId: string,
-  substituteTeacherId: string,
-  absentTeacherId: string,
-): Promise<{ reassigned: number }> {
-  const db = await getDb()
-  let reassigned = 0
-  await db.transaction(async (tx) => {
-    await insertCourseSubstituteInTransaction(tx, {
-      courseId,
-      substituteTeacherId,
-      absentTeacherId,
-    })
-
-    const rows = await tx
-      .select({ enrollmentId: enrollmentReviewerAssignments.enrollmentId })
-      .from(enrollmentReviewerAssignments)
-      .leftJoin(
-        enrollmentEvaluations,
-        and(
-          eq(
-            enrollmentEvaluations.enrollmentId,
-            enrollmentReviewerAssignments.enrollmentId,
-          ),
-          eq(
-            enrollmentEvaluations.evaluatorId,
-            enrollmentReviewerAssignments.reviewerId,
-          ),
-        ),
-      )
-      .where(
-        and(
-          eq(enrollmentReviewerAssignments.reviewerId, absentTeacherId),
-          isNull(enrollmentEvaluations.score),
-        ),
-      )
-
-    if (rows.length > 0) {
-      reassigned = await updateReviewerAssignmentsInTransaction(
-        tx,
-        rows.map((r) => r.enrollmentId),
-        substituteTeacherId,
-        courseId,
-      )
-    }
-  })
-  return { reassigned }
 }
 
 /* v8 ignore end */

@@ -556,9 +556,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     across authorization, teacher-directory, enrolment, and staff privilege services. New
     `course-substitutes.repository.ts` owns course-substitute-only reads and writes reused
     across enrolment substitution services and enrollment team membership composition; the
-    atomic substitution transaction keeps its reviewer reassignment orchestration in the
-    enrolment feature repository and delegates the table write through a transaction-scoped
-    adapter. Enrollment evaluation authorization and viewer-course filtering compose
+    enrolment service keeps the substitution transaction atomic while composing reviewer
+    assignment and evaluation rows through transaction-scoped table adapters. Enrollment
+    evaluation authorization and viewer-course filtering compose
     course-teacher and course-substitute rows in the enrolment service. Enrollment review-heading
     team composition now loads course-teacher rows,
     course-substitute rows, and profile rows through their shared table adapters and combines
@@ -598,9 +598,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     lookup, batch reads, bulk assignment, and transaction-scoped reassignment writes;
     bulk-grade reads compose awaiting-approval enrollment rows with evaluation rows
     in the enrolment service through `bulk-grade.domain.ts`; they do not retain an
-    enrollment/evaluation join in the feature repository. Enrollment page filters and
-    substitution orchestration remain in the enrolment feature repository, while the
-    enrolment service composes reviewer assignment rows with profile names for the
+    enrollment/evaluation join in the feature repository. Enrollment page filters remain in
+    the enrolment feature repository, while substitution orchestration lives in the service
+    with shared table adapters. The enrolment service composes reviewer assignment rows with
+    profile names for the
     Review heading and filters assigned enrollment IDs for distribution. New
     reviewer-assignment-only access
     must use `@/utils/repository`.

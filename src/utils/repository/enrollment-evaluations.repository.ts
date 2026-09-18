@@ -2,7 +2,26 @@ import { asc, inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { enrollmentEvaluations } from '@/db/schema'
 
+export type EnrollmentEvaluationsTransactionClient = Parameters<
+  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
+>[0]
+
 /* v8 ignore start */
+
+export async function findEnrollmentEvaluationsByEnrollmentIdsInTransaction(
+  tx: EnrollmentEvaluationsTransactionClient,
+  enrollmentIds: Array<string>,
+) {
+  if (enrollmentIds.length === 0) return []
+  return tx
+    .select({
+      enrollmentId: enrollmentEvaluations.enrollmentId,
+      evaluatorId: enrollmentEvaluations.evaluatorId,
+      score: enrollmentEvaluations.score,
+    })
+    .from(enrollmentEvaluations)
+    .where(inArray(enrollmentEvaluations.enrollmentId, enrollmentIds))
+}
 
 export async function findEnrollmentEvaluationsByEnrollmentIds(
   enrollmentIds: Array<string>,

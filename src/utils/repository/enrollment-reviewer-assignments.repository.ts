@@ -38,6 +38,19 @@ export async function findReviewerAssignmentsByEnrollmentIds(
   return rows.map((row) => ({ ...row, courseId: row.courseId ?? null }))
 }
 
+export async function findReviewerAssignmentsByReviewerIdInTransaction(
+  tx: EnrollmentReviewerAssignmentsTransactionClient,
+  reviewerId: string,
+) {
+  return tx
+    .select({
+      enrollmentId: enrollmentReviewerAssignments.enrollmentId,
+      reviewerId: enrollmentReviewerAssignments.reviewerId,
+    })
+    .from(enrollmentReviewerAssignments)
+    .where(eq(enrollmentReviewerAssignments.reviewerId, reviewerId))
+}
+
 export async function bulkAssignEnrollments(
   assignments: Array<
     Pick<

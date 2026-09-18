@@ -26,6 +26,7 @@ import type {
   BulkGradeThresholds,
 } from '@/utils/enrolment/domain/bulk-grade.domain'
 import type { ReviewerTeamMember } from '@/utils/enrolment/domain/reviewer-teams.domain'
+import { selectUnscoredReviewerEnrollmentIds } from '@/utils/enrolment/domain/substitution.domain'
 import {
   assignBulkGradeStatus,
   buildBulkGradeRows,
@@ -41,10 +42,8 @@ import {
 } from '@/utils/enrolment/domain/enrolment.domain'
 import { buildReviewerTeams } from '@/utils/enrolment/domain/reviewer-teams.domain'
 import { selectEnrollmentEmailsByGroup } from '@/utils/enrolment/domain/email-export.domain'
-import {
-  findEnrollmentsPage,
-  insertSubstituteWithReassignment,
-} from '@/utils/enrolment/repository/enrolment.repository'
+import { findEnrollmentsPage } from '@/utils/enrolment/repository/enrolment.repository'
+import { getDb } from '@/db'
 import {
   bulkAssignEnrollments,
   bulkUpdateEnrollmentStatuses,
@@ -63,6 +62,7 @@ import {
   findEnrollmentContactLookupCandidates,
   findEnrollmentEvaluationScoresByEnrollmentIds,
   findEnrollmentEvaluationsByEnrollmentIds,
+  findEnrollmentEvaluationsByEnrollmentIdsInTransaction,
   findEnrollmentIdsExcludingDuplicates,
   findEnrollmentsForEmailExport,
   findInvitationByEmail,
@@ -71,15 +71,18 @@ import {
   findProfilesByIds,
   findReviewerAssignmentForEnrollment,
   findReviewerAssignmentsByEnrollmentIds,
+  findReviewerAssignmentsByReviewerIdInTransaction,
   findSubstituteTeacherIdsByCourse,
   findTeacherIdsByCourseId,
   findTeacherIdsByCourseIds,
+  insertCourseSubstituteInTransaction,
   insertEnrollment,
   insertInvitation,
   markEnrollmentInvitationSent,
   updateEnrollmentSpecialCaseById,
   updateEnrollmentStatusById,
   updateInvitationToken,
+  updateReviewerAssignmentsInTransaction,
   upsertEnrollmentEvaluation,
 } from '@/utils/repository'
 import {
@@ -1549,6 +1552,42 @@ async function insertSubstitutionWithTelemetry(
     )
     throw error
   }
+}
+
+async function insertSubstituteWithReassignment(
+  courseId: string,
+  substituteTeacherId: string,
+  absentTeacherId: string,
+): Promise<{ reassigned: number }> {
+  const db = await getDb()
+  return db.transaction(async (tx) => {
+    await insertCourseSubstituteInTransaction(tx, {
+      courseId,
+      substituteTeacherId,
+      absentTeacherId,
+    })
+    const assignments = await findReviewerAssignmentsByReviewerIdInTransaction(
+      tx,
+      absentTeacherId,
+    )
+    const evaluations =
+      await findEnrollmentEvaluationsByEnrollmentIdsInTransaction(
+        tx,
+        assignments.map((assignment) => assignment.enrollmentId),
+      )
+    const enrollmentIds = selectUnscoredReviewerEnrollmentIds(
+      assignments,
+      evaluations,
+      absentTeacherId,
+    )
+    const reassigned = await updateReviewerAssignmentsInTransaction(
+      tx,
+      enrollmentIds,
+      substituteTeacherId,
+      courseId,
+    )
+    return { reassigned }
+  })
 }
 
 /**
