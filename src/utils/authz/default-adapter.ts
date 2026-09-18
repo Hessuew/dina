@@ -7,7 +7,7 @@ import {
 } from './cache'
 import type { Action, AuthorizationService, ResourceType, Role } from './types'
 import { getDb } from '@/db'
-import { postComments, posts, submissions } from '@/db/schema'
+import { postComments, posts } from '@/db/schema'
 import { AuthorizationError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
@@ -16,6 +16,7 @@ import {
   findCourseTeacher,
   findLessonById,
   findProfileRoleById,
+  findSubmissionById,
 } from '@/utils/repository'
 
 type AuthorizationLookup =
@@ -246,11 +247,13 @@ export class DefaultAuthorizationService implements AuthorizationService {
       userId,
       fields: { action, resourceType: 'submission', resourceId: submissionId },
       read: async () => {
-        const db = await getDb()
-        return db.query.submissions.findFirst({
-          where: eq(submissions.id, submissionId),
-          columns: { studentId: true, assignmentId: true },
-        })
+        const submissionRecord = await findSubmissionById(submissionId)
+        return submissionRecord
+          ? {
+              studentId: submissionRecord.studentId,
+              assignmentId: submissionRecord.assignmentId,
+            }
+          : undefined
       },
     })
 

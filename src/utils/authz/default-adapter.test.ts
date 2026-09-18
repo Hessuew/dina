@@ -19,7 +19,6 @@ vi.mock('@/db', () => ({
       profiles: { findFirst: queries.profiles },
       lessons: { findFirst: queries.lessons },
       assignments: { findFirst: queries.assignments },
-      submissions: { findFirst: queries.submissions },
       posts: { findFirst: queries.posts },
       postComments: { findFirst: queries.comments },
     },
@@ -31,6 +30,7 @@ vi.mock('@/utils/repository', () => ({
   findCourseTeacher: queries.courseTeacher,
   findLessonById: queries.lessons,
   findProfileRoleById: queries.profiles,
+  findSubmissionById: queries.submissions,
 }))
 
 beforeEach(() => {
