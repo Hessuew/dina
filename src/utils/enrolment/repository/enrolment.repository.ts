@@ -10,7 +10,6 @@ import {
   isNotNull,
   isNull,
   ne,
-  notLike,
   or,
   sql,
 } from 'drizzle-orm'
@@ -268,27 +267,6 @@ export async function findCourseIdsForViewer(
     findCourseIdsBySubstituteTeacher(userId),
   ])
   return [...new Set([...teacherCourseIds, ...substituteCourseIds])]
-}
-
-export async function findUnassignedEnrollmentIds(): Promise<Array<string>> {
-  const db = await getDb()
-
-  const rows = await db
-    .select({ id: enrollments.id })
-    .from(enrollments)
-    .leftJoin(
-      enrollmentReviewerAssignments,
-      eq(enrollmentReviewerAssignments.enrollmentId, enrollments.id),
-    )
-    .where(
-      and(
-        isNull(enrollmentReviewerAssignments.id),
-        notLike(enrollments.email, 'duplicate_%'),
-      ),
-    )
-    .orderBy(asc(enrollments.createdAt))
-
-  return rows.map((r) => r.id)
 }
 
 /**

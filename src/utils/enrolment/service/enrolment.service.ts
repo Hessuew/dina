@@ -45,7 +45,6 @@ import {
   findCourseIdsForViewer,
   findCourseTeamIds,
   findEnrollmentsPage,
-  findUnassignedEnrollmentIds,
   insertSubstituteWithReassignment,
 } from '@/utils/enrolment/repository/enrolment.repository'
 import {
@@ -62,6 +61,7 @@ import {
   findEnrollmentById,
   findEnrollmentContactLookupCandidates,
   findEnrollmentEvaluationsByEnrollmentIds,
+  findEnrollmentIdsExcludingDuplicates,
   findEnrollmentsForEmailExport,
   findInvitationByEmail,
   findInvitationsByIds,
@@ -215,6 +215,16 @@ function logEnrollmentContactEvent(
 
 function shouldLogEnrollmentContactFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
+}
+
+async function findUnassignedEnrollmentIds(): Promise<Array<string>> {
+  const enrollmentIds = await findEnrollmentIdsExcludingDuplicates()
+  const assignments =
+    await findReviewerAssignmentsByEnrollmentIds(enrollmentIds)
+  const assignedIds = new Set(
+    assignments.map(({ enrollmentId }) => enrollmentId),
+  )
+  return enrollmentIds.filter((enrollmentId) => !assignedIds.has(enrollmentId))
 }
 
 async function withEnrollmentReadTelemetry<T>(args: {

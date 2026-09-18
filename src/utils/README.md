@@ -515,7 +515,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     atomicity.
     `enrollments.repository.ts` now
     owns enrollment-only reads and writes reused across enrollment and campaign
-    services. Enrollment contact export composes its enrollment rows with
+    services, including ordered enrollment IDs with duplicate markers excluded for
+    distribution. Enrollment contact export composes its enrollment rows with
     invitation status from `invitations.repository.ts` in the enrolment service;
     it does not retain an enrollment/invitation join in the feature repository.
     `assignments.repository.ts` now
@@ -595,7 +596,8 @@ This folder is primarily where TanStack Start server functions live (via `create
     lookup, batch reads, bulk assignment, and transaction-scoped reassignment writes;
     enrollment page filters and substitution orchestration remain in the enrolment
     feature repository, while the enrolment service composes reviewer assignment rows
-    with profile names for the Review heading. New reviewer-assignment-only access
+    with profile names for the Review heading and filters assigned enrollment IDs for
+    distribution. New reviewer-assignment-only access
     must use `@/utils/repository`.
     `media-library.repository.ts` owns media-library-only reads and writes reused by
     the library service; its course-enriched listing composes media rows with

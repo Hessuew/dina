@@ -719,8 +719,8 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
     const substitutionError = new Error('substitution lookup database secret')
 
     vi.spyOn(
-      enrollmentRepository,
-      'findUnassignedEnrollmentIds',
+      sharedRepository,
+      'findEnrollmentIdsExcludingDuplicates',
     ).mockRejectedValueOnce(distributionError)
     await expect(distributeEnrollmentsService(adminId)).rejects.toBe(
       distributionError,
@@ -1262,6 +1262,34 @@ describe('enrollment distribution and substitution telemetry (integration)', () 
     })
     expect(event?.durationMs).toEqual(expect.any(Number))
     expect(JSON.stringify(event)).not.toContain('Private Applicant')
+  })
+
+  it('distributes only unassigned non-duplicate enrollments', async () => {
+    const adminId = await seedProfile({ role: 'admin' })
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const courseId = await seedCourse()
+    await seedCourseTeacher(courseId, teacherId)
+
+    const assignedId = await seedEnrollment()
+    await seedReviewerAssignment(assignedId, teacherId, courseId)
+    const unassignedId = await seedEnrollment()
+    const duplicateId = await seedEnrollment({
+      email: 'duplicate_distribution@test.dev',
+    })
+
+    const result = await distributeEnrollmentsService(adminId)
+
+    expect(result).toEqual({ assigned: 1 })
+    const assignments =
+      await sharedRepository.findReviewerAssignmentsByEnrollmentIds([
+        assignedId,
+        unassignedId,
+        duplicateId,
+      ])
+    expect(assignments.map(({ enrollmentId }) => enrollmentId)).toEqual([
+      assignedId,
+      unassignedId,
+    ])
   })
 
   it('logs substitution completion and end events with safe identifiers', async () => {

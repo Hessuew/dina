@@ -1,5 +1,5 @@
 /* v8 ignore start */
-import { asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
+import { asc, desc, eq, ilike, inArray, notLike, or, sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { enrollments } from '@/db/schema'
@@ -53,6 +53,18 @@ export async function findEnrollmentsForEmailExport() {
     },
     orderBy: (enrollment) => [asc(enrollment.createdAt)],
   })
+}
+
+export async function findEnrollmentIdsExcludingDuplicates(): Promise<
+  Array<string>
+> {
+  const db = await getDb()
+  const rows = await db
+    .select({ id: enrollments.id })
+    .from(enrollments)
+    .where(notLike(enrollments.email, 'duplicate_%'))
+    .orderBy(asc(enrollments.createdAt))
+  return rows.map((row) => row.id)
 }
 
 export async function updateEnrollmentStatusById(
