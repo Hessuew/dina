@@ -341,11 +341,15 @@ describe('utils repository boundaries', () => {
   })
 
   it('keeps repository modules in the shared repository seam', () => {
-    const misplacedRepositories = findRepositoryFiles(utilsDirectory)
-      .map((repositoryPath) => repositoryPath.slice(utilsDirectory.length + 1))
+    const misplacedRepositories = findRepositoryFiles(sourceDirectory)
+      .map((repositoryPath) => repositoryPath.slice(sourceDirectory.length + 1))
       .filter((file) => {
         const pathParts = file.split(sep)
-        return pathParts.length !== 2 || pathParts[0] !== 'repository'
+        return (
+          pathParts.length !== 3 ||
+          pathParts[0] !== 'utils' ||
+          pathParts[1] !== 'repository'
+        )
       })
 
     expect(misplacedRepositories).toEqual([])
