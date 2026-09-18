@@ -108,6 +108,25 @@ function findDirectRepositoryImports(source: string): Array<string> {
   ].map(([match]) => match)
 }
 
+function findRuntimeRepositoryImports(source: string): Array<string> {
+  const repositoryPath = String.raw`(?:@/utils/repository(?:/[^'"]+)?|(?:\.\.?/)+(?:[^'"]+/)*repository(?:/[^'"]+)?|(?:\.\.?/)+[^'"]+\.repository)`
+
+  return [
+    ...source.matchAll(
+      new RegExp(
+        String.raw`import\s+(?!type\b)(?:(?!\bimport\b)[\s\S])*?\s+from\s*['"]${repositoryPath}['"]`,
+        'g',
+      ),
+    ),
+    ...source.matchAll(
+      new RegExp(
+        String.raw`(?:import|require)\s*\(\s*['"]${repositoryPath}['"]\s*\)`,
+        'g',
+      ),
+    ),
+  ].map(([match]) => match)
+}
+
 function findRepositoryBarrelExports(source: string): Array<string> {
   return [...source.matchAll(/export\s+\*\s+from\s+['"]\.\/([^'"]+)['"]/g)].map(
     ([, repository]) => repository,
@@ -217,6 +236,29 @@ describe('utils repository boundaries', () => {
     ).toHaveLength(0)
   })
 
+  it('detects runtime repository imports while allowing type-only imports', () => {
+    expect(
+      findRuntimeRepositoryImports(
+        "import { findProfileById } from './profiles.repository'",
+      ),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeRepositoryImports(
+        "import { findProfileById } from '@/utils/repository'",
+      ),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeRepositoryImports(
+        "import('./attendance-sessions.repository')",
+      ),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeRepositoryImports(
+        "import type { AttendanceSessionsTransactionClient } from './attendance-sessions.repository'",
+      ),
+    ).toHaveLength(0)
+  })
+
   it('keeps repository modules in the shared repository seam', () => {
     const misplacedRepositories = findRepositoryFiles(utilsDirectory)
       .map((repositoryPath) => repositoryPath.slice(utilsDirectory.length + 1))
@@ -257,6 +299,19 @@ describe('utils repository boundaries', () => {
         /\b(?:innerJoin|leftJoin|rightJoin|fullJoin|crossJoin)\s*\(/,
       )
     }
+  })
+
+  it('keeps repositories independent from other runtime repository modules', () => {
+    const offenders = findRepositoryFiles(utilsDirectory)
+      .map((repositoryPath) => ({
+        file: repositoryPath.slice(utilsDirectory.length + 1),
+        imports: findRuntimeRepositoryImports(
+          readFileSync(repositoryPath, 'utf8'),
+        ),
+      }))
+      .filter(({ imports }) => imports.length > 0)
+
+    expect(offenders).toEqual([])
   })
 
   it('keeps database clients behind repository or infrastructure seams', () => {

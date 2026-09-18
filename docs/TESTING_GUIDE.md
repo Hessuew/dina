@@ -93,6 +93,9 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    Keep one shared owner per table, and keep every Drizzle table reference —
    including relation-backed `db.query.<table>` reads, direct CRUD calls, and
    `.from(<table>)` sources — aligned with that repository's imported table.
+   Repositories must not import other repositories at runtime; services and explicit
+   transaction modules compose table adapters. Type-only imports remain allowed for shared
+   transaction-client types.
    The boundary is regression-tested by `scripts/repository-boundary.test.ts`;
    repositories use named schema-table imports so namespace imports cannot
    bypass the one-table ownership check. Feature modules
