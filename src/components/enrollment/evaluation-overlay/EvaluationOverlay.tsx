@@ -12,10 +12,10 @@ import {
 } from 'lucide-react'
 import type { ReactNode, RefObject } from 'react'
 import type { EnrollmentWithEvaluation } from '@/utils/enrolment/domain/enrolment.domain'
-import type { EvaluationWithAuthor } from '@/utils/enrolment/repository/enrolment.repository'
 import type {
   AdmissionCategory,
   EvaluationScore,
+  EvaluationWithAuthor,
 } from '@/utils/enrolment/domain/evaluation.domain'
 import {
   ADMISSION_CATEGORY_OPTIONS,

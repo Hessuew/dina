@@ -50,15 +50,6 @@ const SORT_COLUMN_MAP = {
 
 export type EnrollmentSortKey = (typeof ENROLLMENT_SORT_KEYS)[number]
 
-export type EvaluationWithAuthor = {
-  enrollmentId: string
-  evaluatorId: string
-  evaluatorName: string
-  score: number | null
-  admissionCategory: (typeof enrollmentEvaluations.$inferSelect)['admissionCategory']
-  note: string | null
-}
-
 export type FindEnrollmentsPageInput = {
   limit: number
   offset: number
@@ -255,26 +246,6 @@ export async function findEnrollmentsPage({
   ])
 
   return { rows, total }
-}
-
-export async function findEvaluationsForEnrollments(
-  enrollmentIds: Array<string>,
-): Promise<Array<EvaluationWithAuthor>> {
-  if (enrollmentIds.length === 0) return []
-  const db = await getDb()
-  return db
-    .select({
-      enrollmentId: enrollmentEvaluations.enrollmentId,
-      evaluatorId: enrollmentEvaluations.evaluatorId,
-      evaluatorName: profiles.fullName,
-      score: enrollmentEvaluations.score,
-      admissionCategory: enrollmentEvaluations.admissionCategory,
-      note: enrollmentEvaluations.note,
-    })
-    .from(enrollmentEvaluations)
-    .innerJoin(profiles, eq(profiles.id, enrollmentEvaluations.evaluatorId))
-    .where(inArray(enrollmentEvaluations.enrollmentId, enrollmentIds))
-    .orderBy(asc(enrollmentEvaluations.createdAt))
 }
 
 /**

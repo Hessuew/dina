@@ -12,12 +12,12 @@ import {
   navigateForward,
 } from './domain/enrollment-review.domain'
 import type { EnrollmentWithEvaluation } from '@/utils/enrolment/domain/enrolment.domain'
-import type {
-  EnrollmentSortKey,
-  EvaluationWithAuthor,
-} from '@/utils/enrolment/repository/enrolment.repository'
+import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.repository'
 import type { EvalMap } from './domain/enrollment-review.domain'
-import type { EvaluationPatch } from '@/utils/enrolment/domain/evaluation.domain'
+import type {
+  EvaluationPatch,
+  EvaluationWithAuthor,
+} from '@/utils/enrolment/domain/evaluation.domain'
 import { applyEvaluationPatch } from '@/utils/enrolment/domain/evaluation.domain'
 import { getEnrollments } from '@/utils/enrolment'
 

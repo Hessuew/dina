@@ -572,8 +572,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     reads and writes; the Zoom Link service composes its rows with profile names from
     `profiles.repository.ts`. New zoom-link-only or profile-only access must use
     `@/utils/repository`. `enrollment-evaluations.repository.ts` owns
-    enrollment-evaluation-only writes reused by the enrollment review service;
-    joined evaluation/profile reads remain in the enrolment feature repository.
+    enrollment-evaluation-only reads and writes reused by the enrollment review
+    service. The enrolment service composes evaluator names from
+    `profiles.repository.ts` rather than keeping a mixed evaluation/profile
+    projection in its feature repository.
     `enrollment-reviewer-assignments.repository.ts` owns reviewer-assignment-only
     lookup, bulk assignment, and transaction-scoped reassignment writes; enrollment
     page filters, reviewer/profile projections, and substitution orchestration remain

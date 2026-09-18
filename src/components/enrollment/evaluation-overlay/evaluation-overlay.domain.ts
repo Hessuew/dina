@@ -1,5 +1,7 @@
-import type { EvaluationWithAuthor } from '@/utils/enrolment/repository/enrolment.repository'
-import type { AdmissionCategory } from '@/utils/enrolment/domain/evaluation.domain'
+import type {
+  AdmissionCategory,
+  EvaluationWithAuthor,
+} from '@/utils/enrolment/domain/evaluation.domain'
 import { scoreRequiresAdmissionCategory } from '@/utils/enrolment/domain/evaluation.domain'
 
 export type EvaluationView = {

@@ -20,6 +20,7 @@ import type {
   EnrollmentWithEvaluation,
   MaybeRedactedEnrollment,
 } from '@/utils/enrolment/domain/enrolment.domain'
+import type { EvaluationWithAuthor } from '@/utils/enrolment/domain/evaluation.domain'
 import type {
   BulkGradeStatus,
   BulkGradeThresholds,
@@ -42,7 +43,6 @@ import {
   findCourseTeamIds,
   findEnrollmentEmailsByGroup,
   findEnrollmentsPage,
-  findEvaluationsForEnrollments,
   findPeersForReviewers,
   findReviewerAssignmentsForEnrollments,
   findUnassignedEnrollmentIds,
@@ -60,8 +60,10 @@ import {
   findCourseIdsByTeacherIds,
   findEnrollmentById,
   findEnrollmentContactLookupCandidates,
+  findEnrollmentEvaluationsByEnrollmentIds,
   findInvitationByEmail,
   findProfileById,
+  findProfilesByIds,
   findReviewerAssignmentForEnrollment,
   insertEnrollment,
   insertInvitation,
@@ -505,7 +507,7 @@ async function persistDerivedEvaluationStatus(
 ): Promise<void> {
   const [enrollment, evaluations] = await Promise.all([
     findEnrollmentById(enrollmentId),
-    findEvaluationsForEnrollments([enrollmentId]),
+    findEnrollmentEvaluationsByEnrollmentIds([enrollmentId]),
   ])
 
   if (!enrollment) return
@@ -524,6 +526,24 @@ async function persistDerivedEvaluationStatus(
   if (nextStatus !== null) {
     await updateEnrollmentStatusById(enrollmentId, nextStatus)
   }
+}
+
+async function findEvaluationsForEnrollments(
+  enrollmentIds: Array<string>,
+): Promise<Array<EvaluationWithAuthor>> {
+  const evaluations =
+    await findEnrollmentEvaluationsByEnrollmentIds(enrollmentIds)
+  const profiles = await findProfilesByIds(
+    evaluations.map((evaluation) => evaluation.evaluatorId),
+  )
+  const namesByProfileId = new Map(
+    profiles.map((profile) => [profile.id, profile.fullName]),
+  )
+
+  return evaluations.flatMap((evaluation) => {
+    const evaluatorName = namesByProfileId.get(evaluation.evaluatorId)
+    return evaluatorName === undefined ? [] : [{ ...evaluation, evaluatorName }]
+  })
 }
 
 type BulkGradeResult = {

@@ -102,6 +102,8 @@ export type EvaluationEntry = {
   note: string | null
 }
 
+export type EvaluationWithAuthor = EvaluationEntry
+
 function mergeEvaluationEntry(
   entry: EvaluationEntry,
   patch: EvaluationPatch,

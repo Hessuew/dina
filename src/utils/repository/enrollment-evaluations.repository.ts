@@ -1,6 +1,20 @@
-/* v8 ignore start */
+import { asc, inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { enrollmentEvaluations } from '@/db/schema'
+
+/* v8 ignore start */
+
+export async function findEnrollmentEvaluationsByEnrollmentIds(
+  enrollmentIds: Array<string>,
+) {
+  if (enrollmentIds.length === 0) return []
+  const db = await getDb()
+  return db
+    .select()
+    .from(enrollmentEvaluations)
+    .where(inArray(enrollmentEvaluations.enrollmentId, enrollmentIds))
+    .orderBy(asc(enrollmentEvaluations.createdAt))
+}
 
 export async function upsertEnrollmentEvaluation(
   enrollmentId: string,
