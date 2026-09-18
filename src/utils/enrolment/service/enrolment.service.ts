@@ -25,6 +25,7 @@ import type {
   BulkGradeStatus,
   BulkGradeThresholds,
 } from '@/utils/enrolment/domain/bulk-grade.domain'
+import type { ReviewerTeamMember } from '@/utils/enrolment/domain/reviewer-teams.domain'
 import {
   assignBulkGradeStatus,
   computeBulkGradePreview,
@@ -37,13 +38,13 @@ import {
   isInvitationResendable,
   redactEnrollmentForTeacher,
 } from '@/utils/enrolment/domain/enrolment.domain'
+import { buildReviewerTeams } from '@/utils/enrolment/domain/reviewer-teams.domain'
 import { selectEnrollmentEmailsByGroup } from '@/utils/enrolment/domain/email-export.domain'
 import {
   findAwaitingApprovalIdsWithSum,
   findCourseIdsForViewer,
   findCourseTeamIds,
   findEnrollmentsPage,
-  findPeersForReviewers,
   findUnassignedEnrollmentIds,
   insertSubstituteWithReassignment,
 } from '@/utils/enrolment/repository/enrolment.repository'
@@ -57,6 +58,7 @@ import {
   findAllTeacherIds,
   findCourseIdByTeacherId,
   findCourseIdsByTeacherIds,
+  findCourseSubstitutesByCourseIds,
   findEnrollmentById,
   findEnrollmentContactLookupCandidates,
   findEnrollmentEvaluationsByEnrollmentIds,
@@ -67,6 +69,7 @@ import {
   findProfilesByIds,
   findReviewerAssignmentForEnrollment,
   findReviewerAssignmentsByEnrollmentIds,
+  findTeacherIdsByCourseIds,
   insertEnrollment,
   insertInvitation,
   markEnrollmentInvitationSent,
@@ -738,7 +741,7 @@ type EnrollmentsPageData = {
   reviewerAssignments: Awaited<
     ReturnType<typeof findReviewerAssignmentsForEnrollments>
   >
-  peersForReviewers: Awaited<ReturnType<typeof findPeersForReviewers>>
+  peersForReviewers: Map<string, Array<ReviewerTeamMember>>
   canExportContacts: boolean
 }
 
@@ -762,6 +765,21 @@ async function resolveAssignmentCourseIds(
     ...a,
     courseId: a.courseId ?? fallbackCourseByReviewer.get(a.reviewerId) ?? null,
   }))
+}
+
+async function loadReviewerTeams(courseIds: Array<string>) {
+  if (courseIds.length === 0)
+    return new Map<string, Array<ReviewerTeamMember>>()
+  const [courseTeachers, courseSubstitutes] = await Promise.all([
+    findTeacherIdsByCourseIds(courseIds),
+    findCourseSubstitutesByCourseIds(courseIds),
+  ])
+  const memberIds = [
+    ...courseTeachers.map((row) => row.teacherId),
+    ...courseSubstitutes.map((row) => row.substituteTeacherId),
+  ]
+  const profiles = await findProfilesByIds(memberIds)
+  return buildReviewerTeams(courseTeachers, courseSubstitutes, profiles)
 }
 
 async function loadEnrollmentsPageData(
@@ -806,7 +824,7 @@ async function loadEnrollmentsPageData(
         .filter((id): id is string => id !== null),
     ),
   ]
-  const peersForReviewers = await findPeersForReviewers(uniqueCourseIds)
+  const peersForReviewers = await loadReviewerTeams(uniqueCourseIds)
 
   return {
     rows,

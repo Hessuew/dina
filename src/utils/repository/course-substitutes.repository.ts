@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { courseSubstitutes } from '@/db/schema'
 
@@ -34,6 +34,21 @@ export async function findSubstituteTeacherIdsByCourse(courseId: string) {
     columns: { substituteTeacherId: true },
   })
   return rows.map((row) => row.substituteTeacherId)
+}
+
+export async function findCourseSubstitutesByCourseIds(
+  courseIds: Array<string>,
+) {
+  if (courseIds.length === 0) return []
+  const db = await getDb()
+  return db.query.courseSubstitutes.findMany({
+    where: inArray(courseSubstitutes.courseId, courseIds),
+    columns: {
+      courseId: true,
+      substituteTeacherId: true,
+      absentTeacherId: true,
+    },
+  })
 }
 
 export async function findCourseIdsBySubstituteTeacher(

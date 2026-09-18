@@ -26,12 +26,10 @@ import {
   updateReviewerAssignmentsInTransaction,
 } from '@/utils/repository'
 import {
-  courseSubstitutes,
   courseTeachers,
   enrollmentEvaluations,
   enrollmentReviewerAssignments,
   enrollments,
-  profiles,
 } from '@/db/schema'
 
 const SORT_COLUMN_MAP = {
@@ -270,66 +268,6 @@ export async function findCourseIdsForViewer(
     findCourseIdsBySubstituteTeacher(userId),
   ])
   return [...new Set([...teacherCourseIds, ...substituteCourseIds])]
-}
-
-/**
- * Fetches all course team members (teachers + substitutes) for a batch of
- * course IDs and returns a map from course ID to member list. Absent teachers
- * with an active substitution are excluded — their substitute stands in for
- * them — so the Review heading peer never resolves to an absent teacher.
- */
-export async function findPeersForReviewers(
-  courseIds: Array<string>,
-): Promise<Map<string, Array<{ id: string; name: string }>>> {
-  const result = new Map<string, Array<{ id: string; name: string }>>()
-  if (courseIds.length === 0) return result
-
-  const db = await getDb()
-
-  const [teacherRows, substituteRows] = await Promise.all([
-    db
-      .select({
-        courseId: courseTeachers.courseId,
-        id: courseTeachers.teacherId,
-        name: profiles.fullName,
-      })
-      .from(courseTeachers)
-      .innerJoin(profiles, eq(profiles.id, courseTeachers.teacherId))
-      .where(inArray(courseTeachers.courseId, courseIds)),
-    db
-      .select({
-        courseId: courseSubstitutes.courseId,
-        id: courseSubstitutes.substituteTeacherId,
-        absentTeacherId: courseSubstitutes.absentTeacherId,
-        name: profiles.fullName,
-      })
-      .from(courseSubstitutes)
-      .innerJoin(
-        profiles,
-        eq(profiles.id, courseSubstitutes.substituteTeacherId),
-      )
-      .where(inArray(courseSubstitutes.courseId, courseIds)),
-  ])
-
-  // Absent teachers (per course) are on leave: drop them from the team so the
-  // substitute represents them in peer resolution.
-  const absentByCourse = new Map<string, Set<string>>()
-  for (const row of substituteRows) {
-    const absent = absentByCourse.get(row.courseId) ?? new Set<string>()
-    absent.add(row.absentTeacherId)
-    absentByCourse.set(row.courseId, absent)
-  }
-
-  for (const row of [...teacherRows, ...substituteRows]) {
-    if (absentByCourse.get(row.courseId)?.has(row.id)) continue
-    const members = result.get(row.courseId) ?? []
-    if (!members.some((m) => m.id === row.id)) {
-      members.push({ id: row.id, name: row.name })
-    }
-    result.set(row.courseId, members)
-  }
-
-  return result
 }
 
 export async function findUnassignedEnrollmentIds(): Promise<Array<string>> {
