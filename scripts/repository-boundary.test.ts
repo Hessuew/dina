@@ -13,6 +13,12 @@ function findSchemaTableImports(source: string): Array<string> {
     .filter(Boolean)
 }
 
+function findQueryTableReferences(source: string): Array<string> {
+  return [...source.matchAll(/\b(?:db|tx)\.query\.([A-Za-z0-9_]+)/g)].map(
+    ([, table]) => table,
+  )
+}
+
 describe('shared repository boundaries', () => {
   it('keeps every repository bound to one table without relation joins', () => {
     const repositoryFiles = readdirSync(repositoryDirectory).filter((file) =>
@@ -20,10 +26,24 @@ describe('shared repository boundaries', () => {
     )
 
     expect(repositoryFiles.length).toBeGreaterThan(0)
+    const tableOwners = new Map<string, string>()
 
     for (const file of repositoryFiles) {
       const source = readFileSync(join(repositoryDirectory, file), 'utf8')
-      expect(findSchemaTableImports(source), file).toHaveLength(1)
+      const importedTables = findSchemaTableImports(source)
+      expect(importedTables, file).toHaveLength(1)
+      const [table] = importedTables
+      expect(
+        tableOwners.get(table),
+        `${table} is already owned`,
+      ).toBeUndefined()
+      tableOwners.set(table, file)
+      expect(
+        findQueryTableReferences(source).every((queryTable) =>
+          importedTables.includes(queryTable),
+        ),
+        `${file} queries a table it does not import`,
+      ).toBe(true)
       expect(source, file).not.toMatch(/\bwith\s*:/)
       expect(source, file).not.toMatch(
         /\b(?:innerJoin|leftJoin|rightJoin|fullJoin|crossJoin)\s*\(/,
