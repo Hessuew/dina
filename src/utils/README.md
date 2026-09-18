@@ -575,7 +575,9 @@ This folder is primarily where TanStack Start server functions live (via `create
     table adapters in the assignment service. `courses.repository.ts` owns course-only reads and
     writes reused across course, image-upload, lesson-calendar, attendance, and
     student-directory services. New course-only access must use `@/utils/repository`;
-    joined course/lesson/media/teacher reads remain in their feature repositories.
+    course catalog and detail reads compose shared course, course-teacher, profile,
+    lesson, and media rows in the courses service; no feature-local course repository
+    remains.
     Lesson completion composes published assignment rows and student submission rows
     through the courses service and `lesson-completion.domain.ts`; no feature repository
     joins assignments to submissions for this derived status.

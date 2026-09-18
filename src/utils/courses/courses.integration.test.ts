@@ -7,8 +7,6 @@ import {
 } from '@/utils/authz'
 import { AuthorizationError } from '@/utils/errors'
 import * as authUtils from '@/utils/auth/auth'
-import { findAllCourses } from '@/utils/courses/repository'
-import * as coursesRepository from '@/utils/courses/repository'
 import * as sharedRepository from '@/utils/repository'
 import { getDb } from '@/db'
 import {
@@ -135,7 +133,7 @@ describe('getCoursesService (integration)', () => {
     const repositoryError = new Error(
       'connectionString=secret; content=private lesson',
     )
-    vi.spyOn(coursesRepository, 'findAllCourses').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findAllCourseRows').mockRejectedValueOnce(
       repositoryError,
     )
 
@@ -740,7 +738,7 @@ describe('createCourseService (integration)', () => {
       ),
     ).rejects.toMatchObject({ code: 'CONFLICT', status: 409 })
 
-    expect(await findAllCourses(true)).not.toContainEqual(
+    expect(await sharedRepository.findAllCourseRows()).not.toContainEqual(
       expect.objectContaining({ title: 'Must Roll Back' }),
     )
   })
@@ -768,7 +766,7 @@ describe('createCourseService (integration)', () => {
       }),
     ).rejects.toThrow()
 
-    expect(await findAllCourses(true)).not.toContainEqual(
+    expect(await sharedRepository.findAllCourseRows()).not.toContainEqual(
       expect.objectContaining({ title: 'Atomic Course' }),
     )
   })

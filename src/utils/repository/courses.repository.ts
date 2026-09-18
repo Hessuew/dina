@@ -28,6 +28,13 @@ export async function findCourseById(courseId: string) {
   })
 }
 
+export async function findAllCourseRows() {
+  const db = await getDb()
+  return db.query.courses.findMany({
+    orderBy: (course, { asc }) => [asc(course.orderIndex)],
+  })
+}
+
 export async function findAllCourseIds() {
   const db = await getDb()
   const result = await db.query.courses.findMany({ columns: { id: true } })

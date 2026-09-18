@@ -46,6 +46,17 @@ export async function findCourseTeacherRows(courseId: string) {
   })
 }
 
+export async function findCourseTeacherRowsByCourseIds(
+  courseIds: Array<string>,
+) {
+  if (courseIds.length === 0) return []
+  const db = await getDb()
+  return db.query.courseTeachers.findMany({
+    where: inArray(courseTeachers.courseId, courseIds),
+    orderBy: (ct, { asc }) => [asc(ct.createdAt)],
+  })
+}
+
 export async function findCourseIdsByTeacher(teacherId: string) {
   const db = await getDb()
   const result = await db.query.courseTeachers.findMany({

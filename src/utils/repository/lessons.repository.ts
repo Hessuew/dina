@@ -103,6 +103,21 @@ export async function findLessonsByCourseIds(courseIds: Array<string>) {
   })
 }
 
+export async function findCourseLessonRows(
+  courseIds: Array<string>,
+  includeUnpublished: boolean,
+) {
+  if (courseIds.length === 0) return []
+  const db = await getDb()
+  const courseFilter = inArray(lessons.courseId, courseIds)
+  return db.query.lessons.findMany({
+    where: includeUnpublished
+      ? courseFilter
+      : and(courseFilter, eq(lessons.isPublished, true)),
+    orderBy: (lesson, { asc }) => [asc(lesson.orderIndex)],
+  })
+}
+
 export async function findLessonsByIds(lessonIds: Array<string>) {
   if (lessonIds.length === 0) return []
   const db = await getDb()
