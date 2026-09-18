@@ -584,9 +584,10 @@ This folder is primarily where TanStack Start server functions live (via `create
     Lesson completion composes published assignment rows and student submission rows
     through the courses service and `lesson-completion.domain.ts`; no feature repository
     joins assignments to submissions for this derived status.
-    Course creation orchestration remains in the course service and composes
-    transaction-scoped course and course-teacher adapters from `@/utils/repository`
-    so the two table writes stay atomic. `zoom-links.repository.ts` owns zoom-link-only
+    Course creation orchestration lives in
+    `courses/transaction/course.transaction.ts` and composes transaction-scoped
+    course and course-teacher adapters from `@/utils/repository` so the two table
+    writes stay atomic. `zoom-links.repository.ts` owns zoom-link-only
     reads and writes; the Zoom Link service composes its rows with profile names from
     `profiles.repository.ts`. New zoom-link-only or profile-only access must use
     `@/utils/repository`. `enrollment-evaluations.repository.ts` owns

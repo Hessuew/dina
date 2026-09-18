@@ -9,7 +9,6 @@ import type {
   CourseCatalogRow,
   CourseDetailRow,
 } from '@/utils/courses/domain/course-read.domain'
-import { getDb } from '@/db'
 import {
   assignTeachersToCourse,
   validateNewCourseTeacherPair,
@@ -38,10 +37,9 @@ import {
   findProfilesByIds,
   findPublishedAssignmentsByLessonIds,
   findStudentSubmissions,
-  insertCourseInTransaction,
-  insertCourseTeacherAssignmentsInTransaction,
   updateCourseById,
 } from '@/utils/repository'
+import { createCourseWithTeachers } from '@/utils/courses/transaction/course.transaction'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
@@ -64,8 +62,6 @@ import { serializeMediaRecords } from '@/utils/library/service/library.service'
 
 type CourseAssetRow = CourseCatalogRow
 type CourseDetail = CourseDetailRow
-type CourseInsertValues = Parameters<typeof insertCourseInTransaction>[1]
-
 type CourseReadAction = 'getCourses' | 'getCourse'
 
 type CourseReadLogContext = {
@@ -264,24 +260,6 @@ function buildCourseUpdateValues(data: UpdateCourseInput) {
     orderIndex: data.orderIndex,
     updatedAt: new Date(),
   }
-}
-
-async function insertCourseWithTeachers(
-  values: CourseInsertValues,
-  teacherIds?: [string, string],
-) {
-  const db = await getDb()
-  return db.transaction(async (tx) => {
-    const course = await insertCourseInTransaction(tx, values)
-    if (teacherIds) {
-      await insertCourseTeacherAssignmentsInTransaction(
-        tx,
-        course.id,
-        teacherIds,
-      )
-    }
-    return course
-  })
 }
 
 function restrictCourseToPublishedContent(course: CourseDetail): CourseDetail {
@@ -489,7 +467,7 @@ export async function createCourseService(
       await validateNewCourseTeacherPair(...teacherIds)
     }
 
-    const course = await insertCourseWithTeachers(
+    const course = await createCourseWithTeachers(
       {
         title: data.title,
         description: data.description,
