@@ -27,6 +27,8 @@ All utility callers, including integration tests, import table adapters through
 repository files through aliased, relative, dynamic-import, or CommonJS paths.
 Every shared repository file is re-exported by that barrel, and the repository-boundary
 regression test keeps the file set and barrel exports in sync.
+The same regression guard scans all application source files, so routes, components,
+schemas, and other non-utility modules cannot bypass these database or repository seams.
 Runtime schema-table imports, including dynamic imports, are likewise reserved
 for `repository/`; domain
 modules may import schema tables only with `import type` for inferred row types.

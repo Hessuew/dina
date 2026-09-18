@@ -98,11 +98,12 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    bypass the one-table ownership check. Feature modules
    must not import `getDb()` or `withDbConnection()` directly; those clients
    belong to shared repositories, explicit transaction modules, and the health /
-   request-scope infrastructure. Direct Drizzle operations on `db`/`tx` handles
+   request-scope infrastructure across `src/`. Direct Drizzle operations on `db`/`tx` handles
    (`query`, CRUD, `execute`, or `transaction`) are likewise forbidden outside
    those seams, even when a handle is injected rather than imported; the
-   regression guard scans both import and operation paths.
-   Integration tests should import repository adapters through the shared barrel
+   regression guard scans the whole application source tree for import and
+   operation paths. Integration tests may use the real database for fixtures,
+   but should import repository adapters through the shared barrel
    as well, so test spies exercise the same public seam as production callers;
    direct file imports are forbidden through aliased, relative, dynamic-import,
    and CommonJS paths.

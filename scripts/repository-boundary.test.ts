@@ -3,6 +3,7 @@ import { join, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const utilsDirectory = join(process.cwd(), 'src/utils')
+const sourceDirectory = join(process.cwd(), 'src')
 
 function findRepositoryFiles(directory: string): Array<string> {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -27,6 +28,14 @@ function findUtilityFilesIncludingTests(directory: string): Array<string> {
     const path = join(directory, entry.name)
     if (entry.isDirectory()) return findUtilityFilesIncludingTests(path)
     return entry.name.endsWith('.ts') ? [path] : []
+  })
+}
+
+function findSourceFilesIncludingTests(directory: string): Array<string> {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) return findSourceFilesIncludingTests(path)
+    return /\.tsx?$/.test(entry.name) ? [path] : []
   })
 }
 
@@ -89,7 +98,7 @@ function findNonNamedSchemaImports(source: string): Array<string> {
 function findDirectRepositoryImports(source: string): Array<string> {
   return [
     ...source.matchAll(
-      /(?:from\s*|import\s*\(|require\s*\()\s*['"](?:@\/utils\/repository\/|(?:\.\.?\/)+repository\/)[^'"]+['"]/g,
+      /(?:from\s*|import\s*\(|require\s*\()\s*['"](?:@\/utils\/repository\/|(?:\.\.?\/)+(?:[^'"]+\/)*repository\/)[^'"]+['"]/g,
     ),
   ].map(([match]) => match)
 }
@@ -102,10 +111,14 @@ function findRepositoryBarrelExports(source: string): Array<string> {
 
 function isDatabaseSeam(file: string): boolean {
   return (
+    file.startsWith('db/') ||
     file.startsWith('repository/') ||
+    file.startsWith('utils/repository/') ||
     file.includes('/transaction/') ||
     file === 'health/db-readiness.ts' ||
-    file === 'request-scope.ts'
+    file === 'utils/health/db-readiness.ts' ||
+    file === 'request-scope.ts' ||
+    file === 'utils/request-scope.ts'
   )
 }
 
@@ -166,6 +179,11 @@ describe('utils repository boundaries', () => {
     expect(
       findDirectRepositoryImports(
         "import { findProfileById } from '@/utils/repository/profiles.repository'",
+      ),
+    ).toHaveLength(1)
+    expect(
+      findDirectRepositoryImports(
+        "import { findProfileById } from '../utils/repository/profiles.repository'",
       ),
     ).toHaveLength(1)
     expect(
@@ -240,6 +258,20 @@ describe('utils repository boundaries', () => {
     expect(offenders).toEqual([])
   })
 
+  it('keeps database clients behind seams across all application source', () => {
+    const offenders = findSourceFilesIncludingTests(sourceDirectory)
+      .filter((sourcePath) => !sourcePath.endsWith('.test.ts'))
+      .map((sourcePath) => ({
+        file: sourcePath.slice(sourceDirectory.length + 1),
+        imports: findDatabaseClientImports(readFileSync(sourcePath, 'utf8')),
+      }))
+      .filter(
+        ({ file, imports }) => imports.length > 0 && !isDatabaseSeam(file),
+      )
+
+    expect(offenders).toEqual([])
+  })
+
   it('keeps direct Drizzle operations behind repository or infrastructure seams', () => {
     const offenders = findUtilityFiles(utilsDirectory)
       .map((utilityPath) => ({
@@ -279,6 +311,20 @@ describe('utils repository boundaries', () => {
       .filter(
         ({ file, imports }) =>
           !file.startsWith(`repository${sep}`) && imports.length > 0,
+      )
+
+    expect(offenders).toEqual([])
+  })
+
+  it('routes all application callers through the shared repository barrel', () => {
+    const offenders = findSourceFilesIncludingTests(sourceDirectory)
+      .map((sourcePath) => ({
+        file: sourcePath.slice(sourceDirectory.length + 1),
+        imports: findDirectRepositoryImports(readFileSync(sourcePath, 'utf8')),
+      }))
+      .filter(
+        ({ file, imports }) =>
+          !file.startsWith(`utils/repository${sep}`) && imports.length > 0,
       )
 
     expect(offenders).toEqual([])
