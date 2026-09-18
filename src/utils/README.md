@@ -18,6 +18,8 @@ schema tables or issue Drizzle CRUD/query calls. Feature modules do not import
 `getDb()` or `withDbConnection()` directly. Static, dynamic, and CommonJS
 database imports are reserved for those seams and are regression-tested by
 `scripts/repository-boundary.test.ts`.
+Only `*.repository.ts` files in `repository/` are database seams; the shared
+barrel and helper files cannot issue persistence calls.
 Direct Drizzle operations on `db`/`tx` handles are also reserved for those seams,
 including when a handle is injected rather than imported; feature services may
 compose repository results but may not issue `query`, CRUD, `execute`, or

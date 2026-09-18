@@ -181,10 +181,13 @@ function findRepositoryBarrelExports(source: string): Array<string> {
 }
 
 function isDatabaseSeam(file: string): boolean {
+  const isRepositoryAdapter =
+    (file.startsWith('repository/') || file.startsWith('utils/repository/')) &&
+    file.endsWith('.repository.ts')
+
   return (
     file.startsWith('db/') ||
-    file.startsWith('repository/') ||
-    file.startsWith('utils/repository/') ||
+    isRepositoryAdapter ||
     file.includes('/transaction/') ||
     file === 'health/db-readiness.ts' ||
     file === 'utils/health/db-readiness.ts' ||
@@ -194,6 +197,13 @@ function isDatabaseSeam(file: string): boolean {
 }
 
 describe('utils repository boundaries', () => {
+  it('keeps only named repository adapters in the database seam', () => {
+    expect(isDatabaseSeam('repository/profiles.repository.ts')).toBe(true)
+    expect(isDatabaseSeam('utils/repository/profiles.repository.ts')).toBe(true)
+    expect(isDatabaseSeam('repository/index.ts')).toBe(false)
+    expect(isDatabaseSeam('utils/repository/query-helpers.ts')).toBe(false)
+  })
+
   it('detects namespace and relative database imports', () => {
     expect(
       findDatabaseClientImports("import * as database from '@/db'"),
