@@ -24,6 +24,8 @@ compose repository results but may not issue `query`, CRUD, `execute`, or
 `transaction` calls themselves.
 Production utility callers import table adapters through `@/utils/repository`,
 the shared barrel seam, rather than reaching into individual repository files.
+Every shared repository file is re-exported by that barrel, and the repository-boundary
+regression test keeps the file set and barrel exports in sync.
 Runtime schema-table imports, including dynamic imports, are likewise reserved
 for `repository/`; domain
 modules may import schema tables only with `import type` for inferred row types.

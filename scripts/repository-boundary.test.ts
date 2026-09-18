@@ -84,6 +84,12 @@ function findDirectRepositoryImports(source: string): Array<string> {
   ].map(([match]) => match)
 }
 
+function findRepositoryBarrelExports(source: string): Array<string> {
+  return [...source.matchAll(/export\s+\*\s+from\s+['"]\.\/([^'"]+)['"]/g)].map(
+    ([, repository]) => repository,
+  )
+}
+
 function isDatabaseSeam(file: string): boolean {
   return (
     file.startsWith('repository/') ||
@@ -243,6 +249,19 @@ describe('utils repository boundaries', () => {
       )
 
     expect(offenders).toEqual([])
+  })
+
+  it('exports every shared repository from the repository barrel', () => {
+    const repositoryDirectory = join(utilsDirectory, 'repository')
+    const repositoryFiles = findRepositoryFiles(repositoryDirectory).map(
+      (file) => file.slice(file.lastIndexOf(sep) + 1).replace(/\.ts$/, ''),
+    )
+    const barrelExports = findRepositoryBarrelExports(
+      readFileSync(join(repositoryDirectory, 'index.ts'), 'utf8'),
+    )
+
+    expect(new Set(barrelExports)).toEqual(new Set(repositoryFiles))
+    expect(barrelExports).toHaveLength(new Set(barrelExports).size)
   })
 
   it('keeps transaction modules as orchestration-only seams', () => {
