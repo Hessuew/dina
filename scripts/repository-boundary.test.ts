@@ -129,7 +129,7 @@ function findRawSqlTableReferences(
   )
   return [
     ...source.matchAll(
-      /\b(?:from|join|update|into)\s+["']?([a-z_][a-z0-9_]*)/gi,
+      /\b(?:from|join|update|into|using|truncate(?:\s+table)?|(?:alter|create|drop)\s+table)\s+(?:(?:["'][^"']+["']|[a-z_][a-z0-9_]*)\s*\.\s*)?["']?([a-z_][a-z0-9_]*)/gi,
     ),
   ]
     .map(([, sqlName]) => symbolsBySqlName.get(sqlName.toLowerCase()))
@@ -347,6 +347,18 @@ describe('utils repository boundaries', () => {
         schemaTables,
       ),
     ).toEqual(['enrollments', 'profiles'])
+    expect(
+      findRawSqlTableReferences(
+        'sql`delete from announcements using public.profiles where profiles.id = announcements.author_id`',
+        schemaTables,
+      ),
+    ).toEqual(['announcements', 'profiles'])
+    expect(
+      findRawSqlTableReferences(
+        'sql`truncate table public.notifications; alter table announcements add column archived_at timestamp`',
+        schemaTables,
+      ),
+    ).toEqual(['notifications', 'announcements'])
   })
 
   it('detects direct Drizzle operations on database handles', () => {

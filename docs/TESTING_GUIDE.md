@@ -93,7 +93,8 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    Keep one shared owner per table, and keep every Drizzle table reference —
    including relation-backed `db.query.<table>` reads, direct CRUD calls,
    `.from(<table>)` sources, and raw SQL/interpolated table expressions — aligned
-   with that repository's imported table.
+   with that repository's imported table. The raw-SQL guard also recognizes
+   qualified names and `USING`, `TRUNCATE`, and table-DDL references.
    Repositories must not import other repositories at runtime; services and explicit
    transaction modules compose table adapters. Type-only imports remain allowed for shared
    transaction-client types.
