@@ -1,6 +1,5 @@
 import crypto from 'node:crypto'
 import type { z } from 'zod'
-import type { User } from '@supabase/supabase-js'
 import type { updateProfileSchema } from '@/schemas/profile.schema'
 import type { LogLevel } from '@/utils/observability/logger'
 import {
@@ -115,7 +114,7 @@ async function incrementEmailChangeAttemptsWithTelemetry(
 
 export async function updateProfileBasicService(
   data: z.infer<typeof updateProfileSchema>,
-  user: User,
+  user: { id: string },
 ) {
   const context: ProfileLogContext = {
     action: 'updateProfile',
@@ -183,7 +182,7 @@ export async function updatePasswordService(
 
 export async function updateProfileWithEmailChangeService(
   data: z.infer<typeof updateProfileSchema>,
-  user: User,
+  user: { id: string },
 ) {
   const context: ProfileLogContext = {
     action: 'updateProfile',

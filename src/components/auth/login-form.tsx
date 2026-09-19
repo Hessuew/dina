@@ -10,6 +10,7 @@ import { Field, FieldGroup } from '@/components/ui/field'
 import { useAppForm } from '@/hooks/form'
 import { useMutation } from '@/hooks/useMutation'
 import { loginFn } from '@/routes/_authed'
+import { clearRootUserContextCache } from '@/routes/__root'
 import { loginSchema } from '@/schemas/auth.schema'
 import { getLoginErrorMessage } from '@/utils/auth/domain/login-error.domain'
 
@@ -24,6 +25,7 @@ export function LoginForm({ verified = false }: LoginFormProps) {
     fn: loginFn,
     onSuccess: async (ctx) => {
       if (!ctx.data?.error) {
+        clearRootUserContextCache()
         await router.invalidate()
         router.navigate({ to: '/dashboard' })
         return

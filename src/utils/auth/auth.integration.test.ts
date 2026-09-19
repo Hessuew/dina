@@ -9,15 +9,15 @@ import * as sharedRepository from '@/utils/repository'
 import * as supabase from '@/utils/supabase'
 
 const mocks = vi.hoisted(() => ({
-  getUser: vi.fn(),
+  getClaims: vi.fn(),
   findProfileById: vi.fn(),
 }))
 
 beforeEach(() => {
-  mocks.getUser.mockReset()
+  mocks.getClaims.mockReset()
   mocks.findProfileById.mockReset()
   vi.spyOn(supabase, 'getSupabaseServerClient').mockReturnValue({
-    auth: { getUser: mocks.getUser },
+    auth: { getClaims: mocks.getClaims },
   } as unknown as ReturnType<typeof supabase.getSupabaseServerClient>)
   vi.spyOn(sharedRepository, 'findProfileById').mockImplementation(
     mocks.findProfileById,
@@ -34,7 +34,7 @@ describe('auth boundary telemetry (integration)', () => {
     const providerError = new Error(
       'auth token database detail for user@test.dev',
     )
-    mocks.getUser.mockRejectedValueOnce(providerError)
+    mocks.getClaims.mockRejectedValueOnce(providerError)
 
     try {
       await expect(
@@ -101,7 +101,7 @@ describe('auth boundary telemetry (integration)', () => {
   it('logs root bootstrap session lookup failures with safe metadata', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const providerError = new Error('root auth token secret')
-    mocks.getUser.mockRejectedValueOnce(providerError)
+    mocks.getClaims.mockRejectedValueOnce(providerError)
 
     try {
       await expect(
@@ -130,8 +130,8 @@ describe('auth boundary telemetry (integration)', () => {
   it('logs root bootstrap profile lookup failures with safe identity metadata', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const repositoryError = new Error('root profile connectionString secret')
-    mocks.getUser.mockResolvedValueOnce({
-      data: { user: { id: 'root-user-1', email: 'root@test.dev' } },
+    mocks.getClaims.mockResolvedValueOnce({
+      data: { claims: { sub: 'root-user-1', email: 'root@test.dev' } },
       error: null,
     })
     mocks.findProfileById.mockRejectedValueOnce(repositoryError)
@@ -162,8 +162,8 @@ describe('auth boundary telemetry (integration)', () => {
   })
 
   it('preserves the root user context while adding bootstrap telemetry boundaries', async () => {
-    mocks.getUser.mockResolvedValueOnce({
-      data: { user: { id: 'root-user-2', email: 'root-user@test.dev' } },
+    mocks.getClaims.mockResolvedValueOnce({
+      data: { claims: { sub: 'root-user-2', email: 'root-user@test.dev' } },
       error: null,
     })
     mocks.findProfileById.mockResolvedValueOnce({

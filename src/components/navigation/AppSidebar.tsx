@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 
 import { NotificationsMenu } from '@/components/navigation/notifications-menu'
+import { clearRootUserContextCache } from '@/routes/__root'
 import { NavUser } from '@/components/navigation/nav-user/NavUser'
 import {
   Sidebar,
@@ -276,7 +277,10 @@ export function AppSidebar({
         <NotificationsMenu />
         <NavUser
           user={user as any}
-          onProfileUpdate={() => router.invalidate()}
+          onProfileUpdate={() => {
+            clearRootUserContextCache()
+            return router.invalidate()
+          }}
         />
       </SidebarFooter>
       <SidebarRail />

@@ -31,7 +31,10 @@ Centralizes authentication and authorization helpers used by server functions an
     stable provider error fields. Provider messages are never logged.
 
 - `getCurrentUser()`
-  - Uses `getSupabaseServerClient()` to fetch the current Supabase user.
+  - Uses `getSupabaseServerClient().auth.getClaims()` to verify the session
+    JWT locally against the cached JWKS (falls back to an Auth-server check on
+    symmetric-key projects). Returns `{ id, email }` from the token claims;
+    revocation is bounded by token expiry rather than a per-call server check.
   - Throws when not authenticated; unexpected provider exceptions emit a
     redacted `auth_session_lookup_failed` event with request correlation,
     duration, and the stable `auth_session_lookup` category.
