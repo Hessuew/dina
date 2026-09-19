@@ -18,16 +18,14 @@ export const Route = createFileRoute('/_authed/dashboard')({
       isPublished: course.isPublished ?? false,
     }))
 
-    let assignmentsData
-    if (coursesData.role === 'student') {
-      assignmentsData = await getAllAssignmentsForStudent()
-    } else {
-      assignmentsData = await getAllAssignmentsForTeacher({
-        data: { scope: getDashboardAssignmentScope(coursesData.role) },
-      })
-    }
-
-    const upcomingLessonsData = await getUpcomingLessons()
+    const [assignmentsData, upcomingLessonsData] = await Promise.all([
+      coursesData.role === 'student'
+        ? getAllAssignmentsForStudent()
+        : getAllAssignmentsForTeacher({
+            data: { scope: getDashboardAssignmentScope(coursesData.role) },
+          }),
+      getUpcomingLessons(),
+    ])
 
     return {
       courses: transformedCourses,
