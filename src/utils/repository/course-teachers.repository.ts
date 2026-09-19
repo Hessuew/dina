@@ -4,12 +4,13 @@ import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { courseTeachers } from '@/db/schema'
 
-export async function insertCourseTeacherAssignmentsInTransaction(
-  tx: RepositoryTransactionClient,
+export async function insertCourseTeacherAssignments(
   courseId: string,
-  teacherIds: [string, string],
-) {
-  await tx
+  teacherIds: Array<string>,
+  tx?: RepositoryTransactionClient,
+): Promise<void> {
+  const db = tx ?? (await getDb())
+  await db
     .insert(courseTeachers)
     .values(teacherIds.map((teacherId) => ({ courseId, teacherId })))
 }

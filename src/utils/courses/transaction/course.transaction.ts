@@ -1,7 +1,7 @@
 import { getDb } from '@/db'
 import {
   insertCourseInTransaction,
-  insertCourseTeacherAssignmentsInTransaction,
+  insertCourseTeacherAssignments,
 } from '@/utils/repository'
 
 /* v8 ignore start */
@@ -16,11 +16,7 @@ export async function createCourseWithTeachers(
   return db.transaction(async (tx) => {
     const course = await insertCourseInTransaction(tx, values)
     if (teacherIds) {
-      await insertCourseTeacherAssignmentsInTransaction(
-        tx,
-        course.id,
-        teacherIds,
-      )
+      await insertCourseTeacherAssignments(course.id, teacherIds, tx)
     }
     return course
   })
