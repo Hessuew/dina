@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import type { UserContext } from '@/utils/auth/domain/user-context.domain'
 import type { StudentExamItem } from '@/components/view/exams-view/ExamsView'
 import type { StudentExamCardState } from '@/components/view/exams-view/exams-view.domain'
 import { PageLayout } from '@/components/layout/page-layout'
@@ -18,24 +19,23 @@ import {
   getExamsForStudent,
   startExamAttempt,
 } from '@/utils/exam'
-import { getCourses } from '@/utils/courses'
 
 export const Route = createFileRoute('/_authed/exams/$examId/')({
-  loader: async ({ params }) => {
-    const coursesData = await getCourses()
-    if (coursesData.role === 'student') {
-      const items = await getExamsForStudent()
-      const item =
-        items.find((candidate) => candidate.exam.id === params.examId) ?? null
-      return { role: coursesData.role, item, authorData: null }
-    }
-    const authorData = await getExamForAuthor({
-      data: { examId: params.examId },
-    })
-    return { role: coursesData.role, item: null, authorData }
-  },
+  loader: ({ context, params }) =>
+    loadExamDetail(context.user?.role ?? 'student', params.examId),
   component: ExamDetailComponent,
 })
+
+async function loadExamDetail(role: UserContext['role'], examId: string) {
+  if (role === 'student') {
+    const items = await getExamsForStudent()
+    const item = items.find((candidate) => candidate.exam.id === examId) ?? null
+    return { role, item, authorData: null }
+  }
+
+  const authorData = await getExamForAuthor({ data: { examId } })
+  return { role, item: null, authorData }
+}
 
 function ExamDetailComponent() {
   const { role, item, authorData } = Route.useLoaderData()
