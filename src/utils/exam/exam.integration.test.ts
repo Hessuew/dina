@@ -1,7 +1,5 @@
 import { randomUUID } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { eq } from 'drizzle-orm'
-import { getDb } from 'test/integration/db'
 import type { AuthorizationService } from '@/utils/authz/types'
 import {
   DefaultAuthorizationService,
@@ -14,13 +12,6 @@ import {
   seedExamQuestion,
   seedProfile,
 } from '@/../test/integration/seed'
-import {
-  examAnswers,
-  examAttempts,
-  examQuestionOptions,
-  examQuestions,
-  exams,
-} from '@/db/schema'
 import {
   createExamService,
   finalizeGradingService,
@@ -135,15 +126,9 @@ describe('exam authoring (integration)', () => {
       },
       teacherId,
     )
-    const db = await getDb()
-    const [question] = await db
-      .select()
-      .from(examQuestions)
-      .where(eq(examQuestions.examId, exam.id))
-    const questionOptions = await db
-      .select()
-      .from(examQuestionOptions)
-      .where(eq(examQuestionOptions.questionId, question.id))
+    const [question] = await sharedRepository.findExamQuestionsByExamId(exam.id)
+    const questionOptions =
+      await sharedRepository.findExamQuestionOptionsByQuestionIds([question.id])
 
     expect(await getExamsForStudentService(studentId)).toEqual([])
     await publishExamService({ examId: exam.id }, teacherId)
@@ -193,14 +178,10 @@ describe('exam authoring (integration)', () => {
       },
       adminId,
     )
-    const [updatedQuestion] = await db
-      .select()
-      .from(examQuestions)
-      .where(eq(examQuestions.id, question.id))
-    const [updatedExam] = await db
-      .select()
-      .from(exams)
-      .where(eq(exams.id, exam.id))
+    const updatedQuestion = (
+      await sharedRepository.findExamQuestionsByExamId(exam.id)
+    ).find((candidate) => candidate.id === question.id)!
+    const updatedExam = (await sharedRepository.findExamById(exam.id))!
     expect(updatedExam.title).toBe('Admin Fixed Title')
     expect(updatedQuestion.prompt).toBe('Pick A (fixed typo)')
 
@@ -282,8 +263,7 @@ describe('exam authoring (integration)', () => {
       },
       adminId,
     )
-    const db = await getDb()
-    const [updated] = await db.select().from(exams).where(eq(exams.id, examId))
+    const updated = (await sharedRepository.findExamById(examId))!
     expect(updated.title).toBe('Admin edit')
   })
 
@@ -369,16 +349,13 @@ describe('exam authoring (integration)', () => {
       teacherId,
     )
 
-    const db = await getDb()
-    const [exam] = await db.select().from(exams).where(eq(exams.id, examId))
-    const savedQuestions = await db
-      .select()
-      .from(examQuestions)
-      .where(eq(examQuestions.examId, examId))
-    const savedOptions = await db
-      .select()
-      .from(examQuestionOptions)
-      .where(eq(examQuestionOptions.questionId, keptQuestionId))
+    const exam = (await sharedRepository.findExamById(examId))!
+    const savedQuestions =
+      await sharedRepository.findExamQuestionsByExamId(examId)
+    const savedOptions =
+      await sharedRepository.findExamQuestionOptionsByQuestionIds([
+        keptQuestionId,
+      ])
 
     expect(exam.title).toBe('Updated exam')
     expect(exam.durationMinutes).toBe(60)
@@ -863,11 +840,9 @@ describe('exam taking (integration)', () => {
       },
       studentId,
     )
-    const db = await getDb()
-    const rows = await db
-      .select()
-      .from(examAnswers)
-      .where(eq(examAnswers.attemptId, payload.attempt.id))
+    const rows = await sharedRepository.findExamAnswersByAttempt(
+      payload.attempt.id,
+    )
     expect(rows).toHaveLength(1)
     expect(rows[0].selectedOptionId).toBe(correctOptionId)
   })
@@ -1000,11 +975,7 @@ describe('exam taking (integration)', () => {
       ),
     ).rejects.toThrow(ValidationError)
 
-    const db = await getDb()
-    const [attempt] = await db
-      .select()
-      .from(examAttempts)
-      .where(eq(examAttempts.id, attemptId))
+    const attempt = (await sharedRepository.findAttemptById(attemptId))!
     expect(attempt.status).toBe('submitted')
     expect(attempt.submittedAt).toEqual(deadlineAt)
   })
@@ -1054,11 +1025,7 @@ describe('exam taking (integration)', () => {
     expect(again.status).toBe('submitted')
     expect(again.submittedAt).toEqual(submitted.submittedAt)
 
-    const db = await getDb()
-    const [row] = await db
-      .select()
-      .from(examAttempts)
-      .where(eq(examAttempts.id, payload.attempt.id))
+    const row = (await sharedRepository.findAttemptById(payload.attempt.id))!
     expect(row.autoScore).toBe(2)
 
     const events = infoSpy.mock.calls
