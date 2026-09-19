@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **37 / 37 complete**
+Current implementation slices: **38 / 38 complete**
 
 ## Done
 
@@ -45,6 +45,7 @@ Current implementation slices: **37 / 37 complete**
 - ✅ Existing exam attempts now preload the take route on pointer-down from the exam landing page, so “Continue exam” and “View submission” can start loading before navigation.
 - ✅ Exam list links now preload their detail or take/review route on pointer-down, covering fast clicks and touch activation before navigation.
 - ✅ Landing page now lazy-loads testimonials, marks, FAQ, leadership, official information, and footer sections so the initial route keeps below-fold content out of its critical payload.
+- ✅ Dashboard upcoming lesson and assignment links now preload their detail routes on pointer-down, covering fast clicks and touch activation before navigation begins.
 
 ## Remaining
 

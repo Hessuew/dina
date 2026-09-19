@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { CalendarIcon, ClockIcon } from 'lucide-react'
 import { ViewerDateTime } from '@/components/ui/viewer-date-time'
 
@@ -22,10 +22,22 @@ function UpcomingLessonItem({
   lesson: UpcomingLesson
   index: number
 }) {
+  const router = useRouter()
+
+  const preloadLesson = () => {
+    void router
+      .preloadRoute({
+        to: '/lessons/$lessonId',
+        params: { lessonId: lesson.id },
+      })
+      .catch(() => undefined)
+  }
+
   return (
     <Link
       to="/lessons/$lessonId"
       params={{ lessonId: lesson.id }}
+      onPointerDown={preloadLesson}
       className="block"
     >
       <div className="group flex items-start gap-4 border-b border-white/8 py-5 pl-1 transition-all first:pt-1 last:border-b-0 last:pb-0 hover:bg-white/8">

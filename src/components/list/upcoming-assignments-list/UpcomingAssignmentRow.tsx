@@ -1,10 +1,12 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { CalendarIcon } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Assignment } from '@/components/view/assignments-view/AssignmentsView'
-import type { UpcomingAssignmentsRole } from '@/components/list/upcoming-assignments-list/upcoming-assignments-list.domain'
 import { buildUpcomingAssignmentRow } from '@/components/list/upcoming-assignments-list/upcoming-assignments-list.domain'
 import { cn } from '@/lib/utils'
+
+type UpcomingAssignmentsRole = Parameters<typeof buildUpcomingAssignmentRow>[1]
+type UpcomingAssignmentViewModel = ReturnType<typeof buildUpcomingAssignmentRow>
 
 type UpcomingAssignmentRowProps = {
   assignment: Assignment
@@ -67,23 +69,34 @@ function AssignmentRowMeta({
   )
 }
 
-export function UpcomingAssignmentRow({
+function preloadAssignmentRoute(
+  router: ReturnType<typeof useRouter>,
+  assignmentId: string,
+) {
+  void router
+    .preloadRoute({
+      to: '/assignments/$assignmentId',
+      params: { assignmentId },
+      search: {
+        fromDashboard: false,
+        fromCalendar: false,
+        calendarMonth: undefined,
+      },
+    })
+    .catch(() => undefined)
+}
+
+function UpcomingAssignmentLink({
   assignment,
   idx,
-  role,
-  now,
-}: UpcomingAssignmentRowProps) {
-  const {
-    submissionStatus,
-    formattedDueDate,
-    showStudentBadge,
-    badgeClassName,
-    statusIcon: StatusIcon,
-    dueDateClassName,
-    teacherStatsText,
-    overdue,
-  } = buildUpcomingAssignmentRow(assignment, role, now)
-
+  viewModel,
+  onPointerDown,
+}: {
+  assignment: Assignment
+  idx: number
+  viewModel: UpcomingAssignmentViewModel
+  onPointerDown: () => void
+}) {
   return (
     <Link
       to="/assignments/$assignmentId"
@@ -93,6 +106,7 @@ export function UpcomingAssignmentRow({
         fromCalendar: false,
         calendarMonth: undefined,
       }}
+      onPointerDown={onPointerDown}
       className="block"
     >
       <div className="group flex items-start gap-4 border-b border-white/8 py-5 pl-1 transition-all first:pt-1 last:border-b-0 last:pb-0 hover:bg-white/8">
@@ -109,22 +123,41 @@ export function UpcomingAssignmentRow({
                 {assignment.title}
               </div>
             </div>
-            {showStudentBadge && (
+            {viewModel.showStudentBadge && (
               <AssignmentStatusBadge
-                badgeClassName={badgeClassName}
-                statusIcon={StatusIcon}
-                submissionStatus={submissionStatus}
+                badgeClassName={viewModel.badgeClassName}
+                statusIcon={viewModel.statusIcon}
+                submissionStatus={viewModel.submissionStatus}
               />
             )}
           </div>
           <AssignmentRowMeta
-            dueDateClassName={dueDateClassName}
-            formattedDueDate={formattedDueDate}
-            overdue={overdue}
-            teacherStatsText={teacherStatsText}
+            dueDateClassName={viewModel.dueDateClassName}
+            formattedDueDate={viewModel.formattedDueDate}
+            overdue={viewModel.overdue}
+            teacherStatsText={viewModel.teacherStatsText}
           />
         </div>
       </div>
     </Link>
+  )
+}
+
+export function UpcomingAssignmentRow({
+  assignment,
+  idx,
+  role,
+  now,
+}: UpcomingAssignmentRowProps) {
+  const router = useRouter()
+  const viewModel = buildUpcomingAssignmentRow(assignment, role, now)
+
+  return (
+    <UpcomingAssignmentLink
+      assignment={assignment}
+      idx={idx}
+      viewModel={viewModel}
+      onPointerDown={() => preloadAssignmentRoute(router, assignment.id)}
+    />
   )
 }
