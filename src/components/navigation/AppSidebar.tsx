@@ -139,6 +139,8 @@ const adminNavItems: Array<NavItem> = [
 
 function NavItemList({ items }: { items: Array<NavItem> }) {
   const routerState = useRouterState()
+  const { setOpenMobile } = useSidebar()
+
   return (
     <SidebarMenu>
       {items.map((item) => {
@@ -155,7 +157,11 @@ function NavItemList({ items }: { items: Array<NavItem> }) {
               )}
               isActive={isActive}
               render={
-                <Link className="py-0" to={item.url}>
+                <Link
+                  className="py-0"
+                  to={item.url}
+                  onClick={() => setOpenMobile(false)}
+                >
                   <span className="flex h-full w-full flex-row items-center gap-2 py-2">
                     <Icon size={18} className="shrink-0" />
                     <span>{item.title}</span>
