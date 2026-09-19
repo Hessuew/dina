@@ -214,7 +214,8 @@ const typeArguments = String.raw`(?:<[^()]*>)?`
 const optionalCallAccess = String.raw`(?:\?\s*\.\s*)?`
 const relationLoading =
   /(?:\bwith\s*:|['"`]\s*with\s*['"`]\s*:|\[\s*['"`]\s*with\s*['"`]\s*\]\s*:)/
-const tableCall = String.raw`(?:${memberAccess}(?:insert|update|delete|from)|${computedMemberAccess}(?:insert|update|delete|from)['"]\s*\])\s*${optionalCallAccess}${typeArguments}\(\s*([A-Za-z0-9_]+)\s*\)`
+const tableArgument = String.raw`\s*(?:\(\s*)*([A-Za-z0-9_]+)(?:\s*\))*`
+const tableCall = String.raw`(?:${memberAccess}(?:insert|update|delete|from)|${computedMemberAccess}(?:insert|update|delete|from)['"]\s*\])\s*${optionalCallAccess}${typeArguments}\(${tableArgument}`
 
 function findTableReferences(
   source: string,
@@ -689,6 +690,9 @@ describe('utils repository boundaries', () => {
         'db?.query?.profiles.findFirst(); tx?.select()?.from(profiles); database?.["execute"](sql)',
       ),
     ).toHaveLength(3)
+    expect(findTableReferences('db.select().from((profiles))')).toEqual([
+      'profiles',
+    ])
     expect(
       findDirectDatabaseOperations(
         'db["query"].profiles.findFirst(); tx?.["query"]?.["courses"].findFirst()',
