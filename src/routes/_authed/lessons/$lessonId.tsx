@@ -1,12 +1,10 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { CalendarIcon, ClockIcon } from 'lucide-react'
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { toast } from 'sonner'
 import z from 'zod'
 import { getAssignmentSubmissionCount, getLesson } from '@/utils/assignments'
-import { AssignmentDialog } from '@/components/dialog/assignment-dialog/AssignmentDialog'
-import { LessonDialog } from '@/components/dialog/lesson-dialog/LessonDialog'
 import { useDialogState } from '@/hooks/useDialogState'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
@@ -22,6 +20,17 @@ import {
   resolveLessonPublished,
   shouldShowLessonContent,
 } from '@/utils/lessons/domain/lesson-detail.domain'
+
+const AssignmentDialog = lazy(() =>
+  import('@/components/dialog/assignment-dialog/AssignmentDialog').then(
+    (module) => ({ default: module.AssignmentDialog }),
+  ),
+)
+const LessonDialog = lazy(() =>
+  import('@/components/dialog/lesson-dialog/LessonDialog').then((module) => ({
+    default: module.LessonDialog,
+  })),
+)
 
 const getLessonData = createServerFn({ method: 'POST' })
   .validator(z.object({ lessonId: z.uuid() }))
@@ -183,14 +192,16 @@ function LessonAssignmentDialog({
   if (!assignmentDialog.isOpen) return null
 
   return (
-    <AssignmentDialog
-      open={true}
-      onOpenChange={(open) => handleDialogDismiss(open, onClose)}
-      mode={assignmentDialog.dialogMode as 'create' | 'edit' | 'delete'}
-      lessonId={lessonId}
-      assignment={assignmentDialog.dialogItem}
-      submissionCount={submissionCount}
-    />
+    <Suspense fallback={null}>
+      <AssignmentDialog
+        open={true}
+        onOpenChange={(open) => handleDialogDismiss(open, onClose)}
+        mode={assignmentDialog.dialogMode as 'create' | 'edit' | 'delete'}
+        lessonId={lessonId}
+        assignment={assignmentDialog.dialogItem}
+        submissionCount={submissionCount}
+      />
+    </Suspense>
   )
 }
 
@@ -204,15 +215,17 @@ function LessonEditDeleteDialog({
   if (!lessonDialog.isOpen) return null
 
   return (
-    <LessonDialog
-      open={true}
-      onOpenChange={(open) =>
-        handleDialogDismiss(open, lessonDialog.closeDialog)
-      }
-      mode={lessonDialog.dialogMode as 'edit' | 'delete'}
-      courseId={lesson.course.id}
-      initialData={buildLessonDialogInitialData(lesson)}
-    />
+    <Suspense fallback={null}>
+      <LessonDialog
+        open={true}
+        onOpenChange={(open) =>
+          handleDialogDismiss(open, lessonDialog.closeDialog)
+        }
+        mode={lessonDialog.dialogMode as 'edit' | 'delete'}
+        courseId={lesson.course.id}
+        initialData={buildLessonDialogInitialData(lesson)}
+      />
+    </Suspense>
   )
 }
 

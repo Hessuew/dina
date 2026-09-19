@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { CalendarIcon, ClockIcon } from 'lucide-react'
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { toast } from 'sonner'
 import { useDialogState } from '@/hooks/useDialogState'
 import { useMutation } from '@/hooks/useMutation'
@@ -17,12 +17,17 @@ import {
   resolveSubmissionStatusVariant,
   shouldLoadAssignmentSubmissions,
 } from '@/utils/assignments/domain/assignment-detail.domain'
-import { AssignmentDialog } from '@/components/dialog/assignment-dialog/AssignmentDialog'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { AssignmentDetailSections } from '@/components/assignment/assignment-detail-sections/AssignmentDetailSections'
 import { trackAssignmentSubmitted } from '@/utils/analytics'
+
+const AssignmentDialog = lazy(() =>
+  import('@/components/dialog/assignment-dialog/AssignmentDialog').then(
+    (module) => ({ default: module.AssignmentDialog }),
+  ),
+)
 
 const getAssignmentData = createServerFn({ method: 'POST' })
   .validator((d: { assignmentId: string }) => d)
@@ -270,7 +275,7 @@ function AssignmentDetailDialogs({
   onDeleteSuccess: () => void
 }) {
   return (
-    <>
+    <Suspense fallback={null}>
       {/* Assignment Dialog (edit / delete) */}
       {editDialogMode && (
         <AssignmentDialog
@@ -296,7 +301,7 @@ function AssignmentDetailDialogs({
           submission={gradeDialog.dialogItem}
         />
       )}
-    </>
+    </Suspense>
   )
 }
 
