@@ -1,16 +1,15 @@
 import { randomUUID } from 'node:crypto'
-import { getDb } from 'test/integration/db'
 import { seedProfile } from './profile'
-import type { Role } from '@/utils/authz'
-import { invitations } from '@/db/schema'
+import type { InvitationInsert } from '@/utils/repository'
+import { insertInvitation } from '@/utils/repository'
 
 export async function seedInvitation(
   overrides: {
     id?: string
     email?: string
-    role?: Role
+    role?: InvitationInsert['role']
     token?: string
-    status?: 'pending' | 'accepted' | 'revoked'
+    status?: InvitationInsert['status']
     invitedBy?: string
     expiresAt?: Date
     otpHash?: string | null
@@ -23,8 +22,7 @@ export async function seedInvitation(
   const email = overrides.email ?? `${id}@test.dev`
   const invitedBy =
     overrides.invitedBy ?? (await seedProfile({ role: 'admin' }))
-  const db = await getDb()
-  await db.insert(invitations).values({
+  await insertInvitation({
     id,
     email,
     role: overrides.role ?? 'student',
