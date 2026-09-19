@@ -256,7 +256,11 @@ export function AppSidebar({
   ...props
 }: AppSidebarProps & React.ComponentProps<typeof Sidebar>) {
   const router = useRouter()
-  const { state } = useSidebar()
+  const { state, setOpenMobile } = useSidebar()
+
+  React.useEffect(() => {
+    setOpenMobile(false)
+  }, [setOpenMobile])
 
   const isTeacherOrAdmin = role === 'teacher' || role === 'admin'
 
