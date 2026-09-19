@@ -150,6 +150,16 @@ function findRawSqlTableReferences(
     .filter((symbol): symbol is string => Boolean(symbol))
 }
 
+function findDynamicRawSqlTableReferences(source: string): Array<string> {
+  const sqlSelector = String.raw`\bsql\s*(?:(?:\.\s*|\?\.\s*)(?:raw|identifier)|\[\s*["'](?:raw|identifier)["']\s*\])\s*\(\s*([^)]*?)\s*\)`
+  const literalTable =
+    /^['"`](?:[a-z_][a-z0-9_]*\s*\.\s*)?[a-z_][a-z0-9_]*['"`]$/i
+
+  return [...source.matchAll(new RegExp(sqlSelector, 'gi'))]
+    .filter(([, argument]) => !literalTable.test(argument.trim()))
+    .map(([match]) => match)
+}
+
 const objectHandle = String.raw`\b[A-Za-z_$][A-Za-z0-9_$]*`
 const databaseHandle = String.raw`\b(?:db|tx|database|connection|dbClient|txClient)`
 const identifier = String.raw`[A-Za-z_$][A-Za-z0-9_$]*`
@@ -507,6 +517,19 @@ describe('utils repository boundaries', () => {
     ).toEqual(['profiles', 'announcements', 'notifications'])
   })
 
+  it('detects dynamically selected raw SQL tables', () => {
+    expect(
+      findDynamicRawSqlTableReferences(
+        "sql.raw(tableName); sql?.identifier(`public.${tableName}`); sql['raw']('public.' + tableName); sql.identifier(getTableName())",
+      ),
+    ).toHaveLength(4)
+    expect(
+      findDynamicRawSqlTableReferences(
+        "sql.raw('public.profiles'); sql?.identifier(`announcements`); sql['raw']('notifications')",
+      ),
+    ).toHaveLength(0)
+  })
+
   it('detects direct Drizzle operations on database handles', () => {
     expect(
       findDirectDatabaseOperations(
@@ -694,6 +717,7 @@ describe('utils repository boundaries', () => {
         ...findRawSqlTableReferences(source, schemaTables),
       ]
       expect(findDynamicTableReferences(source), file).toHaveLength(0)
+      expect(findDynamicRawSqlTableReferences(source), file).toHaveLength(0)
       expect(findNonNamedSchemaImports(source), file).toHaveLength(0)
       expect(importedTables, file).toHaveLength(1)
       const [table] = importedTables
@@ -855,6 +879,23 @@ describe('utils repository boundaries', () => {
         references: findRawSqlTableReferences(
           readFileSync(sourcePath, 'utf8'),
           schemaTables,
+        ),
+      }))
+      .filter(
+        ({ file, references }) =>
+          references.length > 0 && !isDatabaseSeam(file),
+      )
+
+    expect(offenders).toEqual([])
+  })
+
+  it('keeps dynamically selected raw SQL tables behind repository or infrastructure seams', () => {
+    const offenders = findSourceFilesIncludingTests(sourceDirectory)
+      .filter((sourcePath) => !sourcePath.endsWith('.test.ts'))
+      .map((sourcePath) => ({
+        file: sourcePath.slice(sourceDirectory.length + 1),
+        references: findDynamicRawSqlTableReferences(
+          readFileSync(sourcePath, 'utf8'),
         ),
       }))
       .filter(

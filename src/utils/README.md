@@ -39,7 +39,9 @@ table names referenced through SQL templates, interpolated table expressions, an
 `sql.raw(...)` identifiers, including whitespace-formatted calls, qualified names, and
 `USING`, `TRUNCATE`, and table-DDL forms, plus literal `sql.identifier(...)`
 calls, and normalizes aliased schema-table imports before checking references, so raw SQL
-or local renaming cannot bypass one-table ownership.
+or local renaming cannot bypass one-table ownership. Dynamic `sql.raw(...)` and
+`sql.identifier(...)` table selectors are also rejected because their ownership cannot be
+proven statically.
 Repositories must not import or re-export another repository at runtime; services and transaction
 modules compose table adapters instead. Type-only imports and re-exports are allowed for shared
 transaction-client types without creating a runtime dependency between table owners.
