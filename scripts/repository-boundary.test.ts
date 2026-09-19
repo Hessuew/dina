@@ -138,6 +138,7 @@ function findRawSqlTableReferences(
 
 const objectHandle = String.raw`\b[A-Za-z_$][A-Za-z0-9_$]*`
 const databaseHandle = String.raw`\b(?:db|tx|database|connection|dbClient|txClient)`
+const identifier = String.raw`[A-Za-z_$][A-Za-z0-9_$]*`
 const memberAccess = String.raw`(?:\?\s*\.\s*|\.\s*)`
 const computedMemberAccess = String.raw`(?:\?\s*\.\s*)?\[\s*['"]`
 const queryAccess = String.raw`(?:${memberAccess}query|${computedMemberAccess}query['"]\s*\])`
@@ -159,6 +160,17 @@ function findTableReferences(source: string): Array<string> {
     ...source.matchAll(/\b(?:insert|update|delete)\(\s*([A-Za-z0-9_]+)\s*\)/g),
     ...source.matchAll(/\.from\(\s*([A-Za-z0-9_]+)\s*\)/g),
   ].map(([, table]) => table)
+}
+
+function findDynamicTableReferences(source: string): Array<string> {
+  return [
+    ...source.matchAll(
+      new RegExp(
+        String.raw`${objectHandle}\s*${queryAccess}\s*(?:\?\s*\.\s*)?\[\s*(?!['"])${identifier}\s*\]`,
+        'g',
+      ),
+    ),
+  ].map(([match]) => match)
 }
 
 function findDirectDatabaseOperations(source: string): Array<string> {
@@ -347,6 +359,19 @@ describe('utils repository boundaries', () => {
     ).toEqual(['courses', 'lessons'])
   })
 
+  it('detects dynamically selected Drizzle tables', () => {
+    expect(
+      findDynamicTableReferences(
+        'db.query[tableName].findFirst(); tx?.["query"]?.[tableName].findMany()',
+      ),
+    ).toHaveLength(2)
+    expect(
+      findDynamicTableReferences(
+        'db.query["profiles"].findFirst(); tx.query.profiles.findMany()',
+      ),
+    ).toHaveLength(0)
+  })
+
   it('detects table references hidden in SQL templates', () => {
     const schemaTables = findSchemaTables()
 
@@ -520,6 +545,7 @@ describe('utils repository boundaries', () => {
         ...findInterpolatedTableReferences(source, schemaTables),
         ...findRawSqlTableReferences(source, schemaTables),
       ]
+      expect(findDynamicTableReferences(source), file).toHaveLength(0)
       expect(findNonNamedSchemaImports(source), file).toHaveLength(0)
       expect(importedTables, file).toHaveLength(1)
       const [table] = importedTables
@@ -645,6 +671,23 @@ describe('utils repository boundaries', () => {
           readFileSync(sourcePath, 'utf8'),
         ).filter((reference) =>
           schemaTables.some(({ symbol }) => symbol === reference),
+        ),
+      }))
+      .filter(
+        ({ file, references }) =>
+          references.length > 0 && !isDatabaseSeam(file),
+      )
+
+    expect(offenders).toEqual([])
+  })
+
+  it('keeps dynamically selected tables behind repository or infrastructure seams', () => {
+    const offenders = findSourceFilesIncludingTests(sourceDirectory)
+      .filter((sourcePath) => !sourcePath.endsWith('.test.ts'))
+      .map((sourcePath) => ({
+        file: sourcePath.slice(sourceDirectory.length + 1),
+        references: findDynamicTableReferences(
+          readFileSync(sourcePath, 'utf8'),
         ),
       }))
       .filter(

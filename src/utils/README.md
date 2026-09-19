@@ -27,7 +27,8 @@ services may compose repository results but may not issue `query`, CRUD, `execut
 or `transaction` calls themselves. The regression guard covers formatted and
 optional-chaining member access plus computed `db['select']`,
 `db['query'].table`, and `db.query['table']` access as well as the usual dot
-notation.
+notation. Dynamically selected query tables such as `db.query[tableName]` are
+also rejected because they cannot prove single-table ownership.
 All utility callers, including integration tests, import table adapters through
 `@/utils/repository`, the shared barrel seam, rather than reaching into individual
 repository files through aliased, relative, dynamic-import, CommonJS, or feature-named `*.repository` paths.
