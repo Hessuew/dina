@@ -4,17 +4,14 @@ import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { courses } from '@/db/schema'
 
-export async function insertCourseInTransaction(
-  tx: RepositoryTransactionClient,
-  values: {
-    title: string
-    description: string
-    thumbnailUrl: string | null
-    isPublished: boolean
-    orderIndex: number
-  },
+export type CourseInsert = typeof courses.$inferInsert
+
+export async function insertCourse(
+  values: CourseInsert,
+  tx?: RepositoryTransactionClient,
 ) {
-  const [course] = await tx.insert(courses).values(values).returning()
+  const db = tx ?? (await getDb())
+  const [course] = await db.insert(courses).values(values).returning()
   return course
 }
 

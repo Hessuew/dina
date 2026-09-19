@@ -1,11 +1,11 @@
 import { getDb } from '@/db'
 import {
-  insertCourseInTransaction,
+  insertCourse,
   insertCourseTeacherAssignments,
 } from '@/utils/repository'
 
 /* v8 ignore start */
-type CourseInsertValues = Parameters<typeof insertCourseInTransaction>[1]
+type CourseInsertValues = Parameters<typeof insertCourse>[0]
 
 /** Creates a course and its optional teacher assignments atomically. */
 export async function createCourseWithTeachers(
@@ -14,7 +14,7 @@ export async function createCourseWithTeachers(
 ) {
   const db = await getDb()
   return db.transaction(async (tx) => {
-    const course = await insertCourseInTransaction(tx, values)
+    const course = await insertCourse(values, tx)
     if (teacherIds) {
       await insertCourseTeacherAssignments(course.id, teacherIds, tx)
     }
