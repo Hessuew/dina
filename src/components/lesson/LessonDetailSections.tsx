@@ -147,6 +147,7 @@ function AssignmentRow({
     <div
       className="group flex items-start gap-4 px-6 py-5 transition-all hover:bg-white/5"
       onPointerEnter={onPrefetchAssignment.bind(null, assignment.id)}
+      onPointerDown={onPrefetchAssignment.bind(null, assignment.id)}
     >
       <div
         className="min-w-0 flex-1 cursor-pointer"

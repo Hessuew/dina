@@ -412,6 +412,9 @@ function LessonRow({
       onPointerEnter={() => {
         if (view.showContent) onPrefetchLesson(lesson.id)
       }}
+      onPointerDown={() => {
+        if (view.showContent) onPrefetchLesson(lesson.id)
+      }}
       onClick={() => {
         if (view.showContent) onOpenLesson(lesson.id)
       }}

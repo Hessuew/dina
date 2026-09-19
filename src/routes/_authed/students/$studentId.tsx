@@ -129,6 +129,7 @@ function AssignmentRow({
     <div
       className="group flex cursor-pointer items-start gap-4 border-b border-white/8 py-5 pl-1 transition-all first:pt-1 last:border-b-0 last:pb-0 hover:bg-white/8"
       onPointerEnter={() => onPrefetchAssignment(assignment.id)}
+      onPointerDown={() => onPrefetchAssignment(assignment.id)}
       onClick={() => onAssignmentClick(assignment.id)}
     >
       <div className="flex size-8 shrink-0 items-center justify-center border border-[#C5A059]/50 bg-[#1A1716] font-serif text-xs text-[#E9D9B4]">

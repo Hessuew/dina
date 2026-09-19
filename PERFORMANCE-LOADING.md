@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **12 / 12 complete**
+Current implementation slices: **13 / 13 complete**
 
 ## Done
 
@@ -20,6 +20,7 @@ Current implementation slices: **12 / 12 complete**
 - ✅ Landing-page lecturer portraits now load only for the current and adjacent carousel items (six of twelve on desktop, three of twelve on mobile), deferring the remaining portrait assets until interaction. The built portrait set is about 614 KB; the initial desktop selection exposes about 310 KB.
 - ✅ Manager assignment detail loads now include the submissions panel data in the primary detail read, removing a second server-function round trip when opening an assignment as a course teacher or admin.
 - ✅ Calendar lesson and assignment event previews now preload their detail route as soon as a navigable event is opened, so “View Details” can reuse the route data instead of starting the load after the click.
+- ✅ Imperative lesson and assignment rows now also start route preloading on pointer-down, covering fast clicks and touch interactions where hover intent is unavailable.
 
 ## Remaining
 
@@ -36,6 +37,7 @@ Captured 2026-09-19 against the local Vite development server with Chrome DevToo
 
 - ✅ Landing desktop (1200px viewport): response end 176 ms, DOMContentLoaded 349 ms, load 403 ms.
 - ✅ Landing narrow viewport (500px effective viewport): response end 135 ms, DOMContentLoaded 223 ms, load 250 ms.
-- ⚠️ The authenticated dashboard/course/lesson/assignment/calendar flow could not be measured in this slice: the existing dashboard e2e run stalled after startup and was stopped. No authenticated timing is recorded as valid data.
+- ✅ Authenticated dashboard data waterfall (warm local Vite session): root user requests completed in 451–486 ms; dashboard course, upcoming-lesson, and assignment server functions completed in 461–732 ms and were issued concurrently.
+- ⚠️ Authenticated route UI timing is not yet production-valid: the local Vite session repeatedly hit a hydration mismatch after route data returned, leaving stale content visible for several seconds. The measured course transition therefore cannot be used as a real-user baseline until a production-like Worker/Hyperdrive environment is available.
 
-Next slice: capture authenticated route timings with a completing test session, then use the request waterfall to choose the next route-level change.
+Next slice: capture authenticated course/lesson/assignment timings in a production-like environment, then use the request waterfall to choose the next route-level change.
