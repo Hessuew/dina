@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **23 / 23 complete**
+Current implementation slices: **24 / 24 complete**
 
 ## Done
 
@@ -31,6 +31,7 @@ Current implementation slices: **23 / 23 complete**
 - ✅ Course detail now runs student progress reads concurrently with course asset signing and media URL serialization, removing a serial post-processing phase from course navigation.
 - ✅ Browser Sentry now waits for browser idle time before loading its optional SDK, while error capture still loads it immediately when needed.
 - ✅ Lesson and assignment detail routes now defer their optional edit, delete, and grading dialogs until a staff action opens them, keeping form code off ordinary detail navigation.
+- ✅ Students index authorization now reuses the authenticated root role instead of issuing a separate courses read before loading student data, removing one serial server-function round trip from that navigation.
 
 ## Remaining
 

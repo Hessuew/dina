@@ -19,6 +19,17 @@ export type UserContext = {
   role: UserProfile['role']
 }
 
+export type StaffRole = Extract<UserContext['role'], 'teacher' | 'admin'>
+
+/** Returns the staff role or delegates the denied-route behavior to the caller. */
+export function requireTeacherOrAdminRole(
+  role: UserContext['role'] | undefined,
+  onDenied: () => never,
+): StaffRole {
+  if (role === 'teacher' || role === 'admin') return role
+  return onDenied()
+}
+
 /**
  * Narrows a (possibly null) Supabase auth user to one with a usable email.
  * Mirrors the root route's `!data.user?.email` guard so the DB profile fetch

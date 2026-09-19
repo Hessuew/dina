@@ -1,6 +1,36 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildUserContext, isAuthenticatedUser } from './user-context.domain'
+import {
+  buildUserContext,
+  isAuthenticatedUser,
+  requireTeacherOrAdminRole,
+} from './user-context.domain'
+
+describe('requireTeacherOrAdminRole', () => {
+  it.each(['teacher', 'admin'] as const)('allows %s', (role) => {
+    expect(requireTeacherOrAdminRole(role, () => neverDenied())).toBe(role)
+  })
+
+  it('delegates denied roles to the caller', () => {
+    expect(() =>
+      requireTeacherOrAdminRole('student', () => {
+        throw new Error('denied')
+      }),
+    ).toThrow('denied')
+  })
+
+  it('delegates an absent role to the caller', () => {
+    expect(() =>
+      requireTeacherOrAdminRole(undefined, () => {
+        throw new Error('denied')
+      }),
+    ).toThrow('denied')
+  })
+})
+
+function neverDenied(): never {
+  throw new Error('unexpected denial')
+}
 
 describe('isAuthenticatedUser', () => {
   it('returns false for null', () => {

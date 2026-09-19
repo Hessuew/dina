@@ -1,26 +1,19 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import { requireTeacherOrAdminRole } from '@/utils/auth/domain/user-context.domain'
 import { StudentsView } from '@/components/view/StudentsView'
 import { PageLayout } from '@/components/layout/page-layout'
 import { getStudents } from '@/utils/student'
-import { getCourses } from '@/utils/courses'
 
 export const Route = createFileRoute('/_authed/students/')({
-  beforeLoad: async () => {
-    const coursesData = await getCourses()
-    const isTeacherOrAdmin =
-      coursesData.role === 'teacher' || coursesData.role === 'admin'
-
-    if (!isTeacherOrAdmin) {
+  beforeLoad: ({ context }) => {
+    const role = requireTeacherOrAdminRole(context.user?.role, () => {
       throw redirect({
         to: '/dashboard',
-        search: {
-          verified: false,
-        },
+        search: { verified: false },
       })
-    }
-
+    })
     return {
-      role: coursesData.role,
+      role,
     }
   },
   loader: async () => {
