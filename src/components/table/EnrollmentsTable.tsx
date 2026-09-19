@@ -81,6 +81,278 @@ const STATUS_LABELS: Array<{ value: EnrollmentStatus; label: string }> = [
   { value: 'deferred', label: 'Deferred' },
 ]
 
+const EVALUATION_LABELS = [' · pending', ' ✓'] as const
+const SPECIAL_CASE_LABELS = [
+  'Mark special case',
+  'Unmark special case',
+] as const
+const SPECIAL_CASE_CLASSES = [
+  'text-[#8E816D]',
+  'fill-amber-400 text-amber-400',
+] as const
+
+type EnrollmentMobileMetaProps = {
+  row: EnrollmentRow
+}
+
+function EnrollmentMobileMeta({ row }: EnrollmentMobileMetaProps) {
+  const score =
+    row.evaluationCount === 0
+      ? '—'
+      : formatEvaluationSummary(row.evaluationSum, row.evaluationCount)
+
+  return (
+    <div className="mt-4 grid grid-cols-2 gap-3 border-y border-white/10 py-3">
+      <div>
+        <p className="text-[0.62rem] font-medium tracking-[0.16em] text-[#8E816D] uppercase">
+          Status
+        </p>
+        <EnrollmentStatusChip className="mt-1" status={row.status} />
+      </div>
+      <div>
+        <p className="text-[0.62rem] font-medium tracking-[0.16em] text-[#8E816D] uppercase">
+          Score
+        </p>
+        <p className="mt-1 text-sm text-[#D6CCBE]">{score}</p>
+      </div>
+      <div>
+        <p className="text-[0.62rem] font-medium tracking-[0.16em] text-[#8E816D] uppercase">
+          Submitted
+        </p>
+        <p className="mt-1 text-sm text-[#D6CCBE]">
+          {format(new Date(row.createdAt), 'MMM d, yyyy')}
+        </p>
+      </div>
+      <div>
+        <p className="text-[0.62rem] font-medium tracking-[0.16em] text-[#8E816D] uppercase">
+          Category
+        </p>
+        {row.reviewerAdmissionCategory ? (
+          <EnrollmentCategoryChip
+            category={row.reviewerAdmissionCategory}
+            className="mt-1"
+          />
+        ) : (
+          <p className="mt-1 text-sm text-[#8E816D]">—</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+type EnrollmentMobileActionsProps = {
+  row: EnrollmentRow
+  isAdmin: boolean
+  onReview: (id: string) => void
+  onSendInvite: (id: string) => void
+  invitePending: boolean
+  onUpdateStatus: (id: string, status: EnrollmentStatus) => void
+  onDelete: (id: string) => void
+}
+
+type EnrollmentMobileStatusMenuProps = Pick<
+  EnrollmentMobileActionsProps,
+  'row' | 'onUpdateStatus' | 'onDelete'
+>
+
+function EnrollmentMobileStatusMenu({
+  row,
+  onUpdateStatus,
+  onDelete,
+}: EnrollmentMobileStatusMenuProps) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            type="button"
+            size="icon"
+            theme="dark"
+            aria-label="More options"
+            className="size-8 rounded-none border border-white/10 bg-transparent hover:bg-white/5"
+          >
+            <MoreHorizontal className="size-3.5" />
+          </Button>
+        }
+      />
+      <DropdownMenuContent
+        align="end"
+        className="rounded-none border border-white/10 bg-[#1A1716] text-[#F8F4EC]"
+      >
+        {STATUS_LABELS.map((status) => (
+          <DropdownMenuItem
+            key={status.value}
+            onClick={() => onUpdateStatus(row.id, status.value)}
+            className={cn(
+              'flex items-center justify-between',
+              status.value === row.status && 'text-[#C5A059]',
+            )}
+          >
+            {status.label}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator className="bg-white/10" />
+        <DropdownMenuItem
+          variant="destructive"
+          onClick={() => onDelete(row.id)}
+        >
+          <Trash2 className="size-4" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function EnrollmentMobileActions({
+  row,
+  isAdmin,
+  onReview,
+  onSendInvite,
+  invitePending,
+  onUpdateStatus,
+  onDelete,
+}: EnrollmentMobileActionsProps) {
+  return (
+    <div className="mt-4 flex flex-wrap justify-end gap-2">
+      <Button
+        type="button"
+        size="sm"
+        theme="dark"
+        onClick={() => onReview(row.id)}
+      >
+        <Eye className="size-3.5" />
+        Review
+      </Button>
+      {isAdmin && row.status === 'approved' && (
+        <Button
+          type="button"
+          size="sm"
+          theme="dark"
+          variant="outline"
+          onClick={() => onSendInvite(row.id)}
+          disabled={invitePending}
+        >
+          <Mail className="size-3.5" />
+          Invite
+        </Button>
+      )}
+      {isAdmin && (
+        <EnrollmentMobileStatusMenu
+          row={row}
+          onUpdateStatus={onUpdateStatus}
+          onDelete={onDelete}
+        />
+      )}
+    </div>
+  )
+}
+
+type EnrollmentMobileRowProps = EnrollmentMobileActionsProps & {
+  onToggleSpecialCase: (row: EnrollmentRow) => void
+  specialCasePending: boolean
+}
+
+function EnrollmentMobileIdentity({
+  row,
+  isAdmin,
+  onToggleSpecialCase,
+  specialCasePending,
+}: Pick<
+  EnrollmentMobileRowProps,
+  'row' | 'isAdmin' | 'onToggleSpecialCase' | 'specialCasePending'
+>) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h3 className="font-serif text-lg break-words text-[#F8F4EC]">
+          {row.fullLegalName}
+        </h3>
+        <p className="mt-1 text-xs text-[#AFA28F]">
+          {row.nationalityCitizenship || 'Nationality not provided'} · Born{' '}
+          {row.yearOfBirth}
+        </p>
+      </div>
+      {isAdmin && (
+        <Button
+          type="button"
+          size="icon"
+          theme="dark"
+          onClick={() => onToggleSpecialCase(row)}
+          disabled={specialCasePending}
+          aria-label={SPECIAL_CASE_LABELS[Number(row.specialCase)]}
+          className="size-8 shrink-0 rounded-none border-none bg-transparent hover:bg-amber-400/15"
+        >
+          <Star
+            className={cn(
+              'size-3.5',
+              SPECIAL_CASE_CLASSES[Number(row.specialCase)],
+            )}
+          />
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function EnrollmentMobileReview({ row }: { row: EnrollmentRow }) {
+  const reviewerName = row.reviewHeading.reviewerFirstName
+  const reviewerStatus =
+    EVALUATION_LABELS[Number(row.reviewHeading.reviewerHasEvaluated)]
+  const peerName = row.reviewHeading.peerFirstName
+  const peerStatus =
+    EVALUATION_LABELS[Number(row.reviewHeading.peerHasEvaluated)]
+
+  if (!reviewerName) return null
+  return (
+    <p className="mt-3 text-xs text-[#AFA28F]">
+      Review: {reviewerName}
+      {reviewerStatus}
+      {peerName && (
+        <>
+          {' · '}
+          {peerName}
+          {peerStatus}
+        </>
+      )}
+    </p>
+  )
+}
+
+function EnrollmentMobileRow({
+  row,
+  isAdmin,
+  onReview,
+  onSendInvite,
+  invitePending,
+  onUpdateStatus,
+  onDelete,
+  onToggleSpecialCase,
+  specialCasePending,
+}: EnrollmentMobileRowProps) {
+  return (
+    <article className="border border-white/10 bg-[#151515]/88 p-4 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
+      <EnrollmentMobileIdentity
+        row={row}
+        isAdmin={isAdmin}
+        onToggleSpecialCase={onToggleSpecialCase}
+        specialCasePending={specialCasePending}
+      />
+      <EnrollmentMobileMeta row={row} />
+      <EnrollmentMobileReview row={row} />
+      <EnrollmentMobileActions
+        row={row}
+        isAdmin={isAdmin}
+        onReview={onReview}
+        onSendInvite={onSendInvite}
+        invitePending={invitePending}
+        onUpdateStatus={onUpdateStatus}
+        onDelete={onDelete}
+      />
+    </article>
+  )
+}
+
 export function EnrollmentsTable({
   enrollments,
   onRefresh,
@@ -414,6 +686,36 @@ export function EnrollmentsTable({
             : 'No enrollments yet. Public enrolment form submissions show up here.'
         }
         searchPlaceholder="Search by name, status…"
+        renderMobileRow={(row) => (
+          <EnrollmentMobileRow
+            row={row}
+            isAdmin={isAdmin}
+            onReview={onReview}
+            onSendInvite={(id) => {
+              setSelectedEnrollmentId(id)
+              setInviteDialogOpen(true)
+            }}
+            invitePending={inviteMutation.isPending}
+            onUpdateStatus={(id, status) =>
+              updateStatusMutation.mutate({
+                data: { enrollmentId: id, status },
+              })
+            }
+            onDelete={(id) => {
+              setSelectedEnrollmentId(id)
+              setDeleteDialogOpen(true)
+            }}
+            onToggleSpecialCase={(enrollmentRow) =>
+              specialCaseMutation.mutate({
+                data: {
+                  enrollmentId: enrollmentRow.id,
+                  specialCase: !enrollmentRow.specialCase,
+                },
+              })
+            }
+            specialCasePending={specialCaseMutation.isPending}
+          />
+        )}
       />
 
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
