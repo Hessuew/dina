@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **42 / 42 complete**
+Current implementation slices: **43 / 43 complete**
 
 ## Done
 
@@ -50,6 +50,7 @@ Current implementation slices: **42 / 42 complete**
 - ✅ Dashboard attendance course links and assignment cards now preload their detail routes on pointer-down, covering fast clicks and touch activation on the remaining direct course/assignment links.
 - ✅ Library media cards and management-table thumbnails now preload the media-detail route on pointer-down, so fast clicks and touch activation can begin loading the deferred document/PDF viewer before navigation.
 - ✅ Staff exam-grading attempt links now preload the attempt-detail route on pointer-down, so opening a submitted attempt can begin loading before a fast click or touch navigation.
+- ✅ Enrollment evaluation overlays now preload the full enrollment record route on pointer intent, so reviewers can start the detail-page load before clicking “Full record”.
 
 ## Remaining
 
@@ -67,6 +68,8 @@ The ViewerDateTime dependency audit keeps the dashboard route on its 1.21 KB / 0
 The dashboard course-card preload slice leaves bundle sizes unchanged: the course-detail route is 38.90 KB / 12.54 KB gzip, and the optimization targets navigation request start time for fast clicks and touch rather than payload size.
 
 The exam-grading attempt preload slice leaves bundle sizes unchanged and targets navigation request start time for staff reviewing attempts.
+
+The enrollment evaluation preload slice leaves bundle sizes unchanged and targets navigation request start time for reviewers opening a full enrollment record.
 
 ## Browser baseline
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { toast } from 'sonner'
 import {
@@ -45,6 +45,18 @@ import {
 import { cn } from '@/lib/utils'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+
+function preloadEnrollmentRoute(
+  router: ReturnType<typeof useRouter>,
+  enrollmentId: string,
+) {
+  void router
+    .preloadRoute({
+      to: '/enrollments/$enrollmentId',
+      params: { enrollmentId },
+    })
+    .catch(() => undefined)
+}
 
 function toSaveState(mutation: {
   isPending: boolean
@@ -642,6 +654,8 @@ function EvaluationOverlayHeader({
   titleId: string
   onClose: () => void
 }) {
+  const router = useRouter()
+
   return (
     <div className="flex items-center justify-between gap-4">
       <div>
@@ -657,6 +671,8 @@ function EvaluationOverlayHeader({
         <Link
           to="/enrollments/$enrollmentId"
           params={{ enrollmentId: enrollment.id }}
+          onPointerEnter={() => preloadEnrollmentRoute(router, enrollment.id)}
+          onPointerDown={() => preloadEnrollmentRoute(router, enrollment.id)}
           className="inline-flex items-center gap-1.5 text-[0.7rem] tracking-[0.12em] text-[#AFA28F] uppercase hover:text-[#F8F4EC]"
         >
           <SquareArrowOutUpRight className="size-3.5" />
