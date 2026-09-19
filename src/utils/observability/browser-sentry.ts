@@ -13,7 +13,11 @@ let browserSentryUser: UserContext | null | undefined
 let browserSentryInitialized = false
 
 function loadBrowserSentry(): Promise<BrowserSentry | null> {
-  browserSentryLoad ??= import('@sentry/tanstackstart-react').catch(() => null)
+  browserSentryLoad =
+    browserSentryLoad ??
+    import('./browser-sentry-sdk')
+      .then(({ Sentry: sentry }) => sentry)
+      .catch(() => null)
   return browserSentryLoad
 }
 

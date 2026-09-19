@@ -1,6 +1,6 @@
-import * as Sentry from '@sentry/tanstackstart-react'
 import { toast } from 'sonner'
 import { shouldSuppressFromSentry, toUserError } from '@/utils/errors'
+import { captureBrowserSentryException } from '@/utils/observability/browser-sentry'
 
 export function reportMutationError(error: unknown): void {
   if (!shouldSuppressFromSentry(error)) {
@@ -11,7 +11,7 @@ export function reportMutationError(error: unknown): void {
       { cause: error },
     )
     captureError.name = 'MutationError'
-    Sentry.captureException(captureError)
+    captureBrowserSentryException(captureError)
   }
 }
 
