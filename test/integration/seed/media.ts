@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { getDb } from 'test/integration/db'
-import type { MediaLibraryRow } from '@/utils/library/library'
-import { mediaLibrary } from '@/db/schema'
+import type { InsertMediaValues } from '@/utils/repository'
+import { insertMedia } from '@/utils/repository'
 import { extractPrivateStoragePath } from '@/utils/storage/domain/private-storage.domain'
 
 export async function seedMedia(overrides: {
@@ -12,7 +11,7 @@ export async function seedMedia(overrides: {
   category?: string
   description?: string
   fileUrl?: string
-  fileType?: MediaLibraryRow['fileType']
+  fileType?: InsertMediaValues['fileType']
   fileSize?: number
   thumbnailUrl?: string
   isPublished?: boolean
@@ -21,8 +20,7 @@ export async function seedMedia(overrides: {
   const id = overrides.id ?? randomUUID()
   const fileType = overrides.fileType ?? 'video'
   const source = overrides.fileUrl ?? 'https://youtube.com/watch?v=test'
-  const db = await getDb()
-  await db.insert(mediaLibrary).values({
+  await insertMedia({
     id,
     uploaderId: overrides.uploaderId,
     title: overrides.title ?? 'Test Media',
