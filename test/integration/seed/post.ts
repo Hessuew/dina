@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { getDb } from 'test/integration/db'
-import { posts } from '@/db/schema'
+import { insertPost } from '@/utils/repository'
 
 export async function seedPost(overrides: {
   id?: string
@@ -10,14 +9,11 @@ export async function seedPost(overrides: {
   deletedAt?: Date
 }): Promise<string> {
   const id = overrides.id ?? randomUUID()
-  const db = await getDb()
-  await db.insert(posts).values({
+  await insertPost({
     id,
     authorId: overrides.authorId,
     content: overrides.content ?? 'Test post',
-    ...(overrides.courseId !== undefined
-      ? { courseId: overrides.courseId }
-      : {}),
+    courseId: overrides.courseId ?? null,
     ...(overrides.deletedAt !== undefined
       ? { deletedAt: overrides.deletedAt }
       : {}),

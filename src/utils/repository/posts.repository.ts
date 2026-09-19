@@ -3,6 +3,7 @@ import { getDb } from '@/db'
 import { posts } from '@/db/schema'
 
 export type PostRow = typeof posts.$inferSelect
+export type PostInsert = typeof posts.$inferInsert
 
 function buildPostFeedConditions(filters: {
   courseId?: string | null
@@ -60,11 +61,7 @@ export async function findPostsByIds(postIds: Array<string>) {
   })
 }
 
-export async function insertPost(values: {
-  authorId: string
-  courseId: string | null
-  content: string
-}): Promise<{ id: string }> {
+export async function insertPost(values: PostInsert): Promise<{ id: string }> {
   const db = await getDb()
   const row = (await db.insert(posts).values(values).returning()).at(0)
   if (!row) throw new Error('Insert returned no rows for post')
