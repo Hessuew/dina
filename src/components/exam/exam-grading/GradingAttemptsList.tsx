@@ -1,4 +1,4 @@
-import { Link, useRouter } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import type { StatusChipVariant } from '@/components/ui/status-chip'
 import type { ExamAttemptStatus } from '@/utils/exam/domain/exam-lifecycle.domain'
 import { StatusChip } from '@/components/ui/status-chip'
@@ -19,25 +19,11 @@ export type GradingAttemptListItem = {
   totalScore: number | null
 }
 
-function preloadAttemptRoute(
-  router: ReturnType<typeof useRouter>,
-  attempt: GradingAttemptListItem,
-) {
-  void router
-    .preloadRoute({
-      to: '/exams/$examId/grading/$attemptId',
-      params: { examId: attempt.examId, attemptId: attempt.id },
-    })
-    .catch(() => undefined)
-}
-
 export function GradingAttemptsList({
   attempts,
 }: {
   attempts: Array<GradingAttemptListItem>
 }) {
-  const router = useRouter()
-
   if (attempts.length === 0) {
     return (
       <p className="py-16 text-center font-serif text-lg text-[#AFA28F]">
@@ -52,7 +38,6 @@ export function GradingAttemptsList({
           key={attempt.id}
           to="/exams/$examId/grading/$attemptId"
           params={{ examId: attempt.examId, attemptId: attempt.id }}
-          onPointerDown={() => preloadAttemptRoute(router, attempt)}
           className="flex items-center justify-between gap-4 border border-[#1A1A1A]/10 bg-white/70 px-5 py-4 transition-colors hover:border-[#C5A059]/40"
         >
           <div>

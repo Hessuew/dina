@@ -79,6 +79,7 @@ export function useTeachers(shouldFetch: boolean) {
 
 ## UI Hooks
 
+- `useIntentPreload` — Pointer-intent route preloading for imperative `navigate()` targets (`router.preloadRoute` with swallowed rejection). `<Link>` targets already preload via `defaultPreload: 'intent'`; use this only where navigation is imperative.
 - `useMutation` — Generic mutation hook with configurable error handling and `isPending` convenience property
 - `useEntityMutation` — High-level CRUD mutation hook with toast notifications, router invalidation, and `isAnyPending` convenience property
 - `useIsMobile` — Mobile viewport detection (768px breakpoint)

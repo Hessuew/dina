@@ -13,6 +13,7 @@ import {
   studentLandingGoLabel,
 } from '@/components/view/exams-view/exams-view.domain'
 import { Button } from '@/components/ui/button'
+import { useIntentPreload } from '@/hooks/useIntentPreload'
 import { useMutation } from '@/hooks/useMutation'
 import {
   getExamForAuthor,
@@ -86,13 +87,12 @@ function StudentExamLandingContent({ item }: { item: StudentExamItem }) {
     },
   })
   const vm = deriveStudentCardViewModel(item, new Date())
+  const intentPreload = useIntentPreload()
   const preloadTakeRoute = () => {
-    void router
-      .preloadRoute({
-        to: '/exams/$examId/take',
-        params: { examId: item.exam.id },
-      })
-      .catch(() => undefined)
+    intentPreload({
+      to: '/exams/$examId/take',
+      params: { examId: item.exam.id },
+    })
   }
   return (
     <div className="space-y-6 border border-[#1A1A1A]/10 bg-white/70 p-8 text-center">

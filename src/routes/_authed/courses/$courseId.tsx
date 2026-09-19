@@ -3,6 +3,7 @@ import { Suspense, lazy } from 'react'
 import { toast } from 'sonner'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import { useDialogState } from '@/hooks/useDialogState'
+import { useIntentPreload } from '@/hooks/useIntentPreload'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { useMutation } from '@/hooks/useMutation'
 import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
@@ -75,16 +76,41 @@ type CourseDialogState = ReturnType<typeof useDialogState<CourseEditData>>
 type LessonDialogState = ReturnType<typeof useDialogState<Lesson>>
 type MaterialDialogState = ReturnType<typeof useDialogState<MediaLibraryRow>>
 
-function preloadLessonRoute(
-  router: ReturnType<typeof useRouter>,
-  lessonId: string,
-) {
-  void router
-    .preloadRoute({
-      to: '/lessons/$lessonId',
-      params: { lessonId },
-    })
-    .catch(() => undefined)
+function useCourseLessonNavigation({
+  courseId,
+  firstLessonId,
+  role,
+  completedLessonIds,
+  userId,
+}: {
+  courseId: string
+  firstLessonId: string | undefined
+  role: 'student' | 'teacher' | 'admin'
+  completedLessonIds: Array<string>
+  userId: string | undefined
+}) {
+  const router = useRouter()
+  const intentPreload = useIntentPreload()
+
+  const openLesson = (lessonId: string) => {
+    if (
+      shouldTrackCourseStarted({
+        role,
+        firstLessonId,
+        lessonId,
+        completedLessonIds,
+      })
+    ) {
+      trackCourseStarted(courseId)
+      if (userId) trackStudentActivated(userId, courseId)
+    }
+    router.navigate({ to: '/lessons/$lessonId', params: { lessonId } })
+  }
+
+  const prefetchLesson = (lessonId: string) =>
+    intentPreload({ to: '/lessons/$lessonId', params: { lessonId } })
+
+  return { openLesson, prefetchLesson }
 }
 
 function CourseDetailComponent() {
@@ -104,20 +130,13 @@ function CourseDetailComponent() {
     },
   })
 
-  const handleOpenLesson = (lessonId: string) => {
-    if (
-      shouldTrackCourseStarted({
-        role,
-        firstLessonId: course.lessons[0]?.id,
-        lessonId,
-        completedLessonIds: loaderData.completedLessonIds,
-      })
-    ) {
-      trackCourseStarted(course.id)
-      if (user) trackStudentActivated(user.id, course.id)
-    }
-    router.navigate({ to: '/lessons/$lessonId', params: { lessonId } })
-  }
+  const { openLesson, prefetchLesson } = useCourseLessonNavigation({
+    courseId: course.id,
+    firstLessonId: course.lessons[0]?.id,
+    role,
+    completedLessonIds: loaderData.completedLessonIds,
+    userId: user?.id,
+  })
 
   return (
     <PageLayout>
@@ -131,8 +150,8 @@ function CourseDetailComponent() {
         data={loaderData}
         lessonDialog={lessonDialog}
         materialDialog={materialDialog}
-        onOpenLesson={handleOpenLesson}
-        onPrefetchLesson={(lessonId) => preloadLessonRoute(router, lessonId)}
+        onOpenLesson={openLesson}
+        onPrefetchLesson={prefetchLesson}
       />
       <CourseEditDeleteDialogs
         isAdmin={permissions.isAdmin}

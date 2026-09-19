@@ -1,5 +1,5 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
-import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { FileTextIcon, PlusIcon } from 'lucide-react'
 import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-table/legacy'
 import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
@@ -42,18 +42,6 @@ export const Route = createFileRoute('/_authed/library/')({
 
 const columnHelper = createColumnHelper<MediaLibraryRow>()
 
-function preloadMediaRoute(
-  router: ReturnType<typeof useRouter>,
-  mediaId: string,
-) {
-  void router
-    .preloadRoute({
-      to: '/library/$mediaId',
-      params: { mediaId },
-    })
-    .catch(() => undefined)
-}
-
 function YoutubeThumbCell({
   mediaId,
   title,
@@ -63,13 +51,10 @@ function YoutubeThumbCell({
   title: string
   thumbUrl: string | null
 }) {
-  const router = useRouter()
-
   return (
     <Link
       to="/library/$mediaId"
       params={{ mediaId }}
-      onPointerDown={() => preloadMediaRoute(router, mediaId)}
       className="group relative block aspect-video w-28 border border-white/10 bg-black/20"
     >
       {thumbUrl ? (
@@ -106,13 +91,10 @@ function GenericThumbCell({
   thumbUrl: string | null
   icon: 'video' | 'file'
 }) {
-  const router = useRouter()
-
   return (
     <Link
       to="/library/$mediaId"
       params={{ mediaId }}
-      onPointerDown={() => preloadMediaRoute(router, mediaId)}
       className="group relative flex aspect-video w-28 items-center justify-center border border-white/10 bg-black/20 text-[#8E816D]"
     >
       {thumbUrl ? (

@@ -5,6 +5,7 @@ import type { StudentDetailWithAssignments } from '@/types/student'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { StudentAttendanceDetail } from '@/components/view/students-view/StudentAttendanceDetail'
+import { useIntentPreload } from '@/hooks/useIntentPreload'
 import { getStudentDetail } from '@/utils/student'
 import { checkTeacherAccess } from '@/utils/auth/admin'
 import {
@@ -48,22 +49,11 @@ type CoursePanelProps = {
   onPrefetchAssignment: (assignmentId: string) => void
 }
 
-function preloadAssignmentRoute(
-  router: ReturnType<typeof useRouter>,
-  assignmentId: string,
-) {
-  void router
-    .preloadRoute({
-      to: '/assignments/$assignmentId',
-      params: { assignmentId },
-      search: {
-        calendarMonth: undefined,
-        fromCalendar: false,
-        fromDashboard: false,
-      },
-    })
-    .catch(() => undefined)
-}
+const ASSIGNMENT_DETAIL_SEARCH = {
+  calendarMonth: undefined,
+  fromCalendar: false,
+  fromDashboard: false,
+} as const
 
 function StudentInfoCard({
   student,
@@ -235,21 +225,22 @@ function EmptyAssignmentsState() {
 function StudentDetailComponent() {
   const { student } = Route.useLoaderData()
   const router = useRouter()
+  const intentPreload = useIntentPreload()
 
   const handleAssignmentClick = (assignmentId: string) => {
     router.navigate({
       to: '/assignments/$assignmentId',
       params: { assignmentId },
-      search: {
-        calendarMonth: undefined,
-        fromCalendar: false,
-        fromDashboard: false,
-      },
+      search: ASSIGNMENT_DETAIL_SEARCH,
     })
   }
 
   const prefetchAssignment = (assignmentId: string) =>
-    preloadAssignmentRoute(router, assignmentId)
+    intentPreload({
+      to: '/assignments/$assignmentId',
+      params: { assignmentId },
+      search: ASSIGNMENT_DETAIL_SEARCH,
+    })
 
   const assignmentsByCourse = groupAssignmentsByCourse(
     student.enrollments,

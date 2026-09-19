@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import z from 'zod'
 import { getAssignmentSubmissionCount, getLesson } from '@/utils/assignments'
 import { useDialogState } from '@/hooks/useDialogState'
+import { useIntentPreload } from '@/hooks/useIntentPreload'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
@@ -237,6 +238,7 @@ function useLessonNavigation({
   search: LessonSearch
 }) {
   const router = useRouter()
+  const intentPreload = useIntentPreload()
 
   const handleOpenAssignment = (assignmentId: string) => {
     router.navigate({
@@ -251,17 +253,15 @@ function useLessonNavigation({
   }
 
   const prefetchAssignment = (assignmentId: string) => {
-    void router
-      .preloadRoute({
-        to: '/assignments/$assignmentId',
-        params: { assignmentId },
-        search: {
-          calendarMonth: undefined,
-          fromCalendar: false,
-          fromDashboard: false,
-        },
-      })
-      .catch(() => undefined)
+    intentPreload({
+      to: '/assignments/$assignmentId',
+      params: { assignmentId },
+      search: {
+        calendarMonth: undefined,
+        fromCalendar: false,
+        fromDashboard: false,
+      },
+    })
   }
 
   const goBack = () => {

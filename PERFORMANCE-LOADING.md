@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **45 / 45 complete**
+Current implementation slices: **46 / 46 complete**
 
 ## Done
 
@@ -53,10 +53,11 @@ Current implementation slices: **45 / 45 complete**
 - ✅ Enrollment evaluation overlays now preload the full enrollment record route on pointer intent, so reviewers can start the detail-page load before clicking “Full record”.
 - ✅ Course detail now starts the viewer-profile lookup concurrently with the initial course read, removing one serial server-read step before course navigation can assemble its detail payload.
 - ✅ Student detail now resolves submitted assignments, manageable courses, and the avatar URL concurrently after its shared base reads, removing another server-side waterfall from staff student navigation.
+- ✅ Removed manual `preloadRoute` pointer handlers from `<Link>`/`ButtonLink` targets (course cards, upcoming lessons/assignments, exam rows, media cards, grading attempts, attendance banner, evaluation overlay). `defaultPreload: 'intent'` already preloads those routes on hover/focus/touch with zero delay, so the handlers were redundant. Pointer-intent preloads remain only where navigation is imperative `navigate()` (lesson/assignment row clicks, exam take button, event preview) and are now consolidated behind `src/hooks/useIntentPreload.ts`.
 
 ## Remaining
 
-- ⬜ Audit remaining imperative detail navigation outside the core course/lesson/assignment/exam flows.
+- ⬜ Investigate the dev-server hydration mismatch noted under Browser baseline; confirm whether it reproduces against a production build before treating it as a user-facing slowdown.
 - ⬜ Add representative browser measurements for landing, dashboard, course, lesson, and assignment flows.
 - ⬜ Audit the remaining oversized route chunks, especially the PDF path, and keep them off unrelated navigations.
 - ⬜ Re-run the measurements and push the finished work as a GitHub PR (do not merge automatically).
@@ -76,6 +77,8 @@ The enrollment evaluation preload slice leaves bundle sizes unchanged and target
 The course-detail read now overlaps the independent viewer-profile and course-row lookups; bundle sizes are unchanged because this slice reduces server navigation latency rather than client payload size.
 
 The student-detail read now overlaps submission lookup, manageable-course resolution, and avatar signing after the shared course/assignment/attendance reads; bundle sizes are unchanged because this slice reduces server navigation latency rather than client payload size.
+
+The Link-preload dedup slice is code removal only: intent preloading now starts on hover/focus/touchstart for those links instead of pointer-down, so eligible preloads actually begin slightly earlier. Imperative-navigation preloads (course→lesson rows, lesson→assignment rows, student→assignment rows, exam take button, event preview) are unchanged in behavior and now share one `useIntentPreload` hook. Remaining `navigate()` call sites were audited: they are post-mutation redirects or same-route search updates, so no intent preloading applies. Bundle sizes unchanged.
 
 ## Browser baseline
 

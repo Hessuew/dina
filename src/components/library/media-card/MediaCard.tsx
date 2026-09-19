@@ -1,4 +1,4 @@
-import { Link, useRouter } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { FileTextIcon } from 'lucide-react'
 import { buildMediaCardViewModel } from './media-card.domain'
 import type { MediaLibraryRow } from '@/utils/library/library'
@@ -9,18 +9,6 @@ type MediaCardProps = {
   item: MediaLibraryRow
   viewerRole: 'student' | 'teacher' | 'admin'
   size?: 'default' | 'panel' | 'mobile'
-}
-
-function preloadMediaRoute(
-  router: ReturnType<typeof useRouter>,
-  mediaId: string,
-) {
-  void router
-    .preloadRoute({
-      to: '/library/$mediaId',
-      params: { mediaId },
-    })
-    .catch(() => undefined)
 }
 
 function MediaCardAura({ thumbnailUrl }: { thumbnailUrl: string | null }) {
@@ -127,17 +115,14 @@ function MediaCardMeta({
 function MediaCardBody({
   item,
   view,
-  onPointerDown,
 }: {
   item: MediaLibraryRow
   view: MediaCardViewModel
-  onPointerDown: () => void
 }) {
   return (
     <Link
       to="/library/$mediaId"
       params={{ mediaId: item.id }}
-      onPointerDown={onPointerDown}
       className="relative flex aspect-3/2 w-full overflow-hidden border border-[#C5A059]/40 bg-[#0F0C07] shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)] transition-all duration-300 group-hover:-translate-y-0.5 group-hover:border-[#C5A059]/70 group-hover:shadow-[0_0_40px_rgba(197,160,89,0.12)]"
     >
       {/* Background image */}
@@ -179,7 +164,6 @@ export function MediaCard({
   viewerRole,
   size = 'default',
 }: MediaCardProps) {
-  const router = useRouter()
   const view = buildMediaCardViewModel(item, viewerRole, size)
   const thumbnailUrl = useSessionPrivateImageUrl(view.thumbnailUrl) ?? null
   const sessionView = { ...view, thumbnailUrl }
@@ -188,11 +172,7 @@ export function MediaCard({
     <div className={`group relative shrink-0 max-sm:w-full ${view.widthClass}`}>
       {/* Blurred thumbnail aura behind card */}
       <MediaCardAura thumbnailUrl={thumbnailUrl} />
-      <MediaCardBody
-        item={item}
-        view={sessionView}
-        onPointerDown={() => preloadMediaRoute(router, item.id)}
-      />
+      <MediaCardBody item={item} view={sessionView} />
     </div>
   )
 }
