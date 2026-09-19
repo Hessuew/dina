@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **44 / 44 complete**
+Current implementation slices: **45 / 45 complete**
 
 ## Done
 
@@ -52,6 +52,7 @@ Current implementation slices: **44 / 44 complete**
 - ✅ Staff exam-grading attempt links now preload the attempt-detail route on pointer-down, so opening a submitted attempt can begin loading before a fast click or touch navigation.
 - ✅ Enrollment evaluation overlays now preload the full enrollment record route on pointer intent, so reviewers can start the detail-page load before clicking “Full record”.
 - ✅ Course detail now starts the viewer-profile lookup concurrently with the initial course read, removing one serial server-read step before course navigation can assemble its detail payload.
+- ✅ Student detail now resolves submitted assignments, manageable courses, and the avatar URL concurrently after its shared base reads, removing another server-side waterfall from staff student navigation.
 
 ## Remaining
 
@@ -62,7 +63,7 @@ Current implementation slices: **44 / 44 complete**
 
 Latest build audit: the main shared browser entry is 399.39 KB minified / 128.34 KB gzip, down from 464.55 KB / 149.25 KB. The dashboard route is 30.66 KB minified / 10.24 KB gzip, with the optional CourseDialog deferred to an 11.88 KB / 4.40 KB gzip chunk. Dashboard server reads now begin concurrently from the authenticated root role; the production bundle is unchanged because this slice targets the data waterfall. The Events route now emits a 7.57 KB / 3.43 KB gzip initial chunk and keeps its 11.60 KB / 4.50 KB gzip EventDialog chunk behind dialog interaction. Event and Zoom routes now share an 8.06 KB enum-only chunk instead of the previous 111.06 KB full Drizzle schema chunk. Authenticated navigation now uses a 41.95 KB / 13.27 KB gzip sidebar chunk with no standalone animated-icon runtime. Course detail now keeps its optional CourseDialog, LessonDialog, and MediaDialog modules behind interaction-triggered chunks; its generated route manifest has no initial imports for those dialog modules. Lesson and assignment detail routes likewise exclude their optional management dialogs from initial route dependencies. Library and media-detail route entries are 16.63 KB / 6.09 KB gzip and 18.34 KB / 6.81 KB gzip, respectively, and both request the 23.62 KB / 6.31 KB gzip MediaDialog chunk only after interaction. The landing route now keeps the lecturer showcase in a separate lazy chunk so its initial route payload excludes that below-the-fold module. Browser Sentry is isolated in a 476.11 KB / 155.99 KB gzip `browser-sentry-sdk` chunk and is requested only after browser idle time or when an error must be captured. PDF.js remains isolated to the library document viewer (487.96 KB minified / 148.26 KB gzip plus a 1.3 MB worker); these deferred assets do not load on the landing page. Student exam detail now avoids the catalog-sized student exam read and performs one exam lookup plus one attempt lookup in parallel before loading points. Enrollment contact export now emits a 10.01 KB / 4.28 KB gzip cohort chunk and a separate 135.43 KB / 34.85 KB gzip lookup chunk; the phone metadata stays off the cohort export interaction path.
 
-Current iteration build audit: the shared browser entry is 387.35 KB minified / 124.60 KB gzip, down from 398.62 KB / 127.87 KB gzip. The landing route entry is 22.29 KB / 7.42 KB gzip, down from 64.58 KB / 20.47 KB gzip; the six deferred sections now emit separate chunks for testimonials (12.28 KB / 4.97 KB gzip), marks (13.47 KB / 5.79 KB gzip), FAQ (6.60 KB / 2.62 KB gzip), leadership (4.75 KB / 1.94 KB gzip), official information (5.21 KB / 2.09 KB gzip), and footer (2.06 KB / 0.98 KB gzip). The lecturer showcase remains separately loaded at 20.52 KB / 6.95 KB gzip. The Discipleship route entry is 4.69 KB / 2.00 KB gzip, with the staff board in a 58.28 KB / 19.84 KB gzip chunk and the student view in a 4.76 KB / 1.76 KB gzip chunk; only the role-selected view is requested after route entry. The browser Sentry SDK is isolated in a 476.11 KB / 155.99 KB gzip chunk that is requested only after browser idle time or error capture. The cohort contact-export chunk is 10.01 KB / 4.28 KB gzip, with the 135.43 KB / 34.85 KB gzip name-lookup chunk requested only after mode selection. The exam landing pointer-preload slice changes navigation timing only; it does not add an eager bundle dependency.
+Current iteration build audit: the shared browser entry is 387.33 KB minified / 124.59 KB gzip, down from 398.62 KB / 127.87 KB gzip. The landing route entry is 22.29 KB / 7.42 KB gzip, down from 64.58 KB / 20.47 KB gzip; the six deferred sections now emit separate chunks for testimonials (12.28 KB / 4.97 KB gzip), marks (13.47 KB / 5.79 KB gzip), FAQ (6.60 KB / 2.62 KB gzip), leadership (4.75 KB / 1.94 KB gzip), official information (5.21 KB / 2.09 KB gzip), and footer (2.06 KB / 0.98 KB gzip). The lecturer showcase remains separately loaded at 20.52 KB / 6.95 KB gzip. The Discipleship route entry is 4.69 KB / 2.00 KB gzip, with the staff board in a 58.28 KB / 19.84 KB gzip chunk and the student view in a 4.76 KB / 1.76 KB gzip chunk; only the role-selected view is requested after route entry. The browser Sentry SDK is isolated in a 476.11 KB / 155.99 KB gzip chunk that is requested only after browser idle time or error capture. The cohort contact-export chunk is 10.01 KB / 4.28 KB gzip, with the 135.43 KB / 34.85 KB gzip name-lookup chunk requested only after mode selection. The exam landing pointer-preload slice changes navigation timing only; it does not add an eager bundle dependency.
 
 The ViewerDateTime dependency audit keeps the dashboard route on its 1.21 KB / 0.59 KB gzip native formatter helper and removes its prior 11.92 KB / 3.26 KB gzip date-fns formatter dependency. The date-fns formatter remains available to calendar and management-only routes that still use richer date-fns operations.
 
@@ -73,6 +74,8 @@ The exam-grading attempt preload slice leaves bundle sizes unchanged and targets
 The enrollment evaluation preload slice leaves bundle sizes unchanged and targets navigation request start time for reviewers opening a full enrollment record.
 
 The course-detail read now overlaps the independent viewer-profile and course-row lookups; bundle sizes are unchanged because this slice reduces server navigation latency rather than client payload size.
+
+The student-detail read now overlaps submission lookup, manageable-course resolution, and avatar signing after the shared course/assignment/attendance reads; bundle sizes are unchanged because this slice reduces server navigation latency rather than client payload size.
 
 ## Browser baseline
 

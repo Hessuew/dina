@@ -198,11 +198,6 @@ async function loadStudentDetail(
   )
 
   const assignmentIds = allAssignments.map((a) => a.assignmentId)
-  const studentSubmissions = await findSubmittedSubmissionsForStudent(
-    student.id,
-    assignmentIds,
-  )
-
   const courseRefs = enrollments.map((e) => ({ id: e.id, title: e.title }))
   const scores = buildCourseAttendanceScores(
     courseRefs,
@@ -210,17 +205,21 @@ async function loadStudentDetail(
     presents,
     student.id,
   )
-  const manageable = await resolveManageableCourseIds(
-    actorId,
-    courseRefs.map((c) => c.id),
-  )
+  const [studentSubmissions, manageable, avatarUrl] = await Promise.all([
+    findSubmittedSubmissionsForStudent(student.id, assignmentIds),
+    resolveManageableCourseIds(
+      actorId,
+      courseRefs.map((c) => c.id),
+    ),
+    signPrivateStoragePath('avatars', student.avatarUrl),
+  ])
 
   const studentDetail: StudentDetailWithAssignments = {
     id: student.id,
     fullName: student.fullName,
     email: student.email,
     bio: student.bio,
-    avatarUrl: await signPrivateStoragePath('avatars', student.avatarUrl),
+    avatarUrl,
     createdAt: student.createdAt,
     enrollments: enrollments.map((e) => ({
       id: e.id,
