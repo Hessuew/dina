@@ -168,6 +168,7 @@ const computedMemberAccess = String.raw`(?:\?\s*\.\s*)?\[\s*['"]`
 const queryAccess = String.raw`(?:${memberAccess}query|${computedMemberAccess}query['"]\s*\])`
 const typeArguments = String.raw`(?:<[^()]*>)?`
 const optionalCallAccess = String.raw`(?:\?\s*\.\s*)?`
+const relationLoading = /(?:\bwith\s*:|\[\s*['"]with['"]\s*\]\s*:)/
 const tableCall = String.raw`(?:${memberAccess}(?:insert|update|delete|from)|${computedMemberAccess}(?:insert|update|delete|from)['"]\s*\])\s*${optionalCallAccess}${typeArguments}\(\s*([A-Za-z0-9_]+)\s*\)`
 
 function findTableReferences(
@@ -494,6 +495,12 @@ describe('utils repository boundaries', () => {
         new Map([['profileTable', 'profiles']]),
       ),
     ).toEqual(['profiles', 'profiles'])
+  })
+
+  it('detects computed Drizzle relation loading', () => {
+    expect(
+      "db.query.profiles.findFirst({ ['with']: { accountSecurity: true } })",
+    ).toMatch(relationLoading)
   })
 
   it('detects dynamically selected Drizzle tables', () => {
@@ -855,7 +862,7 @@ describe('utils repository boundaries', () => {
         ),
         `${file} queries a table it does not import`,
       ).toBe(true)
-      expect(source, file).not.toMatch(/\bwith\s*:/)
+      expect(source, file).not.toMatch(relationLoading)
       expect(source, file).not.toMatch(
         /\b(?:innerJoin|leftJoin|rightJoin|fullJoin|crossJoin)\s*\(/,
       )
