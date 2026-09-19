@@ -27,7 +27,7 @@ including when a handle is injected or given an arbitrary variable name; feature
 services may compose repository results but may not issue `query`, CRUD,
 distinct-select, count helpers, CTE, `execute`, or `transaction` calls themselves. The
 regression guard covers formatted and
-optional-chaining member access plus computed `db['select']`,
+optional-chaining member and call access plus computed `db['select']`,
 `db['query'].table`, and `db.query['table']` access as well as the usual dot
 notation. Dynamically selected query tables such as `db.query[tableName]` are
 also rejected because they cannot prove single-table ownership.

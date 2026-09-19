@@ -166,6 +166,7 @@ const identifier = String.raw`[A-Za-z_$][A-Za-z0-9_$]*`
 const memberAccess = String.raw`(?:\?\s*\.\s*|\.\s*)`
 const computedMemberAccess = String.raw`(?:\?\s*\.\s*)?\[\s*['"]`
 const queryAccess = String.raw`(?:${memberAccess}query|${computedMemberAccess}query['"]\s*\])`
+const tableCall = String.raw`(?:${memberAccess}(?:insert|update|delete|from)|${computedMemberAccess}(?:insert|update|delete|from)['"]\s*\])\s*(?:\?\s*\.\s*)?\(\s*([A-Za-z0-9_]+)\s*\)`
 
 function findTableReferences(
   source: string,
@@ -190,8 +191,7 @@ function findTableReferences(
         'g',
       ),
     ),
-    ...source.matchAll(/\b(?:insert|update|delete)\(\s*([A-Za-z0-9_]+)\s*\)/g),
-    ...source.matchAll(/\.from\(\s*([A-Za-z0-9_]+)\s*\)/g),
+    ...source.matchAll(new RegExp(tableCall, 'g')),
   ].map(([, table]) => aliases?.get(table) ?? table)
 }
 
@@ -210,11 +210,15 @@ function findDirectDatabaseOperations(source: string): Array<string> {
   const handle = databaseHandle
   const queryMember = String.raw`\s*${queryAccess}\s*(?:${memberAccess}[A-Za-z0-9_]+|${computedMemberAccess}[A-Za-z0-9_]+['"]\s*\])`
   const operationMember = String.raw`(?:${memberAccess}(?:\$?with|\$count|selectDistinctOn|selectDistinct|select|insert|update|delete|execute|transaction)|${computedMemberAccess}(?:\$?with|\$count|selectDistinctOn|selectDistinct|select|insert|update|delete|execute|transaction)['"]\s*\])`
+  const operationCall = String.raw`\s*(?:\?\s*\.\s*)?\(`
 
   return [
     ...source.matchAll(new RegExp(`${handle}${queryMember}`, 'g')),
     ...source.matchAll(
-      new RegExp(String.raw`${handle}\s*${operationMember}\s*\(`, 'g'),
+      new RegExp(
+        String.raw`${handle}\s*${operationMember}${operationCall}`,
+        'g',
+      ),
     ),
   ].map(([match]) => match)
 }
@@ -456,6 +460,11 @@ describe('utils repository boundaries', () => {
     ).toEqual(['assignments', 'profiles'])
     expect(
       findTableReferences(
+        'db?.insert?.(assignments); tx?.["update"]?.(profiles); db.select?.().from?.(lessons); client["delete"](courses)',
+      ),
+    ).toEqual(['assignments', 'profiles', 'lessons', 'courses'])
+    expect(
+      findTableReferences(
         'repositoryClient.query.courses.findMany(); injectedTx?.query?.["lessons"].findFirst()',
       ),
     ).toEqual(['courses', 'lessons'])
@@ -625,6 +634,15 @@ describe('utils repository boundaries', () => {
         'db["with"](cte).select(); tx["$with"]("cte"); connection["selectDistinct"]().from(profiles)',
       ),
     ).toHaveLength(3)
+    expect(
+      findDirectDatabaseOperations(
+        'db?.select?.(); tx?.["execute"]?.(sql); connection?.transaction?.(run)',
+      ),
+    ).toEqual([
+      'db?.select?.(',
+      'tx?.["execute"]?.(',
+      'connection?.transaction?.(',
+    ])
   })
 
   it('detects aliased and relative direct repository imports', () => {
