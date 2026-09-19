@@ -184,6 +184,12 @@ function findTableReferences(
         'g',
       ),
     ),
+    ...source.matchAll(
+      new RegExp(
+        `${objectHandle}\\s*(?:${memberAccess}\\$count|${computedMemberAccess}\\$count['"]\\s*\\])\\s*(?:\\?\\s*\\.\\s*)?\\(\\s*([A-Za-z0-9_]+)\\s*\\)`,
+        'g',
+      ),
+    ),
     ...source.matchAll(/\b(?:insert|update|delete)\(\s*([A-Za-z0-9_]+)\s*\)/g),
     ...source.matchAll(/\.from\(\s*([A-Za-z0-9_]+)\s*\)/g),
   ].map(([, table]) => aliases?.get(table) ?? table)
@@ -424,9 +430,17 @@ describe('utils repository boundaries', () => {
   it('detects direct Drizzle table references outside relation queries', () => {
     expect(
       findTableReferences(
-        "db.insert(assignments).values(values); db.update(profiles); db.delete(courses); db.select().from(lessons); db.query['profiles'].findFirst()",
+        'db.insert(assignments).values(values); db.update(profiles); db.delete(courses); db.select().from(lessons); db.query[\'profiles\'].findFirst(); db.$count(enrollments); tx["$count"](profiles)',
       ),
-    ).toEqual(['profiles', 'assignments', 'profiles', 'courses', 'lessons'])
+    ).toEqual([
+      'profiles',
+      'enrollments',
+      'profiles',
+      'assignments',
+      'profiles',
+      'courses',
+      'lessons',
+    ])
     expect(
       findTableReferences('db\n  . query\n  . courses.findFirst()'),
     ).toEqual(['courses'])
@@ -448,6 +462,12 @@ describe('utils repository boundaries', () => {
     expect(
       findTableReferences(
         'db.insert(profileTable).values(values); db.query.profileTable.findFirst()',
+        new Map([['profileTable', 'profiles']]),
+      ),
+    ).toEqual(['profiles', 'profiles'])
+    expect(
+      findTableReferences(
+        'db.$count(profileTable); tx?.["$count"]?.(profileTable)',
         new Map([['profileTable', 'profiles']]),
       ),
     ).toEqual(['profiles', 'profiles'])
