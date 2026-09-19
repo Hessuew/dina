@@ -30,4 +30,12 @@ Current implementation slices: **12 / 12 complete**
 
 Latest build audit: the shared browser entry is 464.55 KB minified / 149.25 KB gzip. PDF.js remains isolated to the library document viewer (487.96 KB minified / 146.71 KB gzip plus a 1.3 MB worker); these are deferred assets and do not load on the landing page.
 
-Next slice: collect representative browser measurements for landing, dashboard, course, lesson, assignment, and calendar flows to prioritize the next route-level change.
+## Browser baseline
+
+Captured 2026-09-19 against the local Vite development server with Chrome DevTools. These are directional warm-cache measurements, not production or throttled-user benchmarks:
+
+- ✅ Landing desktop (1200px viewport): response end 176 ms, DOMContentLoaded 349 ms, load 403 ms.
+- ✅ Landing narrow viewport (500px effective viewport): response end 135 ms, DOMContentLoaded 223 ms, load 250 ms.
+- ⚠️ The authenticated dashboard/course/lesson/assignment/calendar flow could not be measured in this slice: the existing dashboard e2e run stalled after startup and was stopped. No authenticated timing is recorded as valid data.
+
+Next slice: capture authenticated route timings with a completing test session, then use the request waterfall to choose the next route-level change.
