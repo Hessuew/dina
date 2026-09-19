@@ -8,6 +8,13 @@ export type AttendanceSessionsTransactionClient = Parameters<
   Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
 >[0]
 
+export async function lockAttendanceCourseInTransaction(
+  tx: AttendanceSessionsTransactionClient,
+  courseId: string,
+): Promise<void> {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${courseId}))`)
+}
+
 export async function findAttendanceSessionsByIds(sessionIds: Array<string>) {
   if (sessionIds.length === 0) return []
   const db = await getDb()
@@ -114,9 +121,7 @@ export async function openAttendanceSessionAtomically(values: {
 }) {
   const db = await getDb()
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtext(${values.courseId}))`,
-    )
+    await lockAttendanceCourseInTransaction(tx, values.courseId)
     const now = new Date()
     const open = await findOpenAttendanceSessionInTransaction(
       tx,
@@ -159,7 +164,7 @@ export async function closeAttendanceSessionAtomically(
 ): Promise<AttendanceSessionRow | null> {
   const db = await getDb()
   return db.transaction(async (tx) => {
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${courseId}))`)
+    await lockAttendanceCourseInTransaction(tx, courseId)
     const now = new Date()
     const rows = await tx
       .update(attendanceSessions)

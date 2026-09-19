@@ -553,12 +553,13 @@ describe('utils repository boundaries', () => {
   it('detects direct Drizzle operations on database handles', () => {
     expect(
       findDirectDatabaseOperations(
-        'db.query.profiles.findFirst(); db.select().from(profiles); tx.insert(profiles); database.execute(sql); connection.transaction(run)',
+        'db.query.profiles.findFirst(); db.select().from(profiles); tx.insert(profiles); tx.execute(sql); database.execute(sql); connection.transaction(run)',
       ),
     ).toEqual([
       'db.query.profiles',
       'db.select(',
       'tx.insert(',
+      'tx.execute(',
       'database.execute(',
       'connection.transaction(',
     ])
@@ -998,6 +999,7 @@ describe('utils repository boundaries', () => {
 
   it('keeps transaction modules as orchestration-only seams', () => {
     const transactionFiles = findTransactionFiles(utilsDirectory)
+    const schemaTables = findSchemaTables()
 
     expect(transactionFiles.length).toBeGreaterThan(0)
 
@@ -1009,6 +1011,15 @@ describe('utils repository boundaries', () => {
       expect(source, file).not.toMatch(
         /\b(?:db|tx)\.(?:query|select|insert|update|delete)\b/,
       )
+      expect(
+        findDirectDatabaseOperations(source).filter(
+          (operation) =>
+            !/^db\s*(?:\?\s*\.\s*|\.\s*)transaction\($/.test(operation),
+        ),
+        file,
+      ).toEqual([])
+      expect(findRawSqlTableReferences(source, schemaTables), file).toEqual([])
+      expect(findDynamicRawSqlTableReferences(source), file).toEqual([])
     }
   })
 })

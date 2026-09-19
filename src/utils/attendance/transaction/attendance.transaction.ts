@@ -1,5 +1,4 @@
 /* v8 ignore start */
-import { sql } from 'drizzle-orm'
 import { getDb } from '@/db'
 import {
   deletePresentInTransaction,
@@ -8,6 +7,7 @@ import {
   findPresentInTransaction,
   insertAttendanceSessionInTransaction,
   insertPresentInTransaction,
+  lockAttendanceCourseInTransaction,
 } from '@/utils/repository'
 
 /** Idempotent and serialized with open/close for the course. */
@@ -17,9 +17,7 @@ export async function markPresentAtomically(values: {
 }) {
   const db = await getDb()
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtext(${values.courseId}))`,
-    )
+    await lockAttendanceCourseInTransaction(tx, values.courseId)
     const now = new Date()
     const session = await findOpenAttendanceSessionInTransaction(
       tx,
@@ -57,9 +55,7 @@ export async function setPresentOverrideAtomically(values: {
 }) {
   const db = await getDb()
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtext(${values.courseId}))`,
-    )
+    await lockAttendanceCourseInTransaction(tx, values.courseId)
     const now = new Date()
 
     let session = await findAttendanceSessionByLessonInTransaction(
@@ -105,9 +101,7 @@ export async function clearPresentOverrideAtomically(values: {
 }) {
   const db = await getDb()
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtext(${values.courseId}))`,
-    )
+    await lockAttendanceCourseInTransaction(tx, values.courseId)
 
     const session = await findAttendanceSessionByLessonInTransaction(
       tx,
