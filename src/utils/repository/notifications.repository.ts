@@ -6,7 +6,6 @@ export type NotificationRow = typeof notifications.$inferSelect
 export type NotificationInsert = typeof notifications.$inferInsert
 
 /* v8 ignore start */
-// fallow-ignore-next-line unused-export -- public table seam retained for the legacy schema
 export async function findNotificationById(
   notificationId: string,
 ): Promise<NotificationRow | undefined> {
@@ -16,7 +15,6 @@ export async function findNotificationById(
   })
 }
 
-// fallow-ignore-next-line unused-export -- public table seam retained for the legacy schema
 export async function findNotificationsByUserId(
   userId: string,
 ): Promise<Array<NotificationRow>> {
@@ -27,7 +25,6 @@ export async function findNotificationsByUserId(
   })
 }
 
-// fallow-ignore-next-line unused-export -- public table seam retained for the legacy schema
 export async function insertNotification(
   values: NotificationInsert,
 ): Promise<NotificationRow | undefined> {
@@ -35,7 +32,6 @@ export async function insertNotification(
   return (await db.insert(notifications).values(values).returning()).at(0)
 }
 
-// fallow-ignore-next-line unused-export -- public table seam retained for the legacy schema
 export async function updateNotification(
   notificationId: string,
   values: Partial<NotificationInsert>,
@@ -50,7 +46,6 @@ export async function updateNotification(
   ).at(0)
 }
 
-// fallow-ignore-next-line unused-export -- public table seam retained for the legacy schema
 export async function deleteNotification(
   notificationId: string,
 ): Promise<void> {

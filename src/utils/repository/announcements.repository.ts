@@ -6,7 +6,6 @@ export type AnnouncementRow = typeof announcements.$inferSelect
 export type AnnouncementInsert = typeof announcements.$inferInsert
 
 /* v8 ignore start */
-// fallow-ignore-next-line unused-export -- public table seam retained for the legacy schema
 export async function findAnnouncementById(
   announcementId: string,
 ): Promise<AnnouncementRow | undefined> {
@@ -16,7 +15,6 @@ export async function findAnnouncementById(
   })
 }
 
-// fallow-ignore-next-line unused-export -- public table seam retained for the legacy schema
 export async function findAnnouncements(): Promise<Array<AnnouncementRow>> {
   const db = await getDb()
   return db.query.announcements.findMany({
@@ -24,7 +22,6 @@ export async function findAnnouncements(): Promise<Array<AnnouncementRow>> {
   })
 }
 
-// fallow-ignore-next-line unused-export -- public table seam retained for the legacy schema
 export async function insertAnnouncement(
   values: AnnouncementInsert,
 ): Promise<AnnouncementRow | undefined> {
@@ -32,7 +29,6 @@ export async function insertAnnouncement(
   return (await db.insert(announcements).values(values).returning()).at(0)
 }
 
-// fallow-ignore-next-line unused-export -- public table seam retained for the legacy schema
 export async function updateAnnouncement(
   announcementId: string,
   values: Partial<AnnouncementInsert>,
@@ -47,7 +43,6 @@ export async function updateAnnouncement(
   ).at(0)
 }
 
-// fallow-ignore-next-line unused-export -- public table seam retained for the legacy schema
 export async function deleteAnnouncement(
   announcementId: string,
 ): Promise<void> {
