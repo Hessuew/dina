@@ -342,6 +342,10 @@ function SubmissionPanel({
             onChangeSubmissionFormData={onChangeSubmissionFormData}
             onSaveSubmission={onSaveSubmission}
           />
+        ) : allSubmissions.length === 0 ? (
+          <div className="py-16 text-center">
+            <p className="text-sm text-[#AFA28F] italic">No submissions yet</p>
+          </div>
         ) : (
           <Suspense fallback={<SubmissionsTableFallback />}>
             <AssignmentSubmissionsTable

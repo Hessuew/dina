@@ -9,12 +9,9 @@ import { createOrUpdateSubmission, getAssignment } from '@/utils/assignments'
 import {
   buildInitialSubmissionFormData,
   deriveSubmissionPermissions,
-  formatSubmissionGrade,
-  formatSubmittedDate,
   navigateAfterDelete,
   navigateBack,
   resolveEditDialogMode,
-  resolveSubmissionStatusVariant,
   shouldLoadAssignmentSubmissions,
 } from '@/utils/assignments/domain/assignment-detail.domain'
 import { PageLayout } from '@/components/layout/page-layout'

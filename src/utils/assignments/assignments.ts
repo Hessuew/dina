@@ -7,7 +7,6 @@ import {
   getAllAssignmentsForTeacherService,
   getAssignmentService,
   getAssignmentSubmissionCountService,
-  getAssignmentSubmissionsService,
   getLessonService,
   gradeSubmissionService,
   updateAssignmentService,
@@ -20,7 +19,6 @@ import {
   getAllAssignmentsForTeacherSchema,
   getAssignmentSchema,
   getAssignmentSubmissionCountSchema,
-  getAssignmentSubmissionsSchema,
   gradeSubmissionSchema,
   updateAssignmentSchema,
 } from '@/schemas/assignment.schema'
@@ -91,13 +89,6 @@ export const getAllAssignmentsForTeacher = createServerFn({
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return getAllAssignmentsForTeacherService(user.id, data.scope)
-  })
-
-export const getAssignmentSubmissions = createServerFn({ method: 'POST' })
-  .validator(getAssignmentSubmissionsSchema)
-  .handler(async ({ data }) => {
-    const user = await getCurrentUser()
-    return getAssignmentSubmissionsService(data, user.id)
   })
 
 export const gradeSubmission = createServerFn({ method: 'POST' })

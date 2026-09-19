@@ -12,6 +12,7 @@ import {
 } from './contact-export.domain'
 import {
   pluralizeCount,
+  resolveCopyLabel,
   resolveCopySuccessMessage,
 } from './export-emails-dialog.domain'
 import type {
@@ -464,12 +465,14 @@ function LookupFooter({
   canCopy,
   copied,
   isLoading,
+  copyLabel,
   onCopy,
   onClose,
 }: {
   canCopy: boolean
   copied: boolean
   isLoading: boolean
+  copyLabel: string
   onCopy: () => void
   onClose: () => void
 }) {
@@ -492,7 +495,7 @@ function LookupFooter({
         ) : (
           <>
             <Copy className="size-3.5" />
-            Copy contacts
+            {copyLabel}
           </>
         )}
       </Button>
@@ -551,6 +554,7 @@ export function LookupPanel({ onClose }: LookupPanelProps) {
         canCopy={canCopy}
         copied={copied}
         isLoading={lookup.isLoading}
+        copyLabel={resolveCopyLabel('lookup', options.field)}
         onCopy={() =>
           void copyLookupContacts(
             lookup.selected,

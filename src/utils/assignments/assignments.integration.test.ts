@@ -19,7 +19,6 @@ import {
   getAllAssignmentsForTeacherService,
   getAssignmentService,
   getAssignmentSubmissionCountService,
-  getAssignmentSubmissionsService,
   getLessonService,
   gradeSubmissionService,
   updateAssignmentService,
@@ -521,6 +520,7 @@ describe('getAssignmentService (integration)', () => {
     expect(result.role).toBe('teacher')
     expect(result.assignment.id).toBe(assignmentId)
     expect(result.permissions.canManage).toBe(false)
+    expect(result.allSubmissions).toEqual([])
   })
 
   it('hides an unpublished assignment from a non-course teacher', async () => {
@@ -1229,8 +1229,8 @@ describe('getAllAssignmentsForTeacherService (integration)', () => {
   })
 })
 
-describe('getAssignmentSubmissionsService (integration)', () => {
-  it('logs safe submission-read counts for list and count paths', async () => {
+describe('assignment submission reads (integration)', () => {
+  it('logs safe submission-read telemetry for count and detail paths', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { teacherId, assignmentId, studentId } =
       await seedPublishedAssignmentWithSubmission()
@@ -1243,9 +1243,9 @@ describe('getAssignmentSubmissionsService (integration)', () => {
     )
     await withObservabilityRequest(
       new Request('https://christ-dina.org', {
-        headers: { 'x-request-id': 'assignment-submissions-request' },
+        headers: { 'x-request-id': 'assignment-detail-request' },
       }),
-      () => getAssignmentSubmissionsService({ assignmentId }, teacherId),
+      () => getAssignmentService({ assignmentId }, teacherId),
     )
 
     const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
@@ -1261,43 +1261,15 @@ describe('getAssignmentSubmissionsService (integration)', () => {
         }),
         expect.objectContaining({
           event: 'assignment_read_loaded',
-          path: 'serverFn:getAssignmentSubmissions',
-          requestId: 'assignment-submissions-request',
+          path: 'serverFn:getAssignment',
+          requestId: 'assignment-detail-request',
           actorId: teacherId,
           assignmentId,
-          submissionCount: 1,
+          submissionPresent: false,
         }),
       ]),
     )
     expect(JSON.stringify(events)).not.toContain(studentId)
-  })
-
-  it('returns submissions with student detail for a course teacher', async () => {
-    const { teacherId, assignmentId, studentId } =
-      await seedPublishedAssignmentWithSubmission()
-
-    const { submissions } = await getAssignmentSubmissionsService(
-      { assignmentId },
-      teacherId,
-    )
-
-    expect(submissions).toHaveLength(1)
-    expect(submissions[0].student).toMatchObject({
-      id: studentId,
-      fullName: 'Test User',
-      email: `${studentId}@test.dev`,
-    })
-  })
-
-  it('rejects a teacher not assigned to the course', async () => {
-    const courseId = await seedCourse()
-    const lessonId = await seedLesson({ courseId })
-    const assignmentId = await seedAssignment({ lessonId })
-    const outsiderId = await seedProfile({ role: 'teacher' })
-
-    await expect(
-      getAssignmentSubmissionsService({ assignmentId }, outsiderId),
-    ).rejects.toMatchObject({ code: 'ACTION_NOT_ALLOWED', status: 403 })
   })
 })
 

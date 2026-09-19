@@ -5,7 +5,6 @@ import type {
   DeleteAssignmentInput,
   GetAssignmentInput,
   GetAssignmentSubmissionCountInput,
-  GetAssignmentSubmissionsInput,
   GradeSubmissionInput,
   UpdateAssignmentInput,
 } from '@/schemas/assignment.schema'
@@ -101,7 +100,6 @@ type AssignmentReadAction =
   | 'getAssignmentSubmissionCount'
   | 'getAllAssignmentsForStudent'
   | 'getAllAssignmentsForTeacher'
-  | 'getAssignmentSubmissions'
 
 type AssignmentReadLogContext = {
   action: AssignmentReadAction
@@ -1067,39 +1065,6 @@ async function getTeacherCatalogAssignments(
       return [mapTeacherAssignmentRow(assignment, permissions.canManage)]
     }),
   }
-}
-
-export async function getAssignmentSubmissionsService(
-  data: GetAssignmentSubmissionsInput,
-  userId: string,
-) {
-  const context: AssignmentReadLogContext = {
-    action: 'getAssignmentSubmissions',
-    actorId: userId,
-    assignmentId: data.assignmentId,
-    startedAt: performance.now(),
-  }
-
-  return withAssignmentReadTelemetry(
-    context,
-    async () => {
-      const assignment = await findAssignmentWithLesson(data.assignmentId)
-      if (!assignment) {
-        throw new NotFoundError('Assignment not found', {
-          code: 'ASSIGNMENT_NOT_FOUND',
-          details: { assignmentId: data.assignmentId },
-        })
-      }
-
-      await authz(userId)
-        .perform('editLesson')
-        .on('course', assignment.lesson.courseId)
-
-      const submissions = await loadAssignmentSubmissions(data.assignmentId)
-      return { submissions }
-    },
-    (result) => ({ submissionCount: result.submissions.length }),
-  )
 }
 
 function logAssignmentGradingFailure(

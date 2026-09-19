@@ -499,10 +499,12 @@ function EnrollmentsPage() {
       )}
 
       {c.canExportContacts && c.isExportContactsDialogOpen && (
-        <ExportContactsDialog
-          open
-          onOpenChange={c.setIsExportContactsDialogOpen}
-        />
+        <Suspense fallback={null}>
+          <ExportContactsDialog
+            open
+            onOpenChange={c.setIsExportContactsDialogOpen}
+          />
+        </Suspense>
       )}
 
       {c.isAdmin &&

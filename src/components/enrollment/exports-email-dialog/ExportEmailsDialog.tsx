@@ -270,17 +270,57 @@ function LoadingLookupPanel() {
   )
 }
 
-export function ExportContactsDialog({
-  open,
-  onOpenChange,
-}: ExportContactsDialogProps) {
+function useExportMode() {
   const [mode, setMode] = useState<ExportMode>('cohort')
+  const [lookupMounted, setLookupMounted] = useState(false)
+
+  function handleModeChange(next: ExportMode) {
+    if (next === 'lookup') setLookupMounted(true)
+    setMode(next)
+  }
+
+  function reset() {
+    setMode('cohort')
+    setLookupMounted(false)
+  }
+
+  return { mode, lookupMounted, handleModeChange, reset }
+}
+
+function ExportModePanels({
+  mode,
+  lookupMounted,
+  cohort,
+  onClose,
+}: {
+  mode: ExportMode
+  lookupMounted: boolean
+  cohort: CohortPanelProps
+  onClose: () => void
+}) {
+  return (
+    <>
+      {lookupMounted && (
+        <div className={mode === 'lookup' ? 'contents' : 'hidden'}>
+          <Suspense fallback={<LoadingLookupPanel />}>
+            <LookupPanel onClose={onClose} />
+          </Suspense>
+        </div>
+      )}
+      {mode === 'cohort' && <CohortPanel {...cohort} />}
+    </>
+  )
+}
+
+export function ExportContactsDialog(props: ExportContactsDialogProps) {
+  const { open, onOpenChange } = props
+  const exportMode = useExportMode()
   const cohort = useCohortEmailExport()
 
   function handleOpenChange(next: boolean) {
     if (!next) {
       cohort.reset()
-      setMode('cohort')
+      exportMode.reset()
     }
     onOpenChange(next)
   }
@@ -302,16 +342,18 @@ export function ExportContactsDialog({
             </DialogTitle>
           </DialogHeader>
           <DialogBody className="flex min-h-0 flex-col pt-4 md:overflow-hidden">
-            <ModeTabs mode={mode} onModeChange={setMode} />
-            {mode === 'lookup' ? (
-              <Suspense fallback={<LoadingLookupPanel />}>
-                <LookupPanel onClose={() => handleOpenChange(false)} />
-              </Suspense>
-            ) : (
-              <CohortPanel {...cohort} />
-            )}
+            <ModeTabs
+              mode={exportMode.mode}
+              onModeChange={exportMode.handleModeChange}
+            />
+            <ExportModePanels
+              mode={exportMode.mode}
+              lookupMounted={exportMode.lookupMounted}
+              cohort={cohort}
+              onClose={() => handleOpenChange(false)}
+            />
           </DialogBody>
-          {mode === 'cohort' && (
+          {exportMode.mode === 'cohort' && (
             <ExportEmailsFooter
               canCopy={canCopy}
               isLoading={cohort.isLoading}
