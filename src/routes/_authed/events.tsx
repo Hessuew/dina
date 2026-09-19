@@ -18,22 +18,17 @@ import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { PageLayout } from '@/components/layout/page-layout'
 import { EmptyState } from '@/components/ui/empty-state/EmptyState'
 import { cn } from '@/lib/utils'
-import { getCourses } from '@/utils/courses'
+import { requireTeacherOrAdminRole } from '@/utils/auth/domain/user-context.domain'
 import { getEvents } from '@/utils/event'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
 import { ViewerDateTime } from '@/components/ui/viewer-date-time'
 
 export const Route = createFileRoute('/_authed/events')({
-  beforeLoad: async () => {
-    const coursesData = await getCourses()
-    const isTeacherOrAdmin =
-      coursesData.role === 'teacher' || coursesData.role === 'admin'
-
-    if (!isTeacherOrAdmin) {
+  beforeLoad: ({ context }) => {
+    const role = requireTeacherOrAdminRole(context.user?.role, () => {
       throw redirect({ to: '/dashboard', search: { verified: false } })
-    }
-
-    return { role: coursesData.role }
+    })
+    return { role }
   },
   loader: async () => {
     const result = await getEvents()
