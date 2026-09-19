@@ -8,13 +8,8 @@ import {
 import { AuthorizationError } from '@/utils/errors'
 import * as authUtils from '@/utils/auth/auth'
 import * as sharedRepository from '@/utils/repository'
-import { getDb } from '@/db'
-import {
-  findCourseById,
-  findTeacherIdsByCourseId,
-  insertCourseInTransaction,
-  insertCourseTeacherAssignmentsInTransaction,
-} from '@/utils/repository'
+import { findCourseById, findTeacherIdsByCourseId } from '@/utils/repository'
+import { createCourseWithTeachers } from '@/utils/courses/transaction/course.transaction'
 import {
   createCourseService,
   deleteCourseService,
@@ -749,21 +744,17 @@ describe('createCourseService (integration)', () => {
     const existingCourseId = await seedCourse()
     await seedCourseTeacher(existingCourseId, assignedTeacherId)
 
-    const db = await getDb()
     await expect(
-      db.transaction(async (tx) => {
-        const course = await insertCourseInTransaction(tx, {
+      createCourseWithTeachers(
+        {
           title: 'Atomic Course',
           description: 'desc',
           thumbnailUrl: null,
           isPublished: false,
           orderIndex: 0,
-        })
-        await insertCourseTeacherAssignmentsInTransaction(tx, course.id, [
-          assignedTeacherId,
-          availableTeacherId,
-        ])
-      }),
+        },
+        [assignedTeacherId, availableTeacherId],
+      ),
     ).rejects.toThrow()
 
     expect(await sharedRepository.findAllCourseRows()).not.toContainEqual(
