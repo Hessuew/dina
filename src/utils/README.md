@@ -16,7 +16,8 @@ domain logic; joined projections and multi-table atomic writes stay in feature
 services or explicit `transaction/` modules. Transaction modules may open a
 database transaction, but only coordinate table adapters; they do not import
 schema tables or issue Drizzle CRUD/query calls. Feature modules do not import
-`getDb()` or `withDbConnection()` directly. Static, dynamic, CommonJS, and
+`getDb()` or `withDbConnection()` directly. Static, extension-qualified,
+dynamic, CommonJS, and
 runtime re-export database imports are reserved for those seams and are regression-tested by
 `scripts/repository-boundary.test.ts`.
 Only `*.repository.ts` files in `repository/` are database seams; the shared

@@ -68,13 +68,12 @@ function findRuntimeSchemaTableImports(
 
   return findRuntimeSchemaImports(source).flatMap((statement) => {
     const importPath = statement.match(
-      /['"]((?:@\/db\/schema|(?:\.\.?\/)+db\/schema)(?:\/[^'"]+)?)['"]/,
+      /['"]((?:@\/db\/schema|(?:\.\.?\/)+db\/schema)(?:\.ts)?(?:\/[^'"]+)?)['"]/,
     )?.[1]
     if (!importPath) return []
 
-    const isSchemaBarrel = /(?:@\/db\/schema|(?:\.\.?\/)+db\/schema)$/.test(
-      importPath,
-    )
+    const isSchemaBarrel =
+      /(?:@\/db\/schema|(?:\.\.?\/)+db\/schema)(?:\.ts)?$/.test(importPath)
     const moduleName = isSchemaBarrel
       ? undefined
       : importPath.split('/').at(-1)?.replace(/\.ts$/, '')
@@ -192,7 +191,7 @@ function findDirectDatabaseOperations(source: string): Array<string> {
 function findDatabaseClientImports(source: string): Array<string> {
   return [
     ...source.matchAll(
-      /(?:(?:import|export)\s+(?!type\b)(?:(?:(?!\b(?:import|export)\b)[\s\S])*?\s+from\s+)?['"](?:@\/db|(?:\.\.?\/)+db)(?:\/index)?['"]|(?:import|require)\s*\(\s*['"](?:@\/db|(?:\.\.?\/)+db)(?:\/index)?['"]\s*\))/g,
+      /(?:(?:import|export)\s+(?!type\b)(?:(?:(?!\b(?:import|export)\b)[\s\S])*?\s+from\s+)?['"](?:@\/db|(?:\.\.?\/)+db)(?:\/index)?(?:\.ts)?['"]|(?:import|require)\s*\(\s*['"](?:@\/db|(?:\.\.?\/)+db)(?:\/index)?(?:\.ts)?['"]\s*\))/g,
     ),
   ].map(([match]) => match)
 }
@@ -200,7 +199,7 @@ function findDatabaseClientImports(source: string): Array<string> {
 function findRuntimeSchemaImports(source: string): Array<string> {
   return [
     ...source.matchAll(
-      /(?:(?:import|export)\s+(?!type\b)(?:(?:(?!\b(?:import|export)\b)[\s\S])*?\s+from\s+)?['"](?:@\/db\/schema(?:\/[^'"]+)?|(?:\.\.?\/)+db\/schema(?:\/[^'"]+)?)['"]|(?:import|require)\s*\(\s*['"](?:@\/db\/schema(?:\/[^'"]+)?|(?:\.\.?\/)+db\/schema(?:\/[^'"]+)?)['"]\s*\))/g,
+      /(?:(?:import|export)\s+(?!type\b)(?:(?:(?!\b(?:import|export)\b)[\s\S])*?\s+from\s+)?['"](?:@\/db\/schema(?:\.ts)?(?:\/[^'"]+)?|(?:\.\.?\/)+db\/schema(?:\.ts)?(?:\/[^'"]+)?)['"]|(?:import|require)\s*\(\s*['"](?:@\/db\/schema(?:\.ts)?(?:\/[^'"]+)?|(?:\.\.?\/)+db\/schema(?:\.ts)?(?:\/[^'"]+)?)['"]\s*\))/g,
     ),
   ].map(([match]) => match)
 }
@@ -282,7 +281,11 @@ describe('utils repository boundaries', () => {
     expect(
       findDatabaseClientImports("import { getDb } from '../../db'"),
     ).toHaveLength(1)
+    expect(
+      findDatabaseClientImports("import { getDb } from '@/db/index.ts'"),
+    ).toHaveLength(1)
     expect(findDatabaseClientImports("import('@/db')")).toHaveLength(1)
+    expect(findDatabaseClientImports("import('@/db/index.ts')")).toHaveLength(1)
     expect(findDatabaseClientImports("require('../db')")).toHaveLength(1)
     expect(
       findDatabaseClientImports("export { getDb } from '@/db'"),
@@ -293,7 +296,11 @@ describe('utils repository boundaries', () => {
     expect(
       findRuntimeSchemaImports("import * as schema from '../db/schema'"),
     ).toHaveLength(1)
+    expect(
+      findRuntimeSchemaImports("import * as schema from '../db/schema.ts'"),
+    ).toHaveLength(1)
     expect(findRuntimeSchemaImports("import('@/db/schema')")).toHaveLength(1)
+    expect(findRuntimeSchemaImports("import('@/db/schema.ts')")).toHaveLength(1)
     expect(findRuntimeSchemaImports("require('../db/schema')")).toHaveLength(1)
     expect(
       findRuntimeSchemaImports("export { profiles } from '@/db/schema'"),
@@ -325,6 +332,12 @@ describe('utils repository boundaries', () => {
     expect(
       findRuntimeSchemaTableImports(
         "import * as schema from '../db/schema'",
+        schemaTables,
+      ),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeSchemaTableImports(
+        "import * as schema from '../db/schema.ts'",
         schemaTables,
       ),
     ).toHaveLength(1)
