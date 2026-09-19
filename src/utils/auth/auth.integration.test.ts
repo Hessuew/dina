@@ -1,27 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as db from '@/db'
 import {
   getCurrentUser,
   getRootUserContext,
   getUserProfile,
 } from '@/utils/auth/auth'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
+import * as sharedRepository from '@/utils/repository'
 import * as supabase from '@/utils/supabase'
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
-  findFirst: vi.fn(),
+  findProfileById: vi.fn(),
 }))
 
 beforeEach(() => {
   mocks.getUser.mockReset()
-  mocks.findFirst.mockReset()
+  mocks.findProfileById.mockReset()
   vi.spyOn(supabase, 'getSupabaseServerClient').mockReturnValue({
     auth: { getUser: mocks.getUser },
   } as unknown as ReturnType<typeof supabase.getSupabaseServerClient>)
-  vi.spyOn(db, 'getDb').mockResolvedValue({
-    query: { profiles: { findFirst: mocks.findFirst } },
-  } as unknown as Awaited<ReturnType<typeof db.getDb>>)
+  vi.spyOn(sharedRepository, 'findProfileById').mockImplementation(
+    mocks.findProfileById,
+  )
 })
 
 afterEach(() => {
@@ -68,7 +68,7 @@ describe('auth boundary telemetry (integration)', () => {
     const repositoryError = new Error(
       'profile connectionString database detail',
     )
-    mocks.findFirst.mockRejectedValueOnce(repositoryError)
+    mocks.findProfileById.mockRejectedValueOnce(repositoryError)
 
     try {
       await expect(
@@ -134,7 +134,7 @@ describe('auth boundary telemetry (integration)', () => {
       data: { user: { id: 'root-user-1', email: 'root@test.dev' } },
       error: null,
     })
-    mocks.findFirst.mockRejectedValueOnce(repositoryError)
+    mocks.findProfileById.mockRejectedValueOnce(repositoryError)
 
     try {
       await expect(
@@ -166,7 +166,7 @@ describe('auth boundary telemetry (integration)', () => {
       data: { user: { id: 'root-user-2', email: 'root-user@test.dev' } },
       error: null,
     })
-    mocks.findFirst.mockResolvedValueOnce({
+    mocks.findProfileById.mockResolvedValueOnce({
       avatarUrl: null,
       bio: 'Private bio',
       fullName: 'Root User',
