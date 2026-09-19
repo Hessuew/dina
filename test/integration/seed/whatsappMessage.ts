@@ -1,20 +1,19 @@
 import { randomUUID } from 'node:crypto'
-import { getDb } from 'test/integration/db'
-import { whatsappMessages } from '@/db/schema'
+import type { WhatsAppMessageInsert } from '@/utils/repository'
+import { insertWhatsAppMessage } from '@/utils/repository'
 
 export async function seedWhatsAppMessage(overrides: {
   enrollmentId: string
   templateName: string
   id?: string
   recipientPhone?: string
-  status?: 'sent' | 'failed'
+  status?: WhatsAppMessageInsert['status']
   providerMessageId?: string | null
   errorMessage?: string | null
   sentByUserId?: string | null
 }): Promise<string> {
   const id = overrides.id ?? randomUUID()
-  const db = await getDb()
-  await db.insert(whatsappMessages).values({
+  await insertWhatsAppMessage({
     id,
     enrollmentId: overrides.enrollmentId,
     templateName: overrides.templateName,
