@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **3 / 5 complete**
+Current implementation slices: **4 / 5 complete**
 
 ## Done
 
@@ -11,10 +11,11 @@ Current implementation slices: **3 / 5 complete**
 - ✅ Lazy-loaded the optional PostHog SDK so it is not part of the shared browser entry (configured builds emit it as a separate 280.70 KB / 92.79 KB gzip chunk).
 - ✅ Reduced the production browser entry from 1,019.88 KB to 738.03 KB minified (318.79 KB to 225.06 KB gzip).
 - ✅ Added pointer-intent route preloading for course → lesson and lesson → assignment detail navigation that uses imperative navigation.
+- ✅ Added pointer-intent route preloading for student detail → assignment navigation.
 
 ## Remaining
 
-- ⬜ Extend the fastest safe preload path to any remaining imperative detail navigation.
+- ⬜ Audit remaining imperative detail navigation outside the core course/lesson/assignment flows.
 - ⬜ Add representative browser measurements for landing, dashboard, course, lesson, and assignment flows.
 - ⬜ Split or otherwise reduce the oversized browser entry and route chunks.
 - ⬜ Re-run the measurements and push the finished work as a GitHub PR (do not merge automatically).

@@ -39,11 +39,30 @@ type AssignmentRowProps = {
   index: number
   now: Date
   onAssignmentClick: (assignmentId: string) => void
+  onPrefetchAssignment: (assignmentId: string) => void
 }
 
 type CoursePanelProps = {
   group: CourseAssignmentGroup
   onAssignmentClick: (assignmentId: string) => void
+  onPrefetchAssignment: (assignmentId: string) => void
+}
+
+function preloadAssignmentRoute(
+  router: ReturnType<typeof useRouter>,
+  assignmentId: string,
+) {
+  void router
+    .preloadRoute({
+      to: '/assignments/$assignmentId',
+      params: { assignmentId },
+      search: {
+        calendarMonth: undefined,
+        fromCalendar: false,
+        fromDashboard: false,
+      },
+    })
+    .catch(() => undefined)
 }
 
 function StudentInfoCard({
@@ -102,12 +121,14 @@ function AssignmentRow({
   index,
   now,
   onAssignmentClick,
+  onPrefetchAssignment,
 }: AssignmentRowProps) {
   const status = getAssignmentRowStatus(assignment, now)
 
   return (
     <div
       className="group flex cursor-pointer items-start gap-4 border-b border-white/8 py-5 pl-1 transition-all first:pt-1 last:border-b-0 last:pb-0 hover:bg-white/8"
+      onPointerEnter={() => onPrefetchAssignment(assignment.id)}
       onClick={() => onAssignmentClick(assignment.id)}
     >
       <div className="flex size-8 shrink-0 items-center justify-center border border-[#C5A059]/50 bg-[#1A1716] font-serif text-xs text-[#E9D9B4]">
@@ -145,7 +166,11 @@ function AssignmentRow({
   )
 }
 
-function CourseAssignmentPanel({ group, onAssignmentClick }: CoursePanelProps) {
+function CourseAssignmentPanel({
+  group,
+  onAssignmentClick,
+  onPrefetchAssignment,
+}: CoursePanelProps) {
   const { course, assignments } = group
   if (assignments.length === 0) return null
 
@@ -184,6 +209,7 @@ function CourseAssignmentPanel({ group, onAssignmentClick }: CoursePanelProps) {
               index={idx}
               now={now}
               onAssignmentClick={onAssignmentClick}
+              onPrefetchAssignment={onPrefetchAssignment}
             />
           ))}
         </div>
@@ -221,6 +247,9 @@ function StudentDetailComponent() {
     })
   }
 
+  const prefetchAssignment = (assignmentId: string) =>
+    preloadAssignmentRoute(router, assignmentId)
+
   const assignmentsByCourse = groupAssignmentsByCourse(
     student.enrollments,
     student.assignments,
@@ -253,6 +282,7 @@ function StudentDetailComponent() {
             key={group.course.courseId}
             group={group}
             onAssignmentClick={handleAssignmentClick}
+            onPrefetchAssignment={prefetchAssignment}
           />
         ))}
 
