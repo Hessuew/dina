@@ -1,6 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { eq } from 'drizzle-orm'
-import { getDb } from '../../../test/integration/db'
 import {
   seedCourse,
   seedMedia,
@@ -20,7 +18,6 @@ import {
   updateLibraryMediaService,
   uploadMediaThumbnailService,
 } from '@/utils/library/service/library.service'
-import { mediaLibrary } from '@/db/schema'
 import * as mediaRepository from '@/utils/repository'
 
 const mocks = vi.hoisted(() => ({
@@ -58,8 +55,7 @@ const makeCreateInput = (
 })
 
 const findMedia = async (id: string) => {
-  const db = await getDb()
-  return db.query.mediaLibrary.findFirst({ where: eq(mediaLibrary.id, id) })
+  return mediaRepository.findMediaById(id)
 }
 
 beforeEach(() => {
