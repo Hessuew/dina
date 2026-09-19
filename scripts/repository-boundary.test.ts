@@ -7,6 +7,7 @@ const sourceDirectory = join(process.cwd(), 'src')
 const schemaDirectory = join(process.cwd(), 'src/db/schema')
 
 type SchemaTable = { module: string; symbol: string; sqlName: string }
+type SchemaTableBinding = { importedName: string; localName: string }
 
 function findRepositoryFiles(directory: string): Array<string> {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -48,13 +49,22 @@ function findTransactionFiles(directory: string): Array<string> {
   )
 }
 
-function findSchemaTableImports(source: string): Array<string> {
+function findSchemaTableBindings(source: string): Array<SchemaTableBinding> {
   return [
     ...source.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]@\/db\/schema['"]/g),
   ]
     .flatMap(([, bindings]) => bindings.split(','))
-    .map((binding) => binding.trim().split(/\s+as\s+/)[0])
-    .filter(Boolean)
+    .map((binding) => {
+      const [importedName, localName = importedName] = binding
+        .trim()
+        .split(/\s+as\s+/)
+      return { importedName, localName }
+    })
+    .filter(({ importedName }) => Boolean(importedName))
+}
+
+function findSchemaTableImports(source: string): Array<string> {
+  return findSchemaTableBindings(source).map(({ importedName }) => importedName)
 }
 
 function findRuntimeSchemaTableImports(
@@ -112,10 +122,12 @@ function findSchemaTables(): Array<SchemaTable> {
 function findInterpolatedTableReferences(
   source: string,
   schemaTables: Array<SchemaTable>,
+  aliases?: ReadonlyMap<string, string>,
 ): Array<string> {
   const symbols = new Set(schemaTables.map(({ symbol }) => symbol))
   return [...source.matchAll(/\$\{\s*([A-Za-z0-9_]+)/g)]
     .map(([, symbol]) => symbol)
+    .map((symbol) => aliases?.get(symbol) ?? symbol)
     .filter((symbol) => symbols.has(symbol))
 }
 
@@ -145,7 +157,10 @@ const memberAccess = String.raw`(?:\?\s*\.\s*|\.\s*)`
 const computedMemberAccess = String.raw`(?:\?\s*\.\s*)?\[\s*['"]`
 const queryAccess = String.raw`(?:${memberAccess}query|${computedMemberAccess}query['"]\s*\])`
 
-function findTableReferences(source: string): Array<string> {
+function findTableReferences(
+  source: string,
+  aliases?: ReadonlyMap<string, string>,
+): Array<string> {
   return [
     ...source.matchAll(
       new RegExp(
@@ -161,7 +176,7 @@ function findTableReferences(source: string): Array<string> {
     ),
     ...source.matchAll(/\b(?:insert|update|delete)\(\s*([A-Za-z0-9_]+)\s*\)/g),
     ...source.matchAll(/\.from\(\s*([A-Za-z0-9_]+)\s*\)/g),
-  ].map(([, table]) => table)
+  ].map(([, table]) => aliases?.get(table) ?? table)
 }
 
 function findDynamicTableReferences(source: string): Array<string> {
@@ -347,6 +362,11 @@ describe('utils repository boundaries', () => {
         schemaTables,
       ),
     ).toHaveLength(1)
+    expect(
+      findSchemaTableBindings(
+        "import { profiles as profileTable } from '@/db/schema'",
+      ),
+    ).toEqual([{ importedName: 'profiles', localName: 'profileTable' }])
   })
 
   it('detects direct Drizzle table references outside relation queries', () => {
@@ -373,6 +393,12 @@ describe('utils repository boundaries', () => {
         'repositoryClient.query.courses.findMany(); injectedTx?.query?.["lessons"].findFirst()',
       ),
     ).toEqual(['courses', 'lessons'])
+    expect(
+      findTableReferences(
+        'db.insert(profileTable).values(values); db.query.profileTable.findFirst()',
+        new Map([['profileTable', 'profiles']]),
+      ),
+    ).toEqual(['profiles', 'profiles'])
   })
 
   it('detects dynamically selected Drizzle tables', () => {
@@ -393,6 +419,13 @@ describe('utils repository boundaries', () => {
 
     expect(
       findInterpolatedTableReferences('sql`${profiles.id}`', schemaTables),
+    ).toEqual(['profiles'])
+    expect(
+      findInterpolatedTableReferences(
+        'sql`${profileTable.id}`',
+        schemaTables,
+        new Map([['profileTable', 'profiles']]),
+      ),
     ).toEqual(['profiles'])
     expect(
       findRawSqlTableReferences(
@@ -573,10 +606,19 @@ describe('utils repository boundaries', () => {
     for (const repositoryPath of repositoryFiles) {
       const source = readFileSync(repositoryPath, 'utf8')
       const file = repositoryPath.slice(utilsDirectory.length + 1)
-      const importedTables = findSchemaTableImports(source)
+      const tableBindings = findSchemaTableBindings(source)
+      const importedTables = tableBindings.map(
+        ({ importedName }) => importedName,
+      )
+      const tableAliases = new Map(
+        tableBindings.map(({ importedName, localName }) => [
+          localName,
+          importedName,
+        ]),
+      )
       const referencedTables = [
-        ...findTableReferences(source),
-        ...findInterpolatedTableReferences(source, schemaTables),
+        ...findTableReferences(source, tableAliases),
+        ...findInterpolatedTableReferences(source, schemaTables, tableAliases),
         ...findRawSqlTableReferences(source, schemaTables),
       ]
       expect(findDynamicTableReferences(source), file).toHaveLength(0)

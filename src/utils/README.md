@@ -38,7 +38,8 @@ regression test keeps the file set and barrel exports in sync. That guard also c
 table names referenced through SQL templates, interpolated table expressions, and literal
 `sql.raw(...)` identifiers, including whitespace-formatted calls, qualified names, and
 `USING`, `TRUNCATE`, and table-DDL forms, plus literal `sql.identifier(...)`
-calls, so raw SQL cannot bypass one-table ownership.
+calls, and normalizes aliased schema-table imports before checking references, so raw SQL
+or local renaming cannot bypass one-table ownership.
 Repositories must not import or re-export another repository at runtime; services and transaction
 modules compose table adapters instead. Type-only imports and re-exports are allowed for shared
 transaction-client types without creating a runtime dependency between table owners.
