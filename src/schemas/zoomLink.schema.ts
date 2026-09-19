@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { zoomLinkSectionEnum as dbZoomLinkSectionEnum } from '@/db/schema'
+import { zoomLinkSectionEnum as dbZoomLinkSectionEnum } from '@/db/schema/enums.schema'
 
 const zoomLinkSectionSchema = z.enum(dbZoomLinkSectionEnum.enumValues)
 const optionalText = z.string().trim().optional()

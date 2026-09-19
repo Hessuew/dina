@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { calendarEventCategoryEnum } from '@/db/schema'
+import { calendarEventCategoryEnum } from '@/db/schema/enums.schema'
 
 const categoryEnum = z.enum(calendarEventCategoryEnum.enumValues)
 
