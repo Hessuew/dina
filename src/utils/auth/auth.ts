@@ -45,10 +45,10 @@ async function loadRootUserProfile(
 export async function getRootUserContext(): Promise<UserContext | null> {
   const supabase = getSupabaseServerClient()
   const startedAt = performance.now()
-  let authResult: Awaited<ReturnType<typeof supabase.auth.getUser>>
+  let claimsResult: Awaited<ReturnType<typeof supabase.auth.getClaims>>
 
   try {
-    authResult = await supabase.auth.getUser()
+    claimsResult = await supabase.auth.getClaims()
   } catch (error) {
     logServerEvent('error', 'auth_session_lookup_failed', {
       requestId: getRequestId(),
@@ -60,7 +60,9 @@ export async function getRootUserContext(): Promise<UserContext | null> {
     throw error
   }
 
-  const { user } = authResult.data
+  const claims = claimsResult.data?.claims
+  const user =
+    claims?.sub == null ? null : { id: claims.sub, email: claims.email }
   if (!isAuthenticatedUser(user)) return null
 
   const profile = await loadRootUserProfile(user.id, startedAt)
@@ -81,10 +83,10 @@ export async function getRootUserContext(): Promise<UserContext | null> {
 export async function getCurrentUser() {
   const supabase = getSupabaseServerClient()
   const startedAt = performance.now()
-  let authResult: Awaited<ReturnType<typeof supabase.auth.getUser>>
+  let claimsResult: Awaited<ReturnType<typeof supabase.auth.getClaims>>
 
   try {
-    authResult = await supabase.auth.getUser()
+    claimsResult = await supabase.auth.getClaims()
   } catch (error) {
     logServerEvent('error', 'auth_session_lookup_failed', {
       requestId: getRequestId(),
@@ -96,11 +98,13 @@ export async function getCurrentUser() {
     throw error
   }
 
-  const { user } = authResult.data
+  const claims = claimsResult.data?.claims
 
-  if (!user) {
+  if (!claims?.sub) {
     throw new AuthenticationError('Not authenticated')
   }
+
+  const user = { id: claims.sub, email: claims.email }
 
   // Tag the request's Sentry isolation scope with the acting user so server
   // errors are traceable. Set here (the auth boundary) rather than in a

@@ -8,6 +8,7 @@ import {
   AuthLoadingState,
 } from '@/components/auth/auth-layout'
 import { verifyEmailChangeFn } from '@/utils/profile'
+import { clearRootUserContextCache } from '@/routes/__root'
 
 export const Route = createFileRoute('/verify-email-change')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -28,7 +29,10 @@ function VerifyEmailChangeComp() {
 
   useEffect(() => {
     verify({ data: { token } })
-      .then((res) => setResult(res))
+      .then((res) => {
+        if (res.success) clearRootUserContextCache()
+        setResult(res)
+      })
       .catch(() =>
         setResult({
           success: false,

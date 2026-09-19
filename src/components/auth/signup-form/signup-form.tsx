@@ -22,6 +22,7 @@ import {
 import { useAppForm, withForm } from '@/hooks/form'
 import { useMutation } from '@/hooks/useMutation'
 import { resendOtpFn, signupFn, verifyOtpFn } from '@/utils/signup'
+import { clearRootUserContextCache } from '@/routes/__root'
 import { signupSchema } from '@/schemas/auth.schema'
 import {
   checkInvitationByEmail,
@@ -234,6 +235,7 @@ function useOtpVerification({
       toast.success('Email verified!', {
         description: 'Redirecting to dashboard...',
       })
+      clearRootUserContextCache()
       await router.invalidate()
       router.navigate({ to: '/dashboard', search: { verified: true } })
     },

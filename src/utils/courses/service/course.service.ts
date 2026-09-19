@@ -22,7 +22,7 @@ import {
   composeCourseCatalog,
   composeCourseDetail,
 } from '@/utils/courses/domain/course-read.domain'
-import { findCompletedLessonIdsForStudent } from '@/utils/courses/service/lesson-completion.service'
+import { buildCompletedLessonIds } from '@/utils/courses/domain/lesson-completion.domain'
 import {
   isTeacherAssignmentConflict,
   resolveOptionalTeacherPair,
@@ -290,15 +290,18 @@ function restrictCourseListForViewer(
 
 async function loadStudentCourseData(userId: string, course: CourseDetail) {
   const lessonIds = course.lessons.map((lesson) => lesson.id)
-  const [completedLessonIds, courseAssignments] = await Promise.all([
-    findCompletedLessonIdsForStudent(userId, lessonIds),
-    findPublishedAssignmentsByLessonIds(lessonIds),
-  ])
-  const assignmentIds = courseAssignments.map((assignment) => assignment.id)
-  const studentSubmissions = await findStudentSubmissions(userId, assignmentIds)
+  const courseAssignments = await findPublishedAssignmentsByLessonIds(lessonIds)
+  const studentSubmissions = await findStudentSubmissions(
+    userId,
+    courseAssignments.map((assignment) => assignment.id),
+  )
 
   return {
-    completedLessonIds,
+    completedLessonIds: buildCompletedLessonIds(
+      lessonIds,
+      courseAssignments,
+      studentSubmissions,
+    ),
     assignmentData: buildAssignmentStats(courseAssignments, studentSubmissions),
   }
 }
@@ -398,10 +401,9 @@ export async function getCoursesService(userId: string) {
       )
       const allAssignments =
         await findPublishedAssignmentsByLessonIds(allLessonIds)
-      const allAssignmentIds = allAssignments.map((a) => a.id)
       const allSubmissions = await findStudentSubmissions(
         userId,
-        allAssignmentIds,
+        allAssignments.map((assignment) => assignment.id),
       )
 
       const coursesWithProgress = buildCoursesWithProgress(

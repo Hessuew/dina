@@ -54,6 +54,9 @@ Current implementation slices: **46 / 46 complete**
 - ✅ Course detail now starts the viewer-profile lookup concurrently with the initial course read, removing one serial server-read step before course navigation can assemble its detail payload.
 - ✅ Student detail now resolves submitted assignments, manageable courses, and the avatar URL concurrently after its shared base reads, removing another server-side waterfall from staff student navigation.
 - ✅ Removed manual `preloadRoute` pointer handlers from `<Link>`/`ButtonLink` targets (course cards, upcoming lessons/assignments, exam rows, media cards, grading attempts, attendance banner, evaluation overlay). `defaultPreload: 'intent'` already preloads those routes on hover/focus/touch with zero delay, so the handlers were redundant. Pointer-intent preloads remain only where navigation is imperative `navigate()` (lesson/assignment row clicks, exam take button, event preview) and are now consolidated behind `src/hooks/useIntentPreload.ts`.
+- ✅ Root route context now caches `context.user` client-side for 60 seconds (`resolveUserContext` in `src/routes/__root.tsx`, cleared on login/signup/logout), so repeated navigations skip the `fetchUser` server round trip (auth verify + profile + avatar signing). Cache decisions live in tested `src/utils/auth/domain/user-context-cache.domain.ts`.
+- ✅ Server-side auth now verifies the session JWT locally via `supabase.auth.getClaims()` (cached JWKS) instead of an Auth-server round trip per server-function call, in both `getCurrentUser` and `getRootUserContext`. Revocation is bounded by token expiry; symmetric-key projects fall back to the same server check as before.
+- ✅ Course detail student reads no longer query published assignments twice: `loadStudentCourseData` fetches submissions once and derives completed lesson IDs via `buildCompletedLessonIds`, removing a serial phase and a duplicate query from student course navigation.
 
 ## Remaining
 
