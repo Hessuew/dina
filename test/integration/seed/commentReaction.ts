@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { getDb } from 'test/integration/db'
-import { postCommentReactions } from '@/db/schema'
+import { insertPostCommentReaction } from '@/utils/repository'
 
 export async function seedCommentReaction(overrides: {
   id?: string
@@ -9,8 +8,7 @@ export async function seedCommentReaction(overrides: {
   emoji?: string
 }): Promise<string> {
   const id = overrides.id ?? randomUUID()
-  const db = await getDb()
-  await db.insert(postCommentReactions).values({
+  await insertPostCommentReaction({
     id,
     commentId: overrides.commentId,
     userId: overrides.userId,
