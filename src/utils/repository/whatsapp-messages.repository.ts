@@ -4,6 +4,14 @@ import { whatsappMessages } from '@/db/schema'
 
 export type WhatsAppMessageInsert = typeof whatsappMessages.$inferInsert
 
+export async function findWhatsAppMessagesByEnrollmentId(enrollmentId: string) {
+  const db = await getDb()
+  return db
+    .select()
+    .from(whatsappMessages)
+    .where(eq(whatsappMessages.enrollmentId, enrollmentId))
+}
+
 /* v8 ignore start */
 export async function findSentEnrollmentIdsByTemplate(
   templateName: string,

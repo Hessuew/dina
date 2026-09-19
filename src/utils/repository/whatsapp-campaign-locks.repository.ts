@@ -5,6 +5,13 @@ import { whatsappCampaignLocks } from '@/db/schema'
 
 const LOCK_TTL_MS = 5 * 60 * 1000
 
+export async function findWhatsAppCampaignLock(campaign: CampaignType) {
+  const db = await getDb()
+  return db.query.whatsappCampaignLocks.findFirst({
+    where: eq(whatsappCampaignLocks.campaign, campaign),
+  })
+}
+
 /* v8 ignore start */
 export async function acquireWhatsAppCampaignLock(
   campaign: CampaignType,

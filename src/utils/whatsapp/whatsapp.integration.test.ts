@@ -1,6 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { eq } from 'drizzle-orm'
-import { getDb } from 'test/integration/db'
 import type {
   WhatsAppSender,
   WhatsAppTemplateMessage,
@@ -17,7 +15,6 @@ import {
   seedProfile,
   seedWhatsAppMessage,
 } from '@/../test/integration/seed'
-import { whatsappCampaignLocks, whatsappMessages } from '@/db/schema'
 import { setWhatsAppSender } from '@/utils/whatsapp'
 import {
   getWhatsAppCampaignLocksService,
@@ -26,6 +23,10 @@ import {
   sendWhatsAppCampaignService,
 } from '@/utils/whatsapp/service/whatsapp.service'
 import { AuthorizationError } from '@/utils/errors'
+import {
+  findWhatsAppCampaignLock,
+  findWhatsAppMessagesByEnrollmentId,
+} from '@/utils/repository'
 import * as sharedRepository from '@/utils/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
@@ -51,11 +52,7 @@ function installFakeSender(failFor: Array<string> = []) {
 }
 
 async function findLogRows(enrollmentId: string) {
-  const db = await getDb()
-  return db
-    .select()
-    .from(whatsappMessages)
-    .where(eq(whatsappMessages.enrollmentId, enrollmentId))
+  return findWhatsAppMessagesByEnrollmentId(enrollmentId)
 }
 
 /** Send requires the campaign lock — acquire it via preview, then send. */
@@ -64,12 +61,9 @@ async function previewThenSend(campaign: CampaignType, userId: string) {
   return sendWhatsAppCampaignService({ campaign }, userId)
 }
 
-async function findLockRows(campaign: string) {
-  const db = await getDb()
-  return db
-    .select()
-    .from(whatsappCampaignLocks)
-    .where(eq(whatsappCampaignLocks.campaign, campaign))
+async function findLockRows(campaign: CampaignType) {
+  const lock = await findWhatsAppCampaignLock(campaign)
+  return lock ? [lock] : []
 }
 
 describe('sendWhatsAppCampaignService (integration)', () => {
