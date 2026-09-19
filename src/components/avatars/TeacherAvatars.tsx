@@ -52,7 +52,9 @@ export function TeacherAvatars({
 
         return (
           <Tooltip key={teacher.id}>
-            <TooltipTrigger>{avatar}</TooltipTrigger>
+            <TooltipTrigger aria-label={`Show ${teacher.fullName}`}>
+              {avatar}
+            </TooltipTrigger>
             <TooltipContent>
               <p>{teacher.fullName}</p>
             </TooltipContent>
