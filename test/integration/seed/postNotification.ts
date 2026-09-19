@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { getDb } from 'test/integration/db'
-import { postNotifications } from '@/db/schema'
+import { insertPostNotifications } from '@/utils/repository'
 
 export async function seedPostNotification(overrides: {
   id?: string
@@ -13,20 +12,21 @@ export async function seedPostNotification(overrides: {
   createdAt?: Date
 }): Promise<string> {
   const id = overrides.id ?? randomUUID()
-  const db = await getDb()
-  await db.insert(postNotifications).values({
-    id,
-    userId: overrides.userId,
-    postId: overrides.postId,
-    event: overrides.event,
-    actorId: overrides.actorId ?? randomUUID(),
-    ...(overrides.commentId !== undefined
-      ? { commentId: overrides.commentId }
-      : {}),
-    ...(overrides.isRead !== undefined ? { isRead: overrides.isRead } : {}),
-    ...(overrides.createdAt !== undefined
-      ? { createdAt: overrides.createdAt }
-      : {}),
-  })
+  await insertPostNotifications([
+    {
+      id,
+      userId: overrides.userId,
+      postId: overrides.postId,
+      event: overrides.event,
+      actorId: overrides.actorId ?? randomUUID(),
+      ...(overrides.commentId !== undefined
+        ? { commentId: overrides.commentId }
+        : {}),
+      ...(overrides.isRead !== undefined ? { isRead: overrides.isRead } : {}),
+      ...(overrides.createdAt !== undefined
+        ? { createdAt: overrides.createdAt }
+        : {}),
+    },
+  ])
   return id
 }
