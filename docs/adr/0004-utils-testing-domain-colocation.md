@@ -1,11 +1,17 @@
 # ADR 0004 — Three-Layer Architecture and Testing for src/utils/
 
-**Status:** Planned  
+**Status:** Superseded by [ADR 0025](./0025-table-oriented-repository-seams.md) for repository placement
 **Date:** 2026-05-18
 
 **Scope:** This ADR governs `src/utils/` (server-function / backend layer) only. Domain logic
 that belongs exclusively to a React hook lives in `src/hooks/<hookName>/domain/` — see ADR 0010
 for the placement rule.
+
+> **Current repository placement:** ADR 0025 supersedes the feature-local repository layout
+> described below. Database persistence now belongs in one shared,
+> table-oriented adapter under `src/utils/repository/`; this ADR remains the reference for
+> the three-layer testing placement and the separation of service, repository, and domain
+> responsibilities.
 
 ## Context
 
@@ -13,7 +19,10 @@ ADR 0003 established 100% unit test coverage on `src/domain/`. The next layer to
 
 ## Decision
 
-### Three-layer structure per feature
+### Three-layer structure per feature (repository placement superseded)
+
+The following tree records the original feature-local layout. It is retained as historical
+context; new persistence work must follow ADR 0025.
 
 Each feature subfolder in `src/utils/` is split into three layers:
 
@@ -29,7 +38,10 @@ src/utils/student/
 
 **Service (`students.ts`):** calls repository functions and domain functions only. Contains `createServerFn` wrappers. No direct Drizzle imports. Marked `/* v8 ignore */` where needed.
 
-**Repository (`repository/<feature>.repository.ts`):** all DB queries and mutations. All functions are async and DB-touching. Wrapped with `/* v8 ignore start/end */`. No business logic.
+**Historical repository (`repository/<feature>.repository.ts`):** all DB queries and mutations.
+New repositories must instead be shared table-oriented adapters under
+`src/utils/repository/<sql-table-name>.repository.ts` as defined by ADR 0025. All functions
+are async and DB-touching. Wrapped with `/* v8 ignore start/end */`. No business logic.
 
 **Domain (`domain/<feature>.domain.ts`):** pure functions — synchronous, no IO, deterministic. Receives data already fetched by the repository. Fully tested at 100% coverage.
 
@@ -131,10 +143,12 @@ These do not live in a `domain/` subfolder so they are NOT under the coverage ga
 
 ### Phase 3+: Remaining feature domains
 
-Apply the same three-layer pattern to each remaining feature in `src/utils/`:
+Apply the same service/domain separation to each remaining feature in `src/utils/`, while
+using the shared table repositories defined by ADR 0025:
 courses, assignments, posts, enrolment, invitation, teachers, library, notifications, etc.
 
-Each follows: extract repository → extract domain → write domain tests → verify coverage.
+Each follows: identify the shared table adapters → extract domain → write domain tests → verify
+coverage. Do not create a feature-local `repository/` directory.
 
 ## Files to Create / Modify (Phase 1)
 
