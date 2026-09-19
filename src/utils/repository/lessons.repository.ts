@@ -3,6 +3,8 @@ import { and, eq, gt, inArray, isNotNull } from 'drizzle-orm'
 import { getDb } from '@/db'
 import { lessons } from '@/db/schema'
 
+export type LessonInsert = typeof lessons.$inferInsert
+
 export async function findLessonById(lessonId: string) {
   const db = await getDb()
   return db.query.lessons.findFirst({
@@ -136,17 +138,7 @@ export async function findPublishedLessonsByIds(lessonIds: Array<string>) {
   })
 }
 
-export async function insertLesson(values: {
-  courseId: string
-  title: string
-  content: string | null
-  videoUrl: string | null
-  thumbnailUrl: string | null
-  scheduledTime: Date | null
-  duration: number | null
-  orderIndex: number
-  isPublished: boolean
-}) {
+export async function insertLesson(values: LessonInsert) {
   const db = await getDb()
   const [lesson] = await db.insert(lessons).values(values).returning()
   return lesson
