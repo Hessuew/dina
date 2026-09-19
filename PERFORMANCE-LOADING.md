@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **25 / 25 complete**
+Current implementation slices: **26 / 26 complete**
 
 ## Done
 
@@ -33,6 +33,7 @@ Current implementation slices: **25 / 25 complete**
 - ✅ Lesson and assignment detail routes now defer their optional edit, delete, and grading dialogs until a staff action opens them, keeping form code off ordinary detail navigation.
 - ✅ Students index authorization now reuses the authenticated root role instead of issuing a separate courses read before loading student data, removing one serial server-function round trip from that navigation.
 - ✅ Events authorization now reuses the authenticated root role instead of issuing a separate courses read before loading events, removing one serial server-function round trip from that navigation.
+- ✅ Student exam detail navigation now reads only the requested published exam and the student's attempt instead of loading and filtering the entire exam catalog again.
 
 ## Remaining
 
@@ -41,7 +42,7 @@ Current implementation slices: **25 / 25 complete**
 - ⬜ Audit the remaining oversized route chunks, especially the PDF path, and keep them off unrelated navigations.
 - ⬜ Re-run the measurements and push the finished work as a GitHub PR (do not merge automatically).
 
-Latest build audit: the main shared browser entry is 408.35 KB minified / 131.45 KB gzip, down from 464.55 KB / 149.25 KB. The dashboard route is 30.38 KB minified / 10.15 KB gzip, with the optional CourseDialog deferred to an 11.84 KB / 4.39 KB gzip chunk. Event and Zoom routes now share an 8.07 KB enum-only chunk instead of the previous 111.06 KB full Drizzle schema chunk. Authenticated navigation now uses a 41.95 KB / 13.27 KB gzip sidebar chunk with no standalone animated-icon runtime. Course detail now keeps its optional CourseDialog, LessonDialog, and MediaDialog modules behind interaction-triggered chunks; its generated route manifest has no initial imports for those dialog modules. Lesson and assignment detail routes likewise exclude their optional management dialogs from initial route dependencies. Sentry remains a deferred 476.28 KB / 156.08 KB chunk and is now requested after browser idle time rather than during router startup. PDF.js remains isolated to the library document viewer (487.96 KB minified / 148.26 KB gzip plus a 1.3 MB worker); these deferred assets do not load on the landing page.
+Latest build audit: the main shared browser entry is 408.35 KB minified / 131.41 KB gzip, down from 464.55 KB / 149.25 KB. The dashboard route is 30.38 KB minified / 10.15 KB gzip, with the optional CourseDialog deferred to an 11.84 KB / 4.39 KB gzip chunk. Event and Zoom routes now share an 8.07 KB enum-only chunk instead of the previous 111.06 KB full Drizzle schema chunk. Authenticated navigation now uses a 41.95 KB / 13.27 KB gzip sidebar chunk with no standalone animated-icon runtime. Course detail now keeps its optional CourseDialog, LessonDialog, and MediaDialog modules behind interaction-triggered chunks; its generated route manifest has no initial imports for those dialog modules. Lesson and assignment detail routes likewise exclude their optional management dialogs from initial route dependencies. Sentry remains a deferred 476.28 KB / 156.08 KB chunk and is now requested after browser idle time rather than during router startup. PDF.js remains isolated to the library document viewer (487.96 KB minified / 148.26 KB gzip plus a 1.3 MB worker); these deferred assets do not load on the landing page. Student exam detail now avoids the catalog-sized student exam read and performs one exam lookup plus one attempt lookup in parallel before loading points.
 
 ## Browser baseline
 

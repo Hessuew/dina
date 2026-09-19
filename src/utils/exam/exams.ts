@@ -20,6 +20,7 @@ import {
   getAttemptForGradingService,
   getAttemptForTakingService,
   getExamForAuthorService,
+  getExamForStudentService,
   getExamsForStudentService,
   getExamsForTeacherService,
   gradeOpenAnswerService,
@@ -72,6 +73,13 @@ export const getExamsForStudent = createServerFn({ method: 'GET' }).handler(
     return getExamsForStudentService(user.id)
   },
 )
+
+export const getExamForStudent = createServerFn({ method: 'GET' })
+  .validator(getExamSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    return getExamForStudentService(data, user.id)
+  })
 
 export const startExamAttempt = createServerFn({ method: 'POST' })
   .validator(startAttemptSchema)

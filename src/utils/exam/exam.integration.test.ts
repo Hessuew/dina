@@ -18,6 +18,7 @@ import {
   getAttemptForGradingService,
   getAttemptForTakingService,
   getExamForAuthorService,
+  getExamForStudentService,
   getExamsForStudentService,
   getExamsForTeacherService,
   gradeOpenAnswerService,
@@ -131,10 +132,16 @@ describe('exam authoring (integration)', () => {
       await sharedRepository.findExamQuestionOptionsByQuestionIds([question.id])
 
     expect(await getExamsForStudentService(studentId)).toEqual([])
+    expect(
+      await getExamForStudentService({ examId: exam.id }, studentId),
+    ).toBeNull()
     await publishExamService({ examId: exam.id }, teacherId)
     const studentList = await getExamsForStudentService(studentId)
     expect(studentList.map((item) => item.exam.id)).toEqual([exam.id])
     expect(studentList[0]?.exam.totalPoints).toBe(1)
+    expect(
+      await getExamForStudentService({ examId: exam.id }, studentId),
+    ).toMatchObject({ exam: { id: exam.id, totalPoints: 1 }, attempt: null })
 
     await expect(
       saveExamChangesService(
@@ -385,6 +392,7 @@ describe('exam reads (integration)', () => {
     await getExamForAuthorService({ examId }, teacherId)
     await getExamsForTeacherService(teacherId)
     await getExamsForStudentService(studentId)
+    await getExamForStudentService({ examId }, studentId)
     const taking = await startAttemptService({ examId }, studentId)
     await getAttemptForTakingService({ examId }, studentId)
     await listAttemptsForGradingService({ examId }, teacherId)
@@ -419,6 +427,14 @@ describe('exam reads (integration)', () => {
         expect.objectContaining({
           path: 'serverFn:getExamsForStudent',
           actorId: studentId,
+          role: 'student',
+          examCount: 1,
+          attemptedCount: 0,
+        }),
+        expect.objectContaining({
+          path: 'serverFn:getExamForStudent',
+          actorId: studentId,
+          examId,
           role: 'student',
           examCount: 1,
           attemptedCount: 0,
@@ -778,6 +794,9 @@ describe('exam taking (integration)', () => {
     await expect(getExamsForStudentService(unknownCallerId)).rejects.toThrow(
       AuthorizationError,
     )
+    await expect(
+      getExamForStudentService({ examId }, unknownCallerId),
+    ).rejects.toThrow(AuthorizationError)
     await expect(
       startAttemptService({ examId }, unknownCallerId),
     ).rejects.toThrow(AuthorizationError)

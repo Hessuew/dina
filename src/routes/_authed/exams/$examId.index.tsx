@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { useMutation } from '@/hooks/useMutation'
 import {
   getExamForAuthor,
-  getExamsForStudent,
+  getExamForStudent,
   startExamAttempt,
 } from '@/utils/exam'
 
@@ -28,8 +28,7 @@ export const Route = createFileRoute('/_authed/exams/$examId/')({
 
 async function loadExamDetail(role: UserContext['role'], examId: string) {
   if (role === 'student') {
-    const items = await getExamsForStudent()
-    const item = items.find((candidate) => candidate.exam.id === examId) ?? null
+    const item = await getExamForStudent({ data: { examId } })
     return { role, item, authorData: null }
   }
 
