@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { FileTextIcon, PlusIcon } from 'lucide-react'
 import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-table/legacy'
@@ -22,7 +22,12 @@ import { EmptyState } from '@/components/ui/empty-state/EmptyState'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
 import { LibraryShelf } from '@/components/library/LibraryShelf'
 import { SessionImage } from '@/components/ui/session-image'
-import { ImportEbooksDialog } from '@/components/dialog/ebook-import/ImportEbooksDialog'
+
+const ImportEbooksDialog = lazy(() =>
+  import('@/components/dialog/ebook-import/ImportEbooksDialog').then(
+    (module) => ({ default: module.ImportEbooksDialog }),
+  ),
+)
 
 export const Route = createFileRoute('/_authed/library/')({
   loader: async () => {
@@ -399,11 +404,17 @@ function LibraryComponent() {
         mode={dialogMode as 'create' | 'edit' | 'delete'}
         media={dialogMedia}
       />
-      <ImportEbooksDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        media={media}
-      />
+      {importOpen && (
+        <Suspense
+          fallback={
+            <div className="py-12 text-center text-sm text-[#8E816D]">
+              Loading eBook importer…
+            </div>
+          }
+        >
+          <ImportEbooksDialog open onOpenChange={setImportOpen} media={media} />
+        </Suspense>
+      )}
     </PageLayout>
   )
 }

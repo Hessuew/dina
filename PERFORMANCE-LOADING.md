@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **6 / 6 complete**
+Current implementation slices: **7 / 7 complete**
 
 ## Done
 
@@ -14,6 +14,7 @@ Current implementation slices: **6 / 6 complete**
 - ✅ Added pointer-intent route preloading for student detail → assignment navigation.
 - ✅ Lazy-loaded the authenticated sidebar from the shared root so public landing-page visits do not eagerly download authenticated navigation, reducing the browser entry from 738.03 KB to 451.24 KB minified (225.05 KB to 144.56 KB gzip).
 - ✅ Lazy-loaded enrollment review and admin dialogs so the enrollment table route no longer downloads optional workflows on entry, reducing its route chunk from 220.74 KB to 30.28 KB minified (60.53 KB to 10.66 KB gzip).
+- ✅ Lazy-loaded the staff-only eBook importer so the library landing route does not download its optional PDF-validation workflow until “Import eBooks” is opened, reducing that route chunk from 36.00 KB to 15.54 KB minified (11.93 KB to 5.85 KB gzip).
 
 ## Remaining
 
