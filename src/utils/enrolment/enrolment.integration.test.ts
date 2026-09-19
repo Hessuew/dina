@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
 import type { AuthorizationService } from '@/utils/authz/types'
 import {
@@ -37,7 +36,6 @@ import {
   seedReviewerAssignment,
 } from '@/../test/integration/seed'
 import { setEmailSender } from '@/utils/email'
-import { emailMessages } from '@/db/schema'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 // Seeds a pending enrollment with an assigned reviewer plus a peer evaluator.
@@ -2078,8 +2076,7 @@ describe('sendInvitationForEnrollmentService (integration)', () => {
       id: result.invitationId,
       status: 'pending',
     })
-    const db = await getDb()
-    expect(await db.select().from(emailMessages)).toEqual([])
+    expect(await sharedRepository.findAllEmailMessages()).toEqual([])
 
     const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
     expect(events).toEqual(

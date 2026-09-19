@@ -4,6 +4,11 @@ import { emailMessages } from '@/db/schema'
 
 export type EmailMessageInsert = typeof emailMessages.$inferInsert
 
+export async function findAllEmailMessages() {
+  const db = await getDb()
+  return db.select().from(emailMessages)
+}
+
 export async function findEmailMessagesByEnrollmentId(enrollmentId: string) {
   const db = await getDb()
   return db
