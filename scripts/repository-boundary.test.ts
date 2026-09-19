@@ -132,7 +132,7 @@ function findRawSqlTableReferences(
       /\b(?:from|join|update|into|using|truncate(?:\s+table)?|(?:alter|create|drop)\s+table)\s+(?:(?:["'][^"']+["']|[a-z_][a-z0-9_]*)\s*\.\s*)?["']?([a-z_][a-z0-9_]*)/gi,
     ),
     ...source.matchAll(
-      /\bsql\.raw\(\s*["'`](?:[a-z_][a-z0-9_]*\s*\.\s*)?([a-z_][a-z0-9_]*)["'`]\s*\)/gi,
+      /\bsql\s*(?:\.\s*|\?\.\s*)raw\s*\(\s*["'`](?:[a-z_][a-z0-9_]*\s*\.\s*)?([a-z_][a-z0-9_]*)["'`]\s*\)/gi,
     ),
   ]
     .map(([, sqlName]) => symbolsBySqlName.get(sqlName.toLowerCase()))
@@ -405,6 +405,12 @@ describe('utils repository boundaries', () => {
         schemaTables,
       ),
     ).toEqual(['profiles'])
+    expect(
+      findRawSqlTableReferences(
+        "db.select().from(sql . raw ( `public.profiles` )); db.select().from(sql?.raw('announcements'))",
+        schemaTables,
+      ),
+    ).toEqual(['profiles', 'announcements'])
   })
 
   it('detects direct Drizzle operations on database handles', () => {

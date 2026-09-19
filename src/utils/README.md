@@ -35,8 +35,8 @@ repository files through aliased, relative, dynamic-import, CommonJS, or feature
 Every shared repository file is re-exported by that barrel, and the repository-boundary
 regression test keeps the file set and barrel exports in sync. That guard also checks
 table names referenced through SQL templates, interpolated table expressions, and literal
-`sql.raw(...)` identifiers, including qualified names and `USING`, `TRUNCATE`, and table-DDL
-forms, so raw SQL cannot bypass
+`sql.raw(...)` identifiers, including whitespace-formatted calls, qualified names, and
+`USING`, `TRUNCATE`, and table-DDL forms, so raw SQL cannot bypass
 one-table ownership.
 Repositories must not import or re-export another repository at runtime; services and transaction
 modules compose table adapters instead. Type-only imports and re-exports are allowed for shared
