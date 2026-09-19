@@ -65,7 +65,7 @@ function AssignmentsHeader({
   onCourseChange,
 }: AssignmentsHeaderProps) {
   return (
-    <div className="flex items-end justify-between gap-6">
+    <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
       <div>
         <div className="h-px w-10 bg-[#C5A059]/50" />
         <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">
@@ -80,7 +80,7 @@ function AssignmentsHeader({
           value={selectedCourse}
           onValueChange={(value) => onCourseChange(value ?? 'all')}
         >
-          <SelectTrigger className="w-[200px] rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40">
+          <SelectTrigger className="w-full rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40 sm:w-[200px]">
             <SelectValue placeholder="Filter by course">
               {getSelectedCourseLabel(selectedCourse, courses)}
             </SelectValue>
