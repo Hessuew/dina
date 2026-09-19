@@ -13,23 +13,35 @@ bun run test:coverage  # run with 100% coverage check on domain layers
 
 ## Layer architecture (per feature in src/utils/)
 
-Each feature in `src/utils/` is split into three layers. Only the domain layer is tested:
+Each feature in `src/utils/` is split into three layers. Persistence is shared by
+database table, not duplicated per feature. Only the domain layer is tested:
 
 ```
 src/utils/student/
   students.ts                    ← service: thin orchestrator (createServerFn, no direct DB)
-  repository/
-    student.repository.ts        ← all DB/Drizzle calls — /* v8 ignore start/end */
   domain/
     student.domain.ts            ← pure business logic, no IO
     student.domain.test.ts       ← 100% coverage enforced ← TESTS LIVE HERE
+
+src/utils/repository/
+  profiles.repository.ts         ← the single shared profiles-table seam
+  submissions.repository.ts      ← the single shared submissions-table seam
 ```
+
+Feature services compose adapters from `@/utils/repository`. Do not create a
+feature-local repository or import an individual repository file. Joined reads
+and multi-table atomic workflows stay in feature services or explicit
+transaction modules; those modules coordinate table adapters without issuing
+their own Drizzle queries. See ADR 0025.
 
 Cross-cutting root domain (grade, assignment, post, student services) stays in `src/domain/` as-is.
 
 ## Utils refactor order
 
-Each row = one cycle of: extract repository → extract domain → write tests → verify coverage.
+Each row = one cycle of: move persistence to the shared table seam when needed →
+extract domain → write tests → verify coverage. Most rows below are historical
+feature migrations; future work must extend the existing table repository rather
+than create a repository below the feature folder.
 Update status as each folder is completed.
 
 | #   | Folder           | Status | Domain functions extracted                                                                                                                                                                                                                            |
@@ -71,7 +83,10 @@ Folders marked N/A have no extractable domain logic. Repository split is only wo
 
 When adding tests to a new utils feature, do this first:
 
-1. **Extract repository** — move all Drizzle queries to `repository/<feature>.repository.ts`, add `/* v8 ignore start/end */`
+1. **Use the shared repository seam** — extend the existing
+   `src/utils/repository/<table>.repository.ts`, or add one shared table adapter
+   and its barrel export when the table has no owner. Never create a
+   feature-local repository.
 2. **Extract domain** — move pure logic to `domain/<feature>.domain.ts`
 3. **Slim down service** — update `<feature>.ts` to call only repository + domain functions, no direct DB imports
 4. **Write tests** — co-located `domain/<feature>.domain.test.ts`
