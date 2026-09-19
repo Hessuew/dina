@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { Suspense, lazy } from 'react'
 import type { Role } from '@/utils/authz/types'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import { PageLayout } from '@/components/layout/page-layout'
@@ -7,9 +8,14 @@ import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { cn } from '@/lib/utils'
 import { getLibraryMediaItem } from '@/utils/library'
 import { useDialogState } from '@/hooks/useDialogState'
-import { MediaDialog } from '@/components/dialog/media-dialog/MediaDialog'
 import { MediaDetailViewer } from '@/components/library/media-detail-viewer/MediaDetailViewer'
 import { shouldShowDownloadableChip } from '@/utils/library/domain/library.domain'
+
+const MediaDialog = lazy(() =>
+  import('@/components/dialog/media-dialog/MediaDialog').then((module) => ({
+    default: module.MediaDialog,
+  })),
+)
 
 export const Route = createFileRoute('/_authed/library/$mediaId')({
   loader: async ({ params }) => {
@@ -97,22 +103,32 @@ function MediaDetailComponent() {
 
       <MediaDetailViewer media={media} viewerUrl={viewerUrl} />
 
-      <MediaDialog
-        key={`${dialogMode}-${dialogMedia?.id}`}
-        open={isOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            closeDialog()
+      {isOpen && (
+        <Suspense
+          fallback={
+            <div className="py-12 text-center text-sm text-[#8E816D]">
+              Loading media editor…
+            </div>
           }
-        }}
-        mode={dialogMode as 'create' | 'edit' | 'delete'}
-        media={dialogMedia}
-        onSuccess={() => {
-          if (dialogMode === 'delete') {
-            router.history.back()
-          }
-        }}
-      />
+        >
+          <MediaDialog
+            key={`${dialogMode}-${dialogMedia?.id}`}
+            open
+            onOpenChange={(open) => {
+              if (!open) {
+                closeDialog()
+              }
+            }}
+            mode={dialogMode as 'create' | 'edit' | 'delete'}
+            media={dialogMedia}
+            onSuccess={() => {
+              if (dialogMode === 'delete') {
+                router.history.back()
+              }
+            }}
+          />
+        </Suspense>
+      )}
     </PageLayout>
   )
 }
