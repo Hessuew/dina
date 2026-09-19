@@ -338,21 +338,26 @@ async function loadCourse(
   const visibleCourse = permissions.canManage
     ? course
     : restrictCourseToPublishedContent(course)
-  const courseData =
+  const courseDataPromise =
     profile.role === 'student'
-      ? await loadStudentCourseData(userId, visibleCourse)
-      : {
+      ? loadStudentCourseData(userId, visibleCourse)
+      : Promise.resolve({
           completedLessonIds: [] as Array<string>,
           assignmentData: {
             totalAssignments: 0,
             submittedCount: 0,
             gradedCount: 0,
           },
-        }
-  const [signedCourse] = await signCourseAssets([visibleCourse])
+        })
+  const [courseData, signedCourses, mediaFiles] = await Promise.all([
+    courseDataPromise,
+    signCourseAssets([visibleCourse]),
+    serializeMediaRecords(visibleCourse.mediaFiles),
+  ])
+  const [signedCourse] = signedCourses
   const courseWithTeachers = {
     ...signedCourse,
-    mediaFiles: await serializeMediaRecords(visibleCourse.mediaFiles),
+    mediaFiles,
     ...teacherRefs,
   }
 

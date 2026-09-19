@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **20 / 20 complete**
+Current implementation slices: **21 / 21 complete**
 
 ## Done
 
@@ -28,6 +28,7 @@ Current implementation slices: **20 / 20 complete**
 - ✅ Event and Zoom validation schemas now import only their required Drizzle enum module instead of the full schema barrel, shrinking the client schema dependency from 111.06 KB to an 8.07 KB enum chunk.
 - ✅ Replaced motion-based animated icons with static Lucide icons in authenticated navigation and enrollment admin actions, removing the 135.42 KB / 43.37 KB gzip animated-icon chunk. The authenticated sidebar route is now 41.95 KB / 13.27 KB gzip, down from 64.41 KB / 15.90 KB gzip.
 - ✅ Deferred the course detail route's course, lesson, and media management dialogs until an editor action opens them, keeping optional form code off the initial course navigation.
+- ✅ Course detail now runs student progress reads concurrently with course asset signing and media URL serialization, removing a serial post-processing phase from course navigation.
 
 ## Remaining
 
