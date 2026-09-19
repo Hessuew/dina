@@ -13,7 +13,6 @@ import * as React from 'react'
 
 import type { UserContext } from '@/utils/auth/domain/user-context.domain'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar/Sidebar'
-import { AppSidebar } from '@/components/navigation/AppSidebar'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import appCss from '@/styles/app.css?url'
@@ -31,6 +30,12 @@ import {
 } from '@/utils/analytics'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(getRootUserContext)
+
+const LazyAppSidebar = React.lazy(() =>
+  import('@/components/navigation/AppSidebar').then(({ AppSidebar }) => ({
+    default: AppSidebar,
+  })),
+)
 
 export const Route = createRootRoute({
   beforeLoad: async () => {
@@ -147,7 +152,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           enableKeyboardShortcut={Boolean(user)}
         >
           <TooltipProvider>
-            {user && <AppSidebar user={user} role={role} />}
+            {user && (
+              <React.Suspense fallback={null}>
+                <LazyAppSidebar user={user} role={role} />
+              </React.Suspense>
+            )}
             <SidebarInset>
               <Header user={user} />
               {children}
