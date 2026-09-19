@@ -29,7 +29,8 @@ distinct-select, count helpers, CTE, `execute`, or `transaction` calls themselve
 regression guard covers formatted and
 optional-chaining member and call access plus computed `db['select']`,
 `db['query'].table`, and `db.query['table']` access as well as the usual dot
-notation. Dynamically selected query tables such as `db.query[tableName]` are
+notation, including generic TypeScript call forms such as `db.select<Row>()` and
+`.from<Row>(table)`. Dynamically selected query tables such as `db.query[tableName]` are
 also rejected because they cannot prove single-table ownership.
 All utility callers, including integration tests, import table adapters through
 `@/utils/repository`, the shared barrel seam, rather than reaching into individual

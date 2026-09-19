@@ -166,7 +166,9 @@ const identifier = String.raw`[A-Za-z_$][A-Za-z0-9_$]*`
 const memberAccess = String.raw`(?:\?\s*\.\s*|\.\s*)`
 const computedMemberAccess = String.raw`(?:\?\s*\.\s*)?\[\s*['"]`
 const queryAccess = String.raw`(?:${memberAccess}query|${computedMemberAccess}query['"]\s*\])`
-const tableCall = String.raw`(?:${memberAccess}(?:insert|update|delete|from)|${computedMemberAccess}(?:insert|update|delete|from)['"]\s*\])\s*(?:\?\s*\.\s*)?\(\s*([A-Za-z0-9_]+)\s*\)`
+const typeArguments = String.raw`(?:<[^()]*>)?`
+const optionalCallAccess = String.raw`(?:\?\s*\.\s*)?`
+const tableCall = String.raw`(?:${memberAccess}(?:insert|update|delete|from)|${computedMemberAccess}(?:insert|update|delete|from)['"]\s*\])\s*${optionalCallAccess}${typeArguments}\(\s*([A-Za-z0-9_]+)\s*\)`
 
 function findTableReferences(
   source: string,
@@ -210,7 +212,7 @@ function findDirectDatabaseOperations(source: string): Array<string> {
   const handle = databaseHandle
   const queryMember = String.raw`\s*${queryAccess}\s*(?:${memberAccess}[A-Za-z0-9_]+|${computedMemberAccess}[A-Za-z0-9_]+['"]\s*\])`
   const operationMember = String.raw`(?:${memberAccess}(?:\$?with|\$count|selectDistinctOn|selectDistinct|select|insert|update|delete|execute|transaction)|${computedMemberAccess}(?:\$?with|\$count|selectDistinctOn|selectDistinct|select|insert|update|delete|execute|transaction)['"]\s*\])`
-  const operationCall = String.raw`\s*(?:\?\s*\.\s*)?\(`
+  const operationCall = String.raw`\s*${optionalCallAccess}${typeArguments}\(`
 
   return [
     ...source.matchAll(new RegExp(`${handle}${queryMember}`, 'g')),
@@ -465,6 +467,11 @@ describe('utils repository boundaries', () => {
     ).toEqual(['assignments', 'profiles', 'lessons', 'courses'])
     expect(
       findTableReferences(
+        'db.insert<AssignmentInsert>(assignments); tx["update"]<ProfilePatch>(profiles); db.select<LessonRow>().from<LessonTable>(lessons); client["delete"]<CourseRow>(courses)',
+      ),
+    ).toEqual(['assignments', 'profiles', 'lessons', 'courses'])
+    expect(
+      findTableReferences(
         'repositoryClient.query.courses.findMany(); injectedTx?.query?.["lessons"].findFirst()',
       ),
     ).toEqual(['courses', 'lessons'])
@@ -642,6 +649,15 @@ describe('utils repository boundaries', () => {
       'db?.select?.(',
       'tx?.["execute"]?.(',
       'connection?.transaction?.(',
+    ])
+    expect(
+      findDirectDatabaseOperations(
+        'db.select<{ id: string }>(); tx["execute"]<SqlResult>(sql); connection?.transaction?.<TxResult>(run)',
+      ),
+    ).toEqual([
+      'db.select<{ id: string }>(',
+      'tx["execute"]<SqlResult>(',
+      'connection?.transaction?.<TxResult>(',
     ])
   })
 
