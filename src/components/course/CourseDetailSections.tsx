@@ -63,6 +63,7 @@ type CourseDetailSectionsProps = {
   onEditLesson: (lesson: Lesson) => void
   onDeleteLesson: (lesson: Lesson) => void
   onOpenLesson: (lessonId: string) => void
+  onPrefetchLesson: (lessonId: string) => void
 }
 
 function CourseAboutCard({
@@ -386,6 +387,7 @@ function LessonRow({
   role,
   permissions,
   onOpenLesson,
+  onPrefetchLesson,
   onEditLesson,
   onDeleteLesson,
 }: {
@@ -397,6 +399,7 @@ function LessonRow({
   onOpenLesson: (lessonId: string) => void
   onEditLesson: (lesson: Lesson) => void
   onDeleteLesson: (lesson: Lesson) => void
+  onPrefetchLesson: (lessonId: string) => void
 }) {
   const view = resolveLessonRowView({ lesson, index, permissions })
 
@@ -406,6 +409,9 @@ function LessonRow({
         'group flex items-start gap-4 px-6 py-5 transition-all',
         view.showContent ? 'cursor-pointer hover:bg-white/5' : 'opacity-40',
       )}
+      onPointerEnter={() => {
+        if (view.showContent) onPrefetchLesson(lesson.id)
+      }}
       onClick={() => {
         if (view.showContent) onOpenLesson(lesson.id)
       }}
@@ -487,6 +493,7 @@ type LessonsSectionProps = Pick<
   | 'onEditLesson'
   | 'onDeleteLesson'
   | 'onOpenLesson'
+  | 'onPrefetchLesson'
 > & {
   lessons: Array<Lesson>
 }
@@ -500,6 +507,7 @@ function LessonsSection({
   onEditLesson,
   onDeleteLesson,
   onOpenLesson,
+  onPrefetchLesson,
 }: LessonsSectionProps) {
   const canManage = permissions.canEdit && permissions.isCourseTeacher
 
@@ -540,6 +548,7 @@ function LessonsSection({
               role={role}
               permissions={permissions}
               onOpenLesson={onOpenLesson}
+              onPrefetchLesson={onPrefetchLesson}
               onEditLesson={onEditLesson}
               onDeleteLesson={onDeleteLesson}
             />
@@ -587,6 +596,7 @@ function CourseSideColumn({
   onEditLesson,
   onDeleteLesson,
   onOpenLesson,
+  onPrefetchLesson,
 }: CourseDetailSectionsProps & { canManage: boolean }) {
   return (
     <div className="flex min-w-0 flex-col gap-6">
@@ -614,6 +624,7 @@ function CourseSideColumn({
         onEditLesson={onEditLesson}
         onDeleteLesson={onDeleteLesson}
         onOpenLesson={onOpenLesson}
+        onPrefetchLesson={onPrefetchLesson}
       />
     </div>
   )

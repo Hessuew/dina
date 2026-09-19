@@ -139,6 +139,7 @@ function LessonSections({
   assignmentDialog,
   onDeleteAssignment,
   onOpenAssignment,
+  onPrefetchAssignment,
 }: {
   lesson: Lesson
   role: LessonRole
@@ -148,6 +149,7 @@ function LessonSections({
   assignmentDialog: AssignmentDialogState
   onDeleteAssignment: (assignment: Assignment) => void
   onOpenAssignment: (assignmentId: string) => void
+  onPrefetchAssignment: (assignmentId: string) => void
 }) {
   return (
     <LessonDetailSections
@@ -162,6 +164,7 @@ function LessonSections({
       }
       onDeleteAssignment={onDeleteAssignment}
       onOpenAssignment={onOpenAssignment}
+      onPrefetchAssignment={onPrefetchAssignment}
     />
   )
 }
@@ -234,6 +237,20 @@ function useLessonNavigation({
     })
   }
 
+  const prefetchAssignment = (assignmentId: string) => {
+    void router
+      .preloadRoute({
+        to: '/assignments/$assignmentId',
+        params: { assignmentId },
+        search: {
+          calendarMonth: undefined,
+          fromCalendar: false,
+          fromDashboard: false,
+        },
+      })
+      .catch(() => undefined)
+  }
+
   const goBack = () => {
     const target = buildLessonBackNavigation(search, courseId)
     if (target.kind === 'calendar') {
@@ -246,7 +263,7 @@ function useLessonNavigation({
     }
   }
 
-  return { goBack, handleOpenAssignment }
+  return { goBack, handleOpenAssignment, prefetchAssignment }
 }
 
 function useAssignmentDeleteDialog(assignmentDialog: AssignmentDialogState) {
@@ -280,10 +297,11 @@ function LessonDetailComponent() {
   const assignmentDialog = useDialogState<Assignment>()
   const isPublished = resolveLessonPublished(lesson.isPublished)
   const showContent = shouldShowLessonContent(isPublished, permissions.canEdit)
-  const { goBack, handleOpenAssignment } = useLessonNavigation({
-    courseId: lesson.course.id,
-    search,
-  })
+  const { goBack, handleOpenAssignment, prefetchAssignment } =
+    useLessonNavigation({
+      courseId: lesson.course.id,
+      search,
+    })
   const {
     closeAssignmentDialog,
     handleDeleteAssignmentClick,
@@ -308,6 +326,7 @@ function LessonDetailComponent() {
         isCompleted={loaderData.isCompleted}
         onDeleteAssignment={handleDeleteAssignmentClick}
         onOpenAssignment={handleOpenAssignment}
+        onPrefetchAssignment={prefetchAssignment}
         assignmentDialog={assignmentDialog}
       />
 

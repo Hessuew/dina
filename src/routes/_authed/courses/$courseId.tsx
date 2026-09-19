@@ -61,6 +61,18 @@ type CourseDialogState = ReturnType<typeof useDialogState<CourseEditData>>
 type LessonDialogState = ReturnType<typeof useDialogState<Lesson>>
 type MaterialDialogState = ReturnType<typeof useDialogState<MediaLibraryRow>>
 
+function preloadLessonRoute(
+  router: ReturnType<typeof useRouter>,
+  lessonId: string,
+) {
+  void router
+    .preloadRoute({
+      to: '/lessons/$lessonId',
+      params: { lessonId },
+    })
+    .catch(() => undefined)
+}
+
 function CourseDetailComponent() {
   const loaderData = Route.useLoaderData()
   const { user } = Route.useRouteContext()
@@ -106,6 +118,7 @@ function CourseDetailComponent() {
         lessonDialog={lessonDialog}
         materialDialog={materialDialog}
         onOpenLesson={handleOpenLesson}
+        onPrefetchLesson={(lessonId) => preloadLessonRoute(router, lessonId)}
       />
       <CourseEditDeleteDialogs
         isAdmin={permissions.isAdmin}
@@ -177,11 +190,13 @@ function CourseSections({
   lessonDialog,
   materialDialog,
   onOpenLesson,
+  onPrefetchLesson,
 }: {
   data: CourseDetailData
   lessonDialog: LessonDialogState
   materialDialog: MaterialDialogState
   onOpenLesson: (lessonId: string) => void
+  onPrefetchLesson: (lessonId: string) => void
 }) {
   const { course, role, completedLessonIds, assignmentData, permissions } = data
   const materials = course.mediaFiles
@@ -204,6 +219,7 @@ function CourseSections({
       onEditLesson={(lesson) => lessonDialog.openDialog('edit', lesson)}
       onDeleteLesson={(lesson) => lessonDialog.openDialog('delete', lesson)}
       onOpenLesson={onOpenLesson}
+      onPrefetchLesson={onPrefetchLesson}
     />
   )
 }
