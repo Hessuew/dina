@@ -114,7 +114,9 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    member access and computed `db['select']` / `db.query['table']` forms and
    optional-chaining member and call access, generic TypeScript call forms, and Drizzle count helpers. Raw SQL table references are checked across the
    application source tree as well, so an injected handle cannot bypass the
-   repository seam through raw SQL execute calls.
+   repository seam through raw SQL execute calls. Supabase REST table selectors
+   are checked in literal, optional-chaining, computed-access, and dynamic
+   forms; Storage bucket selectors remain outside the table seam.
    Integration tests may use the real database for fixtures,
    but should import repository adapters through the shared barrel
    as well, so test spies exercise the same public seam as production callers;

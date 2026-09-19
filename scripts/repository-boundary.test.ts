@@ -155,7 +155,15 @@ function findSupabaseTableReferences(
   schemaTables: Array<SchemaTable>,
 ): Array<string> {
   const tableNames = new Set(schemaTables.map(({ sqlName }) => sqlName))
-  return [...source.matchAll(/\.\s*from\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/gi)]
+  const fromAccess = String.raw`(?:(?:\.\s*|\?\s*\.\s*)(?:from|\[\s*['"]from['"]\s*\])|\[\s*['"]from['"]\s*\])`
+  return [
+    ...source.matchAll(
+      new RegExp(
+        `${fromAccess}\\s*(?:\\?\\s*\\.\\s*)?\\(\\s*['"\\x60]([^'"\\x60]+)['"\\x60]\\s*\\)`,
+        'gi',
+      ),
+    ),
+  ]
     .map(([, table]) => table)
     .filter((table): table is string => tableNames.has(table))
 }
@@ -172,10 +180,12 @@ function findDynamicSupabaseTableReferences(source: string): Array<string> {
   const supabaseClient = String.raw`(?:getSupabase(?:Server|Admin)Client\s*\(\s*\)|(?:admin|supabase|supabaseAdmin|supabaseClient|client))`
   const literalArgument = /^['"`](?:[^'"`]|\\['"`])*['"`]$/
 
+  const fromAccess = String.raw`(?:(?:\.\s*|\?\s*\.\s*)(?:from|\[\s*['"]from['"]\s*\])|\[\s*['"]from['"]\s*\])`
+
   return [
     ...source.matchAll(
       new RegExp(
-        `${supabaseClient}\\s*(?:\\?\\.\\s*)?\\.from\\s*\\(\\s*([^)]*?)\\s*\\)`,
+        `${supabaseClient}\\s*${fromAccess}\\s*(?:\\?\\.\\s*)?\\(\\s*([^)]*?)\\s*\\)`,
         'g',
       ),
     ),
@@ -1066,6 +1076,17 @@ describe('utils repository boundaries', () => {
     expect(offenders).toEqual([])
   })
 
+  it('detects literal Supabase REST tables through optional and computed access', () => {
+    const schemaTables = findSchemaTables()
+
+    expect(
+      findSupabaseTableReferences(
+        "client?.from?.('profiles'); client['from']('enrollments'); client?.['from']?.('courses')",
+        schemaTables,
+      ),
+    ).toEqual(['profiles', 'enrollments', 'courses'])
+  })
+
   it('detects dynamically selected Supabase REST tables', () => {
     expect(
       findDynamicSupabaseTableReferences(
@@ -1087,6 +1108,11 @@ describe('utils repository boundaries', () => {
         "import { getSupabaseServerClient } from '@/utils/supabase'; getSupabaseServerClient().from('profiles')",
       ),
     ).toEqual([])
+    expect(
+      findDynamicSupabaseTableReferences(
+        "import { getSupabaseServerClient } from '@/utils/supabase'; getSupabaseServerClient()?.['from']?.(tableName)",
+      ),
+    ).toEqual(['tableName'])
   })
 
   it('keeps dynamically selected raw SQL tables behind repository or infrastructure seams', () => {
