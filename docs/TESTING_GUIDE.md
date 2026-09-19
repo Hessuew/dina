@@ -94,9 +94,10 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    including relation-backed `db.query.<table>` reads, direct CRUD calls,
    `.from(<table>)` sources, and raw SQL/interpolated table expressions — aligned
    with that repository's imported table. The raw-SQL guard also recognizes
-   qualified names and `USING`, `TRUNCATE`, and table-DDL references, and rejects
-   dynamic `sql.raw(...)` / `sql.identifier(...)` selectors whose table ownership
-   cannot be proven statically.
+   qualified names and `USING`, `REFERENCES`, `COPY`, `LOCK TABLE`, `TRUNCATE`, and
+   table-DDL references, including `ONLY` / `IF EXISTS` modifiers, and rejects dynamic
+   `sql.raw(...)` / `sql.identifier(...)` selectors whose table ownership cannot be
+   proven statically.
    Repositories must not import or re-export other repositories at runtime; services and explicit
    transaction modules compose table adapters. Type-only imports and re-exports remain allowed
    for shared transaction-client types.

@@ -140,7 +140,7 @@ function findRawSqlTableReferences(
   )
   return [
     ...source.matchAll(
-      /\b(?:from|join|update|into|using|truncate(?:\s+table)?|(?:alter|create|drop)\s+table)\s+(?:(?:["'][^"']+["']|[a-z_][a-z0-9_]*)\s*\.\s*)?["']?([a-z_][a-z0-9_]*)/gi,
+      /\b(?:from|join|update|into|using|references|copy|lock\s+table|truncate(?:\s+table)?|(?:alter|create|drop)\s+table)\s+(?:(?:if\s+(?:not\s+)?exists|only)\s+)*(?:(?:["'][^"']+["']|[a-z_][a-z0-9_]*)\s*\.\s*)?["']?([a-z_][a-z0-9_]*)/gi,
     ),
     ...source.matchAll(
       /\bsql\s*(?:(?:\.\s*|\?\.\s*)(?:raw|identifier)|\[\s*["'](?:raw|identifier)["']\s*\])\s*\(\s*["'`](?:[a-z_][a-z0-9_]*\s*\.\s*)?([a-z_][a-z0-9_]*)["'`]\s*\)/gi,
@@ -517,6 +517,32 @@ describe('utils repository boundaries', () => {
         schemaTables,
       ),
     ).toEqual(['notifications', 'announcements'])
+    expect(
+      findRawSqlTableReferences(
+        "sql`select * from only profiles join public.enrollments on true; update only profiles set role = 'student'; insert into enrollments default values; delete from only profiles`",
+        schemaTables,
+      ),
+    ).toEqual([
+      'profiles',
+      'enrollments',
+      'profiles',
+      'enrollments',
+      'profiles',
+    ])
+    expect(
+      findRawSqlTableReferences(
+        'sql`truncate table only notifications; alter table if exists only announcements add column archived_at timestamp; create table if not exists announcements (id uuid); drop table if exists announcements; lock table profiles; copy profiles from stdin; select 1 references enrollments`',
+        schemaTables,
+      ),
+    ).toEqual([
+      'notifications',
+      'announcements',
+      'announcements',
+      'announcements',
+      'profiles',
+      'profiles',
+      'enrollments',
+    ])
     expect(
       findRawSqlTableReferences(
         "db.select().from(sql.raw('public.profiles'))",

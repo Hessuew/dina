@@ -38,8 +38,9 @@ Every shared repository file is re-exported by that barrel, and the repository-b
 regression test keeps the file set and barrel exports in sync. That guard also checks
 table names referenced through SQL templates, interpolated table expressions, and literal
 `sql.raw(...)` identifiers, including whitespace-formatted calls, qualified names, and
-`USING`, `TRUNCATE`, and table-DDL forms, plus literal `sql.identifier(...)`
-calls, and normalizes aliased schema-table imports before checking references, so raw SQL
+`USING`, `REFERENCES`, `COPY`, `LOCK TABLE`, `TRUNCATE`, and table-DDL forms with
+`ONLY` / `IF EXISTS` modifiers, plus literal `sql.identifier(...)` calls, and normalizes
+aliased schema-table imports before checking references, so raw SQL
 or local renaming cannot bypass one-table ownership. Dynamic `sql.raw(...)` and
 `sql.identifier(...)` table selectors are also rejected because their ownership cannot be
 proven statically.
