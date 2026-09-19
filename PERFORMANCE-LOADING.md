@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **15 / 15 complete**
+Current implementation slices: **16 / 16 complete**
 
 ## Done
 
@@ -23,6 +23,7 @@ Current implementation slices: **15 / 15 complete**
 - ✅ Imperative lesson and assignment rows now also start route preloading on pointer-down, covering fast clicks and touch interactions where hover intent is unavailable.
 - ✅ Browser Sentry now loads through a shared dynamic boundary, keeping its large SDK out of the critical application entry while preserving client initialization, user context, and error capture.
 - ✅ Assignment detail now defers the manager-only submissions DataTable until the submissions panel renders, so student and non-managing staff navigations do not download the 132 KB table chunk.
+- ✅ Assignments index navigation now reuses the authenticated root role instead of refetching courses solely for role resolution, removing one server-function round trip.
 
 ## Remaining
 
