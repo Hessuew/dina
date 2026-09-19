@@ -260,7 +260,7 @@ export function AppSidebar({
 
   React.useEffect(() => {
     setOpenMobile(false)
-  }, [setOpenMobile])
+  }, [role, setOpenMobile, user?.id])
 
   const isTeacherOrAdmin = role === 'teacher' || role === 'admin'
 

@@ -203,7 +203,7 @@ function NavUserMenuContent({
 }
 
 export function NavUser({ user, onProfileUpdate }: NavUserProps) {
-  const { isMobile, setOpen } = useSidebar()
+  const { isMobile, setOpen, setOpenMobile } = useSidebar()
   const [profileModalOpen, setProfileModalOpen] = useState(false)
 
   if (!user) {
@@ -225,7 +225,10 @@ export function NavUser({ user, onProfileUpdate }: NavUserProps) {
               initials={initials}
               isMobile={isMobile}
               onOpenProfile={() => setProfileModalOpen(true)}
-              onLogoutClick={() => setOpen(false)}
+              onLogoutClick={() => {
+                setOpen(false)
+                setOpenMobile(false)
+              }}
             />
           </DropdownMenu>
         </SidebarMenuItem>
