@@ -155,23 +155,25 @@ function SubmissionStatusCard({
 
   return (
     <div className="border border-white/10 bg-white/4 px-4 py-4 text-sm">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
           Status
         </span>
         <StatusChip variant={vm.statusVariant} size="sm" />
       </div>
       {vm.showSubmittedAt && (
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
             Submitted
           </span>
-          <span className="text-xs text-[#AFA28F]">{vm.submittedAtLabel}</span>
+          <span className="text-xs break-words text-[#AFA28F]">
+            {vm.submittedAtLabel}
+          </span>
         </div>
       )}
       {vm.showGradeSection && (
         <>
-          <div className="mt-3 flex items-center justify-between">
+          <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-[0.68rem] tracking-widest text-[#8E816D] uppercase">
               Grade
             </span>
@@ -233,11 +235,12 @@ function SubmissionFormActions({
   onSaveSubmission: (submit: boolean) => void
 }) {
   return (
-    <div className="flex gap-3">
+    <div className="flex flex-col gap-3 sm:flex-row">
       <Button
         variant="outline"
         theme="dark"
         onClick={() => onSaveSubmission(false)}
+        className="w-full sm:w-auto"
         disabled={isSavingSubmission}
       >
         <SaveIcon className="size-3.5" />
@@ -246,6 +249,7 @@ function SubmissionFormActions({
       <Button
         theme="dark"
         onClick={() => onSaveSubmission(true)}
+        className="w-full sm:w-auto"
         disabled={isSavingSubmission}
       >
         <SendIcon className="size-3.5" />
