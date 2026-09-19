@@ -9,11 +9,7 @@ import { StatusChip } from '@/components/ui/status-chip'
 import { createButtonColumn } from '@/components/table/DataTable'
 import { useDialogState } from '@/hooks/useDialogState'
 import { useMutation } from '@/hooks/useMutation'
-import {
-  createOrUpdateSubmission,
-  getAssignment,
-  getAssignmentSubmissions,
-} from '@/utils/assignments'
+import { createOrUpdateSubmission, getAssignment } from '@/utils/assignments'
 import {
   buildInitialSubmissionFormData,
   deriveSubmissionPermissions,
@@ -43,17 +39,6 @@ const getAssignmentData = createServerFn({ method: 'POST' })
     }
   })
 
-const getSubmissionsData = createServerFn({ method: 'POST' })
-  .validator((d: { assignmentId: string }) => d)
-  .handler(async ({ data }) => {
-    try {
-      return await getAssignmentSubmissions({ data })
-    } catch (error) {
-      console.error('Failed to fetch assignment submissions:', error)
-      throw error
-    }
-  })
-
 export const Route = createFileRoute('/_authed/assignments/$assignmentId')({
   validateSearch: (search: Record<string, unknown>) => {
     return {
@@ -63,27 +48,9 @@ export const Route = createFileRoute('/_authed/assignments/$assignmentId')({
     }
   },
   loader: async ({ params }) => {
-    const assignmentData = await getAssignmentData({
+    return await getAssignmentData({
       data: { assignmentId: params.assignmentId },
     })
-
-    if (shouldLoadAssignmentSubmissions(assignmentData.permissions.canManage)) {
-      const submissionsData = await getSubmissionsData({
-        data: { assignmentId: params.assignmentId },
-      })
-
-      return {
-        ...assignmentData,
-        allSubmissions: submissionsData.submissions,
-      }
-    }
-
-    return {
-      ...assignmentData,
-      allSubmissions: [] as Awaited<
-        ReturnType<typeof getSubmissionsData>
-      >['submissions'],
-    }
   },
   component: AssignmentDetailComponent,
 })

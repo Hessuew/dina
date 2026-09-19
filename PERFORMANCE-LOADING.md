@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **10 / 10 complete**
+Current implementation slices: **11 / 11 complete**
 
 ## Done
 
@@ -18,6 +18,7 @@ Current implementation slices: **10 / 10 complete**
 - ✅ Lesson and assignment detail loaders now fetch the viewer profile concurrently with independent page data, removing one serial server-read step from the most common course → lesson → assignment flow.
 - ✅ Exam list and detail loaders now use the authenticated root route context for the user role instead of refetching courses, removing one redundant server request from both exam entry points.
 - ✅ Landing-page lecturer portraits now load only for the current and adjacent carousel items (six of twelve on desktop, three of twelve on mobile), deferring the remaining portrait assets until interaction. The built portrait set is about 614 KB; the initial desktop selection exposes about 310 KB.
+- ✅ Manager assignment detail loads now include the submissions panel data in the primary detail read, removing a second server-function round trip when opening an assignment as a course teacher or admin.
 
 ## Remaining
 

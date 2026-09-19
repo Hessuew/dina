@@ -541,6 +541,20 @@ describe('getAssignmentService (integration)', () => {
 
     expect(result.assignment.status).toBe('draft')
     expect(result.permissions.canManage).toBe(true)
+    expect(result.allSubmissions).toEqual([])
+  })
+
+  it('includes manager submissions in the assignment detail read', async () => {
+    const { teacherId, assignmentId, studentId } =
+      await seedPublishedAssignmentWithSubmission()
+
+    const result = await getAssignmentService({ assignmentId }, teacherId)
+
+    expect(result.allSubmissions).toHaveLength(1)
+    expect(result.allSubmissions[0].student).toMatchObject({
+      id: studentId,
+      fullName: 'Test User',
+    })
   })
 
   it('throws when the assignment does not exist', async () => {

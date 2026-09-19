@@ -355,15 +355,9 @@ async function loadAssignmentForViewer(
     })
   }
 
-  const courseWithTeachers = {
-    id: assignment.lesson.course.id,
-    title: assignment.lesson.course.title,
-    teacherIds: assignment.lesson.course.courseTeachers.map(
-      (teacher) => teacher.teacherId,
-    ),
-    teacher1Id: assignment.lesson.course.courseTeachers[0]?.teacherId ?? null,
-    teacher2Id: assignment.lesson.course.courseTeachers[1]?.teacherId ?? null,
-  }
+  const courseWithTeachers = buildAssignmentCourseWithTeachers(
+    assignment.lesson.course,
+  )
   const permissions = calculateEntityPermissions(
     profile.role,
     courseWithTeachers,
@@ -387,19 +381,35 @@ async function loadAssignmentForViewer(
     })
   }
 
-  const submission =
-    profile.role === 'student'
-      ? await findSubmissionByAssignmentAndStudent(data.assignmentId, userId)
-      : null
-
+  const { submission, allSubmissions } = await loadViewerSubmissions({
+    assignmentId: data.assignmentId,
+    userId,
+    role: profile.role,
+    canManage: permissions.canManage,
+  })
   return {
     assignment: {
       ...assignment,
       lesson: { ...assignment.lesson, course: courseWithTeachers },
     },
     submission,
+    allSubmissions,
     role: profile.role,
     permissions,
+  }
+}
+
+function buildAssignmentCourseWithTeachers(course: {
+  id: string
+  title: string
+  courseTeachers: Array<{ teacherId: string | null }>
+}) {
+  return {
+    id: course.id,
+    title: course.title,
+    teacherIds: course.courseTeachers.map((teacher) => teacher.teacherId),
+    teacher1Id: course.courseTeachers[0]?.teacherId ?? null,
+    teacher2Id: course.courseTeachers[1]?.teacherId ?? null,
   }
 }
 
@@ -513,6 +523,27 @@ async function loadAssignmentSubmissions(assignmentId: string) {
     if (!student) throw new Error('Submission student profile missing')
     return { ...submission, student }
   })
+}
+
+async function loadViewerSubmissions({
+  assignmentId,
+  userId,
+  role,
+  canManage,
+}: {
+  assignmentId: string
+  userId: string
+  role: string
+  canManage: boolean
+}) {
+  const [submission, allSubmissions] = await Promise.all([
+    role === 'student'
+      ? findSubmissionByAssignmentAndStudent(assignmentId, userId)
+      : Promise.resolve(null),
+    canManage ? loadAssignmentSubmissions(assignmentId) : Promise.resolve([]),
+  ])
+
+  return { submission, allSubmissions }
 }
 
 export async function createAssignmentService(
