@@ -1,22 +1,18 @@
 import { randomUUID } from 'node:crypto'
-import { getDb } from 'test/integration/db'
-import type { assignmentStatusEnum } from '@/db/schema'
-import { assignments } from '@/db/schema'
-
-type AssignmentStatus = (typeof assignmentStatusEnum.enumValues)[number]
+import type { AssignmentInsert } from '@/utils/repository'
+import { insertAssignment } from '@/utils/repository'
 
 export async function seedAssignment(overrides: {
   id?: string
   lessonId: string
   title?: string
   dueDate?: Date
-  maxGrade?: number
-  status?: AssignmentStatus
+  maxGrade?: AssignmentInsert['maxGrade']
+  status?: AssignmentInsert['status']
   description?: string
 }): Promise<string> {
   const id = overrides.id ?? randomUUID()
-  const db = await getDb()
-  await db.insert(assignments).values({
+  const assignment = await insertAssignment({
     id,
     lessonId: overrides.lessonId,
     title: overrides.title ?? 'Test Assignment',
@@ -29,5 +25,5 @@ export async function seedAssignment(overrides: {
       ? { description: overrides.description }
       : {}),
   })
-  return id
+  return assignment.id
 }

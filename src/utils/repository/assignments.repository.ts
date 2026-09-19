@@ -4,6 +4,8 @@ import type { AssignmentStatus } from '@/types/database.types'
 import { getDb } from '@/db'
 import { assignments } from '@/db/schema'
 
+export type AssignmentInsert = typeof assignments.$inferInsert
+
 export async function findAllAssignments() {
   const db = await getDb()
   return db.query.assignments.findMany()
@@ -64,14 +66,7 @@ export async function findPublishedAssignmentsByLessonIds(
   })
 }
 
-export async function insertAssignment(values: {
-  lessonId: string
-  title: string
-  description: string | null
-  dueDate: Date
-  maxGrade: number
-  status: 'draft'
-}) {
+export async function insertAssignment(values: AssignmentInsert) {
   const db = await getDb()
   const [assignment] = await db.insert(assignments).values(values).returning()
   return assignment
