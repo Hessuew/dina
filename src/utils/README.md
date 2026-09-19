@@ -21,8 +21,9 @@ template-literal, concatenated-literal dynamic, CommonJS, and
 runtime re-export database imports are reserved for those seams and are regression-tested by
 `scripts/repository-boundary.test.ts`.
 Repository queries must not use Drizzle relation loading (`with`), including
-computed `['with']` configuration, because that would read another table behind
-the owning adapter's single-table interface.
+quoted or computed key forms such as `"with":`, `['with']`, and ``[`with`]``,
+because that would read another table behind the owning adapter's single-table
+interface.
 Only `*.repository.ts` files in `repository/` are database seams; the shared
 barrel and helper files cannot issue persistence calls.
 Direct Drizzle operations on database handles are also reserved for those seams,

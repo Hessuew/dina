@@ -168,7 +168,8 @@ const computedMemberAccess = String.raw`(?:\?\s*\.\s*)?\[\s*['"]`
 const queryAccess = String.raw`(?:${memberAccess}query|${computedMemberAccess}query['"]\s*\])`
 const typeArguments = String.raw`(?:<[^()]*>)?`
 const optionalCallAccess = String.raw`(?:\?\s*\.\s*)?`
-const relationLoading = /(?:\bwith\s*:|\[\s*['"]with['"]\s*\]\s*:)/
+const relationLoading =
+  /(?:\bwith\s*:|['"`]\s*with\s*['"`]\s*:|\[\s*['"`]\s*with\s*['"`]\s*\]\s*:)/
 const tableCall = String.raw`(?:${memberAccess}(?:insert|update|delete|from)|${computedMemberAccess}(?:insert|update|delete|from)['"]\s*\])\s*${optionalCallAccess}${typeArguments}\(\s*([A-Za-z0-9_]+)\s*\)`
 
 function findTableReferences(
@@ -499,8 +500,17 @@ describe('utils repository boundaries', () => {
 
   it('detects computed Drizzle relation loading', () => {
     expect(
-      "db.query.profiles.findFirst({ ['with']: { accountSecurity: true } })",
-    ).toMatch(relationLoading)
+      relationLoading.test('db.query.profiles.findFirst({ with: {} })'),
+    ).toBe(true)
+    expect(
+      relationLoading.test('db.query.profiles.findFirst({ "with": {} })'),
+    ).toBe(true)
+    expect(
+      relationLoading.test("db.query.profiles.findFirst({ ['with']: {} })"),
+    ).toBe(true)
+    expect(
+      relationLoading.test('db.query.profiles.findFirst({ [`with`]: {} })'),
+    ).toBe(true)
   })
 
   it('detects dynamically selected Drizzle tables', () => {
