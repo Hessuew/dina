@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **16 / 16 complete**
+Current implementation slices: **17 / 17 complete**
 
 ## Done
 
@@ -24,6 +24,7 @@ Current implementation slices: **16 / 16 complete**
 - ✅ Browser Sentry now loads through a shared dynamic boundary, keeping its large SDK out of the critical application entry while preserving client initialization, user context, and error capture.
 - ✅ Assignment detail now defers the manager-only submissions DataTable until the submissions panel renders, so student and non-managing staff navigations do not download the 132 KB table chunk.
 - ✅ Assignments index navigation now reuses the authenticated root role instead of refetching courses solely for role resolution, removing one server-function round trip.
+- ✅ Dashboard now defers the optional create-course dialog into an 11.84 KB / 4.39 KB gzip chunk that is requested only when a teacher or admin opens the create action.
 
 ## Remaining
 
@@ -32,7 +33,7 @@ Current implementation slices: **16 / 16 complete**
 - ⬜ Audit the remaining oversized route chunks, especially the PDF path, and keep them off unrelated navigations.
 - ⬜ Re-run the measurements and push the finished work as a GitHub PR (do not merge automatically).
 
-Latest build audit: the main shared browser entry is 408.27 KB minified / 131.30 KB gzip, down from 464.55 KB / 149.25 KB. Sentry is now a deferred 476.28 KB / 156.08 KB chunk. PDF.js remains isolated to the library document viewer (487.96 KB minified / 148.26 KB gzip plus a 1.3 MB worker); these deferred assets do not load on the landing page.
+Latest build audit: the main shared browser entry is 408.25 KB minified / 131.27 KB gzip, down from 464.55 KB / 149.25 KB. The dashboard route is 30.34 KB minified / 10.14 KB gzip, with the optional CourseDialog deferred to an 11.84 KB / 4.39 KB gzip chunk. Sentry is now a deferred 476.28 KB / 156.08 KB chunk. PDF.js remains isolated to the library document viewer (487.96 KB minified / 148.26 KB gzip plus a 1.3 MB worker); these deferred assets do not load on the landing page.
 
 ## Browser baseline
 
