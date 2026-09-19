@@ -4,15 +4,29 @@ import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { courseTeachers } from '@/db/schema'
 
+async function insertCourseTeacherAssignmentRows(
+  executor: RepositoryTransactionClient | Awaited<ReturnType<typeof getDb>>,
+  courseId: string,
+  teacherIds: Array<string>,
+): Promise<void> {
+  await executor
+    .insert(courseTeachers)
+    .values(teacherIds.map((teacherId) => ({ courseId, teacherId })))
+}
+
 export async function insertCourseTeacherAssignments(
   courseId: string,
   teacherIds: Array<string>,
-  tx?: RepositoryTransactionClient,
 ): Promise<void> {
-  const db = tx ?? (await getDb())
-  await db
-    .insert(courseTeachers)
-    .values(teacherIds.map((teacherId) => ({ courseId, teacherId })))
+  await insertCourseTeacherAssignmentRows(await getDb(), courseId, teacherIds)
+}
+
+export async function insertCourseTeacherAssignmentsInTransaction(
+  tx: RepositoryTransactionClient,
+  courseId: string,
+  teacherIds: Array<string>,
+): Promise<void> {
+  await insertCourseTeacherAssignmentRows(tx, courseId, teacherIds)
 }
 
 export async function findCourseAssignmentsByTeacherIds(

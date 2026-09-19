@@ -64,7 +64,8 @@ export async function findEnrollmentEvaluationTotalsByEnrollmentIds(
     .groupBy(enrollmentEvaluations.enrollmentId)
 }
 
-export async function findAllEnrollmentEvaluationScores() {
+export async function findEnrollmentEvaluationsByScores(scores: Array<number>) {
+  if (scores.length === 0) return []
   const db = await getDb()
   return db
     .select({
@@ -73,6 +74,7 @@ export async function findAllEnrollmentEvaluationScores() {
       score: enrollmentEvaluations.score,
     })
     .from(enrollmentEvaluations)
+    .where(inArray(enrollmentEvaluations.score, scores))
 }
 
 export async function upsertEnrollmentEvaluation(

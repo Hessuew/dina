@@ -51,6 +51,15 @@ export async function findAllInvitations() {
   })
 }
 
+export async function findAcceptedInvitationIds(): Promise<Array<string>> {
+  const db = await getDb()
+  const rows = await db
+    .select({ id: invitations.id })
+    .from(invitations)
+    .where(eq(invitations.status, 'accepted'))
+  return rows.map((row) => row.id)
+}
+
 export async function insertInvitation(values: InvitationInsert) {
   const db = await getDb()
   const [invitation] = await db.insert(invitations).values(values).returning()

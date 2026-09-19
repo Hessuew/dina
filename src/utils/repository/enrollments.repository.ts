@@ -8,6 +8,8 @@ import {
   getTableColumns,
   ilike,
   inArray,
+  isNull,
+  notInArray,
   notLike,
   or,
   sql,
@@ -175,17 +177,58 @@ export async function findEnrollmentsWithInvitationSent() {
   })
 }
 
-export async function findEnrollmentsForEmailExport() {
+export async function findAllEnrollmentEmails(): Promise<Array<string>> {
   const db = await getDb()
-  return db.query.enrollments.findMany({
-    columns: {
-      email: true,
-      status: true,
-      invitationSent: true,
-      invitationId: true,
-    },
-    orderBy: (enrollment) => [asc(enrollment.createdAt)],
-  })
+  const rows = await db
+    .select({ email: enrollments.email })
+    .from(enrollments)
+    .orderBy(asc(enrollments.createdAt))
+  return rows.map((row) => row.email)
+}
+
+export async function findEnrollmentEmailsByStatus(
+  status: (typeof enrollments.$inferSelect)['status'],
+): Promise<Array<string>> {
+  const db = await getDb()
+  const rows = await db
+    .select({ email: enrollments.email })
+    .from(enrollments)
+    .where(eq(enrollments.status, status))
+    .orderBy(asc(enrollments.createdAt))
+  return rows.map((row) => row.email)
+}
+
+export async function findEnrollmentEmailsByInvitationIds(
+  invitationIds: Array<string>,
+): Promise<Array<string>> {
+  if (invitationIds.length === 0) return []
+  const db = await getDb()
+  const rows = await db
+    .select({ email: enrollments.email })
+    .from(enrollments)
+    .where(inArray(enrollments.invitationId, invitationIds))
+    .orderBy(asc(enrollments.createdAt))
+  return rows.map((row) => row.email)
+}
+
+export async function findUnregisteredEnrollmentEmails(
+  acceptedInvitationIds: Array<string>,
+): Promise<Array<string>> {
+  const db = await getDb()
+  const rows = await db
+    .select({ email: enrollments.email })
+    .from(enrollments)
+    .where(
+      and(
+        eq(enrollments.invitationSent, true),
+        or(
+          isNull(enrollments.invitationId),
+          notInArray(enrollments.invitationId, acceptedInvitationIds),
+        ),
+      ),
+    )
+    .orderBy(asc(enrollments.createdAt))
+  return rows.map((row) => row.email)
 }
 
 export async function findEnrollmentIdsExcludingDuplicates(): Promise<

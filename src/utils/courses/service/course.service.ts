@@ -575,12 +575,7 @@ export async function deleteCourseService(
     failureEvent: 'course_delete_failed',
     startedAt: performance.now(),
   }
-  const isUserAdmin = await authorizeCourseMutation(
-    context,
-    userId,
-    data.courseId,
-    'deleteCourse',
-  )
+  await authorizeCourseMutation(context, userId, data.courseId, 'deleteCourse')
   try {
     const course = await findCourseById(data.courseId)
     if (!course) {

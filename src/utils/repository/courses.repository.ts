@@ -6,13 +6,23 @@ import { courses } from '@/db/schema'
 
 export type CourseInsert = typeof courses.$inferInsert
 
-export async function insertCourse(
+async function insertCourseRow(
+  executor: RepositoryTransactionClient | Awaited<ReturnType<typeof getDb>>,
   values: CourseInsert,
-  tx?: RepositoryTransactionClient,
 ) {
-  const db = tx ?? (await getDb())
-  const [course] = await db.insert(courses).values(values).returning()
+  const [course] = await executor.insert(courses).values(values).returning()
   return course
+}
+
+export async function insertCourse(values: CourseInsert) {
+  return insertCourseRow(await getDb(), values)
+}
+
+export async function insertCourseInTransaction(
+  tx: RepositoryTransactionClient,
+  values: CourseInsert,
+) {
+  return insertCourseRow(tx, values)
 }
 
 export async function findCourseById(courseId: string) {
