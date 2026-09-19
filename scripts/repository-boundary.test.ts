@@ -385,6 +385,26 @@ function isDatabaseSeam(file: string): boolean {
   )
 }
 
+function applicationSourcePaths(): Array<string> {
+  return findSourceFilesIncludingTests(sourceDirectory).filter(
+    (sourcePath) => !sourcePath.endsWith('.test.ts'),
+  )
+}
+
+function collectOffenders(
+  paths: Array<string>,
+  baseDirectory: string,
+  collect: (source: string) => Array<string>,
+  isExempt: (file: string) => boolean = () => false,
+): Array<{ file: string; hits: Array<string> }> {
+  return paths
+    .map((path) => ({
+      file: path.slice(baseDirectory.length + 1),
+      hits: collect(readFileSync(path, 'utf8')),
+    }))
+    .filter(({ file, hits }) => hits.length > 0 && !isExempt(file))
+}
+
 describe('utils repository boundaries', () => {
   it('keeps only named repository adapters in the database seam', () => {
     expect(isDatabaseSeam('repository/profiles.repository.ts')).toBe(true)
@@ -936,146 +956,104 @@ describe('utils repository boundaries', () => {
 
   it('keeps runtime schema-table imports behind shared repositories across application source', () => {
     const schemaTables = findSchemaTables()
-    const offenders = findSourceFilesIncludingTests(sourceDirectory)
-      .filter((sourcePath) => !sourcePath.endsWith('.test.ts'))
-      .map((sourcePath) => ({
-        file: sourcePath.slice(sourceDirectory.length + 1),
-        imports: findRuntimeSchemaTableImports(
-          readFileSync(sourcePath, 'utf8'),
-          schemaTables,
-        ),
-      }))
-      .filter(
-        ({ file, imports }) =>
-          !file.startsWith(`utils/repository${sep}`) && imports.length > 0,
-      )
+    const offenders = collectOffenders(
+      applicationSourcePaths(),
+      sourceDirectory,
+      (source) => findRuntimeSchemaTableImports(source, schemaTables),
+      (file) => file.startsWith(`utils/repository${sep}`),
+    )
 
     expect(offenders).toEqual([])
   })
 
   it('keeps repositories independent from other runtime repository modules', () => {
-    const offenders = findRepositoryFiles(utilsDirectory)
-      .map((repositoryPath) => ({
-        file: repositoryPath.slice(utilsDirectory.length + 1),
-        imports: findRuntimeRepositoryImports(
-          readFileSync(repositoryPath, 'utf8'),
-        ),
-      }))
-      .filter(({ imports }) => imports.length > 0)
+    const offenders = collectOffenders(
+      findRepositoryFiles(utilsDirectory),
+      utilsDirectory,
+      findRuntimeRepositoryImports,
+    )
 
     expect(offenders).toEqual([])
   })
 
   it('keeps database clients behind repository or infrastructure seams', () => {
-    const offenders = findUtilityFiles(utilsDirectory)
-      .map((utilityPath) => ({
-        file: utilityPath.slice(utilsDirectory.length + 1),
-        imports: findDatabaseClientImports(readFileSync(utilityPath, 'utf8')),
-      }))
-      .filter(
-        ({ file, imports }) => imports.length > 0 && !isDatabaseSeam(file),
-      )
+    const offenders = collectOffenders(
+      findUtilityFiles(utilsDirectory),
+      utilsDirectory,
+      findDatabaseClientImports,
+      isDatabaseSeam,
+    )
 
     expect(offenders).toEqual([])
   })
 
   it('keeps database clients behind seams across all application source', () => {
-    const offenders = findSourceFilesIncludingTests(sourceDirectory)
-      .filter((sourcePath) => !sourcePath.endsWith('.test.ts'))
-      .map((sourcePath) => ({
-        file: sourcePath.slice(sourceDirectory.length + 1),
-        imports: findDatabaseClientImports(readFileSync(sourcePath, 'utf8')),
-      }))
-      .filter(
-        ({ file, imports }) => imports.length > 0 && !isDatabaseSeam(file),
-      )
+    const offenders = collectOffenders(
+      applicationSourcePaths(),
+      sourceDirectory,
+      findDatabaseClientImports,
+      isDatabaseSeam,
+    )
 
     expect(offenders).toEqual([])
   })
 
   it('keeps direct Drizzle operations behind repository or infrastructure seams', () => {
-    const offenders = findUtilityFiles(utilsDirectory)
-      .map((utilityPath) => ({
-        file: utilityPath.slice(utilsDirectory.length + 1),
-        operations: findDirectDatabaseOperations(
-          readFileSync(utilityPath, 'utf8'),
-        ),
-      }))
-      .filter(
-        ({ file, operations }) =>
-          operations.length > 0 && !isDatabaseSeam(file),
-      )
+    const offenders = collectOffenders(
+      findUtilityFiles(utilsDirectory),
+      utilsDirectory,
+      findDirectDatabaseOperations,
+      isDatabaseSeam,
+    )
 
     expect(offenders).toEqual([])
   })
 
   it('keeps direct schema-table references behind repository or infrastructure seams', () => {
     const schemaTables = findSchemaTables()
-    const offenders = findSourceFilesIncludingTests(sourceDirectory)
-      .filter((sourcePath) => !sourcePath.endsWith('.test.ts'))
-      .map((sourcePath) => ({
-        file: sourcePath.slice(sourceDirectory.length + 1),
-        references: findTableReferences(
-          readFileSync(sourcePath, 'utf8'),
-        ).filter((reference) =>
+    const offenders = collectOffenders(
+      applicationSourcePaths(),
+      sourceDirectory,
+      (source) =>
+        findTableReferences(source).filter((reference) =>
           schemaTables.some(({ symbol }) => symbol === reference),
         ),
-      }))
-      .filter(
-        ({ file, references }) =>
-          references.length > 0 && !isDatabaseSeam(file),
-      )
+      isDatabaseSeam,
+    )
 
     expect(offenders).toEqual([])
   })
 
   it('keeps dynamically selected tables behind repository or infrastructure seams', () => {
-    const offenders = findSourceFilesIncludingTests(sourceDirectory)
-      .filter((sourcePath) => !sourcePath.endsWith('.test.ts'))
-      .map((sourcePath) => ({
-        file: sourcePath.slice(sourceDirectory.length + 1),
-        references: findDynamicTableReferences(
-          readFileSync(sourcePath, 'utf8'),
-        ),
-      }))
-      .filter(
-        ({ file, references }) =>
-          references.length > 0 && !isDatabaseSeam(file),
-      )
+    const offenders = collectOffenders(
+      applicationSourcePaths(),
+      sourceDirectory,
+      findDynamicTableReferences,
+      isDatabaseSeam,
+    )
 
     expect(offenders).toEqual([])
   })
 
   it('keeps raw SQL table references behind repository or infrastructure seams', () => {
     const schemaTables = findSchemaTables()
-    const offenders = findSourceFilesIncludingTests(sourceDirectory)
-      .filter((sourcePath) => !sourcePath.endsWith('.test.ts'))
-      .map((sourcePath) => ({
-        file: sourcePath.slice(sourceDirectory.length + 1),
-        references: findRawSqlTableReferences(
-          readFileSync(sourcePath, 'utf8'),
-          schemaTables,
-        ),
-      }))
-      .filter(
-        ({ file, references }) =>
-          references.length > 0 && !isDatabaseSeam(file),
-      )
+    const offenders = collectOffenders(
+      applicationSourcePaths(),
+      sourceDirectory,
+      (source) => findRawSqlTableReferences(source, schemaTables),
+      isDatabaseSeam,
+    )
 
     expect(offenders).toEqual([])
   })
 
   it('keeps Supabase REST table references behind the shared repository seam', () => {
     const schemaTables = findSchemaTables()
-    const offenders = findSourceFilesIncludingTests(sourceDirectory)
-      .map((sourcePath) => ({
-        file: sourcePath.slice(sourceDirectory.length + 1),
-        references: findSupabaseTableReferences(
-          readFileSync(sourcePath, 'utf8'),
-          schemaTables,
-        ),
-      }))
-      .filter(({ references }) => references.length > 0)
+    const offenders = collectOffenders(
+      findSourceFilesIncludingTests(sourceDirectory),
+      sourceDirectory,
+      (source) => findSupabaseTableReferences(source, schemaTables),
+    )
 
     expect(offenders).toEqual([])
   })
@@ -1120,73 +1098,55 @@ describe('utils repository boundaries', () => {
   })
 
   it('keeps dynamically selected raw SQL tables behind repository or infrastructure seams', () => {
-    const offenders = findSourceFilesIncludingTests(sourceDirectory)
-      .filter((sourcePath) => !sourcePath.endsWith('.test.ts'))
-      .map((sourcePath) => ({
-        file: sourcePath.slice(sourceDirectory.length + 1),
-        references: findDynamicRawSqlTableReferences(
-          readFileSync(sourcePath, 'utf8'),
-        ),
-      }))
-      .filter(
-        ({ file, references }) =>
-          references.length > 0 && !isDatabaseSeam(file),
-      )
+    const offenders = collectOffenders(
+      applicationSourcePaths(),
+      sourceDirectory,
+      findDynamicRawSqlTableReferences,
+      isDatabaseSeam,
+    )
 
     expect(offenders).toEqual([])
   })
 
   it('keeps dynamically selected Supabase REST tables behind the shared repository seam', () => {
-    const offenders = findSourceFilesIncludingTests(sourceDirectory)
-      .map((sourcePath) => ({
-        file: sourcePath.slice(sourceDirectory.length + 1),
-        references: findDynamicSupabaseTableReferences(
-          readFileSync(sourcePath, 'utf8'),
-        ),
-      }))
-      .filter(({ references }) => references.length > 0)
+    const offenders = collectOffenders(
+      findSourceFilesIncludingTests(sourceDirectory),
+      sourceDirectory,
+      findDynamicSupabaseTableReferences,
+    )
 
     expect(offenders).toEqual([])
   })
 
   it('keeps runtime schema imports behind shared repositories', () => {
-    const offenders = findUtilityFiles(utilsDirectory)
-      .map((utilityPath) => ({
-        file: utilityPath.slice(utilsDirectory.length + 1),
-        imports: findRuntimeSchemaImports(readFileSync(utilityPath, 'utf8')),
-      }))
-      .filter(
-        ({ file, imports }) =>
-          !file.startsWith(`repository${sep}`) && imports.length > 0,
-      )
+    const offenders = collectOffenders(
+      findUtilityFiles(utilsDirectory),
+      utilsDirectory,
+      findRuntimeSchemaImports,
+      (file) => file.startsWith(`repository${sep}`),
+    )
 
     expect(offenders).toEqual([])
   })
 
   it('routes all utility callers through the shared repository barrel', () => {
-    const offenders = findUtilityFilesIncludingTests(utilsDirectory)
-      .map((utilityPath) => ({
-        file: utilityPath.slice(utilsDirectory.length + 1),
-        imports: findDirectRepositoryImports(readFileSync(utilityPath, 'utf8')),
-      }))
-      .filter(
-        ({ file, imports }) =>
-          !file.startsWith(`repository${sep}`) && imports.length > 0,
-      )
+    const offenders = collectOffenders(
+      findUtilityFilesIncludingTests(utilsDirectory),
+      utilsDirectory,
+      findDirectRepositoryImports,
+      (file) => file.startsWith(`repository${sep}`),
+    )
 
     expect(offenders).toEqual([])
   })
 
   it('routes all application callers through the shared repository barrel', () => {
-    const offenders = findSourceFilesIncludingTests(sourceDirectory)
-      .map((sourcePath) => ({
-        file: sourcePath.slice(sourceDirectory.length + 1),
-        imports: findDirectRepositoryImports(readFileSync(sourcePath, 'utf8')),
-      }))
-      .filter(
-        ({ file, imports }) =>
-          !file.startsWith(`utils/repository${sep}`) && imports.length > 0,
-      )
+    const offenders = collectOffenders(
+      findSourceFilesIncludingTests(sourceDirectory),
+      sourceDirectory,
+      findDirectRepositoryImports,
+      (file) => file.startsWith(`utils/repository${sep}`),
+    )
 
     expect(offenders).toEqual([])
   })
