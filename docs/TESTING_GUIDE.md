@@ -115,8 +115,8 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
    Integration tests may use the real database for fixtures,
    but should import repository adapters through the shared barrel
    as well, so test spies exercise the same public seam as production callers;
-   direct file imports are forbidden through aliased, relative, dynamic-import,
-   and CommonJS paths.
+   direct file imports are forbidden through aliased, relative, template-literal,
+   concatenated-literal dynamic-import, and CommonJS paths.
 3. **Domain** — `domain/<feature>.domain.ts`: pure mapping/normalization/rule
    functions. Inject time/IDs as params.
 4. **Service** — `service/<feature>.service.ts`: auth + orchestration; call

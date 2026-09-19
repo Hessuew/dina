@@ -211,6 +211,9 @@ function findDatabaseClientImports(source: string): Array<string> {
     ...source.matchAll(
       /(?:import|require)\s*\(\s*`(?:@\/db|(?:\.\.?\/)+db)(?:\/index)?(?:\.ts)?[^`]*`\s*\)/g,
     ),
+    ...source.matchAll(
+      /(?:import|require)\s*\(\s*['"](?:@\/db|(?:\.\.?\/)+db)(?:\/index)?(?:\.ts)?[^'"]*['"]\s*\+/g,
+    ),
   ].map(([match]) => match)
 }
 
@@ -221,6 +224,9 @@ function findRuntimeSchemaImports(source: string): Array<string> {
     ),
     ...source.matchAll(
       /(?:import|require)\s*\(\s*`(?:@\/db\/schema(?:\.ts)?(?:\/[^`]+)?|(?:\.\.?\/)+db\/schema(?:\.ts)?(?:\/[^`]+)?)`\s*\)/g,
+    ),
+    ...source.matchAll(
+      /(?:import|require)\s*\(\s*['"](?:@\/db\/schema(?:\.ts)?(?:\/[^'"]*)?|(?:\.\.?\/)+db\/schema(?:\.ts)?(?:\/[^'"]*)?)['"]\s*\+/g,
     ),
   ].map(([match]) => match)
 }
@@ -244,6 +250,12 @@ function findDirectRepositoryImports(source: string): Array<string> {
     ...source.matchAll(
       /(?:import|require)\s*\(\s*`(?:@\/utils\/repository\/[^`]+|@\/utils\/(?:[^`]+\/)*[^`]+\.repository|(?:\.\.?\/)+(?:[^`]+\/)*(?:repository\/[^`]+|[^`]+\.repository))`\s*\)/g,
     ),
+    ...source.matchAll(
+      /(?:import|require)\s*\(\s*['"](?:@\/utils\/repository\/[^'"]*|@\/utils\/(?:[^'"]+\/)*[^'"]+\.repository|(?:\.\.?\/)+(?:[^'"]+\/)*(?:repository\/[^'"]+|[^'"]+\.repository))['"]\s*\+/g,
+    ),
+    ...source.matchAll(
+      /(?:import|require)\s*\(\s*['"](?:@\/utils\/|(?:\.\.?\/)+)[^'"]*['"][^)]*\.repository[^)]*\)/g,
+    ),
   ].map(([match]) => match)
 }
 
@@ -265,6 +277,12 @@ function findRuntimeRepositoryImports(source: string): Array<string> {
     ),
     ...source.matchAll(
       /(?:import|require)\s*\(\s*`(?:@\/utils\/repository(?:\/[^`]+)?|@\/utils\/(?:[^`]+\/)*[^`]+\.repository|(?:\.\.?\/)+(?:[^`]+\/)*(?:repository(?:\/[^`]+)?|[^`]+\.repository))`\s*\)/g,
+    ),
+    ...source.matchAll(
+      /(?:import|require)\s*\(\s*['"](?:@\/utils\/repository(?:\/[^'"]*)?|@\/utils\/(?:[^'"]+\/)*[^'"]+\.repository|(?:\.\.?\/)+(?:[^'"]+\/)*(?:repository(?:\/[^'"]+)?|[^'"]+\.repository))['"]\s*\+/g,
+    ),
+    ...source.matchAll(
+      /(?:import|require)\s*\(\s*['"](?:@\/utils\/|(?:\.\.?\/)+)[^'"]*['"][^)]*\.repository[^)]*\)/g,
     ),
   ].map(([match]) => match)
 }
@@ -316,6 +334,9 @@ describe('utils repository boundaries', () => {
     expect(
       findDatabaseClientImports('import(`@/db/${moduleName}`)'),
     ).toHaveLength(1)
+    expect(
+      findDatabaseClientImports("import('@/db/' + moduleName)"),
+    ).toHaveLength(1)
     expect(findDatabaseClientImports("require('../db')")).toHaveLength(1)
     expect(
       findDatabaseClientImports("export { getDb } from '@/db'"),
@@ -333,6 +354,9 @@ describe('utils repository boundaries', () => {
     expect(findRuntimeSchemaImports("import('@/db/schema.ts')")).toHaveLength(1)
     expect(
       findRuntimeSchemaImports('import(`@/db/schema/${tableName}.schema`)'),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeSchemaImports("import('@/db/schema/' + tableName)"),
     ).toHaveLength(1)
     expect(findRuntimeSchemaImports("require('../db/schema')")).toHaveLength(1)
     expect(
@@ -557,6 +581,16 @@ describe('utils repository boundaries', () => {
     ).toHaveLength(1)
     expect(
       findDirectRepositoryImports(
+        "import('@/utils/repository/' + repositoryName)",
+      ),
+    ).toHaveLength(1)
+    expect(
+      findDirectRepositoryImports(
+        "import('@/utils/assignments/' + repositoryName + '.repository')",
+      ),
+    ).toHaveLength(1)
+    expect(
+      findDirectRepositoryImports(
         "import { findProfileById } from '@/utils/repository'",
       ),
     ).toHaveLength(0)
@@ -591,6 +625,16 @@ describe('utils repository boundaries', () => {
     expect(
       findRuntimeRepositoryImports(
         'import(`@/utils/repository/${repositoryName}.repository`)',
+      ),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeRepositoryImports(
+        "import('@/utils/repository/' + repositoryName)",
+      ),
+    ).toHaveLength(1)
+    expect(
+      findRuntimeRepositoryImports(
+        "import('@/utils/assignments/' + repositoryName + '.repository')",
       ),
     ).toHaveLength(1)
     expect(

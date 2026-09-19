@@ -17,7 +17,7 @@ services or explicit `transaction/` modules. Transaction modules may open a
 database transaction, but only coordinate table adapters; they do not import
 schema tables or issue Drizzle CRUD/query calls. Feature modules do not import
 `getDb()` or `withDbConnection()` directly. Static, extension-qualified,
-template-literal dynamic, CommonJS, and
+template-literal, concatenated-literal dynamic, CommonJS, and
 runtime re-export database imports are reserved for those seams and are regression-tested by
 `scripts/repository-boundary.test.ts`.
 Only `*.repository.ts` files in `repository/` are database seams; the shared
@@ -46,8 +46,8 @@ transaction-client types without creating a runtime dependency between table own
 The same regression guard scans all application source files, including raw SQL table
 references, so routes, components, schemas, and other non-utility modules cannot bypass
 these database or repository seams.
-Runtime schema-table imports, including dynamic imports, are likewise reserved
-for `repository/`; domain
+Runtime schema-table imports, including template-literal and concatenated-literal
+dynamic imports, are likewise reserved for `repository/`; domain
 modules may import schema tables only with `import type` for inferred row types.
 The boundary test scans the full application tree for runtime table imports and
 requires every schema table to have a shared adapter. `announcements.repository.ts`
