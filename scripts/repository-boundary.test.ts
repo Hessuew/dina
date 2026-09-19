@@ -132,7 +132,7 @@ function findRawSqlTableReferences(
       /\b(?:from|join|update|into|using|truncate(?:\s+table)?|(?:alter|create|drop)\s+table)\s+(?:(?:["'][^"']+["']|[a-z_][a-z0-9_]*)\s*\.\s*)?["']?([a-z_][a-z0-9_]*)/gi,
     ),
     ...source.matchAll(
-      /\bsql\s*(?:\.\s*|\?\.\s*)raw\s*\(\s*["'`](?:[a-z_][a-z0-9_]*\s*\.\s*)?([a-z_][a-z0-9_]*)["'`]\s*\)/gi,
+      /\bsql\s*(?:(?:\.\s*|\?\.\s*)(?:raw|identifier)|\[\s*["'](?:raw|identifier)["']\s*\])\s*\(\s*["'`](?:[a-z_][a-z0-9_]*\s*\.\s*)?([a-z_][a-z0-9_]*)["'`]\s*\)/gi,
     ),
   ]
     .map(([, sqlName]) => symbolsBySqlName.get(sqlName.toLowerCase()))
@@ -411,6 +411,12 @@ describe('utils repository boundaries', () => {
         schemaTables,
       ),
     ).toEqual(['profiles', 'announcements'])
+    expect(
+      findRawSqlTableReferences(
+        "db.select().from(sql.identifier('profiles')); db.select().from(sql?.identifier(`announcements`)); db.select().from(sql['identifier']('notifications'))",
+        schemaTables,
+      ),
+    ).toEqual(['profiles', 'announcements', 'notifications'])
   })
 
   it('detects direct Drizzle operations on database handles', () => {
