@@ -5,10 +5,8 @@ import { attendanceSessions } from '@/db/schema'
 
 export type AttendanceSessionRow = typeof attendanceSessions.$inferSelect
 
-export type AttendanceSessionsTransactionClient = RepositoryTransactionClient
-
 export async function lockAttendanceCourseInTransaction(
-  tx: AttendanceSessionsTransactionClient,
+  tx: RepositoryTransactionClient,
   courseId: string,
 ): Promise<void> {
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${courseId}))`)
@@ -73,7 +71,7 @@ export async function findOpenSessionOnCourse(
 }
 
 export async function findOpenAttendanceSessionInTransaction(
-  tx: AttendanceSessionsTransactionClient,
+  tx: RepositoryTransactionClient,
   courseId: string,
   now: Date,
 ): Promise<AttendanceSessionRow | null> {
@@ -91,7 +89,7 @@ export async function findOpenAttendanceSessionInTransaction(
 }
 
 export async function findAttendanceSessionByLessonInTransaction(
-  tx: AttendanceSessionsTransactionClient,
+  tx: RepositoryTransactionClient,
   lessonId: string,
 ): Promise<AttendanceSessionRow | null> {
   const rows = await tx
@@ -103,7 +101,7 @@ export async function findAttendanceSessionByLessonInTransaction(
 }
 
 export async function insertAttendanceSessionInTransaction(
-  tx: AttendanceSessionsTransactionClient,
+  tx: RepositoryTransactionClient,
   values: typeof attendanceSessions.$inferInsert,
 ): Promise<AttendanceSessionRow> {
   const rows = await tx.insert(attendanceSessions).values(values).returning()

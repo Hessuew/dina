@@ -4,7 +4,6 @@ import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 
 /* v8 ignore start */
-export type ProfilesTransactionClient = RepositoryTransactionClient
 
 const staffProfileColumns = {
   id: true,
@@ -166,7 +165,7 @@ export async function updateProfileBasic(
 }
 
 export async function updateProfileWithEmailChangeInTransaction(
-  tx: ProfilesTransactionClient,
+  tx: RepositoryTransactionClient,
   userId: string,
   data: { fullName: string; bio: string | null },
 ): Promise<void> {
@@ -177,7 +176,7 @@ export async function updateProfileWithEmailChangeInTransaction(
 }
 
 export async function completeEmailChangeInTransaction(
-  tx: ProfilesTransactionClient,
+  tx: RepositoryTransactionClient,
   userId: string,
   newEmail: string,
 ): Promise<void> {

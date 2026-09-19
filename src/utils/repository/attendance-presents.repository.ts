@@ -4,7 +4,6 @@ import { getDb } from '@/db'
 import { attendancePresents } from '@/db/schema'
 
 export type AttendancePresentRow = typeof attendancePresents.$inferSelect
-type AttendancePresentsTransactionClient = RepositoryTransactionClient
 
 export async function findPresentsByStudentIds(studentIds: Array<string>) {
   if (studentIds.length === 0) return []
@@ -66,7 +65,7 @@ export async function findPresent(
 }
 
 export async function findPresentInTransaction(
-  tx: AttendancePresentsTransactionClient,
+  tx: RepositoryTransactionClient,
   sessionId: string,
   studentId: string,
 ): Promise<AttendancePresentRow | null> {
@@ -84,7 +83,7 @@ export async function findPresentInTransaction(
 }
 
 export async function insertPresentInTransaction(
-  tx: AttendancePresentsTransactionClient,
+  tx: RepositoryTransactionClient,
   sessionId: string,
   studentId: string,
 ): Promise<AttendancePresentRow | null> {
@@ -99,7 +98,7 @@ export async function insertPresentInTransaction(
 }
 
 export async function deletePresentInTransaction(
-  tx: AttendancePresentsTransactionClient,
+  tx: RepositoryTransactionClient,
   sessionId: string,
   studentId: string,
 ): Promise<Array<{ id: string }>> {

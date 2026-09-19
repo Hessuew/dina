@@ -4,10 +4,8 @@ import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { courseTeachers } from '@/db/schema'
 
-export type CourseTeachersTransactionClient = RepositoryTransactionClient
-
 export async function insertCourseTeacherAssignmentsInTransaction(
-  tx: CourseTeachersTransactionClient,
+  tx: RepositoryTransactionClient,
   courseId: string,
   teacherIds: [string, string],
 ) {

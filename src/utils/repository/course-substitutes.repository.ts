@@ -3,11 +3,9 @@ import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { courseSubstitutes } from '@/db/schema'
 
-export type CourseSubstitutesTransactionClient = RepositoryTransactionClient
-
 /* v8 ignore start */
 export async function insertCourseSubstituteInTransaction(
-  tx: CourseSubstitutesTransactionClient,
+  tx: RepositoryTransactionClient,
   values: Pick<
     typeof courseSubstitutes.$inferInsert,
     'courseId' | 'substituteTeacherId' | 'absentTeacherId'

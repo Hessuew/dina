@@ -1,7 +1,7 @@
 import type {
   ExamQuestionOptionInput,
   ExamQuestionRow,
-  ExamQuestionsTransactionClient,
+  RepositoryTransactionClient,
 } from '@/utils/repository'
 import { getDb } from '@/db'
 import {
@@ -34,7 +34,7 @@ type SaveExamChangesData = {
 }
 
 async function findMissingQuestionId(
-  tx: ExamQuestionsTransactionClient,
+  tx: RepositoryTransactionClient,
   data: SaveExamChangesData,
 ): Promise<string | undefined> {
   const referencedIds = [
@@ -55,7 +55,7 @@ async function findMissingQuestionId(
 }
 
 async function deleteQuestionsInTransaction(
-  tx: ExamQuestionsTransactionClient,
+  tx: RepositoryTransactionClient,
   data: SaveExamChangesData,
 ): Promise<void> {
   await deleteExamQuestionsInTransaction(
@@ -66,7 +66,7 @@ async function deleteQuestionsInTransaction(
 }
 
 async function updateQuestionInTransaction(
-  tx: ExamQuestionsTransactionClient,
+  tx: RepositoryTransactionClient,
   examId: string,
   question: ExamChangesQuestion & { questionId: string },
 ): Promise<void> {
@@ -84,7 +84,7 @@ async function updateQuestionInTransaction(
 }
 
 async function insertQuestionInTransaction(
-  tx: ExamQuestionsTransactionClient,
+  tx: RepositoryTransactionClient,
   examId: string,
   question: ExamChangesQuestion,
 ): Promise<void> {
@@ -102,7 +102,7 @@ async function insertQuestionInTransaction(
 }
 
 async function saveQuestionsInTransaction(
-  tx: ExamQuestionsTransactionClient,
+  tx: RepositoryTransactionClient,
   data: SaveExamChangesData,
 ): Promise<void> {
   for (const question of data.questions) {

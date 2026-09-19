@@ -3,12 +3,10 @@ import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { enrollmentEvaluations } from '@/db/schema'
 
-export type EnrollmentEvaluationsTransactionClient = RepositoryTransactionClient
-
 /* v8 ignore start */
 
 export async function findEnrollmentEvaluationsByEnrollmentIdsInTransaction(
-  tx: EnrollmentEvaluationsTransactionClient,
+  tx: RepositoryTransactionClient,
   enrollmentIds: Array<string>,
 ) {
   if (enrollmentIds.length === 0) return []

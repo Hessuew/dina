@@ -8,8 +8,6 @@ export type ExamQuestionWrite = Pick<
   ExamQuestionRow,
   'type' | 'prompt' | 'orderIndex' | 'points'
 >
-export type ExamQuestionsTransactionClient = RepositoryTransactionClient
-
 /* v8 ignore start */
 export async function findExamQuestionsByExamId(
   examId: string,
@@ -23,7 +21,7 @@ export async function findExamQuestionsByExamId(
 }
 
 export async function findExistingExamQuestionIdsInTransaction(
-  tx: ExamQuestionsTransactionClient,
+  tx: RepositoryTransactionClient,
   examId: string,
   questionIds: Array<string>,
 ): Promise<Array<string>> {
@@ -41,7 +39,7 @@ export async function findExistingExamQuestionIdsInTransaction(
 }
 
 export async function deleteExamQuestionsInTransaction(
-  tx: ExamQuestionsTransactionClient,
+  tx: RepositoryTransactionClient,
   examId: string,
   questionIds: Array<string>,
 ): Promise<void> {
@@ -57,7 +55,7 @@ export async function deleteExamQuestionsInTransaction(
 }
 
 export async function updateExamQuestionInTransaction(
-  tx: ExamQuestionsTransactionClient,
+  tx: RepositoryTransactionClient,
   examId: string,
   questionId: string,
   values: ExamQuestionWrite,
@@ -71,7 +69,7 @@ export async function updateExamQuestionInTransaction(
 }
 
 export async function insertExamQuestionInTransaction(
-  tx: ExamQuestionsTransactionClient,
+  tx: RepositoryTransactionClient,
   examId: string,
   values: ExamQuestionWrite,
 ): Promise<ExamQuestionRow> {

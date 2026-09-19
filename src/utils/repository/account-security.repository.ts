@@ -3,8 +3,6 @@ import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { accountSecurity } from '@/db/schema'
 
-export type AccountSecurityTransactionClient = RepositoryTransactionClient
-
 /* v8 ignore start */
 export async function findLastEmailChangeRequestAt(userId: string) {
   const db = await getDb()
@@ -30,7 +28,7 @@ export async function findEmailChangeToken(tokenHash: string) {
 }
 
 export async function upsertEmailChangeTokensInTransaction(
-  tx: AccountSecurityTransactionClient,
+  tx: RepositoryTransactionClient,
   userId: string,
   values: {
     pendingEmail: string
@@ -59,7 +57,7 @@ export async function clearEmailChangeTokens(userId: string) {
 }
 
 export async function clearEmailChangeTokensInTransaction(
-  tx: AccountSecurityTransactionClient | Awaited<ReturnType<typeof getDb>>,
+  tx: RepositoryTransactionClient | Awaited<ReturnType<typeof getDb>>,
   userId: string,
 ) {
   await tx

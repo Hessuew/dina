@@ -49,7 +49,8 @@ Repositories must not import or re-export another repository at runtime; service
 modules compose table adapters instead. Type-only imports and re-exports are allowed for shared
 transaction-client types without creating a runtime dependency between table owners. The shared
 `repository/transaction-client.ts` helper owns the inferred transaction-client type so adapters
-do not duplicate its Drizzle type expression or depend on one another for transaction typing.
+and transaction modules use one type without duplicating its Drizzle type expression or making
+one table owner the type dependency of another.
 The same regression guard scans all application source files, including raw SQL table
 references, so routes, components, schemas, and other non-utility modules cannot bypass
 these database or repository seams.

@@ -3,9 +3,6 @@ import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { enrollmentReviewerAssignments } from '@/db/schema'
 
-export type EnrollmentReviewerAssignmentsTransactionClient =
-  RepositoryTransactionClient
-
 /* v8 ignore start */
 export async function findReviewerAssignmentForEnrollment(
   enrollmentId: string,
@@ -87,7 +84,7 @@ export async function findAllReviewerAssignments(): Promise<
 }
 
 export async function findReviewerAssignmentsByReviewerIdInTransaction(
-  tx: EnrollmentReviewerAssignmentsTransactionClient,
+  tx: RepositoryTransactionClient,
   reviewerId: string,
 ) {
   return tx
@@ -116,7 +113,7 @@ export async function bulkAssignEnrollments(
 }
 
 export async function updateReviewerAssignmentsInTransaction(
-  tx: EnrollmentReviewerAssignmentsTransactionClient,
+  tx: RepositoryTransactionClient,
   enrollmentIds: Array<string>,
   reviewerId: string,
   courseId: string,

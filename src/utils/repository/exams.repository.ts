@@ -4,8 +4,6 @@ import { getDb } from '@/db'
 import { exams } from '@/db/schema'
 
 export type ExamRow = typeof exams.$inferSelect
-export type ExamsTransactionClient = RepositoryTransactionClient
-
 /* v8 ignore start */
 export async function insertExam(
   data: Omit<typeof exams.$inferInsert, 'id' | 'createdAt' | 'updatedAt'>,
@@ -49,7 +47,7 @@ export async function setExamStatus(
 }
 
 export async function updateExamInTransaction(
-  tx: ExamsTransactionClient,
+  tx: RepositoryTransactionClient,
   values: {
     examId: string
     title: string

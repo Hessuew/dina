@@ -8,8 +8,6 @@ export type ExamQuestionOptionInput = Pick<
   typeof examQuestionOptions.$inferInsert,
   'label' | 'orderIndex' | 'isCorrect'
 > & { id?: string }
-export type ExamQuestionOptionsTransactionClient = RepositoryTransactionClient
-
 /* v8 ignore start */
 export async function findExamQuestionOptionsByQuestionIds(
   questionIds: Array<string>,
@@ -24,7 +22,7 @@ export async function findExamQuestionOptionsByQuestionIds(
 }
 
 export async function replaceExamQuestionOptionsInTransaction(
-  tx: ExamQuestionOptionsTransactionClient,
+  tx: RepositoryTransactionClient,
   questionId: string,
   options: Array<ExamQuestionOptionInput>,
 ): Promise<void> {
