@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **43 / 43 complete**
+Current implementation slices: **44 / 44 complete**
 
 ## Done
 
@@ -51,6 +51,7 @@ Current implementation slices: **43 / 43 complete**
 - ✅ Library media cards and management-table thumbnails now preload the media-detail route on pointer-down, so fast clicks and touch activation can begin loading the deferred document/PDF viewer before navigation.
 - ✅ Staff exam-grading attempt links now preload the attempt-detail route on pointer-down, so opening a submitted attempt can begin loading before a fast click or touch navigation.
 - ✅ Enrollment evaluation overlays now preload the full enrollment record route on pointer intent, so reviewers can start the detail-page load before clicking “Full record”.
+- ✅ Course detail now starts the viewer-profile lookup concurrently with the initial course read, removing one serial server-read step before course navigation can assemble its detail payload.
 
 ## Remaining
 
@@ -70,6 +71,8 @@ The dashboard course-card preload slice leaves bundle sizes unchanged: the cours
 The exam-grading attempt preload slice leaves bundle sizes unchanged and targets navigation request start time for staff reviewing attempts.
 
 The enrollment evaluation preload slice leaves bundle sizes unchanged and targets navigation request start time for reviewers opening a full enrollment record.
+
+The course-detail read now overlaps the independent viewer-profile and course-row lookups; bundle sizes are unchanged because this slice reduces server navigation latency rather than client payload size.
 
 ## Browser baseline
 
