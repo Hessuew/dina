@@ -1,6 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { eq } from 'drizzle-orm'
-import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
 import type { AuthorizationService } from '@/utils/authz/types'
 import {
@@ -12,7 +10,6 @@ import {
   seedInvitation,
   seedProfile,
 } from '@/../test/integration/seed'
-import { emailCampaignLocks, emailMessages, enrollments } from '@/db/schema'
 import { setEmailSender } from '@/utils/email'
 import {
   getEmailCampaignLocksService,
@@ -20,7 +17,12 @@ import {
   releaseEmailCampaignService,
   sendEmailCampaignService,
 } from '@/utils/email/service/email-campaign.service'
-import { findInvitationByEmail } from '@/utils/repository'
+import {
+  findEmailCampaignLock,
+  findEmailMessagesByEnrollmentId,
+  findEnrollmentById,
+  findInvitationByEmail,
+} from '@/utils/repository'
 import { AuthorizationError } from '@/utils/errors'
 import * as sharedRepository from '@/utils/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
@@ -54,19 +56,12 @@ async function previewThenSend(userId: string) {
 }
 
 async function findLogRows(enrollmentId: string) {
-  const db = await getDb()
-  return db
-    .select()
-    .from(emailMessages)
-    .where(eq(emailMessages.enrollmentId, enrollmentId))
+  return findEmailMessagesByEnrollmentId(enrollmentId)
 }
 
 async function findLockRows() {
-  const db = await getDb()
-  return db
-    .select()
-    .from(emailCampaignLocks)
-    .where(eq(emailCampaignLocks.campaign, 'invitation'))
+  const lock = await findEmailCampaignLock('invitation')
+  return lock ? [lock] : []
 }
 
 describe('previewEmailCampaignService (integration)', () => {
@@ -259,13 +254,11 @@ describe('sendEmailCampaignService (integration)', () => {
     expect(calls[0].inviteLink).toContain('/signup?token=')
     const invitation = await findInvitationByEmail('new@test.dev')
     expect(invitation?.status).toBe('pending')
-    const db = await getDb()
-    const [enrollment] = await db
-      .select()
-      .from(enrollments)
-      .where(eq(enrollments.id, enrollmentId))
-    expect(enrollment.invitationSent).toBe(true)
-    expect(enrollment.invitationId).toBe(invitation?.id)
+    const enrollment = await findEnrollmentById(enrollmentId)
+    expect(enrollment).toMatchObject({
+      invitationSent: true,
+      invitationId: invitation?.id,
+    })
     expect((await findLogRows(enrollmentId))[0]).toMatchObject({
       recipientEmail: 'new@test.dev',
       emailType: 'invitation',

@@ -5,6 +5,13 @@ import { emailCampaignLocks } from '@/db/schema'
 
 const LOCK_TTL_MS = 5 * 60 * 1000
 
+export async function findEmailCampaignLock(campaign: EmailCampaignType) {
+  const db = await getDb()
+  return db.query.emailCampaignLocks.findFirst({
+    where: eq(emailCampaignLocks.campaign, campaign),
+  })
+}
+
 /* v8 ignore start */
 export async function acquireEmailCampaignLock(
   campaign: EmailCampaignType,
