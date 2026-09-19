@@ -470,15 +470,15 @@ function LessonRowBody({
 
 function LessonRowMeta({ lesson }: { lesson: Lesson }) {
   return (
-    <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
+    <div className="mt-2 flex flex-col items-start gap-1 text-[0.68rem] text-[#8E816D] sm:flex-row sm:items-center sm:gap-4">
       {lesson.duration && (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 whitespace-nowrap">
           <ClockIcon className="size-3" />
           <span>{lesson.duration} min</span>
         </div>
       )}
       {lesson.scheduledTime && (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 whitespace-nowrap">
           <CalendarIcon className="size-3" />
           <ViewerDateTime value={lesson.scheduledTime} pattern="Pp" />
         </div>
