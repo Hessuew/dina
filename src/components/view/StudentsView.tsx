@@ -122,7 +122,7 @@ function StudentMobileCard({ student }: { student: StudentWithStats }) {
             <h3 className="truncate font-medium text-[#F8F4EC]">
               {student.fullName}
             </h3>
-            <p className="mt-1 text-[0.76rem] break-all text-[#AFA28F]">
+            <p className="mt-1 text-[0.7rem] break-all text-[#AFA28F] sm:text-[0.76rem]">
               {student.email}
             </p>
           </div>
