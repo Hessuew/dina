@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { getPgliteClient } from 'test/integration/db'
+import {
+  findProfileRoleById,
+  insertProfileOnConflict,
+} from '@/utils/repository'
 
 const client = getPgliteClient()
 const studentId = '00000000-0000-4000-8000-000000000001'
@@ -7,12 +11,18 @@ const adminId = '00000000-0000-4000-8000-000000000002'
 
 describe('profile role mutation guard', () => {
   beforeEach(async () => {
-    await client.exec(`
-      INSERT INTO profiles (id, email, full_name, role)
-      VALUES
-        ('${studentId}', 'student@example.com', 'Student', 'student'),
-        ('${adminId}', 'admin@example.com', 'Admin', 'admin');
-    `)
+    await insertProfileOnConflict({
+      id: studentId,
+      email: 'student@example.com',
+      fullName: 'Student',
+      role: 'student',
+    })
+    await insertProfileOnConflict({
+      id: adminId,
+      email: 'admin@example.com',
+      fullName: 'Admin',
+      role: 'admin',
+    })
   })
 
   it('rejects an authenticated non-Admin role change', async () => {
@@ -20,10 +30,8 @@ describe('profile role mutation guard', () => {
       updateRoleAs(studentId, 'authenticated', studentId, 'admin'),
     ).rejects.toMatchObject({ code: '42501' })
 
-    const { rows } = await client.query<{ role: string }>(
-      `SELECT role FROM profiles WHERE id = '${studentId}'`,
-    )
-    expect(rows[0]?.role).toBe('student')
+    const profile = await findProfileRoleById(studentId)
+    expect(profile?.role).toBe('student')
   })
 
   it('allows Admin, service-role, and trusted server changes', async () => {
@@ -31,10 +39,8 @@ describe('profile role mutation guard', () => {
     await updateRoleAs('', 'service_role', studentId, 'student')
     await updateRoleAs('', '', studentId, 'teacher')
 
-    const { rows } = await client.query<{ role: string }>(
-      `SELECT role FROM profiles WHERE id = '${studentId}'`,
-    )
-    expect(rows[0]?.role).toBe('teacher')
+    const profile = await findProfileRoleById(studentId)
+    expect(profile?.role).toBe('teacher')
   })
 })
 
