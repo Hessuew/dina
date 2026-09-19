@@ -1,4 +1,5 @@
 import { ArrowRight, BookOpenIcon } from 'lucide-react'
+import { useRouter } from '@tanstack/react-router'
 import type {
   CourseCardRole,
   CourseCardVariant,
@@ -243,6 +244,17 @@ function CourseCardFooter({
   isTeacher: boolean
   theme: CourseCardTheme
 }) {
+  const router = useRouter()
+
+  const preloadCourse = () => {
+    void router
+      .preloadRoute({
+        to: '/courses/$courseId',
+        params: { courseId },
+      })
+      .catch(() => undefined)
+  }
+
   return (
     <div
       className={cn(
@@ -263,6 +275,7 @@ function CourseCardFooter({
         data-course-navigation
         to="/courses/$courseId"
         params={{ courseId }}
+        onPointerDown={preloadCourse}
         className={cn(
           'flex size-8 cursor-pointer items-center justify-center border',
           theme.footerButton,
