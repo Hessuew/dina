@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useRouter } from '@tanstack/react-router'
 import { listOpenAttendanceForStudent, markPresent } from '@/utils/attendance'
 import { formatRemaining } from '@/utils/attendance/domain/attendance-window.domain'
 import { useServerCountdown } from '@/hooks/useServerCountdown'
@@ -191,10 +192,21 @@ function PresentSessionCard({
 }
 
 function OpenCourseButton({ courseId }: { courseId: string }) {
+  const router = useRouter()
+  const preloadCourse = () => {
+    void router
+      .preloadRoute({
+        to: '/courses/$courseId',
+        params: { courseId },
+      })
+      .catch(() => undefined)
+  }
+
   return (
     <ButtonLink
       to="/courses/$courseId"
       params={{ courseId }}
+      onPointerDown={preloadCourse}
       theme="dark"
       className="rounded-none"
     >

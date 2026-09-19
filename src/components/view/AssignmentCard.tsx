@@ -1,4 +1,5 @@
 import { ArrowRight, CalendarIcon } from 'lucide-react'
+import { useRouter } from '@tanstack/react-router'
 import type { StatusChipVariant } from '@/components/ui/status-chip'
 import type { Assignment } from '@/components/view/assignments-view/AssignmentsView'
 import type {
@@ -120,7 +121,24 @@ type AssignmentCardActionRowProps = {
   assignmentId: string
 }
 
-function AssignmentCardActionRow({ assignmentId }: AssignmentCardActionRowProps) {
+function AssignmentCardActionRow({
+  assignmentId,
+}: AssignmentCardActionRowProps) {
+  const router = useRouter()
+  const preloadAssignment = () => {
+    void router
+      .preloadRoute({
+        to: '/assignments/$assignmentId',
+        params: { assignmentId },
+        search: {
+          calendarMonth: undefined,
+          fromDashboard: false,
+          fromCalendar: false,
+        },
+      })
+      .catch(() => undefined)
+  }
+
   return (
     <div className="mt-3 flex items-center justify-between border-t border-white/8 pt-3">
       <span className="text-[0.68rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">
@@ -135,6 +153,7 @@ function AssignmentCardActionRow({ assignmentId }: AssignmentCardActionRowProps)
           fromDashboard: false,
           fromCalendar: false,
         }}
+        onPointerDown={preloadAssignment}
         className={cn(
           'flex size-8 cursor-pointer items-center justify-center border transition-all',
           'border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4]',
