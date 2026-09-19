@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto'
-import { and, eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AuthorizationService } from '@/utils/authz/types'
 import {
@@ -7,9 +6,11 @@ import {
   setAuthorizationService,
 } from '@/utils/authz'
 import { AuthorizationError } from '@/utils/errors'
-import { getDb } from '@/db'
-import { submissions as submissionsTable } from '@/db/schema'
-import { findAssignmentById, upsertSubmission } from '@/utils/repository'
+import {
+  findAssignmentById,
+  findSubmissionsByAssignmentId,
+  upsertSubmission,
+} from '@/utils/repository'
 import {
   createAssignmentService,
   createOrUpdateSubmissionService,
@@ -794,16 +795,7 @@ describe('createOrUpdateSubmissionService (integration)', () => {
       ),
     ])
 
-    const db = await getDb()
-    const rows = await db
-      .select()
-      .from(submissionsTable)
-      .where(
-        and(
-          eq(submissionsTable.assignmentId, assignmentId),
-          eq(submissionsTable.studentId, studentId),
-        ),
-      )
+    const rows = await findSubmissionsByAssignmentId(assignmentId)
     expect(rows).toHaveLength(1)
   })
 
