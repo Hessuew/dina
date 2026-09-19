@@ -1,13 +1,9 @@
-import { getDb } from 'test/integration/db'
-import { enrollmentReviewerAssignments } from '@/db/schema'
+import { bulkAssignEnrollments } from '@/utils/repository'
 
 export async function seedReviewerAssignment(
   enrollmentId: string,
   reviewerId: string,
   courseId?: string,
 ): Promise<void> {
-  const db = await getDb()
-  await db
-    .insert(enrollmentReviewerAssignments)
-    .values({ enrollmentId, reviewerId, courseId })
+  await bulkAssignEnrollments([{ enrollmentId, reviewerId, courseId }])
 }
