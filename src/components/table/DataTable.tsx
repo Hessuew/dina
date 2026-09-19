@@ -25,7 +25,7 @@ import type {
   PaginationState,
   SortingState,
 } from '@tanstack/react-table'
-import type { RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { Input } from '@/components/ui/input'
 import {
   Pagination,
@@ -92,6 +92,7 @@ type DataTableProps<TData extends TableRow> = {
   loadingLabel?: string
   emptyMessage?: string
   rowClassName?: (row: TData) => string
+  renderMobileRow?: (row: TData) => ReactNode
 }
 
 function SortIcon({ isSorted }: { isSorted: false | 'asc' | 'desc' }) {
@@ -302,6 +303,71 @@ function DataTableRows<TData extends TableRow>({
   )
 }
 
+function DataTableTable<TData extends TableRow>({
+  table,
+  columnCount,
+  maxRows,
+  emptyMessage,
+  rowClassName,
+}: {
+  table: TanstackTable<TData>
+  columnCount: number
+  maxRows: number | undefined
+  emptyMessage: string
+  rowClassName?: (row: TData) => string
+}) {
+  // React Compiler must not memoize this: it forwards a stable `table` ref to
+  // children that read live table state.
+  'use no memo'
+  return (
+    <Table
+      containerClassName={maxRows ? 'overflow-y-auto' : undefined}
+      containerStyle={
+        maxRows
+          ? { maxHeight: HEADER_HEIGHT_PX + maxRows * ROW_HEIGHT_PX }
+          : undefined
+      }
+    >
+      <DataTableHead table={table} maxRows={maxRows} />
+      <DataTableRows
+        table={table}
+        columnCount={columnCount}
+        emptyMessage={emptyMessage}
+        rowClassName={rowClassName}
+      />
+    </Table>
+  )
+}
+
+function DataTableMobileContent<TData extends TableRow>({
+  table,
+  emptyMessage,
+  renderMobileRow,
+}: {
+  table: TanstackTable<TData>
+  emptyMessage: string
+  renderMobileRow: (row: TData) => ReactNode
+}) {
+  // React Compiler must not memoize this: it reads live rows from a stable
+  // table ref that changes internally as filters and pagination update.
+  'use no memo'
+  const rows = table.getRowModel().rows
+  if (rows.length === 0) {
+    return (
+      <div className="border border-white/10 bg-[#151515]/88 px-4 py-12 text-center text-sm text-[#8E816D]">
+        {emptyMessage}
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {rows.map((row) => (
+        <div key={row.id}>{renderMobileRow(row.original)}</div>
+      ))}
+    </div>
+  )
+}
+
 function DataTableContent<TData extends TableRow>({
   table,
   columnCount,
@@ -310,6 +376,7 @@ function DataTableContent<TData extends TableRow>({
   loadingLabel,
   emptyMessage,
   rowClassName,
+  renderMobileRow,
 }: {
   table: TanstackTable<TData>
   columnCount: number
@@ -318,10 +385,8 @@ function DataTableContent<TData extends TableRow>({
   loadingLabel: string
   emptyMessage: string
   rowClassName?: (row: TData) => string
+  renderMobileRow?: (row: TData) => ReactNode
 }) {
-  // React Compiler must not memoize this: it forwards a stable `table` ref to
-  // children that read live table state.
-  'use no memo'
   return (
     <div className={DATA_TABLE_FRAME_CLASS}>
       {isLoading && (
@@ -330,22 +395,34 @@ function DataTableContent<TData extends TableRow>({
           {loadingLabel}
         </div>
       )}
-      <Table
-        containerClassName={maxRows ? 'overflow-y-auto' : undefined}
-        containerStyle={
-          maxRows
-            ? { maxHeight: HEADER_HEIGHT_PX + maxRows * ROW_HEIGHT_PX }
-            : undefined
-        }
-      >
-        <DataTableHead table={table} maxRows={maxRows} />
-        <DataTableRows
+      {renderMobileRow ? (
+        <>
+          <div className="p-3 md:hidden">
+            <DataTableMobileContent
+              table={table}
+              emptyMessage={emptyMessage}
+              renderMobileRow={renderMobileRow}
+            />
+          </div>
+          <div className="hidden md:block">
+            <DataTableTable
+              table={table}
+              columnCount={columnCount}
+              maxRows={maxRows}
+              emptyMessage={emptyMessage}
+              rowClassName={rowClassName}
+            />
+          </div>
+        </>
+      ) : (
+        <DataTableTable
           table={table}
           columnCount={columnCount}
+          maxRows={maxRows}
           emptyMessage={emptyMessage}
           rowClassName={rowClassName}
         />
-      </Table>
+      )}
     </div>
   )
 }
@@ -745,6 +822,69 @@ function useDataTableState<TData extends TableRow>({
   }
 }
 
+type DataTableControllerArgs<TData extends TableRow> = {
+  columns: Array<ColumnDef<TData, any>>
+  data: Array<TData>
+  rowCount: number | undefined
+  initialSearch: string
+  initialPage: number | undefined
+  initialPageSize: number
+  initialSortBy: string | undefined
+  initialSortDir: 'asc' | 'desc'
+  onSearchChange?: (search: string) => void
+  onSortingChange?: (sortBy: string | null, sortDir: 'asc' | 'desc') => void
+  onPageChange?: (page: number) => void
+  onPageSizeChange?: (pageSize: number) => void
+}
+
+function useDataTableController<TData extends TableRow>({
+  columns,
+  data,
+  rowCount,
+  initialSearch,
+  initialPage,
+  initialPageSize,
+  initialSortBy,
+  initialSortDir,
+  onSearchChange,
+  onSortingChange,
+  onPageChange,
+  onPageSizeChange,
+}: DataTableControllerArgs<TData>) {
+  const isServerMode = rowCount !== undefined
+  const { tableTopRef, globalFilter, table } = useDataTableState({
+    columns,
+    data,
+    rowCount,
+    initialSearch,
+    initialPage,
+    initialPageSize,
+    initialSortBy,
+    initialSortDir,
+    isServerMode,
+    onSearchChange,
+    onSortingChange,
+    onPageChange,
+    onPageSizeChange,
+  })
+
+  return {
+    tableTopRef,
+    globalFilter,
+    table,
+    isServerMode,
+    paginationInfo: derivePaginationInfo(table, rowCount),
+  }
+}
+
+type DataTableController<TData extends TableRow> = {
+  tableTopRef: RefObject<HTMLDivElement | null>
+  globalFilter: string
+  table: TanstackTable<TData>
+  isServerMode: boolean
+  paginationInfo: PaginationDisplayInfo
+}
+
 type PaginationDisplayInfo = ReturnType<typeof derivePaginationInfo>
 
 type DataTableFrameProps<TData extends TableRow> = {
@@ -759,6 +899,7 @@ type DataTableFrameProps<TData extends TableRow> = {
   loadingLabel: string
   emptyMessage: string
   rowClassName?: (row: TData) => string
+  renderMobileRow?: (row: TData) => ReactNode
   pagination: PaginationDisplayInfo
 }
 
@@ -776,6 +917,7 @@ function DataTableFrame<TData extends TableRow>({
   loadingLabel,
   emptyMessage,
   rowClassName,
+  renderMobileRow,
   pagination,
 }: DataTableFrameProps<TData>) {
   // React Compiler must not memoize this: it forwards a stable `table` ref to
@@ -805,6 +947,7 @@ function DataTableFrame<TData extends TableRow>({
         loadingLabel={loadingLabel}
         emptyMessage={emptyMessage}
         rowClassName={rowClassName}
+        renderMobileRow={renderMobileRow}
       />
 
       <PaginationFooter table={table} {...pagination} />
@@ -812,31 +955,76 @@ function DataTableFrame<TData extends TableRow>({
   )
 }
 
-export function DataTable<TData extends TableRow>({
+type DataTableConnectedFrameProps<TData extends TableRow> = {
+  controller: DataTableController<TData>
+  isLoading: boolean
+  searchPlaceholder: string
+  columns: Array<ColumnDef<TData, any>>
+  maxRows: number | undefined
+  loadingLabel: string
+  emptyMessage: string
+  rowClassName?: (row: TData) => string
+  renderMobileRow?: (row: TData) => ReactNode
+}
+
+function DataTableConnectedFrame<TData extends TableRow>({
+  controller,
+  isLoading,
+  searchPlaceholder,
   columns,
-  data,
-  pageSize: initialPageSize = 10,
-  initialPage,
   maxRows,
-  onPageChange,
-  onPageSizeChange,
-  searchPlaceholder = 'Search…',
-  rowCount,
-  initialSearch = '',
-  initialSortBy,
-  initialSortDir = 'desc',
-  onSearchChange,
-  onSortingChange,
-  isLoading = false,
-  loadingLabel = 'Loading…',
-  emptyMessage = 'No results found',
+  loadingLabel,
+  emptyMessage,
   rowClassName,
-}: DataTableProps<TData>) {
+  renderMobileRow,
+}: DataTableConnectedFrameProps<TData>) {
+  return (
+    <DataTableFrame
+      tableTopRef={controller.tableTopRef}
+      isLoading={isLoading}
+      globalFilter={controller.globalFilter}
+      isServerMode={controller.isServerMode}
+      searchPlaceholder={searchPlaceholder}
+      table={controller.table}
+      columns={columns}
+      maxRows={maxRows}
+      loadingLabel={loadingLabel}
+      emptyMessage={emptyMessage}
+      rowClassName={rowClassName}
+      renderMobileRow={renderMobileRow}
+      pagination={controller.paginationInfo}
+    />
+  )
+}
+
+export function DataTable<TData extends TableRow>(
+  props: DataTableProps<TData>,
+) {
   // React Compiler must not memoize this: it derives pagination display data
   // from a live `table` instance whose identity stays stable.
   'use no memo'
-  const isServerMode = rowCount !== undefined
-  const { tableTopRef, globalFilter, table } = useDataTableState({
+  const {
+    columns,
+    data,
+    pageSize: initialPageSize = 10,
+    initialPage,
+    maxRows,
+    onPageChange,
+    onPageSizeChange,
+    searchPlaceholder = 'Search…',
+    rowCount,
+    initialSearch = '',
+    initialSortBy,
+    initialSortDir = 'desc',
+    onSearchChange,
+    onSortingChange,
+    isLoading = false,
+    loadingLabel = 'Loading…',
+    emptyMessage = 'No results found',
+    rowClassName,
+    renderMobileRow,
+  } = props
+  const controller = useDataTableController({
     columns,
     data,
     rowCount,
@@ -845,29 +1033,23 @@ export function DataTable<TData extends TableRow>({
     initialPageSize,
     initialSortBy,
     initialSortDir,
-    isServerMode,
     onSearchChange,
     onSortingChange,
     onPageChange,
     onPageSizeChange,
   })
 
-  const paginationInfo = derivePaginationInfo(table, rowCount)
+  const frameProps: DataTableConnectedFrameProps<TData> = {
+    controller,
+    isLoading,
+    searchPlaceholder,
+    columns,
+    maxRows,
+    loadingLabel,
+    emptyMessage,
+    rowClassName,
+    renderMobileRow,
+  }
 
-  return (
-    <DataTableFrame
-      tableTopRef={tableTopRef}
-      isLoading={isLoading}
-      globalFilter={globalFilter}
-      isServerMode={isServerMode}
-      searchPlaceholder={searchPlaceholder}
-      table={table}
-      columns={columns}
-      maxRows={maxRows}
-      loadingLabel={loadingLabel}
-      emptyMessage={emptyMessage}
-      rowClassName={rowClassName}
-      pagination={paginationInfo}
-    />
-  )
+  return <DataTableConnectedFrame {...frameProps} />
 }
