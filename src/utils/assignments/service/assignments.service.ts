@@ -178,7 +178,10 @@ async function withAssignmentReadTelemetry<T>(
 }
 
 async function loadLessonForViewer(data: GetLessonInput, userId: string) {
-  const lesson = await findLessonWithDetails(data.lessonId)
+  const [lesson, profile] = await Promise.all([
+    findLessonWithDetails(data.lessonId),
+    getUserProfile(userId),
+  ])
   if (!lesson) {
     throw new NotFoundError('Lesson not found', {
       code: 'LESSON_NOT_FOUND',
@@ -186,7 +189,6 @@ async function loadLessonForViewer(data: GetLessonInput, userId: string) {
     })
   }
 
-  const profile = await getUserProfile(userId)
   const isCompleted =
     profile.role === 'student'
       ? (
@@ -342,7 +344,10 @@ async function loadAssignmentForViewer(
   data: GetAssignmentInput,
   userId: string,
 ) {
-  const assignment = await findAssignmentWithCourseTeachers(data.assignmentId)
+  const [assignment, profile] = await Promise.all([
+    findAssignmentWithCourseTeachers(data.assignmentId),
+    getUserProfile(userId),
+  ])
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
       code: 'ASSIGNMENT_NOT_FOUND',
@@ -350,7 +355,6 @@ async function loadAssignmentForViewer(
     })
   }
 
-  const profile = await getUserProfile(userId)
   const courseWithTeachers = {
     id: assignment.lesson.course.id,
     title: assignment.lesson.course.title,
