@@ -4,6 +4,13 @@ import { getDb } from '@/db'
 import { accountSecurity } from '@/db/schema'
 
 /* v8 ignore start */
+export async function findAccountSecurityByProfileId(profileId: string) {
+  const db = await getDb()
+  return db.query.accountSecurity.findFirst({
+    where: eq(accountSecurity.profileId, profileId),
+  })
+}
+
 export async function findLastEmailChangeRequestAt(userId: string) {
   const db = await getDb()
   const row = await db.query.accountSecurity.findFirst({

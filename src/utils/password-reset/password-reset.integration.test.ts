@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { eq } from 'drizzle-orm'
 import type {
   EmailSender,
   PasswordResetEmailMessage,
@@ -12,8 +11,6 @@ import {
 } from '@/utils/password-reset/service/password-reset.service'
 import * as repository from '@/utils/repository'
 import { seedProfile } from '@/../test/integration/seed'
-import { getDb } from '@/../test/integration/db'
-import { accountSecurity } from '@/db/schema'
 
 const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
@@ -27,10 +24,7 @@ vi.mock('@/utils/supabase', () => ({
 }))
 
 async function findSecurity(profileId: string) {
-  const db = await getDb()
-  return db.query.accountSecurity.findFirst({
-    where: eq(accountSecurity.profileId, profileId),
-  })
+  return repository.findAccountSecurityByProfileId(profileId)
 }
 
 beforeEach(() => {
