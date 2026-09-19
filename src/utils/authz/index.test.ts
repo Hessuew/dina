@@ -12,10 +12,6 @@ vi.mock('@/utils/repository', () => ({
   findPrivilegesForUser: vi.fn(),
 }))
 
-vi.mock('@/db', () => ({
-  getDb: vi.fn(),
-}))
-
 vi.mock('@/utils/authz/route', () => ({
   protectRoute: vi.fn(),
 }))
