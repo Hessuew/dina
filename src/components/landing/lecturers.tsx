@@ -256,9 +256,11 @@ function getGemInitials(fullName: string): string {
 function GemLecturerCard({
   teacher,
   onClick,
+  loadImage = true,
 }: {
   teacher: TeacherWithCourse
   onClick: () => void
+  loadImage?: boolean
 }) {
   return (
     <div
@@ -269,7 +271,7 @@ function GemLecturerCard({
       <div className="pointer-events-none absolute inset-[7px] z-10 border border-[#C5A059]/20 transition-colors duration-300 group-hover:border-[#C5A059]/40" />
 
       {/* full-bleed image or initials fallback */}
-      <GemCardMedia teacher={teacher} />
+      <GemCardMedia loadImage={loadImage} teacher={teacher} />
 
       {/* top dark gradient for label readability */}
       <div className="absolute inset-x-0 top-0 h-28 bg-linear-to-b from-black/70 to-transparent" />
@@ -290,14 +292,21 @@ function GemLecturerCard({
   )
 }
 
-function GemCardMedia({ teacher }: { teacher: TeacherWithCourse }) {
-  if (teacher.avatarUrl) {
+function GemCardMedia({
+  teacher,
+  loadImage,
+}: {
+  teacher: TeacherWithCourse
+  loadImage: boolean
+}) {
+  if (teacher.avatarUrl && loadImage) {
     return (
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${teacher.avatarUrl})` }}
-        role="img"
-        aria-label={teacher.fullName}
+      <img
+        src={teacher.avatarUrl}
+        alt={teacher.fullName}
+        className="absolute inset-0 h-full w-full object-cover"
+        loading="lazy"
+        decoding="async"
       />
     )
   }
@@ -423,34 +432,34 @@ function GemsSectionHeader() {
       {/* Two-column header */}
       {/* Left: scriptures + two-line headline */}
       <LandingScriptureSectionHeader
-              eyebrowLabel="Teaching Faculty"
-              eyebrowTone="deep"
-              headlineColor="#1C1815"
-              headlineMaxW="max-w-[18ch]"
-              headline={
-                <>
-                  Twelve Lecturers
-                  <br />
-                  <span className="text-[#C5A059] italic">Twelve Stones</span>
-                </>
-              }
-              scriptures={[
-                {
-                  quote:
-                    'After these things the Lord appointed other seventy also, and sent them two and two before his face.',
-                  reference: 'Luke 10:1',
-                },
-                {
-                  quote:
-                    'As they ministered to the Lord, and fasted, the Holy Ghost said, Separate me Barnabas and Saul for the work whereunto I have called them. And when they had fasted and prayed, and laid their hands on them, they sent them away. So they, being sent forth by the Holy Ghost, departed unto Seleucia; and from thence they sailed to Cyprus.',
-                  reference: 'Acts 13:2-4',
-                },
-              ]}
-            />
+        eyebrowLabel="Teaching Faculty"
+        eyebrowTone="deep"
+        headlineColor="#1C1815"
+        headlineMaxW="max-w-[18ch]"
+        headline={
+          <>
+            Twelve Lecturers
+            <br />
+            <span className="text-[#C5A059] italic">Twelve Stones</span>
+          </>
+        }
+        scriptures={[
+          {
+            quote:
+              'After these things the Lord appointed other seventy also, and sent them two and two before his face.',
+            reference: 'Luke 10:1',
+          },
+          {
+            quote:
+              'As they ministered to the Lord, and fasted, the Holy Ghost said, Separate me Barnabas and Saul for the work whereunto I have called them. And when they had fasted and prayed, and laid their hands on them, they sent them away. So they, being sent forth by the Holy Ghost, departed unto Seleucia; and from thence they sailed to Cyprus.',
+            reference: 'Acts 13:2-4',
+          },
+        ]}
+      />
 
-            {/* Right: dark feature panel — active pair info + gems image */}
-            <GemsFeaturePanel />
-          </div>
+      {/* Right: dark feature panel — active pair info + gems image */}
+      <GemsFeaturePanel />
+    </div>
   )
 }
 
@@ -504,23 +513,23 @@ function GemsMobileCarousel({ carousel: m }: { carousel: Carousel }) {
   return (
     <div className="space-y-10 md:hidden">
       {/* MOBILE: one lecturer at a time over all 12 */}
-            <LandingActiveItemNav
-              className="items-center"
-              label="Active pair"
-              activeValue={`${PAIR_META[Math.floor(m.activeIndex / 2)].number}. ${PAIR_META[Math.floor(m.activeIndex / 2)].theme}`}
-              onPrevious={m.goToPrevious}
-              onNext={m.goToNext}
-              borderColor="border-[#1A1A1A]/10"
-              prevButtonClass="border-[#1A1A1A]/10 bg-[#FCFBF8]/74 text-[#1C1815] shadow-[0_22px_34px_-30px_rgba(0,0,0,0.24)] backdrop-blur-sm hover:border-[#C5A059]/50 hover:bg-white/80"
-              nextButtonClass="border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_26px_40px_-28px_rgba(0,0,0,0.4)] hover:border-[#D6B16E] hover:text-white"
-              labelColor="text-[#6e562d]"
-              valueColor="text-[#1C1815]"
-            />
-            <GemsMobileTrack carousel={m} />
-            <PairThemeButtons
-              activePairIndex={Math.floor(m.activeIndex / 2)}
-              onSelect={(index) => m.setActiveIndex(index * 2)}
-            />
+      <LandingActiveItemNav
+        className="items-center"
+        label="Active pair"
+        activeValue={`${PAIR_META[Math.floor(m.activeIndex / 2)].number}. ${PAIR_META[Math.floor(m.activeIndex / 2)].theme}`}
+        onPrevious={m.goToPrevious}
+        onNext={m.goToNext}
+        borderColor="border-[#1A1A1A]/10"
+        prevButtonClass="border-[#1A1A1A]/10 bg-[#FCFBF8]/74 text-[#1C1815] shadow-[0_22px_34px_-30px_rgba(0,0,0,0.24)] backdrop-blur-sm hover:border-[#C5A059]/50 hover:bg-white/80"
+        nextButtonClass="border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_26px_40px_-28px_rgba(0,0,0,0.4)] hover:border-[#D6B16E] hover:text-white"
+        labelColor="text-[#6e562d]"
+        valueColor="text-[#1C1815]"
+      />
+      <GemsMobileTrack carousel={m} />
+      <PairThemeButtons
+        activePairIndex={Math.floor(m.activeIndex / 2)}
+        onSelect={(index) => m.setActiveIndex(index * 2)}
+      />
     </div>
   )
 }
@@ -550,6 +559,7 @@ function GemsMobileTrack({ carousel: m }: { carousel: Carousel }) {
             <GemLecturerCard
               teacher={lecturer}
               onClick={() => m.setActiveIndex(index)}
+              loadImage={isVisible}
             />
           </div>
         )
@@ -596,27 +606,27 @@ function GemsDesktopCarousel({ carousel }: { carousel: Carousel }) {
   return (
     <div className="hidden space-y-10 md:block">
       {/* DESKTOP: pair 3D carousel (unchanged) */}
-            <LandingActiveItemNav
-              className="max-w-xs items-center"
-              label="Active pair"
-              activeValue={`${activePair.number}. ${activePair.theme}`}
-              onPrevious={goToPrevious}
-              onNext={goToNext}
-              borderColor="border-[#1A1A1A]/10"
-              prevButtonClass="border-[#1A1A1A]/10 bg-[#FCFBF8]/74 text-[#1C1815] shadow-[0_22px_34px_-30px_rgba(0,0,0,0.24)] backdrop-blur-sm hover:border-[#C5A059]/50 hover:bg-white/80"
-              nextButtonClass="border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_26px_40px_-28px_rgba(0,0,0,0.4)] hover:border-[#D6B16E] hover:text-white"
-              labelColor="text-[#6e562d]"
-              valueColor="text-[#1C1815]"
-            />
+      <LandingActiveItemNav
+        className="max-w-xs items-center"
+        label="Active pair"
+        activeValue={`${activePair.number}. ${activePair.theme}`}
+        onPrevious={goToPrevious}
+        onNext={goToNext}
+        borderColor="border-[#1A1A1A]/10"
+        prevButtonClass="border-[#1A1A1A]/10 bg-[#FCFBF8]/74 text-[#1C1815] shadow-[0_22px_34px_-30px_rgba(0,0,0,0.24)] backdrop-blur-sm hover:border-[#C5A059]/50 hover:bg-white/80"
+        nextButtonClass="border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] shadow-[0_26px_40px_-28px_rgba(0,0,0,0.4)] hover:border-[#D6B16E] hover:text-white"
+        labelColor="text-[#6e562d]"
+        valueColor="text-[#1C1815]"
+      />
 
-            {/* Pair carousel: 2 cards side by side per slot */}
-            <GemsDesktopTrack carousel={carousel} />
+      {/* Pair carousel: 2 cards side by side per slot */}
+      <GemsDesktopTrack carousel={carousel} />
 
-            {/* 6 theme buttons — single row */}
-            <PairThemeButtons
-              activePairIndex={activeIndex}
-              onSelect={setActiveIndex}
-            />
+      {/* 6 theme buttons — single row */}
+      <PairThemeButtons
+        activePairIndex={activeIndex}
+        onSelect={setActiveIndex}
+      />
     </div>
   )
 }
@@ -647,12 +657,14 @@ function GemsDesktopTrack({ carousel }: { carousel: Carousel }) {
                 <GemLecturerCard
                   teacher={gemLecturers[index * 2]}
                   onClick={() => setActiveIndex(index)}
+                  loadImage={Math.abs(offset) <= 1}
                 />
               </div>
               <div className="absolute inset-y-0 right-0 sm:w-[calc(50%-0.25rem)]">
                 <GemLecturerCard
                   teacher={gemLecturers[index * 2 + 1]}
                   onClick={() => setActiveIndex(index)}
+                  loadImage={Math.abs(offset) <= 1}
                 />
               </div>
             </div>

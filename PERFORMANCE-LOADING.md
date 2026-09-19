@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **9 / 9 complete**
+Current implementation slices: **10 / 10 complete**
 
 ## Done
 
@@ -17,6 +17,7 @@ Current implementation slices: **9 / 9 complete**
 - ✅ Lazy-loaded the staff-only eBook importer so the library landing route does not download its optional PDF-validation workflow until “Import eBooks” is opened, reducing that route chunk from 36.00 KB to 15.54 KB minified (11.93 KB to 5.85 KB gzip).
 - ✅ Lesson and assignment detail loaders now fetch the viewer profile concurrently with independent page data, removing one serial server-read step from the most common course → lesson → assignment flow.
 - ✅ Exam list and detail loaders now use the authenticated root route context for the user role instead of refetching courses, removing one redundant server request from both exam entry points.
+- ✅ Landing-page lecturer portraits now load only for the current and adjacent carousel items (six of twelve on desktop, three of twelve on mobile), deferring the remaining portrait assets until interaction. The built portrait set is about 614 KB; the initial desktop selection exposes about 310 KB.
 
 ## Remaining
 
@@ -25,6 +26,6 @@ Current implementation slices: **9 / 9 complete**
 - ⬜ Audit the remaining oversized route chunks, especially the PDF path, and keep them off unrelated navigations.
 - ⬜ Re-run the measurements and push the finished work as a GitHub PR (do not merge automatically).
 
-Latest build audit: PDF.js remains isolated to the library document viewer (about 480 KB minified plus a 1.3 MB worker); the shared browser entry remains about 456 KB minified. These are deferred assets, but still the next bundle-size targets after representative browser measurements are available.
+Latest build audit: the shared browser entry is 464.55 KB minified / 149.25 KB gzip. PDF.js remains isolated to the library document viewer (487.96 KB minified / 146.71 KB gzip plus a 1.3 MB worker); these are deferred assets and do not load on the landing page.
 
-Next slice: collect representative browser measurements for landing, dashboard, course, lesson, and assignment flows, then use the timings to prioritize the next route-level change.
+Next slice: audit remaining imperative detail navigation outside the core course/lesson/assignment flows, then collect representative browser measurements for landing, dashboard, course, lesson, and assignment flows to prioritize the next route-level change.
