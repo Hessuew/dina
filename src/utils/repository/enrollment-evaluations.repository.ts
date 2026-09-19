@@ -1,10 +1,9 @@
 import { asc, inArray, sql } from 'drizzle-orm'
+import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { enrollmentEvaluations } from '@/db/schema'
 
-export type EnrollmentEvaluationsTransactionClient = Parameters<
-  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
->[0]
+export type EnrollmentEvaluationsTransactionClient = RepositoryTransactionClient
 
 /* v8 ignore start */
 

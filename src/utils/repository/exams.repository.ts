@@ -1,11 +1,10 @@
 import { asc, eq } from 'drizzle-orm'
+import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { exams } from '@/db/schema'
 
 export type ExamRow = typeof exams.$inferSelect
-export type ExamsTransactionClient = Parameters<
-  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
->[0]
+export type ExamsTransactionClient = RepositoryTransactionClient
 
 /* v8 ignore start */
 export async function insertExam(

@@ -1,11 +1,10 @@
 /* v8 ignore start */
 import { and, eq, inArray } from 'drizzle-orm'
+import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { courseTeachers } from '@/db/schema'
 
-export type CourseTeachersTransactionClient = Parameters<
-  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
->[0]
+export type CourseTeachersTransactionClient = RepositoryTransactionClient
 
 export async function insertCourseTeacherAssignmentsInTransaction(
   tx: CourseTeachersTransactionClient,

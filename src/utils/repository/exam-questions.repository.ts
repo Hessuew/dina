@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { examQuestions } from '@/db/schema'
 
@@ -7,9 +8,7 @@ export type ExamQuestionWrite = Pick<
   ExamQuestionRow,
   'type' | 'prompt' | 'orderIndex' | 'points'
 >
-export type ExamQuestionsTransactionClient = Parameters<
-  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
->[0]
+export type ExamQuestionsTransactionClient = RepositoryTransactionClient
 
 /* v8 ignore start */
 export async function findExamQuestionsByExamId(

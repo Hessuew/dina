@@ -1,10 +1,9 @@
 import { eq, sql } from 'drizzle-orm'
+import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { accountSecurity } from '@/db/schema'
 
-export type AccountSecurityTransactionClient = Parameters<
-  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
->[0]
+export type AccountSecurityTransactionClient = RepositoryTransactionClient
 
 /* v8 ignore start */
 export async function findLastEmailChangeRequestAt(userId: string) {

@@ -1,12 +1,11 @@
 import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm'
+import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { attendanceSessions } from '@/db/schema'
 
 export type AttendanceSessionRow = typeof attendanceSessions.$inferSelect
 
-export type AttendanceSessionsTransactionClient = Parameters<
-  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
->[0]
+export type AttendanceSessionsTransactionClient = RepositoryTransactionClient
 
 export async function lockAttendanceCourseInTransaction(
   tx: AttendanceSessionsTransactionClient,

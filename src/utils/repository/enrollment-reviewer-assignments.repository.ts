@@ -1,10 +1,10 @@
 import { eq, inArray } from 'drizzle-orm'
+import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { enrollmentReviewerAssignments } from '@/db/schema'
 
-export type EnrollmentReviewerAssignmentsTransactionClient = Parameters<
-  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
->[0]
+export type EnrollmentReviewerAssignmentsTransactionClient =
+  RepositoryTransactionClient
 
 /* v8 ignore start */
 export async function findReviewerAssignmentForEnrollment(

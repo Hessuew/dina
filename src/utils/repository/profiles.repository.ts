@@ -1,11 +1,10 @@
 import { and, eq, inArray, ne } from 'drizzle-orm'
+import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { profiles } from '@/db/schema'
 
 /* v8 ignore start */
-export type ProfilesTransactionClient = Parameters<
-  Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]
->[0]
+export type ProfilesTransactionClient = RepositoryTransactionClient
 
 const staffProfileColumns = {
   id: true,

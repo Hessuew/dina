@@ -1,9 +1,10 @@
 import { and, eq, inArray } from 'drizzle-orm'
-import type { AttendanceSessionsTransactionClient } from './attendance-sessions.repository'
+import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { attendancePresents } from '@/db/schema'
 
 export type AttendancePresentRow = typeof attendancePresents.$inferSelect
+type AttendancePresentsTransactionClient = RepositoryTransactionClient
 
 export async function findPresentsByStudentIds(studentIds: Array<string>) {
   if (studentIds.length === 0) return []
@@ -65,7 +66,7 @@ export async function findPresent(
 }
 
 export async function findPresentInTransaction(
-  tx: AttendanceSessionsTransactionClient,
+  tx: AttendancePresentsTransactionClient,
   sessionId: string,
   studentId: string,
 ): Promise<AttendancePresentRow | null> {
@@ -83,7 +84,7 @@ export async function findPresentInTransaction(
 }
 
 export async function insertPresentInTransaction(
-  tx: AttendanceSessionsTransactionClient,
+  tx: AttendancePresentsTransactionClient,
   sessionId: string,
   studentId: string,
 ): Promise<AttendancePresentRow | null> {
@@ -98,7 +99,7 @@ export async function insertPresentInTransaction(
 }
 
 export async function deletePresentInTransaction(
-  tx: AttendanceSessionsTransactionClient,
+  tx: AttendancePresentsTransactionClient,
   sessionId: string,
   studentId: string,
 ): Promise<Array<{ id: string }>> {
