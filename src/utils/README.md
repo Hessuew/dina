@@ -24,8 +24,9 @@ Only `*.repository.ts` files in `repository/` are database seams; the shared
 barrel and helper files cannot issue persistence calls.
 Direct Drizzle operations on database handles are also reserved for those seams,
 including when a handle is injected or given an arbitrary variable name; feature
-services may compose repository results but may not issue `query`, CRUD, `execute`,
-or `transaction` calls themselves. The regression guard covers formatted and
+services may compose repository results but may not issue `query`, CRUD,
+distinct-select, CTE, `execute`, or `transaction` calls themselves. The
+regression guard covers formatted and
 optional-chaining member access plus computed `db['select']`,
 `db['query'].table`, and `db.query['table']` access as well as the usual dot
 notation. Dynamically selected query tables such as `db.query[tableName]` are
