@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getDb } from 'test/integration/db'
 import type { CreateZoomLinkInput } from '@/schemas/zoomLink.schema'
 import type { AuthorizationService } from '@/utils/authz/types'
 import {
@@ -14,7 +13,6 @@ import {
 } from '@/utils/zoomLink/service/zoomLink.service'
 import * as repository from '@/utils/repository'
 import { AuthorizationError, ValidationError } from '@/utils/errors'
-import { zoomLinks } from '@/db/schema'
 import {
   seedCourse,
   seedCourseTeacher,
@@ -311,7 +309,6 @@ describe('zoomLink service (integration)', () => {
 
   it('database rejects invalid section-owner combinations', async () => {
     const teacherId = await seedProfile({ role: 'teacher' })
-    const db = getDb()
     const shared = {
       title: 'Invalid',
       zoomUrl: 'https://zoom.us/j/invalid',
@@ -319,14 +316,14 @@ describe('zoomLink service (integration)', () => {
       passcode: 'invalid',
     }
     await expect(
-      db.insert(zoomLinks).values({
+      repository.insertZoomLink({
         ...shared,
         section: 'general_class_lecture',
         teacherId,
       }),
     ).rejects.toThrow()
     await expect(
-      db.insert(zoomLinks).values({ ...shared, section: 'teacher' }),
+      repository.insertZoomLink({ ...shared, section: 'teacher' }),
     ).rejects.toThrow()
   })
 
