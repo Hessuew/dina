@@ -71,6 +71,7 @@ describe('analytics boundary', () => {
       }),
     ).toBe(true)
     resetAnalyticsUser()
+    await vi.dynamicImportSettled()
 
     expect(posthog.init).toHaveBeenCalledOnce()
     expect(posthog.init).toHaveBeenCalledWith('project-key', {

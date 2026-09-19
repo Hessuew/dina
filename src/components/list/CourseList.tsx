@@ -1,12 +1,40 @@
 import { PlusIcon } from 'lucide-react'
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import type { Assignment } from '@/components/view/assignments-view/AssignmentsView'
 import { UpcomingAssignmentsList } from '@/components/list/upcoming-assignments-list/UpcomingAssignmentsList'
 import { CourseCard } from '@/components/card/course-card/CourseCard'
-import { CourseDialog } from '@/components/dialog/course-dialog/CourseDialog'
 import { Button } from '@/components/ui/button'
 import { UpcomingLessonsList } from '@/components/list/UpcomingLessonsList'
 import { buildCourseListViewModel } from '@/components/list/domain/course-list.domain'
+
+const CourseDialog = lazy(() =>
+  import('@/components/dialog/course-dialog/CourseDialog').then((module) => ({
+    default: module.CourseDialog,
+  })),
+)
+
+function CreateCourseDialog({
+  open,
+  onOpenChange,
+  isAdmin,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  isAdmin: boolean
+}) {
+  if (!open) return null
+
+  return (
+    <Suspense fallback={null}>
+      <CourseDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        mode="create"
+        isAdmin={isAdmin}
+      />
+    </Suspense>
+  )
+}
 
 type Course = {
   id: string
@@ -71,10 +99,9 @@ function CourseListInternal({
           )}
         </div>
 
-        <CourseDialog
+        <CreateCourseDialog
           open={showCreateDialog}
           onOpenChange={setShowCreateDialog}
-          mode="create"
           isAdmin={isAdmin}
         />
       </>
@@ -99,10 +126,9 @@ function CourseListInternal({
         </div>
       </div>
 
-      <CourseDialog
+      <CreateCourseDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
-        mode="create"
         isAdmin={isAdmin}
       />
     </>

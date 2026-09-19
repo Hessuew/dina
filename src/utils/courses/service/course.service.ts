@@ -170,11 +170,10 @@ async function loadCourseCatalog(
 }
 
 async function loadCourseDetail(
-  courseId: string,
+  course: NonNullable<Awaited<ReturnType<typeof findCourseById>>>,
   includeUnpublished: boolean,
-): Promise<CourseDetail | undefined> {
-  const course = await findCourseById(courseId)
-  if (!course) return undefined
+): Promise<CourseDetail> {
+  const courseId = course.id
   const [courseTeachers, lessons, mediaFiles] = await Promise.all([
     findCourseTeacherRowsByCourseIds([courseId]),
     findCourseLessonRows([courseId], includeUnpublished),
@@ -304,22 +303,20 @@ async function loadStudentCourseData(userId: string, course: CourseDetail) {
   }
 }
 
-async function loadCourse(
-  data: GetCourseInput,
-  userId: string,
-  profile: Awaited<ReturnType<typeof getUserProfile>>,
-) {
-  const course = await loadCourseDetail(
-    data.courseId,
-    profile.role !== 'student',
-  )
+async function loadCourse(data: GetCourseInput, userId: string) {
+  const [profile, courseRow] = await Promise.all([
+    getUserProfile(userId),
+    findCourseById(data.courseId),
+  ])
 
-  if (!course) {
+  if (!courseRow) {
     throw new NotFoundError('Course not found', {
       code: 'COURSE_NOT_FOUND',
       details: { courseId: data.courseId },
     })
   }
+
+  const course = await loadCourseDetail(courseRow, profile.role !== 'student')
 
   const teacherRefs = extractTeacherIds(course.courseTeachers)
   const permissions = calculateEntityPermissions(
@@ -338,21 +335,26 @@ async function loadCourse(
   const visibleCourse = permissions.canManage
     ? course
     : restrictCourseToPublishedContent(course)
-  const courseData =
+  const courseDataPromise =
     profile.role === 'student'
-      ? await loadStudentCourseData(userId, visibleCourse)
-      : {
+      ? loadStudentCourseData(userId, visibleCourse)
+      : Promise.resolve({
           completedLessonIds: [] as Array<string>,
           assignmentData: {
             totalAssignments: 0,
             submittedCount: 0,
             gradedCount: 0,
           },
-        }
-  const [signedCourse] = await signCourseAssets([visibleCourse])
+        })
+  const [courseData, signedCourses, mediaFiles] = await Promise.all([
+    courseDataPromise,
+    signCourseAssets([visibleCourse]),
+    serializeMediaRecords(visibleCourse.mediaFiles),
+  ])
+  const [signedCourse] = signedCourses
   const courseWithTeachers = {
     ...signedCourse,
-    mediaFiles: await serializeMediaRecords(visibleCourse.mediaFiles),
+    mediaFiles,
     ...teacherRefs,
   }
 
@@ -434,7 +436,7 @@ export async function getCourseService(data: GetCourseInput, userId: string) {
 
   return withCourseReadTelemetry(
     context,
-    async () => loadCourse(data, userId, await getUserProfile(userId)),
+    () => loadCourse(data, userId),
     (result) => ({
       role: result.role,
       lessonCount: result.course.lessons.length,

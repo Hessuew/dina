@@ -10,6 +10,7 @@ import {
   UserIcon,
   VideoIcon,
 } from 'lucide-react'
+import { useEffect } from 'react'
 import {
   buildEventDetailsViewModel,
   buildEventNavigation,
@@ -22,6 +23,7 @@ import type {
   CalendarEvent,
   SpecialEventCategory,
 } from '@/utils/calendar/calendar'
+import { useIntentPreload } from '@/hooks/useIntentPreload'
 import facultyBackground from '@/assets/images/bg/bg_lecturers.webp'
 import { Button } from '@/components/ui/button'
 import {
@@ -63,6 +65,14 @@ function useEventNavigation(
   onClose: () => void,
 ) {
   const router = useRouter()
+  const intentPreload = useIntentPreload()
+
+  useEffect(() => {
+    const nav = buildEventNavigation(event, currentMonth)
+    if (!nav) return
+    intentPreload(nav)
+  }, [currentMonth, event, intentPreload])
+
   return () => {
     const nav = buildEventNavigation(event, currentMonth)
     if (!nav) return

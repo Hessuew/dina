@@ -8,12 +8,10 @@ import {
 
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
-import * as Sentry from '@sentry/tanstackstart-react'
 import * as React from 'react'
 
 import type { UserContext } from '@/utils/auth/domain/user-context.domain'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar/Sidebar'
-import { AppSidebar } from '@/components/navigation/AppSidebar'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import appCss from '@/styles/app.css?url'
@@ -24,6 +22,7 @@ import { DefaultCatchBoundary } from '@/components/navigation/DefaultCatchBounda
 import { NotFound } from '@/components/navigation/NotFound'
 import { Header } from '@/components/navigation/Header'
 import { useSessionPrivateImageCacheUser } from '@/hooks/useSessionPrivateImageUrl'
+import { setBrowserSentryUser } from '@/utils/observability/browser-sentry'
 import {
   identifyAnalyticsUser,
   initializeAnalytics,
@@ -31,6 +30,12 @@ import {
 } from '@/utils/analytics'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(getRootUserContext)
+
+const LazyAppSidebar = React.lazy(() =>
+  import('@/components/navigation/AppSidebar').then(({ AppSidebar }) => ({
+    default: AppSidebar,
+  })),
+)
 
 export const Route = createRootRoute({
   beforeLoad: async () => {
@@ -106,11 +111,7 @@ function useSentryUser(user: UserContext | null | undefined) {
   useSessionPrivateImageCacheUser(user?.id)
 
   React.useEffect(() => {
-    if (user) {
-      Sentry.setUser({ id: user.id, email: user.email, role: user.role })
-    } else {
-      Sentry.setUser(null)
-    }
+    setBrowserSentryUser(user)
   }, [user])
 }
 
@@ -147,7 +148,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           enableKeyboardShortcut={Boolean(user)}
         >
           <TooltipProvider>
-            {user && <AppSidebar user={user} role={role} />}
+            {user && (
+              <React.Suspense fallback={null}>
+                <LazyAppSidebar user={user} role={role} />
+              </React.Suspense>
+            )}
             <SidebarInset>
               <Header user={user} />
               {children}

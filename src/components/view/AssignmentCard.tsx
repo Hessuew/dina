@@ -120,7 +120,9 @@ type AssignmentCardActionRowProps = {
   assignmentId: string
 }
 
-function AssignmentCardActionRow({ assignmentId }: AssignmentCardActionRowProps) {
+function AssignmentCardActionRow({
+  assignmentId,
+}: AssignmentCardActionRowProps) {
   return (
     <div className="mt-3 flex items-center justify-between border-t border-white/8 pt-3">
       <span className="text-[0.68rem] font-medium tracking-[0.2em] text-[#8E816D] uppercase">

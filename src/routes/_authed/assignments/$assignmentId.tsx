@@ -1,36 +1,30 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { CalendarIcon, ClockIcon, PencilIcon } from 'lucide-react'
-import { useState } from 'react'
+import { CalendarIcon, ClockIcon } from 'lucide-react'
+import { Suspense, lazy, useState } from 'react'
 import { toast } from 'sonner'
-import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-table/legacy'
-import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
-import { StatusChip } from '@/components/ui/status-chip'
-import { createButtonColumn } from '@/components/table/DataTable'
 import { useDialogState } from '@/hooks/useDialogState'
 import { useMutation } from '@/hooks/useMutation'
-import {
-  createOrUpdateSubmission,
-  getAssignment,
-  getAssignmentSubmissions,
-} from '@/utils/assignments'
+import { createOrUpdateSubmission, getAssignment } from '@/utils/assignments'
 import {
   buildInitialSubmissionFormData,
   deriveSubmissionPermissions,
-  formatSubmissionGrade,
-  formatSubmittedDate,
   navigateAfterDelete,
   navigateBack,
   resolveEditDialogMode,
-  resolveSubmissionStatusVariant,
   shouldLoadAssignmentSubmissions,
 } from '@/utils/assignments/domain/assignment-detail.domain'
-import { AssignmentDialog } from '@/components/dialog/assignment-dialog/AssignmentDialog'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
 import { AssignmentDetailSections } from '@/components/assignment/assignment-detail-sections/AssignmentDetailSections'
 import { trackAssignmentSubmitted } from '@/utils/analytics'
+
+const AssignmentDialog = lazy(() =>
+  import('@/components/dialog/assignment-dialog/AssignmentDialog').then(
+    (module) => ({ default: module.AssignmentDialog }),
+  ),
+)
 
 const getAssignmentData = createServerFn({ method: 'POST' })
   .validator((d: { assignmentId: string }) => d)
@@ -39,17 +33,6 @@ const getAssignmentData = createServerFn({ method: 'POST' })
       return await getAssignment({ data })
     } catch (error) {
       console.error('Failed to fetch assignment:', error)
-      throw error
-    }
-  })
-
-const getSubmissionsData = createServerFn({ method: 'POST' })
-  .validator((d: { assignmentId: string }) => d)
-  .handler(async ({ data }) => {
-    try {
-      return await getAssignmentSubmissions({ data })
-    } catch (error) {
-      console.error('Failed to fetch assignment submissions:', error)
       throw error
     }
   })
@@ -63,27 +46,9 @@ export const Route = createFileRoute('/_authed/assignments/$assignmentId')({
     }
   },
   loader: async ({ params }) => {
-    const assignmentData = await getAssignmentData({
+    return await getAssignmentData({
       data: { assignmentId: params.assignmentId },
     })
-
-    if (shouldLoadAssignmentSubmissions(assignmentData.permissions.canManage)) {
-      const submissionsData = await getSubmissionsData({
-        data: { assignmentId: params.assignmentId },
-      })
-
-      return {
-        ...assignmentData,
-        allSubmissions: submissionsData.submissions,
-      }
-    }
-
-    return {
-      ...assignmentData,
-      allSubmissions: [] as Awaited<
-        ReturnType<typeof getSubmissionsData>
-      >['submissions'],
-    }
   },
   component: AssignmentDetailComponent,
 })
@@ -103,55 +68,8 @@ type SubmissionWithStudent = {
   }
 }
 
-const columnHelper = createColumnHelper<SubmissionWithStudent>()
-
 type AssignmentDetailData = ReturnType<typeof Route.useLoaderData>
 type AssignmentData = AssignmentDetailData['assignment']
-
-function buildSubmissionsColumns({
-  maxGrade,
-  onGrade,
-}: {
-  maxGrade: AssignmentData['maxGrade']
-  onGrade: (submission: SubmissionWithStudent) => void
-}): Array<ColumnDef<SubmissionWithStudent, any>> {
-  return [
-    columnHelper.accessor('student.fullName', {
-      cell: (info) => (
-        <span className="font-serif text-sm text-[#F8F4EC]">
-          {info.getValue()}
-        </span>
-      ),
-      header: 'Student',
-    }),
-    columnHelper.accessor('status', {
-      cell: (info) => {
-        const variant = resolveSubmissionStatusVariant(info.row.original)
-        return <StatusChip variant={variant} size="sm" />
-      },
-      header: 'Status',
-    }),
-    columnHelper.accessor('grade', {
-      cell: (info) => (
-        <span className="text-sm text-[#AFA28F]">
-          {formatSubmissionGrade(info.row.original.grade, maxGrade)}
-        </span>
-      ),
-      header: 'Grade',
-    }),
-    columnHelper.accessor('submittedAt', {
-      cell: (info) => (
-        <span className="text-sm text-[#8E816D]">
-          {formatSubmittedDate(info.row.original.submittedAt)}
-        </span>
-      ),
-      header: 'Submitted',
-    }),
-    createButtonColumn<SubmissionWithStudent>([
-      { icon: PencilIcon, label: 'Grade', onClick: onGrade },
-    ]),
-  ]
-}
 
 function useAssignmentNavigation() {
   const router = useRouter()
@@ -250,11 +168,6 @@ function useAssignmentDetail() {
     isOpen: assignmentDialog.isOpen,
   })
 
-  const submissionsColumns = buildSubmissionsColumns({
-    maxGrade: assignment.maxGrade,
-    onGrade: (sub) => gradeDialog.openDialog('edit', sub),
-  })
-
   return {
     assignment,
     submission,
@@ -267,7 +180,6 @@ function useAssignmentDetail() {
     canSubmit,
     showSubmissionsPanel,
     editDialogMode,
-    submissionsColumns,
     submissionForm,
     goBack: nav.goBack,
     buildDeleteSuccessHandler: nav.buildDeleteSuccessHandler,
@@ -360,7 +272,7 @@ function AssignmentDetailDialogs({
   onDeleteSuccess: () => void
 }) {
   return (
-    <>
+    <Suspense fallback={null}>
       {/* Assignment Dialog (edit / delete) */}
       {editDialogMode && (
         <AssignmentDialog
@@ -386,7 +298,7 @@ function AssignmentDetailDialogs({
           submission={gradeDialog.dialogItem}
         />
       )}
-    </>
+    </Suspense>
   )
 }
 
@@ -403,7 +315,6 @@ function AssignmentDetailComponent() {
     canSubmit,
     showSubmissionsPanel,
     editDialogMode,
-    submissionsColumns,
     submissionForm,
     goBack,
     buildDeleteSuccessHandler,
@@ -423,7 +334,6 @@ function AssignmentDetailComponent() {
         assignment={assignment}
         submission={submission}
         allSubmissions={allSubmissions}
-        submissionsColumns={submissionsColumns}
         isStudent={isStudent}
         isPastDue={isPastDue}
         canSubmit={canSubmit}
@@ -432,6 +342,9 @@ function AssignmentDetailComponent() {
         isSavingSubmission={submissionForm.submissionMutation.isPending}
         onChangeSubmissionFormData={submissionForm.setSubmissionFormData}
         onSaveSubmission={submissionForm.handleSaveSubmission}
+        onGradeSubmission={(submissionToGrade) =>
+          gradeDialog.openDialog('edit', submissionToGrade)
+        }
       />
 
       <AssignmentDetailDialogs

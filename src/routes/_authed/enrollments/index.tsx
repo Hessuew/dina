@@ -1,11 +1,10 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { EyeIcon, MailIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { EnrollmentsNavRequest } from '@/utils/enrolment/domain/enrollments-navigation.domain'
 import { Button } from '@/components/ui/button'
 import { EnrollmentsTable } from '@/components/table/EnrollmentsTable'
-import { EvaluationOverlay } from '@/components/enrollment/evaluation-overlay/EvaluationOverlay'
 import { AdminActionsDropdown } from '@/components/enrollment/AdminActionsDropdown'
 import { PageLayout } from '@/components/layout/page-layout'
 import { checkTeacherAccess } from '@/utils/auth/admin'
@@ -23,14 +22,42 @@ import {
 } from '@/utils/enrolment/domain/enrollments-page.domain'
 import { useEnrollmentReview } from '@/hooks/useEnrollmentReview'
 import { toUserError } from '@/utils/errors'
-import {
-  EndSubstitutionDialog,
-  StartSubstitutionDialog,
-} from '@/components/dialog/SubstituteTeacherDialog'
-import { ExportContactsDialog } from '@/components/enrollment/exports-email-dialog/ExportEmailsDialog'
-import { BulkGradeDialog } from '@/components/enrollment/bulk-grade-dialog/BulkGradeDialog'
-import { WhatsAppCampaignDialog } from '@/components/enrollment/whatsapp-campaign-dialog/WhatsAppCampaignDialog'
-import { EmailCampaignDialog } from '@/components/enrollment/email-campaign-dialog/EmailCampaignDialog'
+
+const StartSubstitutionDialog = lazy(() =>
+  import('@/components/dialog/SubstituteTeacherDialog').then((module) => ({
+    default: module.StartSubstitutionDialog,
+  })),
+)
+const EndSubstitutionDialog = lazy(() =>
+  import('@/components/dialog/SubstituteTeacherDialog').then((module) => ({
+    default: module.EndSubstitutionDialog,
+  })),
+)
+const ExportContactsDialog = lazy(() =>
+  import('@/components/enrollment/exports-email-dialog/ExportEmailsDialog').then(
+    (module) => ({ default: module.ExportContactsDialog }),
+  ),
+)
+const BulkGradeDialog = lazy(() =>
+  import('@/components/enrollment/bulk-grade-dialog/BulkGradeDialog').then(
+    (module) => ({ default: module.BulkGradeDialog }),
+  ),
+)
+const WhatsAppCampaignDialog = lazy(() =>
+  import('@/components/enrollment/whatsapp-campaign-dialog/WhatsAppCampaignDialog').then(
+    (module) => ({ default: module.WhatsAppCampaignDialog }),
+  ),
+)
+const EmailCampaignDialog = lazy(() =>
+  import('@/components/enrollment/email-campaign-dialog/EmailCampaignDialog').then(
+    (module) => ({ default: module.EmailCampaignDialog }),
+  ),
+)
+const EvaluationOverlay = lazy(() =>
+  import('@/components/enrollment/evaluation-overlay/EvaluationOverlay').then(
+    (module) => ({ default: module.EvaluationOverlay }),
+  ),
+)
 
 export const Route = createFileRoute('/_authed/enrollments/')({
   validateSearch: parseEnrollmentsSearch,
@@ -356,18 +383,22 @@ function EnrollmentSubstitutionDialogs({
   onSuccess,
 }: EnrollmentSubstitutionDialogsProps) {
   return (
-    <>
-      <StartSubstitutionDialog
-        open={startOpen}
-        onOpenChange={onStartOpenChange}
-        onSuccess={onSuccess}
-      />
-      <EndSubstitutionDialog
-        open={endOpen}
-        onOpenChange={onEndOpenChange}
-        onSuccess={onSuccess}
-      />
-    </>
+    <Suspense fallback={null}>
+      {startOpen && (
+        <StartSubstitutionDialog
+          open
+          onOpenChange={onStartOpenChange}
+          onSuccess={onSuccess}
+        />
+      )}
+      {endOpen && (
+        <EndSubstitutionDialog
+          open
+          onOpenChange={onEndOpenChange}
+          onSuccess={onSuccess}
+        />
+      )}
+    </Suspense>
   )
 }
 
@@ -385,49 +416,54 @@ function EnrollmentReviewOverlay({
   router,
 }: EnrollmentReviewOverlayProps) {
   return (
-    <EvaluationOverlay
-      enrollment={overlay.enrollment}
-      evaluations={reviewState.currentEvaluations}
-      isAdmin={isAdmin}
-      userId={overlay.userId}
-      hasPrev={reviewState.hasPrev}
-      hasNext={reviewState.hasNext}
-      onPrev={reviewState.prev}
-      onNext={reviewState.next}
-      onClose={() => {
-        reviewState.close()
-        void router.invalidate()
-      }}
-      onLocalEvaluation={(enrollmentId, patch) =>
-        reviewState.applyLocalEvaluation(
-          enrollmentId,
-          overlay.userId,
-          overlay.evaluatorName,
-          patch,
-        )
-      }
-    />
+    <Suspense fallback={null}>
+      <EvaluationOverlay
+        enrollment={overlay.enrollment}
+        evaluations={reviewState.currentEvaluations}
+        isAdmin={isAdmin}
+        userId={overlay.userId}
+        hasPrev={reviewState.hasPrev}
+        hasNext={reviewState.hasNext}
+        onPrev={reviewState.prev}
+        onNext={reviewState.next}
+        onClose={() => {
+          reviewState.close()
+          void router.invalidate()
+        }}
+        onLocalEvaluation={(enrollmentId, patch) =>
+          reviewState.applyLocalEvaluation(
+            enrollmentId,
+            overlay.userId,
+            overlay.evaluatorName,
+            patch,
+          )
+        }
+      />
+    </Suspense>
   )
 }
 
 // Admin-only dialogs mounted alongside the page (bulk grade + WhatsApp send).
 function EnrollmentAdminDialogs({ c }: { c: EnrollmentsController }) {
   return (
-    <>
-      <BulkGradeDialog
-        open={c.isBulkGradeDialogOpen}
-        onOpenChange={c.setIsBulkGradeDialogOpen}
-        onSuccess={() => void c.router.invalidate()}
-      />
-      <WhatsAppCampaignDialog
-        open={c.isWhatsAppDialogOpen}
-        onOpenChange={c.setIsWhatsAppDialogOpen}
-      />
-      <EmailCampaignDialog
-        open={c.isEmailCampaignDialogOpen}
-        onOpenChange={c.setIsEmailCampaignDialogOpen}
-      />
-    </>
+    <Suspense fallback={null}>
+      {c.isBulkGradeDialogOpen && (
+        <BulkGradeDialog
+          open
+          onOpenChange={c.setIsBulkGradeDialogOpen}
+          onSuccess={() => void c.router.invalidate()}
+        />
+      )}
+      {c.isWhatsAppDialogOpen && (
+        <WhatsAppCampaignDialog open onOpenChange={c.setIsWhatsAppDialogOpen} />
+      )}
+      {c.isEmailCampaignDialogOpen && (
+        <EmailCampaignDialog
+          open
+          onOpenChange={c.setIsEmailCampaignDialogOpen}
+        />
+      )}
+    </Suspense>
   )
 }
 
@@ -452,7 +488,7 @@ function EnrollmentsPage() {
 
       <EnrollmentsTableSection c={c} />
 
-      {c.isAdmin && (
+      {c.isAdmin && (c.isStartSubDialogOpen || c.isEndSubDialogOpen) && (
         <EnrollmentSubstitutionDialogs
           startOpen={c.isStartSubDialogOpen}
           endOpen={c.isEndSubDialogOpen}
@@ -462,14 +498,19 @@ function EnrollmentsPage() {
         />
       )}
 
-      {c.canExportContacts && (
-        <ExportContactsDialog
-          open={c.isExportContactsDialogOpen}
-          onOpenChange={c.setIsExportContactsDialogOpen}
-        />
+      {c.canExportContacts && c.isExportContactsDialogOpen && (
+        <Suspense fallback={null}>
+          <ExportContactsDialog
+            open
+            onOpenChange={c.setIsExportContactsDialogOpen}
+          />
+        </Suspense>
       )}
 
-      {c.isAdmin && <EnrollmentAdminDialogs c={c} />}
+      {c.isAdmin &&
+        (c.isBulkGradeDialogOpen ||
+          c.isWhatsAppDialogOpen ||
+          c.isEmailCampaignDialogOpen) && <EnrollmentAdminDialogs c={c} />}
 
       {c.reviewOverlay && (
         <EnrollmentReviewOverlay

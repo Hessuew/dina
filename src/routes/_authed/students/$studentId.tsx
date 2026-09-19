@@ -5,6 +5,7 @@ import type { StudentDetailWithAssignments } from '@/types/student'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { StudentAttendanceDetail } from '@/components/view/students-view/StudentAttendanceDetail'
+import { useIntentPreload } from '@/hooks/useIntentPreload'
 import { getStudentDetail } from '@/utils/student'
 import { checkTeacherAccess } from '@/utils/auth/admin'
 import {
@@ -39,12 +40,20 @@ type AssignmentRowProps = {
   index: number
   now: Date
   onAssignmentClick: (assignmentId: string) => void
+  onPrefetchAssignment: (assignmentId: string) => void
 }
 
 type CoursePanelProps = {
   group: CourseAssignmentGroup
   onAssignmentClick: (assignmentId: string) => void
+  onPrefetchAssignment: (assignmentId: string) => void
 }
+
+const ASSIGNMENT_DETAIL_SEARCH = {
+  calendarMonth: undefined,
+  fromCalendar: false,
+  fromDashboard: false,
+} as const
 
 function StudentInfoCard({
   student,
@@ -102,12 +111,15 @@ function AssignmentRow({
   index,
   now,
   onAssignmentClick,
+  onPrefetchAssignment,
 }: AssignmentRowProps) {
   const status = getAssignmentRowStatus(assignment, now)
 
   return (
     <div
       className="group flex cursor-pointer items-start gap-4 border-b border-white/8 py-5 pl-1 transition-all first:pt-1 last:border-b-0 last:pb-0 hover:bg-white/8"
+      onPointerEnter={() => onPrefetchAssignment(assignment.id)}
+      onPointerDown={() => onPrefetchAssignment(assignment.id)}
       onClick={() => onAssignmentClick(assignment.id)}
     >
       <div className="flex size-8 shrink-0 items-center justify-center border border-[#C5A059]/50 bg-[#1A1716] font-serif text-xs text-[#E9D9B4]">
@@ -145,7 +157,11 @@ function AssignmentRow({
   )
 }
 
-function CourseAssignmentPanel({ group, onAssignmentClick }: CoursePanelProps) {
+function CourseAssignmentPanel({
+  group,
+  onAssignmentClick,
+  onPrefetchAssignment,
+}: CoursePanelProps) {
   const { course, assignments } = group
   if (assignments.length === 0) return null
 
@@ -184,6 +200,7 @@ function CourseAssignmentPanel({ group, onAssignmentClick }: CoursePanelProps) {
               index={idx}
               now={now}
               onAssignmentClick={onAssignmentClick}
+              onPrefetchAssignment={onPrefetchAssignment}
             />
           ))}
         </div>
@@ -208,18 +225,22 @@ function EmptyAssignmentsState() {
 function StudentDetailComponent() {
   const { student } = Route.useLoaderData()
   const router = useRouter()
+  const intentPreload = useIntentPreload()
 
   const handleAssignmentClick = (assignmentId: string) => {
     router.navigate({
       to: '/assignments/$assignmentId',
       params: { assignmentId },
-      search: {
-        calendarMonth: undefined,
-        fromCalendar: false,
-        fromDashboard: false,
-      },
+      search: ASSIGNMENT_DETAIL_SEARCH,
     })
   }
+
+  const prefetchAssignment = (assignmentId: string) =>
+    intentPreload({
+      to: '/assignments/$assignmentId',
+      params: { assignmentId },
+      search: ASSIGNMENT_DETAIL_SEARCH,
+    })
 
   const assignmentsByCourse = groupAssignmentsByCourse(
     student.enrollments,
@@ -253,6 +274,7 @@ function StudentDetailComponent() {
             key={group.course.courseId}
             group={group}
             onAssignmentClick={handleAssignmentClick}
+            onPrefetchAssignment={prefetchAssignment}
           />
         ))}
 

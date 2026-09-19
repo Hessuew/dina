@@ -117,6 +117,7 @@ type ExamReadAction =
   | 'getExamForAuthor'
   | 'getExamsForTeacher'
   | 'getExamsForStudent'
+  | 'getExamForStudent'
   | 'getExamAttemptForTaking'
   | 'listExamAttemptsForGrading'
   | 'getExamAttemptForGrading'
@@ -547,6 +548,55 @@ export async function getExamsForStudentService(
     (result) => ({
       examCount: result.length,
       attemptedCount: result.filter((item) => item.attempt !== null).length,
+    }),
+  )
+}
+
+export async function getExamForStudentService(
+  data: GetExamInput,
+  userId: string,
+): Promise<StudentExamListItem | null> {
+  const context: ExamReadLogContext = {
+    action: 'getExamForStudent',
+    actorId: userId,
+    examId: data.examId,
+    role: 'student',
+    startedAt: performance.now(),
+  }
+
+  return withExamReadTelemetry(
+    context,
+    async () => {
+      await assertStudent(userId)
+      const [exam, attempt] = await Promise.all([
+        findExamById(data.examId),
+        findAttemptByExamAndStudent(data.examId, userId),
+      ])
+      if (!exam || exam.status !== 'published') return null
+
+      const now = new Date()
+      const visible =
+        attempt ||
+        isWithinStartWindow(now, exam.opensAt, exam.closesAt) ||
+        now.getTime() < exam.opensAt.getTime()
+      if (!visible) return null
+
+      const pointsMap = await findExamTotalPointsMap([exam.id])
+      return {
+        exam: {
+          id: exam.id,
+          title: exam.title,
+          durationMinutes: exam.durationMinutes,
+          opensAt: exam.opensAt,
+          closesAt: exam.closesAt,
+          totalPoints: pointsMap.get(exam.id) ?? 0,
+        },
+        attempt: attempt ? redactAttemptForStudent(attempt) : null,
+      }
+    },
+    (result) => ({
+      examCount: result ? 1 : 0,
+      attemptedCount: result?.attempt ? 1 : 0,
     }),
   )
 }

@@ -6,8 +6,8 @@ import {
   useMatch,
   useRouter,
 } from '@tanstack/react-router'
-import * as Sentry from '@sentry/tanstackstart-react'
 import type { ErrorComponentProps } from '@tanstack/react-router'
+import { captureBrowserSentryException } from '@/utils/observability/browser-sentry'
 
 const capturedServerErrors = new WeakSet<object>()
 
@@ -24,7 +24,7 @@ function captureServerError(error: unknown, isServer: boolean) {
     capturedServerErrors.add(error)
   }
 
-  Sentry.captureException(error)
+  captureBrowserSentryException(error)
 }
 
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
@@ -35,7 +35,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
   })
 
   useEffect(() => {
-    Sentry.captureException(error)
+    captureBrowserSentryException(error)
   }, [error])
 
   captureServerError(error, router.isServer)

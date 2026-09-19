@@ -1,19 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import {
   GROUP_OPTIONS,
+  formatEmailsForExport,
+  pluralizeCount,
+  resolveCopyLabel,
+  resolveCopySuccessMessage,
+  resolveEmailCountLabel,
+} from './export-emails-dialog.domain'
+import {
   buildContactsCopyText,
   canCopyContactsExport,
   contactHasInvalidPhone,
   countInvalidContactPhones,
   countInvalidContactPhonesAlways,
   formatContactsForExport,
-  formatEmailsForExport,
-  pluralizeCount,
   removeInvalidPhoneContacts,
-  resolveCopyLabel,
-  resolveCopySuccessMessage,
-  resolveEmailCountLabel,
-} from './export-emails-dialog.domain'
+} from './contact-export.domain'
 
 const contacts = [
   {

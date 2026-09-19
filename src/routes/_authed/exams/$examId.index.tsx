@@ -1,5 +1,6 @@
-import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import type { UserContext } from '@/utils/auth/domain/user-context.domain'
 import type { StudentExamItem } from '@/components/view/exams-view/ExamsView'
 import type { StudentExamCardState } from '@/components/view/exams-view/exams-view.domain'
 import { PageLayout } from '@/components/layout/page-layout'
@@ -12,30 +13,29 @@ import {
   studentLandingGoLabel,
 } from '@/components/view/exams-view/exams-view.domain'
 import { Button } from '@/components/ui/button'
+import { useIntentPreload } from '@/hooks/useIntentPreload'
 import { useMutation } from '@/hooks/useMutation'
 import {
   getExamForAuthor,
-  getExamsForStudent,
+  getExamForStudent,
   startExamAttempt,
 } from '@/utils/exam'
-import { getCourses } from '@/utils/courses'
 
 export const Route = createFileRoute('/_authed/exams/$examId/')({
-  loader: async ({ params }) => {
-    const coursesData = await getCourses()
-    if (coursesData.role === 'student') {
-      const items = await getExamsForStudent()
-      const item =
-        items.find((candidate) => candidate.exam.id === params.examId) ?? null
-      return { role: coursesData.role, item, authorData: null }
-    }
-    const authorData = await getExamForAuthor({
-      data: { examId: params.examId },
-    })
-    return { role: coursesData.role, item: null, authorData }
-  },
+  loader: ({ context, params }) =>
+    loadExamDetail(context.user?.role ?? 'student', params.examId),
   component: ExamDetailComponent,
 })
+
+async function loadExamDetail(role: UserContext['role'], examId: string) {
+  if (role === 'student') {
+    const item = await getExamForStudent({ data: { examId } })
+    return { role, item, authorData: null }
+  }
+
+  const authorData = await getExamForAuthor({ data: { examId } })
+  return { role, item: null, authorData }
+}
 
 function ExamDetailComponent() {
   const { role, item, authorData } = Route.useLoaderData()
@@ -75,18 +75,25 @@ function StudentExamLanding({ item }: { item: StudentExamItem | null }) {
 }
 
 function StudentExamLandingContent({ item }: { item: StudentExamItem }) {
-  const navigate = useNavigate()
+  const router = useRouter()
   const startMutation = useMutation({
     fn: startExamAttempt,
     onSuccess: async () => {
       toast.success('Exam started — good luck!')
-      await navigate({
+      await router.navigate({
         to: '/exams/$examId/take',
         params: { examId: item.exam.id },
       })
     },
   })
   const vm = deriveStudentCardViewModel(item, new Date())
+  const intentPreload = useIntentPreload()
+  const preloadTakeRoute = () => {
+    intentPreload({
+      to: '/exams/$examId/take',
+      params: { examId: item.exam.id },
+    })
+  }
   return (
     <div className="space-y-6 border border-[#1A1A1A]/10 bg-white/70 p-8 text-center">
       <p className="text-sm text-[#8E816D]">
@@ -104,11 +111,12 @@ function StudentExamLandingContent({ item }: { item: StudentExamItem }) {
           void startMutation.mutate({ data: { examId: item.exam.id } })
         }
         onGo={() =>
-          void navigate({
+          void router.navigate({
             to: '/exams/$examId/take',
             params: { examId: item.exam.id },
           })
         }
+        onPreloadGo={preloadTakeRoute}
       />
     </div>
   )
@@ -134,6 +142,7 @@ function StudentLandingAction({
   starting,
   onStart,
   onGo,
+  onPreloadGo,
 }: {
   state: StudentExamCardState
   action: 'start' | 'continue' | 'review' | null
@@ -141,6 +150,7 @@ function StudentLandingAction({
   starting: boolean
   onStart: () => void
   onGo: () => void
+  onPreloadGo: () => void
 }) {
   if (action === 'start') {
     return (
@@ -169,7 +179,11 @@ function StudentLandingAction({
     )
   }
   if (action !== null) {
-    return <Button onClick={onGo}>{studentLandingGoLabel(action)}</Button>
+    return (
+      <Button onPointerDown={onPreloadGo} onClick={onGo}>
+        {studentLandingGoLabel(action)}
+      </Button>
+    )
   }
   return (
     <p className="text-sm text-[#8E816D]">

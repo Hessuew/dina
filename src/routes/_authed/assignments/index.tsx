@@ -5,14 +5,13 @@ import {
   getAllAssignmentsForStudent,
   getAllAssignmentsForTeacher,
 } from '@/utils/assignments'
-import { getCourses } from '@/utils/courses'
 
 export const Route = createFileRoute('/_authed/assignments/')({
-  loader: async () => {
-    const coursesData = await getCourses()
+  loader: async ({ context }) => {
+    const role = context.user?.role ?? 'student'
 
     let assignmentsData
-    if (coursesData.role === 'student') {
+    if (role === 'student') {
       assignmentsData = await getAllAssignmentsForStudent()
     } else {
       assignmentsData = await getAllAssignmentsForTeacher({
@@ -22,7 +21,7 @@ export const Route = createFileRoute('/_authed/assignments/')({
 
     return {
       assignments: assignmentsData.assignments,
-      role: coursesData.role,
+      role,
     }
   },
   component: AssignmentsComponent,

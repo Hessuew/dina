@@ -5,7 +5,6 @@ import type {
   DeleteAssignmentInput,
   GetAssignmentInput,
   GetAssignmentSubmissionCountInput,
-  GetAssignmentSubmissionsInput,
   GradeSubmissionInput,
   UpdateAssignmentInput,
 } from '@/schemas/assignment.schema'
@@ -101,7 +100,6 @@ type AssignmentReadAction =
   | 'getAssignmentSubmissionCount'
   | 'getAllAssignmentsForStudent'
   | 'getAllAssignmentsForTeacher'
-  | 'getAssignmentSubmissions'
 
 type AssignmentReadLogContext = {
   action: AssignmentReadAction
@@ -178,7 +176,10 @@ async function withAssignmentReadTelemetry<T>(
 }
 
 async function loadLessonForViewer(data: GetLessonInput, userId: string) {
-  const lesson = await findLessonWithDetails(data.lessonId)
+  const [lesson, profile] = await Promise.all([
+    findLessonWithDetails(data.lessonId),
+    getUserProfile(userId),
+  ])
   if (!lesson) {
     throw new NotFoundError('Lesson not found', {
       code: 'LESSON_NOT_FOUND',
@@ -186,7 +187,6 @@ async function loadLessonForViewer(data: GetLessonInput, userId: string) {
     })
   }
 
-  const profile = await getUserProfile(userId)
   const isCompleted =
     profile.role === 'student'
       ? (
@@ -342,7 +342,10 @@ async function loadAssignmentForViewer(
   data: GetAssignmentInput,
   userId: string,
 ) {
-  const assignment = await findAssignmentWithCourseTeachers(data.assignmentId)
+  const [assignment, profile] = await Promise.all([
+    findAssignmentWithCourseTeachers(data.assignmentId),
+    getUserProfile(userId),
+  ])
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
       code: 'ASSIGNMENT_NOT_FOUND',
@@ -350,16 +353,9 @@ async function loadAssignmentForViewer(
     })
   }
 
-  const profile = await getUserProfile(userId)
-  const courseWithTeachers = {
-    id: assignment.lesson.course.id,
-    title: assignment.lesson.course.title,
-    teacherIds: assignment.lesson.course.courseTeachers.map(
-      (teacher) => teacher.teacherId,
-    ),
-    teacher1Id: assignment.lesson.course.courseTeachers[0]?.teacherId ?? null,
-    teacher2Id: assignment.lesson.course.courseTeachers[1]?.teacherId ?? null,
-  }
+  const courseWithTeachers = buildAssignmentCourseWithTeachers(
+    assignment.lesson.course,
+  )
   const permissions = calculateEntityPermissions(
     profile.role,
     courseWithTeachers,
@@ -383,19 +379,35 @@ async function loadAssignmentForViewer(
     })
   }
 
-  const submission =
-    profile.role === 'student'
-      ? await findSubmissionByAssignmentAndStudent(data.assignmentId, userId)
-      : null
-
+  const { submission, allSubmissions } = await loadViewerSubmissions({
+    assignmentId: data.assignmentId,
+    userId,
+    role: profile.role,
+    canManage: permissions.canManage,
+  })
   return {
     assignment: {
       ...assignment,
       lesson: { ...assignment.lesson, course: courseWithTeachers },
     },
     submission,
+    allSubmissions,
     role: profile.role,
     permissions,
+  }
+}
+
+function buildAssignmentCourseWithTeachers(course: {
+  id: string
+  title: string
+  courseTeachers: Array<{ teacherId: string | null }>
+}) {
+  return {
+    id: course.id,
+    title: course.title,
+    teacherIds: course.courseTeachers.map((teacher) => teacher.teacherId),
+    teacher1Id: course.courseTeachers[0]?.teacherId ?? null,
+    teacher2Id: course.courseTeachers[1]?.teacherId ?? null,
   }
 }
 
@@ -509,6 +521,27 @@ async function loadAssignmentSubmissions(assignmentId: string) {
     if (!student) throw new Error('Submission student profile missing')
     return { ...submission, student }
   })
+}
+
+async function loadViewerSubmissions({
+  assignmentId,
+  userId,
+  role,
+  canManage,
+}: {
+  assignmentId: string
+  userId: string
+  role: string
+  canManage: boolean
+}) {
+  const [submission, allSubmissions] = await Promise.all([
+    role === 'student'
+      ? findSubmissionByAssignmentAndStudent(assignmentId, userId)
+      : Promise.resolve(null),
+    canManage ? loadAssignmentSubmissions(assignmentId) : Promise.resolve([]),
+  ])
+
+  return { submission, allSubmissions }
 }
 
 export async function createAssignmentService(
@@ -1032,39 +1065,6 @@ async function getTeacherCatalogAssignments(
       return [mapTeacherAssignmentRow(assignment, permissions.canManage)]
     }),
   }
-}
-
-export async function getAssignmentSubmissionsService(
-  data: GetAssignmentSubmissionsInput,
-  userId: string,
-) {
-  const context: AssignmentReadLogContext = {
-    action: 'getAssignmentSubmissions',
-    actorId: userId,
-    assignmentId: data.assignmentId,
-    startedAt: performance.now(),
-  }
-
-  return withAssignmentReadTelemetry(
-    context,
-    async () => {
-      const assignment = await findAssignmentWithLesson(data.assignmentId)
-      if (!assignment) {
-        throw new NotFoundError('Assignment not found', {
-          code: 'ASSIGNMENT_NOT_FOUND',
-          details: { assignmentId: data.assignmentId },
-        })
-      }
-
-      await authz(userId)
-        .perform('editLesson')
-        .on('course', assignment.lesson.courseId)
-
-      const submissions = await loadAssignmentSubmissions(data.assignmentId)
-      return { submissions }
-    },
-    (result) => ({ submissionCount: result.submissions.length }),
-  )
 }
 
 function logAssignmentGradingFailure(

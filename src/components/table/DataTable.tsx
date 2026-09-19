@@ -10,7 +10,6 @@ import {
 } from 'lucide-react'
 import { flexRender } from '@tanstack/react-table'
 import {
-  legacyCreateColumnHelper as createColumnHelper,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
@@ -26,8 +25,7 @@ import type {
   PaginationState,
   SortingState,
 } from '@tanstack/react-table'
-import type { ComponentType, RefObject } from 'react'
-import type { LinkProps } from '@tanstack/react-router'
+import type { RefObject } from 'react'
 import { Input } from '@/components/ui/input'
 import {
   Pagination,
@@ -50,9 +48,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { IconButton } from '@/components/table/IconButton'
 import {
   DATA_TABLE_BODY_CELL_CLASS,
   DATA_TABLE_BODY_ROW_CLASS,
@@ -64,13 +60,7 @@ import {
 
 type TableRow = Record<string, unknown>
 
-type ButtonConfig<TData extends TableRow> = {
-  icon: ComponentType<{ className?: string }>
-  label: string
-  onClick?: (row: TData) => void
-  to?: (row: TData) => LinkProps
-  show?: (row: TData) => boolean
-}
+export { createButtonColumn } from './create-button-column'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
@@ -102,37 +92,6 @@ type DataTableProps<TData extends TableRow> = {
   loadingLabel?: string
   emptyMessage?: string
   rowClassName?: (row: TData) => string
-}
-
-export function createButtonColumn<TData extends TableRow>(
-  buttons: Array<ButtonConfig<TData>>,
-): ColumnDef<TData, any> {
-  const columnHelper = createColumnHelper<TData>()
-  return columnHelper.display({
-    cell: (info) => {
-      const row = info.row.original
-      return (
-        <TooltipProvider delay={200}>
-          <div className="flex items-center justify-end gap-1">
-            {buttons
-              .filter((btn) => !btn.show || btn.show(row))
-              .map((btn, index) => (
-                <IconButton
-                  key={index}
-                  icon={btn.icon}
-                  label={btn.label}
-                  to={btn.to ? btn.to(row) : undefined}
-                  onClick={btn.onClick ? () => btn.onClick!(row) : undefined}
-                />
-              ))}
-          </div>
-        </TooltipProvider>
-      )
-    },
-    enableSorting: false,
-    header: 'Actions',
-    id: 'actions',
-  })
 }
 
 function SortIcon({ isSorted }: { isSorted: false | 'asc' | 'desc' }) {

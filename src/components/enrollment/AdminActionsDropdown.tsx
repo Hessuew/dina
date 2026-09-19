@@ -6,7 +6,6 @@ import {
   UsersIcon,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { AnimateIcon } from '@/components/animate-ui/icons/icon'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,13 +39,10 @@ function AdminMenuItem({ icon: Icon, label, onClick, disabled }: AdminAction) {
       onClick={onClick}
       disabled={disabled}
     >
-      <AnimateIcon
-        animateOnHover
-        className="flex h-full w-full flex-row items-center gap-2 py-2"
-      >
+      <span className="flex h-full w-full flex-row items-center gap-2 py-2">
         <Icon className="size-4 shrink-0 text-[#C5A059] group-hover/button:text-[#C5A059] group-focus/button:text-[#C5A059]" />
         {label}
-      </AnimateIcon>
+      </span>
     </DropdownMenuItem>
   )
 }

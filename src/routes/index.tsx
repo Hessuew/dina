@@ -1,14 +1,44 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { Suspense, lazy } from 'react'
 import { LandingAboutSection } from '@/components/landing/about/about'
 import { LandingCourseShowcase } from '@/components/landing/courses'
 import { LandingHeroEditorial } from '@/components/landing/hero'
-import { LandingMarksSection } from '@/components/landing/marks'
-import { LandingLecturerGemsSection } from '@/components/landing/lecturers'
-import { LandingTestimonialsSection } from '@/components/landing/testimonials'
-import { LandingQASection } from '@/components/landing/qa'
-import { LandingLeadershipSection } from '@/components/landing/leadership'
-import { LandingOfficialInfo } from '@/components/landing/official-info'
-import { LandingFooter } from '@/components/landing/footer'
+
+const LazyLandingLecturerGemsSection = lazy(() =>
+  import('@/components/landing/lecturers').then((module) => ({
+    default: module.LandingLecturerGemsSection,
+  })),
+)
+const LazyLandingTestimonialsSection = lazy(() =>
+  import('@/components/landing/testimonials').then((module) => ({
+    default: module.LandingTestimonialsSection,
+  })),
+)
+const LazyLandingMarksSection = lazy(() =>
+  import('@/components/landing/marks').then((module) => ({
+    default: module.LandingMarksSection,
+  })),
+)
+const LazyLandingQASection = lazy(() =>
+  import('@/components/landing/qa').then((module) => ({
+    default: module.LandingQASection,
+  })),
+)
+const LazyLandingLeadershipSection = lazy(() =>
+  import('@/components/landing/leadership').then((module) => ({
+    default: module.LandingLeadershipSection,
+  })),
+)
+const LazyLandingOfficialInfo = lazy(() =>
+  import('@/components/landing/official-info').then((module) => ({
+    default: module.LandingOfficialInfo,
+  })),
+)
+const LazyLandingFooter = lazy(() =>
+  import('@/components/landing/footer').then((module) => ({
+    default: module.LandingFooter,
+  })),
+)
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -23,14 +53,17 @@ function Home() {
 
       <LandingAboutSection />
       <LandingCourseShowcase />
-      <LandingLecturerGemsSection />
-      <LandingTestimonialsSection />
-      <LandingMarksSection />
-      <LandingQASection />
-      <LandingLeadershipSection />
-
-      <LandingOfficialInfo />
-      <LandingFooter />
+      <Suspense fallback={null}>
+        <LazyLandingLecturerGemsSection />
+      </Suspense>
+      <Suspense fallback={null}>
+        <LazyLandingTestimonialsSection />
+        <LazyLandingMarksSection />
+        <LazyLandingQASection />
+        <LazyLandingLeadershipSection />
+        <LazyLandingOfficialInfo />
+        <LazyLandingFooter />
+      </Suspense>
     </div>
   )
 }

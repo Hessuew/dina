@@ -1,13 +1,12 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { CalendarIcon, ClockIcon } from 'lucide-react'
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { toast } from 'sonner'
 import z from 'zod'
 import { getAssignmentSubmissionCount, getLesson } from '@/utils/assignments'
-import { AssignmentDialog } from '@/components/dialog/assignment-dialog/AssignmentDialog'
-import { LessonDialog } from '@/components/dialog/lesson-dialog/LessonDialog'
 import { useDialogState } from '@/hooks/useDialogState'
+import { useIntentPreload } from '@/hooks/useIntentPreload'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { EntityHeaderActions } from '@/components/layout/entity-header-actions'
@@ -22,6 +21,17 @@ import {
   resolveLessonPublished,
   shouldShowLessonContent,
 } from '@/utils/lessons/domain/lesson-detail.domain'
+
+const AssignmentDialog = lazy(() =>
+  import('@/components/dialog/assignment-dialog/AssignmentDialog').then(
+    (module) => ({ default: module.AssignmentDialog }),
+  ),
+)
+const LessonDialog = lazy(() =>
+  import('@/components/dialog/lesson-dialog/LessonDialog').then((module) => ({
+    default: module.LessonDialog,
+  })),
+)
 
 const getLessonData = createServerFn({ method: 'POST' })
   .validator(z.object({ lessonId: z.uuid() }))
@@ -139,6 +149,7 @@ function LessonSections({
   assignmentDialog,
   onDeleteAssignment,
   onOpenAssignment,
+  onPrefetchAssignment,
 }: {
   lesson: Lesson
   role: LessonRole
@@ -148,6 +159,7 @@ function LessonSections({
   assignmentDialog: AssignmentDialogState
   onDeleteAssignment: (assignment: Assignment) => void
   onOpenAssignment: (assignmentId: string) => void
+  onPrefetchAssignment: (assignmentId: string) => void
 }) {
   return (
     <LessonDetailSections
@@ -162,6 +174,7 @@ function LessonSections({
       }
       onDeleteAssignment={onDeleteAssignment}
       onOpenAssignment={onOpenAssignment}
+      onPrefetchAssignment={onPrefetchAssignment}
     />
   )
 }
@@ -180,14 +193,16 @@ function LessonAssignmentDialog({
   if (!assignmentDialog.isOpen) return null
 
   return (
-    <AssignmentDialog
-      open={true}
-      onOpenChange={(open) => handleDialogDismiss(open, onClose)}
-      mode={assignmentDialog.dialogMode as 'create' | 'edit' | 'delete'}
-      lessonId={lessonId}
-      assignment={assignmentDialog.dialogItem}
-      submissionCount={submissionCount}
-    />
+    <Suspense fallback={null}>
+      <AssignmentDialog
+        open={true}
+        onOpenChange={(open) => handleDialogDismiss(open, onClose)}
+        mode={assignmentDialog.dialogMode as 'create' | 'edit' | 'delete'}
+        lessonId={lessonId}
+        assignment={assignmentDialog.dialogItem}
+        submissionCount={submissionCount}
+      />
+    </Suspense>
   )
 }
 
@@ -201,15 +216,17 @@ function LessonEditDeleteDialog({
   if (!lessonDialog.isOpen) return null
 
   return (
-    <LessonDialog
-      open={true}
-      onOpenChange={(open) =>
-        handleDialogDismiss(open, lessonDialog.closeDialog)
-      }
-      mode={lessonDialog.dialogMode as 'edit' | 'delete'}
-      courseId={lesson.course.id}
-      initialData={buildLessonDialogInitialData(lesson)}
-    />
+    <Suspense fallback={null}>
+      <LessonDialog
+        open={true}
+        onOpenChange={(open) =>
+          handleDialogDismiss(open, lessonDialog.closeDialog)
+        }
+        mode={lessonDialog.dialogMode as 'edit' | 'delete'}
+        courseId={lesson.course.id}
+        initialData={buildLessonDialogInitialData(lesson)}
+      />
+    </Suspense>
   )
 }
 
@@ -221,9 +238,22 @@ function useLessonNavigation({
   search: LessonSearch
 }) {
   const router = useRouter()
+  const intentPreload = useIntentPreload()
 
   const handleOpenAssignment = (assignmentId: string) => {
     router.navigate({
+      to: '/assignments/$assignmentId',
+      params: { assignmentId },
+      search: {
+        calendarMonth: undefined,
+        fromCalendar: false,
+        fromDashboard: false,
+      },
+    })
+  }
+
+  const prefetchAssignment = (assignmentId: string) => {
+    intentPreload({
       to: '/assignments/$assignmentId',
       params: { assignmentId },
       search: {
@@ -246,7 +276,7 @@ function useLessonNavigation({
     }
   }
 
-  return { goBack, handleOpenAssignment }
+  return { goBack, handleOpenAssignment, prefetchAssignment }
 }
 
 function useAssignmentDeleteDialog(assignmentDialog: AssignmentDialogState) {
@@ -280,10 +310,11 @@ function LessonDetailComponent() {
   const assignmentDialog = useDialogState<Assignment>()
   const isPublished = resolveLessonPublished(lesson.isPublished)
   const showContent = shouldShowLessonContent(isPublished, permissions.canEdit)
-  const { goBack, handleOpenAssignment } = useLessonNavigation({
-    courseId: lesson.course.id,
-    search,
-  })
+  const { goBack, handleOpenAssignment, prefetchAssignment } =
+    useLessonNavigation({
+      courseId: lesson.course.id,
+      search,
+    })
   const {
     closeAssignmentDialog,
     handleDeleteAssignmentClick,
@@ -308,6 +339,7 @@ function LessonDetailComponent() {
         isCompleted={loaderData.isCompleted}
         onDeleteAssignment={handleDeleteAssignmentClick}
         onOpenAssignment={handleOpenAssignment}
+        onPrefetchAssignment={prefetchAssignment}
         assignmentDialog={assignmentDialog}
       />
 

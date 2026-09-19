@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { Suspense, lazy, useMemo } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import {
   AlertTriangleIcon,
@@ -12,28 +12,28 @@ import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-
 import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
 import type { CalendarEventRow } from '@/utils/event'
 import { useDialogState } from '@/hooks/useDialogState'
-import { EventDialog } from '@/components/dialog/event-dialog/EventDialog'
 import { Button } from '@/components/ui/button'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { PageLayout } from '@/components/layout/page-layout'
 import { EmptyState } from '@/components/ui/empty-state/EmptyState'
 import { cn } from '@/lib/utils'
-import { getCourses } from '@/utils/courses'
+import { requireTeacherOrAdminRole } from '@/utils/auth/domain/user-context.domain'
 import { getEvents } from '@/utils/event'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
 import { ViewerDateTime } from '@/components/ui/viewer-date-time'
 
+const EventDialog = lazy(() =>
+  import('@/components/dialog/event-dialog/EventDialog').then((module) => ({
+    default: module.EventDialog,
+  })),
+)
+
 export const Route = createFileRoute('/_authed/events')({
-  beforeLoad: async () => {
-    const coursesData = await getCourses()
-    const isTeacherOrAdmin =
-      coursesData.role === 'teacher' || coursesData.role === 'admin'
-
-    if (!isTeacherOrAdmin) {
+  beforeLoad: ({ context }) => {
+    const role = requireTeacherOrAdminRole(context.user?.role, () => {
       throw redirect({ to: '/dashboard', search: { verified: false } })
-    }
-
-    return { role: coursesData.role }
+    })
+    return { role }
   },
   loader: async () => {
     const result = await getEvents()
@@ -216,13 +216,17 @@ function EventsComponent() {
         onCreate={() => openDialog('create')}
       />
 
-      <EventDialog
-        key={`${dialogMode}-${dialogEvent?.id}`}
-        open={isOpen}
-        onOpenChange={(open) => !open && closeDialog()}
-        mode={dialogMode}
-        event={dialogEvent}
-      />
+      {isOpen && (
+        <Suspense fallback={null}>
+          <EventDialog
+            key={`${dialogMode}-${dialogEvent?.id}`}
+            open={true}
+            onOpenChange={(open) => !open && closeDialog()}
+            mode={dialogMode}
+            event={dialogEvent}
+          />
+        </Suspense>
+      )}
     </PageLayout>
   )
 }

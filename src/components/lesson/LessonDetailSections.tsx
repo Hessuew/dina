@@ -34,6 +34,7 @@ type LessonDetailSectionsProps = {
   onEditAssignment: (assignment: Assignment) => void
   onDeleteAssignment: (assignment: Assignment) => void
   onOpenAssignment: (assignmentId: string) => void
+  onPrefetchAssignment: (assignmentId: string) => void
 }
 
 function LessonCompletionStatus({ isCompleted }: { isCompleted: boolean }) {
@@ -131,17 +132,23 @@ function AssignmentRow({
   assignment,
   canManage,
   onOpenAssignment,
+  onPrefetchAssignment,
   onEditAssignment,
   onDeleteAssignment,
 }: {
   assignment: Assignment
   canManage: boolean
   onOpenAssignment: (assignmentId: string) => void
+  onPrefetchAssignment: (assignmentId: string) => void
   onEditAssignment: (assignment: Assignment) => void
   onDeleteAssignment: (assignment: Assignment) => void
 }) {
   return (
-    <div className="group flex items-start gap-4 px-6 py-5 transition-all hover:bg-white/5">
+    <div
+      className="group flex items-start gap-4 px-6 py-5 transition-all hover:bg-white/5"
+      onPointerEnter={onPrefetchAssignment.bind(null, assignment.id)}
+      onPointerDown={onPrefetchAssignment.bind(null, assignment.id)}
+    >
       <div
         className="min-w-0 flex-1 cursor-pointer"
         onClick={() => onOpenAssignment(assignment.id)}
@@ -160,13 +167,7 @@ function AssignmentRow({
             {assignment.description}
           </p>
         )}
-        <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
-          <div className="flex items-center gap-1">
-            <CalendarIcon className="size-3" />
-            <span>Due {new Date(assignment.dueDate).toLocaleDateString()}</span>
-          </div>
-          <span>Max: {assignment.maxGrade ?? 100} pts</span>
-        </div>
+        <AssignmentRowMeta assignment={assignment} />
       </div>
       {canManage && (
         <div className="flex shrink-0 items-center">
@@ -186,6 +187,18 @@ function AssignmentRow({
   )
 }
 
+function AssignmentRowMeta({ assignment }: { assignment: Assignment }) {
+  return (
+    <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
+      <div className="flex items-center gap-1">
+        <CalendarIcon className="size-3" />
+        <span>Due {new Date(assignment.dueDate).toLocaleDateString()}</span>
+      </div>
+      <span>Max: {assignment.maxGrade ?? 100} pts</span>
+    </div>
+  )
+}
+
 function AssignmentsSection({
   assignments,
   role,
@@ -194,6 +207,7 @@ function AssignmentsSection({
   onEditAssignment,
   onDeleteAssignment,
   onOpenAssignment,
+  onPrefetchAssignment,
 }: {
   assignments: Array<Assignment>
   role: LessonDetailSectionsProps['role']
@@ -202,6 +216,7 @@ function AssignmentsSection({
   onEditAssignment: (assignment: Assignment) => void
   onDeleteAssignment: (assignment: Assignment) => void
   onOpenAssignment: (assignmentId: string) => void
+  onPrefetchAssignment: (assignmentId: string) => void
 }) {
   const canManage = permissions.canEdit && permissions.isCourseTeacher
   const visibleAssignments = assignments.filter((assignment) =>
@@ -236,6 +251,7 @@ function AssignmentsSection({
               assignment={assignment}
               canManage={canManage}
               onOpenAssignment={onOpenAssignment}
+              onPrefetchAssignment={onPrefetchAssignment}
               onEditAssignment={onEditAssignment}
               onDeleteAssignment={onDeleteAssignment}
             />
@@ -256,6 +272,7 @@ export function LessonDetailSections({
   onEditAssignment,
   onDeleteAssignment,
   onOpenAssignment,
+  onPrefetchAssignment,
 }: LessonDetailSectionsProps) {
   return (
     <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
@@ -275,6 +292,7 @@ export function LessonDetailSections({
         onEditAssignment={onEditAssignment}
         onDeleteAssignment={onDeleteAssignment}
         onOpenAssignment={onOpenAssignment}
+        onPrefetchAssignment={onPrefetchAssignment}
       />
     </div>
   )

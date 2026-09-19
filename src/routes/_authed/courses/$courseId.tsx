@@ -1,13 +1,12 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { Suspense, lazy } from 'react'
 import { toast } from 'sonner'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import { useDialogState } from '@/hooks/useDialogState'
+import { useIntentPreload } from '@/hooks/useIntentPreload'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { useMutation } from '@/hooks/useMutation'
 import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
-import { CourseDialog } from '@/components/dialog/course-dialog/CourseDialog'
-import { LessonDialog } from '@/components/dialog/lesson-dialog/LessonDialog'
-import { MediaDialog } from '@/components/dialog/media-dialog/MediaDialog'
 import { deleteCourse, getCourse } from '@/utils/courses'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
@@ -24,6 +23,22 @@ import {
   shouldTrackCourseStarted,
 } from '@/utils/courses/domain/course-detail.domain'
 import { trackCourseStarted, trackStudentActivated } from '@/utils/analytics'
+
+const CourseDialog = lazy(() =>
+  import('@/components/dialog/course-dialog/CourseDialog').then((module) => ({
+    default: module.CourseDialog,
+  })),
+)
+const LessonDialog = lazy(() =>
+  import('@/components/dialog/lesson-dialog/LessonDialog').then((module) => ({
+    default: module.LessonDialog,
+  })),
+)
+const MediaDialog = lazy(() =>
+  import('@/components/dialog/media-dialog/MediaDialog').then((module) => ({
+    default: module.MediaDialog,
+  })),
+)
 
 export const Route = createFileRoute('/_authed/courses/$courseId')({
   loader: async ({ params }) => {
@@ -61,6 +76,43 @@ type CourseDialogState = ReturnType<typeof useDialogState<CourseEditData>>
 type LessonDialogState = ReturnType<typeof useDialogState<Lesson>>
 type MaterialDialogState = ReturnType<typeof useDialogState<MediaLibraryRow>>
 
+function useCourseLessonNavigation({
+  courseId,
+  firstLessonId,
+  role,
+  completedLessonIds,
+  userId,
+}: {
+  courseId: string
+  firstLessonId: string | undefined
+  role: 'student' | 'teacher' | 'admin'
+  completedLessonIds: Array<string>
+  userId: string | undefined
+}) {
+  const router = useRouter()
+  const intentPreload = useIntentPreload()
+
+  const openLesson = (lessonId: string) => {
+    if (
+      shouldTrackCourseStarted({
+        role,
+        firstLessonId,
+        lessonId,
+        completedLessonIds,
+      })
+    ) {
+      trackCourseStarted(courseId)
+      if (userId) trackStudentActivated(userId, courseId)
+    }
+    router.navigate({ to: '/lessons/$lessonId', params: { lessonId } })
+  }
+
+  const prefetchLesson = (lessonId: string) =>
+    intentPreload({ to: '/lessons/$lessonId', params: { lessonId } })
+
+  return { openLesson, prefetchLesson }
+}
+
 function CourseDetailComponent() {
   const loaderData = Route.useLoaderData()
   const { user } = Route.useRouteContext()
@@ -78,20 +130,13 @@ function CourseDetailComponent() {
     },
   })
 
-  const handleOpenLesson = (lessonId: string) => {
-    if (
-      shouldTrackCourseStarted({
-        role,
-        firstLessonId: course.lessons[0]?.id,
-        lessonId,
-        completedLessonIds: loaderData.completedLessonIds,
-      })
-    ) {
-      trackCourseStarted(course.id)
-      if (user) trackStudentActivated(user.id, course.id)
-    }
-    router.navigate({ to: '/lessons/$lessonId', params: { lessonId } })
-  }
+  const { openLesson, prefetchLesson } = useCourseLessonNavigation({
+    courseId: course.id,
+    firstLessonId: course.lessons[0]?.id,
+    role,
+    completedLessonIds: loaderData.completedLessonIds,
+    userId: user?.id,
+  })
 
   return (
     <PageLayout>
@@ -105,7 +150,8 @@ function CourseDetailComponent() {
         data={loaderData}
         lessonDialog={lessonDialog}
         materialDialog={materialDialog}
-        onOpenLesson={handleOpenLesson}
+        onOpenLesson={openLesson}
+        onPrefetchLesson={prefetchLesson}
       />
       <CourseEditDeleteDialogs
         isAdmin={permissions.isAdmin}
@@ -177,11 +223,13 @@ function CourseSections({
   lessonDialog,
   materialDialog,
   onOpenLesson,
+  onPrefetchLesson,
 }: {
   data: CourseDetailData
   lessonDialog: LessonDialogState
   materialDialog: MaterialDialogState
   onOpenLesson: (lessonId: string) => void
+  onPrefetchLesson: (lessonId: string) => void
 }) {
   const { course, role, completedLessonIds, assignmentData, permissions } = data
   const materials = course.mediaFiles
@@ -204,6 +252,7 @@ function CourseSections({
       onEditLesson={(lesson) => lessonDialog.openDialog('edit', lesson)}
       onDeleteLesson={(lesson) => lessonDialog.openDialog('delete', lesson)}
       onOpenLesson={onOpenLesson}
+      onPrefetchLesson={onPrefetchLesson}
     />
   )
 }
@@ -219,22 +268,28 @@ function CourseEditDeleteDialogs({
   onConfirmDelete: () => void
   isDeleting: boolean
 }) {
+  const isEditOpen = isDialogModeActive(
+    courseDialog.isOpen,
+    courseDialog.dialogMode,
+    'edit',
+  )
+
   return (
     <>
       {/* Edit Course Dialog */}
-      <CourseDialog
-        open={isDialogModeActive(
-          courseDialog.isOpen,
-          courseDialog.dialogMode,
-          'edit',
-        )}
-        onOpenChange={(open) =>
-          handleDialogDismiss(open, courseDialog.closeDialog)
-        }
-        mode="edit"
-        isAdmin={isAdmin}
-        initialData={courseDialog.dialogItem}
-      />
+      {isEditOpen && (
+        <Suspense fallback={null}>
+          <CourseDialog
+            open={true}
+            onOpenChange={(open) =>
+              handleDialogDismiss(open, courseDialog.closeDialog)
+            }
+            mode="edit"
+            isAdmin={isAdmin}
+            initialData={courseDialog.dialogItem}
+          />
+        </Suspense>
+      )}
 
       {/* Delete Course Dialog */}
       <DeleteConfirmDialog
@@ -267,7 +322,7 @@ function LessonMaterialDialogs({
   onMaterialSuccess: () => void
 }) {
   return (
-    <>
+    <Suspense fallback={null}>
       {/* Lesson Dialog (create / edit / delete) */}
       {lessonDialog.isOpen && (
         <LessonDialog
@@ -299,6 +354,6 @@ function LessonMaterialDialogs({
           onSuccess={onMaterialSuccess}
         />
       )}
-    </>
+    </Suspense>
   )
 }

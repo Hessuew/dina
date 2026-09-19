@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { reportMutationError, toastErrorHandler } from './errorHandler'
 import { UNEXPECTED_ERROR_MESSAGE, ValidationError } from '@/utils/errors'
 
-const { captureException, toastError } = vi.hoisted(() => ({
-  captureException: vi.fn(),
+const { captureBrowserSentryException, toastError } = vi.hoisted(() => ({
+  captureBrowserSentryException: vi.fn(),
   toastError: vi.fn(),
 }))
 
-vi.mock('@sentry/tanstackstart-react', () => ({ captureException }))
+vi.mock('@/utils/observability/browser-sentry', () => ({
+  captureBrowserSentryException,
+}))
 vi.mock('sonner', () => ({ toast: { error: toastError } }))
 
 describe('mutation error handling', () => {
@@ -20,7 +22,7 @@ describe('mutation error handling', () => {
 
     reportMutationError(error)
 
-    const captured = captureException.mock.calls[0]?.[0]
+    const captured = captureBrowserSentryException.mock.calls[0]?.[0]
     expect(captured).toMatchObject({
       name: 'MutationError',
       message: error.message,
@@ -31,7 +33,7 @@ describe('mutation error handling', () => {
   it('does not capture expected mutation errors', () => {
     reportMutationError(new ValidationError('Invalid submission'))
 
-    expect(captureException).not.toHaveBeenCalled()
+    expect(captureBrowserSentryException).not.toHaveBeenCalled()
   })
 
   it('shows generic text instead of raw unexpected error details', () => {

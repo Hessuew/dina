@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { FileTextIcon, PlusIcon } from 'lucide-react'
 import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-table/legacy'
@@ -6,7 +6,6 @@ import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
 import type { MediaLibraryRow } from '@/utils/library'
 import type { Role } from '@/utils/authz/types'
 import { useDialogState } from '@/hooks/useDialogState'
-import { MediaDialog } from '@/components/dialog/media-dialog/MediaDialog'
 import { Button } from '@/components/ui/button'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { getLibraryMedia } from '@/utils/library'
@@ -22,7 +21,17 @@ import { EmptyState } from '@/components/ui/empty-state/EmptyState'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
 import { LibraryShelf } from '@/components/library/LibraryShelf'
 import { SessionImage } from '@/components/ui/session-image'
-import { ImportEbooksDialog } from '@/components/dialog/ebook-import/ImportEbooksDialog'
+
+const ImportEbooksDialog = lazy(() =>
+  import('@/components/dialog/ebook-import/ImportEbooksDialog').then(
+    (module) => ({ default: module.ImportEbooksDialog }),
+  ),
+)
+const MediaDialog = lazy(() =>
+  import('@/components/dialog/media-dialog/MediaDialog').then((module) => ({
+    default: module.MediaDialog,
+  })),
+)
 
 export const Route = createFileRoute('/_authed/library/')({
   loader: async () => {
@@ -355,6 +364,59 @@ function LibraryHeader({
   )
 }
 
+type LibraryDialogOverlaysProps = {
+  isMediaDialogOpen: boolean
+  dialogMode: 'create' | 'edit' | 'delete'
+  dialogMedia: MediaLibraryRow | undefined
+  closeMediaDialog: () => void
+  importOpen: boolean
+  media: Array<MediaLibraryRow>
+  setImportOpen: (open: boolean) => void
+}
+
+function LibraryDialogOverlays({
+  isMediaDialogOpen,
+  dialogMode,
+  dialogMedia,
+  closeMediaDialog,
+  importOpen,
+  media,
+  setImportOpen,
+}: LibraryDialogOverlaysProps) {
+  return (
+    <>
+      {isMediaDialogOpen && (
+        <Suspense
+          fallback={
+            <div className="py-12 text-center text-sm text-[#8E816D]">
+              Loading media editor…
+            </div>
+          }
+        >
+          <MediaDialog
+            key={`${dialogMode}-${dialogMedia?.id}`}
+            open
+            onOpenChange={(open) => !open && closeMediaDialog()}
+            mode={dialogMode}
+            media={dialogMedia}
+          />
+        </Suspense>
+      )}
+      {importOpen && (
+        <Suspense
+          fallback={
+            <div className="py-12 text-center text-sm text-[#8E816D]">
+              Loading eBook importer…
+            </div>
+          }
+        >
+          <ImportEbooksDialog open onOpenChange={setImportOpen} media={media} />
+        </Suspense>
+      )}
+    </>
+  )
+}
+
 function LibraryComponent() {
   const loaderData = Route.useLoaderData()
   const { media, viewer } = loaderData
@@ -392,17 +454,14 @@ function LibraryComponent() {
         openDialog={openDialog}
       />
 
-      <MediaDialog
-        key={`${dialogMode}-${dialogMedia?.id}`}
-        open={isOpen}
-        onOpenChange={(open) => !open && closeDialog()}
-        mode={dialogMode as 'create' | 'edit' | 'delete'}
-        media={dialogMedia}
-      />
-      <ImportEbooksDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
+      <LibraryDialogOverlays
+        isMediaDialogOpen={isOpen}
+        dialogMode={dialogMode as 'create' | 'edit' | 'delete'}
+        dialogMedia={dialogMedia}
+        closeMediaDialog={closeDialog}
+        importOpen={importOpen}
         media={media}
+        setImportOpen={setImportOpen}
       />
     </PageLayout>
   )

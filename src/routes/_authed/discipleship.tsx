@@ -1,11 +1,22 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { DiscipleshipBoard } from '@/components/discipleship/DiscipleshipBoard'
-import { StudentDiscipleshipView } from '@/components/discipleship/student-view/StudentDiscipleshipView'
+import { Suspense, lazy } from 'react'
 import { PageLayout } from '@/components/layout/page-layout'
 import {
   getDiscipleshipBoard,
   getStudentDiscipleshipView,
 } from '@/utils/discipleship'
+
+const LazyDiscipleshipBoard = lazy(() =>
+  import('@/components/discipleship/DiscipleshipBoard').then(
+    ({ DiscipleshipBoard }) => ({ default: DiscipleshipBoard }),
+  ),
+)
+
+const LazyStudentDiscipleshipView = lazy(() =>
+  import('@/components/discipleship/student-view/StudentDiscipleshipView').then(
+    ({ StudentDiscipleshipView }) => ({ default: StudentDiscipleshipView }),
+  ),
+)
 
 export const Route = createFileRoute('/_authed/discipleship')({
   // Role already on root context.user — no getCourses() catalog just for branch.
@@ -37,7 +48,7 @@ function StaffPage({
           another student to pair them.
         </p>
       </div>
-      <DiscipleshipBoard data={board} />
+      <LazyDiscipleshipBoard data={board} />
     </>
   )
 }
@@ -58,7 +69,7 @@ function StudentPage({
           discipler.
         </p>
       </div>
-      <StudentDiscipleshipView view={view} />
+      <LazyStudentDiscipleshipView view={view} />
     </>
   )
 }
@@ -68,11 +79,13 @@ function DiscipleshipComponent() {
 
   return (
     <PageLayout>
-      {data.mode === 'staff' ? (
-        <StaffPage board={data.board} />
-      ) : (
-        <StudentPage view={data.view} />
-      )}
+      <Suspense fallback={null}>
+        {data.mode === 'staff' ? (
+          <StaffPage board={data.board} />
+        ) : (
+          <StudentPage view={data.view} />
+        )}
+      </Suspense>
     </PageLayout>
   )
 }
