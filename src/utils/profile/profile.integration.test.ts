@@ -1,8 +1,6 @@
 import crypto from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { eq } from 'drizzle-orm'
 import { seedProfile } from '../../../test/integration/seed'
-import { getDb } from '../../../test/integration/db'
 import type { User } from '@supabase/supabase-js'
 import type { UpdateProfileInput } from '@/schemas/profile.schema'
 import type { EmailSender } from '@/utils/email/types'
@@ -14,7 +12,6 @@ import {
   verifyEmailChangeService,
 } from '@/utils/profile/service/profile.service'
 import * as accountSecurityRepository from '@/utils/repository'
-import { accountSecurity, profiles } from '@/db/schema'
 
 const sendEmail = vi.hoisted(() => vi.fn())
 const updateUser = vi.hoisted(() => vi.fn())
@@ -41,15 +38,11 @@ const makeInput = (
 })
 
 const findProfile = async (id: string) => {
-  const db = await getDb()
-  return db.query.profiles.findFirst({ where: eq(profiles.id, id) })
+  return accountSecurityRepository.findProfileById(id)
 }
 
 const findSecurity = async (id: string) => {
-  const db = await getDb()
-  return db.query.accountSecurity.findFirst({
-    where: eq(accountSecurity.profileId, id),
-  })
+  return accountSecurityRepository.findAccountSecurityByProfileId(id)
 }
 
 beforeEach(() => {
