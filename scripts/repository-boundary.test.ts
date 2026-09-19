@@ -160,6 +160,30 @@ function findSupabaseTableReferences(
     .filter((table): table is string => tableNames.has(table))
 }
 
+function findDynamicSupabaseTableReferences(source: string): Array<string> {
+  if (
+    !/(?:getSupabase(?:Server|Admin)Client\s*\(|from\s*['"]@\/utils\/supabase['"])/.test(
+      source,
+    )
+  ) {
+    return []
+  }
+
+  const supabaseClient = String.raw`(?:getSupabase(?:Server|Admin)Client\s*\(\s*\)|(?:admin|supabase|supabaseAdmin|supabaseClient|client))`
+  const literalArgument = /^['"`](?:[^'"`]|\\['"`])*['"`]$/
+
+  return [
+    ...source.matchAll(
+      new RegExp(
+        `${supabaseClient}\\s*(?:\\?\\.\\s*)?\\.from\\s*\\(\\s*([^)]*?)\\s*\\)`,
+        'g',
+      ),
+    ),
+  ]
+    .map(([, argument]) => argument.trim())
+    .filter((argument) => !literalArgument.test(argument))
+}
+
 function findDynamicRawSqlTableReferences(source: string): Array<string> {
   const sqlSelector = String.raw`\bsql\s*(?:(?:\.\s*|\?\.\s*)(?:raw|identifier)|\[\s*["'](?:raw|identifier)["']\s*\])\s*\(\s*([^)]*?)\s*\)`
   const literalTable =
@@ -1042,6 +1066,29 @@ describe('utils repository boundaries', () => {
     expect(offenders).toEqual([])
   })
 
+  it('detects dynamically selected Supabase REST tables', () => {
+    expect(
+      findDynamicSupabaseTableReferences(
+        "import { getSupabaseServerClient } from '@/utils/supabase'; getSupabaseServerClient().from(tableName)",
+      ),
+    ).toEqual(['tableName'])
+    expect(
+      findDynamicSupabaseTableReferences(
+        "import { getSupabaseAdminClient } from '@/utils/supabase'; admin.from('profiles' + suffix)",
+      ),
+    ).toEqual(["'profiles' + suffix"])
+    expect(
+      findDynamicSupabaseTableReferences(
+        "import { getSupabaseAdminClient } from '@/utils/supabase'; admin.storage.from(bucket)",
+      ),
+    ).toEqual([])
+    expect(
+      findDynamicSupabaseTableReferences(
+        "import { getSupabaseServerClient } from '@/utils/supabase'; getSupabaseServerClient().from('profiles')",
+      ),
+    ).toEqual([])
+  })
+
   it('keeps dynamically selected raw SQL tables behind repository or infrastructure seams', () => {
     const offenders = findSourceFilesIncludingTests(sourceDirectory)
       .filter((sourcePath) => !sourcePath.endsWith('.test.ts'))
@@ -1055,6 +1102,19 @@ describe('utils repository boundaries', () => {
         ({ file, references }) =>
           references.length > 0 && !isDatabaseSeam(file),
       )
+
+    expect(offenders).toEqual([])
+  })
+
+  it('keeps dynamically selected Supabase REST tables behind the shared repository seam', () => {
+    const offenders = findSourceFilesIncludingTests(sourceDirectory)
+      .map((sourcePath) => ({
+        file: sourcePath.slice(sourceDirectory.length + 1),
+        references: findDynamicSupabaseTableReferences(
+          readFileSync(sourcePath, 'utf8'),
+        ),
+      }))
+      .filter(({ references }) => references.length > 0)
 
     expect(offenders).toEqual([])
   })
