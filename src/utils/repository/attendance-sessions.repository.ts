@@ -39,6 +39,18 @@ export async function findAttendanceSessionsByLessonIds(
     .where(inArray(attendanceSessions.lessonId, lessonIds))
 }
 
+export async function findAttendanceSessionByLessonId(
+  lessonId: string,
+): Promise<AttendanceSessionRow | undefined> {
+  const db = await getDb()
+  const [session] = await db
+    .select()
+    .from(attendanceSessions)
+    .where(eq(attendanceSessions.lessonId, lessonId))
+    .limit(1)
+  return session
+}
+
 export async function findOpenAttendanceSessions(now: Date) {
   const db = await getDb()
   return db

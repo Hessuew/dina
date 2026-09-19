@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { eq } from 'drizzle-orm'
 import {
   seedCourse,
   seedCourseTeacher,
@@ -15,8 +14,6 @@ import {
   startOrReopenAttendanceService,
 } from '@/utils/attendance/service/attendance.service'
 import * as repository from '@/utils/repository'
-import { getDb } from '@/db'
-import { attendanceSessions } from '@/db/schema'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 import * as authUtils from '@/utils/auth/auth'
@@ -577,13 +574,9 @@ describe('setStudentPresentService override (integration)', () => {
     )
     expect(sessions.some((session) => session.lessonId === lesson1)).toBe(true)
 
-    const db = await getDb()
-    const [session] = await db
-      .select()
-      .from(attendanceSessions)
-      .where(eq(attendanceSessions.lessonId, lesson1))
-      .limit(1)
+    const session = await repository.findAttendanceSessionByLessonId(lesson1)
     expect(session).toBeTruthy()
+    if (!session) throw new Error('Attendance session was not created')
     expect(session.openedAt?.getTime()).toBe(session.closesAt?.getTime())
     expect(session.openedBy).toBe(teacherId)
   })
@@ -686,12 +679,8 @@ describe('setStudentPresentService override (integration)', () => {
       teacherId,
     )
 
-    const db = await getDb()
-    const [session] = await db
-      .select()
-      .from(attendanceSessions)
-      .where(eq(attendanceSessions.lessonId, lesson1))
-      .limit(1)
+    const session = await repository.findAttendanceSessionByLessonId(lesson1)
+    if (!session) throw new Error('Attendance session was not created')
     expect(session.openedAt?.getTime()).toBe(
       openedAt instanceof Date
         ? openedAt.getTime()
