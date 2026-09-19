@@ -12,6 +12,22 @@ type EmailExportInvitation = Pick<
   'id' | 'status'
 >
 
+type EmailExportContext = {
+  status: EmailExportEnrollment['status']
+  invitationSent: boolean
+  isRegistered: boolean
+}
+
+const groupPredicates: Record<
+  EnrollmentEmailExportGroup,
+  (context: EmailExportContext) => boolean
+> = {
+  approved: (context) => context.status === 'approved',
+  all: () => true,
+  registered: (context) => context.isRegistered,
+  not_registered: (context) => context.invitationSent && !context.isRegistered,
+}
+
 export function selectEnrollmentEmailsByGroup(input: {
   group: EnrollmentEmailExportGroup
   enrollments: Array<EmailExportEnrollment>
@@ -20,23 +36,19 @@ export function selectEnrollmentEmailsByGroup(input: {
   const invitationsById = new Map(
     input.invitations.map((invitation) => [invitation.id, invitation]),
   )
+  const include = groupPredicates[input.group]
 
   return input.enrollments.flatMap((enrollment) => {
     const invitation = enrollment.invitationId
       ? invitationsById.get(enrollment.invitationId)
       : undefined
     const isRegistered = invitation?.status === 'accepted'
-
-    if (input.group === 'approved' && enrollment.status !== 'approved') {
-      return []
-    }
-    if (input.group === 'registered' && !isRegistered) return []
-    if (
-      input.group === 'not_registered' &&
-      (!enrollment.invitationSent || isRegistered)
-    ) {
-      return []
-    }
-    return [enrollment.email]
+    return include({
+      status: enrollment.status,
+      invitationSent: enrollment.invitationSent,
+      isRegistered,
+    })
+      ? [enrollment.email]
+      : []
   })
 }

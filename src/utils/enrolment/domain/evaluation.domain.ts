@@ -46,7 +46,9 @@ export type ScoreKeyResult = {
   changed: boolean
 }
 
-export function scoreRequiresAdmissionCategory(score: number | null): boolean {
+export function scoreRequiresAdmissionCategory(
+  score: number | null,
+): score is 3 | 4 {
   return score === 3 || score === 4
 }
 

@@ -22,6 +22,7 @@ import {
   EVALUATION_SCORES,
   EVALUATION_SCORE_LABELS,
   formatScore,
+  scoreRequiresAdmissionCategory,
 } from '@/utils/enrolment/domain/evaluation.domain'
 import {
   buildScorePatch,
@@ -438,6 +439,84 @@ function useEvaluationMutations({
 
 type EvaluationMutations = ReturnType<typeof useEvaluationMutations>
 
+function useSaveScore({
+  enrollmentId,
+  myScore,
+  myAdmissionCategory,
+  canEvaluate,
+  onLocalEvaluation,
+  scoreMutation,
+  pendingPrevScoreRef,
+  pendingPrevAdmissionCategoryRef,
+}: {
+  enrollmentId: string
+  myScore: number | null
+  myAdmissionCategory: AdmissionCategory | null
+  canEvaluate: boolean
+  onLocalEvaluation: EvaluationOverlayProps['onLocalEvaluation']
+  scoreMutation: EvaluationMutations['scoreMutation']
+  pendingPrevScoreRef: RefObject<number | null>
+  pendingPrevAdmissionCategoryRef: RefObject<AdmissionCategory | null>
+}) {
+  return useCallback(
+    (score: number | null) => {
+      if (!canEvaluate) return
+      if (scoreMutation.isPending) return
+      pendingPrevScoreRef.current = myScore
+      pendingPrevAdmissionCategoryRef.current = myAdmissionCategory
+      onLocalEvaluation(enrollmentId, buildScorePatch(score))
+      void scoreMutation.mutate({ data: { enrollmentId, score } })
+    },
+    [
+      canEvaluate,
+      enrollmentId,
+      myAdmissionCategory,
+      myScore,
+      onLocalEvaluation,
+      scoreMutation,
+    ],
+  )
+}
+
+function useSaveAdmissionCategory({
+  enrollmentId,
+  myScore,
+  myAdmissionCategory,
+  canEvaluate,
+  onLocalEvaluation,
+  categoryMutation,
+  pendingPrevAdmissionCategoryRef,
+}: {
+  enrollmentId: string
+  myScore: number | null
+  myAdmissionCategory: AdmissionCategory | null
+  canEvaluate: boolean
+  onLocalEvaluation: EvaluationOverlayProps['onLocalEvaluation']
+  categoryMutation: EvaluationMutations['categoryMutation']
+  pendingPrevAdmissionCategoryRef: RefObject<AdmissionCategory | null>
+}) {
+  return useCallback(
+    (admissionCategory: AdmissionCategory) => {
+      if (!canEvaluate) return
+      if (!scoreRequiresAdmissionCategory(myScore)) return
+      if (categoryMutation.isPending) return
+      pendingPrevAdmissionCategoryRef.current = myAdmissionCategory
+      onLocalEvaluation(enrollmentId, { admissionCategory })
+      void categoryMutation.mutate({
+        data: { enrollmentId, score: myScore, admissionCategory },
+      })
+    },
+    [
+      canEvaluate,
+      categoryMutation,
+      enrollmentId,
+      myAdmissionCategory,
+      myScore,
+      onLocalEvaluation,
+    ],
+  )
+}
+
 function useEvaluationActions({
   enrollmentId,
   myScore,
@@ -457,47 +536,25 @@ function useEvaluationActions({
   pendingPrevScoreRef: RefObject<number | null>
   pendingPrevAdmissionCategoryRef: RefObject<AdmissionCategory | null>
 }) {
-  const { scoreMutation, categoryMutation, noteMutation } = mutations
-
-  const saveScore = useCallback(
-    (score: number | null) => {
-      if (!canEvaluate) return
-      if (scoreMutation.isPending) return
-      pendingPrevScoreRef.current = myScore
-      pendingPrevAdmissionCategoryRef.current = myAdmissionCategory
-      onLocalEvaluation(enrollmentId, buildScorePatch(score))
-      void scoreMutation.mutate({ data: { enrollmentId, score } })
-    },
-    [
-      canEvaluate,
-      enrollmentId,
-      myAdmissionCategory,
-      myScore,
-      onLocalEvaluation,
-      scoreMutation,
-    ],
-  )
-
-  const saveAdmissionCategory = useCallback(
-    (admissionCategory: AdmissionCategory) => {
-      if (!canEvaluate) return
-      if (myScore !== 3 && myScore !== 4) return
-      if (categoryMutation.isPending) return
-      pendingPrevAdmissionCategoryRef.current = myAdmissionCategory
-      onLocalEvaluation(enrollmentId, { admissionCategory })
-      void categoryMutation.mutate({
-        data: { enrollmentId, score: myScore, admissionCategory },
-      })
-    },
-    [
-      canEvaluate,
-      categoryMutation,
-      enrollmentId,
-      myAdmissionCategory,
-      myScore,
-      onLocalEvaluation,
-    ],
-  )
+  const saveScore = useSaveScore({
+    enrollmentId,
+    myScore,
+    myAdmissionCategory,
+    canEvaluate,
+    onLocalEvaluation,
+    scoreMutation: mutations.scoreMutation,
+    pendingPrevScoreRef,
+    pendingPrevAdmissionCategoryRef,
+  })
+  const saveAdmissionCategory = useSaveAdmissionCategory({
+    enrollmentId,
+    myScore,
+    myAdmissionCategory,
+    canEvaluate,
+    onLocalEvaluation,
+    categoryMutation: mutations.categoryMutation,
+    pendingPrevAdmissionCategoryRef,
+  })
 
   const handleScoreButton = (value: EvaluationScore) =>
     saveScore(toggleScoreValue(value, myScore))
@@ -505,11 +562,11 @@ function useEvaluationActions({
   const saveNote = useCallback(
     async (note: string) => {
       if (!canEvaluate) return
-      if (noteMutation.isPending) return
+      if (mutations.noteMutation.isPending) return
       onLocalEvaluation(enrollmentId, { note })
-      await noteMutation.mutate({ data: { enrollmentId, note } })
+      await mutations.noteMutation.mutate({ data: { enrollmentId, note } })
     },
-    [canEvaluate, enrollmentId, onLocalEvaluation, noteMutation],
+    [canEvaluate, enrollmentId, onLocalEvaluation, mutations.noteMutation],
   )
 
   return { saveScore, saveAdmissionCategory, handleScoreButton, saveNote }
