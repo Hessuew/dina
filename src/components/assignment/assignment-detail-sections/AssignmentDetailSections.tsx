@@ -1,17 +1,22 @@
+import { Suspense, lazy } from 'react'
 import { SaveIcon, SendIcon } from 'lucide-react'
 import {
   buildPastDueNoticeViewModel,
   buildSubmissionHeaderViewModel,
   buildSubmissionStatusViewModel,
 } from './assignment-detail-sections.domain'
-import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
 import type { SubmissionStatusVariant } from '@/utils/assignments/domain/assignment-detail.domain'
 import { Button } from '@/components/ui/button'
 import { StatusChip } from '@/components/ui/status-chip'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
-import { DataTable } from '@/components/table/DataTable'
 import { DarkCard } from '@/components/ui/dark-card'
+
+const AssignmentSubmissionsTable = lazy(() =>
+  import('./AssignmentSubmissionsTable').then((module) => ({
+    default: module.AssignmentSubmissionsTable,
+  })),
+)
 
 type Assignment = {
   id: string
@@ -52,7 +57,6 @@ type AssignmentDetailSectionsProps = {
   assignment: Assignment
   submission: Submission | null | undefined
   allSubmissions: Array<SubmissionWithStudent>
-  submissionsColumns: Array<ColumnDef<SubmissionWithStudent, any>>
   isStudent: boolean
   isPastDue: boolean
   canSubmit: boolean
@@ -62,6 +66,7 @@ type AssignmentDetailSectionsProps = {
   isSavingSubmission: boolean
   onChangeSubmissionFormData: (data: SubmissionFormData) => void
   onSaveSubmission: (submit: boolean) => void
+  onGradeSubmission: (submission: SubmissionWithStudent) => void
 }
 
 function AssignmentAboutCard({
@@ -300,36 +305,15 @@ function StudentSubmissionForm({
   )
 }
 
-function SubmissionsTable({
-  allSubmissions,
-  submissionsColumns,
-}: {
-  allSubmissions: Array<SubmissionWithStudent>
-  submissionsColumns: Array<ColumnDef<SubmissionWithStudent, any>>
-}) {
-  if (allSubmissions.length === 0) {
-    return (
-      <div className="py-16 text-center">
-        <p className="text-sm text-[#AFA28F] italic">No submissions yet</p>
-      </div>
-    )
-  }
-
-  return (
-    <DataTable
-      columns={submissionsColumns}
-      data={allSubmissions}
-      pageSize={10}
-      searchPlaceholder="Search by student name…"
-    />
-  )
+function SubmissionsTableFallback() {
+  return <div className="h-40 animate-pulse bg-white/5" aria-hidden="true" />
 }
 
 function SubmissionPanel({
   assignment,
   submission,
   allSubmissions,
-  submissionsColumns,
+  onGradeSubmission,
   isStudent,
   isPastDue,
   canSubmit,
@@ -359,10 +343,13 @@ function SubmissionPanel({
             onSaveSubmission={onSaveSubmission}
           />
         ) : (
-          <SubmissionsTable
-            allSubmissions={allSubmissions}
-            submissionsColumns={submissionsColumns}
-          />
+          <Suspense fallback={<SubmissionsTableFallback />}>
+            <AssignmentSubmissionsTable
+              allSubmissions={allSubmissions}
+              maxGrade={assignment.maxGrade}
+              onGrade={onGradeSubmission}
+            />
+          </Suspense>
         )}
       </div>
     </div>

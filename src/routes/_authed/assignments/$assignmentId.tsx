@@ -1,12 +1,8 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { CalendarIcon, ClockIcon, PencilIcon } from 'lucide-react'
+import { CalendarIcon, ClockIcon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-table/legacy'
-import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
-import { StatusChip } from '@/components/ui/status-chip'
-import { createButtonColumn } from '@/components/table/DataTable'
 import { useDialogState } from '@/hooks/useDialogState'
 import { useMutation } from '@/hooks/useMutation'
 import { createOrUpdateSubmission, getAssignment } from '@/utils/assignments'
@@ -70,55 +66,8 @@ type SubmissionWithStudent = {
   }
 }
 
-const columnHelper = createColumnHelper<SubmissionWithStudent>()
-
 type AssignmentDetailData = ReturnType<typeof Route.useLoaderData>
 type AssignmentData = AssignmentDetailData['assignment']
-
-function buildSubmissionsColumns({
-  maxGrade,
-  onGrade,
-}: {
-  maxGrade: AssignmentData['maxGrade']
-  onGrade: (submission: SubmissionWithStudent) => void
-}): Array<ColumnDef<SubmissionWithStudent, any>> {
-  return [
-    columnHelper.accessor('student.fullName', {
-      cell: (info) => (
-        <span className="font-serif text-sm text-[#F8F4EC]">
-          {info.getValue()}
-        </span>
-      ),
-      header: 'Student',
-    }),
-    columnHelper.accessor('status', {
-      cell: (info) => {
-        const variant = resolveSubmissionStatusVariant(info.row.original)
-        return <StatusChip variant={variant} size="sm" />
-      },
-      header: 'Status',
-    }),
-    columnHelper.accessor('grade', {
-      cell: (info) => (
-        <span className="text-sm text-[#AFA28F]">
-          {formatSubmissionGrade(info.row.original.grade, maxGrade)}
-        </span>
-      ),
-      header: 'Grade',
-    }),
-    columnHelper.accessor('submittedAt', {
-      cell: (info) => (
-        <span className="text-sm text-[#8E816D]">
-          {formatSubmittedDate(info.row.original.submittedAt)}
-        </span>
-      ),
-      header: 'Submitted',
-    }),
-    createButtonColumn<SubmissionWithStudent>([
-      { icon: PencilIcon, label: 'Grade', onClick: onGrade },
-    ]),
-  ]
-}
 
 function useAssignmentNavigation() {
   const router = useRouter()
@@ -217,11 +166,6 @@ function useAssignmentDetail() {
     isOpen: assignmentDialog.isOpen,
   })
 
-  const submissionsColumns = buildSubmissionsColumns({
-    maxGrade: assignment.maxGrade,
-    onGrade: (sub) => gradeDialog.openDialog('edit', sub),
-  })
-
   return {
     assignment,
     submission,
@@ -234,7 +178,6 @@ function useAssignmentDetail() {
     canSubmit,
     showSubmissionsPanel,
     editDialogMode,
-    submissionsColumns,
     submissionForm,
     goBack: nav.goBack,
     buildDeleteSuccessHandler: nav.buildDeleteSuccessHandler,
@@ -370,7 +313,6 @@ function AssignmentDetailComponent() {
     canSubmit,
     showSubmissionsPanel,
     editDialogMode,
-    submissionsColumns,
     submissionForm,
     goBack,
     buildDeleteSuccessHandler,
@@ -390,7 +332,6 @@ function AssignmentDetailComponent() {
         assignment={assignment}
         submission={submission}
         allSubmissions={allSubmissions}
-        submissionsColumns={submissionsColumns}
         isStudent={isStudent}
         isPastDue={isPastDue}
         canSubmit={canSubmit}
@@ -399,6 +340,9 @@ function AssignmentDetailComponent() {
         isSavingSubmission={submissionForm.submissionMutation.isPending}
         onChangeSubmissionFormData={submissionForm.setSubmissionFormData}
         onSaveSubmission={submissionForm.handleSaveSubmission}
+        onGradeSubmission={(submissionToGrade) =>
+          gradeDialog.openDialog('edit', submissionToGrade)
+        }
       />
 
       <AssignmentDetailDialogs
