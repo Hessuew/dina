@@ -8,7 +8,6 @@ import {
 
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
-import * as Sentry from '@sentry/tanstackstart-react'
 import * as React from 'react'
 
 import type { UserContext } from '@/utils/auth/domain/user-context.domain'
@@ -23,6 +22,7 @@ import { DefaultCatchBoundary } from '@/components/navigation/DefaultCatchBounda
 import { NotFound } from '@/components/navigation/NotFound'
 import { Header } from '@/components/navigation/Header'
 import { useSessionPrivateImageCacheUser } from '@/hooks/useSessionPrivateImageUrl'
+import { setBrowserSentryUser } from '@/utils/observability/browser-sentry'
 import {
   identifyAnalyticsUser,
   initializeAnalytics,
@@ -111,11 +111,7 @@ function useSentryUser(user: UserContext | null | undefined) {
   useSessionPrivateImageCacheUser(user?.id)
 
   React.useEffect(() => {
-    if (user) {
-      Sentry.setUser({ id: user.id, email: user.email, role: user.role })
-    } else {
-      Sentry.setUser(null)
-    }
+    setBrowserSentryUser(user)
   }, [user])
 }
 

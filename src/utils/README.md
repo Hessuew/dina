@@ -525,6 +525,10 @@ feature consumes them.
   - `observability/trace-context.ts`: adds active OpenTelemetry `trace_id` and
     `span_id` values to Sentry-compatible error events so Better Stack Errors
     can link them to Cloudflare Logs & Traces when a span is available.
+  - `observability/browser-sentry.ts`: dynamically loads the browser Sentry SDK
+    from one shared promise so initialization, user context, and error capture
+    do not enlarge the critical application entry; server error-boundary capture
+    reuses the same asynchronous adapter.
 
 - **Product analytics**
   - `analytics.ts`: optional browser-only PostHog boundary with an allow-listed

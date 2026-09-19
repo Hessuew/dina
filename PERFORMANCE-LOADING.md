@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **13 / 13 complete**
+Current implementation slices: **14 / 14 complete**
 
 ## Done
 
@@ -21,6 +21,7 @@ Current implementation slices: **13 / 13 complete**
 - ✅ Manager assignment detail loads now include the submissions panel data in the primary detail read, removing a second server-function round trip when opening an assignment as a course teacher or admin.
 - ✅ Calendar lesson and assignment event previews now preload their detail route as soon as a navigable event is opened, so “View Details” can reuse the route data instead of starting the load after the click.
 - ✅ Imperative lesson and assignment rows now also start route preloading on pointer-down, covering fast clicks and touch interactions where hover intent is unavailable.
+- ✅ Browser Sentry now loads through a shared dynamic boundary, keeping its large SDK out of the critical application entry while preserving client initialization, user context, and error capture.
 
 ## Remaining
 
@@ -29,7 +30,7 @@ Current implementation slices: **13 / 13 complete**
 - ⬜ Audit the remaining oversized route chunks, especially the PDF path, and keep them off unrelated navigations.
 - ⬜ Re-run the measurements and push the finished work as a GitHub PR (do not merge automatically).
 
-Latest build audit: the shared browser entry is 464.55 KB minified / 149.25 KB gzip. PDF.js remains isolated to the library document viewer (487.96 KB minified / 146.71 KB gzip plus a 1.3 MB worker); these are deferred assets and do not load on the landing page.
+Latest build audit: the main shared browser entry is 408.27 KB minified / 131.30 KB gzip, down from 464.55 KB / 149.25 KB. Sentry is now a deferred 476.28 KB / 156.08 KB chunk. PDF.js remains isolated to the library document viewer (487.96 KB minified / 148.26 KB gzip plus a 1.3 MB worker); these deferred assets do not load on the landing page.
 
 ## Browser baseline
 
@@ -40,4 +41,4 @@ Captured 2026-09-19 against the local Vite development server with Chrome DevToo
 - ✅ Authenticated dashboard data waterfall (warm local Vite session): root user requests completed in 451–486 ms; dashboard course, upcoming-lesson, and assignment server functions completed in 461–732 ms and were issued concurrently.
 - ⚠️ Authenticated route UI timing is not yet production-valid: the local Vite session repeatedly hit a hydration mismatch after route data returned, leaving stale content visible for several seconds. The measured course transition therefore cannot be used as a real-user baseline until a production-like Worker/Hyperdrive environment is available.
 
-Next slice: capture authenticated course/lesson/assignment timings in a production-like environment, then use the request waterfall to choose the next route-level change.
+Next slice: capture authenticated course/lesson/assignment timings in a production-like environment, then use the request waterfall to choose the next route-level change. Keep auditing oversized route chunks without moving optional workflows back into the shared entry.
