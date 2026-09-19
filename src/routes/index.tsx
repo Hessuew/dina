@@ -1,14 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { Suspense, lazy } from 'react'
 import { LandingAboutSection } from '@/components/landing/about/about'
 import { LandingCourseShowcase } from '@/components/landing/courses'
 import { LandingHeroEditorial } from '@/components/landing/hero'
 import { LandingMarksSection } from '@/components/landing/marks'
-import { LandingLecturerGemsSection } from '@/components/landing/lecturers'
 import { LandingTestimonialsSection } from '@/components/landing/testimonials'
 import { LandingQASection } from '@/components/landing/qa'
 import { LandingLeadershipSection } from '@/components/landing/leadership'
 import { LandingOfficialInfo } from '@/components/landing/official-info'
 import { LandingFooter } from '@/components/landing/footer'
+
+const LazyLandingLecturerGemsSection = lazy(() =>
+  import('@/components/landing/lecturers').then((module) => ({
+    default: module.LandingLecturerGemsSection,
+  })),
+)
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -23,7 +29,9 @@ function Home() {
 
       <LandingAboutSection />
       <LandingCourseShowcase />
-      <LandingLecturerGemsSection />
+      <Suspense fallback={null}>
+        <LazyLandingLecturerGemsSection />
+      </Suspense>
       <LandingTestimonialsSection />
       <LandingMarksSection />
       <LandingQASection />
