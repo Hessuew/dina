@@ -6,6 +6,7 @@ export type PostCommentRow = Pick<
   typeof postComments.$inferSelect,
   'id' | 'postId' | 'authorId' | 'content' | 'createdAt' | 'updatedAt'
 >
+export type PostCommentInsert = typeof postComments.$inferInsert
 
 function buildCommentWhereConditions(
   postId: string,
@@ -140,11 +141,9 @@ export async function findCommentForWrite(commentId: string) {
   })
 }
 
-export async function insertComment(values: {
-  postId: string
-  authorId: string
-  content: string
-}): Promise<{ id: string }> {
+export async function insertComment(
+  values: PostCommentInsert,
+): Promise<{ id: string }> {
   const db = await getDb()
   const row = (await db.insert(postComments).values(values).returning()).at(0)
   if (!row) throw new Error('Insert returned no rows for comment')
