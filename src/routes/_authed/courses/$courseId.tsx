@@ -1,13 +1,11 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { Suspense, lazy } from 'react'
 import { toast } from 'sonner'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import { useDialogState } from '@/hooks/useDialogState'
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog'
 import { useMutation } from '@/hooks/useMutation'
 import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
-import { CourseDialog } from '@/components/dialog/course-dialog/CourseDialog'
-import { LessonDialog } from '@/components/dialog/lesson-dialog/LessonDialog'
-import { MediaDialog } from '@/components/dialog/media-dialog/MediaDialog'
 import { deleteCourse, getCourse } from '@/utils/courses'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
@@ -24,6 +22,22 @@ import {
   shouldTrackCourseStarted,
 } from '@/utils/courses/domain/course-detail.domain'
 import { trackCourseStarted, trackStudentActivated } from '@/utils/analytics'
+
+const CourseDialog = lazy(() =>
+  import('@/components/dialog/course-dialog/CourseDialog').then((module) => ({
+    default: module.CourseDialog,
+  })),
+)
+const LessonDialog = lazy(() =>
+  import('@/components/dialog/lesson-dialog/LessonDialog').then((module) => ({
+    default: module.LessonDialog,
+  })),
+)
+const MediaDialog = lazy(() =>
+  import('@/components/dialog/media-dialog/MediaDialog').then((module) => ({
+    default: module.MediaDialog,
+  })),
+)
 
 export const Route = createFileRoute('/_authed/courses/$courseId')({
   loader: async ({ params }) => {
@@ -235,22 +249,28 @@ function CourseEditDeleteDialogs({
   onConfirmDelete: () => void
   isDeleting: boolean
 }) {
+  const isEditOpen = isDialogModeActive(
+    courseDialog.isOpen,
+    courseDialog.dialogMode,
+    'edit',
+  )
+
   return (
     <>
       {/* Edit Course Dialog */}
-      <CourseDialog
-        open={isDialogModeActive(
-          courseDialog.isOpen,
-          courseDialog.dialogMode,
-          'edit',
-        )}
-        onOpenChange={(open) =>
-          handleDialogDismiss(open, courseDialog.closeDialog)
-        }
-        mode="edit"
-        isAdmin={isAdmin}
-        initialData={courseDialog.dialogItem}
-      />
+      {isEditOpen && (
+        <Suspense fallback={null}>
+          <CourseDialog
+            open={true}
+            onOpenChange={(open) =>
+              handleDialogDismiss(open, courseDialog.closeDialog)
+            }
+            mode="edit"
+            isAdmin={isAdmin}
+            initialData={courseDialog.dialogItem}
+          />
+        </Suspense>
+      )}
 
       {/* Delete Course Dialog */}
       <DeleteConfirmDialog
@@ -283,7 +303,7 @@ function LessonMaterialDialogs({
   onMaterialSuccess: () => void
 }) {
   return (
-    <>
+    <Suspense fallback={null}>
       {/* Lesson Dialog (create / edit / delete) */}
       {lessonDialog.isOpen && (
         <LessonDialog
@@ -315,6 +335,6 @@ function LessonMaterialDialogs({
           onSuccess={onMaterialSuccess}
         />
       )}
-    </>
+    </Suspense>
   )
 }
