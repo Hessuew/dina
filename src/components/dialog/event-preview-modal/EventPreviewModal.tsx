@@ -10,6 +10,7 @@ import {
   UserIcon,
   VideoIcon,
 } from 'lucide-react'
+import { useEffect } from 'react'
 import {
   buildEventDetailsViewModel,
   buildEventNavigation,
@@ -63,6 +64,13 @@ function useEventNavigation(
   onClose: () => void,
 ) {
   const router = useRouter()
+
+  useEffect(() => {
+    const nav = buildEventNavigation(event, currentMonth)
+    if (!nav) return
+    void router.preloadRoute(nav).catch(() => undefined)
+  }, [currentMonth, event, router])
+
   return () => {
     const nav = buildEventNavigation(event, currentMonth)
     if (!nav) return

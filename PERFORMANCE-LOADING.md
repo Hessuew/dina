@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **11 / 11 complete**
+Current implementation slices: **12 / 12 complete**
 
 ## Done
 
@@ -19,6 +19,7 @@ Current implementation slices: **11 / 11 complete**
 - ✅ Exam list and detail loaders now use the authenticated root route context for the user role instead of refetching courses, removing one redundant server request from both exam entry points.
 - ✅ Landing-page lecturer portraits now load only for the current and adjacent carousel items (six of twelve on desktop, three of twelve on mobile), deferring the remaining portrait assets until interaction. The built portrait set is about 614 KB; the initial desktop selection exposes about 310 KB.
 - ✅ Manager assignment detail loads now include the submissions panel data in the primary detail read, removing a second server-function round trip when opening an assignment as a course teacher or admin.
+- ✅ Calendar lesson and assignment event previews now preload their detail route as soon as a navigable event is opened, so “View Details” can reuse the route data instead of starting the load after the click.
 
 ## Remaining
 
@@ -29,4 +30,4 @@ Current implementation slices: **11 / 11 complete**
 
 Latest build audit: the shared browser entry is 464.55 KB minified / 149.25 KB gzip. PDF.js remains isolated to the library document viewer (487.96 KB minified / 146.71 KB gzip plus a 1.3 MB worker); these are deferred assets and do not load on the landing page.
 
-Next slice: audit remaining imperative detail navigation outside the core course/lesson/assignment flows, then collect representative browser measurements for landing, dashboard, course, lesson, and assignment flows to prioritize the next route-level change.
+Next slice: collect representative browser measurements for landing, dashboard, course, lesson, assignment, and calendar flows to prioritize the next route-level change.
