@@ -18,7 +18,7 @@ export function PageHeader({
   responsiveTitle = true,
 }: PageHeaderProps) {
   return (
-    <div className="mb-10">
+    <div className="mb-10 pt-4 md:pt-0">
       <Button
         variant="ghost"
         theme="light"
