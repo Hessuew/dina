@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **41 / 41 complete**
+Current implementation slices: **42 / 42 complete**
 
 ## Done
 
@@ -49,6 +49,7 @@ Current implementation slices: **41 / 41 complete**
 - ✅ ViewerDateTime now uses the browser's native `Intl.DateTimeFormat` for its six fixed display patterns, keeping the 11.92 KB date-fns formatter off dashboard, course-detail, and lesson-detail navigation payloads.
 - ✅ Dashboard attendance course links and assignment cards now preload their detail routes on pointer-down, covering fast clicks and touch activation on the remaining direct course/assignment links.
 - ✅ Library media cards and management-table thumbnails now preload the media-detail route on pointer-down, so fast clicks and touch activation can begin loading the deferred document/PDF viewer before navigation.
+- ✅ Staff exam-grading attempt links now preload the attempt-detail route on pointer-down, so opening a submitted attempt can begin loading before a fast click or touch navigation.
 
 ## Remaining
 
@@ -64,6 +65,8 @@ Current iteration build audit: the shared browser entry is 387.35 KB minified / 
 The ViewerDateTime dependency audit keeps the dashboard route on its 1.21 KB / 0.59 KB gzip native formatter helper and removes its prior 11.92 KB / 3.26 KB gzip date-fns formatter dependency. The date-fns formatter remains available to calendar and management-only routes that still use richer date-fns operations.
 
 The dashboard course-card preload slice leaves bundle sizes unchanged: the course-detail route is 38.90 KB / 12.54 KB gzip, and the optimization targets navigation request start time for fast clicks and touch rather than payload size.
+
+The exam-grading attempt preload slice leaves bundle sizes unchanged and targets navigation request start time for staff reviewing attempts.
 
 ## Browser baseline
 
