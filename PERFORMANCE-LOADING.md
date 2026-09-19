@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **36 / 36 complete**
+Current implementation slices: **37 / 37 complete**
 
 ## Done
 
@@ -43,11 +43,12 @@ Current implementation slices: **36 / 36 complete**
 - ✅ Mutation error reporting now uses the shared dynamic browser Sentry loader, so the Sentry SDK stays in its own idle-loaded chunk instead of being pulled through the shared mutation hook dependency.
 - ✅ Discipleship now lazy-loads the role-exclusive UI: student navigation keeps the staff drag-and-drop board out of its route payload, reducing the initial route chunk from 65.82 KB to 4.59 KB minified (about 61 KB saved before the selected role view loads).
 - ✅ Existing exam attempts now preload the take route on pointer-down from the exam landing page, so “Continue exam” and “View submission” can start loading before navigation.
+- ✅ Exam list links now preload their detail or take/review route on pointer-down, covering fast clicks and touch activation before navigation.
 - ✅ Landing page now lazy-loads testimonials, marks, FAQ, leadership, official information, and footer sections so the initial route keeps below-fold content out of its critical payload.
 
 ## Remaining
 
-- ⬜ Audit remaining imperative detail navigation outside the core course/lesson/assignment flows.
+- ⬜ Audit remaining imperative detail navigation outside the core course/lesson/assignment/exam flows.
 - ⬜ Add representative browser measurements for landing, dashboard, course, lesson, and assignment flows.
 - ⬜ Audit the remaining oversized route chunks, especially the PDF path, and keep them off unrelated navigations.
 - ⬜ Re-run the measurements and push the finished work as a GitHub PR (do not merge automatically).

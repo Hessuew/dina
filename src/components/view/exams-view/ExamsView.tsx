@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import type {
   ExamAttemptStatus,
   ExamStatus,
@@ -93,10 +93,21 @@ function TeacherExamList({ exams }: { exams: Array<TeacherExamListItem> }) {
 }
 
 function TeacherExamRow({ exam }: { exam: TeacherExamListItem }) {
+  const router = useRouter()
+  const preloadExam = () => {
+    void router
+      .preloadRoute({
+        to: '/exams/$examId',
+        params: { examId: exam.id },
+      })
+      .catch(() => undefined)
+  }
+
   return (
     <Link
       to="/exams/$examId"
       params={{ examId: exam.id }}
+      onPointerDown={preloadExam}
       className="flex items-center justify-between gap-4 border border-[#1A1A1A]/10 bg-white/70 px-5 py-4 transition-colors hover:border-[#C5A059]/40"
     >
       <div>
@@ -129,7 +140,18 @@ function StudentExamList({ items }: { items: Array<StudentExamItem> }) {
 }
 
 function StudentExamCard({ item }: { item: StudentExamItem }) {
+  const router = useRouter()
   const vm = deriveStudentCardViewModel(item, new Date())
+  const preloadExam = () => {
+    if (vm.action === null) return
+    void router
+      .preloadRoute({
+        to: studentExamCardTarget(vm.action),
+        params: { examId: item.exam.id },
+      })
+      .catch(() => undefined)
+  }
+
   return (
     <div className="space-y-4 border border-[#1A1A1A]/10 bg-white/70 p-5">
       <div className="flex items-start justify-between gap-3">
@@ -156,6 +178,7 @@ function StudentExamCard({ item }: { item: StudentExamItem }) {
             <Link
               to={studentExamCardTarget(vm.action)}
               params={{ examId: item.exam.id }}
+              onPointerDown={preloadExam}
             />
           }
         >
