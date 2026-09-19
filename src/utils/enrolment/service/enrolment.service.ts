@@ -47,7 +47,6 @@ import {
 } from '@/utils/enrolment/domain/enrolment.domain'
 import { buildReviewerTeams } from '@/utils/enrolment/domain/reviewer-teams.domain'
 import { selectReviewerAdmittedEnrollmentIds } from '@/utils/enrolment/domain/reviewer-admission.domain'
-import { selectEnrollmentEmailsByGroup } from '@/utils/enrolment/domain/email-export.domain'
 import {
   bulkAssignEnrollments,
   bulkUpdateEnrollmentStatuses,
@@ -55,7 +54,8 @@ import {
   deleteEnrollmentById,
   deleteInvitationById,
   findAbsentTeacherIdsWithActiveSubstitution,
-  findAllEnrollmentEvaluationScores,
+  findAcceptedInvitationIds,
+  findAllEnrollmentEmails,
   findAllReviewerAssignments,
   findAllTeacherIds,
   findAwaitingApprovalEnrollments,
@@ -66,16 +66,17 @@ import {
   findCourseSubstitutesByCourseIds,
   findEnrollmentById,
   findEnrollmentContactLookupCandidates,
+  findEnrollmentEmailsByInvitationIds,
+  findEnrollmentEmailsByStatus,
   findEnrollmentEvaluationScoresByEnrollmentIds,
   findEnrollmentEvaluationTotalsByEnrollmentIds,
   findEnrollmentEvaluationsByEnrollmentIds,
+  findEnrollmentEvaluationsByScores,
   findEnrollmentIdsExcludingDuplicates,
   findEnrollmentReviewCandidates,
   findEnrollmentsByIds,
-  findEnrollmentsForEmailExport,
   findEnrollmentsPage,
   findInvitationByEmail,
-  findInvitationsByIds,
   findProfileById,
   findProfilesByIds,
   findReviewerAssignmentForEnrollment,
@@ -85,6 +86,7 @@ import {
   findSubstituteTeacherIdsByCourse,
   findTeacherIdsByCourseId,
   findTeacherIdsByCourseIds,
+  findUnregisteredEnrollmentEmails,
   insertEnrollment,
   insertInvitation,
   markEnrollmentInvitationSent,
@@ -270,7 +272,7 @@ async function findReviewerEnrollmentIds(
 async function findReviewerAdmittedEnrollmentIds(): Promise<Array<string>> {
   const [assignments, evaluations] = await Promise.all([
     findAllReviewerAssignments(),
-    findAllEnrollmentEvaluationScores(),
+    findEnrollmentEvaluationsByScores([3, 4]),
   ])
   return selectReviewerAdmittedEnrollmentIds(assignments, evaluations)
 }
@@ -1835,6 +1837,23 @@ async function requireEnrollmentContactExport(userId: string) {
   })
 }
 
+async function findEnrollmentEmailsByGroup(
+  group: GetEnrollmentEmailsInput['group'],
+): Promise<Array<string>> {
+  switch (group) {
+    case 'all':
+      return findAllEnrollmentEmails()
+    case 'approved':
+      return findEnrollmentEmailsByStatus('approved')
+    case 'registered':
+      return findEnrollmentEmailsByInvitationIds(
+        await findAcceptedInvitationIds(),
+      )
+    case 'not_registered':
+      return findUnregisteredEnrollmentEmails(await findAcceptedInvitationIds())
+  }
+}
+
 /**
  * Returns all enrollment emails for the requested group.
  * Restricted to Admins and Teacher-users with enrolment contact export.
@@ -1865,20 +1884,7 @@ export async function getEnrollmentEmailsService(
   }
 
   try {
-    const enrollments = await findEnrollmentsForEmailExport()
-    const invitations =
-      data.group === 'all' || data.group === 'approved'
-        ? []
-        : await findInvitationsByIds(
-            enrollments.flatMap((enrollment) =>
-              enrollment.invitationId ? [enrollment.invitationId] : [],
-            ),
-          )
-    const emails = selectEnrollmentEmailsByGroup({
-      group: data.group,
-      enrollments,
-      invitations,
-    })
+    const emails = await findEnrollmentEmailsByGroup(data.group)
     logEnrollmentContactEvent('info', 'enrollment_contact_exported', context, {
       contactCount: emails.length,
     })

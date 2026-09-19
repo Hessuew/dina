@@ -1775,10 +1775,9 @@ describe('enrollment email export cohorts (integration)', () => {
     const repositoryError = new Error(
       'connectionString=secret; email=private-export@test.dev',
     )
-    vi.spyOn(
-      sharedRepository,
-      'findEnrollmentsForEmailExport',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findAllEnrollmentEmails').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       getEnrollmentEmailsService({ group: 'all' }, adminId),

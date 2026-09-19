@@ -60,11 +60,11 @@ export async function upsertEmailChangeTokensInTransaction(
 
 export async function clearEmailChangeTokens(userId: string) {
   const db = await getDb()
-  await clearEmailChangeTokensInTransaction(db, userId)
+  await db.transaction((tx) => clearEmailChangeTokensInTransaction(tx, userId))
 }
 
 export async function clearEmailChangeTokensInTransaction(
-  tx: RepositoryTransactionClient | Awaited<ReturnType<typeof getDb>>,
+  tx: RepositoryTransactionClient,
   userId: string,
 ) {
   await tx

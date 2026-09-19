@@ -132,7 +132,7 @@ function MediaCardBody({
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,4,2,0.72)_0%,transparent_35%,transparent_55%,rgba(5,4,2,0.92)_100%)]" />
 
       {/* Inset decorative gold hairline */}
-      <div className="pointer-events-none absolute inset-[7px] z-10 border border-[#C5A059]/25 transition-colors duration-300 group-hover:border-[#C5A059]/45" />
+      <div className="pointer-events-none absolute inset-1.75 z-10 border border-[#C5A059]/25 transition-colors duration-300 group-hover:border-[#C5A059]/45" />
 
       {/* Format badge — top-left corner */}
       <MediaCardBadge

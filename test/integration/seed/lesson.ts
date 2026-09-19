@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto'
-import type { LessonInsert } from '@/utils/repository'
 import { insertLesson } from '@/utils/repository'
 
 export async function seedLesson(overrides: {

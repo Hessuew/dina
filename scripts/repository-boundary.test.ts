@@ -177,7 +177,19 @@ function findDynamicSupabaseTableReferences(source: string): Array<string> {
     return []
   }
 
-  const supabaseClient = String.raw`(?:getSupabase(?:Server|Admin)Client\s*\(\s*\)|(?:admin|supabase|supabaseAdmin|supabaseClient|client))`
+  const clientNames = new Set([
+    'admin',
+    'supabase',
+    'supabaseAdmin',
+    'supabaseClient',
+    'client',
+  ])
+  for (const [, assignedName] of source.matchAll(
+    /(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:await\s+)?getSupabase(?:Server|Admin)Client\s*\(/g,
+  )) {
+    clientNames.add(assignedName)
+  }
+  const supabaseClient = String.raw`(?:getSupabase(?:Server|Admin)Client\s*\(\s*\)|(?:${[...clientNames].join('|')}))`
   const literalArgument = /^['"`](?:[^'"`]|\\['"`])*['"`]$/
 
   const fromAccess = String.raw`(?:(?:\.\s*|\?\s*\.\s*)(?:from|\[\s*['"]from['"]\s*\])|\[\s*['"]from['"]\s*\])`
@@ -251,6 +263,28 @@ function findDynamicTableReferences(source: string): Array<string> {
         String.raw`${objectHandle}\s*${queryAccess}\s*(?:\?\s*\.\s*)?\[\s*(?!['"])${identifier}\s*\]`,
         'g',
       ),
+    ),
+  ].map(([match]) => match)
+}
+
+function findDynamicHandleMemberAccess(source: string): Array<string> {
+  const computedAccess = String.raw`\s*(?:\?\s*\.\s*)?\[\s*`
+
+  return [
+    ...source.matchAll(
+      new RegExp(
+        `${databaseHandle}${computedAccess}(?!['"\`])${identifier}\\s*\\]`,
+        'g',
+      ),
+    ),
+    ...source.matchAll(
+      new RegExp(
+        `${databaseHandle}${computedAccess}['"][^'"]*['"]\\s*\\+`,
+        'g',
+      ),
+    ),
+    ...source.matchAll(
+      new RegExp(`${databaseHandle}${computedAccess}\`[^\`]*\\$\\{`, 'g'),
     ),
   ].map(([match]) => match)
 }
@@ -591,6 +625,19 @@ describe('utils repository boundaries', () => {
     ).toHaveLength(0)
   })
 
+  it('detects computed member access on database handles', () => {
+    expect(
+      findDynamicHandleMemberAccess(
+        'db[method](profiles); tx?.[operation](); database["sel" + "ect"](); dbClient[`que${part}`]',
+      ),
+    ).toHaveLength(4)
+    expect(
+      findDynamicHandleMemberAccess(
+        'db["query"].profiles.findFirst(); tx.query.profiles.findMany(); store[index]; db["select"]()',
+      ),
+    ).toHaveLength(0)
+  })
+
   it('detects table references hidden in SQL templates', () => {
     const schemaTables = findSchemaTables()
 
@@ -913,6 +960,7 @@ describe('utils repository boundaries', () => {
         ...findRawSqlTableReferences(source, schemaTables),
       ]
       expect(findDynamicTableReferences(source), file).toHaveLength(0)
+      expect(findDynamicHandleMemberAccess(source), file).toHaveLength(0)
       expect(findDynamicRawSqlTableReferences(source), file).toHaveLength(0)
       expect(findNonNamedSchemaImports(source), file).toHaveLength(0)
       expect(importedTables, file).toHaveLength(1)
@@ -1035,6 +1083,17 @@ describe('utils repository boundaries', () => {
     expect(offenders).toEqual([])
   })
 
+  it('keeps computed database-handle member access behind seams', () => {
+    const offenders = collectOffenders(
+      applicationSourcePaths(),
+      sourceDirectory,
+      findDynamicHandleMemberAccess,
+      isDatabaseSeam,
+    )
+
+    expect(offenders).toEqual([])
+  })
+
   it('keeps raw SQL table references behind repository or infrastructure seams', () => {
     const schemaTables = findSchemaTables()
     const offenders = collectOffenders(
@@ -1095,6 +1154,16 @@ describe('utils repository boundaries', () => {
         "import { getSupabaseServerClient } from '@/utils/supabase'; getSupabaseServerClient()?.['from']?.(tableName)",
       ),
     ).toEqual(['tableName'])
+    expect(
+      findDynamicSupabaseTableReferences(
+        "import { getSupabaseAdminClient } from '@/utils/supabase'; const api = getSupabaseAdminClient(); api.from(tableName)",
+      ),
+    ).toEqual(['tableName'])
+    expect(
+      findDynamicSupabaseTableReferences(
+        "import { getSupabaseAdminClient } from '@/utils/supabase'; const api = getSupabaseAdminClient(); api.from('profiles')",
+      ),
+    ).toEqual([])
   })
 
   it('keeps dynamically selected raw SQL tables behind repository or infrastructure seams', () => {

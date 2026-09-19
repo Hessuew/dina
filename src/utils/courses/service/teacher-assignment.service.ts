@@ -11,7 +11,6 @@ import {
   findCourseAssignmentsByTeacherIds,
   findCourseById,
   findCourseTeacherRows,
-  findCoursesByIds,
   findProfilesByIds,
   replaceTeacherAssignments,
 } from '@/utils/repository'
