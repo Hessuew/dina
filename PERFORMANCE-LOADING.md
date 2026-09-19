@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **5 / 5 complete**
+Current implementation slices: **6 / 6 complete**
 
 ## Done
 
@@ -13,12 +13,13 @@ Current implementation slices: **5 / 5 complete**
 - ✅ Added pointer-intent route preloading for course → lesson and lesson → assignment detail navigation that uses imperative navigation.
 - ✅ Added pointer-intent route preloading for student detail → assignment navigation.
 - ✅ Lazy-loaded the authenticated sidebar from the shared root so public landing-page visits do not eagerly download authenticated navigation, reducing the browser entry from 738.03 KB to 451.24 KB minified (225.05 KB to 144.56 KB gzip).
+- ✅ Lazy-loaded enrollment review and admin dialogs so the enrollment table route no longer downloads optional workflows on entry, reducing its route chunk from 220.74 KB to 30.28 KB minified (60.53 KB to 10.66 KB gzip).
 
 ## Remaining
 
 - ⬜ Audit remaining imperative detail navigation outside the core course/lesson/assignment flows.
 - ⬜ Add representative browser measurements for landing, dashboard, course, lesson, and assignment flows.
-- ⬜ Audit the remaining oversized route chunks, especially the PDF and enrollment paths, and keep them off unrelated navigations.
+- ⬜ Audit the remaining oversized route chunks, especially the PDF path, and keep them off unrelated navigations.
 - ⬜ Re-run the measurements and push the finished work as a GitHub PR (do not merge automatically).
 
 Next slice: collect representative browser measurements for landing, dashboard, course, lesson, and assignment flows, then use the timings to prioritize the next route-level change.
