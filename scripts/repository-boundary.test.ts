@@ -212,6 +212,7 @@ function findDirectDatabaseOperations(source: string): Array<string> {
   const handle = databaseHandle
   const queryMember = String.raw`\s*${queryAccess}\s*(?:${memberAccess}[A-Za-z0-9_]+|${computedMemberAccess}[A-Za-z0-9_]+['"]\s*\])`
   const operationMember = String.raw`(?:${memberAccess}(?:\$?with|\$count|selectDistinctOn|selectDistinct|select|insert|update|delete|execute|transaction)|${computedMemberAccess}(?:\$?with|\$count|selectDistinctOn|selectDistinct|select|insert|update|delete|execute|transaction)['"]\s*\])`
+  const injectedOperationMember = String.raw`(?:${memberAccess}(?:execute|transaction)|${computedMemberAccess}(?:execute|transaction)['"]\s*\])`
   const operationCall = String.raw`\s*${optionalCallAccess}${typeArguments}\(`
 
   return [
@@ -219,6 +220,12 @@ function findDirectDatabaseOperations(source: string): Array<string> {
     ...source.matchAll(
       new RegExp(
         String.raw`${handle}\s*${operationMember}${operationCall}`,
+        'g',
+      ),
+    ),
+    ...source.matchAll(
+      new RegExp(
+        String.raw`(?!${databaseHandle}\s*)${objectHandle}\s*${injectedOperationMember}${operationCall}`,
         'g',
       ),
     ),
@@ -658,6 +665,14 @@ describe('utils repository boundaries', () => {
       'db.select<{ id: string }>(',
       'tx["execute"]<SqlResult>(',
       'connection?.transaction?.<TxResult>(',
+    ])
+    expect(
+      findDirectDatabaseOperations(
+        'injectedClient.execute(sql); injectedTransaction?.transaction?.(run)',
+      ),
+    ).toEqual([
+      'injectedClient.execute(',
+      'injectedTransaction?.transaction?.(',
     ])
   })
 
