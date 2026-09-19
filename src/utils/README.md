@@ -20,6 +20,10 @@ schema tables or issue Drizzle CRUD/query calls. Feature modules do not import
 template-literal, concatenated-literal dynamic, CommonJS, and
 runtime re-export database imports are reserved for those seams and are regression-tested by
 `scripts/repository-boundary.test.ts`.
+Application source also avoids direct Supabase REST table calls; table access
+goes through the shared repository barrel. Operational seed and repair scripts
+remain separate command-line seams because they authenticate with a Supabase
+service-role client rather than the application database connection.
 Repository queries must not use Drizzle relation loading (`with`), including
 quoted or computed key forms such as `"with":`, `['with']`, and ``[`with`]``,
 because that would read another table behind the owning adapter's single-table

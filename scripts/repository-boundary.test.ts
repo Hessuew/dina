@@ -150,6 +150,16 @@ function findRawSqlTableReferences(
     .filter((symbol): symbol is string => Boolean(symbol))
 }
 
+function findSupabaseTableReferences(
+  source: string,
+  schemaTables: Array<SchemaTable>,
+): Array<string> {
+  const tableNames = new Set(schemaTables.map(({ sqlName }) => sqlName))
+  return [...source.matchAll(/\.\s*from\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/gi)]
+    .map(([, table]) => table)
+    .filter((table): table is string => tableNames.has(table))
+}
+
 function findDynamicRawSqlTableReferences(source: string): Array<string> {
   const sqlSelector = String.raw`\bsql\s*(?:(?:\.\s*|\?\.\s*)(?:raw|identifier)|\[\s*["'](?:raw|identifier)["']\s*\])\s*\(\s*([^)]*?)\s*\)`
   const literalTable =
@@ -1013,6 +1023,21 @@ describe('utils repository boundaries', () => {
         ({ file, references }) =>
           references.length > 0 && !isDatabaseSeam(file),
       )
+
+    expect(offenders).toEqual([])
+  })
+
+  it('keeps Supabase REST table references behind the shared repository seam', () => {
+    const schemaTables = findSchemaTables()
+    const offenders = findSourceFilesIncludingTests(sourceDirectory)
+      .map((sourcePath) => ({
+        file: sourcePath.slice(sourceDirectory.length + 1),
+        references: findSupabaseTableReferences(
+          readFileSync(sourcePath, 'utf8'),
+          schemaTables,
+        ),
+      }))
+      .filter(({ references }) => references.length > 0)
 
     expect(offenders).toEqual([])
   })
