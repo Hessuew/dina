@@ -1,4 +1,4 @@
-import posthog from 'posthog-js'
+import type posthog from 'posthog-js'
 
 import type { UserContext } from '@/utils/auth/domain/user-context.domain'
 
@@ -17,7 +17,10 @@ export type AnalyticsEventProperties = Readonly<
   Record<string, string | number | boolean | null | undefined>
 >
 
-let isInitialized = false
+type PostHogClient = typeof posthog
+
+let posthogClient: PostHogClient | null = null
+let posthogLoad: Promise<PostHogClient | null> | null = null
 const STUDENT_ACTIVATION_STORAGE_PREFIX = 'dina:analytics:student-activated:'
 
 function studentActivationStorageKey(userId: string): string {
@@ -55,33 +58,61 @@ export function initializeAnalytics(): boolean {
   const key = import.meta.env.VITE_POSTHOG_KEY?.trim()
 
   if (typeof window === 'undefined' || !key) return false
-  if (isInitialized) return true
 
-  posthog.init(key, {
-    api_host: import.meta.env.VITE_POSTHOG_HOST?.trim() || DEFAULT_POSTHOG_HOST,
-    autocapture: false,
-    capture_pageview: true,
-    defaults: POSTHOG_CONFIG_DEFAULTS,
-    disable_session_recording: true,
-  })
-  isInitialized = true
+  if (!posthogLoad) {
+    posthogLoad = import('posthog-js')
+      .then(({ default: client }) => {
+        client.init(key, {
+          api_host:
+            import.meta.env.VITE_POSTHOG_HOST?.trim() || DEFAULT_POSTHOG_HOST,
+          autocapture: false,
+          capture_pageview: true,
+          defaults: POSTHOG_CONFIG_DEFAULTS,
+          disable_session_recording: true,
+        })
+        posthogClient = client
+        return client
+      })
+      .catch(() => {
+        posthogLoad = null
+        return null
+      })
+  }
+
   return true
+}
+
+function whenAnalyticsReady(operation: (client: PostHogClient) => void): void {
+  if (posthogClient) {
+    operation(posthogClient)
+    return
+  }
+
+  if (!initializeAnalytics()) return
+  void posthogLoad?.then((client) => {
+    if (client) operation(client)
+  })
 }
 
 /** Identifies an authenticated person with stable, non-sensitive properties. */
 export function identifyAnalyticsUser(
   user: Pick<UserContext, 'id' | 'role'>,
 ): void {
-  if (!initializeAnalytics()) return
-
-  posthog.identify(user.id, { role: user.role })
+  whenAnalyticsReady((client) => {
+    client.identify(user.id, { role: user.role })
+  })
 }
 
 /** Clears the previous person identity when the authenticated session ends. */
 export function resetAnalyticsUser(): void {
-  if (!isInitialized || typeof window === 'undefined') return
+  if (typeof window === 'undefined') return
 
-  posthog.reset()
+  if (posthogClient) {
+    posthogClient.reset()
+    return
+  }
+
+  void posthogLoad?.then((client) => client?.reset())
 }
 
 /** Captures only the allow-listed LMS journey event names. */
@@ -91,7 +122,9 @@ export function trackAnalyticsEvent(
 ): boolean {
   if (!initializeAnalytics()) return false
 
-  posthog.capture(event, properties)
+  whenAnalyticsReady((client) => {
+    client.capture(event, properties)
+  })
   return true
 }
 

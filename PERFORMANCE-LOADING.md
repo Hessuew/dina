@@ -2,13 +2,14 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **1 / 5 complete**
+Current implementation slices: **2 / 5 complete**
 
 ## Done
 
 - ✅ Confirmed TanStack Router intent preloading is already enabled.
 - ✅ Dashboard now loads assignments and upcoming lessons in parallel after the course role is known.
-- ✅ Recorded the production build baseline: browser entry is about 1,020 KB minified (319 KB gzip).
+- ✅ Lazy-loaded the optional PostHog SDK so it is not part of the shared browser entry (configured builds emit it as a separate 280.70 KB / 92.79 KB gzip chunk).
+- ✅ Reduced the production browser entry from 1,019.88 KB to 738.03 KB minified (318.79 KB to 225.06 KB gzip).
 
 ## Remaining
 
