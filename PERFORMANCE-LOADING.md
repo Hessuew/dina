@@ -2,7 +2,7 @@
 
 Status: 🟡 In progress  
 Scope: landing page, dashboard, and authenticated navigation  
-Current implementation slices: **40 / 40 complete**
+Current implementation slices: **41 / 41 complete**
 
 ## Done
 
@@ -48,6 +48,7 @@ Current implementation slices: **40 / 40 complete**
 - ✅ Dashboard upcoming lesson and assignment links now preload their detail routes on pointer-down, covering fast clicks and touch activation before navigation begins.
 - ✅ ViewerDateTime now uses the browser's native `Intl.DateTimeFormat` for its six fixed display patterns, keeping the 11.92 KB date-fns formatter off dashboard, course-detail, and lesson-detail navigation payloads.
 - ✅ Dashboard attendance course links and assignment cards now preload their detail routes on pointer-down, covering fast clicks and touch activation on the remaining direct course/assignment links.
+- ✅ Library media cards and management-table thumbnails now preload the media-detail route on pointer-down, so fast clicks and touch activation can begin loading the deferred document/PDF viewer before navigation.
 
 ## Remaining
 
