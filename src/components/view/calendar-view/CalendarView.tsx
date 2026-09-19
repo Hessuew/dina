@@ -28,11 +28,11 @@ function CalendarHeader({
   onToday,
 }: CalendarHeaderProps) {
   return (
-    <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-      <span className="font-serif text-xl tracking-[-0.02em] text-[#F8F4EC]">
+    <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <span className="font-serif text-xl leading-tight tracking-[-0.02em] whitespace-nowrap text-[#F8F4EC]">
         {format(currentDate, 'MMMM yyyy')}
       </span>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 self-end sm:self-auto">
         <Button
           variant="ghost"
           theme="dark"
