@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import type { UserContext } from '@/utils/auth/domain/user-context.domain'
 import type { StudentExamItem } from '@/components/view/exams-view/ExamsView'
@@ -74,18 +74,26 @@ function StudentExamLanding({ item }: { item: StudentExamItem | null }) {
 }
 
 function StudentExamLandingContent({ item }: { item: StudentExamItem }) {
-  const navigate = useNavigate()
+  const router = useRouter()
   const startMutation = useMutation({
     fn: startExamAttempt,
     onSuccess: async () => {
       toast.success('Exam started — good luck!')
-      await navigate({
+      await router.navigate({
         to: '/exams/$examId/take',
         params: { examId: item.exam.id },
       })
     },
   })
   const vm = deriveStudentCardViewModel(item, new Date())
+  const preloadTakeRoute = () => {
+    void router
+      .preloadRoute({
+        to: '/exams/$examId/take',
+        params: { examId: item.exam.id },
+      })
+      .catch(() => undefined)
+  }
   return (
     <div className="space-y-6 border border-[#1A1A1A]/10 bg-white/70 p-8 text-center">
       <p className="text-sm text-[#8E816D]">
@@ -103,11 +111,12 @@ function StudentExamLandingContent({ item }: { item: StudentExamItem }) {
           void startMutation.mutate({ data: { examId: item.exam.id } })
         }
         onGo={() =>
-          void navigate({
+          void router.navigate({
             to: '/exams/$examId/take',
             params: { examId: item.exam.id },
           })
         }
+        onPreloadGo={preloadTakeRoute}
       />
     </div>
   )
@@ -133,6 +142,7 @@ function StudentLandingAction({
   starting,
   onStart,
   onGo,
+  onPreloadGo,
 }: {
   state: StudentExamCardState
   action: 'start' | 'continue' | 'review' | null
@@ -140,6 +150,7 @@ function StudentLandingAction({
   starting: boolean
   onStart: () => void
   onGo: () => void
+  onPreloadGo: () => void
 }) {
   if (action === 'start') {
     return (
@@ -168,7 +179,11 @@ function StudentLandingAction({
     )
   }
   if (action !== null) {
-    return <Button onClick={onGo}>{studentLandingGoLabel(action)}</Button>
+    return (
+      <Button onPointerDown={onPreloadGo} onClick={onGo}>
+        {studentLandingGoLabel(action)}
+      </Button>
+    )
   }
   return (
     <p className="text-sm text-[#8E816D]">
