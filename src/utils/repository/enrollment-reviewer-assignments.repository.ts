@@ -17,58 +17,59 @@ export async function findReviewerAssignmentForEnrollment(
     : null
 }
 
-export async function findReviewerAssignmentsByEnrollmentIds(
+type ReviewerAssignmentFilterColumn =
+  | typeof enrollmentReviewerAssignments.enrollmentId
+  | typeof enrollmentReviewerAssignments.reviewerId
+  | typeof enrollmentReviewerAssignments.courseId
+
+export type ReviewerAssignmentRow = {
+  enrollmentId: string
+  reviewerId: string
+  courseId: string | null
+}
+
+async function findReviewerAssignmentsByColumn(
+  column: ReviewerAssignmentFilterColumn,
+  ids: Array<string>,
+): Promise<Array<ReviewerAssignmentRow>> {
+  if (ids.length === 0) return []
+  const db = await getDb()
+  const rows = await db
+    .select({
+      enrollmentId: enrollmentReviewerAssignments.enrollmentId,
+      reviewerId: enrollmentReviewerAssignments.reviewerId,
+      courseId: enrollmentReviewerAssignments.courseId,
+    })
+    .from(enrollmentReviewerAssignments)
+    .where(inArray(column, ids))
+  return rows.map((row) => ({ ...row, courseId: row.courseId ?? null }))
+}
+
+export function findReviewerAssignmentsByEnrollmentIds(
   enrollmentIds: Array<string>,
-): Promise<
-  Array<{ enrollmentId: string; reviewerId: string; courseId: string | null }>
-> {
-  if (enrollmentIds.length === 0) return []
-  const db = await getDb()
-  const rows = await db
-    .select({
-      enrollmentId: enrollmentReviewerAssignments.enrollmentId,
-      reviewerId: enrollmentReviewerAssignments.reviewerId,
-      courseId: enrollmentReviewerAssignments.courseId,
-    })
-    .from(enrollmentReviewerAssignments)
-    .where(inArray(enrollmentReviewerAssignments.enrollmentId, enrollmentIds))
-  return rows.map((row) => ({ ...row, courseId: row.courseId ?? null }))
+): Promise<Array<ReviewerAssignmentRow>> {
+  return findReviewerAssignmentsByColumn(
+    enrollmentReviewerAssignments.enrollmentId,
+    enrollmentIds,
+  )
 }
 
-export async function findReviewerAssignmentsByCourseIds(
+export function findReviewerAssignmentsByCourseIds(
   courseIds: Array<string>,
-): Promise<
-  Array<{ enrollmentId: string; reviewerId: string; courseId: string | null }>
-> {
-  if (courseIds.length === 0) return []
-  const db = await getDb()
-  const rows = await db
-    .select({
-      enrollmentId: enrollmentReviewerAssignments.enrollmentId,
-      reviewerId: enrollmentReviewerAssignments.reviewerId,
-      courseId: enrollmentReviewerAssignments.courseId,
-    })
-    .from(enrollmentReviewerAssignments)
-    .where(inArray(enrollmentReviewerAssignments.courseId, courseIds))
-  return rows.map((row) => ({ ...row, courseId: row.courseId ?? null }))
+): Promise<Array<ReviewerAssignmentRow>> {
+  return findReviewerAssignmentsByColumn(
+    enrollmentReviewerAssignments.courseId,
+    courseIds,
+  )
 }
 
-export async function findReviewerAssignmentsByReviewerIds(
+export function findReviewerAssignmentsByReviewerIds(
   reviewerIds: Array<string>,
-): Promise<
-  Array<{ enrollmentId: string; reviewerId: string; courseId: string | null }>
-> {
-  if (reviewerIds.length === 0) return []
-  const db = await getDb()
-  const rows = await db
-    .select({
-      enrollmentId: enrollmentReviewerAssignments.enrollmentId,
-      reviewerId: enrollmentReviewerAssignments.reviewerId,
-      courseId: enrollmentReviewerAssignments.courseId,
-    })
-    .from(enrollmentReviewerAssignments)
-    .where(inArray(enrollmentReviewerAssignments.reviewerId, reviewerIds))
-  return rows.map((row) => ({ ...row, courseId: row.courseId ?? null }))
+): Promise<Array<ReviewerAssignmentRow>> {
+  return findReviewerAssignmentsByColumn(
+    enrollmentReviewerAssignments.reviewerId,
+    reviewerIds,
+  )
 }
 
 export async function findAllReviewerAssignments(): Promise<

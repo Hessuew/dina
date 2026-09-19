@@ -98,7 +98,7 @@ function ScoreButton({
                 ? 'border-[#C5A059] bg-[#C5A059]/20 text-[#E9D9B4]'
                 : 'border-white/10 bg-[#1A1716] text-[#AFA28F] hover:border-white/25 hover:text-[#F8F4EC]',
               disabled &&
-                'pointer-events-none border-white/5 bg-[#111111] text-[#5F574D] opacity-55',
+                'pointer-events-none border-white/5 bg-[#111111] text-[#8E816D] opacity-55',
             )}
           >
             {value}
@@ -142,7 +142,7 @@ function AdmissionCategoryButton({
                 ? 'border-[#C5A059] bg-[#C5A059]/20 text-[#E9D9B4]'
                 : 'border-white/10 bg-[#1A1716] text-[#AFA28F] hover:border-white/25 hover:text-[#F8F4EC]',
               disabled &&
-                'pointer-events-none border-white/5 bg-[#111111] text-[#5F574D] opacity-55',
+                'pointer-events-none border-white/5 bg-[#111111] text-[#8E816D] opacity-55',
             )}
           >
             {shortcut}
@@ -773,7 +773,7 @@ export function EvaluationOverlay(props: EvaluationOverlayProps) {
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      className="fixed inset-0 z-70 flex flex-col bg-[#0B0B0C]/96 pt-10 backdrop-blur-sm"
+      className="fixed inset-0 z-70 flex flex-col bg-[#121212]/96 pt-10 backdrop-blur-sm"
     >
       {/* Evaluation panel — sits on top of the application content */}
       <div className="border-b border-white/10 bg-[#151515]/95">
