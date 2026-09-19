@@ -10,26 +10,26 @@ import { getCourses, getUpcomingLessons } from '@/utils/courses'
 import { getDashboardAssignmentScope } from '@/components/dashboard/dashboard.domain'
 
 export const Route = createFileRoute('/_authed/dashboard')({
-  loader: async () => {
-    const coursesData = await getCourses()
-
+  loader: async ({ context }) => {
+    const role = context.user?.role ?? 'student'
+    const [coursesData, assignmentsData, upcomingLessonsData] =
+      await Promise.all([
+        getCourses(),
+        role === 'student'
+          ? getAllAssignmentsForStudent()
+          : getAllAssignmentsForTeacher({
+              data: { scope: getDashboardAssignmentScope(role) },
+            }),
+        getUpcomingLessons(),
+      ])
     const transformedCourses = coursesData.courses.map((course) => ({
       ...course,
       isPublished: course.isPublished ?? false,
     }))
 
-    const [assignmentsData, upcomingLessonsData] = await Promise.all([
-      coursesData.role === 'student'
-        ? getAllAssignmentsForStudent()
-        : getAllAssignmentsForTeacher({
-            data: { scope: getDashboardAssignmentScope(coursesData.role) },
-          }),
-      getUpcomingLessons(),
-    ])
-
     return {
       courses: transformedCourses,
-      role: coursesData.role,
+      role,
       assignments: assignmentsData.assignments,
       upcomingLessons: upcomingLessonsData.lessons,
     }
