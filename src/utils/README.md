@@ -25,7 +25,7 @@ barrel and helper files cannot issue persistence calls.
 Direct Drizzle operations on database handles are also reserved for those seams,
 including when a handle is injected or given an arbitrary variable name; feature
 services may compose repository results but may not issue `query`, CRUD,
-distinct-select, CTE, `execute`, or `transaction` calls themselves. The
+distinct-select, count helpers, CTE, `execute`, or `transaction` calls themselves. The
 regression guard covers formatted and
 optional-chaining member access plus computed `db['select']`,
 `db['query'].table`, and `db.query['table']` access as well as the usual dot

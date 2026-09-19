@@ -203,7 +203,7 @@ function findDynamicTableReferences(source: string): Array<string> {
 function findDirectDatabaseOperations(source: string): Array<string> {
   const handle = databaseHandle
   const queryMember = String.raw`\s*${queryAccess}\s*(?:${memberAccess}[A-Za-z0-9_]+|${computedMemberAccess}[A-Za-z0-9_]+['"]\s*\])`
-  const operationMember = String.raw`(?:${memberAccess}(?:\$?with|selectDistinctOn|selectDistinct|select|insert|update|delete|execute|transaction)|${computedMemberAccess}(?:\$?with|selectDistinctOn|selectDistinct|select|insert|update|delete|execute|transaction)['"]\s*\])`
+  const operationMember = String.raw`(?:${memberAccess}(?:\$?with|\$count|selectDistinctOn|selectDistinct|select|insert|update|delete|execute|transaction)|${computedMemberAccess}(?:\$?with|\$count|selectDistinctOn|selectDistinct|select|insert|update|delete|execute|transaction)['"]\s*\])`
 
   return [
     ...source.matchAll(new RegExp(`${handle}${queryMember}`, 'g')),
@@ -563,6 +563,11 @@ describe('utils repository boundaries', () => {
         'db["query"].profiles.findFirst(); tx?.["query"]?.["courses"].findFirst()',
       ),
     ).toHaveLength(2)
+    expect(
+      findDirectDatabaseOperations(
+        'db.$count(profiles); tx["$count"](courses)',
+      ),
+    ).toEqual(['db.$count(', 'tx["$count"]('])
     expect(
       findDirectDatabaseOperations(
         'db.with(cte).selectDistinct().from(cte); tx.$with("cte"); database.selectDistinctOn([profiles.id]).from(profiles)',
