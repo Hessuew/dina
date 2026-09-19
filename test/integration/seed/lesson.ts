@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { getDb } from 'test/integration/db'
-import { lessons } from '@/db/schema'
+import type { LessonInsert } from '@/utils/repository'
+import { insertLesson } from '@/utils/repository'
 
 export async function seedLesson(overrides: {
   id?: string
@@ -12,8 +12,7 @@ export async function seedLesson(overrides: {
   duration?: number
 }): Promise<string> {
   const id = overrides.id ?? randomUUID()
-  const db = await getDb()
-  await db.insert(lessons).values({
+  const lesson = await insertLesson({
     id,
     courseId: overrides.courseId,
     title: overrides.title ?? 'Test Lesson',
@@ -26,5 +25,5 @@ export async function seedLesson(overrides: {
       ? { duration: overrides.duration }
       : {}),
   })
-  return id
+  return lesson.id
 }

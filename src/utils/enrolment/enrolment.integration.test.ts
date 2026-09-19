@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
 import type { AuthorizationService } from '@/utils/authz/types'
 import {
@@ -26,14 +25,7 @@ import {
   updateEnrollmentStatusService,
 } from '@/utils/enrolment/service/enrolment.service'
 import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
-import * as staffPrivilegeRepository from '@/utils/staff-privilege/repository'
-import * as enrollmentRepository from '@/utils/enrolment/repository/enrolment.repository'
-import {
-  findEnrollmentById,
-  findEnrollmentContactLookupCandidates,
-  findEnrollmentEmailsByGroup,
-} from '@/utils/enrolment/repository/enrolment.repository'
-import { findInvitationByEmail } from '@/utils/invitation/repository/invitations.repository'
+import * as sharedRepository from '@/utils/repository'
 import { AuthorizationError } from '@/utils/errors'
 import {
   seedCourse,
@@ -44,18 +36,20 @@ import {
   seedReviewerAssignment,
 } from '@/../test/integration/seed'
 import { setEmailSender } from '@/utils/email'
-import { emailMessages } from '@/db/schema'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 // Seeds a pending enrollment with an assigned reviewer plus a peer evaluator.
 // Both teachers share the same course, making peerId a valid peer evaluator.
-async function seedPeerReviewScenario() {
+async function seedPeerReviewScenario(enrollmentName = 'Applicant Test') {
   const reviewerId = await seedProfile({ role: 'teacher' })
   const peerId = await seedProfile({ role: 'teacher' })
   const courseId = await seedCourse()
   await seedCourseTeacher(courseId, reviewerId)
   await seedCourseTeacher(courseId, peerId)
-  const enrollmentId = await seedEnrollment({ status: 'pending' })
+  const enrollmentId = await seedEnrollment({
+    status: 'pending',
+    fullLegalName: enrollmentName,
+  })
   await seedReviewerAssignment(enrollmentId, reviewerId, courseId)
   return { reviewerId, peerId, courseId, enrollmentId }
 }
@@ -126,7 +120,7 @@ describe('createEnrollmentService telemetry (integration)', () => {
 
   it('logs a stable persistence failure without applicant data', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.spyOn(enrollmentRepository, 'insertEnrollment').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'insertEnrollment').mockRejectedValueOnce(
       new Error('enrollment database secret'),
     )
 
@@ -220,7 +214,8 @@ describe('setEvaluationScoreService (integration)', () => {
 
         await setEvaluationScoreService({ enrollmentId, score }, reviewerId)
 
-        const enrollment = await findEnrollmentById(enrollmentId)
+        const enrollment =
+          await sharedRepository.findEnrollmentById(enrollmentId)
         expect(enrollment?.status).toBe(expected)
       },
     )
@@ -233,7 +228,7 @@ describe('setEvaluationScoreService (integration)', () => {
 
     await setEvaluationScoreService({ enrollmentId, score: 0 }, reviewerId)
 
-    const enrollment = await findEnrollmentById(enrollmentId)
+    const enrollment = await sharedRepository.findEnrollmentById(enrollmentId)
     expect(enrollment?.status).toBe('approved')
   })
 
@@ -243,7 +238,7 @@ describe('setEvaluationScoreService (integration)', () => {
     // The peer (not the assigned Reviewer) scores a strong admit.
     await setEvaluationScoreService({ enrollmentId, score: 4 }, peerId)
 
-    const enrollment = await findEnrollmentById(enrollmentId)
+    const enrollment = await sharedRepository.findEnrollmentById(enrollmentId)
     expect(enrollment?.status).toBe('pending')
   })
 
@@ -252,15 +247,15 @@ describe('setEvaluationScoreService (integration)', () => {
 
     // Reviewer scores first → under_review
     await setEvaluationScoreService({ enrollmentId, score: 4 }, reviewerId)
-    expect((await findEnrollmentById(enrollmentId))?.status).toBe(
-      'under_review',
-    )
+    expect(
+      (await sharedRepository.findEnrollmentById(enrollmentId))?.status,
+    ).toBe('under_review')
 
     // Peer scores → awaiting_approval
     await setEvaluationScoreService({ enrollmentId, score: 3 }, peerId)
-    expect((await findEnrollmentById(enrollmentId))?.status).toBe(
-      'awaiting_approval',
-    )
+    expect(
+      (await sharedRepository.findEnrollmentById(enrollmentId))?.status,
+    ).toBe('awaiting_approval')
   })
 
   it('rejects a caller who is neither admin nor teacher', async () => {
@@ -326,7 +321,7 @@ describe('setEvaluationScoreService (integration)', () => {
     const { reviewerId, enrollmentId } = await seedPeerReviewScenario()
     const repositoryError = new Error('evaluation database secret')
     const upsertSpy = vi
-      .spyOn(enrollmentRepository, 'upsertEvaluation')
+      .spyOn(sharedRepository, 'upsertEnrollmentEvaluation')
       .mockRejectedValue(repositoryError)
 
     const requests = [
@@ -429,12 +424,12 @@ describe('enrollment evaluation authorization telemetry (integration)', () => {
       'evaluation authorization connectionString=secret; email=private@test.dev',
     )
     const assignmentSpy = vi
-      .spyOn(enrollmentRepository, 'findReviewerAssignmentForEnrollment')
+      .spyOn(sharedRepository, 'findReviewerAssignmentForEnrollment')
       .mockResolvedValue({ reviewerId, courseId })
     if (source === 'assignment') {
       assignmentSpy.mockRejectedValue(repositoryError)
     } else {
-      vi.spyOn(enrollmentRepository, 'findCourseTeamIds').mockRejectedValue(
+      vi.spyOn(sharedRepository, 'findTeacherIdsByCourseId').mockRejectedValue(
         repositoryError,
       )
     }
@@ -584,7 +579,9 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
       adminId,
     )
 
-    expect((await findEnrollmentById(enrollmentId))?.status).toBe('approved')
+    expect(
+      (await sharedRepository.findEnrollmentById(enrollmentId))?.status,
+    ).toBe('approved')
     const event = infoSpy.mock.calls
       .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
       .find((entry) => entry.event === 'enrollment_status_updated')
@@ -610,7 +607,9 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
       adminId,
     )
 
-    expect((await findEnrollmentById(enrollmentId))?.specialCase).toBe(true)
+    expect(
+      (await sharedRepository.findEnrollmentById(enrollmentId))?.specialCase,
+    ).toBe(true)
     const event = infoSpy.mock.calls
       .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
       .find((entry) => entry.event === 'enrollment_special_case_updated')
@@ -633,7 +632,9 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
 
     await deleteEnrollmentService({ enrollmentId }, adminId)
 
-    expect(await findEnrollmentById(enrollmentId)).toBeUndefined()
+    expect(
+      await sharedRepository.findEnrollmentById(enrollmentId),
+    ).toBeUndefined()
     const event = infoSpy.mock.calls
       .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
       .find((entry) => entry.event === 'enrollment_deleted')
@@ -656,7 +657,7 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
     const deleteId = await seedEnrollment()
 
     vi.spyOn(
-      enrollmentRepository,
+      sharedRepository,
       'updateEnrollmentStatusById',
     ).mockRejectedValueOnce(new Error('status database secret'))
     await expect(
@@ -667,7 +668,7 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
     ).rejects.toThrow('status database secret')
 
     vi.spyOn(
-      enrollmentRepository,
+      sharedRepository,
       'updateEnrollmentSpecialCaseById',
     ).mockRejectedValueOnce(new Error('special-case database secret'))
     await expect(
@@ -677,10 +678,9 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
       ),
     ).rejects.toThrow('special-case database secret')
 
-    vi.spyOn(
-      enrollmentRepository,
-      'deleteEnrollmentById',
-    ).mockRejectedValueOnce(new Error('delete database secret'))
+    vi.spyOn(sharedRepository, 'deleteEnrollmentById').mockRejectedValueOnce(
+      new Error('delete database secret'),
+    )
     await expect(
       deleteEnrollmentService({ enrollmentId: deleteId }, adminId),
     ).rejects.toThrow('delete database secret')
@@ -718,17 +718,16 @@ describe('enrollment lifecycle mutation telemetry (integration)', () => {
     const substitutionError = new Error('substitution lookup database secret')
 
     vi.spyOn(
-      enrollmentRepository,
-      'findUnassignedEnrollmentIds',
+      sharedRepository,
+      'findEnrollmentIdsExcludingDuplicates',
     ).mockRejectedValueOnce(distributionError)
     await expect(distributeEnrollmentsService(adminId)).rejects.toBe(
       distributionError,
     )
 
-    vi.spyOn(
-      enrollmentRepository,
-      'findCourseIdByTeacherId',
-    ).mockRejectedValueOnce(substitutionError)
+    vi.spyOn(sharedRepository, 'findCourseIdByTeacherId').mockRejectedValueOnce(
+      substitutionError,
+    )
     await expect(
       substituteTeacherService(
         {
@@ -1033,7 +1032,7 @@ describe('enrollment read telemetry (integration)', () => {
   it('logs unexpected enrollment read failures with a stable category', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
-    vi.spyOn(enrollmentRepository, 'findEnrollmentsPage').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findEnrollmentsPage').mockRejectedValueOnce(
       new Error('enrollment database secret'),
     )
 
@@ -1092,7 +1091,39 @@ async function seedSubstitutionScenario() {
   }
 }
 
+describe('enrollment course membership repository seams (integration)', () => {
+  it('composes teacher and substitute table adapters for team lookups', async () => {
+    const { absentC, peerB, subA, courseId } = await seedSubstitutionScenario()
+
+    await expect(
+      sharedRepository.findTeacherIdsByCourseId(courseId),
+    ).resolves.toEqual(expect.arrayContaining([absentC, peerB]))
+    await expect(
+      sharedRepository.findCourseIdsBySubstituteTeacher(subA),
+    ).resolves.toEqual([courseId])
+    await expect(
+      sharedRepository.findSubstituteTeacherIdsByCourse(courseId),
+    ).resolves.toEqual([subA])
+    await expect(
+      sharedRepository.findCourseIdsBySubstituteTeacher(subA),
+    ).resolves.toEqual([courseId])
+  })
+})
+
 describe('teacher substitution — Review heading peer resolution (integration)', () => {
+  it('keeps assigned enrollments in the reviewer queue', async () => {
+    const { peerB, bEnrollmentId } = await seedSubstitutionScenario()
+
+    const { enrollments } = await getEnrollmentsService(
+      { ...LIST_INPUT, viewAll: false },
+      peerB,
+    )
+
+    expect(
+      enrollments.some((enrollment) => enrollment.id === bEnrollmentId),
+    ).toBe(true)
+  })
+
   it('peer slot shows the substitute, never the absent teacher (Bug 1)', async () => {
     const { adminId, bEnrollmentId } = await seedSubstitutionScenario()
 
@@ -1138,6 +1169,101 @@ describe('teacher substitution — Review heading peer resolution (integration)'
     expect(row?.reviewHeading.reviewerFirstName).toBe('Subby')
     expect(row?.reviewHeading.reviewerHasEvaluated).toBe(true)
     expect(row?.reviewHeading.peerFirstName).toBe('Bella')
+  })
+
+  it('keeps legacy reviewer assignments without course IDs in the peer queue', async () => {
+    const viewerId = await seedProfile({ role: 'teacher' })
+    const reviewerId = await seedProfile({ role: 'teacher' })
+    const courseId = await seedCourse()
+    await seedCourseTeacher(courseId, viewerId)
+    await seedCourseTeacher(courseId, reviewerId)
+    const enrollmentId = await seedEnrollment({ status: 'pending' })
+    await seedReviewerAssignment(enrollmentId, reviewerId)
+
+    await setEvaluationScoreService({ enrollmentId, score: 4 }, reviewerId)
+
+    const { enrollments } = await getEnrollmentsService(
+      { ...LIST_INPUT, viewAll: false },
+      viewerId,
+    )
+
+    expect(
+      enrollments.some((enrollment) => enrollment.id === enrollmentId),
+    ).toBe(true)
+  })
+})
+
+describe('reviewer-admitted enrollment filtering (integration)', () => {
+  it('composes the view-all filter from shared assignment and evaluation readers', async () => {
+    const {
+      reviewerId,
+      courseId,
+      enrollmentId: admittedId,
+    } = await seedPeerReviewScenario()
+    const pendingId = await seedEnrollment({ status: 'pending' })
+    await seedReviewerAssignment(pendingId, reviewerId, courseId)
+
+    await setEvaluationScoreService(
+      { enrollmentId: admittedId, score: 4 },
+      reviewerId,
+    )
+    await setEvaluationScoreService(
+      { enrollmentId: pendingId, score: 2 },
+      reviewerId,
+    )
+
+    const result = await getEnrollmentsService(
+      { ...LIST_INPUT, viewAll: true },
+      reviewerId,
+    )
+
+    expect(result.enrollments.map((enrollment) => enrollment.id)).toContain(
+      admittedId,
+    )
+    expect(result.enrollments.map((enrollment) => enrollment.id)).not.toContain(
+      pendingId,
+    )
+  })
+})
+
+describe('enrollment page evaluation sorting (integration)', () => {
+  it('sorts enrollment rows by evaluation totals after table-specific reads', async () => {
+    const {
+      reviewerId,
+      courseId,
+      enrollmentId: lowId,
+    } = await seedPeerReviewScenario('Sort Low')
+    const adminId = await seedProfile({ role: 'admin' })
+    const highId = await seedEnrollment({ fullLegalName: 'Sort High' })
+    await seedReviewerAssignment(highId, reviewerId, courseId)
+
+    await setEvaluationScoreService(
+      { enrollmentId: lowId, score: 1 },
+      reviewerId,
+    )
+    await setEvaluationScoreService(
+      { enrollmentId: highId, score: 4 },
+      reviewerId,
+    )
+
+    const result = await getEnrollmentsService(
+      {
+        ...LIST_INPUT,
+        search: 'Sort',
+        sortBy: 'evaluationSum',
+        sortDir: 'desc',
+        viewAll: true,
+      },
+      adminId,
+    )
+
+    expect(result.enrollments.map((enrollment) => enrollment.id)).toEqual([
+      highId,
+      lowId,
+    ])
+    expect(
+      result.enrollments.map((enrollment) => enrollment.evaluationSum),
+    ).toEqual([4, 1])
   })
 })
 
@@ -1186,7 +1312,7 @@ describe('active substitution lookup authorization (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { adminId } = await seedSubstitutionScenario()
     vi.spyOn(
-      enrollmentRepository,
+      sharedRepository,
       'findAbsentTeacherIdsWithActiveSubstitution',
     ).mockRejectedValueOnce(new Error('substitution database secret'))
 
@@ -1243,6 +1369,34 @@ describe('enrollment distribution and substitution telemetry (integration)', () 
     })
     expect(event?.durationMs).toEqual(expect.any(Number))
     expect(JSON.stringify(event)).not.toContain('Private Applicant')
+  })
+
+  it('distributes only unassigned non-duplicate enrollments', async () => {
+    const adminId = await seedProfile({ role: 'admin' })
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const courseId = await seedCourse()
+    await seedCourseTeacher(courseId, teacherId)
+
+    const assignedId = await seedEnrollment()
+    await seedReviewerAssignment(assignedId, teacherId, courseId)
+    const unassignedId = await seedEnrollment()
+    const duplicateId = await seedEnrollment({
+      email: 'duplicate_distribution@test.dev',
+    })
+
+    const result = await distributeEnrollmentsService(adminId)
+
+    expect(result).toEqual({ assigned: 1 })
+    const assignments =
+      await sharedRepository.findReviewerAssignmentsByEnrollmentIds([
+        assignedId,
+        unassignedId,
+        duplicateId,
+      ])
+    expect(assignments.map(({ enrollmentId }) => enrollmentId)).toEqual([
+      assignedId,
+      unassignedId,
+    ])
   })
 
   it('logs substitution completion and end events with safe identifiers', async () => {
@@ -1313,17 +1467,16 @@ describe('enrollment distribution and substitution telemetry (integration)', () 
       courseId,
     )
 
-    vi.spyOn(
-      enrollmentRepository,
-      'bulkAssignEnrollments',
-    ).mockRejectedValueOnce(new Error('distribution database secret'))
+    vi.spyOn(sharedRepository, 'bulkAssignEnrollments').mockRejectedValueOnce(
+      new Error('distribution database secret'),
+    )
     await expect(distributeEnrollmentsService(adminId)).rejects.toThrow(
       'Failed to distribute enrollments',
     )
 
     vi.spyOn(
-      enrollmentRepository,
-      'insertSubstituteWithReassignment',
+      sharedRepository,
+      'insertCourseSubstituteInTransaction',
     ).mockRejectedValueOnce(new Error('substitution database secret'))
     await expect(
       substituteTeacherService(
@@ -1333,7 +1486,7 @@ describe('enrollment distribution and substitution telemetry (integration)', () 
     ).rejects.toThrow('substitution database secret')
 
     vi.spyOn(
-      enrollmentRepository,
+      sharedRepository,
       'deleteCourseSubstituteByAbsent',
     ).mockRejectedValueOnce(new Error('substitution end database secret'))
     await expect(
@@ -1377,14 +1530,29 @@ describe('bulk enrollment grading telemetry (integration)', () => {
     { id: 'enrollment-rejected', sum: 1, specialCase: false },
     { id: 'enrollment-special', sum: 0, specialCase: true },
   ]
+  const evaluations = [
+    { enrollmentId: 'enrollment-approved', score: 4 },
+    { enrollmentId: 'enrollment-approved', score: 4 },
+    { enrollmentId: 'enrollment-waitlisted', score: 2 },
+    { enrollmentId: 'enrollment-waitlisted', score: 3 },
+    { enrollmentId: 'enrollment-rejected', score: 1 },
+  ]
+
+  function mockBulkGradeRead() {
+    vi.spyOn(
+      sharedRepository,
+      'findAwaitingApprovalEnrollments',
+    ).mockResolvedValue(rows)
+    vi.spyOn(
+      sharedRepository,
+      'findEnrollmentEvaluationScoresByEnrollmentIds',
+    ).mockResolvedValue(evaluations)
+  }
 
   it('logs a redacted preview event with thresholds and safe counters', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
-    vi.spyOn(
-      enrollmentRepository,
-      'findAwaitingApprovalIdsWithSum',
-    ).mockResolvedValue(rows)
+    mockBulkGradeRead()
 
     const result = await bulkGradeEnrollmentsService(
       { approveMin: 6, waitlistMin: 3, dryRun: true },
@@ -1423,12 +1591,9 @@ describe('bulk enrollment grading telemetry (integration)', () => {
   it('logs execute completion and applies threshold statuses', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
-    vi.spyOn(
-      enrollmentRepository,
-      'findAwaitingApprovalIdsWithSum',
-    ).mockResolvedValue(rows)
+    mockBulkGradeRead()
     const updateSpy = vi
-      .spyOn(enrollmentRepository, 'bulkUpdateEnrollmentStatuses')
+      .spyOn(sharedRepository, 'bulkUpdateEnrollmentStatuses')
       .mockResolvedValue()
 
     await bulkGradeEnrollmentsService(
@@ -1452,7 +1617,7 @@ describe('bulk enrollment grading telemetry (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const readSpy = vi
-      .spyOn(enrollmentRepository, 'findAwaitingApprovalIdsWithSum')
+      .spyOn(sharedRepository, 'findAwaitingApprovalEnrollments')
       .mockRejectedValueOnce(new Error('bulk grade read secret'))
 
     await expect(
@@ -1461,7 +1626,11 @@ describe('bulk enrollment grading telemetry (integration)', () => {
 
     readSpy.mockResolvedValue(rows)
     vi.spyOn(
-      enrollmentRepository,
+      sharedRepository,
+      'findEnrollmentEvaluationScoresByEnrollmentIds',
+    ).mockResolvedValue(evaluations)
+    vi.spyOn(
+      sharedRepository,
       'bulkUpdateEnrollmentStatuses',
     ).mockRejectedValueOnce(new Error('bulk grade update secret'))
 
@@ -1487,7 +1656,7 @@ describe('bulk enrollment grading telemetry (integration)', () => {
   })
 })
 
-describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
+describe('enrollment email export cohorts (integration)', () => {
   // Seeds four enrollments spanning every cohort boundary:
   // - registered@   approved + linked invitation accepted   → registered
   // - notreg@       approved + invitation_sent, still pending → not_registered
@@ -1536,8 +1705,9 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
   it.each(cases)(
     '$group cohort returns the right emails',
     async ({ group, expected }) => {
+      const adminId = await seedProfile({ role: 'admin' })
       await seedExportCohorts()
-      const emails = await findEnrollmentEmailsByGroup(group)
+      const { emails } = await getEnrollmentEmailsService({ group }, adminId)
       expect([...emails].sort()).toEqual([...expected].sort())
     },
   )
@@ -1606,8 +1776,8 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
       'connectionString=secret; email=private-export@test.dev',
     )
     vi.spyOn(
-      enrollmentRepository,
-      'findEnrollmentEmailsByGroup',
+      sharedRepository,
+      'findEnrollmentsForEmailExport',
     ).mockRejectedValueOnce(repositoryError)
 
     await expect(
@@ -1634,10 +1804,9 @@ describe('findEnrollmentEmailsByGroup — export cohorts (integration)', () => {
     const repositoryError = new Error(
       'privilege database connectionString=secret; email=private@test.dev',
     )
-    vi.spyOn(
-      staffPrivilegeRepository,
-      'findPrivilegesForUser',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findPrivilegesForUser').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(
@@ -1691,7 +1860,7 @@ describe('enrollment contact lookup by name (integration)', () => {
   it('finds candidates by full legal name and preferred name', async () => {
     await seedLookupEnrollments()
 
-    const rows = await findEnrollmentContactLookupCandidates([
+    const rows = await sharedRepository.findEnrollmentContactLookupCandidates([
       'Maria Santos',
       'Mia',
     ])
@@ -1795,7 +1964,7 @@ describe('enrollment contact lookup by name (integration)', () => {
       'connectionString=secret; email=private-lookup@test.dev',
     )
     vi.spyOn(
-      enrollmentRepository,
+      sharedRepository,
       'findEnrollmentContactLookupCandidates',
     ).mockRejectedValueOnce(repositoryError)
 
@@ -1832,10 +2001,9 @@ describe('enrollment contact lookup by name (integration)', () => {
     const repositoryError = new Error(
       'privilege database connectionString=secret; email=private@test.dev',
     )
-    vi.spyOn(
-      staffPrivilegeRepository,
-      'findPrivilegesForUser',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findPrivilegesForUser').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(
@@ -1902,12 +2070,13 @@ describe('sendInvitationForEnrollmentService (integration)', () => {
       invitedByName: 'Admin User',
       role: 'student',
     })
-    expect(await findInvitationByEmail('approved@test.dev')).toMatchObject({
+    expect(
+      await sharedRepository.findInvitationByEmail('approved@test.dev'),
+    ).toMatchObject({
       id: result.invitationId,
       status: 'pending',
     })
-    const db = await getDb()
-    expect(await db.select().from(emailMessages)).toEqual([])
+    expect(await sharedRepository.findAllEmailMessages()).toEqual([])
 
     const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
     expect(events).toEqual(
@@ -1949,9 +2118,9 @@ describe('sendInvitationForEnrollmentService (integration)', () => {
     )
 
     expect(result.invitationId).toBe(invitation.id)
-    expect((await findInvitationByEmail(invitation.email))?.token).not.toBe(
-      'expired-token',
-    )
+    expect(
+      (await sharedRepository.findInvitationByEmail(invitation.email))?.token,
+    ).not.toBe('expired-token')
     const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
     expect(events).toEqual(
       expect.arrayContaining([
@@ -1990,7 +2159,9 @@ describe('sendInvitationForEnrollmentService (integration)', () => {
     ).rejects.toMatchObject({ code: 'EMAIL_SEND_FAILED', status: 500 })
 
     expect(
-      await findInvitationByEmail('failed-invitation@test.dev'),
+      await sharedRepository.findInvitationByEmail(
+        'failed-invitation@test.dev',
+      ),
     ).toBeUndefined()
     const events = errorSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
     expect(events).toEqual(

@@ -16,12 +16,12 @@ as the worked example. Read this before adding tests for a new endpoint.
 Each `src/utils/<feature>/` module is split into four layers (reference:
 `src/utils/courses/`, `src/utils/zoomLink/`):
 
-| Layer      | File                                | Responsibility                                         | Tested?        |
-| ---------- | ----------------------------------- | ------------------------------------------------------ | -------------- |
-| Server fn  | `zoomLink.ts`                       | `createServerFn` → `getCurrentUser()` → service. Thin. | No (excluded)  |
-| Service    | `service/zoomLink.service.ts`       | Auth (`authz`/`hasRole`), orchestration, typed errors. | No (excluded)  |
-| Repository | `repository/zoomLink.repository.ts` | DB access via `getDb()`. Wrapped in `/* v8 ignore */`. | No (excluded)  |
-| Domain     | `domain/zoomLink.domain.ts`         | Pure functions — mapping, normalization, rules. No IO. | **Yes — 100%** |
+| Layer      | File                                            | Responsibility                                                             | Tested?        |
+| ---------- | ----------------------------------------------- | -------------------------------------------------------------------------- | -------------- |
+| Server fn  | `zoomLink.ts`                                   | `createServerFn` → `getCurrentUser()` → service. Thin.                     | No (excluded)  |
+| Service    | `service/zoomLink.service.ts`                   | Auth (`authz`/`hasRole`), orchestration, typed errors.                     | No (excluded)  |
+| Repository | `src/utils/repository/zoom-links.repository.ts` | Shared zoom-link table access via `getDb()`. Wrapped in `/* v8 ignore */`. | No (excluded)  |
+| Domain     | `domain/zoomLink.domain.ts`                     | Pure functions — mapping, normalization, rules. No IO.                     | **Yes — 100%** |
 
 Because the `domain/` layer has no database or network calls, its functions are
 deterministic and can be unit-tested with plain inputs and outputs — no mocks,
@@ -81,8 +81,47 @@ bun run test:coverage   # run with coverage + enforce the 100% gate
 ## Checklist: adding a new endpoint (test-ready)
 
 1. **Schema** — input validation in `src/schemas/<feature>.schema.ts` (Zod).
-2. **Repository** — `repository/<feature>.repository.ts`: all `getDb()` calls,
-   wrapped in `/* v8 ignore */`. Re-export via `repository/index.ts`.
+2. **Repository seam** — prefer `src/utils/repository/<table>.repository.ts`
+   for table-only `getDb()` calls, wrapped in `/* v8 ignore */` and re-exported
+   via `src/utils/repository/index.ts`. Every repository module belongs directly
+   in that shared directory; do not recreate feature-local `repository/`
+   directories. Keep joined projections and cross-table orchestration in feature
+   services, domains, or explicit transaction modules.
+   Transaction modules may open `db.transaction`, but must coordinate table
+   adapters rather than importing schema tables or issuing Drizzle CRUD/query
+   calls themselves.
+   Keep one shared owner per table, and keep every Drizzle table reference —
+   including relation-backed `db.query.<table>` reads, direct CRUD calls,
+   `.from(<table>)` sources, and raw SQL/interpolated table expressions — aligned
+   with that repository's imported table. The raw-SQL guard also recognizes
+   qualified names and `USING`, `REFERENCES`, `COPY`, `LOCK TABLE`, `TRUNCATE`, and
+   table-DDL references, including `ONLY` / `IF EXISTS` modifiers, and rejects dynamic
+   `sql.raw(...)` / `sql.identifier(...)` selectors whose table ownership cannot be
+   proven statically.
+   Repositories must not import or re-export other repositories at runtime; services and explicit
+   transaction modules compose table adapters. Type-only imports and re-exports remain allowed
+   for shared transaction-client types.
+   The boundary is regression-tested by `scripts/repository-boundary.test.ts`;
+   repositories use named schema-table imports so namespace imports cannot
+   bypass the one-table ownership check. Feature modules
+   must not import or runtime-re-export `getDb()` or `withDbConnection()` directly; those clients
+   belong to shared repositories, explicit transaction modules, and the health /
+   request-scope infrastructure across `src/`. Direct Drizzle operations on `db`/`tx` handles
+   (`query`, CRUD, `execute`, or `transaction`) are likewise forbidden outside
+   those seams, even when a handle is injected rather than imported; the
+   regression guard scans the whole application source tree for import and
+   operation paths, including injected handles with arbitrary names, formatted
+   member access and computed `db['select']` / `db.query['table']` forms and
+   optional-chaining member and call access, generic TypeScript call forms, and Drizzle count helpers. Raw SQL table references are checked across the
+   application source tree as well, so an injected handle cannot bypass the
+   repository seam through raw SQL execute calls. Supabase REST table selectors
+   are checked in literal, optional-chaining, computed-access, and dynamic
+   forms; Storage bucket selectors remain outside the table seam.
+   Integration tests may use the real database for fixtures,
+   but should import repository adapters through the shared barrel
+   as well, so test spies exercise the same public seam as production callers;
+   direct file imports are forbidden through aliased, relative, template-literal,
+   concatenated-literal dynamic-import, and CommonJS paths.
 3. **Domain** — `domain/<feature>.domain.ts`: pure mapping/normalization/rule
    functions. Inject time/IDs as params.
 4. **Service** — `service/<feature>.service.ts`: auth + orchestration; call

@@ -5,19 +5,20 @@ import type {
 } from '@/schemas/zoomLink.schema'
 import type { LogLevel } from '@/utils/observability/logger'
 import {
+  attachZoomLinkTeacherNames,
   buildCreateZoomLinkValues,
   buildUpdateZoomLinkValues,
   buildZoomLinksPayload,
 } from '@/utils/zoomLink/domain/zoomLink.domain'
 import {
   deleteZoomLinkById,
-  findDiscipleshipTeacherId,
-  findViewerRole,
-  findZoomLinkOwner,
-  findZoomLinksWithTeachers,
+  findAllZoomLinks,
+  findDiscipleshipTeacherIdByStudentId,
+  findProfileRoleById,
+  findProfilesByIds,
   insertZoomLink,
   updateZoomLinkById,
-} from '@/utils/zoomLink/repository'
+} from '@/utils/repository'
 import { authz } from '@/utils/authz'
 import { NotFoundError, ValidationError, isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
@@ -124,9 +125,9 @@ export async function getZoomLinksService(userId: string) {
     startedAt: performance.now(),
   }
 
-  let profile: Awaited<ReturnType<typeof findViewerRole>>
+  let profile: Awaited<ReturnType<typeof findProfileRoleById>>
   try {
-    profile = await findViewerRole(userId)
+    profile = await findProfileRoleById(userId)
   } catch (error) {
     logZoomLinkRead('error', 'zoom_links_load_failed', context, {
       errorCategory: 'zoom_links_read_persistence',
@@ -145,10 +146,19 @@ export async function getZoomLinksService(userId: string) {
   return withZoomLinkReadTelemetry(
     context,
     async () => {
-      const rows = await findZoomLinksWithTeachers()
+      const linkRows = await findAllZoomLinks()
+      const teacherIds = [
+        ...new Set(
+          linkRows.flatMap((link) =>
+            link.teacherId === null ? [] : [link.teacherId],
+          ),
+        ),
+      ]
+      const teachers = await findProfilesByIds(teacherIds)
+      const rows = attachZoomLinkTeacherNames(linkRows, teachers)
       const assignment =
         profile.role === 'student'
-          ? await findDiscipleshipTeacherId(userId)
+          ? await findDiscipleshipTeacherIdByStudentId(userId)
           : null
       const teacherOrder =
         profile.role === 'student'
@@ -175,7 +185,7 @@ async function validateTeacherOwner(
   data: CreateZoomLinkInput | UpdateZoomLinkInput,
 ) {
   if (data.section !== 'teacher') return
-  const owner = await findZoomLinkOwner(data.teacherId)
+  const owner = await findProfileRoleById(data.teacherId)
   if (owner?.role === 'teacher' || owner?.role === 'admin') return
   throw new ValidationError('Zoom link owner must be a teacher or admin')
 }

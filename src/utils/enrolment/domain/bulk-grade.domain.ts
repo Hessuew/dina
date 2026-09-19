@@ -1,3 +1,32 @@
+import type { enrollmentEvaluations, enrollments } from '@/db/schema'
+
+export type BulkGradeEnrollment = Pick<
+  typeof enrollments.$inferSelect,
+  'id' | 'specialCase'
+>
+
+export type BulkGradeEvaluation = Pick<
+  typeof enrollmentEvaluations.$inferSelect,
+  'enrollmentId' | 'score'
+>
+
+export function buildBulkGradeRows(
+  enrollments: ReadonlyArray<BulkGradeEnrollment>,
+  evaluations: ReadonlyArray<BulkGradeEvaluation>,
+): Array<{ id: string; sum: number; specialCase: boolean }> {
+  const sums = new Map<string, number>()
+  for (const evaluation of evaluations) {
+    sums.set(
+      evaluation.enrollmentId,
+      (sums.get(evaluation.enrollmentId) ?? 0) + (evaluation.score ?? 0),
+    )
+  }
+  return enrollments.map((enrollment) => ({
+    ...enrollment,
+    sum: sums.get(enrollment.id) ?? 0,
+  }))
+}
+
 export type BulkGradeStatus = 'approved' | 'waitlisted' | 'rejected'
 
 export type BulkGradeThresholds = {

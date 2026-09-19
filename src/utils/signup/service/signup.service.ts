@@ -26,7 +26,7 @@ import {
   insertProfileOnConflict,
   markInvitationAccepted,
   updateInvitationOtp,
-} from '@/utils/signup/repository'
+} from '@/utils/repository'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 

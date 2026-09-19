@@ -16,32 +16,39 @@ import {
   validateSubmissionWindow,
 } from '@/domain/assignment.service'
 import { canOpenUnpublishedAssignment } from '@/utils/assignments/domain/assignment-detail.domain'
+import { buildStudentAssignments } from '@/utils/assignments/domain/student-assignments.domain'
+import {
+  buildTeacherAssignmentRows,
+  mergeTeacherCatalogAssignments,
+} from '@/utils/assignments/domain/teacher-assignments.domain'
+import { findCompletedLessonIdsForStudent } from '@/utils/courses/service/lesson-completion.service'
 import {
   deleteAssignmentById,
-  findAssignmentSubmissionsWithStudent,
-  findAssignmentWithFullDetail,
-  findAssignmentWithLesson,
-  findAssignmentWithLessonAndSubmissions,
-  findAssignmentsForTeacherCatalog,
-  findAssignmentsForTeacherLessons,
+  findAssignmentById,
+  findAssignmentsByLessonId,
+  findAssignmentsByLessonIdsOrdered,
+  findCourseById,
   findCourseIdsByTeacher,
-  findPublishedAssignmentsForStudent,
-  insertAssignment,
-  updateAssignmentById,
-} from '@/utils/assignments/repository/assignments.repository'
-import {
+  findCoursesByIds,
   findLessonById,
   findLessonIdsByCourseIds,
-  findLessonWithDetail,
-} from '@/utils/assignments/repository/lessons.repository'
-import { findCompletedLessonIdsForStudent } from '@/utils/courses/repository'
-import {
+  findLessonsByIds,
+  findProfilesByIds,
+  findPublishedAssignments,
+  findStudentSubmissions,
   findSubmissionByAssignmentAndStudent,
   findSubmissionById,
+  findSubmissionsByAssignmentId,
+  findSubmissionsByAssignmentIdOrdered,
+  findSubmissionsByAssignmentIds,
+  findTeacherIdsByCourseId,
+  findTeacherIdsByCourseIds,
+  insertAssignment,
+  updateAssignmentById,
   updateSubmission,
   updateSubmissionGrade,
   upsertSubmission,
-} from '@/utils/assignments/repository/submissions.repository'
+} from '@/utils/repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
@@ -171,7 +178,7 @@ async function withAssignmentReadTelemetry<T>(
 }
 
 async function loadLessonForViewer(data: GetLessonInput, userId: string) {
-  const lesson = await findLessonWithDetail(data.lessonId)
+  const lesson = await findLessonWithDetails(data.lessonId)
   if (!lesson) {
     throw new NotFoundError('Lesson not found', {
       code: 'LESSON_NOT_FOUND',
@@ -228,6 +235,89 @@ async function loadLessonForViewer(data: GetLessonInput, userId: string) {
   }
 }
 
+async function findLessonWithDetails(lessonId: string) {
+  const lesson = await findLessonById(lessonId)
+  if (!lesson) return undefined
+
+  const [course, teacherIds, assignments] = await Promise.all([
+    findCourseById(lesson.courseId),
+    findTeacherIdsByCourseId(lesson.courseId),
+    findAssignmentsByLessonId(lesson.id),
+  ])
+  if (!course) return undefined
+
+  return {
+    ...lesson,
+    course: {
+      ...course,
+      courseTeachers: teacherIds.map((teacherId) => ({ teacherId })),
+    },
+    assignments,
+  }
+}
+
+async function findAssignmentWithLesson(assignmentId: string) {
+  const assignment = await findAssignmentById(assignmentId)
+  if (!assignment) return undefined
+
+  const lesson = await findLessonById(assignment.lessonId)
+  if (!lesson) return undefined
+
+  return { ...assignment, lesson }
+}
+
+async function findAssignmentWithLessonAndSubmissions(assignmentId: string) {
+  const assignment = await findAssignmentById(assignmentId)
+  if (!assignment) return undefined
+
+  const [lesson, submissions] = await Promise.all([
+    findLessonById(assignment.lessonId),
+    findSubmissionsByAssignmentId(assignment.id),
+  ])
+  if (!lesson) return undefined
+
+  return { ...assignment, lesson, submissions }
+}
+
+async function findAssignmentWithCourseTeachers(assignmentId: string) {
+  const assignment = await findAssignmentById(assignmentId)
+  if (!assignment) return undefined
+
+  const lesson = await findLessonById(assignment.lessonId)
+  if (!lesson) return undefined
+
+  const [course, teacherIds] = await Promise.all([
+    findCourseById(lesson.courseId),
+    findTeacherIdsByCourseId(lesson.courseId),
+  ])
+  if (!course) return undefined
+
+  return {
+    ...assignment,
+    lesson: {
+      ...lesson,
+      course: {
+        ...course,
+        courseTeachers: teacherIds.map((teacherId) => ({ teacherId })),
+      },
+    },
+  }
+}
+
+async function findPublishedAssignmentsForStudent(studentId: string) {
+  const assignments = await findPublishedAssignments()
+  const assignmentIds = assignments.map((assignment) => assignment.id)
+  const [lessons, submissions] = await Promise.all([
+    findLessonsByIds(assignments.map((assignment) => assignment.lessonId)),
+    findStudentSubmissions(studentId, assignmentIds),
+  ])
+  const courses = await findCoursesByIds(
+    lessons.map((lesson) => lesson.courseId),
+  )
+
+  return buildStudentAssignments(assignments, lessons, courses, submissions)
+}
+
 export async function getLessonService(data: GetLessonInput, userId: string) {
   const context: AssignmentReadLogContext = {
     action: 'getLesson',
@@ -252,7 +342,7 @@ async function loadAssignmentForViewer(
   data: GetAssignmentInput,
   userId: string,
 ) {
-  const assignment = await findAssignmentWithFullDetail(data.assignmentId)
+  const assignment = await findAssignmentWithCourseTeachers(data.assignmentId)
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
       code: 'ASSIGNMENT_NOT_FOUND',
@@ -335,9 +425,9 @@ export async function getAssignmentService(
 
 export type TeacherAssignmentListScope = 'owned' | 'catalog'
 
-type TeacherListAssignment =
-  | Awaited<ReturnType<typeof findAssignmentsForTeacherLessons>>[number]
-  | Awaited<ReturnType<typeof findAssignmentsForTeacherCatalog>>[number]
+type TeacherListAssignment = Awaited<
+  ReturnType<typeof loadTeacherAssignmentRows>
+>[number]
 
 function mapTeacherAssignmentRow(
   assignment: TeacherListAssignment,
@@ -376,6 +466,49 @@ function courseTeachersFromRow(assignment: TeacherListAssignment): {
       .map((teacher) => teacher.teacherId)
       .filter((id): id is string => typeof id === 'string' && id.length > 0),
   }
+}
+
+async function loadTeacherAssignmentRows<
+  TAssignment extends Awaited<
+    ReturnType<typeof findAssignmentsByLessonIdsOrdered>
+  >[number],
+>(assignments: ReadonlyArray<TAssignment>, includeSubmissions = false) {
+  const lessonIds = [
+    ...new Set(assignments.map((assignment) => assignment.lessonId)),
+  ]
+  const lessons = await findLessonsByIds(lessonIds)
+  const courseIds = [...new Set(lessons.map((lesson) => lesson.courseId))]
+  const [courses, courseTeachers, submissions] = await Promise.all([
+    findCoursesByIds(courseIds),
+    findTeacherIdsByCourseIds(courseIds),
+    includeSubmissions
+      ? findSubmissionsByAssignmentIds(
+          assignments.map((assignment) => assignment.id),
+        )
+      : Promise.resolve([]),
+  ])
+
+  return buildTeacherAssignmentRows(
+    assignments,
+    lessons,
+    courses,
+    courseTeachers,
+    includeSubmissions ? submissions : undefined,
+  )
+}
+
+async function loadAssignmentSubmissions(assignmentId: string) {
+  const submissions = await findSubmissionsByAssignmentIdOrdered(assignmentId)
+  const profiles = await findProfilesByIds([
+    ...new Set(submissions.map((submission) => submission.studentId)),
+  ])
+  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]))
+
+  return submissions.map((submission) => {
+    const student = profilesById.get(submission.studentId)
+    if (!student) throw new Error('Submission student profile missing')
+    return { ...submission, student }
+  })
 }
 
 export async function createAssignmentService(
@@ -717,7 +850,7 @@ export async function createOrUpdateSubmissionService(
     data.assignmentId,
     userId,
     startedAt,
-    () => findAssignmentWithFullDetail(data.assignmentId),
+    () => findAssignmentWithCourseTeachers(data.assignmentId),
   )
   if (!assignment) {
     throw new NotFoundError('Assignment not found', {
@@ -776,9 +909,7 @@ export async function getAllAssignmentsForStudentService(userId: string) {
         })
       }
 
-      const allAssignments = (
-        await findPublishedAssignmentsForStudent(userId)
-      ).filter((assignment) => assignment.lesson.course.isPublished)
+      const allAssignments = await findPublishedAssignmentsForStudent(userId)
 
       const assignmentsWithSubmission = allAssignments.map((assignment) => ({
         ...assignment,
@@ -859,7 +990,8 @@ async function getTeacherOwnedAssignments(
   const lessonIds = await findLessonIdsByCourseIds(courseIds)
   if (lessonIds.length === 0) return { assignments: [] }
 
-  const allAssignments = await findAssignmentsForTeacherLessons(lessonIds)
+  const assignments = await findAssignmentsByLessonIdsOrdered(lessonIds)
+  const allAssignments = await loadTeacherAssignmentRows(assignments, true)
 
   return {
     assignments: allAssignments.map((assignment) => {
@@ -879,10 +1011,16 @@ async function getTeacherCatalogAssignments(
     managedCourseIds.length > 0
       ? await findLessonIdsByCourseIds(managedCourseIds)
       : []
-  // SQL already scopes: published campus-wide + drafts/closed on managed lessons.
+  const [publishedAssignments, managedAssignments] = await Promise.all([
+    findPublishedAssignments(),
+    findAssignmentsByLessonIdsOrdered(managedLessonIds),
+  ])
+  const assignments = mergeTeacherCatalogAssignments(
+    publishedAssignments,
+    managedAssignments,
+  )
   // No submission rows loaded for catalog.
-  const allAssignments =
-    await findAssignmentsForTeacherCatalog(managedLessonIds)
+  const allAssignments = await loadTeacherAssignmentRows(assignments)
 
   return {
     assignments: allAssignments.flatMap((assignment) => {
@@ -922,9 +1060,7 @@ export async function getAssignmentSubmissionsService(
         .perform('editLesson')
         .on('course', assignment.lesson.courseId)
 
-      const submissions = await findAssignmentSubmissionsWithStudent(
-        data.assignmentId,
-      )
+      const submissions = await loadAssignmentSubmissions(data.assignmentId)
       return { submissions }
     },
     (result) => ({ submissionCount: result.submissions.length }),

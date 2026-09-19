@@ -32,6 +32,28 @@ type LessonRow = {
   duration: number | null
 }
 
+type CalendarLessonSource = Omit<LessonRow, 'courseName'>
+
+type CalendarAssignmentLessonSource = {
+  id: string
+  courseId: string
+}
+
+type CalendarAssignmentSource = {
+  id: string
+  title: string
+  dueDate: Date
+  lessonId: string
+  description: string | null
+  maxGrade: number | null
+}
+
+type CalendarCourseSource = {
+  id: string
+  title: string
+  isPublished: boolean | null
+}
+
 type AssignmentRow = {
   id: string
   title: string
@@ -52,6 +74,42 @@ type SpecialEventRow = {
   location: string | null
   zoomLink: string | null
   category: CalendarEventCategory | null
+}
+
+export function composeCalendarEventRows(
+  lessons: Array<CalendarLessonSource>,
+  assignments: Array<CalendarAssignmentSource>,
+  courses: Array<CalendarCourseSource>,
+  assignmentLessons: Array<CalendarAssignmentLessonSource> = lessons,
+): { lessons: Array<LessonRow>; assignments: Array<AssignmentRow> } {
+  const coursesById = new Map(courses.map((course) => [course.id, course]))
+  const lessonsById = new Map(
+    [...lessons, ...assignmentLessons].map((lesson) => [lesson.id, lesson]),
+  )
+
+  return {
+    lessons: lessons.flatMap((lesson) => {
+      const course = coursesById.get(lesson.courseId)
+      if (!course || course.isPublished !== true) return []
+      return [{ ...lesson, courseName: course.title }]
+    }),
+    assignments: assignments.flatMap((assignment) => {
+      const lesson = lessonsById.get(assignment.lessonId)
+      const course = lesson ? coursesById.get(lesson.courseId) : undefined
+      if (!lesson || !course || course.isPublished !== true) return []
+      return [
+        {
+          id: assignment.id,
+          title: assignment.title,
+          dueDate: assignment.dueDate,
+          courseId: lesson.courseId,
+          courseName: course.title,
+          description: assignment.description,
+          maxGrade: assignment.maxGrade,
+        },
+      ]
+    }),
+  }
 }
 
 export function buildCalendarEvents(

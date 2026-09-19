@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  attachZoomLinkTeacherNames,
   buildCreateZoomLinkValues,
   buildUpdateZoomLinkValues,
   buildZoomLinksPayload,
@@ -88,6 +89,39 @@ describe('filterVisibleZoomLinks', () => {
 
   it('returns only general links for an unassigned student', () => {
     expect(filterVisibleZoomLinks(rows, 'student', null)).toEqual([general])
+  })
+})
+
+describe('attachZoomLinkTeacherNames', () => {
+  it('adds known names and preserves missing owners as null', () => {
+    const rows = [
+      makeZoomLinkRow({ id: 'general' }),
+      makeZoomLinkRow({ id: 'known', section: 'teacher', teacherId }),
+      makeZoomLinkRow({
+        id: 'unknown',
+        section: 'teacher',
+        teacherId: 'missing-teacher',
+      }),
+    ].map(({ teacherName: _teacherName, ...row }) => row)
+
+    expect(
+      attachZoomLinkTeacherNames(rows, [
+        { id: teacherId, fullName: 'Teacher A' },
+      ]),
+    ).toEqual([
+      makeZoomLinkRow({ id: 'general' }),
+      makeZoomLinkRow({
+        id: 'known',
+        section: 'teacher',
+        teacherId,
+        teacherName: 'Teacher A',
+      }),
+      makeZoomLinkRow({
+        id: 'unknown',
+        section: 'teacher',
+        teacherId: 'missing-teacher',
+      }),
+    ])
   })
 })
 

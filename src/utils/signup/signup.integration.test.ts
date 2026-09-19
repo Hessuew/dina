@@ -7,11 +7,7 @@ import {
   signupService,
   verifyOtpService,
 } from '@/utils/signup/service/signup.service'
-import {
-  findInvitationByToken,
-  findProfileByEmail,
-} from '@/utils/signup/repository'
-import * as signupRepository from '@/utils/signup/repository'
+import * as signupRepository from '@/utils/repository'
 import { hashValue } from '@/utils/signup/domain/signup.domain'
 import { seedInvitation, seedProfile } from '@/../test/integration/seed'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
@@ -146,9 +142,9 @@ describe('signupService (integration)', () => {
     expect(result.requiresOtp).toBe(true)
     // No account is created before OTP is proven.
     expect(mocks.createUser).not.toHaveBeenCalled()
-    expect(await findProfileByEmail(email)).toBeUndefined()
+    expect(await signupRepository.findProfileByEmail(email)).toBeUndefined()
 
-    const invitation = await findInvitationByToken(token)
+    const invitation = await signupRepository.findInvitationByToken(token)
     expect(invitation?.status).toBe('pending')
     expect(invitation?.acceptedAt).toBeNull()
     expect(invitation?.otpHash).not.toBeNull()
@@ -169,7 +165,7 @@ describe('signupService (integration)', () => {
     expect(second.error).toBe(false)
     expect(second.requiresOtp).toBe(true)
 
-    const invitation = await findInvitationByToken(token)
+    const invitation = await signupRepository.findInvitationByToken(token)
     expect(invitation?.status).toBe('pending')
   })
 
@@ -187,9 +183,9 @@ describe('signupService (integration)', () => {
     expect(result.error).toBe(true)
     expect(mocks.createUser).not.toHaveBeenCalled()
     expect(mocks.deleteUser).not.toHaveBeenCalled()
-    expect(await findProfileByEmail(email)).toBeUndefined()
+    expect(await signupRepository.findProfileByEmail(email)).toBeUndefined()
 
-    const invitation = await findInvitationByToken(token)
+    const invitation = await signupRepository.findInvitationByToken(token)
     expect(invitation?.status).toBe('pending')
     expect(invitation?.otpHash).toBeNull()
     expect(errorSpy).toHaveBeenCalled()
@@ -309,7 +305,7 @@ describe('verifyOtpService (integration)', () => {
     expect(result.message).toBe('Invalid code. 4 attempts remaining.')
     expect(mocks.createUser).not.toHaveBeenCalled()
 
-    const invitation = await findInvitationByToken(token)
+    const invitation = await signupRepository.findInvitationByToken(token)
     expect(invitation?.otpAttempts).toBe(1)
   })
 
@@ -375,12 +371,12 @@ describe('verifyOtpService (integration)', () => {
     )
     expect(mocks.signInWithPassword).toHaveBeenCalled()
 
-    const profile = await findProfileByEmail(email)
+    const profile = await signupRepository.findProfileByEmail(email)
     expect(profile?.id).toBe(userId)
     expect(profile?.role).toBe('teacher')
     expect(profile?.fullName).toBe('New User')
 
-    const invitation = await findInvitationByToken(token)
+    const invitation = await signupRepository.findInvitationByToken(token)
     expect(invitation?.status).toBe('accepted')
     expect(invitation?.acceptedAt).not.toBeNull()
     expect(invitation?.otpHash).toBeNull()
@@ -534,7 +530,7 @@ describe('verifyOtpService (integration)', () => {
       email_confirm: true,
     })
 
-    const invitation = await findInvitationByToken(token)
+    const invitation = await signupRepository.findInvitationByToken(token)
     expect(invitation?.status).toBe('accepted')
 
     errorSpy.mockRestore()
@@ -560,7 +556,7 @@ describe('verifyOtpService (integration)', () => {
 
     expect(result.success).toBe(false)
     expect(mocks.updateUserById).not.toHaveBeenCalled()
-    expect(await findProfileByEmail(email)).toBeUndefined()
+    expect(await signupRepository.findProfileByEmail(email)).toBeUndefined()
     expect(errorSpy).toHaveBeenCalled()
 
     errorSpy.mockRestore()
@@ -589,7 +585,7 @@ describe('resendOtpService (integration)', () => {
     expect(result.message).toMatch(/Please wait \d+ seconds/)
     expect(mocks.sendEmail).not.toHaveBeenCalled()
 
-    const invitation = await findInvitationByToken(token)
+    const invitation = await signupRepository.findInvitationByToken(token)
     expect(invitation?.otpHash).toBe(hashValue('111111'))
   })
 
@@ -601,7 +597,7 @@ describe('resendOtpService (integration)', () => {
     expect(result.success).toBe(true)
     expect(mocks.sendEmail).toHaveBeenCalled()
 
-    const invitation = await findInvitationByToken(token)
+    const invitation = await signupRepository.findInvitationByToken(token)
     expect(invitation?.otpHash).not.toBeNull()
   })
 })

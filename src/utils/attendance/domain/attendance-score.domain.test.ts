@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildAttendancePresentRefs,
   buildCourseAttendanceScores,
   formatAttendanceScore,
   setLessonPresentOnScores,
@@ -17,6 +18,35 @@ const lessons = [
   { id: 'l3', title: 'L3', orderIndex: 2, courseId: 'c-romans' },
   { id: 'la', title: 'A1', orderIndex: 0, courseId: 'c-acts' },
 ]
+
+describe('buildAttendancePresentRefs', () => {
+  it('maps present rows to lesson references through session rows', () => {
+    expect(
+      buildAttendancePresentRefs(
+        [
+          { studentId: 's1', sessionId: 'session-1' },
+          { studentId: 's2', sessionId: 'session-2' },
+        ],
+        [
+          { id: 'session-1', lessonId: 'l1' },
+          { id: 'session-2', lessonId: 'l2' },
+        ],
+      ),
+    ).toEqual([
+      { lessonId: 'l1', studentId: 's1' },
+      { lessonId: 'l2', studentId: 's2' },
+    ])
+  })
+
+  it('omits presents whose session is not returned', () => {
+    expect(
+      buildAttendancePresentRefs(
+        [{ studentId: 's1', sessionId: 'missing-session' }],
+        [],
+      ),
+    ).toEqual([])
+  })
+})
 
 describe('buildCourseAttendanceScores', () => {
   it('counts all lessons as denominator including zero presents', () => {
@@ -48,6 +78,23 @@ describe('buildCourseAttendanceScores', () => {
     expect(romans.totalLessons).toBe(3)
     expect(romans.lessons.map((l) => l.present)).toEqual([true, true, false])
     expect(scores.find((s) => s.courseId === 'c-acts')!.present).toBe(1)
+  })
+
+  it('orders lessons with the same position by title', () => {
+    const scores = buildCourseAttendanceScores(
+      [{ id: 'c1', title: 'Course' }],
+      [
+        { id: 'l2', title: 'Beta', orderIndex: 0, courseId: 'c1' },
+        { id: 'l1', title: 'Alpha', orderIndex: 0, courseId: 'c1' },
+      ],
+      [],
+      's1',
+    )
+
+    expect(scores[0]?.lessons.map((lesson) => lesson.lessonId)).toEqual([
+      'l1',
+      'l2',
+    ])
   })
 })
 

@@ -6,30 +6,34 @@ import type {
   SkipSummary,
 } from '@/utils/email/domain/bulk-invite.domain'
 import type { EmailType } from '@/utils/email/domain/campaigns.domain'
-import type { InvitationInsert } from '@/utils/email/repository/email-campaign.repository'
+import type { InvitationInsert } from '@/utils/repository'
 import {
   planBulkInvites,
   summarizeInviteSkips,
 } from '@/utils/email/domain/bulk-invite.domain'
-import { resolveEmailCampaign } from '@/utils/email/domain/campaigns.domain'
-import { sendInvitationEmail } from '@/utils/email'
 import {
-  acquireEmailCampaignLock,
-  checkEmailCampaignLockHeldBy,
-  deleteCampaignInvitation,
-  findEmailCampaignRecipients,
-  getLockedEmailCampaigns,
-  insertCampaignInvitation,
-  insertEmailMessage,
-  markCampaignEnrollmentInvited,
-  releaseEmailCampaignLock,
-  updateCampaignInvitationToken,
-} from '@/utils/email/repository/email-campaign.repository'
+  buildEmailCampaignRecipients,
+  resolveEmailCampaign,
+} from '@/utils/email/domain/campaigns.domain'
+import { sendInvitationEmail } from '@/utils/email'
 import {
   calculateInvitationExpiry,
   generateSecureToken,
 } from '@/utils/invitation/domain/invitations.domain'
-import { findProfileById } from '@/utils/enrolment/repository/enrolment.repository'
+import {
+  acquireEmailCampaignLock,
+  checkEmailCampaignLockHeldBy,
+  deleteInvitationById,
+  findApprovedEnrollments,
+  findInvitationsByEmails,
+  findProfileById,
+  getLockedEmailCampaigns,
+  insertEmailMessage,
+  insertInvitation,
+  markEnrollmentInvitationSent,
+  releaseEmailCampaignLock,
+  updateInvitationToken,
+} from '@/utils/repository'
 import { authz } from '@/utils/authz'
 import {
   CampaignLockedError,
@@ -188,8 +192,15 @@ function logInvitationOutcome(input: {
 async function planCampaign(
   data: SendEmailCampaignInput,
 ): Promise<{ emailType: EmailType; plan: BulkInvitePlan }> {
-  const { emailType, cohort } = resolveEmailCampaign(data.campaign)
-  const recipients = await findEmailCampaignRecipients(cohort)
+  const { emailType } = resolveEmailCampaign(data.campaign)
+  const enrollments = await findApprovedEnrollments()
+  const invitations = await findInvitationsByEmails(
+    enrollments.map((enrollment) => enrollment.email),
+  )
+  const recipients = buildEmailCampaignRecipients({
+    enrollments,
+    invitations,
+  })
   const plan = planBulkInvites({
     recipients,
     now: new Date(),
@@ -254,10 +265,10 @@ async function createInvitationForSend(
   const token = generateSecureToken()
   const expiresAt = calculateInvitationExpiry(new Date())
   if (planned.action === 'rotate' && planned.invitationId) {
-    await updateCampaignInvitationToken(planned.invitationId, token, expiresAt)
+    await updateInvitationToken(planned.invitationId, token, expiresAt)
     return { id: planned.invitationId, token, created: false }
   }
-  const invitation = await insertCampaignInvitation(
+  const invitation = await insertInvitation(
     buildInvitationRow({ email: planned.email, token, expiresAt, userId }),
   )
   return { id: invitation.id, token, created: true }
@@ -296,11 +307,11 @@ async function rollbackInvitationForSend(input: {
   oldExpiresAt: Date | null
 }) {
   if (input.created) {
-    await deleteCampaignInvitation(input.invitationId)
+    await deleteInvitationById(input.invitationId)
     return
   }
   if (input.planned.invitationId && input.oldToken && input.oldExpiresAt) {
-    await updateCampaignInvitationToken(
+    await updateInvitationToken(
       input.planned.invitationId,
       input.oldToken,
       input.oldExpiresAt,
@@ -342,7 +353,7 @@ async function tryDeliverAndMark(input: {
     }
   }
   try {
-    await markCampaignEnrollmentInvited(
+    await markEnrollmentInvitationSent(
       input.planned.enrollmentId,
       input.invitation.id,
     )

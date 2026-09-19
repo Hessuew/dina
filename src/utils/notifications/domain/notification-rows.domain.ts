@@ -1,4 +1,4 @@
-import { postNotifications } from '@/db/schema'
+import type { postNotifications } from '@/db/schema'
 import type { CommentCreatedEvent, PostCreatedEvent } from '../types'
 
 /** A row ready to be inserted into `postNotifications`. */

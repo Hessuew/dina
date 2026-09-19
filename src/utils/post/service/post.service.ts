@@ -16,37 +16,48 @@ import type {
   CommentWithAuthor,
   PostChannel,
   PostWithDetails,
+  RawPostWithDetails,
   ReactionAction,
 } from '@/utils/post/domain/post.domain'
+import type { PostRow } from '@/utils/repository'
 import {
+  composeCommentsWithAuthors,
+  composePostWithDetails,
+  composePostsWithDetails,
   determineReactionAction,
   transformCommentWithAuthor,
   transformPostWithDetails,
 } from '@/utils/post/domain/post.domain'
 import {
   calculateCommentCounts,
-  deleteCommentReaction,
+  deletePostCommentReaction,
   deletePostReaction,
-  findChannels,
+  findAllCourses,
   findCommentForWrite,
-  findCommentReaction,
-  findCommentWithAuthor,
   findComments,
-  findPostById,
+  findCourseById,
+  findCourseIdsByTeacher,
+  findCoursesByIds,
+  findPostCommentReaction,
+  findPostCommentReactionsByCommentIds,
+  findPostCommentRows,
+  findPostCommentRowsByPostIds,
   findPostForWrite,
   findPostReaction,
+  findPostReactionsByPostIds,
   findPosts,
+  findProfilesByIds,
   insertComment,
-  insertCommentReaction,
   insertPost,
+  insertPostCommentReaction,
   insertPostReaction,
   softDeleteComment,
   softDeletePost,
   updateCommentContent,
-  updateCommentReaction,
+  updatePostCommentReaction,
   updatePostContent,
   updatePostReaction,
-} from '@/utils/post/repository/post.repository'
+} from '@/utils/repository'
 import { AuthorizationError, NotFoundError, isAppError } from '@/utils/errors'
 import { authz } from '@/utils/authz'
 import { getUserProfile } from '@/utils/auth/auth'
@@ -218,6 +229,45 @@ async function signCommentAvatars(
   }))
 }
 
+async function findComposedComment(
+  commentId: string,
+): Promise<CommentWithAuthor | undefined> {
+  const full = await findCommentForWrite(commentId)
+  if (!full) return undefined
+
+  const [profiles, reactions] = await Promise.all([
+    findProfilesByIds([full.authorId]),
+    findPostCommentReactionsByCommentIds([full.id]),
+  ])
+  return composeCommentsWithAuthors([full], profiles, reactions)[0]
+}
+
+async function findPostWithDetails(postId: string) {
+  const post = await findPostForWrite(postId)
+  if (!post) return undefined
+
+  const [course, authorProfiles, postReactions, comments] = await Promise.all([
+    post.courseId ? findCourseById(post.courseId) : Promise.resolve(undefined),
+    findProfilesByIds([post.authorId]),
+    findPostReactionsByPostIds([post.id]),
+    findPostCommentRows(post.id, 3),
+  ])
+  const commentIds = comments.map((comment) => comment.id)
+  const [commentProfiles, commentReactions] = await Promise.all([
+    findProfilesByIds(comments.map((comment) => comment.authorId)),
+    findPostCommentReactionsByCommentIds(commentIds),
+  ])
+
+  return composePostWithDetails(
+    post,
+    course ? [course] : [],
+    [...authorProfiles, ...commentProfiles],
+    postReactions,
+    comments,
+    commentReactions,
+  )
+}
+
 export async function getPostChannelsService(actorId: string): Promise<{
   channels: Array<PostChannel>
 }> {
@@ -230,15 +280,16 @@ export async function getPostChannelsService(actorId: string): Promise<{
     },
     read: async () => {
       const profile = await getUserProfile(actorId)
-      const rows = await findChannels()
+      const [rows, teacherCourseIds] = await Promise.all([
+        findAllCourses(),
+        profile.role === 'admin'
+          ? Promise.resolve([] as Array<string>)
+          : findCourseIdsByTeacher(actorId),
+      ])
       const visibleRows =
         profile.role === 'admin'
           ? rows
-          : rows.filter(
-              (c) =>
-                c.isPublished ||
-                c.courseTeachers.some((t) => t.teacherId === actorId),
-            )
+          : rows.filter((c) => c.isPublished || teacherCourseIds.includes(c.id))
       const channels: Array<PostChannel> = [
         { id: 'general', name: 'General', courseId: null },
         ...visibleRows.map((c) => ({
@@ -251,6 +302,44 @@ export async function getPostChannelsService(actorId: string): Promise<{
     },
     fields: ({ channels }) => ({ resultCount: channels.length }),
   })
+}
+
+async function findPostFeedDetails(
+  posts: ReadonlyArray<PostRow>,
+): Promise<Array<RawPostWithDetails>> {
+  const postIds = posts.map((post) => post.id)
+  const [courses, postReactions, comments] = await Promise.all([
+    findCoursesByIds(
+      Array.from(
+        new Set(
+          posts.flatMap((post) => (post.courseId ? [post.courseId] : [])),
+        ),
+      ),
+    ),
+    findPostReactionsByPostIds(postIds),
+    findPostCommentRowsByPostIds(postIds, 3),
+  ])
+  const commentIds = comments.map((comment) => comment.id)
+  const [profiles, commentReactions] = await Promise.all([
+    findProfilesByIds(
+      Array.from(
+        new Set([
+          ...posts.map((post) => post.authorId),
+          ...comments.map((comment) => comment.authorId),
+        ]),
+      ),
+    ),
+    findPostCommentReactionsByCommentIds(commentIds),
+  ])
+
+  return composePostsWithDetails(
+    posts,
+    courses,
+    profiles,
+    postReactions,
+    comments,
+    commentReactions,
+  )
 }
 
 export async function getPostsService(
@@ -282,8 +371,8 @@ export async function getPostsService(
       const postIds = postsSlice.map((p) => p.id)
       const commentCounts = await calculateCommentCounts(postIds)
 
-      const transformed = postsSlice.map((p) =>
-        transformPostWithDetails(p, commentCounts[p.id] ?? 0),
+      const transformed = (await findPostFeedDetails(postsSlice)).map((post) =>
+        transformPostWithDetails(post, commentCounts[post.id] ?? 0),
       )
       const result = await signPostAvatars(transformed)
 
@@ -318,7 +407,7 @@ export async function getPostByIdService(
     },
     read: async () => {
       await getUserProfile(actorId)
-      const row = await findPostById(data.postId)
+      const row = await findPostWithDetails(data.postId)
 
       if (!row) {
         throw new NotFoundError('Post not found', {
@@ -361,7 +450,7 @@ export async function createPostBaseService(
     })
     context.postId = inserted.id
 
-    const full = await findPostById(inserted.id)
+    const full = await findPostWithDetails(inserted.id)
     if (!full) {
       throw new NotFoundError('Post not found after insert', {
         code: 'POST_NOT_FOUND',
@@ -502,8 +591,19 @@ export async function getCommentsService(
 
       const hasMore = rows.length > limit
       const commentsSlice = hasMore ? rows.slice(0, limit) : rows
+      const [profiles, reactions] = await Promise.all([
+        findProfilesByIds(commentsSlice.map((comment) => comment.authorId)),
+        findPostCommentReactionsByCommentIds(
+          commentsSlice.map((comment) => comment.id),
+        ),
+      ])
+      const comments = composeCommentsWithAuthors(
+        commentsSlice,
+        profiles,
+        reactions,
+      )
 
-      const transformed = commentsSlice
+      const transformed = comments
         .slice()
         .reverse()
         .map((c) => transformCommentWithAuthor(c))
@@ -555,7 +655,7 @@ export async function createCommentBaseService(
     })
     context.commentId = inserted.id
 
-    const full = await findCommentWithAuthor(inserted.id)
+    const full = await findComposedComment(inserted.id)
     if (!full) {
       throw new NotFoundError('Comment not found after insert', {
         code: 'COMMENT_NOT_FOUND',
@@ -735,22 +835,22 @@ export async function toggleCommentReactionService(
   }
 
   try {
-    const existing = await findCommentReaction(data.commentId, userId)
+    const existing = await findPostCommentReaction(data.commentId, userId)
     const action = determineReactionAction(existing, data.emoji)
 
     switch (action) {
       case 'added':
-        await insertCommentReaction({
+        await insertPostCommentReaction({
           commentId: data.commentId,
           userId,
           emoji: data.emoji,
         })
         break
       case 'removed':
-        if (existing) await deleteCommentReaction(existing.id)
+        if (existing) await deletePostCommentReaction(existing.id)
         break
       case 'updated':
-        if (existing) await updateCommentReaction(existing.id, data.emoji)
+        if (existing) await updatePostCommentReaction(existing.id, data.emoji)
         break
     }
 

@@ -12,7 +12,7 @@ Centralizes authentication and authorization helpers used by server functions an
 ## Invariants
 
 - Auth checks must be performed server-side.
-- Role checks use the `profiles` table as the source of truth.
+- Role checks use the shared profiles repository, which reads the `profiles` table as the source of truth.
 - If role names change (enum values), update this doc and the schema docs.
 
 ## Key Exports
@@ -37,7 +37,7 @@ Centralizes authentication and authorization helpers used by server functions an
     duration, and the stable `auth_session_lookup` category.
 
 - `getUserProfile(userId)`
-  - Loads the persisted profile used as the role source of truth.
+  - Loads the persisted profile through `src/utils/repository/profiles.repository.ts`.
   - Unexpected database failures emit a redacted
     `auth_profile_lookup_failed` event with request correlation, the safe user
     ID, duration, and the stable `auth_profile_read_persistence` category.

@@ -1,4 +1,4 @@
-import type { EvaluationWithAuthor } from '@/utils/enrolment/repository/enrolment.repository'
+import type { EvaluationWithAuthor } from '@/utils/enrolment/domain/evaluation.domain'
 
 export type EvalMap = Map<string, Array<EvaluationWithAuthor>>
 

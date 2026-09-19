@@ -5,6 +5,10 @@ import type {
   UpdateCourseInput,
 } from '@/schemas/course.schema'
 import type { LogLevel } from '@/utils/observability/logger'
+import type {
+  CourseCatalogRow,
+  CourseDetailRow,
+} from '@/utils/courses/domain/course-read.domain'
 import {
   assignTeachersToCourse,
   validateNewCourseTeacherPair,
@@ -15,20 +19,27 @@ import {
   extractTeacherIds,
 } from '@/utils/courses/domain/course.domain'
 import {
+  composeCourseCatalog,
+  composeCourseDetail,
+} from '@/utils/courses/domain/course-read.domain'
+import { findCompletedLessonIdsForStudent } from '@/utils/courses/service/lesson-completion.service'
+import {
   isTeacherAssignmentConflict,
   resolveOptionalTeacherPair,
 } from '@/utils/courses/domain/teacher-assignment.domain'
 import {
   deleteCourseById,
-  findAllCourses,
-  findCompletedLessonIdsForStudent,
+  findAllCourseRows,
   findCourseById,
-  findCourseWithDetails,
+  findCourseLessonRows,
+  findCourseMediaRows,
+  findCourseTeacherRowsByCourseIds,
+  findProfilesByIds,
   findPublishedAssignmentsByLessonIds,
   findStudentSubmissions,
-  insertCourse,
   updateCourseById,
-} from '@/utils/courses/repository'
+} from '@/utils/repository'
+import { createCourseWithTeachers } from '@/utils/courses/transaction/course.transaction'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
@@ -49,11 +60,8 @@ import {
 } from '@/utils/storage/service/private-storage.service'
 import { serializeMediaRecords } from '@/utils/library/service/library.service'
 
-type CourseAssetRow = Awaited<ReturnType<typeof findAllCourses>>[number]
-type CourseDetail = NonNullable<
-  Awaited<ReturnType<typeof findCourseWithDetails>>
->
-
+type CourseAssetRow = CourseCatalogRow
+type CourseDetail = CourseDetailRow
 type CourseReadAction = 'getCourses' | 'getCourse'
 
 type CourseReadLogContext = {
@@ -144,6 +152,44 @@ async function withCourseAuthorizationTelemetry<T>(
     }
     throw error
   }
+}
+
+async function loadCourseCatalog(
+  includeUnpublishedLessons: boolean,
+): Promise<Array<CourseCatalogRow>> {
+  const courses = await findAllCourseRows()
+  const courseIds = courses.map((course) => course.id)
+  const [courseTeachers, lessons] = await Promise.all([
+    findCourseTeacherRowsByCourseIds(courseIds),
+    findCourseLessonRows(courseIds, includeUnpublishedLessons),
+  ])
+  const profiles = await findProfilesByIds([
+    ...new Set(courseTeachers.map((row) => row.teacherId)),
+  ])
+  return composeCourseCatalog(courses, courseTeachers, profiles, lessons)
+}
+
+async function loadCourseDetail(
+  courseId: string,
+  includeUnpublished: boolean,
+): Promise<CourseDetail | undefined> {
+  const course = await findCourseById(courseId)
+  if (!course) return undefined
+  const [courseTeachers, lessons, mediaFiles] = await Promise.all([
+    findCourseTeacherRowsByCourseIds([courseId]),
+    findCourseLessonRows([courseId], includeUnpublished),
+    findCourseMediaRows([courseId], includeUnpublished),
+  ])
+  const profiles = await findProfilesByIds(
+    courseTeachers.map((row) => row.teacherId),
+  )
+  return composeCourseDetail(
+    course,
+    courseTeachers,
+    profiles,
+    lessons,
+    mediaFiles,
+  )
 }
 
 function requireCourseAdmin(
@@ -263,7 +309,7 @@ async function loadCourse(
   userId: string,
   profile: Awaited<ReturnType<typeof getUserProfile>>,
 ) {
-  const course = await findCourseWithDetails(
+  const course = await loadCourseDetail(
     data.courseId,
     profile.role !== 'student',
   )
@@ -331,7 +377,7 @@ export async function getCoursesService(userId: string) {
     async () => {
       const profile = await getUserProfile(userId)
       const isStudentView = profile.role === 'student'
-      const allCourses = await findAllCourses(!isStudentView)
+      const allCourses = await loadCourseCatalog(!isStudentView)
       const visibleCourses = isStudentView
         ? allCourses.filter((course) => course.isPublished)
         : profile.role === 'teacher'
@@ -421,7 +467,7 @@ export async function createCourseService(
       await validateNewCourseTeacherPair(...teacherIds)
     }
 
-    const course = await insertCourse(
+    const course = await createCourseWithTeachers(
       {
         title: data.title,
         description: data.description,

@@ -23,6 +23,8 @@ export type ZoomLinkRow = {
   updatedAt: Date
 }
 
+export type ZoomLinkTableRow = Omit<ZoomLinkRow, 'teacherName'>
+
 export type ZoomLinksPayload = {
   links: Array<ZoomLinkRow>
   teachers: Array<ZoomTeacherOption>
@@ -34,6 +36,21 @@ export type TeacherZoomGroup = {
   teacherId: string
   teacherName: string
   links: Array<ZoomLinkRow>
+}
+
+export function attachZoomLinkTeacherNames(
+  rows: Array<ZoomLinkTableRow>,
+  teachers: Array<ZoomTeacherOption>,
+): Array<ZoomLinkRow> {
+  const teacherNames = new Map(
+    teachers.map((teacher) => [teacher.id, teacher.fullName]),
+  )
+  return rows.map((row) => ({
+    ...row,
+    teacherName: row.teacherId
+      ? (teacherNames.get(row.teacherId) ?? null)
+      : null,
+  }))
 }
 
 export function filterVisibleZoomLinks(

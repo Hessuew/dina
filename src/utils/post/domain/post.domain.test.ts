@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  composeCommentsWithAuthors,
+  composePostWithDetails,
+  composePostsWithDetails,
   determineReactionAction,
   transformCommentWithAuthor,
   transformPostWithDetails,
@@ -29,6 +32,205 @@ describe('determineReactionAction', () => {
 
   it('returns updated when a different emoji is used', () => {
     expect(determineReactionAction({ emoji: '👍' }, '❤️')).toBe('updated')
+  })
+})
+
+describe('composeCommentsWithAuthors', () => {
+  it('composes comment authors and reactions while omitting incomplete rows', () => {
+    const now = new Date('2025-01-01T00:00:00Z')
+    expect(
+      composeCommentsWithAuthors(
+        [
+          {
+            id: 'comment-1',
+            postId: 'post-1',
+            authorId: 'author-1',
+            content: 'A comment',
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'orphan-comment',
+            postId: 'post-1',
+            authorId: 'missing-author',
+            content: 'Orphan',
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+        [{ id: 'author-1', fullName: 'Author', avatarUrl: null }],
+        [
+          {
+            id: 'reaction-1',
+            commentId: 'comment-1',
+            emoji: '👍',
+            userId: 'user-1',
+          },
+        ],
+      ),
+    ).toEqual([
+      {
+        id: 'comment-1',
+        content: 'A comment',
+        createdAt: now,
+        updatedAt: now,
+        author: { id: 'author-1', fullName: 'Author', avatarUrl: null },
+        reactions: [{ id: 'reaction-1', emoji: '👍', userId: 'user-1' }],
+      },
+    ])
+  })
+})
+
+describe('composePostWithDetails', () => {
+  const now = new Date('2025-01-01T00:00:00Z')
+  const post = {
+    id: 'post-1',
+    authorId: 'author-1',
+    courseId: 'course-1',
+    content: 'Hello world',
+    createdAt: now,
+    updatedAt: now,
+  }
+  const author = {
+    id: 'author-1',
+    fullName: 'Author',
+    avatarUrl: 'author.png',
+  }
+  const commentAuthor = {
+    id: 'author-2',
+    fullName: 'Comment author',
+    avatarUrl: null,
+  }
+
+  it('composes post, course, author, and reaction rows', () => {
+    expect(
+      composePostWithDetails(
+        post,
+        [{ id: 'course-1', title: 'Math 101' }],
+        [author],
+        [
+          {
+            id: 'reaction-1',
+            postId: 'post-1',
+            emoji: '👍',
+            userId: 'user-1',
+          },
+          {
+            id: 'other-reaction',
+            postId: 'other-post',
+            emoji: '❤️',
+            userId: 'user-2',
+          },
+        ],
+        [],
+        [],
+      ),
+    ).toEqual({
+      id: 'post-1',
+      course: { id: 'course-1', title: 'Math 101' },
+      content: 'Hello world',
+      createdAt: now,
+      updatedAt: now,
+      author,
+      reactions: [{ id: 'reaction-1', emoji: '👍', userId: 'user-1' }],
+      comments: [],
+    })
+  })
+
+  it('composes comment authors and comment reactions while omitting incomplete rows', () => {
+    expect(
+      composePostWithDetails(
+        post,
+        [],
+        [author, commentAuthor],
+        [],
+        [
+          {
+            id: 'comment-1',
+            postId: 'post-1',
+            authorId: 'author-2',
+            content: 'A comment',
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'other-comment',
+            postId: 'other-post',
+            authorId: 'author-2',
+            content: 'Not this post',
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'orphan-comment',
+            postId: 'post-1',
+            authorId: 'missing-author',
+            content: 'Orphan',
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+        [
+          {
+            id: 'comment-reaction-1',
+            commentId: 'comment-1',
+            emoji: '❤️',
+            userId: 'user-1',
+          },
+        ],
+      ),
+    ).toMatchObject({
+      course: null,
+      comments: [
+        {
+          id: 'comment-1',
+          author: commentAuthor,
+          reactions: [
+            { id: 'comment-reaction-1', emoji: '❤️', userId: 'user-1' },
+          ],
+        },
+      ],
+    })
+  })
+
+  it('returns undefined when the post author profile is missing', () => {
+    expect(composePostWithDetails(post, [], [], [], [], [])).toBeUndefined()
+  })
+})
+
+describe('composePostsWithDetails', () => {
+  const now = new Date('2025-01-01T00:00:00Z')
+  const post = {
+    id: 'post-1',
+    authorId: 'author-1',
+    courseId: null,
+    content: 'Hello world',
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  it('composes every complete post and omits posts without an author', () => {
+    expect(
+      composePostsWithDetails(
+        [post, { ...post, id: 'post-2', authorId: 'missing-author' }],
+        [],
+        [{ id: 'author-1', fullName: 'Author', avatarUrl: null }],
+        [],
+        [],
+        [],
+      ),
+    ).toEqual([
+      {
+        id: 'post-1',
+        course: null,
+        content: 'Hello world',
+        createdAt: now,
+        updatedAt: now,
+        author: { id: 'author-1', fullName: 'Author', avatarUrl: null },
+        reactions: [],
+        comments: [],
+      },
+    ])
   })
 })
 

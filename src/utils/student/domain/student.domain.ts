@@ -13,6 +13,23 @@ type SubmissionWithCourse = {
   }
 }
 
+type SubmissionStatsRow = {
+  assignmentId: string
+  status: SubmissionStatus
+  grade: number | null
+}
+
+type AssignmentStatsRow = {
+  id: string
+  lessonId: string
+  maxGrade: number | null
+}
+
+type LessonStatsRow = {
+  id: string
+  courseId: string
+}
+
 type AssignmentRow = {
   assignmentId: string
   assignmentTitle: string
@@ -22,6 +39,25 @@ type AssignmentRow = {
   courseTitle: string
   lessonId: string
   lessonTitle: string
+}
+
+type AssignmentRecord = {
+  id: string
+  title: string
+  dueDate: Date
+  maxGrade: number | null
+  lessonId: string
+}
+
+type LessonRecord = {
+  id: string
+  title: string
+  courseId: string
+}
+
+type CourseRecord = {
+  id: string
+  title: string
 }
 
 type SubmissionRow = {
@@ -40,6 +76,31 @@ type StudentProfile = {
   email: string
   avatarUrl: string | null
   createdAt: Date
+}
+
+export function buildSubmissionStats(
+  submissions: Array<SubmissionStatsRow>,
+  assignments: Array<AssignmentStatsRow>,
+  lessons: Array<LessonStatsRow>,
+): Array<SubmissionWithCourse> {
+  const assignmentsById = new Map(assignments.map((a) => [a.id, a]))
+  const lessonsById = new Map(lessons.map((lesson) => [lesson.id, lesson]))
+
+  return submissions.flatMap((submission) => {
+    const assignment = assignmentsById.get(submission.assignmentId)
+    const lesson = assignment ? lessonsById.get(assignment.lessonId) : undefined
+    if (!assignment || !lesson) return []
+    return [
+      {
+        status: submission.status,
+        grade: submission.grade,
+        assignment: {
+          maxGrade: assignment.maxGrade,
+          lesson: { course: { id: lesson.courseId } },
+        },
+      },
+    ]
+  })
 }
 
 export function buildAverageGradeByCourse(
@@ -90,6 +151,38 @@ export function buildStudentWithStats(
     },
     attendanceByCourse,
   }
+}
+
+export function buildAssignmentDetails(
+  assignments: Array<AssignmentRecord>,
+  lessons: Array<LessonRecord>,
+  courses: Array<CourseRecord>,
+): Array<AssignmentRow> {
+  const lessonsById = new Map(lessons.map((lesson) => [lesson.id, lesson]))
+  const coursesById = new Map(courses.map((course) => [course.id, course]))
+
+  return assignments
+    .flatMap((assignment) => {
+      const lesson = lessonsById.get(assignment.lessonId)
+      const course = lesson ? coursesById.get(lesson.courseId) : undefined
+      if (!lesson || !course) return []
+      return [
+        {
+          assignmentId: assignment.id,
+          assignmentTitle: assignment.title,
+          assignmentDueDate: assignment.dueDate,
+          assignmentMaxGrade: assignment.maxGrade,
+          courseId: course.id,
+          courseTitle: course.title,
+          lessonId: lesson.id,
+          lessonTitle: lesson.title,
+        },
+      ]
+    })
+    .sort(
+      (first, second) =>
+        first.assignmentDueDate.getTime() - second.assignmentDueDate.getTime(),
+    )
 }
 
 export function buildAssignmentsWithSubmissions(

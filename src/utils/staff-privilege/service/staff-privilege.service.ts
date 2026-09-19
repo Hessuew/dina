@@ -10,7 +10,7 @@ import {
   deleteStaffPrivilege,
   findPrivilegesForUser,
   insertStaffPrivilege,
-} from '@/utils/staff-privilege/repository'
+} from '@/utils/repository'
 
 type StaffPrivilegeLogContext = {
   actorId: string

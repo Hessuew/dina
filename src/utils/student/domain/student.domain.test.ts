@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildAssignmentDetails,
   buildAssignmentsWithSubmissions,
   buildAverageGradeByCourse,
   buildStudentWithStats,
+  buildSubmissionStats,
 } from './student.domain'
 import type { SubmissionStatus } from '@/types/database.types'
 
@@ -145,6 +147,40 @@ describe('buildAverageGradeByCourse', () => {
   })
 })
 
+describe('buildSubmissionStats', () => {
+  it('joins submission rows with assignment and lesson rows', () => {
+    const result = buildSubmissionStats(
+      [{ assignmentId: 'a-1', status: 'submitted', grade: 80 }],
+      [{ id: 'a-1', lessonId: 'l-1', maxGrade: 100 }],
+      [{ id: 'l-1', courseId: 'c-1' }],
+    )
+
+    expect(result).toEqual([
+      {
+        status: 'submitted',
+        grade: 80,
+        assignment: {
+          maxGrade: 100,
+          lesson: { course: { id: 'c-1' } },
+        },
+      },
+    ])
+  })
+
+  it('omits submissions whose assignment or lesson is missing', () => {
+    const result = buildSubmissionStats(
+      [
+        { assignmentId: 'missing-assignment', status: 'submitted', grade: 80 },
+        { assignmentId: 'a-1', status: 'draft', grade: null },
+      ],
+      [{ id: 'a-1', lessonId: 'missing-lesson', maxGrade: 100 }],
+      [],
+    )
+
+    expect(result).toEqual([])
+  })
+})
+
 describe('buildStudentWithStats', () => {
   it('maps student profile fields correctly', () => {
     const result = buildStudentWithStats(makeStudent(), [], [], 0)
@@ -189,6 +225,66 @@ describe('buildStudentWithStats', () => {
       0,
     )
     expect(result.assignmentStats.averageGradeByCourse).toEqual([])
+  })
+})
+
+describe('buildAssignmentDetails', () => {
+  it('joins shared table rows and orders by due date', () => {
+    const result = buildAssignmentDetails(
+      [
+        {
+          id: 'a-2',
+          title: 'Later',
+          dueDate: new Date('2099-02-01'),
+          maxGrade: 80,
+          lessonId: 'l-1',
+        },
+        {
+          id: 'a-1',
+          title: 'Earlier',
+          dueDate: new Date('2099-01-01'),
+          maxGrade: 100,
+          lessonId: 'l-1',
+        },
+      ],
+      [{ id: 'l-1', title: 'Lesson 1', courseId: 'c-1' }],
+      [{ id: 'c-1', title: 'Course 1' }],
+    )
+
+    expect(result.map((assignment) => assignment.assignmentId)).toEqual([
+      'a-1',
+      'a-2',
+    ])
+    expect(result[0]).toMatchObject({
+      assignmentTitle: 'Earlier',
+      courseTitle: 'Course 1',
+      lessonTitle: 'Lesson 1',
+    })
+  })
+
+  it('omits assignments whose lesson or course is missing', () => {
+    const result = buildAssignmentDetails(
+      [
+        {
+          id: 'a-1',
+          title: 'Missing lesson',
+          dueDate: new Date('2099-01-01'),
+          maxGrade: 100,
+          lessonId: 'missing-lesson',
+        },
+        {
+          id: 'a-2',
+          title: 'Missing course',
+          dueDate: new Date('2099-01-02'),
+          maxGrade: 100,
+          lessonId: 'l-1',
+        },
+      ],
+      [{ id: 'l-1', title: 'Lesson 1', courseId: 'missing-course' }],
+      [],
+    )
+
+    expect(result).toEqual([])
   })
 })
 

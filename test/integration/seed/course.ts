@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { getDb } from 'test/integration/db'
-import { courses } from '@/db/schema'
+import { insertCourse } from '@/utils/repository'
 
 export async function seedCourse(
   overrides: {
@@ -12,8 +11,7 @@ export async function seedCourse(
   } = {},
 ): Promise<string> {
   const id = overrides.id ?? randomUUID()
-  const db = await getDb()
-  await db.insert(courses).values({
+  await insertCourse({
     id,
     title: overrides.title ?? 'Test Course',
     isPublished: overrides.isPublished ?? true,

@@ -1,0 +1,114 @@
+import { and, eq, inArray } from 'drizzle-orm'
+import type { RepositoryTransactionClient } from './transaction-client'
+import { getDb } from '@/db'
+import { attendancePresents } from '@/db/schema'
+
+export type AttendancePresentRow = typeof attendancePresents.$inferSelect
+
+export async function findPresentsByStudentIds(studentIds: Array<string>) {
+  if (studentIds.length === 0) return []
+  const db = await getDb()
+  return db
+    .select({
+      id: attendancePresents.id,
+      studentId: attendancePresents.studentId,
+      sessionId: attendancePresents.sessionId,
+      checkedInAt: attendancePresents.checkedInAt,
+    })
+    .from(attendancePresents)
+    .where(inArray(attendancePresents.studentId, studentIds))
+}
+
+export async function findPresentsByStudentAndSessionIds(
+  studentId: string,
+  sessionIds: Array<string>,
+) {
+  if (sessionIds.length === 0) return []
+  const db = await getDb()
+  return db
+    .select({
+      id: attendancePresents.id,
+      sessionId: attendancePresents.sessionId,
+    })
+    .from(attendancePresents)
+    .where(
+      and(
+        eq(attendancePresents.studentId, studentId),
+        inArray(attendancePresents.sessionId, sessionIds),
+      ),
+    )
+}
+
+function firstOrNull<T>(rows: Array<T>): T | null {
+  return rows.length === 0 ? null : rows[0]
+}
+
+export async function findPresent(
+  sessionId: string,
+  studentId: string,
+): Promise<Pick<AttendancePresentRow, 'id' | 'checkedInAt'> | null> {
+  const db = await getDb()
+  const rows = await db
+    .select({
+      id: attendancePresents.id,
+      checkedInAt: attendancePresents.checkedInAt,
+    })
+    .from(attendancePresents)
+    .where(
+      and(
+        eq(attendancePresents.sessionId, sessionId),
+        eq(attendancePresents.studentId, studentId),
+      ),
+    )
+    .limit(1)
+  return firstOrNull(rows)
+}
+
+export async function findPresentInTransaction(
+  tx: RepositoryTransactionClient,
+  sessionId: string,
+  studentId: string,
+): Promise<AttendancePresentRow | null> {
+  const rows = await tx
+    .select()
+    .from(attendancePresents)
+    .where(
+      and(
+        eq(attendancePresents.sessionId, sessionId),
+        eq(attendancePresents.studentId, studentId),
+      ),
+    )
+    .limit(1)
+  return firstOrNull(rows)
+}
+
+export async function insertPresentInTransaction(
+  tx: RepositoryTransactionClient,
+  sessionId: string,
+  studentId: string,
+): Promise<AttendancePresentRow | null> {
+  const rows = await tx
+    .insert(attendancePresents)
+    .values({ sessionId, studentId })
+    .onConflictDoNothing({
+      target: [attendancePresents.sessionId, attendancePresents.studentId],
+    })
+    .returning()
+  return firstOrNull(rows)
+}
+
+export async function deletePresentInTransaction(
+  tx: RepositoryTransactionClient,
+  sessionId: string,
+  studentId: string,
+): Promise<Array<{ id: string }>> {
+  return tx
+    .delete(attendancePresents)
+    .where(
+      and(
+        eq(attendancePresents.sessionId, sessionId),
+        eq(attendancePresents.studentId, studentId),
+      ),
+    )
+    .returning({ id: attendancePresents.id })
+}

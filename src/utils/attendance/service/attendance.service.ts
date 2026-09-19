@@ -8,16 +8,11 @@ import type {
 import type { LogLevel } from '@/utils/observability/logger'
 import {
   clearPresentOverrideAtomically,
-  closeAttendanceSessionAtomically,
-  findLessonInCourse,
-  findLessonsWithSessionsByCourseId,
-  findOpenSessionOnCourse,
-  findOpenSessionsForStudent,
-  findPresent,
   markPresentAtomically,
-  openAttendanceSessionAtomically,
   setPresentOverrideAtomically,
-} from '@/utils/attendance/repository/attendance.repository'
+} from '@/utils/attendance/transaction/attendance.transaction'
+import { mergeCourseLessonsWithSessions } from '@/utils/attendance/domain/course-attendance-state.domain'
+import { buildOpenAttendanceRows } from '@/utils/attendance/domain/open-attendance.domain'
 import { assertCanOpenSession } from '@/utils/attendance/domain/attendance-session.domain'
 import {
   formatRemaining,
@@ -27,8 +22,6 @@ import {
 import { getUserProfile } from '@/utils/auth/auth'
 import { hasStaffPrivilege } from '@/utils/authz'
 import { calculateEntityPermissions } from '@/utils/authz/permissions'
-import { findCourseById } from '@/utils/courses/repository'
-import { findCourseTeachers } from '@/utils/courses/repository/course-teachers.repository'
 import {
   AuthorizationError,
   ConflictError,
@@ -38,6 +31,21 @@ import {
 } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+import {
+  closeAttendanceSessionAtomically,
+  findAttendanceSessionsByLessonIds,
+  findCourseById,
+  findLessonByIdAndCourseId,
+  findLessonsByCourseId,
+  findOpenAttendanceSessions,
+  findOpenSessionOnCourse,
+  findPresent,
+  findPresentsByStudentAndSessionIds,
+  findPublishedCoursesByIds,
+  findPublishedLessonsByIds,
+  findTeacherIdsByCourseId,
+  openAttendanceSessionAtomically,
+} from '@/utils/repository'
 
 type AttendanceCheckInLogContext = {
   courseId: string
@@ -184,10 +192,10 @@ async function requireCourseManage(userId: string, courseId: string) {
       details: { courseId },
     })
   }
-  const teachers = await findCourseTeachers(courseId)
+  const teacherIds = await findTeacherIdsByCourseId(courseId)
   const permissions = calculateEntityPermissions(
     profile.role,
-    { teacherIds: teachers.map((t) => t.teacherId) },
+    { teacherIds },
     userId,
   )
   if (!permissions.canManage) {
@@ -242,7 +250,7 @@ function mapOpenSession(
 }
 
 function mapLessonsWithSessions(
-  lessonRows: Awaited<ReturnType<typeof findLessonsWithSessionsByCourseId>>,
+  lessonRows: ReturnType<typeof mergeCourseLessonsWithSessions>,
   now: Date,
 ) {
   return lessonRows.map((lesson) => ({
@@ -254,18 +262,26 @@ function mapLessonsWithSessions(
   }))
 }
 
+async function loadLessonsWithSessions(courseId: string) {
+  const lessons = await findLessonsByCourseId(courseId)
+  const sessions = await findAttendanceSessionsByLessonIds(
+    lessons.map((lesson) => lesson.id),
+  )
+  return mergeCourseLessonsWithSessions(lessons, sessions)
+}
+
 async function loadCourseAttendanceState(data: CourseIdInput, userId: string) {
   const profile = await getUserProfile(userId)
   const now = new Date()
   const [openSession, lessonRows, courseTeachers] = await Promise.all([
     findOpenSessionOnCourse(data.courseId, now),
-    findLessonsWithSessionsByCourseId(data.courseId),
-    findCourseTeachers(data.courseId),
+    loadLessonsWithSessions(data.courseId),
+    findTeacherIdsByCourseId(data.courseId),
   ])
 
   const { canManage } = calculateEntityPermissions(
     profile.role,
-    { teacherIds: courseTeachers.map((t) => t.teacherId) },
+    { teacherIds: courseTeachers },
     userId,
   )
   const lessons = mapLessonsWithSessions(
@@ -336,10 +352,10 @@ export async function startOrReopenAttendanceService(
     failureCategory: 'attendance_session_open_persistence',
     startedAt: performance.now(),
   }
-  let lesson: Awaited<ReturnType<typeof findLessonInCourse>>
+  let lesson: Awaited<ReturnType<typeof findLessonByIdAndCourseId>>
   try {
     await requireCourseManage(userId, data.courseId)
-    lesson = await findLessonInCourse(data.lessonId, data.courseId)
+    lesson = await findLessonByIdAndCourseId(data.lessonId, data.courseId)
     if (!lesson) {
       throw new NotFoundError('Lesson not found on this course', {
         code: 'LESSON_NOT_FOUND',
@@ -557,7 +573,20 @@ async function loadOpenAttendanceForStudent(userId: string) {
   }
 
   const now = new Date()
-  const open = await findOpenSessionsForStudent(now, userId)
+  const openSessions = await findOpenAttendanceSessions(now)
+  const [courses, lessons, presents] = await Promise.all([
+    findPublishedCoursesByIds([
+      ...new Set(openSessions.map((session) => session.courseId)),
+    ]),
+    findPublishedLessonsByIds([
+      ...new Set(openSessions.map((session) => session.lessonId)),
+    ]),
+    findPresentsByStudentAndSessionIds(
+      userId,
+      openSessions.map((session) => session.id),
+    ),
+  ])
+  const open = buildOpenAttendanceRows(openSessions, courses, lessons, presents)
   const sessions = open.map((row) => ({
     ...mapOpenSession(row, now, {
       lessonTitle: row.lessonTitle,
@@ -608,7 +637,7 @@ export async function setStudentPresentService(
       })
     }
 
-    const lesson = await findLessonInCourse(data.lessonId, data.courseId)
+    const lesson = await findLessonByIdAndCourseId(data.lessonId, data.courseId)
     if (!lesson) {
       throw new NotFoundError('Lesson not found on this course', {
         code: 'LESSON_NOT_FOUND',

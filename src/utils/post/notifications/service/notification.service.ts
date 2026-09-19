@@ -7,18 +7,23 @@ import type {
   PostNotificationEvent,
   PostNotificationGroup,
 } from '@/utils/post/notifications/domain/notification.domain'
-import { buildPostExcerpt } from '@/utils/post/notifications/domain/notification.domain'
+import {
+  buildNotificationPostRows,
+  buildPostExcerpt,
+} from '@/utils/post/notifications/domain/notification.domain'
 import { getUserProfile } from '@/utils/auth/auth'
 import { isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
+  findCoursesByIds,
   findNotificationGroups,
-  findPostsForNotifications,
+  findPostsByIds,
+  findPublicProfilesByIds,
   findUnreadGroupCount,
   markAllNotificationsRead,
   markNotificationGroupRead,
-} from '@/utils/post/notifications/repository/notification.repository'
+} from '@/utils/repository'
 
 type NotificationReadLogContext = {
   action: 'markPostNotificationGroupRead' | 'markAllPostNotificationsRead'
@@ -114,7 +119,18 @@ async function readNotificationSummary(
   ])
 
   const postIds = grouped.map((g) => g.postId)
-  const postRows = await findPostsForNotifications(postIds)
+  const postSources = await findPostsByIds(postIds)
+  const [courseRows, authorRows] = await Promise.all([
+    findCoursesByIds(
+      postSources.flatMap((post) => (post.courseId ? [post.courseId] : [])),
+    ),
+    findPublicProfilesByIds(postSources.map((post) => post.authorId)),
+  ])
+  const postRows = buildNotificationPostRows(
+    postSources,
+    courseRows,
+    authorRows,
+  )
 
   const postsById: Record<
     string,

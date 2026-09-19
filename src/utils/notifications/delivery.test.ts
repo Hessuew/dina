@@ -2,20 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPostCreatedEvent } from './events'
 import { DatabaseDeliveryAdapter } from './delivery'
 
-const { getDb, values } = vi.hoisted(() => ({
-  getDb: vi.fn(),
-  values: vi.fn(),
+const { insertPostNotifications } = vi.hoisted(() => ({
+  insertPostNotifications: vi.fn(),
 }))
 
-vi.mock('@/db', () => ({ getDb }))
+vi.mock('@/utils/repository', () => ({ insertPostNotifications }))
 
 describe('DatabaseDeliveryAdapter', () => {
   beforeEach(() => {
-    values.mockReset()
-    getDb.mockReset()
-    getDb.mockResolvedValue({
-      insert: vi.fn(() => ({ values })),
-    })
+    insertPostNotifications.mockReset()
   })
 
   afterEach(() => {
@@ -28,13 +23,15 @@ describe('DatabaseDeliveryAdapter', () => {
 
     await adapter.deliver(event, ['recipient-1', 'recipient-2'])
 
-    expect(values).toHaveBeenCalledOnce()
-    expect(values.mock.calls[0][0]).toHaveLength(2)
+    expect(insertPostNotifications).toHaveBeenCalledOnce()
+    expect(insertPostNotifications.mock.calls[0][0]).toHaveLength(2)
   })
 
   it('logs a redacted failure and keeps notification delivery best effort', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    values.mockRejectedValue(new Error('postgres password=secret-value'))
+    insertPostNotifications.mockRejectedValue(
+      new Error('postgres password=secret-value'),
+    )
     const adapter = new DatabaseDeliveryAdapter()
     const event = createPostCreatedEvent('actor-1', 'post-1', null, false)
 

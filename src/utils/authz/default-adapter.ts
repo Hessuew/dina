@@ -1,4 +1,3 @@
-import { and, eq } from 'drizzle-orm'
 import {
   getCachedResourceCheck,
   getCachedRole,
@@ -6,19 +5,18 @@ import {
   setCachedRole,
 } from './cache'
 import type { Action, AuthorizationService, ResourceType, Role } from './types'
-import { getDb } from '@/db'
-import {
-  assignments,
-  courseTeachers,
-  lessons,
-  postComments,
-  posts,
-  profiles,
-  submissions,
-} from '@/db/schema'
 import { AuthorizationError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+import {
+  findAssignmentById,
+  findCommentForWrite,
+  findCourseTeacher,
+  findLessonById,
+  findPostForWrite,
+  findProfileRoleById,
+  findSubmissionById,
+} from '@/utils/repository'
 
 type AuthorizationLookup =
   | 'role'
@@ -82,13 +80,7 @@ export class DefaultAuthorizationService implements AuthorizationService {
       lookup: 'role',
       userId,
       fields: { role },
-      read: async () => {
-        const db = await getDb()
-        return db.query.profiles.findFirst({
-          where: eq(profiles.id, userId),
-          columns: { role: true },
-        })
-      },
+      read: () => findProfileRoleById(userId),
     })
 
     const result = user?.role === role
@@ -100,13 +92,7 @@ export class DefaultAuthorizationService implements AuthorizationService {
     const user = await readAuthorizationData({
       lookup: 'role',
       userId,
-      read: async () => {
-        const db = await getDb()
-        return db.query.profiles.findFirst({
-          where: eq(profiles.id, userId),
-          columns: { role: true },
-        })
-      },
+      read: () => findProfileRoleById(userId),
     })
     return user?.role ?? null
   }
@@ -191,15 +177,7 @@ export class DefaultAuthorizationService implements AuthorizationService {
       lookup: 'course',
       userId,
       fields: { action, resourceType: 'course', resourceId: courseId },
-      read: async () => {
-        const db = await getDb()
-        return db.query.courseTeachers.findFirst({
-          where: and(
-            eq(courseTeachers.courseId, courseId),
-            eq(courseTeachers.teacherId, userId),
-          ),
-        })
-      },
+      read: () => findCourseTeacher(courseId, userId),
     })
 
     if (isTeacher) return true
@@ -223,13 +201,7 @@ export class DefaultAuthorizationService implements AuthorizationService {
       lookup: 'lesson',
       userId,
       fields: { action, resourceType: 'lesson', resourceId: lessonId },
-      read: async () => {
-        const db = await getDb()
-        return db.query.lessons.findFirst({
-          where: eq(lessons.id, lessonId),
-          columns: { courseId: true },
-        })
-      },
+      read: async () => findLessonById(lessonId),
     })
 
     if (!lesson) return false
@@ -252,11 +224,10 @@ export class DefaultAuthorizationService implements AuthorizationService {
         resourceId: assignmentId,
       },
       read: async () => {
-        const db = await getDb()
-        return db.query.assignments.findFirst({
-          where: eq(assignments.id, assignmentId),
-          columns: { lessonId: true },
-        })
+        const assignmentRecord = await findAssignmentById(assignmentId)
+        return assignmentRecord
+          ? { lessonId: assignmentRecord.lessonId }
+          : undefined
       },
     })
 
@@ -275,11 +246,13 @@ export class DefaultAuthorizationService implements AuthorizationService {
       userId,
       fields: { action, resourceType: 'submission', resourceId: submissionId },
       read: async () => {
-        const db = await getDb()
-        return db.query.submissions.findFirst({
-          where: eq(submissions.id, submissionId),
-          columns: { studentId: true, assignmentId: true },
-        })
+        const submissionRecord = await findSubmissionById(submissionId)
+        return submissionRecord
+          ? {
+              studentId: submissionRecord.studentId,
+              assignmentId: submissionRecord.assignmentId,
+            }
+          : undefined
       },
     })
 
@@ -309,13 +282,7 @@ export class DefaultAuthorizationService implements AuthorizationService {
       lookup: 'post',
       userId,
       fields: { action, resourceType: 'post', resourceId: postId },
-      read: async () => {
-        const db = await getDb()
-        return db.query.posts.findFirst({
-          where: eq(posts.id, postId),
-          columns: { authorId: true },
-        })
-      },
+      read: () => findPostForWrite(postId),
     })
 
     if (!post) return false
@@ -334,13 +301,7 @@ export class DefaultAuthorizationService implements AuthorizationService {
       lookup: 'comment',
       userId,
       fields: { action, resourceType: 'comment', resourceId: commentId },
-      read: async () => {
-        const db = await getDb()
-        return db.query.postComments.findFirst({
-          where: eq(postComments.id, commentId),
-          columns: { authorId: true },
-        })
-      },
+      read: () => findCommentForWrite(commentId),
     })
 
     if (!comment) return false

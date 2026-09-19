@@ -14,14 +14,16 @@ import {
   sendEmailChangeVerification,
 } from '@/utils/profile/service/email.service'
 import {
-  clearEmailChangeTokens,
   completeEmailChange,
+  requestEmailChange,
+} from '@/utils/profile/transaction/profile.transaction'
+import {
+  clearEmailChangeTokens,
+  findEmailChangeToken,
   findLastEmailChangeRequestAt,
-  findProfileByEmailChangeToken,
   incrementEmailChangeAttempts,
   updateProfileBasic,
-  updateProfileWithEmailChange,
-} from '@/utils/profile/repository'
+} from '@/utils/repository'
 import { AppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
@@ -87,7 +89,7 @@ async function findEmailChangeUserWithTelemetry(
   context: ProfileLogContext,
 ) {
   try {
-    return await findProfileByEmailChangeToken(tokenHash)
+    return await findEmailChangeToken(tokenHash)
   } catch (error) {
     logProfileEvent('error', 'email_change_token_lookup_failed', context, {
       errorCategory: 'email_change_token_read_persistence',
@@ -207,13 +209,18 @@ export async function updateProfileWithEmailChangeService(
   const expiresAt = calculateTokenExpiry()
 
   try {
-    await updateProfileWithEmailChange(user.id, {
-      fullName: data.fullName,
-      bio: data.bio ?? null,
-      pendingEmail: data.email,
-      emailChangeTokenHash: tokenHash,
-      emailChangeTokenExpiresAt: expiresAt,
-    })
+    await requestEmailChange(
+      user.id,
+      {
+        fullName: data.fullName,
+        bio: data.bio ?? null,
+      },
+      {
+        pendingEmail: data.email,
+        emailChangeTokenHash: tokenHash,
+        emailChangeTokenExpiresAt: expiresAt,
+      },
+    )
   } catch (error) {
     logProfileEvent('error', 'email_change_request_failed', context, {
       errorCategory: 'email_change_persistence',

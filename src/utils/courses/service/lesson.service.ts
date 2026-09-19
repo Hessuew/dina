@@ -9,13 +9,17 @@ import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
   deleteLessonById,
   findAllCourseIds,
-  findAssignmentCalendarEvents,
-  findLessonCalendarEvents,
+  findAssignmentsByLessonIds,
+  findCoursesByIds,
+  findLessonsByCourseIds,
   findUpcomingLessons,
   insertLesson,
   updateLessonById,
-} from '@/utils/courses/repository'
-import { buildCourseCalendarEvents } from '@/utils/courses/domain/course.domain'
+} from '@/utils/repository'
+import {
+  buildCourseCalendarEvents,
+  buildUpcomingLessons,
+} from '@/utils/courses/domain/course.domain'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { isAppError } from '@/utils/errors'
@@ -183,14 +187,10 @@ export async function getUpcomingLessonsService(userId: string) {
   try {
     await getUserProfile(userId)
     const upcomingLessons = await findUpcomingLessons(new Date())
-    const lessons = upcomingLessons.map((l) => ({
-      id: l.id,
-      title: l.title,
-      scheduledTime: l.scheduledTime!,
-      thumbnailUrl: l.thumbnailUrl,
-      courseId: l.courseId,
-      courseName: l.courseName,
-    }))
+    const courses = await findCoursesByIds(
+      upcomingLessons.map((lesson) => lesson.courseId),
+    )
+    const lessons = buildUpcomingLessons(upcomingLessons, courses)
 
     logServerEvent('info', 'upcoming_lessons_loaded', {
       requestId: getRequestId(),
@@ -238,11 +238,14 @@ export async function getCalendarEventsService(userId: string) {
       return { events: [] }
     }
 
-    const [lessonEvents, assignmentEvents] = await Promise.all([
-      findLessonCalendarEvents(courseIds),
-      findAssignmentCalendarEvents(courseIds),
+    const [courses, lessons] = await Promise.all([
+      findCoursesByIds(courseIds),
+      findLessonsByCourseIds(courseIds),
     ])
-    const events = buildCourseCalendarEvents(lessonEvents, assignmentEvents)
+    const assignments = await findAssignmentsByLessonIds(
+      lessons.map((lesson) => lesson.id),
+    )
+    const events = buildCourseCalendarEvents(lessons, assignments, courses)
 
     logServerEvent('info', 'course_calendar_events_loaded', {
       requestId: getRequestId(),
@@ -251,8 +254,8 @@ export async function getCalendarEventsService(userId: string) {
       durationMs: elapsedMs(startedAt),
       actorId: userId,
       courseCount: courseIds.length,
-      lessonEventCount: lessonEvents.length,
-      assignmentEventCount: assignmentEvents.length,
+      lessonEventCount: lessons.length,
+      assignmentEventCount: assignments.length,
       eventCount: events.length,
     })
 

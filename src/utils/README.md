@@ -6,6 +6,70 @@ Server-side utilities and server functions used by routes and components.
 
 This folder is primarily where TanStack Start server functions live (via `createServerFn`), along with shared helpers (auth, Supabase client creation, SEO).
 
+## Persistence seams
+
+Table persistence is centralized under `repository/`, with one shared repository
+owner per database table. Each repository uses a named runtime import for its
+single schema table, and its filename is the table's SQL name converted from
+snake_case to kebab-case; feature services compose repository reads and pure
+domain logic; joined projections and multi-table atomic writes stay in feature
+services or explicit `transaction/` modules. Transaction modules may open a
+database transaction, but only coordinate table adapters; they do not import
+schema tables or issue Drizzle CRUD/query calls. Feature modules do not import
+`getDb()` or `withDbConnection()` directly. Static, extension-qualified,
+template-literal, concatenated-literal dynamic, CommonJS, and
+runtime re-export database imports are reserved for those seams and are regression-tested by
+`scripts/repository-boundary.test.ts`.
+Application source also avoids direct Supabase REST table calls, including dynamic
+table selectors; table access goes through the shared repository barrel. Operational seed and repair scripts
+remain separate command-line seams because they authenticate with a Supabase
+service-role client rather than the application database connection.
+Repository queries must not use Drizzle relation loading (`with`), including
+quoted or computed key forms such as `"with":`, `['with']`, and ``[`with`]``,
+because that would read another table behind the owning adapter's single-table
+interface.
+Only `*.repository.ts` files in `repository/` are database seams; the shared
+barrel and helper files cannot issue persistence calls.
+Direct Drizzle operations on database handles are also reserved for those seams,
+including when a handle is injected or given an arbitrary variable name; feature
+services may compose repository results but may not issue `query`, CRUD,
+distinct-select, count helpers, CTE, `execute`, or `transaction` calls themselves. The
+regression guard covers formatted and
+optional-chaining member and call access plus computed `db['select']`,
+`db['query'].table`, and `db.query['table']` access as well as the usual dot
+notation, including generic TypeScript call forms such as `db.select<Row>()` and
+`.from<Row>(table)`. Dynamically selected query tables such as `db.query[tableName]` are
+also rejected because they cannot prove single-table ownership.
+All utility callers, including integration tests, import table adapters through
+`@/utils/repository`, the shared barrel seam, rather than reaching into individual
+repository files through aliased, relative, dynamic-import, CommonJS, or feature-named `*.repository` paths.
+Every shared repository file is re-exported by that barrel, and the repository-boundary
+regression test keeps the file set and barrel exports in sync. That guard also checks
+table names referenced through SQL templates, interpolated table expressions, and literal
+`sql.raw(...)` identifiers, including whitespace-formatted calls, qualified names, and
+`USING`, `REFERENCES`, `COPY`, `LOCK TABLE`, `TRUNCATE`, and table-DDL forms with
+`ONLY` / `IF EXISTS` modifiers, plus literal `sql.identifier(...)` calls, and normalizes
+aliased schema-table imports before checking references, so raw SQL
+or local renaming cannot bypass one-table ownership. Dynamic `sql.raw(...)` and
+`sql.identifier(...)` table selectors are also rejected because their ownership cannot be
+proven statically.
+Repositories must not import or re-export another repository at runtime; services and transaction
+modules compose table adapters instead. Type-only imports and re-exports are allowed for shared
+transaction-client types without creating a runtime dependency between table owners. The shared
+`repository/transaction-client.ts` helper owns the inferred transaction-client type so adapters
+and transaction modules use one type without duplicating its Drizzle type expression or making
+one table owner the type dependency of another.
+The same regression guard scans all application source files, including raw SQL table
+references, so routes, components, schemas, and other non-utility modules cannot bypass
+these database or repository seams.
+Runtime schema-table imports, including template-literal and concatenated-literal
+dynamic imports, are likewise reserved for `repository/`; domain
+modules may import schema tables only with `import type` for inferred row types.
+The boundary test scans the full application tree for runtime table imports and
+requires every schema table to have a shared adapter. `announcements.repository.ts`
+and `notifications.repository.ts` own their legacy tables even though no current
+feature consumes them.
+
 ## What Lives Here
 
 - **Authorization module** (`authz/`)
@@ -491,6 +555,198 @@ This folder is primarily where TanStack Start server functions live (via `create
   - `postNotifications.ts` - Authenticated notification summary and
     mark-read operations; the service boundary requires a persisted profile
     before notification reads or read-state updates.
+  - `repository/` - Shared table-oriented database seams. `announcements.repository.ts`
+    owns the legacy announcements table with table-only lookup, listing, and CRUD
+    adapters, and `notifications.repository.ts` owns the legacy notifications table
+    with table-only lookup, listing, and CRUD adapters; no feature service currently
+    consumes either seam. `profiles.repository.ts`
+    is the single owner for profile-only reads and writes reused across features
+    (authentication, authorization, email, identity, avatar, student, teacher, discipleship,
+    enrollment support, and notification recipient resolution).
+    It also owns the restricted staff/public identity projections used by the
+    discipleship view. `calendar-events.repository.ts`
+    owns calendar-event-only reads and writes reused across calendar and event services;
+    the event feature service composes those rows with course names from
+    `courses.repository.ts` before returning its teacher/admin view. Upcoming
+    lesson reads compose shared lesson rows with published course names in the
+    courses lesson service, so they do not retain a mixed feature repository.
+    Feature services remain responsible for aggregate or joined queries while their
+    table rows come from this shared layer. The calendar overview composes
+    shared lesson, assignment, and course rows in its domain layer; it has no
+    feature-local mixed repository. `account-security.repository.ts`
+    owns account-security-only email-change and password-reset state reads and
+    writes; password-reset user lookup composes `profiles.repository.ts` with
+    its account-security cooldown read instead of maintaining a feature-local
+    profile repository. Profile email-change atomic workflows live in
+    `profile/transaction/profile.transaction.ts`, which coordinates the
+    transaction-scoped table helpers from the profile and account-security
+    repositories while keeping those repositories table-only.
+    `enrollments.repository.ts` now
+    owns enrollment-only reads and writes reused across enrollment and campaign
+    services, including ordered enrollment IDs with duplicate markers excluded for
+    distribution. Enrollment contact export composes its enrollment rows with
+    invitation status from `invitations.repository.ts` in the enrolment service;
+    it does not retain an enrollment/invitation join in the feature repository.
+    `assignments.repository.ts` now
+    owns assignment-only reads and writes reused across assignment, course, and
+    student-directory services. Student-directory assignment details compose
+    assignment rows with shared lesson/course rows in the student domain rather
+    than joining those tables in a feature repository. Assignment detail loading,
+    mutation, deletion, submission-count, and grading preflights likewise compose
+    `findAssignmentById` with shared lesson, course, course-teacher, and submission
+    adapters in the assignment service. Student assignment lists compose published
+    assignment, lesson, course, and student-submission rows in that service;
+    assignment lesson-detail reads compose shared lesson, course, course-teacher,
+    and assignment adapters there. Teacher assignment lists compose shared
+    assignment, lesson, course, course-teacher, and submission rows in the
+    assignment service; no feature-local assignment repository remains.
+    `submissions.repository.ts` owns
+    submission-only reads and writes. Assignment submission lists compose
+    submission rows with profile rows in the assignment service; the
+    student-directory service composes submission rows with shared assignment
+    and lesson rows in its domain layer, so no submission repository loads
+    related tables.
+    `invitations.repository.ts` owns
+    invitation-only reads and writes reused across invitation, signup, enrollment,
+    and email-campaign services; the admin invitation list composes invitation rows
+    with profile-only inviter rows in the invitation service. `course-teachers.repository.ts` owns
+    course-teacher membership rows and writes reused
+    across course, assignment, teacher, attendance, student, enrolment, and notification
+    services, including the teacher-directory course assignment lookup. Enrollment team
+    and viewer-course membership composition uses its table-only
+    adapters; broader joined course/lesson/media/teacher views remain in their feature
+    repositories. Course-teacher detail reads compose ordered rows with
+    `profiles.repository.ts` in the course service; attendance authorization uses teacher
+    IDs directly. New profile-only,
+    course-teachers-only,
+    Staff Privilege-only access must use `@/utils/repository`; its
+    `staff-privileges.repository.ts` owns the shared table-only reads and writes reused
+    across authorization, teacher-directory, enrolment, and staff privilege services. New
+    `course-substitutes.repository.ts` owns course-substitute-only reads and writes reused
+    across enrolment substitution services and enrollment team membership composition. The
+    `enrolment/transaction/substitution.transaction.ts` module keeps substitution activation
+    atomic while composing reviewer assignment and evaluation rows through transaction-scoped
+    table adapters. Enrollment
+    evaluation authorization and viewer-course filtering compose
+    course-teacher and course-substitute rows in the enrolment service. Enrollment review-heading
+    team composition now loads course-teacher rows,
+    course-substitute rows, and profile rows through their shared table adapters and combines
+    them in `enrolment/domain/reviewer-teams.domain.ts`; the feature repository no longer joins
+    those tables. New course-substitute-only access must use `@/utils/repository`.
+    enrollment-only, invitation-only, assignment-only, or submission-only access must use
+    `@/utils/repository`; authorization assignment, lesson, submission, post, and comment
+    lookups delegate to `assignments.repository.ts`, `course-teachers.repository.ts`,
+    `lessons.repository.ts`, `submissions.repository.ts`, `posts.repository.ts`, and
+    `post-comments.repository.ts` as well. Authorization course membership checks use
+    `findCourseTeacher` from the shared course-teachers seam. `lessons.repository.ts`
+    owns lesson-only reads and writes reused across assignment and course services. New lesson-only access
+    must use `@/utils/repository`; upcoming lesson and course-calendar reads compose lesson rows with
+    shared course and assignment adapters in the lesson service rather than joining
+    those tables in a feature repository. Remaining aggregate joined reads stay in
+    their feature repositories, except assignment lesson-detail loading which composes shared
+    table adapters in the assignment service. `courses.repository.ts` owns course-only reads and
+    writes reused across course, image-upload, lesson-calendar, attendance, and
+    student-directory services. New course-only access must use `@/utils/repository`;
+    course catalog and detail reads compose shared course, course-teacher, profile,
+    lesson, and media rows in the courses service; no feature-local course repository
+    remains.
+    Lesson completion composes published assignment rows and student submission rows
+    through the courses service and `lesson-completion.domain.ts`; no feature repository
+    joins assignments to submissions for this derived status.
+    Course creation orchestration lives in
+    `courses/transaction/course.transaction.ts` and composes transaction-scoped
+    course and course-teacher adapters from `@/utils/repository` so the two table
+    writes stay atomic. `zoom-links.repository.ts` owns zoom-link-only
+    reads and writes; the Zoom Link service composes its rows with profile names from
+    `profiles.repository.ts`. New zoom-link-only or profile-only access must use
+    `@/utils/repository`. `enrollment-evaluations.repository.ts` owns
+    enrollment-evaluation-only reads and writes reused by the enrollment review
+    service. The enrolment service composes evaluator names from
+    `profiles.repository.ts` rather than keeping a mixed evaluation/profile
+    projection in its feature repository.
+    `enrollment-reviewer-assignments.repository.ts` owns reviewer-assignment-only
+    lookup, batch reads, bulk assignment, and transaction-scoped reassignment writes;
+    bulk-grade reads compose awaiting-approval enrollment rows with evaluation rows
+    in the enrolment service through `bulk-grade.domain.ts`; they do not retain an
+    enrollment/evaluation join in the feature repository. Enrollment page persistence is split
+    between the table-only enrollment and enrollment-evaluation repositories; evaluation sorting
+    and aggregate composition happen in the enrolment service/domain layer, while
+    reviewer-admitted IDs and peer-review candidate IDs are composed in the service from shared
+    reviewer-assignment/evaluation and course-teacher adapters. Reviewer queue enrollment IDs are composed in the service from
+    the shared reviewer-assignment adapter before the page query. Substitution activation
+    orchestration lives in `enrolment/transaction/substitution.transaction.ts` with shared
+    table adapters; the enrolment service handles authorization, telemetry, and input
+    composition. The enrolment service composes reviewer
+    assignment rows with profile names for the
+    Review heading and filters assigned enrollment IDs for distribution. New
+    reviewer-assignment-only access
+    must use `@/utils/repository`.
+    `media-library.repository.ts` owns media-library-only reads and writes reused by
+    the library service; its course-enriched listing composes media rows with
+    `courses.repository.ts` rather than joining tables in a feature repository.
+    `post-notifications.repository.ts` owns post-notification
+    delivery inserts, group reads, and read-state writes; the notification summary
+    composes post, course, and public-profile rows through their shared table
+    repositories. New
+    media-library-only or post-notification-only access must use
+    `@/utils/repository`. `post-reactions.repository.ts` owns standalone post-reaction
+    lookup and mutation plus batch reaction rows for post detail composition, while
+    `post-comment-reactions.repository.ts` owns standalone comment-reaction lookup and
+    mutation plus batch rows for comment detail composition. `post-comments.repository.ts`
+    owns standalone comment reads, counts, mutations, and table-only preview rows; the post
+    service composes comment rows with shared profile and comment-reaction adapters for comment
+    list and create responses.
+    `posts.repository.ts` owns standalone post lookup, the paginated feed's post-row
+    selection, and mutation. Post detail and feed reads compose these shared post, course,
+    profile, comment, and reaction rows in the post service; no feature-local mixed post
+    repository remains. New post-only, post-comment-only, post-reaction-only, or
+    post-comment-reaction-only access must use `@/utils/repository`. Post channel
+    lists compose shared course rows with shared teacher membership rows in the post
+    service.
+    `discipleship-assignments.repository.ts` owns
+    discipleship-assignment-only reads and writes reused by the discipleship and Zoom Link
+    services. `discipleship-groups.repository.ts` owns group-only reads and writes used by
+    the discipleship service. `discipleship-pairs.repository.ts` owns pair-only reads and
+    writes used by the discipleship service. New group-only or pair-only access must use
+    `@/utils/repository`.
+    `email-messages.repository.ts` owns email-message log inserts used by the bulk email
+    campaign. `email-campaign-locks.repository.ts` owns email-campaign mutex reads and
+    writes; email campaign recipient planning composes the shared enrollment and invitation
+    table adapters in the email service. New email-message-only or email-campaign-lock-only
+    access must use `@/utils/repository`.
+    `exams.repository.ts` owns standalone exam reads and writes reused by exam authoring,
+    publishing, and student listing. `exam-questions.repository.ts` owns question-only reads,
+    total-point aggregation, and transaction-scoped question persistence.
+    `exam-question-options.repository.ts` owns option-only reads and transaction-scoped
+    replacement. `exam-attempts.repository.ts` owns standalone exam-attempt reads, writes,
+    status transitions, counts, and exam-scoped ordering. `exam-answers.repository.ts` owns
+    standalone answer reads, writes, and grading updates. The exam service composes the shared
+    question, option, attempt, and profile adapters for authoring and grading reads; the exam
+    transaction module retains only the atomic exam-plus-question save orchestration. Its
+    exam-row update delegates to the transaction-scoped adapter in
+    `exams.repository.ts`, question persistence delegates to `exam-questions.repository.ts`,
+    and option persistence delegates to `exam-question-options.repository.ts`. The transaction
+    module is not a table repository; it coordinates the three table adapters without importing
+    schema tables or issuing table-specific queries. New exam-only,
+    exam-question-only, exam-question-option-only, exam-attempt-only, or exam-answer-only
+    access must use `@/utils/repository`.
+    `whatsapp-messages.repository.ts` owns WhatsApp message dedupe reads and delivery-log
+    inserts used by the bulk WhatsApp campaign. `whatsapp-campaign-locks.repository.ts` owns
+    campaign mutex reads and writes; recipient planning composes shared enrollment and
+    invitation table adapters in the WhatsApp service, with cohort filtering in its domain
+    module. New WhatsApp-message-only or WhatsApp-campaign-lock-only access must use
+    `@/utils/repository`.
+    `attendance-sessions.repository.ts` owns attendance-session
+    reads and atomic open/close persistence, while `attendance-presents.repository.ts`
+    owns present-only reads and transaction-scoped present writes. The shared
+    `lessons.repository.ts` also owns attendance's lesson-only validation and
+    directory reads. Student-directory attendance scores compose present rows with
+    session rows in `attendance-score.domain.ts`, and the student open-session read
+    composes shared session, course, lesson, and present rows in the attendance service.
+    Course attendance state composes shared lesson and session rows through
+    `course-attendance-state.domain.ts`; the attendance transaction module retains
+    only atomic orchestration that spans both attendance tables. New table-only
+    attendance or lesson access must use `@/utils/repository`.
   - Lesson detail reads require a persisted profile and expose unpublished
     lessons/draft assignments only to course teachers or admins; non-managers
     receive published lesson/assignment data only.
@@ -500,8 +756,9 @@ This folder is primarily where TanStack Start server functions live (via `create
   - Course catalog reads expose unpublished lessons only to the assigned
     course teachers or admins; other teachers receive published lessons only.
   - Calendar event listing and mutations use `event/service/event.service.ts`
-    for the shared database adapter, teacher/Admin service boundary, and
-    redacted `calendar_event_*` operational events. Event-list reads emit safe
+    for the teacher/Admin service boundary and redacted `calendar_event_*`
+    operational events; table-owned calendar-event CRUD is delegated to
+    `repository/calendar-events.repository.ts`. Event-list reads emit safe
     count metadata and stable `calendar_event_read_persistence` failure
     categories. Teacher/admin role preflights remain inside the list and
     mutation telemetry boundaries, using stable operation-specific persistence

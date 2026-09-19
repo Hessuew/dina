@@ -1,6 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { eq } from 'drizzle-orm'
-import { getDb } from '../../../test/integration/db'
 import { seedCourse, seedProfile } from '../../../test/integration/seed'
 import { resetCreateSignedUrlsMock } from '../../../test/integration/storage-mocks'
 import type { AuthorizationService } from '@/utils/authz/types'
@@ -16,7 +14,7 @@ import {
 } from '@/utils/imageUpload/service/imageUpload.service'
 import { AuthorizationError } from '@/utils/errors'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
-import { courses, profiles } from '@/db/schema'
+import * as repository from '@/utils/repository'
 
 const mocks = vi.hoisted(() => ({
   createSignedUploadUrl: vi.fn(),
@@ -140,10 +138,7 @@ describe('avatar signed upload', () => {
     const result = await uploadAvatarService({ path }, id)
 
     expect(result).toEqual({ avatarUrl: `https://signed/${path}` })
-    const db = await getDb()
-    const row = await db.query.profiles.findFirst({
-      where: eq(profiles.id, id),
-    })
+    const row = await repository.findProfileById(id)
     expect(row?.avatarUrl).toBe(path)
   })
 
@@ -165,11 +160,7 @@ describe('avatar signed upload', () => {
 
   it('removes previous object after persisting replacement', async () => {
     const id = await seedProfile()
-    const db = await getDb()
-    await db
-      .update(profiles)
-      .set({ avatarUrl: `${id}/old.png` })
-      .where(eq(profiles.id, id))
+    await repository.updateProfileAvatarPath(id, `${id}/old.png`)
 
     await uploadAvatarService({ path: `${id}/new.png` }, id)
 
@@ -179,11 +170,7 @@ describe('avatar signed upload', () => {
   it('emits a redacted warning when old-object cleanup fails', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const id = await seedProfile()
-    const db = await getDb()
-    await db
-      .update(profiles)
-      .set({ avatarUrl: `${id}/old.png` })
-      .where(eq(profiles.id, id))
+    await repository.updateProfileAvatarPath(id, `${id}/old.png`)
     mocks.remove.mockResolvedValue({
       data: [],
       error: { message: 'provider secret' },
@@ -230,10 +217,7 @@ describe('course thumbnail signed upload', () => {
     )
 
     expect(result).toEqual({ thumbnailUrl: `https://signed/${path}` })
-    const db = await getDb()
-    const row = await db.query.courses.findFirst({
-      where: eq(courses.id, courseId),
-    })
+    const row = await repository.findCourseById(courseId)
     expect(row?.thumbnailUrl).toBe(path)
   })
 })

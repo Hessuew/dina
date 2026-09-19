@@ -6,9 +6,9 @@ import {
   getEventsService,
   updateEventService,
 } from './service/event.service'
-import * as database from '@/db'
 import * as authorizationUtils from '@/utils/authz'
 import { AuthorizationError } from '@/utils/errors'
+import * as sharedRepository from '@/utils/repository'
 import {
   seedCalendarEvent,
   seedCourse,
@@ -78,11 +78,10 @@ describe('calendar event mutation telemetry (integration)', () => {
   it('logs stable persistence failures without raw database errors', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const actorId = await seedProfile({ role: 'teacher' })
-    const realDb = await database.getDb()
     const repositoryError = new Error('calendar event database secret')
-    vi.spyOn(database, 'getDb')
-      .mockResolvedValueOnce(realDb)
-      .mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findAllCalendarEvents').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(

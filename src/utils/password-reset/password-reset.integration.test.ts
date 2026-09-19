@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { eq } from 'drizzle-orm'
 import type {
   EmailSender,
   PasswordResetEmailMessage,
@@ -10,10 +9,8 @@ import {
   resetPasswordService,
   validateResetTokenService,
 } from '@/utils/password-reset/service/password-reset.service'
-import * as passwordResetRepository from '@/utils/password-reset/repository'
+import * as repository from '@/utils/repository'
 import { seedProfile } from '@/../test/integration/seed'
-import { getDb } from '@/../test/integration/db'
-import { accountSecurity } from '@/db/schema'
 
 const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
@@ -27,10 +24,7 @@ vi.mock('@/utils/supabase', () => ({
 }))
 
 async function findSecurity(profileId: string) {
-  const db = await getDb()
-  return db.query.accountSecurity.findFirst({
-    where: eq(accountSecurity.profileId, profileId),
-  })
+  return repository.findAccountSecurityByProfileId(profileId)
 }
 
 beforeEach(() => {
@@ -147,10 +141,9 @@ describe('requestPasswordResetService (integration)', () => {
   it('categorizes reset-token lookup failures without raw repository details', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const repositoryError = new Error('password reset token database detail')
-    vi.spyOn(
-      passwordResetRepository,
-      'findProfileByResetTokenHash',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(repository, 'findResetToken').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     try {
       await expect(validateResetTokenService('token-value')).rejects.toBe(
@@ -179,10 +172,9 @@ describe('requestPasswordResetService (integration)', () => {
   it('categorizes reset-request lookup failures and preserves the original error', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const repositoryError = new Error('password reset profile database detail')
-    vi.spyOn(
-      passwordResetRepository,
-      'findProfileByEmail',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(repository, 'findProfileByEmail').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     try {
       await expect(
@@ -213,10 +205,9 @@ describe('requestPasswordResetService (integration)', () => {
     const email = 'persistence-failure@test.dev'
     const profileId = await seedProfile({ email })
     const repositoryError = new Error('password reset write database detail')
-    vi.spyOn(
-      passwordResetRepository,
-      'updateProfileResetToken',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(repository, 'upsertResetToken').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     try {
       await expect(requestPasswordResetService(email)).rejects.toBe(
@@ -323,10 +314,9 @@ describe('requestPasswordResetService (integration)', () => {
   it('categorizes completion token lookup failures without raw repository details', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const repositoryError = new Error('completion token database detail')
-    vi.spyOn(
-      passwordResetRepository,
-      'findProfileByResetTokenHash',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(repository, 'findResetToken').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     try {
       await expect(
@@ -361,10 +351,9 @@ describe('requestPasswordResetService (integration)', () => {
       .calls[0][0] as PasswordResetEmailMessage
     const token = new URL(message.resetLink).searchParams.get('token')
     const repositoryError = new Error('reset attempt database detail')
-    vi.spyOn(
-      passwordResetRepository,
-      'incrementResetTokenAttempts',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(repository, 'incrementResetTokenAttempts').mockRejectedValueOnce(
+      repositoryError,
+    )
     mocks.updateUserById.mockResolvedValue({
       error: { code: 'weak_password', message: 'provider detail' },
     })
@@ -405,10 +394,9 @@ describe('requestPasswordResetService (integration)', () => {
       .calls[0][0] as PasswordResetEmailMessage
     const token = new URL(message.resetLink).searchParams.get('token')
     const repositoryError = new Error('reset cleanup database detail')
-    vi.spyOn(
-      passwordResetRepository,
-      'clearProfileResetToken',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(repository, 'clearResetToken').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     try {
       await expect(

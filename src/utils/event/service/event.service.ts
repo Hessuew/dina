@@ -1,17 +1,21 @@
-import { asc, eq } from 'drizzle-orm'
 import type {
   CreateEventInput,
   DeleteEventInput,
   UpdateEventInput,
 } from '@/schemas/event.schema'
 import type { LogLevel } from '@/utils/observability/logger'
-import { getDb } from '@/db'
-import { calendarEvents, courses } from '@/db/schema'
 import { buildEventValues } from '@/utils/event/domain/event-input.domain'
 import { resolveAdminOrTeacherAccess } from '@/utils/authz'
 import { AuthorizationError, isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+import {
+  deleteCalendarEvent,
+  findAllCalendarEvents,
+  findCoursesByIds,
+  insertCalendarEvent,
+  updateCalendarEvent,
+} from '@/utils/repository'
 
 async function requireEventManager(actorId: string): Promise<void> {
   const { isAdmin, isTeacher } = await resolveAdminOrTeacherAccess(actorId)
@@ -53,30 +57,25 @@ export async function getEventsService(actorId: string) {
 
   try {
     await requireEventManager(actorId)
-    const db = await getDb()
-    const rows = await db
-      .select({
-        id: calendarEvents.id,
-        title: calendarEvents.title,
-        description: calendarEvents.description,
-        startTime: calendarEvents.startTime,
-        endTime: calendarEvents.endTime,
-        location: calendarEvents.location,
-        zoomLink: calendarEvents.zoomLink,
-        category: calendarEvents.category,
-        courseId: calendarEvents.courseId,
-        courseName: courses.title,
-        createdAt: calendarEvents.createdAt,
-        updatedAt: calendarEvents.updatedAt,
-      })
-      .from(calendarEvents)
-      .leftJoin(courses, eq(calendarEvents.courseId, courses.id))
-      .orderBy(asc(calendarEvents.startTime))
-
-    const events = rows.map((row) => ({
-      ...row,
-      courseName: row.courseName ?? null,
-    }))
+    const rows = await findAllCalendarEvents()
+    const courseIds = [
+      ...new Set(rows.flatMap((row) => (row.courseId ? [row.courseId] : []))),
+    ]
+    const courseRows = await findCoursesByIds(courseIds)
+    const courseNames = new Map(
+      courseRows.map((course) => [course.id, course.title]),
+    )
+    const events = rows
+      .slice()
+      .sort(
+        (left, right) => left.startTime.getTime() - right.startTime.getTime(),
+      )
+      .map((row) => ({
+        ...row,
+        courseName: row.courseId
+          ? (courseNames.get(row.courseId) ?? null)
+          : null,
+      }))
     logCalendarEventRead('info', 'calendar_event_list_loaded', context, {
       eventCount: events.length,
       linkedEventCount: events.filter((event) => event.courseId !== null)
@@ -143,11 +142,7 @@ export async function createEventService(
 
   try {
     await requireEventManager(actorId)
-    const db = await getDb()
-    const [event] = await db
-      .insert(calendarEvents)
-      .values(buildEventValues(data))
-      .returning()
+    const event = await insertCalendarEvent(buildEventValues(data))
     context.eventId = event.id
     logCalendarEventMutation('info', 'calendar_event_created', context, {
       category: data.category ?? null,
@@ -176,14 +171,11 @@ export async function updateEventService(
 
   try {
     await requireEventManager(actorId)
-    const db = await getDb()
-    const rows = await db
-      .update(calendarEvents)
-      .set({ ...buildEventValues(data), updatedAt: new Date() })
-      .where(eq(calendarEvents.id, data.eventId))
-      .returning()
-    if (rows.length === 0) return { event: undefined }
-    const [event] = rows
+    const event = await updateCalendarEvent(data.eventId, {
+      ...buildEventValues(data),
+      updatedAt: new Date(),
+    })
+    if (!event) return { event: undefined }
     logCalendarEventMutation('info', 'calendar_event_updated', context, {
       category: data.category ?? null,
       courseId: data.courseId ?? null,
@@ -211,8 +203,7 @@ export async function deleteEventService(
 
   try {
     await requireEventManager(actorId)
-    const db = await getDb()
-    await db.delete(calendarEvents).where(eq(calendarEvents.id, data.eventId))
+    await deleteCalendarEvent(data.eventId)
     logCalendarEventMutation('info', 'calendar_event_deleted', context)
   } catch (error) {
     if (shouldLogCalendarEventFailure(error)) {

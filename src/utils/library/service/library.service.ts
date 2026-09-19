@@ -10,10 +10,7 @@ import type {
 import type { LogLevel } from '@/utils/observability/logger'
 import type { MediaLibraryRow } from '@/utils/library/library'
 import type { Role } from '@/utils/authz'
-import type {
-  MediaRecord,
-  MediaRecordWithCourse,
-} from '@/utils/library/repository/library.repository'
+import type { MediaRecord } from '@/utils/repository'
 import type { SignedUpload } from '@/utils/storage/service/private-storage.service'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import { logServerEvent } from '@/utils/observability/logger'
@@ -30,11 +27,12 @@ import {
 import {
   deleteMedia,
   findAllMedia,
+  findCoursesByIds,
   findMediaById,
   insertMedia,
   updateMedia,
   updateMediaThumbnailPath,
-} from '@/utils/library/repository/library.repository'
+} from '@/utils/repository'
 import {
   AuthorizationError,
   NotFoundError,
@@ -91,6 +89,26 @@ type LibraryUploadRequestContext = {
   mediaId?: string
   mediaKind?: RequestMediaFileUploadInput['kind']
   startedAt: number
+}
+
+type MediaRecordWithCourse = MediaRecord & {
+  course?: { id: string; title: string; orderIndex: number | null } | null
+}
+
+async function findMediaForLibrary(
+  studentOnly: boolean,
+): Promise<Array<MediaRecordWithCourse>> {
+  const rows = await findAllMedia(studentOnly)
+  const courseIds = rows.flatMap((row) =>
+    row.courseId === null ? [] : [row.courseId],
+  )
+  const courses = await findCoursesByIds(courseIds)
+  const coursesById = new Map(courses.map((course) => [course.id, course]))
+
+  return rows.map((row) => ({
+    ...row,
+    course: row.courseId ? (coursesById.get(row.courseId) ?? null) : null,
+  }))
 }
 
 function logLibraryMutation(
@@ -299,7 +317,7 @@ export async function getLibraryMediaService(userId: string): Promise<{
     context,
     async () => {
       const role = await getUserRole(userId)
-      const rows = await findAllMedia(role === 'student')
+      const rows = await findMediaForLibrary(role === 'student')
       return {
         media: await serializeMediaRecords(rows),
         viewer: { id: userId, role },

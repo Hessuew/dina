@@ -6,14 +6,10 @@ import {
   setAuthorizationService,
 } from '@/utils/authz'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
-import * as staffPrivilegeRepository from '@/utils/staff-privilege/repository'
+import * as staffPrivilegeRepository from '@/utils/repository'
 
-vi.mock('@/utils/staff-privilege/repository', () => ({
+vi.mock('@/utils/repository', () => ({
   findPrivilegesForUser: vi.fn(),
-}))
-
-vi.mock('@/db', () => ({
-  getDb: vi.fn(),
 }))
 
 vi.mock('@/utils/authz/route', () => ({

@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto'
-import { and, eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AuthorizationService } from '@/utils/authz/types'
 import {
@@ -7,9 +6,11 @@ import {
   setAuthorizationService,
 } from '@/utils/authz'
 import { AuthorizationError } from '@/utils/errors'
-import { getDb } from '@/db'
-import { submissions as submissionsTable } from '@/db/schema'
-import { upsertSubmission } from '@/utils/assignments/repository/submissions.repository'
+import {
+  findAssignmentById,
+  findSubmissionsByAssignmentId,
+  upsertSubmission,
+} from '@/utils/repository'
 import {
   createAssignmentService,
   createOrUpdateSubmissionService,
@@ -23,10 +24,7 @@ import {
   gradeSubmissionService,
   updateAssignmentService,
 } from '@/utils/assignments/service/assignments.service'
-import { findAssignmentById } from '@/utils/assignments/repository/assignments.repository'
-import * as assignmentsRepository from '@/utils/assignments/repository/assignments.repository'
-import * as lessonsRepository from '@/utils/assignments/repository/lessons.repository'
-import * as submissionsRepository from '@/utils/assignments/repository/submissions.repository'
+import * as sharedRepository from '@/utils/repository'
 import * as authUtils from '@/utils/auth/auth'
 import {
   seedAssignment,
@@ -87,7 +85,7 @@ describe('createAssignmentService (integration)', () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const lessonId = randomUUID()
     const repositoryError = new Error('assignment lesson database detail')
-    vi.spyOn(lessonsRepository, 'findLessonById').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findLessonById').mockRejectedValueOnce(
       repositoryError,
     )
 
@@ -182,10 +180,9 @@ describe('updateAssignmentService (integration)', () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const assignmentId = randomUUID()
     const repositoryError = new Error('assignment update lookup detail')
-    vi.spyOn(
-      assignmentsRepository,
-      'findAssignmentWithLesson',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findAssignmentById').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(
@@ -275,10 +272,9 @@ describe('deleteAssignmentService (integration)', () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const assignmentId = randomUUID()
     const repositoryError = new Error('assignment delete lookup detail')
-    vi.spyOn(
-      assignmentsRepository,
-      'findAssignmentWithLessonAndSubmissions',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findAssignmentById').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(
@@ -672,10 +668,9 @@ describe('createOrUpdateSubmissionService (integration)', () => {
     const studentId = await seedProfile({ role: 'student' })
     const assignmentId = randomUUID()
     const repositoryError = new Error('submission assignment lookup detail')
-    vi.spyOn(
-      assignmentsRepository,
-      'findAssignmentWithFullDetail',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findAssignmentById').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(
@@ -714,7 +709,7 @@ describe('createOrUpdateSubmissionService (integration)', () => {
     const studentId = await seedProfile({ role: 'student' })
     const repositoryError = new Error('existing submission lookup detail')
     vi.spyOn(
-      submissionsRepository,
+      sharedRepository,
       'findSubmissionByAssignmentAndStudent',
     ).mockRejectedValueOnce(repositoryError)
 
@@ -800,16 +795,7 @@ describe('createOrUpdateSubmissionService (integration)', () => {
       ),
     ])
 
-    const db = await getDb()
-    const rows = await db
-      .select()
-      .from(submissionsTable)
-      .where(
-        and(
-          eq(submissionsTable.assignmentId, assignmentId),
-          eq(submissionsTable.studentId, studentId),
-        ),
-      )
+    const rows = await findSubmissionsByAssignmentId(assignmentId)
     expect(rows).toHaveLength(1)
   })
 
@@ -1076,8 +1062,8 @@ describe('getAllAssignmentsForStudentService (integration)', () => {
       'connectionString=secret; content=private submission',
     )
     vi.spyOn(
-      assignmentsRepository,
-      'findPublishedAssignmentsForStudent',
+      sharedRepository,
+      'findPublishedAssignments',
     ).mockRejectedValueOnce(repositoryError)
 
     await expect(
@@ -1273,7 +1259,7 @@ describe('getAssignmentSubmissionsService (integration)', () => {
   })
 
   it('returns submissions with student detail for a course teacher', async () => {
-    const { teacherId, assignmentId } =
+    const { teacherId, assignmentId, studentId } =
       await seedPublishedAssignmentWithSubmission()
 
     const { submissions } = await getAssignmentSubmissionsService(
@@ -1281,7 +1267,12 @@ describe('getAssignmentSubmissionsService (integration)', () => {
       teacherId,
     )
 
-    expect(submissions.length).toBe(1)
+    expect(submissions).toHaveLength(1)
+    expect(submissions[0].student).toMatchObject({
+      id: studentId,
+      fullName: 'Test User',
+      email: `${studentId}@test.dev`,
+    })
   })
 
   it('rejects a teacher not assigned to the course', async () => {
@@ -1320,10 +1311,9 @@ describe('gradeSubmissionService (integration)', () => {
     const teacherId = await seedProfile({ role: 'teacher' })
     const assignmentId = randomUUID()
     const repositoryError = new Error('grading assignment lookup detail')
-    vi.spyOn(
-      assignmentsRepository,
-      'findAssignmentWithLesson',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(sharedRepository, 'findAssignmentById').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(
@@ -1357,7 +1347,7 @@ describe('gradeSubmissionService (integration)', () => {
     const assignmentId = await seedAssignment({ lessonId, status: 'published' })
     const submissionId = randomUUID()
     const repositoryError = new Error('grading submission lookup detail')
-    vi.spyOn(submissionsRepository, 'findSubmissionById').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findSubmissionById').mockRejectedValueOnce(
       repositoryError,
     )
 
@@ -1455,7 +1445,7 @@ describe('gradeSubmissionService (integration)', () => {
     const repositoryError = new Error(
       'connectionString=secret; feedback=private submission',
     )
-    vi.spyOn(submissionsRepository, 'updateSubmissionGrade').mockRejectedValue(
+    vi.spyOn(sharedRepository, 'updateSubmissionGrade').mockRejectedValue(
       repositoryError,
     )
 

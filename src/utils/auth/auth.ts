@@ -1,8 +1,5 @@
-import { eq } from 'drizzle-orm'
 import * as Sentry from '@sentry/tanstackstart-react'
 import type { UserContext } from '@/utils/auth/domain/user-context.domain'
-import { getDb } from '@/db'
-import { profiles } from '@/db/schema'
 import { AuthenticationError, NotFoundError } from '@/utils/errors'
 import {
   buildUserContext,
@@ -10,11 +7,12 @@ import {
 } from '@/utils/auth/domain/user-context.domain'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+import { findProfileById } from '@/utils/repository'
 import { signPrivateStoragePath } from '@/utils/storage/service/private-storage.service'
 import { getSupabaseServerClient } from '@/utils/supabase'
 
 type RootUserProfile = Pick<
-  typeof profiles.$inferSelect,
+  NonNullable<Awaited<ReturnType<typeof findProfileById>>>,
   'avatarUrl' | 'bio' | 'fullName' | 'role'
 >
 
@@ -23,16 +21,14 @@ async function loadRootUserProfile(
   startedAt: number,
 ): Promise<RootUserProfile | undefined> {
   try {
-    const db = await getDb()
-    return await db.query.profiles.findFirst({
-      where: eq(profiles.id, userId),
-      columns: {
-        avatarUrl: true,
-        bio: true,
-        fullName: true,
-        role: true,
-      },
-    })
+    const profile = await findProfileById(userId)
+    if (!profile) return undefined
+    return {
+      avatarUrl: profile.avatarUrl,
+      bio: profile.bio,
+      fullName: profile.fullName,
+      role: profile.role,
+    }
   } catch (error) {
     logServerEvent('error', 'auth_profile_lookup_failed', {
       requestId: getRequestId(),
@@ -120,24 +116,20 @@ export async function getCurrentUser() {
  */
 export async function getUserProfile(userId: string) {
   const startedAt = performance.now()
-  const user = await (async () => {
-    try {
-      const db = await getDb()
-      return await db.query.profiles.findFirst({
-        where: eq(profiles.id, userId),
-      })
-    } catch (error) {
-      logServerEvent('error', 'auth_profile_lookup_failed', {
-        requestId: getRequestId(),
-        path: 'auth:getUserProfile',
-        status: 'failure',
-        durationMs: elapsedMs(startedAt),
-        userId,
-        errorCategory: 'auth_profile_read_persistence',
-      })
-      throw error
-    }
-  })()
+  let user: Awaited<ReturnType<typeof findProfileById>>
+  try {
+    user = await findProfileById(userId)
+  } catch (error) {
+    logServerEvent('error', 'auth_profile_lookup_failed', {
+      requestId: getRequestId(),
+      path: 'auth:getUserProfile',
+      status: 'failure',
+      durationMs: elapsedMs(startedAt),
+      userId,
+      errorCategory: 'auth_profile_read_persistence',
+    })
+    throw error
+  }
 
   if (!user) {
     throw new NotFoundError('User profile not found', {

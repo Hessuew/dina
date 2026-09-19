@@ -1,10 +1,8 @@
-import { getDb } from 'test/integration/db'
-import { courseTeachers } from '@/db/schema'
+import { insertCourseTeacherAssignments } from '@/utils/repository'
 
 export async function seedCourseTeacher(
   courseId: string,
   teacherId: string,
 ): Promise<void> {
-  const db = await getDb()
-  await db.insert(courseTeachers).values({ courseId, teacherId })
+  await insertCourseTeacherAssignments(courseId, [teacherId])
 }

@@ -3,6 +3,7 @@ import {
   buildAssignmentStats,
   buildCourseCalendarEvents,
   buildCoursesWithProgress,
+  buildUpcomingLessons,
   extractTeacherIds,
 } from './course.domain'
 
@@ -187,18 +188,17 @@ describe('buildCourseCalendarEvents', () => {
     title: `Lesson ${id}`,
     scheduledTime,
     courseId,
-    courseName: 'Course',
   })
-  const makeAssignment = (id: string, dueDate: Date, courseId = 'c1') => ({
+  const makeAssignment = (id: string, dueDate: Date, lessonId = 'l1') => ({
     id,
     title: `Assignment ${id}`,
     dueDate,
-    courseId,
-    courseName: 'Course',
+    lessonId,
   })
+  const courses = [{ id: 'c1', title: 'Course' }]
 
   it('returns empty array for empty inputs', () => {
-    expect(buildCourseCalendarEvents([], [])).toEqual([])
+    expect(buildCourseCalendarEvents([], [], [])).toEqual([])
   })
 
   it('filters out lessons with null scheduledTime', () => {
@@ -206,14 +206,18 @@ describe('buildCourseCalendarEvents', () => {
       makeLesson('l1', null),
       makeLesson('l2', new Date('2099-01-02')),
     ]
-    const result = buildCourseCalendarEvents(lessons, [])
+    const result = buildCourseCalendarEvents(lessons, [], courses)
     expect(result).toHaveLength(1)
     expect(result[0].id).toBe('l2')
   })
 
   it('maps lessons to type lesson events', () => {
     const date = new Date('2099-01-01')
-    const result = buildCourseCalendarEvents([makeLesson('l1', date)], [])
+    const result = buildCourseCalendarEvents(
+      [makeLesson('l1', date)],
+      [],
+      courses,
+    )
     expect(result[0]).toEqual({
       id: 'l1',
       title: 'Lesson l1',
@@ -226,7 +230,11 @@ describe('buildCourseCalendarEvents', () => {
 
   it('maps assignments to type assignment events', () => {
     const date = new Date('2099-01-01')
-    const result = buildCourseCalendarEvents([], [makeAssignment('a1', date)])
+    const result = buildCourseCalendarEvents(
+      [makeLesson('l1', null)],
+      [makeAssignment('a1', date)],
+      courses,
+    )
     expect(result[0]).toEqual({
       id: 'a1',
       title: 'Assignment a1',
@@ -244,6 +252,7 @@ describe('buildCourseCalendarEvents', () => {
     const result = buildCourseCalendarEvents(
       [makeLesson('l2', d2), makeLesson('l1', d1)],
       [makeAssignment('a3', d3)],
+      courses,
     )
     expect(result.map((e) => e.id)).toEqual(['l1', 'l2', 'a3'])
   })
@@ -254,8 +263,78 @@ describe('buildCourseCalendarEvents', () => {
     const result = buildCourseCalendarEvents(
       [makeLesson('l1', d2)],
       [makeAssignment('a1', d1)],
+      courses,
     )
     expect(result[0].type).toBe('assignment')
     expect(result[1].type).toBe('lesson')
+  })
+
+  it('drops rows whose lesson or course is absent from the loaded tables', () => {
+    const result = buildCourseCalendarEvents(
+      [makeLesson('l1', new Date('2099-01-01')), makeLesson('l2', null, 'c2')],
+      [
+        makeAssignment('a1', new Date('2099-01-02'), 'l1'),
+        makeAssignment('a2', new Date('2099-01-03'), 'missing'),
+        makeAssignment('a3', new Date('2099-01-04'), 'l2'),
+      ],
+      courses,
+    )
+
+    expect(result.map((event) => event.id)).toEqual(['l1', 'a1'])
+  })
+})
+
+describe('buildUpcomingLessons', () => {
+  const scheduledTime = new Date('2099-01-01')
+  const lessons = [
+    {
+      id: 'l1',
+      title: 'Lesson 1',
+      scheduledTime,
+      thumbnailUrl: null,
+      courseId: 'c1',
+    },
+  ]
+
+  it('enriches lessons from published courses', () => {
+    expect(
+      buildUpcomingLessons(lessons, [
+        { id: 'c1', title: 'Course 1', isPublished: true },
+      ]),
+    ).toEqual([
+      {
+        ...lessons[0],
+        courseName: 'Course 1',
+      },
+    ])
+  })
+
+  it('drops lessons from unpublished or missing courses', () => {
+    expect(
+      buildUpcomingLessons(lessons, [
+        { id: 'c1', title: 'Draft course', isPublished: false },
+      ]),
+    ).toEqual([])
+    expect(buildUpcomingLessons(lessons, [])).toEqual([])
+  })
+
+  it('preserves published courses with an empty title', () => {
+    expect(
+      buildUpcomingLessons(lessons, [
+        { id: 'c1', title: '', isPublished: true },
+      ]),
+    ).toEqual([{ ...lessons[0], courseName: '' }])
+  })
+
+  it('limits the result after course filtering', () => {
+    const manyLessons = Array.from({ length: 6 }, (_, index) => ({
+      ...lessons[0],
+      id: `l${index}`,
+    }))
+    expect(
+      buildUpcomingLessons(manyLessons, [
+        { id: 'c1', title: 'Course 1', isPublished: true },
+      ]),
+    ).toHaveLength(5)
   })
 })

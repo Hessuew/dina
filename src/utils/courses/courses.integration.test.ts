@@ -7,13 +7,9 @@ import {
 } from '@/utils/authz'
 import { AuthorizationError } from '@/utils/errors'
 import * as authUtils from '@/utils/auth/auth'
-import {
-  findAllCourses,
-  findCourseById,
-  findCourseTeachers,
-  insertCourse,
-} from '@/utils/courses/repository'
-import * as coursesRepository from '@/utils/courses/repository'
+import * as sharedRepository from '@/utils/repository'
+import { findCourseById, findTeacherIdsByCourseId } from '@/utils/repository'
+import { createCourseWithTeachers } from '@/utils/courses/transaction/course.transaction'
 import {
   createCourseService,
   deleteCourseService,
@@ -132,7 +128,7 @@ describe('getCoursesService (integration)', () => {
     const repositoryError = new Error(
       'connectionString=secret; content=private lesson',
     )
-    vi.spyOn(coursesRepository, 'findAllCourses').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findAllCourseRows').mockRejectedValueOnce(
       repositoryError,
     )
 
@@ -691,8 +687,8 @@ describe('createCourseService (integration)', () => {
       adminId,
     )
 
-    const teachers = await findCourseTeachers(course.id)
-    expect(teachers).toHaveLength(2)
+    const teacherIds = await findTeacherIdsByCourseId(course.id)
+    expect(teacherIds).toHaveLength(2)
   })
 
   it('admin creates a course with an admin in the teacher pair', async () => {
@@ -711,8 +707,8 @@ describe('createCourseService (integration)', () => {
       creatorAdminId,
     )
 
-    const teachers = await findCourseTeachers(course.id)
-    expect(teachers.map((entry) => entry.teacher.id)).toEqual(
+    const teacherIds = await findTeacherIdsByCourseId(course.id)
+    expect(teacherIds).toEqual(
       expect.arrayContaining([teacherAdminId, teacherId]),
     )
   })
@@ -737,7 +733,7 @@ describe('createCourseService (integration)', () => {
       ),
     ).rejects.toMatchObject({ code: 'CONFLICT', status: 409 })
 
-    expect(await findAllCourses(true)).not.toContainEqual(
+    expect(await sharedRepository.findAllCourseRows()).not.toContainEqual(
       expect.objectContaining({ title: 'Must Roll Back' }),
     )
   })
@@ -749,7 +745,7 @@ describe('createCourseService (integration)', () => {
     await seedCourseTeacher(existingCourseId, assignedTeacherId)
 
     await expect(
-      insertCourse(
+      createCourseWithTeachers(
         {
           title: 'Atomic Course',
           description: 'desc',
@@ -761,7 +757,7 @@ describe('createCourseService (integration)', () => {
       ),
     ).rejects.toThrow()
 
-    expect(await findAllCourses(true)).not.toContainEqual(
+    expect(await sharedRepository.findAllCourseRows()).not.toContainEqual(
       expect.objectContaining({ title: 'Atomic Course' }),
     )
   })
@@ -853,8 +849,8 @@ describe('updateCourseService (integration)', () => {
       courseId,
       status: 'success',
     })
-    const teachers = await findCourseTeachers(courseId)
-    expect(teachers).toHaveLength(2)
+    const teacherIds = await findTeacherIdsByCourseId(courseId)
+    expect(teacherIds).toHaveLength(2)
   })
 
   it('course teacher (non-admin) may update via editCourse permission', async () => {
@@ -1305,7 +1301,7 @@ describe('getUpcomingLessonsService (integration)', () => {
   it('logs persistence failures without changing the original error', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const repositoryError = new Error('upcoming lesson database secret')
-    vi.spyOn(coursesRepository, 'findUpcomingLessons').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findUpcomingLessons').mockRejectedValueOnce(
       repositoryError,
     )
     const userId = await seedProfile({ role: 'student' })
@@ -1394,7 +1390,7 @@ describe('getCalendarEventsService (integration)', () => {
       category: 'course_calendar_read_persistence',
       mock: (error: Error) =>
         vi
-          .spyOn(coursesRepository, 'findAllCourseIds')
+          .spyOn(sharedRepository, 'findAllCourseIds')
           .mockRejectedValueOnce(error),
       seedCourse: false,
     },
@@ -1403,7 +1399,7 @@ describe('getCalendarEventsService (integration)', () => {
       category: 'course_calendar_read_persistence',
       mock: (error: Error) =>
         vi
-          .spyOn(coursesRepository, 'findLessonCalendarEvents')
+          .spyOn(sharedRepository, 'findLessonsByCourseIds')
           .mockRejectedValueOnce(error),
       seedCourse: true,
     },
@@ -1412,7 +1408,7 @@ describe('getCalendarEventsService (integration)', () => {
       category: 'course_calendar_read_persistence',
       mock: (error: Error) =>
         vi
-          .spyOn(coursesRepository, 'findAssignmentCalendarEvents')
+          .spyOn(sharedRepository, 'findAssignmentsByLessonIds')
           .mockRejectedValueOnce(error),
       seedCourse: true,
     },
@@ -1628,12 +1624,11 @@ describe('assignTeachersToCourse (integration)', () => {
 
     await assignTeachersToCourse(courseId, t1, t2)
 
-    const teachers = await findCourseTeachers(courseId)
-    const ids = teachers.map((ct) => ct.teacher.id)
-    expect(ids).toHaveLength(2)
-    expect(ids).toContain(t1)
-    expect(ids).toContain(t2)
-    expect(ids).not.toContain(oldTeacher)
+    const teacherIds = await findTeacherIdsByCourseId(courseId)
+    expect(teacherIds).toHaveLength(2)
+    expect(teacherIds).toContain(t1)
+    expect(teacherIds).toContain(t2)
+    expect(teacherIds).not.toContain(oldTeacher)
   })
 })
 
@@ -1686,7 +1681,7 @@ describe('getCourseTeachersService (integration)', () => {
     const userId = await seedProfile({ role: 'student' })
     const courseId = await seedCourse()
     const repositoryError = new Error('course teacher database secret')
-    vi.spyOn(coursesRepository, 'findCourseTeachers').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findCourseTeacherRows').mockRejectedValueOnce(
       repositoryError,
     )
 
@@ -1728,7 +1723,7 @@ describe('updateCourseTeachersService (integration)', () => {
     )
 
     expect(result).toEqual({ success: true })
-    expect(await findCourseTeachers(courseId)).toHaveLength(2)
+    expect(await findTeacherIdsByCourseId(courseId)).toHaveLength(2)
     expect(JSON.parse(infoSpy.mock.calls.at(-1)?.[0] as string)).toMatchObject({
       event: 'course_teachers_updated',
       path: 'serverFn:updateCourseTeachers',

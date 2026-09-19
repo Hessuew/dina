@@ -1,6 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { eq } from 'drizzle-orm'
-import { getDb } from 'test/integration/db'
 import type { EmailSender, InvitationEmailMessage } from '@/utils/email/types'
 import type { AuthorizationService } from '@/utils/authz/types'
 import {
@@ -12,7 +10,6 @@ import {
   seedInvitation,
   seedProfile,
 } from '@/../test/integration/seed'
-import { emailCampaignLocks, emailMessages, enrollments } from '@/db/schema'
 import { setEmailSender } from '@/utils/email'
 import {
   getEmailCampaignLocksService,
@@ -20,10 +17,14 @@ import {
   releaseEmailCampaignService,
   sendEmailCampaignService,
 } from '@/utils/email/service/email-campaign.service'
-import { findInvitationByEmail } from '@/utils/invitation/repository/invitations.repository'
+import {
+  findEmailCampaignLock,
+  findEmailMessagesByEnrollmentId,
+  findEnrollmentById,
+  findInvitationByEmail,
+} from '@/utils/repository'
 import { AuthorizationError } from '@/utils/errors'
-import * as emailCampaignRepository from '@/utils/email/repository/email-campaign.repository'
-import * as enrolmentRepository from '@/utils/enrolment/repository/enrolment.repository'
+import * as sharedRepository from '@/utils/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 afterEach(() => {
@@ -55,19 +56,12 @@ async function previewThenSend(userId: string) {
 }
 
 async function findLogRows(enrollmentId: string) {
-  const db = await getDb()
-  return db
-    .select()
-    .from(emailMessages)
-    .where(eq(emailMessages.enrollmentId, enrollmentId))
+  return findEmailMessagesByEnrollmentId(enrollmentId)
 }
 
 async function findLockRows() {
-  const db = await getDb()
-  return db
-    .select()
-    .from(emailCampaignLocks)
-    .where(eq(emailCampaignLocks.campaign, 'invitation'))
+  const lock = await findEmailCampaignLock('invitation')
+  return lock ? [lock] : []
 }
 
 describe('previewEmailCampaignService (integration)', () => {
@@ -127,10 +121,9 @@ describe('previewEmailCampaignService (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const planningError = new Error('private email recipient database detail')
-    vi.spyOn(
-      emailCampaignRepository,
-      'findEmailCampaignRecipients',
-    ).mockRejectedValueOnce(planningError)
+    vi.spyOn(sharedRepository, 'findApprovedEnrollments').mockRejectedValueOnce(
+      planningError,
+    )
 
     try {
       await expect(
@@ -175,7 +168,7 @@ describe('sendEmailCampaignService (integration)', () => {
     const adminId = await seedProfile({ role: 'admin' })
     await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
     const profileError = new Error('private campaign sender profile detail')
-    vi.spyOn(enrolmentRepository, 'findProfileById').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'findProfileById').mockRejectedValueOnce(
       profileError,
     )
 
@@ -209,10 +202,9 @@ describe('sendEmailCampaignService (integration)', () => {
     const adminId = await seedProfile({ role: 'admin' })
     await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
     const planningError = new Error('private send planning database detail')
-    vi.spyOn(
-      emailCampaignRepository,
-      'findEmailCampaignRecipients',
-    ).mockRejectedValueOnce(planningError)
+    vi.spyOn(sharedRepository, 'findApprovedEnrollments').mockRejectedValueOnce(
+      planningError,
+    )
 
     try {
       await expect(
@@ -262,13 +254,11 @@ describe('sendEmailCampaignService (integration)', () => {
     expect(calls[0].inviteLink).toContain('/signup?token=')
     const invitation = await findInvitationByEmail('new@test.dev')
     expect(invitation?.status).toBe('pending')
-    const db = await getDb()
-    const [enrollment] = await db
-      .select()
-      .from(enrollments)
-      .where(eq(enrollments.id, enrollmentId))
-    expect(enrollment.invitationSent).toBe(true)
-    expect(enrollment.invitationId).toBe(invitation?.id)
+    const enrollment = await findEnrollmentById(enrollmentId)
+    expect(enrollment).toMatchObject({
+      invitationSent: true,
+      invitationId: invitation?.id,
+    })
     expect((await findLogRows(enrollmentId))[0]).toMatchObject({
       recipientEmail: 'new@test.dev',
       emailType: 'invitation',
@@ -445,10 +435,9 @@ describe('sendEmailCampaignService (integration)', () => {
     })
     await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
     const invitationError = new Error('private invitation database detail')
-    vi.spyOn(
-      emailCampaignRepository,
-      'insertCampaignInvitation',
-    ).mockRejectedValueOnce(invitationError)
+    vi.spyOn(sharedRepository, 'insertInvitation').mockRejectedValueOnce(
+      invitationError,
+    )
 
     try {
       await expect(
@@ -485,8 +474,8 @@ describe('sendEmailCampaignService (integration)', () => {
     await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
     const markError = new Error('private enrollment update detail')
     vi.spyOn(
-      emailCampaignRepository,
-      'markCampaignEnrollmentInvited',
+      sharedRepository,
+      'markEnrollmentInvitationSent',
     ).mockRejectedValueOnce(markError)
 
     try {
@@ -525,10 +514,9 @@ describe('sendEmailCampaignService (integration)', () => {
     })
     await previewEmailCampaignService({ campaign: 'invitation' }, adminId)
     const messageError = new Error('private email message database detail')
-    vi.spyOn(
-      emailCampaignRepository,
-      'insertEmailMessage',
-    ).mockRejectedValueOnce(messageError)
+    vi.spyOn(sharedRepository, 'insertEmailMessage').mockRejectedValueOnce(
+      messageError,
+    )
 
     try {
       await expect(
@@ -660,16 +648,15 @@ describe('email campaign lock (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const readError = new Error('private email lock database detail')
-    vi.spyOn(
-      emailCampaignRepository,
-      'getLockedEmailCampaigns',
-    ).mockRejectedValueOnce(readError)
+    vi.spyOn(sharedRepository, 'getLockedEmailCampaigns').mockRejectedValueOnce(
+      readError,
+    )
 
     await expect(getEmailCampaignLocksService(adminId)).rejects.toBe(readError)
 
     const releaseError = new Error('private email release database detail')
     vi.spyOn(
-      emailCampaignRepository,
+      sharedRepository,
       'releaseEmailCampaignLock',
     ).mockRejectedValueOnce(releaseError)
     await expect(

@@ -18,31 +18,33 @@ import type {
   ExamAttemptRow,
   ExamQuestionRow,
   ExamRow,
-} from '@/utils/exam/repository/exam.repository'
+} from '@/utils/repository'
 import type { StudentAttempt } from '@/utils/exam/domain/exam-redaction.domain'
+import { saveExamChanges } from '@/utils/exam/transaction/exam.transaction'
 import {
   applyAutoGradeResults,
   countAttemptsByExam,
   findAllExams,
-  findAnswerById,
-  findAnswersByAttempt,
   findAttemptByExamAndStudent,
   findAttemptById,
+  findAttemptsByExam,
   findAttemptsByStudent,
-  findAttemptsForGrading,
+  findExamAnswerById,
+  findExamAnswersByAttempt,
   findExamById,
+  findExamQuestionOptionsByQuestionIds,
+  findExamQuestionsByExamId,
   findExamTotalPointsMap,
+  findProfilesByIds,
   findPublishedExams,
-  findQuestionsWithOptions,
   insertAttemptIfAbsent,
   insertExam,
   markAttemptGraded,
   markAttemptSubmittedIfInProgress,
-  saveExamChanges,
   setExamStatus,
-  updateAnswerGrade,
-  upsertAnswer,
-} from '@/utils/exam/repository/exam.repository'
+  updateExamAnswerGrade,
+  upsertExamAnswer,
+} from '@/utils/repository'
 import {
   computeDeadline,
   isAttemptExpired,
@@ -126,6 +128,14 @@ type ExamReadLogContext = {
   attemptId?: string
   role?: 'admin' | 'teacher' | 'student'
   startedAt: number
+}
+
+async function findQuestionsWithOptions(examId: string) {
+  const questions = await findExamQuestionsByExamId(examId)
+  const options = await findExamQuestionOptionsByQuestionIds(
+    questions.map((question) => question.id),
+  )
+  return { questions, options }
 }
 
 function logExamAttemptEvent(
@@ -566,7 +576,7 @@ async function finalizeAttempt(
 ): Promise<ExamAttemptRow> {
   const [{ questions, options }, answers] = await Promise.all([
     findQuestionsWithOptions(attempt.examId),
-    findAnswersByAttempt(attempt.id),
+    findExamAnswersByAttempt(attempt.id),
   ])
   const results = autoGradeMultipleChoice(answers, questions, options)
   await applyAutoGradeResults(results)
@@ -580,6 +590,20 @@ async function finalizeAttempt(
   const current = await findAttemptById(attempt.id)
   if (!current) throw new NotFoundError('Attempt not found')
   return current
+}
+
+async function findAttemptsForGrading(examId: string) {
+  const attempts = await findAttemptsByExam(examId)
+  const profiles = await findProfilesByIds(
+    attempts.map((attempt) => attempt.studentId),
+  )
+  const namesByProfileId = new Map(
+    profiles.map((profile) => [profile.id, profile.fullName]),
+  )
+  return attempts.flatMap((attempt) => {
+    const studentName = namesByProfileId.get(attempt.studentId)
+    return studentName === undefined ? [] : [{ ...attempt, studentName }]
+  })
 }
 
 async function loadOwnAttempt(
@@ -606,7 +630,7 @@ async function buildTakingPayload(
 ): Promise<TakingPayload> {
   const [{ questions, options }, answers] = await Promise.all([
     findQuestionsWithOptions(attempt.examId),
-    findAnswersByAttempt(attempt.id),
+    findExamAnswersByAttempt(attempt.id),
   ])
   return {
     attempt: redactAttemptForStudent(attempt),
@@ -650,7 +674,7 @@ async function saveAnswerForAttempt(
       'Selected option does not belong to this question',
     )
   }
-  const answer = await upsertAnswer({
+  const answer = await upsertExamAnswer({
     attemptId: attempt.id,
     questionId: question.id,
     selectedOptionId: data.selectedOptionId ?? null,
@@ -906,7 +930,7 @@ export async function getAttemptForGradingService(
       const finalized = await finalizeIfExpired(attempt, new Date())
       const [{ questions, options }, answers] = await Promise.all([
         findQuestionsWithOptions(finalized.examId),
-        findAnswersByAttempt(finalized.id),
+        findExamAnswersByAttempt(finalized.id),
       ])
       return { attempt: finalized, questions, options, answers }
     },
@@ -932,7 +956,7 @@ export async function gradeOpenAnswerService(
   }
   await requireExamGrader(userId, context)
   try {
-    const answer = await findAnswerById(data.answerId)
+    const answer = await findExamAnswerById(data.answerId)
     if (!answer) throw new NotFoundError('Answer not found')
     context.attemptId = answer.attemptId
     const attempt = await findAttemptById(answer.attemptId)
@@ -956,7 +980,7 @@ export async function gradeOpenAnswerService(
         `Points cannot exceed the question maximum (${question.points})`,
       )
     }
-    await updateAnswerGrade(data.answerId, data.awardedPoints)
+    await updateExamAnswerGrade(data.answerId, data.awardedPoints)
     logExamGradingEvent('info', 'exam_open_answer_graded', context, {
       status: 'graded',
       questionType: question.type,
@@ -992,7 +1016,7 @@ export async function finalizeGradingService(
     }
     const [{ questions }, answers] = await Promise.all([
       findQuestionsWithOptions(attempt.examId),
-      findAnswersByAttempt(attempt.id),
+      findExamAnswersByAttempt(attempt.id),
     ])
     if (!allOpenAnswersGraded(answers, questions)) {
       throw new ValidationError(

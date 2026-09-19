@@ -10,10 +10,11 @@ import {
 import {
   findCourseAssignmentsByTeacherIds,
   findCourseById,
-  findCourseTeachers,
-  findTeachersByIds,
+  findCourseTeacherRows,
+  findCoursesByIds,
+  findProfilesByIds,
   replaceTeacherAssignments,
-} from '@/utils/courses/repository'
+} from '@/utils/repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import { authz } from '@/utils/authz'
 import { ConflictError, NotFoundError, isAppError } from '@/utils/errors'
@@ -125,7 +126,7 @@ export async function validateTeacherPair(
   allowAdmin = false,
 ): Promise<void> {
   validateSameTeacher(teacher1Id, teacher2Id)
-  const teachers = await findTeachersByIds([teacher1Id, teacher2Id])
+  const teachers = await findProfilesByIds([teacher1Id, teacher2Id])
   validateTeacherRoles(teachers, teacher1Id, teacher2Id, allowAdmin)
 }
 
@@ -169,10 +170,19 @@ export async function getCourseTeachersService(
     context,
     async () => {
       await getUserProfile(userId)
-      const courseTeachersList = await findCourseTeachers(data.courseId)
+      const courseTeachersList = await findCourseTeacherRows(data.courseId)
+      const profiles = await findProfilesByIds(
+        courseTeachersList.map((courseTeacher) => courseTeacher.teacherId),
+      )
+      const profilesById = new Map(
+        profiles.map((profile) => [profile.id, profile]),
+      )
       return {
         teachers: await signAvatarRows(
-          courseTeachersList.map((ct) => ct.teacher),
+          courseTeachersList.flatMap((courseTeacher) => {
+            const profile = profilesById.get(courseTeacher.teacherId)
+            return profile ? [profile] : []
+          }),
         ),
       }
     },

@@ -1,13 +1,18 @@
-import { buildCalendarEvents } from '@/utils/calendar/domain/calendar.domain'
+import {
+  buildCalendarEvents,
+  composeCalendarEventRows,
+} from '@/utils/calendar/domain/calendar.domain'
 import { getUserProfile } from '@/utils/auth/auth'
 import { isAppError } from '@/utils/errors'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
 import {
   findAllCalendarEvents,
-  findPublishedAssignmentsWithCourses,
-  findPublishedLessonsWithCourses,
-} from '@/utils/calendar/repository'
+  findCoursesByIds,
+  findLessonsByIds,
+  findPublishedAssignments,
+  findPublishedScheduledLessons,
+} from '@/utils/repository'
 
 export async function getCalendarEventsService(userId: string) {
   const startedAt = performance.now()
@@ -16,11 +21,27 @@ export async function getCalendarEventsService(userId: string) {
     // Keep the service safe for direct callers too: the route's auth boundary
     // is not an API authorization boundary.
     await getUserProfile(userId)
-    const [lessons, assignments, specialEvents] = await Promise.all([
-      findPublishedLessonsWithCourses(),
-      findPublishedAssignmentsWithCourses(),
-      findAllCalendarEvents(),
+    const [lessonSources, assignmentSources, specialEvents] = await Promise.all(
+      [
+        findPublishedScheduledLessons(),
+        findPublishedAssignments(),
+        findAllCalendarEvents(),
+      ],
+    )
+    const assignmentLessons = await findLessonsByIds(
+      assignmentSources.map((assignment) => assignment.lessonId),
+    )
+    const courseIds = new Set([
+      ...lessonSources.map((lesson) => lesson.courseId),
+      ...assignmentLessons.map((lesson) => lesson.courseId),
     ])
+    const courses = await findCoursesByIds(Array.from(courseIds))
+    const { lessons, assignments } = composeCalendarEventRows(
+      lessonSources,
+      assignmentSources,
+      courses,
+      assignmentLessons,
+    )
     const events = buildCalendarEvents(lessons, assignments, specialEvents)
 
     logServerEvent('info', 'calendar_events_loaded', {

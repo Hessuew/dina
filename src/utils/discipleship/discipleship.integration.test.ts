@@ -22,7 +22,7 @@ import {
   unpairStudentService,
 } from '@/utils/discipleship/service/discipleship.service'
 import { AuthorizationError } from '@/utils/errors'
-import * as discipleshipRepository from '@/utils/discipleship/repository'
+import * as profilesRepository from '@/utils/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 describe('getStudentDiscipleshipViewService (integration)', () => {
@@ -166,6 +166,47 @@ describe('getDiscipleshipBoardService (integration)', () => {
     expect(board.students.some((s) => s.id === studentId)).toBe(true)
   })
 
+  it('persists group schedules through the shared group repository', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const anchorAt = new Date('2026-09-11T10:00:00.000Z')
+
+    await setGroupScheduleService({ teacherId, anchorAt }, teacherId)
+
+    const board = await getDiscipleshipBoardService(teacherId)
+    expect(board.groups).toEqual([
+      { teacherId, anchorAt: anchorAt.toISOString() },
+    ])
+  })
+
+  it('persists pair schedules through the shared pair repository', async () => {
+    const teacherId = await seedProfile({ role: 'teacher' })
+    const studentA = await seedProfile({ role: 'student' })
+    const studentB = await seedProfile({ role: 'student' })
+    await seedDiscipleshipAssignment({ studentId: studentB, teacherId })
+
+    await pairStudentsService(
+      { studentIdA: studentA, studentIdB: studentB, teacherId },
+      teacherId,
+    )
+    const initialBoard = await getDiscipleshipBoardService(teacherId)
+    expect(initialBoard.pairs).toHaveLength(1)
+
+    const anchorAt = new Date('2026-09-11T10:00:00.000Z')
+    await setPairScheduleService(
+      { pairId: initialBoard.pairs[0].id, anchorAt },
+      teacherId,
+    )
+
+    const board = await getDiscipleshipBoardService(teacherId)
+    expect(board.pairs).toEqual([
+      {
+        id: initialBoard.pairs[0].id,
+        teacherId,
+        anchorAt: anchorAt.toISOString(),
+      },
+    ])
+  })
+
   it('rejects students from the manage board', async () => {
     const studentId = await seedProfile({ role: 'student' })
 
@@ -249,10 +290,9 @@ describe('discipleship read telemetry (integration)', () => {
     const repositoryError = new Error(
       'connectionString=secret; student email=private.student@test.dev',
     )
-    vi.spyOn(
-      discipleshipRepository,
-      'findDiscipleshipTeachers',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(profilesRepository, 'findStaffProfiles').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(

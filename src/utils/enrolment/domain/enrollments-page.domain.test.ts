@@ -1,13 +1,73 @@
 import { describe, expect, it } from 'vitest'
 import {
+  attachEnrollmentEvaluationTotals,
   buildDistributeToastMessage,
   buildSortChangeRequest,
   getViewAllButtonProps,
+  orderEnrollmentRowsByIds,
   resolveCanExportContacts,
   resolveIsAdmin,
   resolveReviewOverlayContext,
   resolveSearchChange,
+  sortEnrollmentIdsByEvaluation,
 } from './enrollments-page.domain'
+import type { EnrollmentTableRow } from './enrollments-page.domain'
+
+const enrollmentRow = (id: string, createdAt: string) =>
+  ({ id, createdAt: new Date(createdAt) }) as EnrollmentTableRow
+
+describe('enrollment page table composition', () => {
+  it('attaches totals and defaults missing evaluation rows to zero', () => {
+    const rows = [enrollmentRow('one', '2026-01-01T00:00:00.000Z')]
+
+    expect(
+      attachEnrollmentEvaluationTotals(rows, [
+        { enrollmentId: 'one', evaluationSum: 5, evaluationCount: 2 },
+      ]),
+    ).toMatchObject([{ id: 'one', evaluationSum: 5, evaluationCount: 2 }])
+    expect(
+      attachEnrollmentEvaluationTotals(
+        [enrollmentRow('missing', '2026-01-02T00:00:00.000Z')],
+        [],
+      ),
+    ).toMatchObject([{ id: 'missing', evaluationSum: 0, evaluationCount: 0 }])
+  })
+
+  it('sorts evaluation totals in both directions and breaks ties by newest enrollment', () => {
+    const candidates = [
+      { id: 'older', createdAt: new Date('2026-01-01T00:00:00.000Z') },
+      { id: 'newer', createdAt: new Date('2026-01-02T00:00:00.000Z') },
+      { id: 'highest', createdAt: new Date('2026-01-03T00:00:00.000Z') },
+    ]
+    const totals = [
+      { enrollmentId: 'older', evaluationSum: 2, evaluationCount: 1 },
+      { enrollmentId: 'newer', evaluationSum: 2, evaluationCount: 1 },
+      { enrollmentId: 'highest', evaluationSum: 4, evaluationCount: 1 },
+    ]
+
+    expect(sortEnrollmentIdsByEvaluation(candidates, totals, 'asc')).toEqual([
+      'newer',
+      'older',
+      'highest',
+    ])
+    expect(sortEnrollmentIdsByEvaluation(candidates, totals, 'desc')).toEqual([
+      'highest',
+      'newer',
+      'older',
+    ])
+  })
+
+  it('restores database row order from the selected enrollment IDs', () => {
+    const rows = [
+      enrollmentRow('first', '2026-01-01T00:00:00.000Z'),
+      enrollmentRow('second', '2026-01-02T00:00:00.000Z'),
+    ]
+
+    expect(
+      orderEnrollmentRowsByIds(rows, ['second', 'missing', 'first']),
+    ).toEqual([rows[1], rows[0]])
+  })
+})
 
 describe('buildDistributeToastMessage', () => {
   it('reports a plural count when several enrollments are distributed', () => {

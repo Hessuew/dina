@@ -4,7 +4,7 @@ import {
   deriveEvaluationView,
   toggleScoreValue,
 } from './evaluation-overlay.domain'
-import type { EvaluationWithAuthor } from '@/utils/enrolment/repository/enrolment.repository'
+import type { EvaluationWithAuthor } from '@/utils/enrolment/domain/evaluation.domain'
 
 function evaluation(
   overrides: Partial<EvaluationWithAuthor> = {},

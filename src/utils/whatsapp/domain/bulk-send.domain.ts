@@ -1,5 +1,7 @@
 import { normalizeToE164 } from './phone.domain'
 import { resolveRecipientName } from './templates.domain'
+import type { enrollments, invitations } from '@/db/schema'
+import type { CampaignCohort } from './templates.domain'
 
 /** Synchronous-loop bound: keeps a run inside Worker subrequest/CPU limits. */
 export const MAX_PER_RUN = 100
@@ -9,6 +11,43 @@ export type CampaignRecipient = {
   phoneWhatsApp: string
   preferredName: string | null
   fullLegalName: string
+}
+
+type CampaignEnrollment = Pick<
+  typeof enrollments.$inferSelect,
+  'id' | 'phoneWhatsApp' | 'preferredName' | 'fullLegalName' | 'invitationId'
+>
+type CampaignInvitation = Pick<typeof invitations.$inferSelect, 'id' | 'status'>
+
+export function buildWhatsAppCampaignRecipients(input: {
+  cohort: CampaignCohort
+  enrollments: Array<CampaignEnrollment>
+  invitations: Array<CampaignInvitation>
+}): Array<CampaignRecipient> {
+  const invitationsById = new Map(
+    input.invitations.map((invitation) => [invitation.id, invitation]),
+  )
+
+  return input.enrollments.flatMap((enrollment) => {
+    const invitation = enrollment.invitationId
+      ? invitationsById.get(enrollment.invitationId)
+      : undefined
+    if (
+      input.cohort === 'not_registered' &&
+      invitation?.status === 'accepted'
+    ) {
+      return []
+    }
+
+    return [
+      {
+        enrollmentId: enrollment.id,
+        phoneWhatsApp: enrollment.phoneWhatsApp,
+        preferredName: enrollment.preferredName,
+        fullLegalName: enrollment.fullLegalName,
+      },
+    ]
+  })
 }
 
 export type PlannedSend = {
@@ -64,12 +103,18 @@ export function planBulkSend(input: {
 
   for (const recipient of input.recipients) {
     if (input.alreadySentEnrollmentIds.has(recipient.enrollmentId)) {
-      skipped.push({ enrollmentId: recipient.enrollmentId, reason: 'already_sent' })
+      skipped.push({
+        enrollmentId: recipient.enrollmentId,
+        reason: 'already_sent',
+      })
       continue
     }
     const phone = normalizeToE164(recipient.phoneWhatsApp)
     if (!phone.ok) {
-      skipped.push({ enrollmentId: recipient.enrollmentId, reason: 'invalid_phone' })
+      skipped.push({
+        enrollmentId: recipient.enrollmentId,
+        reason: 'invalid_phone',
+      })
       continue
     }
     if (toSend.length >= cap) {

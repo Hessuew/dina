@@ -4,10 +4,9 @@ import type {
   DeliveryAdapter,
   PostCreatedEvent,
 } from './types'
-import { getDb } from '@/db'
-import { postNotifications } from '@/db/schema'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
+import { insertPostNotifications } from '@/utils/repository'
 
 export class DatabaseDeliveryAdapter implements DeliveryAdapter {
   async deliver(
@@ -26,8 +25,7 @@ export class DatabaseDeliveryAdapter implements DeliveryAdapter {
     const startedAt = performance.now()
 
     try {
-      const db = await getDb()
-      await db.insert(postNotifications).values(rows)
+      await insertPostNotifications(rows)
     } catch {
       logServerEvent('error', 'notification_delivery_failed', {
         requestId: getRequestId(),

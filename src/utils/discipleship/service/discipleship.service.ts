@@ -30,30 +30,30 @@ import {
 } from '@/utils/discipleship/domain/discipleship-pairing.domain'
 import { buildStudentDiscipleshipView } from '@/utils/discipleship/domain/discipleship-student-view.domain'
 import {
-  clearAssignmentPair,
-  deleteAssignmentByStudentId,
-  deletePair,
-  findAllAssignments,
-  findAllGroups,
-  findAllPairs,
-  findAssignmentByStudentId,
-  findAssignmentsByPairId,
-  findAssignmentsByTeacher,
-  findDiscipleshipStudents,
-  findDiscipleshipTeachers,
-  findGroupsByTeacher,
-  findPairById,
-  findPairsByTeacher,
-  findPublicPersonById,
-  findPublicPersonsByIds,
-  insertAssignment,
-  insertPair,
-  setAssignmentAnchor,
-  setAssignmentPair,
-  setPairAnchor,
-  updateAssignmentTeacher,
-  upsertGroupAnchor,
-} from '@/utils/discipleship/repository'
+  clearDiscipleshipAssignmentPair as clearAssignmentPair,
+  deleteDiscipleshipAssignmentByStudentId as deleteAssignmentByStudentId,
+  deleteDiscipleshipPair,
+  findAllDiscipleshipAssignments as findAllAssignments,
+  findAllDiscipleshipPairs,
+  findAllDiscipleshipGroups as findAllGroups,
+  findDiscipleshipAssignmentByStudentId as findAssignmentByStudentId,
+  findDiscipleshipAssignmentsByPairId as findAssignmentsByPairId,
+  findDiscipleshipAssignmentsByTeacher as findAssignmentsByTeacher,
+  findDiscipleshipPairById,
+  findDiscipleshipPairsByTeacher,
+  findDiscipleshipGroupsByTeacher as findGroupsByTeacher,
+  findPublicProfileById,
+  findPublicProfilesByIds,
+  findStaffProfiles,
+  findStudentProfiles,
+  insertDiscipleshipAssignment as insertAssignment,
+  insertDiscipleshipPair,
+  setDiscipleshipAssignmentAnchor as setAssignmentAnchor,
+  setDiscipleshipAssignmentPair as setAssignmentPair,
+  setDiscipleshipPairAnchor,
+  updateDiscipleshipAssignmentTeacher as updateAssignmentTeacher,
+  upsertDiscipleshipGroupAnchor as upsertGroupAnchor,
+} from '@/utils/repository'
 import { signAvatarRows } from '@/utils/storage/service/private-storage.service'
 import { logServerEvent } from '@/utils/observability/logger'
 import { elapsedMs, getRequestId } from '@/utils/observability/request-context'
@@ -229,7 +229,7 @@ async function dissolvePairIfNeeded(
   const remaining = members.filter(
     (m) => m.studentId !== leavingStudentId,
   ).length
-  if (shouldDissolvePair(remaining)) await deletePair(pairId)
+  if (shouldDissolvePair(remaining)) await deleteDiscipleshipPair(pairId)
   else await clearAssignmentPair(leavingStudentId)
 }
 
@@ -311,10 +311,12 @@ export async function getDiscipleshipBoardService(userId: string) {
 
       const [teachers, students, assignments, pairs, groups] =
         await Promise.all([
-          findDiscipleshipTeachers(),
-          findDiscipleshipStudents(),
+          findStaffProfiles(),
+          findStudentProfiles(),
           isAdmin ? findAllAssignments() : findAssignmentsByTeacher(userId),
-          isAdmin ? findAllPairs() : findPairsByTeacher(userId),
+          isAdmin
+            ? findAllDiscipleshipPairs()
+            : findDiscipleshipPairsByTeacher(userId),
           isAdmin ? findAllGroups() : findGroupsByTeacher(userId),
         ])
 
@@ -346,10 +348,12 @@ function isoOrNull(value: Date | null | undefined): string | null {
 }
 
 type StudentAssignmentRow = NonNullable<AssignmentRow>
-type PairRow = Awaited<ReturnType<typeof findPairsByTeacher>>[number]
+type PairRow = Awaited<
+  ReturnType<typeof findDiscipleshipPairsByTeacher>
+>[number]
 type GroupRow = Awaited<ReturnType<typeof findGroupsByTeacher>>[number]
 type PublicPerson = NonNullable<
-  Awaited<ReturnType<typeof findPublicPersonById>>
+  Awaited<ReturnType<typeof findPublicProfileById>>
 >
 
 // Privacy: only the viewer's individual / pair / group times enter the builder.
@@ -422,9 +426,9 @@ export async function getStudentDiscipleshipViewService(
       if (!assignment) return { kind: 'unassigned' }
 
       const [teacher, teacherAssignments, pairs, groups] = await Promise.all([
-        findPublicPersonById(assignment.teacherId),
+        findPublicProfileById(assignment.teacherId),
         findAssignmentsByTeacher(assignment.teacherId),
-        findPairsByTeacher(assignment.teacherId),
+        findDiscipleshipPairsByTeacher(assignment.teacherId),
         findGroupsByTeacher(assignment.teacherId),
       ])
 
@@ -433,7 +437,7 @@ export async function getStudentDiscipleshipViewService(
         .filter((id) => id !== userId)
       const [signedPeople, classmates] = await Promise.all([
         signAvatarRows(teacher ? [teacher] : []),
-        findPublicPersonsByIds(classmateIds).then(signAvatarRows),
+        findPublicProfilesByIds(classmateIds).then(signAvatarRows),
       ])
 
       return buildStudentDiscipleshipView(
@@ -544,7 +548,7 @@ export async function pairStudentsService(
       // Assign A (inserts if new, moves if under a different teacher).
       await assignInternal(data.studentIdA, data.teacherId, flags, userId)
 
-      const pair = await insertPair(data.teacherId)
+      const pair = await insertDiscipleshipPair(data.teacherId)
       await Promise.all([
         setAssignmentPair(data.studentIdA, pair.id),
         setAssignmentPair(b.studentId, pair.id),
@@ -598,10 +602,10 @@ export async function setPairScheduleService(
     actorId: userId,
     fields: { pairId: data.pairId, scheduleType: 'pair' },
     operation: async (context) => {
-      const pair = await findPairById(data.pairId)
+      const pair = await findDiscipleshipPairById(data.pairId)
       if (!pair) throw new NotFoundError('Discipleship pair not found.')
       await requireManage(userId, pair.teacherId, context)
-      await setPairAnchor(data.pairId, data.anchorAt)
+      await setDiscipleshipPairAnchor(data.pairId, data.anchorAt)
     },
   })
 }

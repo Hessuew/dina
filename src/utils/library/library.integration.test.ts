@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { eq } from 'drizzle-orm'
-import { getDb } from '../../../test/integration/db'
-import { seedMedia, seedProfile } from '../../../test/integration/seed'
+import {
+  seedCourse,
+  seedMedia,
+  seedProfile,
+} from '../../../test/integration/seed'
 import { resetCreateSignedUrlsMock } from '../../../test/integration/storage-mocks'
 import type { CreateMediaInput } from '@/schemas/media.schema'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
@@ -16,8 +18,7 @@ import {
   updateLibraryMediaService,
   uploadMediaThumbnailService,
 } from '@/utils/library/service/library.service'
-import { mediaLibrary } from '@/db/schema'
-import * as libraryRepository from '@/utils/library/repository/library.repository'
+import * as mediaRepository from '@/utils/repository'
 
 const mocks = vi.hoisted(() => ({
   createSignedUploadUrl: vi.fn(),
@@ -54,8 +55,7 @@ const makeCreateInput = (
 })
 
 const findMedia = async (id: string) => {
-  const db = await getDb()
-  return db.query.mediaLibrary.findFirst({ where: eq(mediaLibrary.id, id) })
+  return mediaRepository.findMediaById(id)
 }
 
 beforeEach(() => {
@@ -70,6 +70,20 @@ beforeEach(() => {
 })
 
 describe('library reads', () => {
+  it('composes course metadata from the shared course repository', async () => {
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const courseId = await seedCourse({ title: 'Course A', orderIndex: 2 })
+    await seedMedia({ uploaderId: ownerId, courseId })
+
+    const result = await getLibraryMediaService(ownerId)
+
+    expect(result.media[0]).toMatchObject({
+      courseId,
+      courseName: 'Course A',
+      courseNumber: 3,
+    })
+  })
+
   it('logs redacted list and detail read telemetry', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const ownerId = await seedProfile({ role: 'teacher' })
@@ -341,7 +355,7 @@ describe('library persistence', () => {
       const repositoryError = new Error(
         'media lookup connectionString=secret; email=private@test.dev',
       )
-      vi.spyOn(libraryRepository, 'findMediaById').mockRejectedValueOnce(
+      vi.spyOn(mediaRepository, 'findMediaById').mockRejectedValueOnce(
         repositoryError,
       )
 

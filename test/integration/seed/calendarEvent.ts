@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { getDb } from 'test/integration/db'
-import { calendarEvents } from '@/db/schema'
+import type { CalendarEventInsert } from '@/utils/repository'
+import { insertCalendarEvent } from '@/utils/repository'
 
 export async function seedCalendarEvent(
   overrides: {
@@ -10,13 +10,12 @@ export async function seedCalendarEvent(
     description?: string
     startTime?: Date
     endTime?: Date
-    category?: 'exam' | 'chapel' | 'personal'
+    category?: CalendarEventInsert['category']
   } = {},
 ): Promise<string> {
   const id = overrides.id ?? randomUUID()
   const start = overrides.startTime ?? new Date()
-  const db = await getDb()
-  await db.insert(calendarEvents).values({
+  const event = await insertCalendarEvent({
     id,
     courseId: overrides.courseId ?? null,
     title: overrides.title ?? 'Test Event',
@@ -29,5 +28,5 @@ export async function seedCalendarEvent(
       ? { category: overrides.category }
       : {}),
   })
-  return id
+  return event.id
 }

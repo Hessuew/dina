@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getDb } from 'test/integration/db'
 import type { CreateZoomLinkInput } from '@/schemas/zoomLink.schema'
 import type { AuthorizationService } from '@/utils/authz/types'
 import {
@@ -12,16 +11,14 @@ import {
   getZoomLinksService,
   updateZoomLinkService,
 } from '@/utils/zoomLink/service/zoomLink.service'
-import { updateAssignmentTeacher } from '@/utils/discipleship/repository'
+import * as repository from '@/utils/repository'
 import { AuthorizationError, ValidationError } from '@/utils/errors'
-import { zoomLinks } from '@/db/schema'
 import {
   seedCourse,
   seedCourseTeacher,
   seedDiscipleshipAssignment,
   seedProfile,
 } from '@/../test/integration/seed'
-import * as zoomLinkRepository from '@/utils/zoomLink/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 const makeGeneralInput = (
@@ -66,6 +63,7 @@ async function seedOwners() {
 describe('zoomLink service (integration)', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    setAuthorizationService(new DefaultAuthorizationService())
   })
 
   it('logs redacted Admin CRUD telemetry with safe ownership fields', async () => {
@@ -174,10 +172,9 @@ describe('zoomLink service (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const repositoryError = new Error('zoom passcode database secret')
-    vi.spyOn(
-      zoomLinkRepository,
-      'findZoomLinksWithTeachers',
-    ).mockRejectedValueOnce(repositoryError)
+    vi.spyOn(repository, 'findAllZoomLinks').mockRejectedValueOnce(
+      repositoryError,
+    )
 
     await expect(
       withObservabilityRequest(
@@ -206,7 +203,7 @@ describe('zoomLink service (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const viewerId = await seedProfile({ role: 'admin' })
     const repositoryError = new Error('viewer role connectionString=secret')
-    vi.spyOn(zoomLinkRepository, 'findViewerRole').mockRejectedValueOnce(
+    vi.spyOn(repository, 'findProfileRoleById').mockRejectedValueOnce(
       repositoryError,
     )
 
@@ -235,10 +232,13 @@ describe('zoomLink service (integration)', () => {
 
   it('logs unexpected teacher-owner lookup failures for create and update', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    setAuthorizationService({
+      hasRole: vi.fn().mockResolvedValue(undefined),
+    } as unknown as AuthorizationService)
     const adminId = await seedProfile({ role: 'admin' })
     const teacherId = await seedProfile({ role: 'teacher' })
     const createError = new Error('zoom owner database password')
-    vi.spyOn(zoomLinkRepository, 'findZoomLinkOwner').mockRejectedValueOnce(
+    vi.spyOn(repository, 'findProfileRoleById').mockRejectedValueOnce(
       createError,
     )
 
@@ -256,7 +256,7 @@ describe('zoomLink service (integration)', () => {
       adminId,
     )
     const updateError = new Error('zoom owner connectionString secret')
-    vi.spyOn(zoomLinkRepository, 'findZoomLinkOwner').mockRejectedValueOnce(
+    vi.spyOn(repository, 'findProfileRoleById').mockRejectedValueOnce(
       updateError,
     )
 
@@ -309,7 +309,6 @@ describe('zoomLink service (integration)', () => {
 
   it('database rejects invalid section-owner combinations', async () => {
     const teacherId = await seedProfile({ role: 'teacher' })
-    const db = getDb()
     const shared = {
       title: 'Invalid',
       zoomUrl: 'https://zoom.us/j/invalid',
@@ -317,14 +316,14 @@ describe('zoomLink service (integration)', () => {
       passcode: 'invalid',
     }
     await expect(
-      db.insert(zoomLinks).values({
+      repository.insertZoomLink({
         ...shared,
         section: 'general_class_lecture',
         teacherId,
       }),
     ).rejects.toThrow()
     await expect(
-      db.insert(zoomLinks).values({ ...shared, section: 'teacher' }),
+      repository.insertZoomLink({ ...shared, section: 'teacher' }),
     ).rejects.toThrow()
   })
 
@@ -461,7 +460,7 @@ describe('zoomLink service (integration)', () => {
     )
 
     expect((await getZoomLinksService(studentId)).links[0].title).toBe('A')
-    await updateAssignmentTeacher(studentId, teacherB)
+    await repository.updateDiscipleshipAssignmentTeacher(studentId, teacherB)
     expect((await getZoomLinksService(studentId)).links[0].title).toBe('B')
   })
 

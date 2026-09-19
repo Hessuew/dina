@@ -6,7 +6,7 @@ import {
   markPostNotificationGroupReadService,
 } from '@/utils/post/notifications/service/notification.service'
 import { NotFoundError } from '@/utils/errors'
-import * as notificationRepository from '@/utils/post/notifications/repository/notification.repository'
+import * as notificationRepository from '@/utils/repository'
 import * as authUtils from '@/utils/auth/auth'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 import {
@@ -162,8 +162,8 @@ describe('getPostNotificationsSummaryService (integration)', () => {
 
     const result = await getPostNotificationsSummaryService({}, userId)
 
-    // findPostsForNotifications filters out the soft-deleted post, so only the
-    // live group is returned; unread count still reflects both groups.
+    // The shared posts repository filters out the soft-deleted post, so only
+    // the live group is returned; unread count still reflects both groups.
     expect(result.groups).toHaveLength(1)
     expect(result.groups[0].postId).toBe(livePostId)
     expect(result.unreadGroupCount).toBe(2)

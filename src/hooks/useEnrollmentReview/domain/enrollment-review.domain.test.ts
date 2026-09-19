@@ -11,7 +11,7 @@ import {
   planBackward,
   planForward,
 } from './enrollment-review.domain'
-import type { EvaluationWithAuthor } from '@/utils/enrolment/repository/enrolment.repository'
+import type { EvaluationWithAuthor } from '@/utils/enrolment/domain/evaluation.domain'
 
 function mkEval(
   enrollmentId: string,
@@ -167,7 +167,7 @@ function forwardDeps(
     items: refs('a', 'b', 'c'),
     maxPage: 1,
     totalPages: 1,
-    loadPage: vi.fn(async () => refs()),
+    loadPage: vi.fn(() => Promise.resolve(refs())),
     setIndex: vi.fn(),
     syncReviewParam: vi.fn(),
     onError: vi.fn(),
@@ -182,7 +182,7 @@ function backwardDeps(
     index: 1,
     items: refs('a', 'b', 'c'),
     minPage: 1,
-    loadPage: vi.fn(async () => refs()),
+    loadPage: vi.fn(() => Promise.resolve(refs())),
     setIndex: vi.fn(),
     syncReviewParam: vi.fn(),
     onError: vi.fn(),
@@ -215,7 +215,7 @@ describe('navigateForward', () => {
   })
 
   it('appends the next page at the edge and steps onto it', async () => {
-    const loadPage = vi.fn(async () => refs('d', 'e'))
+    const loadPage = vi.fn(() => Promise.resolve(refs('d', 'e')))
     const setIndex = vi.fn()
     const deps = forwardDeps({
       index: 2,
@@ -242,9 +242,7 @@ describe('navigateForward', () => {
   })
 
   it('reports an error when the page load fails', async () => {
-    const loadPage = vi.fn(async () => {
-      throw new Error('boom')
-    })
+    const loadPage = vi.fn(() => Promise.reject(new Error('boom')))
     const deps = forwardDeps({ index: 2, maxPage: 1, totalPages: 2, loadPage })
     await navigateForward(deps)
     expect(deps.onError).toHaveBeenCalledWith('Failed to load next page')
@@ -275,7 +273,7 @@ describe('navigateBackward', () => {
   })
 
   it('prepends the previous page at the start and steps onto its last item', async () => {
-    const loadPage = vi.fn(async () => refs('x', 'y'))
+    const loadPage = vi.fn(() => Promise.resolve(refs('x', 'y')))
     const setIndex = vi.fn()
     const deps = backwardDeps({ index: 0, minPage: 2, loadPage, setIndex })
     await navigateBackward(deps)
@@ -296,9 +294,7 @@ describe('navigateBackward', () => {
   })
 
   it('reports an error when the page load fails', async () => {
-    const loadPage = vi.fn(async () => {
-      throw new Error('boom')
-    })
+    const loadPage = vi.fn(() => Promise.reject(new Error('boom')))
     const deps = backwardDeps({ index: 0, minPage: 2, loadPage })
     await navigateBackward(deps)
     expect(deps.onError).toHaveBeenCalledWith('Failed to load previous page')

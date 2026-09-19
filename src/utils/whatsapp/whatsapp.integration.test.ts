@@ -1,6 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { eq } from 'drizzle-orm'
-import { getDb } from 'test/integration/db'
 import type {
   WhatsAppSender,
   WhatsAppTemplateMessage,
@@ -17,7 +15,6 @@ import {
   seedProfile,
   seedWhatsAppMessage,
 } from '@/../test/integration/seed'
-import { whatsappCampaignLocks, whatsappMessages } from '@/db/schema'
 import { setWhatsAppSender } from '@/utils/whatsapp'
 import {
   getWhatsAppCampaignLocksService,
@@ -26,7 +23,11 @@ import {
   sendWhatsAppCampaignService,
 } from '@/utils/whatsapp/service/whatsapp.service'
 import { AuthorizationError } from '@/utils/errors'
-import * as whatsappRepository from '@/utils/whatsapp/repository/whatsapp.repository'
+import {
+  findWhatsAppCampaignLock,
+  findWhatsAppMessagesByEnrollmentId,
+} from '@/utils/repository'
+import * as sharedRepository from '@/utils/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 
 afterEach(() => {
@@ -51,11 +52,7 @@ function installFakeSender(failFor: Array<string> = []) {
 }
 
 async function findLogRows(enrollmentId: string) {
-  const db = await getDb()
-  return db
-    .select()
-    .from(whatsappMessages)
-    .where(eq(whatsappMessages.enrollmentId, enrollmentId))
+  return findWhatsAppMessagesByEnrollmentId(enrollmentId)
 }
 
 /** Send requires the campaign lock — acquire it via preview, then send. */
@@ -64,12 +61,9 @@ async function previewThenSend(campaign: CampaignType, userId: string) {
   return sendWhatsAppCampaignService({ campaign }, userId)
 }
 
-async function findLockRows(campaign: string) {
-  const db = await getDb()
-  return db
-    .select()
-    .from(whatsappCampaignLocks)
-    .where(eq(whatsappCampaignLocks.campaign, campaign))
+async function findLockRows(campaign: CampaignType) {
+  const lock = await findWhatsAppCampaignLock(campaign)
+  return lock ? [lock] : []
 }
 
 describe('sendWhatsAppCampaignService (integration)', () => {
@@ -228,7 +222,7 @@ describe('sendWhatsAppCampaignService (integration)', () => {
     const adminId = await seedProfile({ role: 'admin' })
     const lockError = new Error('private WhatsApp lock connectionString detail')
     vi.spyOn(
-      whatsappRepository,
+      sharedRepository,
       'checkWhatsAppCampaignLockHeldBy',
     ).mockRejectedValueOnce(lockError)
 
@@ -266,10 +260,9 @@ describe('sendWhatsAppCampaignService (integration)', () => {
     const planningError = new Error(
       'private WhatsApp recipient database detail',
     )
-    vi.spyOn(
-      whatsappRepository,
-      'findEnrollmentRecipientsByCampaign',
-    ).mockRejectedValueOnce(planningError)
+    vi.spyOn(sharedRepository, 'findApprovedEnrollments').mockRejectedValueOnce(
+      planningError,
+    )
 
     await expect(
       withObservabilityRequest(
@@ -311,7 +304,7 @@ describe('sendWhatsAppCampaignService (integration)', () => {
       adminId,
     )
     const recordError = new Error('private WhatsApp message database detail')
-    vi.spyOn(whatsappRepository, 'insertWhatsAppMessage').mockRejectedValueOnce(
+    vi.spyOn(sharedRepository, 'insertWhatsAppMessage').mockRejectedValueOnce(
       recordError,
     )
 
@@ -471,10 +464,9 @@ describe('previewWhatsAppCampaignService (integration)', () => {
     const planningError = new Error(
       'private WhatsApp recipient database detail',
     )
-    vi.spyOn(
-      whatsappRepository,
-      'findEnrollmentRecipientsByCampaign',
-    ).mockRejectedValueOnce(planningError)
+    vi.spyOn(sharedRepository, 'findApprovedEnrollments').mockRejectedValueOnce(
+      planningError,
+    )
 
     try {
       await expect(
@@ -639,9 +631,10 @@ describe('campaign lock (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const adminId = await seedProfile({ role: 'admin' })
     const readError = new Error('private WhatsApp lock database detail')
-    vi.spyOn(whatsappRepository, 'getLockedCampaigns').mockRejectedValueOnce(
-      readError,
-    )
+    vi.spyOn(
+      sharedRepository,
+      'getLockedWhatsAppCampaigns',
+    ).mockRejectedValueOnce(readError)
 
     await expect(getWhatsAppCampaignLocksService(adminId)).rejects.toBe(
       readError,
@@ -649,7 +642,7 @@ describe('campaign lock (integration)', () => {
 
     const releaseError = new Error('private WhatsApp release database detail')
     vi.spyOn(
-      whatsappRepository,
+      sharedRepository,
       'releaseWhatsAppCampaignLock',
     ).mockRejectedValueOnce(releaseError)
     await expect(

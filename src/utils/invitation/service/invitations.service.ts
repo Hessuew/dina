@@ -14,15 +14,16 @@ import {
 } from '@/utils/invitation/domain/invitations.domain'
 import {
   deleteInvitationById,
-  findAllInvitationsWithInviter,
+  findAllInvitations,
   findInvitationByEmail,
   findInvitationById,
   findInvitationByToken,
+  findProfileByEmail,
+  findProfilesByIds,
   insertInvitation,
   revokeInvitationById,
   updateInvitationById,
-} from '@/utils/invitation/repository/invitations.repository'
-import { findProfileByEmail } from '@/utils/invitation/repository/profiles.repository'
+} from '@/utils/repository'
 import { getUserProfile } from '@/utils/auth/auth'
 import {
   AppError,
@@ -113,6 +114,24 @@ function logInvitationEmailEvent(
 
 function shouldLogInvitationReadFailure(error: unknown): boolean {
   return !isAppError(error) || error.status >= 500
+}
+
+async function findInvitationsWithInviters() {
+  const invitations = await findAllInvitations()
+  const inviterIds = [
+    ...new Set(invitations.map((invitation) => invitation.invitedBy)),
+  ]
+  const profiles = await findProfilesByIds(inviterIds)
+  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]))
+
+  return invitations.map((invitation) => {
+    const inviter = profilesById.get(invitation.invitedBy)
+    if (!inviter) throw new Error('Invitation inviter profile missing')
+    return {
+      ...invitation,
+      inviter: { fullName: inviter.fullName, email: inviter.email },
+    }
+  })
 }
 
 async function withInvitationPreflightTelemetry<T>(
@@ -447,7 +466,7 @@ export async function getInvitationsService(userId: string) {
   }
 
   try {
-    const allInvitations = await findAllInvitationsWithInviter()
+    const allInvitations = await findInvitationsWithInviters()
     logInvitationEvent('info', 'invitations_loaded', context, {
       invitationCount: allInvitations.length,
     })

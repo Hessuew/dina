@@ -1,7 +1,0 @@
-export * from './assignments.repository'
-export * from './course-teachers.repository'
-export * from './courses.repository'
-export * from './lesson-completion.repository'
-export * from './lessons.repository'
-export * from './profiles.repository'
-export * from './submissions.repository'

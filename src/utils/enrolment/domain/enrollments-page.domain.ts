@@ -1,5 +1,66 @@
-import type { EnrollmentSortKey } from '@/utils/enrolment/repository/enrolment.repository'
+import type { enrollments } from '@/db/schema'
+import type { EnrollmentSortKey } from '@/schemas/enrollment.schema'
 import type { EnrollmentsNavRequest } from '@/utils/enrolment/domain/enrollments-navigation.domain'
+
+export type EnrollmentTableRow = typeof enrollments.$inferSelect
+export type EnrollmentEvaluationTotal = {
+  enrollmentId: string
+  evaluationSum: number
+  evaluationCount: number
+}
+export type EnrollmentPageRow = EnrollmentTableRow & {
+  evaluationSum: number
+  evaluationCount: number
+}
+
+export function attachEnrollmentEvaluationTotals(
+  rows: ReadonlyArray<EnrollmentTableRow>,
+  totals: ReadonlyArray<EnrollmentEvaluationTotal>,
+): Array<EnrollmentPageRow> {
+  const totalsByEnrollmentId = new Map(
+    totals.map((total) => [total.enrollmentId, total]),
+  )
+  return rows.map((row) => {
+    const total = totalsByEnrollmentId.get(row.id)
+    return {
+      ...row,
+      evaluationSum: total?.evaluationSum ?? 0,
+      evaluationCount: total?.evaluationCount ?? 0,
+    }
+  })
+}
+
+export function sortEnrollmentIdsByEvaluation(
+  candidates: ReadonlyArray<{ id: string; createdAt: Date }>,
+  totals: ReadonlyArray<EnrollmentEvaluationTotal>,
+  sortDir: 'asc' | 'desc',
+): Array<string> {
+  const totalsByEnrollmentId = new Map(
+    totals.map((total) => [total.enrollmentId, total.evaluationSum]),
+  )
+  return [...candidates]
+    .sort((left, right) => {
+      const scoreDelta =
+        (totalsByEnrollmentId.get(left.id) ?? 0) -
+        (totalsByEnrollmentId.get(right.id) ?? 0)
+      if (scoreDelta !== 0) {
+        return sortDir === 'asc' ? scoreDelta : -scoreDelta
+      }
+      return right.createdAt.getTime() - left.createdAt.getTime()
+    })
+    .map((candidate) => candidate.id)
+}
+
+export function orderEnrollmentRowsByIds(
+  rows: ReadonlyArray<EnrollmentTableRow>,
+  orderedIds: ReadonlyArray<string>,
+): Array<EnrollmentTableRow> {
+  const rowsById = new Map(rows.map((row) => [row.id, row]))
+  return orderedIds.flatMap((id) => {
+    const row = rowsById.get(id)
+    return row ? [row] : []
+  })
+}
 
 /**
  * Toast message for the "distribute unassigned enrollments" action, pluralizing

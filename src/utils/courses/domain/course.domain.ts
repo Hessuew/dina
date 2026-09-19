@@ -8,12 +8,33 @@ type LessonEventRow = {
   title: string
   scheduledTime: Date | null
   courseId: string
-  courseName: string
 }
 type AssignmentEventRow = {
   id: string
   title: string
   dueDate: Date
+  lessonId: string
+}
+
+type CourseEventRow = { id: string; title: string }
+type UpcomingLessonRow = {
+  id: string
+  title: string
+  scheduledTime: Date | null
+  thumbnailUrl: string | null
+  courseId: string
+}
+type UpcomingCourseRow = {
+  id: string
+  title: string
+  isPublished: boolean | null
+}
+
+export type UpcomingLesson = {
+  id: string
+  title: string
+  scheduledTime: Date
+  thumbnailUrl: string | null
   courseId: string
   courseName: string
 }
@@ -100,12 +121,16 @@ export function buildCoursesWithProgress<
 export function buildCourseCalendarEvents(
   lessonEvents: Array<LessonEventRow>,
   assignmentEvents: Array<AssignmentEventRow>,
+  courses: Array<CourseEventRow>,
 ): Array<CourseCalendarEvent> {
+  const coursesById = new Map(courses.map((course) => [course.id, course]))
+  const lessonsById = new Map(lessonEvents.map((lesson) => [lesson.id, lesson]))
+
   return [
     ...lessonEvents
       .filter(
         (l): l is LessonEventRow & { scheduledTime: Date } =>
-          l.scheduledTime !== null,
+          l.scheduledTime !== null && coursesById.has(l.courseId),
       )
       .map((l) => ({
         id: l.id,
@@ -113,15 +138,41 @@ export function buildCourseCalendarEvents(
         date: l.scheduledTime,
         type: 'lesson' as const,
         courseId: l.courseId,
-        courseName: l.courseName,
+        courseName: coursesById.get(l.courseId)!.title,
       })),
-    ...assignmentEvents.map((a) => ({
-      id: a.id,
-      title: a.title,
-      date: a.dueDate,
-      type: 'assignment' as const,
-      courseId: a.courseId,
-      courseName: a.courseName,
-    })),
+    ...assignmentEvents.flatMap((a) => {
+      const lesson = lessonsById.get(a.lessonId)
+      const course = lesson ? coursesById.get(lesson.courseId) : undefined
+      if (!lesson || !course) return []
+      return [
+        {
+          id: a.id,
+          title: a.title,
+          date: a.dueDate,
+          type: 'assignment' as const,
+          courseId: lesson.courseId,
+          courseName: course.title,
+        },
+      ]
+    }),
   ].sort((a, b) => a.date.getTime() - b.date.getTime())
+}
+
+export function buildUpcomingLessons(
+  lessons: Array<UpcomingLessonRow>,
+  courses: Array<UpcomingCourseRow>,
+): Array<UpcomingLesson> {
+  const courseNames = new Map(
+    courses
+      .filter((course) => course.isPublished === true)
+      .map((course) => [course.id, course.title]),
+  )
+
+  return lessons
+    .flatMap((lesson) => {
+      const courseName = courseNames.get(lesson.courseId)
+      if (courseName === undefined || !lesson.scheduledTime) return []
+      return [{ ...lesson, scheduledTime: lesson.scheduledTime, courseName }]
+    })
+    .slice(0, 5)
 }
