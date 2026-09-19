@@ -2,12 +2,10 @@
 
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { ChevronsUpDown } from 'lucide-react'
+import { BadgeCheck, ChevronsUpDown, LogOut } from 'lucide-react'
 import type React from 'react'
 import { buildUserTextView } from '@/components/navigation/nav-user/nav-user.domain'
 import { ProfileModal } from '@/components/dialog/profile-modal/ProfileModal'
-import { LogOut } from '@/components/animate-ui/icons/log-out'
-import { BadgeCheck } from '@/components/animate-ui/icons/badge-check'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -26,7 +24,6 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar/Sidebar'
 import { cn } from '@/lib/utils'
-import { AnimateIcon } from '@/components/animate-ui/icons/icon'
 
 type NavUserProps = {
   user: {
@@ -186,24 +183,18 @@ function NavUserMenuContent({
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-white/8" />
         <NavUserMenuItem isDark={isDark} onClick={onOpenProfile}>
-          <AnimateIcon
-            animateOnHover
-            className="flex h-full w-full flex-row items-center gap-2 py-2"
-          >
+          <span className="flex h-full w-full flex-row items-center gap-2 py-2">
             <BadgeCheck className="size-4 shrink-0 text-[#C5A059]! group-hover/button:text-[#C5A059] group-focus/button:text-[#C5A059]" />
             My Profile
-          </AnimateIcon>
+          </span>
         </NavUserMenuItem>
         <DropdownMenuSeparator className="bg-white/8" />
         <Link onClick={onLogoutClick} to="/logout">
           <NavUserMenuItem isDark={isDark}>
-            <AnimateIcon
-              animateOnHover
-              className="flex h-full w-full flex-row items-center gap-2 py-2"
-            >
+            <span className="flex h-full w-full flex-row items-center gap-2 py-2">
               <LogOut className="size-4 shrink-0 text-[#C5A059]!" />
               Log out
-            </AnimateIcon>
+            </span>
           </NavUserMenuItem>
         </Link>
       </DropdownMenuGroup>

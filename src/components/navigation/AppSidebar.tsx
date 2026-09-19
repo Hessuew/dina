@@ -1,6 +1,21 @@
 import * as React from 'react'
 import { Link, useRouter, useRouterState } from '@tanstack/react-router'
-import { Activity } from 'lucide-react'
+import {
+  Activity,
+  BadgeCheck,
+  BookText,
+  Brush,
+  CalendarCheck,
+  CalendarDays,
+  Clapperboard,
+  ClipboardList,
+  Layers,
+  LayoutDashboard,
+  List,
+  MessageSquare,
+  Send,
+  Users,
+} from 'lucide-react'
 
 import { NotificationsMenu } from '@/components/navigation/notifications-menu'
 import { NavUser } from '@/components/navigation/nav-user/NavUser'
@@ -20,20 +35,6 @@ import {
 } from '@/components/ui/sidebar/Sidebar'
 import { cn } from '@/lib/utils'
 import heroEmblem from '@/assets/images/bg/logo.webp'
-import { LayoutDashboard } from '@/components/animate-ui/icons/layout-dashboard'
-import { ClipboardList } from '@/components/animate-ui/icons/clipboard-list'
-import { BadgeCheck } from '@/components/animate-ui/icons/badge-check'
-import { CalendarCheckIcon } from '@/components/animate-ui/icons/calendar-check'
-import { MessageSquare } from '@/components/animate-ui/icons/message-square'
-import { LayersIcon } from '@/components/animate-ui/icons/layers'
-import { Users } from '@/components/animate-ui/icons/users'
-import { BookText } from '@/components/animate-ui/icons/book'
-import { CalendarDaysIcon } from '@/components/animate-ui/icons/calendar-days'
-import { AnimateIcon } from '@/components/animate-ui/icons/icon'
-import { List } from '@/components/animate-ui/icons/list'
-import { Clapperboard } from '@/components/animate-ui/icons/clapperboard'
-import { Send } from '@/components/animate-ui/icons/send'
-import { BrushIcon } from '@/components/animate-ui/icons/brush'
 
 type User = {
   id: string
@@ -75,7 +76,7 @@ const navItems: Array<NavItem> = [
   {
     title: 'Calendar',
     url: '/calendar',
-    icon: CalendarCheckIcon,
+    icon: CalendarCheck,
   },
   {
     title: 'Posts',
@@ -90,12 +91,12 @@ const navItems: Array<NavItem> = [
   {
     title: 'Library',
     url: '/library',
-    icon: LayersIcon,
+    icon: Layers,
   },
   {
     title: 'Discipleship',
     url: '/discipleship',
-    icon: BrushIcon,
+    icon: Brush,
   },
   {
     title: 'Teachers',
@@ -113,7 +114,7 @@ const teacherNavItems: Array<NavItem> = [
   {
     title: 'Events',
     url: '/events',
-    icon: CalendarDaysIcon,
+    icon: CalendarDays,
   },
   {
     title: 'Enrollments',
@@ -154,13 +155,10 @@ function NavItemList({ items }: { items: Array<NavItem> }) {
               isActive={isActive}
               render={
                 <Link className="py-0" to={item.url}>
-                  <AnimateIcon
-                    animateOnHover
-                    className="flex h-full w-full flex-row items-center gap-2 py-2"
-                  >
+                  <span className="flex h-full w-full flex-row items-center gap-2 py-2">
                     <Icon size={18} className="shrink-0" />
                     <span>{item.title}</span>
-                  </AnimateIcon>
+                  </span>
                 </Link>
               }
               tooltip={item.title}

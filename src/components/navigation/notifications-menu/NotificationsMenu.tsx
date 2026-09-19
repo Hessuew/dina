@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { formatDistanceToNow } from 'date-fns'
+import { Bell, BellRing, CircleCheck, CircleCheckBig } from 'lucide-react'
 
 import type * as React from 'react'
 import type { PostNotificationGroup } from '@/utils/post/postNotifications'
@@ -23,11 +24,6 @@ import {
   markAllPostNotificationsRead,
   markPostNotificationGroupRead,
 } from '@/utils/post/postNotifications'
-import { Bell } from '@/components/animate-ui/icons/bell'
-import { BellRing } from '@/components/animate-ui/icons/bell-ring'
-import { AnimateIcon } from '@/components/animate-ui/icons/icon'
-import { CircleCheckBig } from '@/components/animate-ui/icons/circle-check-big'
-import { CircleCheck } from '@/components/animate-ui/icons/circle-check'
 import { buildNotificationRowViewModel } from '@/components/navigation/notifications-menu/notification-row.domain'
 import {
   buildNotificationMenuHeaderViewModel,
@@ -62,15 +58,10 @@ function NotificationTriggerButton({
       className={cn(vm.buttonClassName, className)}
       {...props}
     >
-      <AnimateIcon
-        animateOnHover
-        animateOnView={shouldAnimate}
-        loop={shouldAnimate}
-        className="flex h-full w-full flex-row items-center gap-2 py-2"
-      >
+      <span className="flex h-full w-full flex-row items-center gap-2 py-2">
         <BellIcon size={18} className={vm.iconClassName} />
         <span>Notifications</span>
-      </AnimateIcon>
+      </span>
 
       {vm.showBadge && (
         <div className={vm.badgeClassName}>{displayUnreadCount}</div>
@@ -113,7 +104,7 @@ function NotificationMenuHeader({
           onClick={onMarkAllRead}
           disabled={vm.markAllDisabled}
         >
-          <CircleCheckBig animateOnHover />
+          <CircleCheckBig />
         </Button>
       </div>
 
@@ -174,7 +165,7 @@ function NotificationRow({
           }}
           disabled={!vm.isUnread}
         >
-          <CircleCheck animateOnHover />
+          <CircleCheck />
         </Button>
       </DropdownMenuItem>
     </Link>
