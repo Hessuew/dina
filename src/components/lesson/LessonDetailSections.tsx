@@ -108,7 +108,7 @@ function AssignmentsHeader({
   onCreateAssignment: () => void
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-white/8 px-6 py-5">
+    <div className="flex flex-col items-start gap-4 border-b border-white/8 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="h-px w-8 bg-[#C5A059]/40" />
         <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
@@ -119,7 +119,11 @@ function AssignmentsHeader({
         </div>
       </div>
       {canManage && (
-        <Button theme="dark" onClick={onCreateAssignment}>
+        <Button
+          theme="dark"
+          className="w-full sm:w-auto"
+          onClick={onCreateAssignment}
+        >
           <PlusIcon className="size-3.5" />
           Add Assignment
         </Button>
