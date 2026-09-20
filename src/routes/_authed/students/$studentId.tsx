@@ -1,5 +1,6 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { CalendarIcon } from 'lucide-react'
+import { Fragment } from 'react'
 import type { CourseAssignmentGroup } from '@/utils/student/domain/student-detail-view.domain'
 import type { StudentDetailWithAssignments } from '@/types/student'
 import { PageLayout } from '@/components/layout/page-layout'
@@ -55,6 +56,18 @@ const ASSIGNMENT_DETAIL_SEARCH = {
   fromDashboard: false,
 } as const
 
+function StudentEmail({ email }: { email: string }) {
+  return email.split(/([@.])/).map((part, index) => {
+    if (part !== '@' && part !== '.') return part
+    return (
+      <Fragment key={`${part}-${index}`}>
+        {part}
+        <wbr />
+      </Fragment>
+    )
+  })
+}
+
 function StudentInfoCard({
   student,
 }: {
@@ -86,8 +99,8 @@ function StudentInfoCard({
           <h2 className="mt-1 font-serif text-2xl text-[#F8F4EC]">
             {student.fullName}
           </h2>
-          <p className="mt-0.5 truncate text-sm text-[#AFA28F]">
-            {student.email}
+          <p className="mt-0.5 text-sm break-words text-[#AFA28F]">
+            <StudentEmail email={student.email} />
           </p>
           {student.bio && (
             <p className="mt-3 text-sm leading-6 whitespace-pre-wrap text-[#CFC6B7]">
