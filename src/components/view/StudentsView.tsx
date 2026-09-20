@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
+import { Fragment } from 'react'
 import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-table/legacy'
 import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
 import type { StudentWithStats } from '@/types/student'
@@ -99,6 +100,18 @@ function statsColumns(): Array<ColumnDef<StudentWithStats, any>> {
   ]
 }
 
+function StudentEmail({ email }: { email: string }) {
+  return email.split(/([@.])/).map((part, index) => {
+    if (part !== '@' && part !== '.') return part
+    return (
+      <Fragment key={`${part}-${index}`}>
+        {part}
+        <wbr />
+      </Fragment>
+    )
+  })
+}
+
 function StudentMobileCard({ student }: { student: StudentWithStats }) {
   const initials = getInitials(student.fullName)
   const averageGrade = getAverageGrade(student)
@@ -122,8 +135,8 @@ function StudentMobileCard({ student }: { student: StudentWithStats }) {
             <h3 className="truncate font-medium text-[#F8F4EC]">
               {student.fullName}
             </h3>
-            <p className="mt-1 text-[0.7rem] break-all text-[#AFA28F] sm:text-[0.76rem]">
-              {student.email}
+            <p className="mt-1 text-[0.7rem] break-words text-[#AFA28F] sm:text-[0.76rem]">
+              <StudentEmail email={student.email} />
             </p>
           </div>
         </div>
