@@ -145,7 +145,7 @@ function StudentMobileCard({ student }: { student: StudentWithStats }) {
           params={{ studentId: student.id }}
           search={{ fromDashboard: false }}
           aria-label={`View ${student.fullName}`}
-          className="flex size-9 shrink-0 items-center justify-center border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] transition-colors hover:border-[#D6B16E] hover:text-white"
+          className="flex size-11 shrink-0 items-center justify-center border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] transition-colors hover:border-[#D6B16E] hover:text-white sm:size-9"
         >
           <ArrowRight className="size-4" />
         </Link>
