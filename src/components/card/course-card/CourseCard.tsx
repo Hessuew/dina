@@ -264,7 +264,7 @@ function CourseCardFooter({
         to="/courses/$courseId"
         params={{ courseId }}
         className={cn(
-          'flex size-8 cursor-pointer items-center justify-center border',
+          'flex size-11 cursor-pointer items-center justify-center border sm:size-8',
           theme.footerButton,
         )}
       >
