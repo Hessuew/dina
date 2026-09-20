@@ -172,7 +172,7 @@ function SectionHeader({
   action?: React.ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-white/8 px-6 py-5">
+    <div className="flex flex-col items-start gap-4 border-b border-white/8 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="h-px w-8 bg-[#C5A059]/40" />
         <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
@@ -253,7 +253,11 @@ function MaterialsSection({
         singular="Material"
         action={
           canManage && (
-            <Button theme="dark" onClick={onCreateMaterial}>
+            <Button
+              theme="dark"
+              className="w-full sm:w-auto"
+              onClick={onCreateMaterial}
+            >
               <PlusIcon className="size-3.5" />
               Add Material
             </Button>
@@ -524,7 +528,11 @@ function LessonsSection({
         action={
           canManage &&
           lessons.length < 3 && (
-            <Button theme="dark" onClick={onCreateLesson}>
+            <Button
+              theme="dark"
+              className="w-full sm:w-auto"
+              onClick={onCreateLesson}
+            >
               <PlusIcon className="size-3.5" />
               Add Lesson
             </Button>
