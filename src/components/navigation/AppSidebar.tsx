@@ -221,7 +221,7 @@ function BrandHeader() {
   return (
     <SidebarHeader>
       <SidebarMenu>
-        <SidebarMenuItem className="pl-0.5">
+        <SidebarMenuItem className="pr-12 pl-0.5 md:pr-0">
           <SidebarMenuButton
             size="lg"
             render={
