@@ -498,7 +498,7 @@ export function ProfileModal({
           />
 
           <DialogBody className="relative overflow-hidden">
-            <div className="grid h-full min-h-0 grid-rows-[minmax(12rem,0.88fr)_minmax(0,1.12fr)] lg:grid-cols-[minmax(16rem,0.92fr)_minmax(0,1.08fr)] lg:grid-rows-none">
+            <div className="grid h-full min-h-0 grid-rows-[minmax(10rem,0.55fr)_minmax(0,1.45fr)] lg:grid-cols-[minmax(16rem,0.92fr)_minmax(0,1.08fr)] lg:grid-rows-none">
               <ProfileAvatarPanel
                 user={user}
                 initials={m.initials}
