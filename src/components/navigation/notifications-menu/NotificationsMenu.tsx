@@ -335,7 +335,7 @@ export function NotificationsMenu() {
           />
           <DropdownMenuContent
             className={
-              'shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]border-white/10 min-w-80 rounded-none border bg-[#151515] p-0 text-[#F8F4EC]'
+              'w-[min(20rem,calc(75vw-1.5rem))] min-w-0 rounded-none border border-white/10 bg-[#151515] p-0 text-[#F8F4EC] shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)] md:w-(--anchor-width) md:min-w-80'
             }
             side={isMobile ? 'bottom' : 'right'}
             align="end"
