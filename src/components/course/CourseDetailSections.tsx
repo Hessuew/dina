@@ -128,7 +128,7 @@ function CourseProgressCard({
     <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
       <DarkCard label="Your Progress">
         <div>
-          <div className="mt-5 flex items-baseline justify-between">
+          <div className="mt-5 flex flex-col items-start gap-1 sm:flex-row sm:items-baseline sm:justify-between">
             <span className="font-serif text-2xl text-[#E9D9B4]">
               {completedCount}
             </span>
