@@ -304,7 +304,7 @@ function EnrollmentsPageHeader({
   onSendEmailCampaign,
 }: EnrollmentsPageHeaderProps) {
   return (
-    <div className="mb-10 flex items-end justify-between gap-6">
+    <div className="mb-10 flex flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <div className="h-px w-10 bg-[#C5A059]/50" />
         <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">
@@ -314,10 +314,11 @@ function EnrollmentsPageHeader({
           Review public enrolment submissions
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
         <Button
           theme="light"
           variant={viewAllButton.variant}
+          className="w-full sm:w-auto"
           onClick={onToggleViewAll}
         >
           <EyeIcon className="size-3.5" />
