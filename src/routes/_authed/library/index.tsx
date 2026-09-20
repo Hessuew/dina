@@ -480,7 +480,7 @@ function LibraryHeader({
   onImport: () => void
 }) {
   return (
-    <div className="mb-8 flex items-start justify-between gap-4">
+    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <div className="h-px w-8 bg-[#9B7A41]/50" />
         <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
@@ -495,12 +495,21 @@ function LibraryHeader({
       </div>
 
       {canCreate && (
-        <div className="flex flex-wrap gap-2">
-          <Button theme="light" variant="outline" onClick={onImport}>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+          <Button
+            className="w-full sm:w-auto"
+            theme="light"
+            variant="outline"
+            onClick={onImport}
+          >
             <FileTextIcon className="size-4" />
             Import eBooks
           </Button>
-          <Button theme="light" onClick={() => openDialog('create')}>
+          <Button
+            className="w-full sm:w-auto"
+            theme="light"
+            onClick={() => openDialog('create')}
+          >
             <PlusIcon className="size-4" />
             Add Media
           </Button>
