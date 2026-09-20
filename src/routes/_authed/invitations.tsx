@@ -30,7 +30,7 @@ function InvitationsPage() {
 
   return (
     <PageLayout>
-      <div className="mb-10 flex items-end justify-between gap-6">
+      <div className="mb-10 flex flex-col items-start gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="h-px w-10 bg-[#C5A059]/50" />
           <h1 className="mt-3 font-serif text-3xl tracking-[-0.02em] text-[#1C1815]">
