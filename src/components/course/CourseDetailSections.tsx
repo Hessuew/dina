@@ -363,7 +363,8 @@ function LessonActions({
           variant="ghost"
           theme="dark"
           size="icon"
-          className="size-8 border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E]"
+          aria-label={`Open ${lesson.title}`}
+          className="size-11 border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E] sm:size-8"
           onClick={() => onOpenLesson(lesson.id)}
         >
           <ArrowRight className="size-3.5" />
