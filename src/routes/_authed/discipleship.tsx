@@ -38,7 +38,7 @@ function StaffPage({
 }) {
   return (
     <>
-      <div className="mb-6">
+      <div className="mb-6 pt-2 md:pt-0">
         <h1 className="font-serif text-2xl tracking-[-0.01em] text-[#2B2417]">
           Discipleship
         </h1>
@@ -60,7 +60,7 @@ function StudentPage({
 }) {
   return (
     <>
-      <div className="mb-6">
+      <div className="mb-6 pt-2 md:pt-0">
         <h1 className="font-serif text-2xl tracking-[-0.01em] text-[#2B2417]">
           Discipleship
         </h1>
