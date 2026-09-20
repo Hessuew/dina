@@ -313,7 +313,12 @@ export function CourseCard({
   return (
     <div
       data-dashboard-course-card
-      className={cn('min-w-0 border', theme.card)}
+      className={cn(
+        'min-w-0 border',
+        theme.card,
+        !isTeacher &&
+          '[&>div>div>div.relative.flex>div.flex.flex-wrap>div]:ml-auto',
+      )}
     >
       <div
         className={cn('relative overflow-hidden border-b', theme.imageBorder)}
