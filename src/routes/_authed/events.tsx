@@ -144,7 +144,7 @@ function useEventColumns(
 
 function EventsPageHeader({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="mb-8 flex items-start justify-between gap-4">
+    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <div className="h-px w-8 bg-[#9B7A41]/50" />
         <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
@@ -157,7 +157,7 @@ function EventsPageHeader({ onCreate }: { onCreate: () => void }) {
           Manage lessons, chapel services, exams, and school-wide occasions
         </p>
       </div>
-      <Button theme="light" onClick={onCreate}>
+      <Button className="w-full sm:w-auto" theme="light" onClick={onCreate}>
         <PlusIcon className="size-4" />
         Create Event
       </Button>
