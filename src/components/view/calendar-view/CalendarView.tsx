@@ -37,7 +37,7 @@ function CalendarHeader({
           variant="ghost"
           theme="dark"
           size="icon"
-          className="h-8 w-8"
+          className="size-11 sm:size-8"
           onClick={onPrevious}
         >
           <ChevronLeftIcon className="size-3.5" />
@@ -46,7 +46,7 @@ function CalendarHeader({
           variant="ghost"
           theme="dark"
           size="sm"
-          className="h-8 gap-1.5 text-[0.72rem] tracking-[0.12em] uppercase"
+          className="h-11 gap-1.5 text-[0.72rem] tracking-[0.12em] uppercase sm:h-8"
           onClick={onToday}
           disabled={isCurrentMonth}
         >
@@ -57,7 +57,7 @@ function CalendarHeader({
           variant="ghost"
           theme="dark"
           size="icon"
-          className="h-8 w-8"
+          className="size-11 sm:size-8"
           onClick={onNext}
         >
           <ChevronRightIcon className="size-3.5" />
