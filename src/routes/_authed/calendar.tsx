@@ -113,7 +113,7 @@ function CalendarTypeFilter({
       value={selectedType}
       onValueChange={(value) => setSelectedType(value ?? 'all')}
     >
-      <SelectTrigger className="w-[148px] rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40">
+      <SelectTrigger className="w-full rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40 sm:w-[148px]">
         <SelectValue>{TYPE_LABELS[selectedType]}</SelectValue>
       </SelectTrigger>
       <SelectContent className="rounded-none">
@@ -147,7 +147,7 @@ function CalendarCourseFilter({
       value={selectedCourse}
       onValueChange={(value) => setSelectedCourse(value ?? 'all')}
     >
-      <SelectTrigger className="w-[200px] rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40">
+      <SelectTrigger className="w-full rounded-none border-[#1A1A1A]/12 bg-white/70 text-[#4E463D] hover:border-[#C5A059]/40 sm:w-[200px]">
         <SelectValue>
           {selectedCourse === 'all'
             ? 'All Courses'
@@ -182,7 +182,7 @@ function CalendarPageHeader(props: CalendarFilterProps) {
             Lessons, assignments &amp; special events
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <CalendarTypeFilter
             selectedType={props.selectedType}
             setSelectedType={props.setSelectedType}
