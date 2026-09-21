@@ -1,12 +1,19 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { FileTextIcon, PlusIcon } from 'lucide-react'
+import {
+  EyeIcon,
+  FileTextIcon,
+  PencilIcon,
+  PlusIcon,
+  Trash2Icon,
+} from 'lucide-react'
 import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-table/legacy'
 import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
 import type { MediaLibraryRow } from '@/utils/library'
 import type { Role } from '@/utils/authz/types'
 import { useDialogState } from '@/hooks/useDialogState'
 import { Button } from '@/components/ui/button'
+import { ButtonLink } from '@/components/ui/button-link'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { getLibraryMedia } from '@/utils/library'
 import {
@@ -207,9 +214,130 @@ function LibraryShelves({
 type LibraryManageSectionProps = {
   columns: Array<ColumnDef<MediaLibraryRow, any>>
   media: Array<MediaLibraryRow>
+  openDialog: OpenLibraryDialog
+  viewer: { id: string; role: Role }
 }
 
-function LibraryManageSection({ columns, media }: LibraryManageSectionProps) {
+function LibraryMobileMeta({
+  media,
+  viewerRole,
+}: {
+  media: MediaLibraryRow
+  viewerRole: Role
+}) {
+  return (
+    <div className="mt-4 grid grid-cols-2 gap-3 border-y border-white/10 py-3">
+      <div>
+        <p className="text-[0.62rem] font-medium tracking-[0.16em] text-[#8E816D] uppercase">
+          Type
+        </p>
+        <p className="mt-1 text-sm text-[#D6CCBE]">
+          {media.fileType.replace('_', ' ')}
+        </p>
+      </div>
+      <div>
+        <p className="text-[0.62rem] font-medium tracking-[0.16em] text-[#8E816D] uppercase">
+          Published
+        </p>
+        <div className="mt-1">
+          <PublishedCell
+            isPublished={media.isPublished}
+            viewerRole={viewerRole}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LibraryMobileActions({
+  media,
+  canManage,
+  onEdit,
+  onDelete,
+}: {
+  media: MediaLibraryRow
+  canManage: boolean
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      <ButtonLink
+        to="/library/$mediaId"
+        params={{ mediaId: media.id }}
+        size="sm"
+        theme="dark"
+      >
+        <EyeIcon className="size-3.5" />
+        View
+      </ButtonLink>
+      {canManage && (
+        <>
+          <Button type="button" size="sm" theme="dark" onClick={onEdit}>
+            <PencilIcon className="size-3.5" />
+            Edit
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            theme="dark"
+            variant="outline"
+            onClick={onDelete}
+          >
+            <Trash2Icon className="size-3.5" />
+            Delete
+          </Button>
+        </>
+      )}
+    </div>
+  )
+}
+
+function LibraryMobileCard({
+  media,
+  canManage,
+  viewerRole,
+  onEdit,
+  onDelete,
+}: {
+  media: MediaLibraryRow
+  canManage: boolean
+  viewerRole: Role
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  return (
+    <article className="border border-white/10 bg-[#151515]/88 p-4 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
+      <div className="flex items-start gap-3">
+        <ThumbCell row={media} />
+        <div className="min-w-0 flex-1">
+          <h3 className="font-serif text-lg break-words text-[#F8F4EC]">
+            {media.title}
+          </h3>
+          <p className="mt-1 text-xs break-words text-[#AFA28F]">
+            {media.category}
+          </p>
+        </div>
+      </div>
+
+      <LibraryMobileMeta media={media} viewerRole={viewerRole} />
+      <LibraryMobileActions
+        media={media}
+        canManage={canManage}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    </article>
+  )
+}
+
+function LibraryManageSection({
+  columns,
+  media,
+  openDialog,
+  viewer,
+}: LibraryManageSectionProps) {
   return (
     <div className="mt-16">
       <div className="mb-6">
@@ -226,6 +354,15 @@ function LibraryManageSection({ columns, media }: LibraryManageSectionProps) {
         data={media}
         pageSize={15}
         searchPlaceholder="Search library…"
+        renderMobileRow={(row) => (
+          <LibraryMobileCard
+            media={row}
+            canManage={canManageMediaRow(viewer, row)}
+            viewerRole={viewer.role}
+            onEdit={() => openDialog('edit', row)}
+            onDelete={() => openDialog('delete', row)}
+          />
+        )}
       />
     </div>
   )
@@ -238,6 +375,7 @@ type LibraryBodyProps = {
   shelves: ReturnType<typeof getVisibleShelfTopics>['shelves']
   shelfTopics: ReturnType<typeof getVisibleShelfTopics>['shelfTopics']
   viewerRole: Role
+  viewer: { id: string; role: Role }
   openDialog: OpenLibraryDialog
 }
 
@@ -248,6 +386,7 @@ function LibraryBody({
   shelves,
   shelfTopics,
   viewerRole,
+  viewer,
   openDialog,
 }: LibraryBodyProps) {
   if (media.length === 0) {
@@ -274,7 +413,14 @@ function LibraryBody({
         openDialog={openDialog}
       />
 
-      {canCreate && <LibraryManageSection columns={columns} media={media} />}
+      {canCreate && (
+        <LibraryManageSection
+          columns={columns}
+          media={media}
+          openDialog={openDialog}
+          viewer={viewer}
+        />
+      )}
     </>
   )
 }
@@ -334,7 +480,7 @@ function LibraryHeader({
   onImport: () => void
 }) {
   return (
-    <div className="mb-8 flex items-start justify-between gap-4">
+    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <div className="h-px w-8 bg-[#9B7A41]/50" />
         <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
@@ -349,12 +495,21 @@ function LibraryHeader({
       </div>
 
       {canCreate && (
-        <div className="flex flex-wrap gap-2">
-          <Button theme="light" variant="outline" onClick={onImport}>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+          <Button
+            className="w-full sm:w-auto"
+            theme="light"
+            variant="outline"
+            onClick={onImport}
+          >
             <FileTextIcon className="size-4" />
             Import eBooks
           </Button>
-          <Button theme="light" onClick={() => openDialog('create')}>
+          <Button
+            className="w-full sm:w-auto"
+            theme="light"
+            onClick={() => openDialog('create')}
+          >
             <PlusIcon className="size-4" />
             Add Media
           </Button>
@@ -451,6 +606,7 @@ function LibraryComponent() {
         shelves={shelves}
         shelfTopics={shelfTopics}
         viewerRole={viewer.role}
+        viewer={viewer}
         openDialog={openDialog}
       />
 

@@ -5,6 +5,7 @@ import type { StudentDetailWithAssignments } from '@/types/student'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { StudentAttendanceDetail } from '@/components/view/students-view/StudentAttendanceDetail'
+import { StudentEmail } from '@/components/view/students-view/StudentEmail'
 import { useIntentPreload } from '@/hooks/useIntentPreload'
 import { getStudentDetail } from '@/utils/student'
 import { checkTeacherAccess } from '@/utils/auth/admin'
@@ -86,8 +87,8 @@ function StudentInfoCard({
           <h2 className="mt-1 font-serif text-2xl text-[#F8F4EC]">
             {student.fullName}
           </h2>
-          <p className="mt-0.5 truncate text-sm text-[#AFA28F]">
-            {student.email}
+          <p className="mt-0.5 text-sm break-words text-[#AFA28F]">
+            <StudentEmail email={student.email} />
           </p>
           {student.bio && (
             <p className="mt-3 text-sm leading-6 whitespace-pre-wrap text-[#CFC6B7]">

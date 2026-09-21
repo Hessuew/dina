@@ -249,7 +249,7 @@ function SidebarMobile({
         data-slot="sidebar"
         data-mobile="true"
         className={cn(
-          'bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden',
+          'bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>[data-slot=sheet-close]]:top-2 [&>[data-slot=sheet-close]]:right-2 [&>[data-slot=sheet-close]]:size-11 [&>[data-slot=sheet-close]]:border-[#C5A059]/55 [&>[data-slot=sheet-close]]:bg-[#1A1716] [&>[data-slot=sheet-close]]:bg-none [&>[data-slot=sheet-close]]:text-[#E9D9B4] [&>[data-slot=sheet-close]]:hover:bg-[#2A2A2A] [&>[data-slot=sheet-close]]:hover:text-white',
           className,
         )}
         style={

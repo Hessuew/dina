@@ -39,7 +39,7 @@ function MediaCardWithActions({
   )
 
   return (
-    <div className="group relative w-80 shrink-0 snap-start sm:w-auto">
+    <div className="group relative w-80 shrink-0 snap-start max-[22rem]:w-[calc(100vw-3rem)] sm:w-auto">
       <MediaCard item={item} viewerRole={viewerRole} />
       {canManage && permissions && onEditMedia && onDeleteMedia && (
         <div

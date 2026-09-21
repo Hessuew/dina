@@ -4,8 +4,11 @@ import {
   AlertTriangleIcon,
   BookOpenIcon,
   CalendarDaysIcon,
+  EyeIcon,
   HeartHandshakeIcon,
+  PencilIcon,
   PlusIcon,
+  Trash2Icon,
   UserIcon,
 } from 'lucide-react'
 import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-table/legacy'
@@ -141,7 +144,7 @@ function useEventColumns(
 
 function EventsPageHeader({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="mb-8 flex items-start justify-between gap-4">
+    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <div className="h-px w-8 bg-[#9B7A41]/50" />
         <div className="mt-2 text-[0.68rem] font-medium tracking-[0.3em] text-[#9B7A41] uppercase">
@@ -154,7 +157,7 @@ function EventsPageHeader({ onCreate }: { onCreate: () => void }) {
           Manage lessons, chapel services, exams, and school-wide occasions
         </p>
       </div>
-      <Button theme="light" onClick={onCreate}>
+      <Button className="w-full sm:w-auto" theme="light" onClick={onCreate}>
         <PlusIcon className="size-4" />
         Create Event
       </Button>
@@ -162,14 +165,140 @@ function EventsPageHeader({ onCreate }: { onCreate: () => void }) {
   )
 }
 
+type EventMobileCardProps = {
+  event: CalendarEventRow
+  onView: (event: CalendarEventRow) => void
+  onEdit: (event: CalendarEventRow) => void
+  onDelete: (event: CalendarEventRow) => void
+}
+
+function EventMobileDetails({ event }: { event: CalendarEventRow }) {
+  return (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-serif text-lg break-words text-[#F8F4EC]">
+            {event.title}
+          </h3>
+          <p className="mt-1 text-xs text-[#AFA28F]">
+            {event.courseName ?? 'School-wide event'}
+          </p>
+        </div>
+        <EventCategoryCell category={event.category} />
+      </div>
+
+      <div className="mt-4 grid gap-3 border-y border-white/10 py-3 sm:grid-cols-2">
+        <EventMobileDetail label="Starts">
+          <ViewerDateTime value={event.startTime} pattern="PPp" />
+        </EventMobileDetail>
+        <EventMobileDetail label="Ends">
+          {event.endTime ? (
+            <ViewerDateTime value={event.endTime} pattern="PPp" />
+          ) : (
+            '—'
+          )}
+        </EventMobileDetail>
+        <EventMobileDetail label="Location" className="sm:col-span-2">
+          {event.location || '—'}
+        </EventMobileDetail>
+      </div>
+    </>
+  )
+}
+
+function EventMobileDetail({
+  label,
+  className,
+  children,
+}: {
+  label: string
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={className}>
+      <p className="text-[0.62rem] font-medium tracking-[0.16em] text-[#8E816D] uppercase">
+        {label}
+      </p>
+      <p className="mt-1 text-sm break-words text-[#D6CCBE]">{children}</p>
+    </div>
+  )
+}
+
+function EventMobileActions({
+  event,
+  onView,
+  onEdit,
+  onDelete,
+}: Pick<EventMobileCardProps, 'event' | 'onView' | 'onEdit' | 'onDelete'>) {
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      <Button
+        type="button"
+        size="sm"
+        theme="dark"
+        onClick={() => onView(event)}
+      >
+        <EyeIcon className="size-3.5" />
+        View
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        theme="dark"
+        onClick={() => onEdit(event)}
+      >
+        <PencilIcon className="size-3.5" />
+        Edit
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        theme="dark"
+        variant="outline"
+        onClick={() => onDelete(event)}
+      >
+        <Trash2Icon className="size-3.5" />
+        Delete
+      </Button>
+    </div>
+  )
+}
+
+function EventMobileCard({
+  event,
+  onView,
+  onEdit,
+  onDelete,
+}: EventMobileCardProps) {
+  return (
+    <article className="border border-white/10 bg-[#151515]/88 p-4 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
+      <EventMobileDetails event={event} />
+
+      <EventMobileActions
+        event={event}
+        onView={onView}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    </article>
+  )
+}
+
 function EventsTableSection({
   events,
   columns,
   onCreate,
+  onView,
+  onEdit,
+  onDelete,
 }: {
   events: Array<CalendarEventRow>
   columns: Array<ColumnDef<CalendarEventRow, any>>
   onCreate: () => void
+  onView: (event: CalendarEventRow) => void
+  onEdit: (event: CalendarEventRow) => void
+  onDelete: (event: CalendarEventRow) => void
 }) {
   if (events.length === 0) {
     return (
@@ -190,6 +319,14 @@ function EventsTableSection({
       data={events}
       pageSize={15}
       searchPlaceholder="Search events…"
+      renderMobileRow={(event) => (
+        <EventMobileCard
+          event={event}
+          onView={onView}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      )}
     />
   )
 }
@@ -214,6 +351,9 @@ function EventsComponent() {
         events={events}
         columns={columns}
         onCreate={() => openDialog('create')}
+        onView={(event) => openDialog('view', event)}
+        onEdit={(event) => openDialog('edit', event)}
+        onDelete={(event) => openDialog('delete', event)}
       />
 
       {isOpen && (

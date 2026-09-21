@@ -128,7 +128,7 @@ function CourseProgressCard({
     <div className="border border-white/10 bg-[#171717]/72 shadow-[0_42px_100px_-52px_rgba(0,0,0,0.82)]">
       <DarkCard label="Your Progress">
         <div>
-          <div className="mt-5 flex items-baseline justify-between">
+          <div className="mt-5 flex flex-col items-start gap-1 sm:flex-row sm:items-baseline sm:justify-between">
             <span className="font-serif text-2xl text-[#E9D9B4]">
               {completedCount}
             </span>
@@ -172,7 +172,7 @@ function SectionHeader({
   action?: React.ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-white/8 px-6 py-5">
+    <div className="flex flex-col items-start gap-4 border-b border-white/8 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="h-px w-8 bg-[#C5A059]/40" />
         <div className="mt-2 text-[0.62rem] font-medium tracking-[0.3em] text-[#8E816D] uppercase">
@@ -253,7 +253,11 @@ function MaterialsSection({
         singular="Material"
         action={
           canManage && (
-            <Button theme="dark" onClick={onCreateMaterial}>
+            <Button
+              theme="dark"
+              className="w-full sm:w-auto"
+              onClick={onCreateMaterial}
+            >
               <PlusIcon className="size-3.5" />
               Add Material
             </Button>
@@ -363,7 +367,8 @@ function LessonActions({
           variant="ghost"
           theme="dark"
           size="icon"
-          className="size-8 border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E]"
+          aria-label={`Open ${lesson.title}`}
+          className="size-11 border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] hover:border-[#D6B16E] sm:size-8"
           onClick={() => onOpenLesson(lesson.id)}
         >
           <ArrowRight className="size-3.5" />
@@ -470,15 +475,15 @@ function LessonRowBody({
 
 function LessonRowMeta({ lesson }: { lesson: Lesson }) {
   return (
-    <div className="mt-2 flex items-center gap-4 text-[0.68rem] text-[#8E816D]">
+    <div className="mt-2 flex flex-col items-start gap-1 text-[0.68rem] text-[#8E816D] sm:flex-row sm:items-center sm:gap-4">
       {lesson.duration && (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 whitespace-nowrap">
           <ClockIcon className="size-3" />
           <span>{lesson.duration} min</span>
         </div>
       )}
       {lesson.scheduledTime && (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 whitespace-nowrap">
           <CalendarIcon className="size-3" />
           <ViewerDateTime value={lesson.scheduledTime} pattern="Pp" />
         </div>
@@ -523,7 +528,11 @@ function LessonsSection({
         action={
           canManage &&
           lessons.length < 3 && (
-            <Button theme="dark" onClick={onCreateLesson}>
+            <Button
+              theme="dark"
+              className="w-full sm:w-auto"
+              onClick={onCreateLesson}
+            >
               <PlusIcon className="size-3.5" />
               Add Lesson
             </Button>

@@ -129,7 +129,7 @@ export function TeacherModal({
                 variant="ghost"
                 theme="dark"
                 size="icon"
-                className="shrink-0"
+                className="size-11 shrink-0 lg:size-8"
                 onClick={() => onOpenChange(false)}
               >
                 <XIcon className="size-3.5" />

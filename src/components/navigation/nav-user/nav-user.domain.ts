@@ -23,7 +23,7 @@ export function buildUserTextView({
     displayName: user.fullName || user.email,
     email: user.email,
     containerClassName: cn(
-      'grid flex-1 text-left',
+      'grid min-w-0 flex-1 text-left',
       compact ? 'text-sm leading-tight' : 'leading-tight',
     ),
     nameClassName: cn(

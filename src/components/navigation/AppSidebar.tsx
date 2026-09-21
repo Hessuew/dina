@@ -139,6 +139,8 @@ const adminNavItems: Array<NavItem> = [
 
 function NavItemList({ items }: { items: Array<NavItem> }) {
   const routerState = useRouterState()
+  const { setOpenMobile } = useSidebar()
+
   return (
     <SidebarMenu>
       {items.map((item) => {
@@ -155,7 +157,11 @@ function NavItemList({ items }: { items: Array<NavItem> }) {
               )}
               isActive={isActive}
               render={
-                <Link className="py-0" to={item.url}>
+                <Link
+                  className="py-0"
+                  to={item.url}
+                  onClick={() => setOpenMobile(false)}
+                >
                   <span className="flex h-full w-full flex-row items-center gap-2 py-2">
                     <Icon size={18} className="shrink-0" />
                     <span>{item.title}</span>
@@ -215,7 +221,7 @@ function BrandHeader() {
   return (
     <SidebarHeader>
       <SidebarMenu>
-        <SidebarMenuItem className="pl-0.5">
+        <SidebarMenuItem className="pr-12 pl-0.5 md:pr-0">
           <SidebarMenuButton
             size="lg"
             render={
@@ -250,7 +256,11 @@ export function AppSidebar({
   ...props
 }: AppSidebarProps & React.ComponentProps<typeof Sidebar>) {
   const router = useRouter()
-  const { state } = useSidebar()
+  const { state, setOpenMobile } = useSidebar()
+
+  React.useEffect(() => {
+    setOpenMobile(false)
+  }, [role, setOpenMobile, user?.id])
 
   const isTeacherOrAdmin = role === 'teacher' || role === 'admin'
 

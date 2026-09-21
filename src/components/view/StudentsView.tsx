@@ -1,9 +1,12 @@
+import { Link } from '@tanstack/react-router'
+import { ArrowRight } from 'lucide-react'
 import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-table/legacy'
 import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
 import type { StudentWithStats } from '@/types/student'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
 import { AttendanceScoreCell } from '@/components/view/students-view/AttendanceScoreCell'
+import { StudentEmail } from '@/components/view/students-view/StudentEmail'
 import { SessionImage } from '@/components/ui/session-image'
 
 type StudentsViewProps = {
@@ -97,6 +100,67 @@ function statsColumns(): Array<ColumnDef<StudentWithStats, any>> {
   ]
 }
 
+function StudentMobileCard({ student }: { student: StudentWithStats }) {
+  const initials = getInitials(student.fullName)
+  const averageGrade = getAverageGrade(student)
+
+  return (
+    <article className="border border-white/10 bg-[#151515]/88 p-4 shadow-[0_22px_44px_-28px_rgba(0,0,0,0.6)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          {student.avatarUrl ? (
+            <SessionImage
+              src={student.avatarUrl}
+              alt={student.fullName}
+              className="size-10 shrink-0 border border-white/10 object-cover"
+            />
+          ) : (
+            <div className="flex size-10 shrink-0 items-center justify-center border border-[#C5A059]/30 bg-[#1C1A17] text-[0.68rem] font-medium text-[#E9D9B4]">
+              {initials}
+            </div>
+          )}
+          <div className="min-w-0">
+            <h3 className="truncate font-medium text-[#F8F4EC]">
+              {student.fullName}
+            </h3>
+            <p className="mt-1 text-[0.7rem] break-words text-[#AFA28F] sm:text-[0.76rem]">
+              <StudentEmail email={student.email} />
+            </p>
+          </div>
+        </div>
+        <Link
+          to="/students/$studentId"
+          params={{ studentId: student.id }}
+          search={{ fromDashboard: false }}
+          aria-label={`View ${student.fullName}`}
+          className="flex size-11 shrink-0 items-center justify-center border border-[#C5A059]/35 bg-[#1A1716] text-[#E9D9B4] transition-colors hover:border-[#D6B16E] hover:text-white sm:size-9"
+        >
+          <ArrowRight className="size-4" />
+        </Link>
+      </div>
+
+      <div className="mt-4 grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-2">
+        <div className="min-w-0">
+          <p className="text-[0.64rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+            Attendance
+          </p>
+          <div className="mt-2">
+            <AttendanceScoreCell scores={student.attendanceByCourse} />
+          </div>
+        </div>
+        <div>
+          <p className="text-[0.64rem] font-medium tracking-[0.18em] text-[#8E816D] uppercase">
+            Avg grade
+          </p>
+          <p className="mt-2 text-sm text-[#D4B373]">
+            {averageGrade === null ? '—' : `${averageGrade}%`}
+          </p>
+        </div>
+      </div>
+    </article>
+  )
+}
+
 export function StudentsView({ students }: StudentsViewProps) {
   const columns: Array<ColumnDef<StudentWithStats, any>> = [
     nameColumn(),
@@ -120,6 +184,7 @@ export function StudentsView({ students }: StudentsViewProps) {
         data={students}
         pageSize={15}
         searchPlaceholder="Search by name or email…"
+        renderMobileRow={(student) => <StudentMobileCard student={student} />}
       />
     </div>
   )

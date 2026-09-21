@@ -2,6 +2,7 @@ import { ArrowRight, BookOpenIcon } from 'lucide-react'
 import type {
   CourseCardRole,
   CourseCardVariant,
+  CourseCardViewModel,
 } from '@/components/card/course-card/course-card.domain'
 import { cn } from '@/lib/utils'
 import { TeacherAvatars } from '@/components/avatars/TeacherAvatars'
@@ -103,15 +104,20 @@ function CourseStatusBadge({ isPublished }: { isPublished: boolean }) {
 
 function CourseTeacherChip({
   courseTeachers,
+  className,
 }: {
   courseTeachers: CourseCardCourse['courseTeachers']
+  className?: string
 }) {
   if (!courseTeachers?.length) return null
 
   return (
     <div
       data-course-teachers
-      className="max-w-full min-w-0 border border-white/12 bg-black/24 px-3 py-3 shadow-[0_24px_40px_-30px_rgba(0,0,0,0.55)] backdrop-blur-sm"
+      className={cn(
+        'max-w-full min-w-0 border border-white/12 bg-black/24 px-3 py-3 shadow-[0_24px_40px_-30px_rgba(0,0,0,0.55)] backdrop-blur-sm',
+        className,
+      )}
     >
       <div className="text-[0.58rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
         Teachers
@@ -127,16 +133,63 @@ function CourseTeacherChip({
   )
 }
 
+function CourseImageOverlay({
+  course,
+  isTeacher,
+  lessonCount,
+  overlayItemClass,
+}: {
+  course: CourseCardCourse
+  isTeacher: boolean
+  lessonCount: number
+  overlayItemClass?: string
+}) {
+  return (
+    <div className="relative flex min-h-48 flex-col justify-between p-5 sm:min-h-56 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        {isTeacher && <CourseStatusBadge isPublished={course.isPublished} />}
+        <div
+          className={cn(
+            'border border-white/12 bg-black/18 px-3 py-2 text-[0.8rem] font-medium tracking-[0.26em] text-[#E9D9B4] uppercase',
+            overlayItemClass,
+          )}
+        >
+          {String(course.orderIndex ?? 0).padStart(2, '0')}
+        </div>
+      </div>
+
+      <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
+        <CourseTeacherChip
+          courseTeachers={course.courseTeachers}
+          className={overlayItemClass}
+        />
+        <div
+          data-course-lessons
+          className={cn(
+            'flex min-w-0 items-center gap-1.5 text-[0.62rem] font-medium tracking-[0.18em] text-[#AFA28F] uppercase',
+            overlayItemClass,
+          )}
+        >
+          <BookOpenIcon className="size-3" />
+          {lessonCount} lessons
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CourseImage({
   course,
   isTeacher,
   lessonCount,
   theme,
+  overlayItemClass,
 }: {
   course: CourseCardCourse
   isTeacher: boolean
   lessonCount: number
   theme: CourseCardTheme
+  overlayItemClass?: string
 }) {
   const thumbnailUrl = useSessionPrivateImageUrl(course.thumbnailUrl)
 
@@ -163,25 +216,12 @@ function CourseImage({
       }}
     >
       <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_38%,rgba(197,160,89,0.10)_100%)]" />
-      <div className="relative flex min-h-48 flex-col justify-between p-5 sm:min-h-56 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          {isTeacher && <CourseStatusBadge isPublished={course.isPublished} />}
-          <div className="border border-white/12 bg-black/18 px-3 py-2 text-[0.8rem] font-medium tracking-[0.26em] text-[#E9D9B4] uppercase">
-            {String(course.orderIndex ?? 0).padStart(2, '0')}
-          </div>
-        </div>
-
-        <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
-          <CourseTeacherChip courseTeachers={course.courseTeachers} />
-          <div
-            data-course-lessons
-            className="flex min-w-0 items-center gap-1.5 text-[0.62rem] font-medium tracking-[0.18em] text-[#AFA28F] uppercase"
-          >
-            <BookOpenIcon className="size-3" />
-            {lessonCount} lessons
-          </div>
-        </div>
-      </div>
+      <CourseImageOverlay
+        course={course}
+        isTeacher={isTeacher}
+        lessonCount={lessonCount}
+        overlayItemClass={overlayItemClass}
+      />
     </div>
   )
 }
@@ -264,7 +304,7 @@ function CourseCardFooter({
         to="/courses/$courseId"
         params={{ courseId }}
         className={cn(
-          'flex size-8 cursor-pointer items-center justify-center border',
+          'flex size-11 cursor-pointer items-center justify-center border sm:size-8',
           theme.footerButton,
         )}
       >
@@ -293,22 +333,55 @@ function CourseDescription({
   )
 }
 
+function CourseCardDetail({
+  course,
+  vm,
+  theme,
+}: {
+  course: CourseCardCourse
+  vm: CourseCardViewModel
+  theme: CourseCardTheme
+}) {
+  return (
+    <div className={cn('px-5 py-5 sm:px-6 sm:py-6', theme.detail)}>
+      <h3
+        className={cn(
+          'font-serif text-lg leading-tight sm:text-xl',
+          theme.title,
+        )}
+      >
+        {course.title}
+      </h3>
+
+      {vm.hasDescription && (
+        <CourseDescription description={course.description} theme={theme} />
+      )}
+
+      {vm.showProgress && (
+        <CourseProgress
+          submittedCount={vm.submittedCount}
+          gradedCount={vm.gradedCount}
+          totalAssignments={vm.totalAssignments}
+          theme={theme}
+        />
+      )}
+
+      <CourseCardFooter
+        courseId={course.id}
+        isTeacher={vm.isTeacher}
+        theme={theme}
+      />
+    </div>
+  )
+}
+
 export function CourseCard({
   course,
   role,
   variant = 'dark',
 }: CourseCardProps) {
-  const {
-    isTeacher,
-    lessonCount,
-    submittedCount,
-    gradedCount,
-    totalAssignments,
-    isDark,
-    hasDescription,
-    showProgress,
-  } = buildCourseCardViewModel({ course, role, variant })
-  const theme = getCourseCardTheme(isDark)
+  const vm = buildCourseCardViewModel({ course, role, variant })
+  const theme = getCourseCardTheme(vm.isDark)
 
   return (
     <div
@@ -320,41 +393,14 @@ export function CourseCard({
       >
         <CourseImage
           course={course}
-          isTeacher={isTeacher}
-          lessonCount={lessonCount}
+          isTeacher={vm.isTeacher}
+          lessonCount={vm.lessonCount}
           theme={theme}
+          overlayItemClass={vm.isTeacher ? undefined : 'ml-auto'}
         />
       </div>
 
-      <div className={cn('px-5 py-5 sm:px-6 sm:py-6', theme.detail)}>
-        <h3
-          className={cn(
-            'font-serif text-lg leading-tight sm:text-xl',
-            theme.title,
-          )}
-        >
-          {course.title}
-        </h3>
-
-        {hasDescription && (
-          <CourseDescription description={course.description} theme={theme} />
-        )}
-
-        {showProgress && (
-          <CourseProgress
-            submittedCount={submittedCount}
-            gradedCount={gradedCount}
-            totalAssignments={totalAssignments}
-            theme={theme}
-          />
-        )}
-
-        <CourseCardFooter
-          courseId={course.id}
-          isTeacher={isTeacher}
-          theme={theme}
-        />
-      </div>
+      <CourseCardDetail course={course} vm={vm} theme={theme} />
     </div>
   )
 }

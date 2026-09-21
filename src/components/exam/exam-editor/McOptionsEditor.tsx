@@ -30,7 +30,10 @@ export function McOptionsEditor({
   return (
     <div className="space-y-2">
       {options.map((option, index) => (
-        <div key={index} className="flex items-center gap-3">
+        <div
+          key={index}
+          className="flex flex-col gap-2 sm:flex-row sm:items-center"
+        >
           <label className="flex shrink-0 items-center gap-1.5 text-xs text-[#8E816D]">
             <input
               type="radio"
@@ -46,10 +49,15 @@ export function McOptionsEditor({
             onChange={(event) => setLabel(index, event.target.value)}
             placeholder={`Option ${index + 1}`}
             disabled={readOnly}
-            className="max-w-md"
+            className="w-full sm:max-w-md sm:flex-1"
           />
           {!readOnly && options.length > 2 && (
-            <Button size="xs" variant="ghost" onClick={() => remove(index)}>
+            <Button
+              size="xs"
+              variant="ghost"
+              className="self-start sm:self-auto"
+              onClick={() => remove(index)}
+            >
               Remove
             </Button>
           )}

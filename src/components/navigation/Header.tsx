@@ -19,8 +19,8 @@ export function Header({ user }: HeaderProps) {
   }
 
   return (
-    <header className="absolute top-0 z-40 flex h-12 w-full shrink-0 flex-row items-center justify-between bg-transparent px-4">
-      <SidebarTrigger className="-ml-1 text-[#C5A059] hover:text-[#D6B16E]" />
+    <header className="fixed top-0 z-40 flex h-12 w-full shrink-0 flex-row items-center justify-between bg-black/5 px-4 backdrop-blur-md md:absolute md:bg-transparent md:backdrop-blur-none">
+      <SidebarTrigger className="-ml-1 size-11 text-[#C5A059] hover:text-[#D6B16E] md:size-8" />
     </header>
   )
 }

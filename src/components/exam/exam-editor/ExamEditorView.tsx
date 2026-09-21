@@ -130,8 +130,8 @@ function ExamEditorHeader({
   saving: boolean
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
         <StatusChip variant={exam.status} size="md" />
         <ExamDraftNotice isDraft={isDraft} />
       </div>
@@ -172,7 +172,7 @@ function ExamEditorActions({
   saving: boolean
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
       <SaveChangesButton canEdit={canEdit} onSave={onSave} saving={saving} />
       <PublishedExamAction
         exam={exam}
