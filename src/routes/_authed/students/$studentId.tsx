@@ -1,11 +1,11 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { CalendarIcon } from 'lucide-react'
-import { Fragment } from 'react'
 import type { CourseAssignmentGroup } from '@/utils/student/domain/student-detail-view.domain'
 import type { StudentDetailWithAssignments } from '@/types/student'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { StudentAttendanceDetail } from '@/components/view/students-view/StudentAttendanceDetail'
+import { StudentEmail } from '@/components/view/students-view/StudentEmail'
 import { useIntentPreload } from '@/hooks/useIntentPreload'
 import { getStudentDetail } from '@/utils/student'
 import { checkTeacherAccess } from '@/utils/auth/admin'
@@ -55,18 +55,6 @@ const ASSIGNMENT_DETAIL_SEARCH = {
   fromCalendar: false,
   fromDashboard: false,
 } as const
-
-function StudentEmail({ email }: { email: string }) {
-  return email.split(/([@.])/).map((part, index) => {
-    if (part !== '@' && part !== '.') return part
-    return (
-      <Fragment key={`${part}-${index}`}>
-        {part}
-        <wbr />
-      </Fragment>
-    )
-  })
-}
 
 function StudentInfoCard({
   student,

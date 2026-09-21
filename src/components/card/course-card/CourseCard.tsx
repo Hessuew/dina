@@ -103,15 +103,20 @@ function CourseStatusBadge({ isPublished }: { isPublished: boolean }) {
 
 function CourseTeacherChip({
   courseTeachers,
+  className,
 }: {
   courseTeachers: CourseCardCourse['courseTeachers']
+  className?: string
 }) {
   if (!courseTeachers?.length) return null
 
   return (
     <div
       data-course-teachers
-      className="max-w-full min-w-0 border border-white/12 bg-black/24 px-3 py-3 shadow-[0_24px_40px_-30px_rgba(0,0,0,0.55)] backdrop-blur-sm"
+      className={cn(
+        'max-w-full min-w-0 border border-white/12 bg-black/24 px-3 py-3 shadow-[0_24px_40px_-30px_rgba(0,0,0,0.55)] backdrop-blur-sm',
+        className,
+      )}
     >
       <div className="text-[0.58rem] font-medium tracking-[0.28em] text-[#AFA28F] uppercase">
         Teachers
@@ -132,11 +137,13 @@ function CourseImage({
   isTeacher,
   lessonCount,
   theme,
+  overlayItemClass,
 }: {
   course: CourseCardCourse
   isTeacher: boolean
   lessonCount: number
   theme: CourseCardTheme
+  overlayItemClass?: string
 }) {
   const thumbnailUrl = useSessionPrivateImageUrl(course.thumbnailUrl)
 
@@ -166,16 +173,27 @@ function CourseImage({
       <div className="relative flex min-h-48 flex-col justify-between p-5 sm:min-h-56 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-2">
           {isTeacher && <CourseStatusBadge isPublished={course.isPublished} />}
-          <div className="border border-white/12 bg-black/18 px-3 py-2 text-[0.8rem] font-medium tracking-[0.26em] text-[#E9D9B4] uppercase">
+          <div
+            className={cn(
+              'border border-white/12 bg-black/18 px-3 py-2 text-[0.8rem] font-medium tracking-[0.26em] text-[#E9D9B4] uppercase',
+              overlayItemClass,
+            )}
+          >
             {String(course.orderIndex ?? 0).padStart(2, '0')}
           </div>
         </div>
 
         <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
-          <CourseTeacherChip courseTeachers={course.courseTeachers} />
+          <CourseTeacherChip
+            courseTeachers={course.courseTeachers}
+            className={overlayItemClass}
+          />
           <div
             data-course-lessons
-            className="flex min-w-0 items-center gap-1.5 text-[0.62rem] font-medium tracking-[0.18em] text-[#AFA28F] uppercase"
+            className={cn(
+              'flex min-w-0 items-center gap-1.5 text-[0.62rem] font-medium tracking-[0.18em] text-[#AFA28F] uppercase',
+              overlayItemClass,
+            )}
           >
             <BookOpenIcon className="size-3" />
             {lessonCount} lessons
@@ -313,12 +331,7 @@ export function CourseCard({
   return (
     <div
       data-dashboard-course-card
-      className={cn(
-        'min-w-0 border',
-        theme.card,
-        !isTeacher &&
-          '[&>div>div>div.relative.flex>div.flex.flex-wrap>div]:ml-auto',
-      )}
+      className={cn('min-w-0 border', theme.card)}
     >
       <div
         className={cn('relative overflow-hidden border-b', theme.imageBorder)}
@@ -328,6 +341,7 @@ export function CourseCard({
           isTeacher={isTeacher}
           lessonCount={lessonCount}
           theme={theme}
+          overlayItemClass={isTeacher ? undefined : 'ml-auto'}
         />
       </div>
 

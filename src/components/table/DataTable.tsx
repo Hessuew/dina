@@ -387,6 +387,9 @@ function DataTableContent<TData extends TableRow>({
   rowClassName?: (row: TData) => string
   renderMobileRow?: (row: TData) => ReactNode
 }) {
+  // React Compiler must not memoize this: it forwards a stable `table` ref to
+  // children that read live table state.
+  'use no memo'
   return (
     <div className={DATA_TABLE_FRAME_CLASS}>
       {isLoading && (
@@ -851,6 +854,9 @@ function useDataTableController<TData extends TableRow>({
   onPageChange,
   onPageSizeChange,
 }: DataTableControllerArgs<TData>) {
+  // React Compiler must not memoize this: it derives pagination display data
+  // from a live `table` instance whose identity stays stable.
+  'use no memo'
   const isServerMode = rowCount !== undefined
   const { tableTopRef, globalFilter, table } = useDataTableState({
     columns,

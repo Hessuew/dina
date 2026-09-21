@@ -1,12 +1,12 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
-import { Fragment } from 'react'
 import { legacyCreateColumnHelper as createColumnHelper } from '@tanstack/react-table/legacy'
 import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
 import type { StudentWithStats } from '@/types/student'
 import { DataTable, createButtonColumn } from '@/components/table/DataTable'
 import { createCrudActions } from '@/components/table/functions/createCrudActions'
 import { AttendanceScoreCell } from '@/components/view/students-view/AttendanceScoreCell'
+import { StudentEmail } from '@/components/view/students-view/StudentEmail'
 import { SessionImage } from '@/components/ui/session-image'
 
 type StudentsViewProps = {
@@ -98,18 +98,6 @@ function statsColumns(): Array<ColumnDef<StudentWithStats, any>> {
       }),
     ),
   ]
-}
-
-function StudentEmail({ email }: { email: string }) {
-  return email.split(/([@.])/).map((part, index) => {
-    if (part !== '@' && part !== '.') return part
-    return (
-      <Fragment key={`${part}-${index}`}>
-        {part}
-        <wbr />
-      </Fragment>
-    )
-  })
 }
 
 function StudentMobileCard({ student }: { student: StudentWithStats }) {
