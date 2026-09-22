@@ -9,6 +9,7 @@ import type { QuestionEditorDraft } from '@/components/exam/exam-editor/question
 import { useExamEditor } from '@/components/exam/exam-editor/useExamEditor'
 import { QuestionEditor } from '@/components/exam/exam-editor/QuestionEditor'
 import { ExamMetaForm } from '@/components/exam/exam-editor/ExamMetaForm'
+import { DeleteExamButton } from '@/components/exam/exam-editor/DeleteExamButton'
 import { PublishExamButton } from '@/components/exam/exam-editor/PublishExamButton'
 import { StatusChip } from '@/components/ui/status-chip'
 import { Button } from '@/components/ui/button'
@@ -19,6 +20,7 @@ type ExamEditorViewProps = {
   options: Array<EditorOption>
   attemptCount: number
   canEdit?: boolean
+  canDelete?: boolean
 }
 
 export function ExamEditorView({
@@ -27,6 +29,7 @@ export function ExamEditorView({
   options,
   attemptCount,
   canEdit = exam.status === 'draft',
+  canDelete = false,
 }: ExamEditorViewProps) {
   const isDraft = exam.status === 'draft'
   const editor = useExamEditor({ exam, questions, options })
@@ -37,6 +40,7 @@ export function ExamEditorView({
         isDraft={isDraft}
         attemptCount={attemptCount}
         canEdit={canEdit}
+        canDelete={canDelete}
         onSave={editor.save}
         saving={editor.saving}
       />
@@ -119,6 +123,7 @@ function ExamEditorHeader({
   isDraft,
   attemptCount,
   canEdit,
+  canDelete,
   onSave,
   saving,
 }: {
@@ -126,6 +131,7 @@ function ExamEditorHeader({
   isDraft: boolean
   attemptCount: number
   canEdit: boolean
+  canDelete: boolean
   onSave: () => void
   saving: boolean
 }) {
@@ -140,6 +146,7 @@ function ExamEditorHeader({
         isDraft={isDraft}
         attemptCount={attemptCount}
         canEdit={canEdit}
+        canDelete={canDelete}
         onSave={onSave}
         saving={saving}
       />
@@ -161,6 +168,7 @@ function ExamEditorActions({
   isDraft,
   attemptCount,
   canEdit,
+  canDelete,
   onSave,
   saving,
 }: {
@@ -168,6 +176,7 @@ function ExamEditorActions({
   isDraft: boolean
   attemptCount: number
   canEdit: boolean
+  canDelete: boolean
   onSave: () => void
   saving: boolean
 }) {
@@ -179,6 +188,7 @@ function ExamEditorActions({
         isDraft={isDraft}
         attemptCount={attemptCount}
       />
+      {canDelete && <DeleteExamButton examId={exam.id} />}
     </div>
   )
 }

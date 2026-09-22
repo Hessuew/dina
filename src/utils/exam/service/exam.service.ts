@@ -1,5 +1,6 @@
 import type {
   CreateExamInput,
+  DeleteExamInput,
   FinalizeGradingInput,
   GetAttemptForGradingInput,
   GetAttemptForTakingInput,
@@ -24,6 +25,7 @@ import { saveExamChanges } from '@/utils/exam/transaction/exam.transaction'
 import {
   applyAutoGradeResults,
   countAttemptsByExam,
+  deleteExamById,
   findAllExams,
   findAttemptByExamAndStudent,
   findAttemptById,
@@ -54,6 +56,7 @@ import {
 } from '@/utils/exam/domain/exam-timing.domain'
 import {
   canAuthorEditExam,
+  canDeleteExam,
   canEditExam,
   validateForPublish,
 } from '@/utils/exam/domain/exam-lifecycle.domain'
@@ -71,7 +74,11 @@ import {
   isOptionOfQuestion,
   validateAnswerShape,
 } from '@/utils/exam/domain/exam-answer.domain'
-import { authz, resolveAdminOrTeacherAccess } from '@/utils/authz'
+import {
+  authz,
+  hasStaffPrivilege,
+  resolveAdminOrTeacherAccess,
+} from '@/utils/authz'
 import {
   AuthorizationError,
   ConflictError,
@@ -90,7 +97,8 @@ type ExamAttemptLogContext = {
   startedAt: number
 }
 
-type ExamMutationAction = 'createExam' | 'saveExamChanges' | 'publishExam'
+type ExamMutationAction =
+  'createExam' | 'saveExamChanges' | 'publishExam' | 'deleteExam'
 
 type ExamMutationLogContext = {
   action: ExamMutationAction
@@ -254,9 +262,12 @@ async function assertStudent(userId: string): Promise<void> {
 async function requireExamAuthor(
   userId: string,
   context: ExamMutationLogContext,
-): Promise<{ isAdmin: boolean; isTeacher: boolean }> {
+): Promise<{ canManage: boolean }> {
   try {
-    return await assertTeacherOrAdmin(userId)
+    const { isAdmin } = await assertTeacherOrAdmin(userId)
+    const canManage =
+      isAdmin || (await hasStaffPrivilege(userId, 'exam_management'))
+    return { canManage }
   } catch (error) {
     if (shouldLogExamFailure(error)) {
       logExamMutationEvent('error', context.failureEvent, context, {
@@ -283,20 +294,20 @@ async function requireExamGrader(
   }
 }
 
-/** Loads an exam and asserts the caller may edit it: creator or admin, draft only (or admin when published). */
+/** Loads an exam and asserts the caller may edit it: creator or exam manager, draft only (or manager when published). */
 async function loadEditableExam(
   examId: string,
   userId: string,
-  isAdmin: boolean,
+  canManage: boolean,
 ): Promise<ExamRow> {
   const exam = await findExamById(examId)
   if (!exam) throw new NotFoundError('Exam not found')
-  if (!isAdmin && exam.createdBy !== userId) {
+  if (!canManage && exam.createdBy !== userId) {
     throw new AuthorizationError(
-      'Only the exam creator or an admin can edit it',
+      'Only the exam creator or an exam manager can edit it',
     )
   }
-  if (!canEditExam(exam.status, isAdmin)) {
+  if (!canEditExam(exam.status, canManage)) {
     throw new ConflictError('A published exam can no longer be edited')
   }
   return exam
@@ -355,9 +366,9 @@ export async function saveExamChangesService(
     failureEvent: 'exam_update_failed',
     startedAt: performance.now(),
   }
-  const { isAdmin } = await requireExamAuthor(userId, context)
+  const { canManage } = await requireExamAuthor(userId, context)
   try {
-    const exam = await loadEditableExam(data.examId, userId, isAdmin)
+    const exam = await loadEditableExam(data.examId, userId, canManage)
     const opensAt = new Date(data.opensAt)
     const closesAt = new Date(data.closesAt)
     if (closesAt.getTime() <= opensAt.getTime()) {
@@ -405,9 +416,9 @@ export async function publishExamService(
     failureEvent: 'exam_publish_failed',
     startedAt: performance.now(),
   }
-  const { isAdmin } = await requireExamAuthor(userId, context)
+  const { canManage } = await requireExamAuthor(userId, context)
   try {
-    const exam = await loadEditableExam(data.examId, userId, isAdmin)
+    const exam = await loadEditableExam(data.examId, userId, canManage)
     if (exam.status === 'published') {
       throw new ConflictError('Exam is already published')
     }
@@ -437,6 +448,45 @@ export async function publishExamService(
   }
 }
 
+export async function deleteExamService(
+  data: DeleteExamInput,
+  userId: string,
+): Promise<void> {
+  const context: ExamMutationLogContext = {
+    action: 'deleteExam',
+    actorId: userId,
+    examId: data.examId,
+    failureEvent: 'exam_delete_failed',
+    startedAt: performance.now(),
+  }
+  const { canManage } = await requireExamAuthor(userId, context)
+  try {
+    const exam = await findExamById(data.examId)
+    if (!exam) throw new NotFoundError('Exam not found')
+    if (!canManage && exam.createdBy !== userId) {
+      throw new AuthorizationError(
+        'Only the exam creator or an exam manager can delete it',
+      )
+    }
+    if (!canDeleteExam(exam.status)) {
+      throw new ConflictError('Only draft exams can be deleted')
+    }
+    if (!(await deleteExamById(data.examId))) {
+      throw new ConflictError('Only draft exams can be deleted')
+    }
+    logExamMutationEvent('info', 'exam_deleted', context, {
+      examStatus: exam.status,
+    })
+  } catch (error) {
+    if (shouldLogExamFailure(error)) {
+      logExamMutationEvent('error', 'exam_delete_failed', context, {
+        errorCategory: 'exam_persistence',
+      })
+    }
+    throw error
+  }
+}
+
 export async function getExamForAuthorService(
   data: GetExamInput,
   userId: string,
@@ -453,15 +503,16 @@ export async function getExamForAuthorService(
     async () => {
       const { isAdmin } = await assertTeacherOrAdmin(userId)
       context.role = isAdmin ? 'admin' : 'teacher'
+      const canManage =
+        isAdmin || (await hasStaffPrivilege(userId, 'exam_management'))
       const exam = await findExamById(data.examId)
       if (!exam) throw new NotFoundError('Exam not found')
       const { questions, options } = await findQuestionsWithOptions(data.examId)
       const attemptCount = await countAttemptsByExam(data.examId)
-      const canEdit = canAuthorEditExam(exam.status, {
-        isAdmin,
-        isCreator: exam.createdBy === userId,
-      })
-      return { exam, questions, options, attemptCount, canEdit }
+      const isCreator = exam.createdBy === userId
+      const canEdit = canAuthorEditExam(exam.status, { canManage, isCreator })
+      const canDelete = canDeleteExam(exam.status) && (canManage || isCreator)
+      return { exam, questions, options, attemptCount, canEdit, canDelete }
     },
     (result) => ({
       examStatus: result.exam.status,
@@ -469,6 +520,7 @@ export async function getExamForAuthorService(
       optionCount: result.options.length,
       attemptCount: result.attemptCount,
       canEdit: result.canEdit,
+      canDelete: result.canDelete,
     }),
   )
 }

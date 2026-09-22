@@ -14,6 +14,7 @@ import {
 } from '@/../test/integration/seed'
 import {
   createExamService,
+  deleteExamService,
   finalizeGradingService,
   getAttemptForGradingService,
   getAttemptForTakingService,
@@ -29,6 +30,7 @@ import {
   startAttemptService,
   submitAttemptService,
 } from '@/utils/exam/service/exam.service'
+import { setStaffPrivilegeService } from '@/utils/staff-privilege/service/staff-privilege.service'
 import * as sharedRepository from '@/utils/repository'
 import { withObservabilityRequest } from '@/utils/observability/request-context'
 import {
@@ -272,6 +274,114 @@ describe('exam authoring (integration)', () => {
     )
     const updated = (await sharedRepository.findExamById(examId))!
     expect(updated.title).toBe('Admin edit')
+  })
+
+  it('lets an exam_management holder edit and publish any exam, including published', async () => {
+    const adminId = await seedProfile({ role: 'admin' })
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const holderId = await seedProfile({ role: 'teacher' })
+    await setStaffPrivilegeService(adminId, {
+      userId: holderId,
+      privilege: 'exam_management',
+      granted: true,
+    })
+    const examId = await seedExam({ createdBy: ownerId })
+    const questionId = await seedExamQuestion({ examId, orderIndex: 0 })
+    await seedExamOption({ questionId, orderIndex: 0, isCorrect: true })
+    await seedExamOption({ questionId, orderIndex: 1 })
+
+    const draftView = await getExamForAuthorService({ examId }, holderId)
+    expect(draftView.canEdit).toBe(true)
+    expect(draftView.canDelete).toBe(true)
+
+    await saveExamChangesService(
+      {
+        examId,
+        title: 'Holder edit',
+        durationMinutes: 45,
+        opensAt: new Date(Date.now() - 60_000).toISOString(),
+        closesAt: new Date(Date.now() + HOUR_MS).toISOString(),
+        questions: [],
+        deletedQuestionIds: [],
+      },
+      holderId,
+    )
+    await publishExamService({ examId }, holderId)
+
+    const publishedView = await getExamForAuthorService({ examId }, holderId)
+    expect(publishedView.canEdit).toBe(true)
+    expect(publishedView.canDelete).toBe(false)
+
+    await saveExamChangesService(
+      {
+        examId,
+        title: 'Holder post-publish edit',
+        durationMinutes: 45,
+        opensAt: new Date(Date.now() - 60_000).toISOString(),
+        closesAt: new Date(Date.now() + HOUR_MS).toISOString(),
+        questions: [],
+        deletedQuestionIds: [],
+      },
+      holderId,
+    )
+    const updated = (await sharedRepository.findExamById(examId))!
+    expect(updated.title).toBe('Holder post-publish edit')
+  })
+
+  it('deletes draft exams for creators and exam managers, never published exams', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const adminId = await seedProfile({ role: 'admin' })
+    const ownerId = await seedProfile({ role: 'teacher' })
+    const otherTeacherId = await seedProfile({ role: 'teacher' })
+    const studentId = await seedProfile({ role: 'student' })
+    const holderId = await seedProfile({ role: 'teacher' })
+    await setStaffPrivilegeService(adminId, {
+      userId: holderId,
+      privilege: 'exam_management',
+      granted: true,
+    })
+
+    const foreignDraft = await seedExam({ createdBy: ownerId })
+    await expect(
+      deleteExamService({ examId: foreignDraft }, otherTeacherId),
+    ).rejects.toThrow(AuthorizationError)
+    await expect(
+      deleteExamService({ examId: foreignDraft }, studentId),
+    ).rejects.toThrow(AuthorizationError)
+
+    await deleteExamService({ examId: foreignDraft }, holderId)
+    expect(await sharedRepository.findExamById(foreignDraft)).toBeUndefined()
+
+    const ownDraft = await seedExam({ createdBy: ownerId })
+    await deleteExamService({ examId: ownDraft }, ownerId)
+    expect(await sharedRepository.findExamById(ownDraft)).toBeUndefined()
+
+    const published = await seedExam({
+      createdBy: ownerId,
+      status: 'published',
+    })
+    await expect(
+      deleteExamService({ examId: published }, ownerId),
+    ).rejects.toThrow(ConflictError)
+    await expect(
+      deleteExamService({ examId: published }, holderId),
+    ).rejects.toThrow(ConflictError)
+    await expect(
+      deleteExamService({ examId: published }, adminId),
+    ).rejects.toThrow(ConflictError)
+
+    const events = infoSpy.mock.calls.map(([line]) => JSON.parse(String(line)))
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'exam_deleted',
+          path: 'serverFn:deleteExam',
+          actorId: holderId,
+          examId: foreignDraft,
+          status: 'success',
+        }),
+      ]),
+    )
   })
 
   it('logs stable authoring persistence failures without raw database details', async () => {
@@ -554,6 +664,13 @@ describe('exam authoring authorization preflight telemetry (integration)', () =>
       run: (userId: string): Promise<unknown> =>
         publishExamService({ examId: randomUUID() }, userId),
     },
+    {
+      name: 'delete',
+      event: 'exam_delete_failed',
+      path: 'serverFn:deleteExam',
+      run: (userId: string): Promise<unknown> =>
+        deleteExamService({ examId: randomUUID() }, userId),
+    },
   ])(
     'logs unexpected author-role persistence failures for $name without raw details',
     async ({ event, path, run }) => {
@@ -621,6 +738,11 @@ describe('exam authoring authorization preflight telemetry (integration)', () =>
       name: 'publish',
       run: (userId: string): Promise<unknown> =>
         publishExamService({ examId: randomUUID() }, userId),
+    },
+    {
+      name: 'delete',
+      run: (userId: string): Promise<unknown> =>
+        deleteExamService({ examId: randomUUID() }, userId),
     },
   ])('keeps expected $name author-role denials quiet', async ({ run }) => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})

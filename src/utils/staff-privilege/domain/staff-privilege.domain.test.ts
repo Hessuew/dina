@@ -68,10 +68,11 @@ describe('assertTeacherPrivilegeTarget', () => {
 })
 
 describe('STAFF_PRIVILEGES', () => {
-  it('lists the two independent first grants', () => {
+  it('lists the independent grants', () => {
     expect(STAFF_PRIVILEGES).toEqual([
       'attendance_override',
       'enrollment_contact_export',
+      'exam_management',
     ])
   })
 })

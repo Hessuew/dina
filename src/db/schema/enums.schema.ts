@@ -4,6 +4,7 @@ export const userRoleEnum = pgEnum('user_role', ['student', 'teacher', 'admin'])
 export const staffPrivilegeEnum = pgEnum('staff_privilege', [
   'attendance_override',
   'enrollment_contact_export',
+  'exam_management',
 ])
 export const submissionStatusEnum = pgEnum('submission_status', [
   'draft',

@@ -488,9 +488,11 @@ feature consumes them.
     role, safe result counts, status, and duration. Exam titles, question
     prompts, option labels, answers, scores, and raw persistence details remain
     excluded; unexpected failures use `exam_read_persistence`. Unexpected
-    teacher/admin authorization preflight failures for exam creation reuse
-    `exam_create_failed` with the stable `exam_authorization_persistence`
-    category; expected denials remain quiet.
+    teacher/admin authorization preflight failures for exam authoring
+    mutations reuse that mutation's failure event (`exam_create_failed`,
+    `exam_update_failed`, `exam_publish_failed`, `exam_delete_failed`) with
+    the stable `exam_authorization_persistence` category; expected denials
+    remain quiet.
   - Discipleship board and student-view reads emit redacted
     `discipleship_read_loaded` / `discipleship_read_failed` events with request
     correlation, actor/teacher IDs, scope, safe counts, view kind, status, and
@@ -776,8 +778,8 @@ feature consumes them.
     details remain excluded; unexpected failures use
     `zoom_links_read_persistence`, including viewer-role preflight failures.
   - `attendance/` — live Attendance Session open/close, student self check-in (`markPresent`), and Course Teacher/Admin/privileged-teacher override (`setStudentPresent`) from student detail. Session and override mutations emit redacted request-correlated Better Stack-ready telemetry with stable persistence categories.
-  - `staff-privilege/` — Staff Privilege grants (ADR 0023): domain live-check, Admin grant/revoke, `hasStaffPrivilege` used by attendance override and enrolment contact export.
-  - `exam/` — Timed exam authoring, attempt lifecycle, autosave, lazy finalization, and grading (ADR 0017). Student listing/taking services require the caller's persisted `student` role; teacher/Admin services use the staff boundary.
+  - `staff-privilege/` — Staff Privilege grants (ADR 0023): domain live-check, Admin grant/revoke, `hasStaffPrivilege` used by attendance override, enrolment contact export, and exam management.
+  - `exam/` — Timed exam authoring, attempt lifecycle, autosave, lazy finalization, and grading (ADR 0017). Student listing/taking services require the caller's persisted `student` role; teacher/Admin services use the staff boundary. The `exam_management` Staff Privilege elevates a Teacher-user to exam manager: edit/publish any exam including published, and delete draft exams (a draft's creator may also delete it; published exams are never deletable).
   - These typically export server functions that routes call for loading and mutations.
   - Server functions are thin adapters that validate input, call domain services from `src/domain/`, and return responses.
   - `postNotifications.ts`.

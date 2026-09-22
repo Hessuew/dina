@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import type { RepositoryTransactionClient } from './transaction-client'
 import { getDb } from '@/db'
 import { exams } from '@/db/schema'
@@ -44,6 +44,15 @@ export async function setExamStatus(
     .update(exams)
     .set({ status, updatedAt: new Date() })
     .where(eq(exams.id, examId))
+}
+
+export async function deleteExamById(examId: string): Promise<boolean> {
+  const db = await getDb()
+  const deleted = await db
+    .delete(exams)
+    .where(and(eq(exams.id, examId), eq(exams.status, 'draft')))
+    .returning({ id: exams.id })
+  return deleted.length > 0
 }
 
 export async function updateExamInTransaction(
