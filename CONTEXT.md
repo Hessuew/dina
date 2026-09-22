@@ -36,10 +36,11 @@ A user with `profiles.role = 'admin'`. Full enrollment access: read all fields, 
 
 A named extra capability an Admin grants a Teacher-user. Orthogonal to Role (`profiles.role` stays `teacher`) and to **Course Teacher**. Not a fourth Role. Students never receive one. Live check is `role = teacher` AND a `staff_privileges` row, or Admin. Writes reject unless the target Role is `teacher`. Grants are independent; revoke deletes the row. Only Admin sees or edits grants, on the `/teachers` TeacherModal. See ADR 0023.
 
-Two first privileges:
+Current privileges:
 
 - **Academy-wide attendance override** (`attendance_override`) — Present override on any Course via `/students/$studentId`. Does not open or close live Attendance Sessions on courses the holder does not teach.
 - **Enrolment contact export** (`enrollment_contact_export`) — existing Export Contacts dialog (Email Export Cohorts + Enrollment Contact Lookup). Enrolments list and detail stay the **Redacted Enrollment View**. Campaigns, status, invite, and delete stay Admin-only.
+- **Academy-wide exam management** (`exam_management`) — holder acts as an exam manager: may edit and publish **any** exam, including `published` ones (regular Teacher-users edit only their own drafts), and delete `draft` exams. Draft delete is also open to the draft's creator; `published` exams are never deletable, so attempts and answers survive.
 
 ### Special Case
 

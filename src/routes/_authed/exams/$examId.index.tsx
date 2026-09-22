@@ -57,6 +57,7 @@ function ExamDetailComponent() {
           options={authorData.options}
           attemptCount={authorData.attemptCount}
           canEdit={authorData.canEdit}
+          canDelete={authorData.canDelete}
         />
       )}
     </PageLayout>

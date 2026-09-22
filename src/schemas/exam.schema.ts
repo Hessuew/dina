@@ -19,6 +19,10 @@ export const publishExamSchema = z.object({
   examId: z.uuid('Invalid exam ID'),
 })
 
+export const deleteExamSchema = z.object({
+  examId: z.uuid('Invalid exam ID'),
+})
+
 const questionOptionSchema = z.object({
   id: z.uuid('Invalid option ID').optional(),
   label: z.string().min(1, 'Option label is required'),
@@ -124,6 +128,7 @@ export const finalizeGradingSchema = z.object({
 export type CreateExamInput = z.infer<typeof createExamSchema>
 export type GetExamInput = z.infer<typeof getExamSchema>
 export type PublishExamInput = z.infer<typeof publishExamSchema>
+export type DeleteExamInput = z.infer<typeof deleteExamSchema>
 export type SaveExamChangesInput = z.infer<typeof saveExamChangesSchema>
 export type StartAttemptInput = z.infer<typeof startAttemptSchema>
 export type GetAttemptForTakingInput = z.infer<typeof getAttemptForTakingSchema>

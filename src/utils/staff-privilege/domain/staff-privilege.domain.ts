@@ -3,6 +3,7 @@ import type { Role } from '@/utils/authz/types'
 export const STAFF_PRIVILEGES = [
   'attendance_override',
   'enrollment_contact_export',
+  'exam_management',
 ] as const
 
 export type StaffPrivilege = (typeof STAFF_PRIVILEGES)[number]
@@ -32,6 +33,7 @@ export function assertTeacherPrivilegeTarget(role: Role | null): void {
 export const STAFF_PRIVILEGE_LABELS: Record<StaffPrivilege, string> = {
   attendance_override: 'Academy-wide attendance override',
   enrollment_contact_export: 'Enrolment contact export',
+  exam_management: 'Academy-wide exam management',
 }
 
 export function canShowStaffPrivilegePanel(

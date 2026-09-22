@@ -16,24 +16,31 @@ type PublishOption = {
 }
 
 export type ExamAuthorAccess = {
-  isAdmin: boolean
+  /** Admin or a Teacher-user holding the `exam_management` Staff Privilege. */
+  canManage: boolean
   isCreator: boolean
 }
 
 /**
  * Exams are editable while draft for teachers/creators, and always editable
- * by admins even after publishing.
+ * by exam managers (admins or `exam_management` holders) even after
+ * publishing.
  */
-export function canEditExam(status: ExamStatus, isAdmin = false): boolean {
-  return status === 'draft' || isAdmin
+export function canEditExam(status: ExamStatus, canManage = false): boolean {
+  return status === 'draft' || canManage
 }
 
 export function canAuthorEditExam(
   status: ExamStatus,
   access: ExamAuthorAccess,
 ): boolean {
-  if (access.isAdmin) return true
+  if (access.canManage) return true
   return status === 'draft' && access.isCreator
+}
+
+/** Only draft exams may be deleted; published exams keep their attempts. */
+export function canDeleteExam(status: ExamStatus): boolean {
+  return status === 'draft'
 }
 
 /**

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."staff_privilege" ADD VALUE 'exam_management';

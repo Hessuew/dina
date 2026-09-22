@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getCurrentUser } from '@/utils/auth/auth'
 import {
   createExamSchema,
+  deleteExamSchema,
   finalizeGradingSchema,
   getAttemptForGradingSchema,
   getAttemptForTakingSchema,
@@ -16,6 +17,7 @@ import {
 } from '@/schemas/exam.schema'
 import {
   createExamService,
+  deleteExamService,
   finalizeGradingService,
   getAttemptForGradingService,
   getAttemptForTakingService,
@@ -51,6 +53,13 @@ export const saveExamChanges = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const user = await getCurrentUser()
     return saveExamChangesService(data, user.id)
+  })
+
+export const deleteExam = createServerFn({ method: 'POST' })
+  .validator(deleteExamSchema)
+  .handler(async ({ data }) => {
+    const user = await getCurrentUser()
+    return deleteExamService(data, user.id)
   })
 
 export const getExamForAuthor = createServerFn({ method: 'GET' })

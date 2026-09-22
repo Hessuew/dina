@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   canAuthorEditExam,
+  canDeleteExam,
   canEditExam,
   canTransitionAttempt,
   validateForPublish,
@@ -27,41 +28,48 @@ describe('canEditExam', () => {
     expect(canEditExam('published', false)).toBe(false)
   })
 
-  it('allows editing published exams for admins', () => {
+  it('allows editing published exams for exam managers', () => {
     expect(canEditExam('draft', true)).toBe(true)
     expect(canEditExam('published', true)).toBe(true)
   })
 })
 
 describe('canAuthorEditExam', () => {
-  it('allows admin to edit draft or published exams regardless of creator', () => {
+  it('allows managers to edit draft or published exams regardless of creator', () => {
     expect(
-      canAuthorEditExam('draft', { isAdmin: true, isCreator: false }),
+      canAuthorEditExam('draft', { canManage: true, isCreator: false }),
     ).toBe(true)
     expect(
-      canAuthorEditExam('published', { isAdmin: true, isCreator: false }),
+      canAuthorEditExam('published', { canManage: true, isCreator: false }),
     ).toBe(true)
     expect(
-      canAuthorEditExam('published', { isAdmin: true, isCreator: true }),
+      canAuthorEditExam('published', { canManage: true, isCreator: true }),
     ).toBe(true)
   })
 
   it('allows creator teacher to edit draft only', () => {
     expect(
-      canAuthorEditExam('draft', { isAdmin: false, isCreator: true }),
+      canAuthorEditExam('draft', { canManage: false, isCreator: true }),
     ).toBe(true)
     expect(
-      canAuthorEditExam('published', { isAdmin: false, isCreator: true }),
+      canAuthorEditExam('published', { canManage: false, isCreator: true }),
     ).toBe(false)
   })
 
   it('rejects non-creator teacher for drafts and published', () => {
     expect(
-      canAuthorEditExam('draft', { isAdmin: false, isCreator: false }),
+      canAuthorEditExam('draft', { canManage: false, isCreator: false }),
     ).toBe(false)
     expect(
-      canAuthorEditExam('published', { isAdmin: false, isCreator: false }),
+      canAuthorEditExam('published', { canManage: false, isCreator: false }),
     ).toBe(false)
+  })
+})
+
+describe('canDeleteExam', () => {
+  it('allows deleting drafts only', () => {
+    expect(canDeleteExam('draft')).toBe(true)
+    expect(canDeleteExam('published')).toBe(false)
   })
 })
 
