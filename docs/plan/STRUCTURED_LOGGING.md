@@ -1,6 +1,6 @@
 # Structured Logging
 
-**Status:** Repository implementation complete; hosted verification pending
+**Status:** Repository implementation complete; Cloudflare production ingestion verified; Better Stack centralization pending
 
 ## Target Shape
 
@@ -14,6 +14,14 @@ Server-side operational logs should be JSON objects with:
 - `status`: outcome category.
 - `durationMs`: elapsed time for the operation.
 - `errorCategory`: stable category for failures.
+
+## Hosted verification — 2026-09-23
+
+Cloudflare production observability is receiving the structured request and
+health telemetry: the live view showed 146 successful events and 0 errors in
+the last hour, with trace links available for sampled requests. Better Stack
+Telemetry still contains only the onboarding/demo source, so provider
+centralization and log-derived alert verification remain pending.
 
 ## Redaction Rules
 

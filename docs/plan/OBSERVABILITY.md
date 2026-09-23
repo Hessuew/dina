@@ -1,6 +1,6 @@
 # Observability Architecture Implementation Plan
 
-**Status:** Repository implementation complete; hosted verification pending
+**Status:** Repository implementation complete; Cloudflare baseline and Better Stack browser ingestion verified; log centralization and alert routing pending
 **Date:** 2026-07-04  
 **Context:** Engineering roadmap implementation plan and Better Stack transition record
 
@@ -100,6 +100,28 @@ This document outlines the observability architecture for the Christ-Dina LMS pr
 - Slack workspace
 - Alert configuration (Better Stack/Cloudflare → Slack)
 - Business metrics tracking
+
+### Hosted verification — 2026-09-23
+
+- Cloudflare production observability is live: Workers Logs are enabled at
+  100% head sampling and Workers Traces are enabled at 1%. The live
+  observability view showed 146 successful events and 0 errors in the last
+  hour, including request logs and trace links; the Worker overview also
+  reported 0 errors in the last 24 hours.
+- Better Stack Uptime has one free monitor, now pointed at
+  `https://christ-dina.org/healthz`, checked every 3 minutes. It is up with
+  zero incidents. `/readyz` remains covered by the repository smoke check and
+  Cloudflare logs; a second synthetic monitor was not created because the
+  account marks additional monitors as billable.
+- A Better Stack Errors application named `DINA production` is receiving
+  controlled browser exceptions from the local production-style build. The
+  ingestion response was successful and the events are visible in Better Stack
+  Errors with the `production` environment label. The DSN is configured in the
+  ignored local environment, GitHub Actions secret store, and encrypted
+  Cloudflare Worker secret; it is not committed to the repository.
+- Better Stack Telemetry still shows only its onboarding/demo source, so
+  centralized application log ingestion, release/source-map verification,
+  Slack routing, and test-alert delivery remain open acceptance steps.
 
 ---
 

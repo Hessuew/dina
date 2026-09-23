@@ -1,6 +1,6 @@
 # Production Fundamentals
 
-**Status:** Repository implementation complete; hosted verification pending
+**Status:** Repository implementation complete; health and Cloudflare baseline verified; Better Stack, alerting, and product analytics closure pending
 **Phase:** Engineering Roadmap Phase 1  
 **Goal:** The team can see production health, identify failures quickly, and decide what to fix first without building a custom observability platform.
 
@@ -45,3 +45,15 @@ Do not migrate to Railway or Sevalla during Phase 1. Revisit hosting only when a
 - Cloudflare, Supabase, Better Stack, and PostHog dashboards are linked from Notion.
 - Critical failure-mode alerts are defined and tested.
 - Follow-up work is tracked in Linear or the roadmap before moving to SLOs.
+
+### Closeout evidence — 2026-09-23
+
+The production smoke check passed both health endpoints. Cloudflare Worker
+Logs/Traces are enabled and the live observability view showed 146 successful
+events with 0 errors in the last hour. Better Stack now has the `DINA
+production` Errors application, verified controlled browser ingestion from the
+local production-style build, and a healthy `/healthz` Uptime monitor. The DSN
+is configured in the local ignored environment, GitHub Actions secret store,
+and encrypted Worker secret. Phase 1 is not fully closed: source maps, actual
+Better Stack log ingestion, Slack/alert rules and test delivery, PostHog
+project verification, and restore evidence remain open.

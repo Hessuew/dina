@@ -125,6 +125,12 @@ After `BETTER_STACK_DSN` and `VITE_BETTER_STACK_DSN` are configured:
 - Confirm the old Sentry fallback is not receiving normal traffic before
   removing its secret and compatibility settings.
 
+Verification update — 2026-09-23: both DSN names are configured in their
+intended stores, and controlled browser exceptions from the local
+production-style build are visible in Better Stack Errors with a successful
+ingestion response. Worker-side error delivery, source-map symbolication, and
+alert verification remain open.
+
 ## Review cadence and evidence
 
 - Review the inventory on every deployment-platform or provider change and at

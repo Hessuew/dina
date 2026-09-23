@@ -1,6 +1,6 @@
 # Production Health Checks
 
-**Status:** Implemented baseline  
+**Status:** Implemented baseline; production smoke verified
 **Owner:** Engineering  
 **Related code:** `src/server.ts`, `src/utils/health/`
 
@@ -70,3 +70,22 @@ raw database errors were present.
 The live payload currently reports `release: null`. This does not block the
 health contract, but release injection remains a follow-up for deployment and
 incident correlation.
+
+### Production verification — 2026-09-23
+
+The smoke check was rerun against `https://christ-dina.org` and both
+endpoints passed:
+
+```text
+health smoke passed: /readyz
+health smoke passed: /healthz
+```
+
+The live Better Stack Uptime monitor now targets `/healthz`, checks every
+three minutes, and is up with zero incidents. Cloudflare's Worker
+observability view showed 146 successful events and 0 errors in the last hour;
+the Worker overview showed 0 errors in the last 24 hours. `/readyz` remains a
+database-readiness smoke check rather than a second synthetic monitor because
+the current Better Stack plan marks additional monitors as billable. The live
+payload still reports `release: null`, so deployment release correlation is
+still open.

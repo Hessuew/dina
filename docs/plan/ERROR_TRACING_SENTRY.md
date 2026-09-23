@@ -1,6 +1,6 @@
 # Error Tracking With Better Stack
 
-**Status:** Better Stack DSN configuration implemented; account ingestion and source-map verification pending
+**Status:** Better Stack DSN configured; browser ingestion verified; source-map, Worker-drill, and alert verification pending
 
 ## Current Baseline
 
@@ -27,17 +27,30 @@
 
 ## Hardening Work
 
-- Create the Better Stack Errors application, set `VITE_BETTER_STACK_DSN` in
-  the build environment, and set the Worker secret with
-  `wrangler secret put BETTER_STACK_DSN`.
-- Confirm production, preview, and local environments produce distinguishable
-  Better Stack environments.
-- Confirm Better Stack releases/source maps are attached for deployed builds
-  using the external build values now supported by `vite.config.ts`.
-- Add a documented server error drill and frontend error drill.
+- [x] Set `VITE_BETTER_STACK_DSN` in the local ignored environment and GitHub
+      Actions build secret, and set the Worker secret with
+      `wrangler secret put BETTER_STACK_DSN`.
+- [ ] Confirm production, preview, and local environments produce
+      distinguishable Better Stack environments.
+- [ ] Confirm Better Stack releases/source maps are attached for deployed
+      builds using the external build values now supported by `vite.config.ts`.
+- [x] Complete a controlled frontend error drill against the local
+      production-style build; add the documented server error drill next.
 - Confirm alert rules target actionable failures, not expected validation or
   auth errors.
 - Review sampling once production traffic is real.
+
+## Hosted verification — 2026-09-23
+
+The Better Stack Errors application `DINA production` received controlled
+browser exceptions from the local production-style preview build. The events
+were accepted by the Better Stack ingestion endpoint and are visible in the
+application's Errors list with the `production` environment label. The DSN is
+stored only in the ignored local environment, the GitHub Actions secret store,
+and the encrypted Cloudflare Worker secret; it is not in the repository.
+
+Release/source-map association, a controlled Worker-side error drill, and
+actionable alert verification remain pending.
 
 ## Ownership
 
