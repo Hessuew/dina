@@ -1,6 +1,6 @@
 # Observability Runbook
 
-**Status:** Draft pending external dashboard and escalation setup  
+**Status:** Operational draft — health and Cloudflare baseline verified; external escalation setup pending
 **Scope:** DINA web application, Cloudflare Worker, Supabase database/auth/storage, Better Stack, and PostHog
 
 Use this runbook when a production alert fires or a user-impacting failure is
@@ -28,6 +28,14 @@ this document.
 - Prefer reversible mitigation and preserve evidence. Do not delete the old
   Sentry project, disable Cloudflare log persistence, or change production
   database credentials during initial triage.
+
+As of 2026-09-23, the production smoke check passes `/healthz` and `/readyz`,
+Cloudflare Worker Logs/Traces are enabled, the Better Stack Uptime monitor
+checks `/healthz` every three minutes with zero incidents, and a controlled
+browser exception from the local production-style build is visible in Better
+Stack Errors. Alert rules, Slack delivery, named ownership, a controlled
+Worker-side exception, and a second `/readyz` synthetic monitor remain
+pending; do not treat the current baseline as a completed paging path.
 
 ## Severity and escalation
 

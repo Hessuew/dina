@@ -12,6 +12,10 @@ jobs:
   release:
     name: Main release gate
     runs-on: ubuntu-latest
+    env:
+      # The browser DSN is public runtime configuration, but must be supplied
+      # at build time so the client bundle can initialize Better Stack Errors.
+      VITE_BETTER_STACK_DSN: ${{ secrets.VITE_BETTER_STACK_DSN }}
     outputs:
       drizzle_changed: ${{ steps.changes.outputs.drizzle_changed }}
     steps:

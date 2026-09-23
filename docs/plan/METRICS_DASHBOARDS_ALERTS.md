@@ -1,6 +1,6 @@
 # Metrics, Dashboards, And Alerts
 
-**Status:** Planned after health baseline
+**Status:** Cloudflare and health baseline verified; external dashboards and alert routing pending
 
 ## Dashboard Links
 
@@ -32,6 +32,21 @@ external alert linked to the matching runbook entry once the Better Stack and
 Cloudflare alert rules are created.
 
 Every alert must have an owner, a linked runbook, a dashboard link, and a known first action.
+
+## Verification — 2026-09-23
+
+- Cloudflare Worker observability is enabled and queryable in production; the
+  live view showed 146 successful events and 0 errors in the last hour, with
+  request logs and trace links available.
+- Better Stack Uptime monitor `christ-dina.org/healthz` is up, checked every
+  three minutes, and has zero incidents.
+- Better Stack Errors has a `DINA production` application and accepted a
+  controlled browser exception from the local production-style build. No
+  Better Stack or Cloudflare alert rules have been created, Slack has not been
+  connected, and no paging test alert was sent.
+- Keep the SLI/SLO rows in `Needs data` until a dashboard link, alert rule, and
+  enough production history exist to evaluate the target rather than only a
+  point-in-time smoke check.
 
 ## Metrics
 
