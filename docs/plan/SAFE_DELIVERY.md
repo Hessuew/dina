@@ -4,6 +4,14 @@
 **Phase:** Engineering Roadmap Phase 3: Safe delivery  
 **Owner:** Engineering
 
+### Verification — 2026-09-23
+
+The local production build and the full `bun run quality:gate` passed after
+removing the unresolved `shadcn/tailwind.css` import from
+`src/styles/app.css`. The latest GitHub main release gate had failed at that
+same build resolution step before this fix; the hosted procedure remains in
+progress until the fix is committed and the main release gate is rerun.
+
 ## Goal
 
 Ship application and database changes through a repeatable path that keeps the
