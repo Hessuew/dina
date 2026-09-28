@@ -18,6 +18,7 @@ describe('analytics boundary', () => {
   })
 
   it('stays inactive when no PostHog project key is configured', async () => {
+    vi.stubEnv('VITE_POSTHOG_KEY', '')
     vi.stubGlobal('window', {})
 
     const { initializeAnalytics, trackAnalyticsEvent } =

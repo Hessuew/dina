@@ -1,16 +1,16 @@
 # Safe Delivery and Migration Operations
 
-**Status:** In progress — repository procedure implemented; hosted rehearsal pending  
+**Status:** In progress — repository procedure and migration safety gate verified; hosted rehearsal pending
 **Phase:** Engineering Roadmap Phase 3: Safe delivery  
 **Owner:** Engineering
 
-### Verification — 2026-09-23
+### Verification — 2026-09-25
 
-The local production build and the full `bun run quality:gate` passed after
-removing the unresolved `shadcn/tailwind.css` import from
-`src/styles/app.css`. The latest GitHub main release gate had failed at that
-same build resolution step before this fix; the hosted procedure remains in
-progress until the fix is committed and the main release gate is rerun.
+The latest pull-request quality gate and serialized main release gate passed.
+The public production origin passed both `/healthz` and `/readyz`, and
+`wrangler deploy --dry-run` validated the current Worker build and bindings.
+The hosted production migration/deploy rehearsal remains unverified because
+the repository has no `production` branch or production deploy workflow yet.
 
 ## Goal
 
@@ -29,8 +29,9 @@ account URLs remain external configuration and must never be committed.
   generation, full TypeScript checking, and the unit suite through
   `.github/workflows/quality-gate.yml`.
 - A push to `main` runs the serialized `Main release gate`, which adds the
-  integration suite and production build. If `drizzle/**` changed, a dependent
-  job migrates and seeds the hosted `development` branch.
+  integration suite, production build, and `wrangler deploy --dry-run`. If
+  `drizzle/**` changed, a dependent job migrates and seeds the hosted
+  `development` branch.
 - A push to the protected `production` branch that includes `drizzle/**` runs
   `.github/workflows/migrate-production.yml`. It validates the migration chain,
   requires the latest green main release gate, and applies pending migrations
@@ -41,6 +42,12 @@ account URLs remain external configuration and must never be committed.
 - The repository integration harness replays the committed Drizzle migration
   journal against PGlite. It is the fast migration-chain check, not proof that
   a hosted restore or provider migration has succeeded.
+- `bun run quality:gate` and the main release gate run
+  `bun run db:check-safety` for changed `drizzle/*.sql` files. The check keeps
+  additive expand work, data backfills, and destructive contract work in
+  separate migrations, rejects direct non-null column additions, and requires
+  `-- safe-delivery: contract` on a contract migration. It is a review guard,
+  not a replacement for the integration migration replay.
 - The credential-free health smoke command checks both public operational
   endpoints after a deployment:
   `bun run smoke:health -- https://<deployment-origin>`.
@@ -76,6 +83,8 @@ account URLs remain external configuration and must never be committed.
 2. Generate a new migration with `bun run db:generate`; never edit an applied
    migration or use `bun run db:push` against a hosted branch.
 3. Run `bun run test:integration` and the normal pull-request quality gate.
+   The gate must pass the changed-migration safety check as well as the
+   application checks.
 4. Merge to `main` and wait for the main release gate plus the dependent
    development migration and synthetic seed to finish successfully.
 5. Exercise the changed application against the hosted `development` branch.
@@ -114,7 +123,8 @@ Use the following sequence for schema changes that affect a live application:
 4. **Enforce:** add not-null or uniqueness constraints only after existing data
    satisfies them and the deployed application writes the new shape.
 5. **Contract:** remove obsolete columns, indexes, or compatibility code in a
-   later migration after the rollback window has ended.
+   later migration after the rollback window has ended. Mark that migration
+   with `-- safe-delivery: contract` so CI requires the separate review.
 
 Avoid combining destructive changes, long-running backfills, and unrelated
 application behavior in one migration. A migration must be safe to retry using

@@ -85,6 +85,12 @@ bun db:migrate
 bun run test:integration
 ```
 
+The quality gate also runs `bun run db:check-safety` against changed migration
+files. It rejects migrations that mix expand, backfill, and contract work,
+add a new non-null column directly, or perform contract work without the
+explicit `-- safe-delivery: contract` marker. This is a structural review
+guard; the integration suite remains the migration-chain execution check.
+
 The integration setup replays every SQL file listed in `drizzle/meta/_journal.json` against
 PGlite. DINA does not run a local Supabase instance.
 
