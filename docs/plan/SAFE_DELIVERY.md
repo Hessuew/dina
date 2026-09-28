@@ -1,16 +1,18 @@
 # Safe Delivery and Migration Operations
 
-**Status:** In progress — repository procedure and migration safety gate verified; hosted rehearsal pending
+**Status:** Verified — repository procedure, hosted migration rehearsal, and post-migration health smoke passed
 **Phase:** Engineering Roadmap Phase 3: Safe delivery  
 **Owner:** Engineering
 
-### Verification — 2026-09-25
+### Verification — 2026-09-28
 
-The latest pull-request quality gate and serialized main release gate passed.
-The public production origin passed both `/healthz` and `/readyz`, and
-`wrangler deploy --dry-run` validated the current Worker build and bindings.
-The hosted production migration/deploy rehearsal remains unverified because
-the repository has no `production` branch or production deploy workflow yet.
+The pull-request quality gate, serialized main release gate, hosted development
+migration plus idempotent synthetic seed, and production migration workflow all
+passed. The production migration validated the Drizzle chain, required the
+latest green main release gate, and applied the pending additive migration.
+The public production origin then passed both `/healthz` and `/readyz`.
+`wrangler deploy --dry-run` also validates the current Worker build and bindings;
+an actual Cloudflare deployment remains a separate operational action.
 
 ## Goal
 
