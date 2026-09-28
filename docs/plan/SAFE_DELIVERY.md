@@ -31,7 +31,9 @@ account URLs remain external configuration and must never be committed.
 - A push to `main` runs the serialized `Main release gate`, which adds the
   integration suite, production build, and `wrangler deploy --dry-run`. If
   `drizzle/**` changed, a dependent job migrates and seeds the hosted
-  `development` branch.
+  `development` branch. The workflow can also be dispatched manually with
+  `run_development_migration=true` to retry that dependent job after a
+  reviewed main release without creating a no-op migration.
 - A push to the protected `production` branch that includes `drizzle/**` runs
   `.github/workflows/migrate-production.yml`. It validates the migration chain,
   requires the latest green main release gate, and applies pending migrations
