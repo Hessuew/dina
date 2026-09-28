@@ -47,7 +47,10 @@ export function findUserInPage<T extends { email?: string | null }>(
   users: ReadonlyArray<T>,
   email: string,
 ): T | undefined {
-  return users.find((candidate) => candidate.email === email)
+  const normalizedEmail = email.toLowerCase()
+  return users.find(
+    (candidate) => candidate.email?.toLowerCase() === normalizedEmail,
+  )
 }
 
 export function shouldContinueUserSearch(pageSize: number): boolean {
