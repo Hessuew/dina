@@ -37,6 +37,7 @@ Database access layer and schema definitions.
   - Notable tables:
     - `profiles`
       - Stores authenticated user profile data, including optional `lecturer_title` metadata for teacher/lecturer display surfaces.
+      - Includes nullable `last_seen_at` metadata for future activity tracking; the application does not write it yet.
       - Role changes are protected by the `profiles_prevent_role_escalation`
         trigger from migration `0056_profile_role_guard`; authenticated
         Supabase requests need a persisted Admin identity, while trusted
