@@ -85,6 +85,17 @@ describe('planVerification', () => {
     )
   })
 
+  it('plans migration safety for changed SQL migrations', () => {
+    const result = plan('static', ['drizzle/0060_add_summary.sql'])
+    expect(
+      result.checks.find((check) => check.id === 'migration-safety'),
+    ).toEqual(
+      expect.objectContaining({
+        files: ['drizzle/0060_add_summary.sql'],
+      }),
+    )
+  })
+
   it('skips full test safety only for docs-only changes', () => {
     expect(
       plan('test', ['docs/a.md']).checks.every((check) => check.skip),
@@ -113,7 +124,11 @@ describe('planVerification', () => {
     )
     expect(gateIds).not.toContain('integration')
     expect(gateIds).not.toContain('build')
-    expect(releaseIds.slice(-2)).toEqual(['integration', 'build'])
+    expect(releaseIds.slice(-3)).toEqual([
+      'integration',
+      'build',
+      'deploy-dry-run',
+    ])
     expect(new Set(releaseIds).size).toBe(releaseIds.length)
   })
 })

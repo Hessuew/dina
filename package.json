@@ -16,6 +16,7 @@
     "deploy": "bun run build && wrangler deploy",
     "cf-typegen": "wrangler types",
     "db:generate": "drizzle-kit generate",
+    "db:check-safety": "node scripts/check-migration-safety.mjs",
     "db:migrate": "drizzle-kit migrate",
     "db:seed:development": "bun run scripts/seed-development.ts",
     "db:baseline": "bun run scripts/baseline-migrations.ts",

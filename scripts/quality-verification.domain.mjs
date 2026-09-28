@@ -4,6 +4,7 @@ const pullRequestMarkdownPattern =
   /^\.github\/(?:PULL_REQUEST_TEMPLATE\.md|PULL_REQUEST_TEMPLATE\/.*\.md)$/u
 const fallowPathPattern =
   /^(?:src\/(?:components|routes|utils)\/|\.fallowrc\.json$)/u
+const migrationPathPattern = /^drizzle\/\d+_[^/]+\.sql$/u
 
 const commandCatalog = {
   format: {
@@ -43,11 +44,23 @@ const commandCatalog = {
     command: 'bun',
     args: ['run', 'test:integration'],
   },
+  migrationSafety: {
+    id: 'migration-safety',
+    name: 'Migration safety',
+    command: 'bun',
+    args: ['run', 'db:check-safety'],
+  },
   build: {
     id: 'build',
     name: 'Production build',
     command: 'bun',
     args: ['run', 'build'],
+  },
+  deployDryRun: {
+    id: 'deploy-dry-run',
+    name: 'Cloudflare deploy dry-run',
+    command: 'bunx',
+    args: ['wrangler', 'deploy', '--dry-run'],
   },
 }
 
@@ -75,9 +88,15 @@ function staticChecks(existingFiles, changedPaths) {
   const lintableFiles = existingFiles.filter((file) =>
     lintablePattern.test(file),
   )
+  const migrationFiles = existingFiles.filter((file) =>
+    migrationPathPattern.test(file),
+  )
   return [
     { ...commandCatalog.format, files: existingFiles },
     { ...commandCatalog.lint, files: lintableFiles },
+    ...(migrationFiles.length > 0
+      ? [{ ...commandCatalog.migrationSafety, files: migrationFiles }]
+      : []),
     {
       ...commandCatalog.fallow,
       skip: !changedPaths.some((path) => fallowPathPattern.test(path)),
@@ -93,7 +112,7 @@ function testChecks(docsOnly) {
 }
 
 function releaseChecks(docsOnly) {
-  return ['integration', 'build'].map((id) => ({
+  return ['integration', 'build', 'deployDryRun'].map((id) => ({
     ...commandCatalog[id],
     skip: docsOnly,
   }))
