@@ -24,6 +24,7 @@ export const profiles = pgTable(
     emailNotifications: boolean('email_notifications').default(true),
     notifyNewAssignments: boolean('notify_new_assignments').default(true),
     notifyGrades: boolean('notify_grades').default(true),
+    lastSeenAt: timestamp('last_seen_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },

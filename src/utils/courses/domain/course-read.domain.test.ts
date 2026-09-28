@@ -31,6 +31,7 @@ const teacher = {
   emailNotifications: true,
   notifyNewAssignments: true,
   notifyGrades: true,
+  lastSeenAt: null,
   createdAt: new Date('2024-01-01'),
   updatedAt: new Date('2024-01-01'),
 } satisfies ProfileRow
