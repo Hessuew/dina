@@ -18,6 +18,12 @@ describe('findUserInPage', () => {
   it('returns undefined when missing', () => {
     expect(findUserInPage([{ email: 'a@x.com' }], 'nope@x.com')).toBeUndefined()
   })
+
+  it('matches the case-normalized email returned by Supabase Auth', () => {
+    expect(
+      findUserInPage([{ email: 'testa@gmail.com' }], 'testA@gmail.com'),
+    ).toEqual({ email: 'testa@gmail.com' })
+  })
 })
 
 describe('shouldContinueUserSearch', () => {
