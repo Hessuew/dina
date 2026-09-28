@@ -3,6 +3,13 @@ name: Main release gate
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_development_migration:
+        description: Re-run the development migration and synthetic seed after a reviewed main release
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   actions: read
@@ -53,13 +60,21 @@ jobs:
       - id: changes
         name: Detect Drizzle changes
         run: |
-          if git diff --quiet "${{ github.event.before }}" "${{ github.sha }}" -- drizzle/; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "drizzle_changed=${{ inputs.run_development_migration }}" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "${{ github.event.before }}" "${{ github.sha }}" -- drizzle/; then
             echo "drizzle_changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "drizzle_changed=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Run complete release verification
-        run: QUALITY_BASE=${{ github.event.before }} bun run quality:release
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            quality_base=HEAD^
+          else
+            quality_base=${{ github.event.before }}
+          fi
+          QUALITY_BASE="$quality_base" bun run quality:release
 
   migrate-development:
     name: Migrate and seed development

@@ -68,8 +68,9 @@ Create GitHub environments named `development` and `production` with these value
 
 The serialized `Main release gate` runs the full integration suite and production build for every
 runtime change. When its push diff includes `drizzle/**`, a dependent job migrates the hosted
-development branch and idempotently creates its synthetic admin/profile and Storage buckets. The
-separate production workflow retains its own migration-chain integration validation after a
+development branch and idempotently creates its synthetic admin/profile and Storage buckets. A
+manual `Main release gate` dispatch with `run_development_migration=true` retries that dependent
+job after a reviewed main release. The separate production workflow retains its own migration-chain integration validation after a
 migration reaches the protected GitHub `production` branch, but never seeds production.
 
 Protect the GitHub `production` branch and the `production` environment. Drizzle has no automatic
