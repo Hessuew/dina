@@ -10,6 +10,10 @@ import {
 } from '@/utils/health'
 import { resolveObservabilityIdentity } from '@/utils/observability/domain/identity.domain'
 import { resolveObservabilityDsn } from '@/utils/observability/domain/dsn.domain'
+import {
+  buildVersionAffinityCookie,
+  hasVersionAffinityCookie,
+} from '@/utils/observability/domain/version-affinity.domain'
 import { addActiveTraceContext } from '@/utils/observability/trace-context'
 
 type HandlerOptions = Parameters<typeof handler.fetch>[1]
@@ -25,24 +29,33 @@ const appHandler = {
     const operationalResponse = await handleOperationalRequest(request)
 
     if (operationalResponse) {
-      return addWorkerVersionHeaders(operationalResponse, opts)
+      return addWorkerVersionHeaders(operationalResponse, opts, request)
     }
 
     const response = await handler.fetch(request, opts as HandlerOptions)
-    return addWorkerVersionHeaders(response, opts)
+    return addWorkerVersionHeaders(response, opts, request)
   },
 }
 
 function addWorkerVersionHeaders(
   response: Response,
   options: unknown,
+  request: Request,
 ): Response {
   const metadata = readWorkerVersionMetadata(options)
-  if (!metadata) return response
-
   const headers = new Headers(response.headers)
-  headers.set('x-dina-worker-version', metadata.id)
-  headers.set('x-dina-worker-version-tag', metadata.tag)
+  if (metadata) {
+    headers.set('x-dina-worker-version', metadata.id)
+    headers.set('x-dina-worker-version-tag', metadata.tag)
+  }
+
+  if (!hasVersionAffinityCookie(request.headers.get('Cookie'))) {
+    headers.append(
+      'Set-Cookie',
+      buildVersionAffinityCookie(crypto.randomUUID()),
+    )
+  }
+
   return new Response(response.body, {
     headers,
     status: response.status,

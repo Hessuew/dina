@@ -56,6 +56,11 @@ account URLs remain external configuration and must never be committed.
   publishes a GitHub Release containing the previous release, merged PRs,
   commits, migration files, Cloudflare version, rollout result, and rollback
   target.
+- The Worker issues the non-sensitive `dina-version-key` cookie on the first
+  response. The `christ-dina.org` zone must have a Request Header Transform
+  Rule matching `http.cookie contains "dina-version-key"` and dynamically
+  setting `Cloudflare-Workers-Version-Key` to
+  `http.request.cookies["dina-version-key"][0]`.
 - `bun run deploy` remains a local/manual full deployment command. The
   production workflow uses `wrangler versions upload` plus explicit
   `wrangler versions deploy` so upload and serving stay separate.
@@ -215,8 +220,8 @@ completed in the external systems before Phase 3 is considered operational:
   contributor self-approval;
 - create least-privilege `CLOUDFLARE_API_TOKEN` and
   `CLOUDFLARE_ACCOUNT_ID` credentials and retain runtime secrets in Cloudflare;
-- configure Cloudflare version URLs, version affinity, custom domain, and
-  Hyperdrive binding;
+- configure Cloudflare version URLs, the `dina-version-key` version-affinity
+  transform rule, custom domain, and Hyperdrive binding;
 - configure Better Stack and Cloudflare alerts to Slack `#incidents` plus the
   documented email fallback;
 - configure the protected release-evidence adapter consumed by

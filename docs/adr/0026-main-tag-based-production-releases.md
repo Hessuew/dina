@@ -43,10 +43,13 @@ safe to automate because Drizzle migrations may have changed production data.
    release-correlated issue triggers deployment of the recorded previous Worker
    version and a second smoke check. The database is never automatically
    down-migrated; use a forward-fix migration or the approved restore runbook.
-7. **Version affinity is required at the Cloudflare zone edge.** The
-   `Cloudflare-Workers-Version-Key` must be derived from a stable session/user
-   identifier, and the version metadata binding is exposed in response headers
-   for smoke and evidence correlation.
+7. **Version affinity is required at the Cloudflare zone edge.** The Worker
+   issues a long-lived, non-sensitive `dina-version-key` cookie when one is
+   absent. A `christ-dina.org` Request Header Transform Rule matches
+   `http.cookie contains "dina-version-key"` and dynamically sets
+   `Cloudflare-Workers-Version-Key` to
+   `http.request.cookies["dina-version-key"][0]`. The version metadata binding
+   is exposed in response headers for smoke and evidence correlation.
 8. **The release record is a GitHub Release.** It contains the previous
    release, merged PRs, commits, migration files, Cloudflare version, rollout
    result, and rollback target. Better Stack and Worker source-map correlation
