@@ -26,6 +26,10 @@ this document.
   Better Stack and health payloads. The Worker also returns
   `x-dina-worker-version` and `x-dina-worker-version-tag`; compare those with
   the GitHub Release and Cloudflare deployment before declaring recovery.
+- The Worker sets a non-sensitive `dina-version-key` cookie for version
+  affinity. The Cloudflare zone transform rule must map that cookie to
+  `Cloudflare-Workers-Version-Key`; verify this mapping before a gradual
+  deployment or split-asset test.
 - Every incident has one incident commander, one technical owner, a severity,
   a current impact statement, and a next update time. The first responder may
   assign these roles to themselves until the service owner is reached.
