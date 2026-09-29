@@ -1,16 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-const findProfile = vi.fn()
-
-vi.mock('@/db', () => ({
-  getDb: vi.fn(async () => ({
-    query: { profiles: { findFirst: findProfile } },
-  })),
-  withDbConnection: vi.fn(async <T>(fn: () => Promise<T>) => fn()),
-}))
-
 import { DefaultAuthorizationService } from './authz/default-adapter'
 import { withRequestScope } from './request-scope'
+
+const { findProfile } = vi.hoisted(() => ({ findProfile: vi.fn() }))
+
+vi.mock('@/db', () => ({
+  getDb: vi.fn(() => ({
+    query: { profiles: { findFirst: findProfile } },
+  })),
+  withDbConnection: vi.fn(<T>(fn: () => Promise<T>) => fn()),
+}))
+
+vi.mock('@/utils/repository', () => ({
+  findAssignmentById: vi.fn(),
+  findCommentForWrite: vi.fn(),
+  findCourseTeacher: vi.fn(),
+  findLessonById: vi.fn(),
+  findPostForWrite: vi.fn(),
+  findProfileRoleById: findProfile,
+  findSubmissionById: vi.fn(),
+}))
 
 describe('withRequestScope', () => {
   beforeEach(() => {

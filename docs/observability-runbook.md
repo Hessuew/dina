@@ -22,6 +22,10 @@ this document.
 - `/healthz` checks Worker/application liveness without dependencies.
   `/readyz` checks the production database path and can fail while the Worker
   is still serving requests.
+- Tagged production releases report the immutable `vYYYY.MM.DD.N` release in
+  Better Stack and health payloads. The Worker also returns
+  `x-dina-worker-version` and `x-dina-worker-version-tag`; compare those with
+  the GitHub Release and Cloudflare deployment before declaring recovery.
 - Every incident has one incident commander, one technical owner, a severity,
   a current impact statement, and a next update time. The first responder may
   assign these roles to themselves until the service owner is reached.
@@ -84,6 +88,36 @@ that gap as follow-up work.
 If the signal is an expected validation, invalid OTP, authorization denial, or
 other normal user-input outcome, do not declare an infrastructure incident
 without evidence of an abnormal rate or user impact.
+
+## Release rollback guardrails
+
+The production release workflow stops or rolls back when any of these persists
+for the stage observation window:
+
+| Guardrail               | Threshold                                      | Action                                                                |
+| ----------------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
+| `/readyz`               | Any failed exact-version or post-rollout check | Stop, deploy the recorded previous Worker version, re-run smoke       |
+| Unexpected errors       | More than 5% for 5 minutes                     | Stop/rollback; separate expected 4xx from release-correlated failures |
+| p95 latency             | More than 1 second for 5 minutes               | Stop/rollback and inspect Cloudflare/Better Stack latency by version  |
+| New high-severity issue | Any release-correlated issue                   | Stop/rollback and preserve the issue/source-map evidence              |
+
+Rollback is application-only. Never automatically down-migrate Supabase. If
+the schema and application are incompatible, use a forward-fix migration or
+the approved restore runbook.
+
+For a tagged release, the exact-version checks are:
+
+```sh
+SMOKE_BASE_URL=https://christ-dina.org \
+SMOKE_VERSION_ID=<cloudflare-version-id> \
+SMOKE_WORKER_NAME=christ-dina \
+SMOKE_EXPECTED_RELEASE=vYYYY.MM.DD.N \
+bun run smoke:health
+```
+
+The affected public journey smoke uses the same version override. Authenticated
+journeys must use approved synthetic production credentials only; never put
+real user credentials in Actions logs.
 
 ## Alert response matrix
 
