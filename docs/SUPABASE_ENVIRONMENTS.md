@@ -2,10 +2,10 @@
 
 DINA uses two hosted Supabase environments. There is no local Supabase or Docker stack.
 
-| Supabase branch     | Application use                            | Data                     |
-| ------------------- | ------------------------------------------ | ------------------------ |
-| `development`       | The app running at `http://localhost:3000` | Synthetic test data only |
-| Production (`main`) | The deployed application                   | Production data          |
+| Supabase branch | Application use                               | Data                     |
+| --------------- | --------------------------------------------- | ------------------------ |
+| `development`   | The app running at `http://localhost:3000`    | Synthetic test data only |
+| Production      | The deployed application promoted from `main` | Production data          |
 
 Each branch has separate Database, Auth, Storage, API credentials, and migration history. Never
 copy production rows or Storage objects into `development`.
@@ -70,10 +70,17 @@ The serialized `Main release gate` runs the full integration suite and productio
 runtime change. When its push diff includes `drizzle/**`, a dependent job migrates the hosted
 development branch and idempotently creates its synthetic admin/profile and Storage buckets. A
 manual `Main release gate` dispatch with `run_development_migration=true` retries that dependent
-job after a reviewed main release. The separate production workflow retains its own migration-chain integration validation after a
-migration reaches the protected GitHub `production` branch, but never seeds production.
+job after a reviewed main release.
 
-Protect the GitHub `production` branch and the `production` environment. Drizzle has no automatic
+`.github/workflows/production-release.yml` listens for a successful main gate,
+creates an immutable UTC release tag, waits for the protected `production`
+environment approval, replays the migration chain, and applies pending
+migrations without seeding. It then promotes the exact tagged Worker version.
+Manual dispatch requires the full SHA of a successful main gate and supports
+`standard` or `gradual` rollout profiles. There is no long-lived production
+branch and failed release tags remain for audit.
+
+Protect `main` and the `production` environment. Drizzle has no automatic
 rollback: repair a failed forward migration with a new migration, or use the
 [database backup and restore validation runbook](./database-backup-restore-runbook.md) for a
 controlled restore.
@@ -92,8 +99,8 @@ part of the recovery objective.
 2. Run `bun run test:integration`; this is the repository's no-Docker local migration test.
 3. Merge to GitHub `main`; CI migrates the hosted Supabase `development` branch.
 4. Test the localhost app against development Database, Auth, and Storage.
-5. Promote the reviewed commit to GitHub `production`; CI applies the same migration to Supabase
-   production.
+5. Promote the same validated SHA with the production release workflow; CI
+   applies the same migration to Supabase production before Worker traffic moves.
 
 For expand/contract rules, release evidence, application-versus-database
 rollback decisions, and the production smoke checklist, follow

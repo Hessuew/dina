@@ -1,6 +1,6 @@
 # Error Tracking With Better Stack
 
-**Status:** Better Stack DSN configured; browser ingestion verified; source-map, Worker-drill, and alert verification pending
+**Status:** Tagged build contract implemented; source-map, Worker-drill, and alert verification pending
 
 ## Current Baseline
 
@@ -13,6 +13,9 @@
 - Source-map upload configuration reads `SENTRY_ORG`, `SENTRY_PROJECT`,
   `SENTRY_URL`, and `SENTRY_RELEASE` from build environment rather than
   hardcoding the current provider account.
+- The production release workflow sets `VITE_APP_VERSION`,
+  `VITE_SENTRY_RELEASE`, and `SENTRY_RELEASE` to the immutable release tag;
+  tagged Worker uploads include source maps before traffic promotion.
 - Expected 4xx, router-control-flow, benign browser network TypeErrors (`Failed to fetch` / `Load failed` / Firefox NetworkError), dynamic-import load noise, and stale server-fn ID misses are suppressed by `shouldSuppressFromSentry()`.
 - When an OpenTelemetry span is active, `beforeSend` adds its `trace_id` and
   `span_id` to the event context so Better Stack Errors can link the exception
@@ -32,8 +35,9 @@
       `wrangler secret put BETTER_STACK_DSN`.
 - [ ] Confirm production, preview, and local environments produce
       distinguishable Better Stack environments.
-- [ ] Confirm Better Stack releases/source maps are attached for deployed
-      builds using the external build values now supported by `vite.config.ts`.
+- [ ] Confirm Better Stack releases/source maps are attached for a tagged
+      production build using the external build values now supported by
+      `vite.config.ts`.
 - [x] Complete a controlled frontend error drill against the local
       production-style build; add the documented server error drill next.
 - Confirm alert rules target actionable failures, not expected validation or

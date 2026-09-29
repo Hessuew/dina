@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  resolveHealthSmokeHeaders,
   resolveHealthSmokeUrl,
   validateHealthSmokeResponse,
+  validateVersionMetadataHeader,
+  validateVersionMetadataTag,
 } from './health-smoke.domain'
 
 const healthyPayload = {
@@ -57,5 +60,46 @@ describe('validateHealthSmokeResponse', () => {
     expect(validateHealthSmokeResponse('/readyz', statusCode, payload)).toEqual(
       expect.any(String),
     )
+  })
+})
+
+describe('resolveHealthSmokeHeaders', () => {
+  it('builds the Cloudflare version override header', () => {
+    expect(resolveHealthSmokeHeaders('version-123', 'christ-dina')).toEqual({
+      'Cloudflare-Workers-Version-Overrides': 'christ-dina="version-123"',
+      'Cloudflare-Workers-Version-Key': 'dina-release-smoke-version-123',
+    })
+  })
+
+  it('rejects incomplete version override configuration', () => {
+    expect(() => resolveHealthSmokeHeaders('version-123', undefined)).toThrow()
+  })
+})
+
+describe('validateVersionMetadataHeader', () => {
+  it('accepts the expected Worker version', () => {
+    expect(validateVersionMetadataHeader('version-123', 'version-123')).toBe(
+      null,
+    )
+  })
+
+  it('rejects a request served by another version', () => {
+    expect(validateVersionMetadataHeader('version-123', 'version-456')).toMatch(
+      /expected version-123/u,
+    )
+  })
+})
+
+describe('validateVersionMetadataTag', () => {
+  it('accepts the expected release tag', () => {
+    expect(validateVersionMetadataTag('v2026.09.29.1', 'v2026.09.29.1')).toBe(
+      null,
+    )
+  })
+
+  it('rejects a response from another release tag', () => {
+    expect(
+      validateVersionMetadataTag('v2026.09.29.1', 'v2026.09.29.2'),
+    ).toMatch(/expected v2026\.09\.29\.1/u)
   })
 })

@@ -22,6 +22,12 @@
       "id": "fc8915964fb8466c81f83fcd27e77833",
     },
   ],
+  // Exposes the deployed version id/tag for exact-version smoke checks and
+  // release-correlated telemetry. Version affinity is configured at the zone
+  // edge because this Worker serves HTML and content-hashed assets.
+  "version_metadata": {
+    "binding": "WORKER_VERSION",
+  },
   "routes": [
     {
       "pattern": "christ-dina.org",

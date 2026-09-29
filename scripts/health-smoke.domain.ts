@@ -2,6 +2,8 @@ export const HEALTH_SMOKE_PATHS = ['/healthz', '/readyz'] as const
 
 export type HealthSmokePath = (typeof HEALTH_SMOKE_PATHS)[number]
 
+export type HealthSmokeHeaders = Record<string, string>
+
 type HealthPayload = {
   status?: unknown
   service?: unknown
@@ -40,15 +42,62 @@ export function validateHealthSmokeResponse(
 ): string | null {
   if (statusCode !== 200) return `expected HTTP 200, received ${statusCode}`
   if (!isHealthPayload(payload)) return 'response was not a health payload'
-  if (payload.status !== 'ok') return 'response status was not ok'
-  if (payload.service !== 'christ-dina') {
-    return 'response service was not christ-dina'
+
+  return (
+    [
+      payload.status === 'ok' ? null : 'response status was not ok',
+      payload.service === 'christ-dina'
+        ? null
+        : 'response service was not christ-dina',
+      typeof payload.requestId === 'string' && payload.requestId.trim()
+        ? null
+        : 'response did not include a requestId',
+      path === '/readyz' && payload.dependencies?.database?.status !== 'ok'
+        ? 'database readiness was not ok'
+        : null,
+    ].find(Boolean) ?? null
+  )
+}
+
+export function resolveHealthSmokeHeaders(
+  versionId: string | undefined,
+  workerName: string | undefined,
+): HealthSmokeHeaders {
+  const normalizedVersionId = versionId?.trim()
+  const normalizedWorkerName = workerName?.trim()
+  if (!normalizedVersionId && !normalizedWorkerName) return {}
+  if (!normalizedVersionId || !normalizedWorkerName) {
+    throw new Error(
+      'SMOKE_VERSION_ID and SMOKE_WORKER_NAME must be supplied together',
+    )
   }
-  if (typeof payload.requestId !== 'string' || !payload.requestId.trim()) {
-    return 'response did not include a requestId'
+
+  return {
+    'Cloudflare-Workers-Version-Overrides': `${normalizedWorkerName}="${normalizedVersionId}"`,
+    'Cloudflare-Workers-Version-Key': `dina-release-smoke-${normalizedVersionId}`,
   }
-  if (path === '/readyz' && payload.dependencies?.database?.status !== 'ok') {
-    return 'database readiness was not ok'
+}
+
+export function validateVersionMetadataHeader(
+  expectedVersionId: string | undefined,
+  actualVersionId: string | null,
+): string | null {
+  const expected = expectedVersionId?.trim()
+  if (!expected) return null
+  if (actualVersionId !== expected) {
+    return `response ran version ${actualVersionId ?? 'unknown'}, expected ${expected}`
+  }
+  return null
+}
+
+export function validateVersionMetadataTag(
+  expectedRelease: string | undefined,
+  actualRelease: string | null,
+): string | null {
+  const expected = expectedRelease?.trim()
+  if (!expected) return null
+  if (actualRelease !== expected) {
+    return `response ran release ${actualRelease ?? 'unknown'}, expected ${expected}`
   }
   return null
 }

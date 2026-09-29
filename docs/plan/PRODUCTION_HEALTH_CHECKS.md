@@ -33,6 +33,11 @@ Both endpoints return redacted JSON:
 - `timestamp`: ISO timestamp.
 - `durationMs`: rounded elapsed time.
 
+Production responses also expose `x-dina-worker-version` and
+`x-dina-worker-version-tag` from the Cloudflare version metadata binding. These
+headers are used for release verification and incident correlation only; they
+do not contain secrets.
+
 `/readyz` also includes `dependencies.database.status`, `durationMs`, and a generic error category when the check fails. It must never return connection strings, credentials, raw exception messages, or Supabase service-role data.
 
 ## Logging
@@ -49,6 +54,12 @@ Cloudflare logs and traces are the first operational surface for these events. B
 
 - Call `/healthz` in local preview and production after deploy.
 - Call `/readyz` with a valid database binding and verify `200`.
+- During a release, call both endpoints with
+  `Cloudflare-Workers-Version-Overrides: christ-dina="<version-id>"` and
+  require the matching version id, tag, and health payload release.
+- During gradual deployment, send repeated requests with the same
+  `Cloudflare-Workers-Version-Key` and verify the version metadata stays stable;
+  test a hashed asset after the HTML response to catch split-version loading.
 - Temporarily point the database binding/env to an invalid value in a non-production environment and verify `/readyz` returns `503` with no secret leakage.
 - Confirm Cloudflare logs contain structured events for both endpoints.
 

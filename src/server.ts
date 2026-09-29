@@ -13,21 +13,71 @@ import { resolveObservabilityDsn } from '@/utils/observability/domain/dsn.domain
 import { addActiveTraceContext } from '@/utils/observability/trace-context'
 
 type HandlerOptions = Parameters<typeof handler.fetch>[1]
-type WorkerObservabilityEnv = Env & {
-  BETTER_STACK_DSN?: string
-  SENTRY_DSN?: string
-  SENTRY_ENVIRONMENT?: string
-  SENTRY_RELEASE?: string
+
+type WorkerVersionMetadata = {
+  id: string
+  tag: string
+  timestamp: string
 }
 
 const appHandler = {
   async fetch(request: Request, opts?: unknown): Promise<Response> {
     const operationalResponse = await handleOperationalRequest(request)
 
-    if (operationalResponse) return operationalResponse
+    if (operationalResponse) {
+      return addWorkerVersionHeaders(operationalResponse, opts)
+    }
 
-    return handler.fetch(request, opts as HandlerOptions)
+    const response = await handler.fetch(request, opts as HandlerOptions)
+    return addWorkerVersionHeaders(response, opts)
   },
+}
+
+function addWorkerVersionHeaders(
+  response: Response,
+  options: unknown,
+): Response {
+  const metadata = readWorkerVersionMetadata(options)
+  if (!metadata) return response
+
+  const headers = new Headers(response.headers)
+  headers.set('x-dina-worker-version', metadata.id)
+  headers.set('x-dina-worker-version-tag', metadata.tag)
+  return new Response(response.body, {
+    headers,
+    status: response.status,
+    statusText: response.statusText,
+  })
+}
+
+function readWorkerVersionMetadata(
+  value: unknown,
+): WorkerVersionMetadata | null {
+  if (!isRecord(value)) return null
+  return isWorkerVersionMetadata(value.WORKER_VERSION)
+    ? value.WORKER_VERSION
+    : null
+}
+
+function isWorkerVersionMetadata(
+  value: unknown,
+): value is WorkerVersionMetadata {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.tag === 'string' &&
+    typeof value.timestamp === 'string'
+  )
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function readOptionalString(value: unknown, key: string): string | undefined {
+  if (!isRecord(value)) return undefined
+  const candidate = value[key]
+  return typeof candidate === 'string' ? candidate : undefined
 }
 
 async function handleOperationalRequest(
@@ -48,19 +98,18 @@ async function handleOperationalRequest(
 // Wrap only in the built Worker; dev falls back to the plain handler.
 export default import.meta.env.PROD
   ? Sentry.withSentry((env) => {
-      const workerEnv = env as WorkerObservabilityEnv
       const identity = resolveObservabilityIdentity(
         import.meta.env.MODE,
-        workerEnv.SENTRY_ENVIRONMENT,
-        workerEnv.SENTRY_RELEASE ??
+        readOptionalString(env, 'SENTRY_ENVIRONMENT'),
+        readOptionalString(env, 'SENTRY_RELEASE') ??
           import.meta.env.VITE_SENTRY_RELEASE ??
           import.meta.env.VITE_APP_VERSION,
       )
 
       return {
         dsn: resolveObservabilityDsn(
-          workerEnv.BETTER_STACK_DSN,
-          workerEnv.SENTRY_DSN,
+          readOptionalString(env, 'BETTER_STACK_DSN'),
+          readOptionalString(env, 'SENTRY_DSN'),
         ),
         environment: identity.environment,
         release: identity.release,

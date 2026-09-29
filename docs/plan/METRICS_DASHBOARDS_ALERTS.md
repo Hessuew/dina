@@ -1,6 +1,6 @@
 # Metrics, Dashboards, And Alerts
 
-**Status:** Cloudflare and health baseline verified; external dashboards and alert routing pending
+**Status:** Repository guardrails implemented; external dashboards, per-version metrics, and alert routing pending
 
 ## Dashboard Links
 
@@ -25,6 +25,9 @@ Start with a small actionable alert set:
 - Auth failure spike beyond expected user mistakes.
 - Database connection/query degradation.
 - Deploy regression shortly after release.
+- Release-correlated error rate above 5% for five minutes.
+- Release-correlated p95 latency above 1 second for five minutes.
+- New high-severity issue correlated with the release.
 
 Response procedures for these alerts are documented in
 [`docs/observability-runbook.md`](../observability-runbook.md). Keep each
@@ -47,6 +50,37 @@ Every alert must have an owner, a linked runbook, a dashboard link, and a known 
 - Keep the SLI/SLO rows in `Needs data` until a dashboard link, alert rule, and
   enough production history exist to evaluate the target rather than only a
   point-in-time smoke check.
+
+## Per-version rollout metrics contract
+
+`.github/workflows/production-release.yml` can perform gradual promotion only
+when `CLOUDFLARE_VERSION_METRICS_QUERYABLE=true` and the protected metrics
+adapter is configured. The adapter receives `version_id`, `since`, and `until`
+query parameters and returns JSON with these numeric fields:
+
+```json
+{
+  "requests": 20,
+  "errors": 0,
+  "p95LatencyMs": 420,
+  "highSeverityIssues": 0
+}
+```
+
+The repository validates that response before each stage. It fails closed on
+missing or malformed metrics, rolls back on any guardrail breach, and never
+uses aggregate Worker traffic as a substitute for per-version evidence. A
+low-traffic 10% stage with fewer than 20 new-version requests is promoted
+directly to 100% after the guardrails pass. Cloudflare version metadata and
+Logpush/observability configuration remain the provider-side source for
+correlating the version id and tag.
+
+After promotion, `bun run scripts/release-evidence.ts` queries the protected
+`PRODUCTION_RELEASE_EVIDENCE_URL` adapter. It must confirm the exact release
+tag, validated SHA, Cloudflare version, production origin, source-map
+correlation, and successful delivery to Slack `#incidents` and the documented
+email fallback. The production workflow fails closed when this evidence is
+missing or does not match the promoted release.
 
 ## Metrics
 
