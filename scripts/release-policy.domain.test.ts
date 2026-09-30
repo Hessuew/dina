@@ -8,9 +8,9 @@ import {
   validateExternalHttpsResponse,
   validateExternalHttpsUrl,
   validateMetricsWindow,
+  validateRolloutStageWaitSeconds,
   validateTargetSha,
   validateVersionAffinityReadiness,
-  validateRolloutStageWaitSeconds,
 } from './release-policy.domain'
 
 describe('createReleaseTag', () => {

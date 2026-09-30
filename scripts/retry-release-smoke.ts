@@ -29,7 +29,7 @@ export async function runWithRetry(
   return exitCode
 }
 
-export function resolveSmokeCommand(name: string): string[] {
+export function resolveSmokeCommand(name: string): Array<string> {
   if (name === 'health') return ['run', 'smoke:health']
   if (name === 'journey') return ['run', 'scripts/release-journey-smoke.ts']
   if (name === 'rollback') {

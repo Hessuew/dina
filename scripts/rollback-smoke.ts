@@ -42,7 +42,7 @@ const modes = await Promise.all(
 )
 
 const mode = modes[0]
-if (!mode || modes.some((candidate) => candidate !== mode)) {
+if (modes.some((candidate) => candidate !== mode)) {
   throw new Error(
     'Rollback smoke responses used inconsistent compatibility modes',
   )

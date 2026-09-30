@@ -48,8 +48,9 @@ export function selectRollbackTarget(value: unknown): string {
       (left: DeploymentWithTimestamp, right: DeploymentWithTimestamp) =>
         right.createdAt - left.createdAt,
     )
+  if (deployments.length === 0)
+    throw new Error('No Cloudflare deployments were found')
   const newest = deployments[0]
-  if (!newest) throw new Error('No Cloudflare deployments were found')
   if (deployments[1]?.createdAt === newest.createdAt) {
     throw new Error('Cloudflare deployments have ambiguous newest timestamp')
   }
@@ -66,10 +67,10 @@ export function selectRollbackTarget(value: unknown): string {
       (left: DeploymentVersion, right: DeploymentVersion) =>
         right.percentage - left.percentage,
     )
-  const activeVersion = activeVersions[0]
-  if (!activeVersion) {
+  if (activeVersions.length === 0) {
     throw new Error('Newest Cloudflare deployment has no active version')
   }
+  const activeVersion = activeVersions[0]
   const highestPercentageVersions = activeVersions.filter(
     (version: DeploymentVersion) =>
       version.percentage === activeVersion.percentage,

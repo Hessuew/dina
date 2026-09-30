@@ -1,18 +1,8 @@
-import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
-
-const require = createRequire(import.meta.url)
-const { collectTrustedReleaseBindings, isSupportedManualPromotionTarget } =
-  require('./trusted-release.cjs') as {
-    collectTrustedReleaseBindings: (
-      input: unknown,
-    ) => Promise<Record<string, unknown>>
-    isSupportedManualPromotionTarget: (
-      targetSha: unknown,
-      currentMainSha: unknown,
-      bindings: unknown,
-    ) => boolean
-  }
+import {
+  collectTrustedReleaseBindings,
+  isSupportedManualPromotionTarget,
+} from './trusted-release.cjs'
 
 const commitSha = 'a'.repeat(40)
 const releaseTag = 'v2026.09.30.1'

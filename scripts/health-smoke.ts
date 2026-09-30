@@ -1,8 +1,8 @@
 import {
   HEALTH_SMOKE_PATHS,
   resolveHealthSmokeUrl,
-  validateSmokeResponseOrigin,
   validateHealthSmokeResponse,
+  validateSmokeResponseOrigin,
 } from './health-smoke.domain'
 import {
   resolveHealthSmokeHeaders,

@@ -6,9 +6,9 @@ import {
   parseVersionMetrics,
   selectRolloutPlan,
   validateExternalHttpsUrl,
+  validateRolloutStageWaitSeconds,
   validateTargetSha,
   validateVersionAffinityReadiness,
-  validateRolloutStageWaitSeconds,
 } from './release-policy.domain'
 
 const [command, ...args] = process.argv.slice(2)

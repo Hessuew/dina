@@ -1,16 +1,8 @@
 import { describe, expect, it } from 'vitest'
-
-import { createRequire } from 'node:module'
-
-const require = createRequire(import.meta.url)
-const { hasImmutableReleaseTagRuleset, normalizeRulesetDetails } =
-  require('./release-protection.cjs') as {
-    hasImmutableReleaseTagRuleset: (rulesets: unknown) => boolean
-    normalizeRulesetDetails: (
-      summaryRulesets: unknown,
-      detailResponses: unknown,
-    ) => unknown[]
-  }
+import {
+  hasImmutableReleaseTagRuleset,
+  normalizeRulesetDetails,
+} from './release-protection.cjs'
 
 const immutableRuleset = {
   bypass_actors: [],

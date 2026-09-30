@@ -1,10 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import {
-  handleReleaseEndpoint,
-  recordReleaseMetric,
-  type ReleaseRuntimeEnv,
-} from './release-endpoints'
+import { handleReleaseEndpoint, recordReleaseMetric } from './release-endpoints'
+import type { ReleaseRuntimeEnv } from './release-endpoints'
 
 const metadata = {
   id: 'version-1',

@@ -1,7 +1,7 @@
-import {
-  recordReleaseMetric,
-  type ReleaseRuntimeEnv,
-  type ReleaseVersionMetadata,
+import { recordReleaseMetric } from './release-endpoints'
+import type {
+  ReleaseRuntimeEnv,
+  ReleaseVersionMetadata,
 } from './release-endpoints'
 
 export async function runRequestWithReleaseMetrics(

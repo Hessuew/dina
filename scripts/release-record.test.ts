@@ -1,23 +1,9 @@
-import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
-
-const require = createRequire(import.meta.url)
-const {
+import {
   isReleaseTag,
   parseTrustedReleaseBinding,
   selectTrustedPreviousRelease,
-} = require('./release-record.cjs') as {
-  isReleaseTag: (value: unknown) => boolean
-  parseTrustedReleaseBinding: (
-    release: unknown,
-    tagCommit: unknown,
-    provenance: unknown,
-  ) => { commitSha: string; cloudflareVersionId: string } | null
-  selectTrustedPreviousRelease: (
-    releases: unknown,
-    previousReleaseTag: unknown,
-  ) => unknown
-}
+} from './release-record.cjs'
 
 const commitSha = 'a'.repeat(40)
 const provenance = {
