@@ -137,6 +137,9 @@ describe('selectRollbackTarget', () => {
           },
         },
         legacyVersionIds: [],
+        verifiedReleaseTags: {
+          'v2026.09.30.1': 'a'.repeat(40),
+        },
       }),
     ).toEqual({
       versionId: 'release-version',
@@ -164,6 +167,28 @@ describe('selectRollbackTarget', () => {
         legacyVersionIds: [],
       }),
     ).toThrow(/invalid release tag/iu)
+  })
+
+  it('rejects release-shaped tags that are not verified repository tags', () => {
+    expect(() =>
+      selectRollbackTargetInfo({
+        deployments: [
+          {
+            created_on: '2026-09-30T12:00:00.000Z',
+            versions: [{ version_id: 'unverified-version', percentage: 100 }],
+          },
+        ],
+        version: {
+          id: 'unverified-version',
+          annotations: {
+            'workers/tag': 'v2026.09.30.999',
+            'workers/message': 'manual upload',
+          },
+        },
+        legacyVersionIds: [],
+        verifiedReleaseTags: {},
+      }),
+    ).toThrow(/release tag was not verified/iu)
   })
 
   it('rejects metadata for a different selected version', () => {
