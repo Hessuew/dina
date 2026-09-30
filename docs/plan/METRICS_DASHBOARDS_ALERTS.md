@@ -54,7 +54,8 @@ Every alert must have an owner, a linked runbook, a dashboard link, and a known 
 ## Per-version rollout metrics contract
 
 `.github/workflows/production-release.yml` can perform gradual promotion only
-when `CLOUDFLARE_VERSION_METRICS_QUERYABLE=true` and the protected metrics
+when `CLOUDFLARE_VERSION_METRICS_QUERYABLE=true`,
+`CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE=true`, and the protected metrics
 adapter is configured. The adapter receives `version_id`, `since`, and `until`
 query parameters and returns JSON with these numeric fields:
 
@@ -76,10 +77,14 @@ Logpush/observability configuration remain the provider-side source for
 correlating the version id and tag.
 
 The Worker records request count, unexpected errors, latency, and release
-identity in the `dina_release_metrics` Workers Analytics Engine dataset. The
-protected `/_internal/release/metrics` endpoint queries that dataset through
-Cloudflare's SQL API and requires a release-version match plus a bearer token.
-It is not public application telemetry and is excluded from its own dataset.
+identity in the `dina_release_metrics` Workers Analytics Engine dataset. It
+does not classify ordinary HTTP 5xx responses as high-severity issues. The
+protected `/_internal/release/metrics` endpoint therefore remains non-queryable
+and returns 503 until a trusted provider adapter supplies the explicit
+release-correlated `highSeverityIssues` aggregate. The readiness variables stay
+false until that provider signal is configured and verified. The endpoint
+requires a release-version match plus a bearer token and is excluded from its
+own dataset.
 
 After promotion, `bun run scripts/release-evidence.ts` queries the protected
 `PRODUCTION_RELEASE_EVIDENCE_URL` adapter. It must confirm the exact release

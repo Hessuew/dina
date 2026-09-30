@@ -12,6 +12,7 @@ import {
 import { resolveObservabilityIdentity } from '@/utils/observability/domain/identity.domain'
 import { resolveObservabilityDsn } from '@/utils/observability/domain/dsn.domain'
 import { addActiveTraceContext } from '@/utils/observability/trace-context'
+import { fetchWithAssetFallback } from '@/utils/asset-routing'
 import { handleReleaseEndpoint } from '@/utils/observability/release-endpoints'
 import { runRequestWithReleaseMetrics } from '@/utils/observability/release-request'
 import {
@@ -43,13 +44,17 @@ const appHandler = {
       startedAt,
       async () => {
         const operationalResponse = await handleOperationalRequest(request)
-        return (
-          operationalResponse ??
-          (await handler.fetch(request, opts as HandlerOptions))
+        if (operationalResponse) return operationalResponse
+        return fetchWithAssetFallback(request, runtime, () =>
+          handler.fetch(request, opts as HandlerOptions),
         )
       },
     )
-    return addWorkerVersionHeaders(response, opts, request)
+    return addWorkerVersionHeaders(
+      response,
+      { WORKER_VERSION: metadata },
+      request,
+    )
   },
 }
 
