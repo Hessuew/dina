@@ -39,6 +39,20 @@ describe('selectRollbackTarget', () => {
     ).toThrow(/newest Cloudflare deployment/iu)
   })
 
+  it('fails closed when the newest deployment has tied active versions', () => {
+    expect(() =>
+      selectRollbackTarget([
+        {
+          created_on: '2026-09-30T12:00:00.000Z',
+          versions: [
+            { version_id: 'first-canary', percentage: 50 },
+            { version_id: 'second-canary', percentage: 50 },
+          ],
+        },
+      ]),
+    ).toThrow(/ambiguous active versions/iu)
+  })
+
   it('requires an explicit legacy signal for an unannotated target', () => {
     expect(() =>
       selectRollbackTargetInfo({

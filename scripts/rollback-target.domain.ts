@@ -36,7 +36,7 @@ export function selectRollbackTarget(value: unknown): string {
   const newest = deployments[0]
   if (!newest) throw new Error('No Cloudflare deployments were found')
 
-  const activeVersion = newest.versions
+  const activeVersions = newest.versions
     .filter(
       (version) =>
         version.version_id.trim() &&
@@ -44,9 +44,18 @@ export function selectRollbackTarget(value: unknown): string {
         version.percentage >= 0 &&
         version.percentage <= 100,
     )
-    .toSorted((left, right) => right.percentage - left.percentage)[0]
+    .toSorted((left, right) => right.percentage - left.percentage)
+  const activeVersion = activeVersions[0]
   if (!activeVersion) {
     throw new Error('Newest Cloudflare deployment has no active version')
+  }
+  const highestPercentageVersions = activeVersions.filter(
+    (version) => version.percentage === activeVersion.percentage,
+  )
+  if (highestPercentageVersions.length !== 1) {
+    throw new Error(
+      'Newest Cloudflare deployment has ambiguous active versions',
+    )
   }
   return activeVersion.version_id
 }
