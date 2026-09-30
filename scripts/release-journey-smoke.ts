@@ -1,5 +1,7 @@
 // fallow-ignore-file unused-file -- invoked directly by production-release.yml
 
+import { fetchWithTimeout } from './http'
+
 const origin = requiredEnv('PRODUCTION_ORIGIN').replace(/\/$/u, '')
 const versionId = requiredEnv('SMOKE_VERSION_ID')
 const workerName = requiredEnv('SMOKE_WORKER_NAME')
@@ -11,7 +13,7 @@ const paths = (process.env.PRODUCTION_JOURNEY_PATHS ?? '/login')
 
 for (const path of paths) {
   const url = new URL(path, `${origin}/`)
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     headers: versionHeaders(workerName, versionId),
   })
   if (response.status !== 200) {
@@ -31,7 +33,7 @@ for (const path of paths) {
     throw new Error(`${path}: no first-party hashed asset references found`)
   }
   for (const assetUrl of assetUrls.slice(0, 3)) {
-    const assetResponse = await fetch(assetUrl, {
+    const assetResponse = await fetchWithTimeout(assetUrl, {
       headers: versionHeaders(workerName, versionId),
     })
     if (assetResponse.status !== 200) {

@@ -43,24 +43,19 @@ function addWorkerVersionHeaders(
   request: Request,
 ): Response {
   const metadata = readWorkerVersionMetadata(options)
-  const headers = new Headers(response.headers)
   if (metadata) {
-    headers.set('x-dina-worker-version', metadata.id)
-    headers.set('x-dina-worker-version-tag', metadata.tag)
+    response.headers.set('x-dina-worker-version', metadata.id)
+    response.headers.set('x-dina-worker-version-tag', metadata.tag)
   }
 
   if (!hasVersionAffinityCookie(request.headers.get('Cookie'))) {
-    headers.append(
+    response.headers.append(
       'Set-Cookie',
       buildVersionAffinityCookie(crypto.randomUUID()),
     )
   }
 
-  return new Response(response.body, {
-    headers,
-    status: response.status,
-    statusText: response.statusText,
-  })
+  return response
 }
 
 function readWorkerVersionMetadata(

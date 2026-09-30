@@ -57,24 +57,20 @@ jobs:
             echo "Production release is disabled. Set the protected repository variable PRODUCTION_RELEASE_ENABLED=true only after the readiness checklist is complete."
             exit 1
           fi
-      - name: Verify exact validated main SHA
-        env:
-          TARGET_SHA: ${{ env.TARGET_SHA_INPUT }}
-        run: |
-          TARGET_SHA=$(bun run scripts/release-policy.ts validate-sha --sha "$TARGET_SHA" 2>/dev/null || true)
-          if [[ -z "$TARGET_SHA" ]]; then
-            echo "target_sha must be a full 40-character commit SHA"
-            exit 1
-          fi
-          git fetch origin main --tags --force
-          git cat-file -e "$TARGET_SHA^{commit}"
-          git merge-base --is-ancestor "$TARGET_SHA" origin/main
-          git checkout --detach "$TARGET_SHA"
-          echo "target_sha=$TARGET_SHA" >> "$GITHUB_ENV"
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.10
       - run: bun install --frozen-lockfile
+      - name: Verify exact validated main SHA
+        env:
+          TARGET_SHA: ${{ env.TARGET_SHA_INPUT }}
+        run: |
+          TARGET_SHA=$(bun run scripts/release-policy.ts validate-sha --sha "$TARGET_SHA")
+          git fetch origin main --tags --force
+          git cat-file -e "$TARGET_SHA^{commit}"
+          git merge-base --is-ancestor "$TARGET_SHA" origin/main
+          git checkout --detach "$TARGET_SHA"
+          echo "TARGET_SHA=$TARGET_SHA" >> "$GITHUB_ENV"
       - name: Confirm a successful main release gate for manual promotions
         if: github.event_name == 'workflow_dispatch'
         uses: actions/github-script@v7
@@ -280,20 +276,6 @@ jobs:
               bun run scripts/release-metrics.ts)
             bun run scripts/release-policy.ts guardrails --metrics "$metrics"
             requests=$(jq -r '.requests' <<< "$metrics")
-            if [[ "$requests" -lt 20 ]]; then
-              if [[ "$percentage" == "10" ]]; then
-                bunx wrangler versions deploy \
-                  "$VERSION_ID@100" \
-                  "$PREVIOUS_VERSION_ID@0" \
-                  --name "$WORKER_NAME" \
-                  --message "Low-traffic direct promotion of $RELEASE_TAG" \
-                  --yes
-                echo "result=gradual:direct-low-traffic" >> "$GITHUB_OUTPUT"
-                exit 0
-              fi
-              echo "Gradual stage $percentage% collected fewer than 20 new-version requests"
-              exit 1
-            fi
             if [[ "$percentage" == "10" ]]; then
               decision=$(bun run scripts/release-policy.ts rollout --profile gradual --requests "$requests")
               if [[ "$(jq -r '.mode' <<< "$decision")" == "direct" ]]; then
@@ -306,6 +288,9 @@ jobs:
                 echo "result=gradual:direct-low-traffic" >> "$GITHUB_OUTPUT"
                 exit 0
               fi
+            elif [[ "$requests" -lt 20 ]]; then
+              echo "Gradual stage $percentage% collected fewer than 20 new-version requests"
+              exit 1
             fi
           done
           echo "result=gradual:10%-25%-50%-100%" >> "$GITHUB_OUTPUT"
@@ -333,8 +318,6 @@ jobs:
         if: failure() && steps.rollback.outcome == 'success'
         env:
           SMOKE_BASE_URL: ${{ env.PRODUCTION_ORIGIN }}
-          SMOKE_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
-          SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
         run: bun run smoke:health
 
   release:
@@ -364,10 +347,13 @@ jobs:
               per_page: 20,
             })
             const previousRelease = releases.find((release) => !release.draft)
-            const commit = await github.rest.repos.getCommit({ owner, repo, ref: targetSha })
-            const base = previousRelease?.tag_name ?? commit.data.parents[0]?.sha
-            const compare = base
-              ? await github.rest.repos.compareCommits({ owner, repo, base, head: targetSha })
+            const compare = previousRelease
+              ? await github.rest.repos.compareCommits({
+                  owner,
+                  repo,
+                  base: previousRelease.tag_name,
+                  head: targetSha,
+                })
               : null
             const migrationFiles = (compare?.data.files ?? [])
               .map((file) => file.filename)

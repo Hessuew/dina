@@ -1,5 +1,7 @@
 // fallow-ignore-file unused-file -- invoked directly by production-release.yml
 
+import { fetchWithTimeout } from './http'
+
 const evidenceUrl = requiredEnv('PRODUCTION_RELEASE_EVIDENCE_URL')
 const token = requiredEnv('PRODUCTION_RELEASE_EVIDENCE_TOKEN')
 const releaseTag = requiredEnv('RELEASE_TAG')
@@ -13,7 +15,7 @@ url.searchParams.set('target_sha', targetSha)
 url.searchParams.set('cloudflare_version_id', cloudflareVersionId)
 url.searchParams.set('origin', origin)
 
-const response = await fetch(url, {
+const response = await fetchWithTimeout(url, {
   headers: { authorization: `Bearer ${token}`, accept: 'application/json' },
 })
 if (!response.ok) {
