@@ -75,7 +75,7 @@ export function recordReleaseMetric(
     runtime.RELEASE_METRICS?.writeDataPoint({
       indexes: [metadata.id],
       blobs: [metadata.tag, request.method, new URL(request.url).pathname],
-      doubles: [1, unexpectedError, unexpectedError, durationMs],
+      doubles: [1, unexpectedError, durationMs],
     })
   } catch {
     return
@@ -284,8 +284,7 @@ function buildMetricsQuery(dataset: string, window: MetricsWindow): string {
     'SELECT',
     'SUM(_sample_interval * double1) AS requests,',
     'SUM(_sample_interval * double2) AS errors,',
-    'quantileExactWeighted(0.95)(double4, _sample_interval) AS p95LatencyMs,',
-    'SUM(_sample_interval * double3) AS highSeverityIssues',
+    'quantileExactWeighted(0.95)(double3, _sample_interval) AS p95LatencyMs',
     `FROM ${safeDataset}`,
     `WHERE index1 = '${version}'`,
     `AND timestamp >= toDateTime('${since}')`,
