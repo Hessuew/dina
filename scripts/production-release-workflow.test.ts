@@ -14,6 +14,7 @@ type ParsedWorkflow = {
   rollbackRun: string | undefined
   rollbackEnv: Record<string, string> | undefined
   deployEnv: Record<string, string>
+  journeyEnv: Record<string, string> | undefined
   uploadEnv: Record<string, string> | undefined
   healthRun: string | undefined
   journeyRun: string | undefined
@@ -76,6 +77,9 @@ describe('production release workflow', () => {
     expect(workflow.deployEnv.CLOUDFLARE_ACCOUNT_ID).toBe(
       '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
     )
+    expect(workflow.deployEnv.PRODUCTION_JOURNEY_PATHS).toBe(
+      '${{ vars.PRODUCTION_JOURNEY_PATHS }}',
+    )
     expect(workflow.deployEnv.SENTRY_PROJECT).toBe(
       '${{ vars.BETTER_STACK_APPLICATION_ID }}',
     )
@@ -99,6 +103,9 @@ describe('production release workflow', () => {
     )
     expect(workflow.journeyRun).toBe(
       'bun run scripts/retry-release-smoke.ts journey',
+    )
+    expect(workflow.journeyEnv?.PRODUCTION_JOURNEY_PATHS).toBe(
+      '${{ env.PRODUCTION_JOURNEY_PATHS }}',
     )
     expect(workflow.postRolloutHealthRun).toBe(
       'bun run scripts/retry-release-smoke.ts health',
@@ -134,6 +141,7 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
       rollbackRun: rollback?.run,
       rollbackEnv: rollback?.env,
       deployEnv: workflow.jobs.deploy.env,
+      journeyEnv: journey?.env,
       uploadEnv: upload?.env,
       healthRun: health?.run,
       journeyRun: journey?.run,

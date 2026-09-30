@@ -61,6 +61,14 @@ describe('selectRolloutPlan', () => {
       percentages: [100],
     })
   })
+
+  it('applies the sample floor to fractional request counts', () => {
+    expect(selectRolloutPlan('gradual', 19.5)).toEqual({
+      mode: 'direct',
+      reason: 'low-traffic',
+      percentages: [100],
+    })
+  })
 })
 
 describe('evaluateGuardrails', () => {

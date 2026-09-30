@@ -8,6 +8,25 @@ export function versionHeaders(
   }
 }
 
+export function parseJourneyPaths(value: string): Array<string> {
+  const paths = value
+    .split(',')
+    .map((path) => path.trim())
+    .filter(Boolean)
+  if (paths.length === 0)
+    throw new Error('At least one journey path is required')
+
+  const origin = 'https://journey-path.invalid'
+  for (const path of paths) {
+    if (!path.startsWith('/') || path.startsWith('//')) {
+      throw new Error(`Invalid journey path: ${path}`)
+    }
+    const url = new URL(path, origin)
+    if (url.origin !== origin) throw new Error(`Invalid journey path: ${path}`)
+  }
+  return [...new Set(paths)]
+}
+
 export function extractFirstPartyAssetUrls(
   pageUrl: URL,
   html: string,

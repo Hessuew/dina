@@ -1,6 +1,13 @@
 // fallow-ignore-file unused-file -- invoked directly by production-release.yml
 
-import { selectRollbackTargetInfo } from './rollback-target.domain'
+import {
+  selectRollbackTarget,
+  selectRollbackTargetInfo,
+} from './rollback-target.domain'
 
-const target = selectRollbackTargetInfo(JSON.parse(await Bun.stdin.text()))
-console.log(JSON.stringify(target))
+const input = JSON.parse(await Bun.stdin.text())
+if (Array.isArray(input)) {
+  console.log(selectRollbackTarget(input))
+} else {
+  console.log(JSON.stringify(selectRollbackTargetInfo(input)))
+}
