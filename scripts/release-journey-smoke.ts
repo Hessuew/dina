@@ -2,22 +2,29 @@
 
 import { fetchWithTimeout } from './http'
 import {
+  resolveHealthSmokeUrl,
+  validateSmokeResponseOrigin,
+} from './health-smoke.domain'
+import {
   extractFirstPartyAssetUrls,
   parseJourneyPaths,
   versionHeaders,
 } from './release-journey-smoke.domain'
 
-const origin = requiredEnv('PRODUCTION_ORIGIN').replace(/\/$/u, '')
+const origin = resolveHealthSmokeUrl(requiredEnv('PRODUCTION_ORIGIN'))
 const versionId = requiredEnv('SMOKE_VERSION_ID')
 const workerName = requiredEnv('SMOKE_WORKER_NAME')
 const expectedRelease = requiredEnv('SMOKE_EXPECTED_RELEASE')
 const paths = parseJourneyPaths(requiredEnv('PRODUCTION_JOURNEY_PATHS'))
 
 for (const path of paths) {
-  const url = new URL(path, `${origin}/`)
+  const url = new URL(path, origin)
   const response = await fetchWithTimeout(url, {
     headers: versionHeaders(workerName, versionId),
+    redirect: 'manual',
   })
+  const originFailure = validateSmokeResponseOrigin(response, url)
+  if (originFailure) throw new Error(`${path}: ${originFailure}`)
   if (response.status !== 200) {
     throw new Error(`${path}: expected HTTP 200, received ${response.status}`)
   }
@@ -37,7 +44,15 @@ for (const path of paths) {
   for (const assetUrl of assetUrls.slice(0, 3)) {
     const assetResponse = await fetchWithTimeout(assetUrl, {
       headers: versionHeaders(workerName, versionId),
+      redirect: 'manual',
     })
+    const assetOriginFailure = validateSmokeResponseOrigin(
+      assetResponse,
+      assetUrl,
+    )
+    if (assetOriginFailure) {
+      throw new Error(`${assetUrl.pathname}: ${assetOriginFailure}`)
+    }
     if (assetResponse.status !== 200) {
       throw new Error(
         `${assetUrl.pathname}: expected HTTP 200, received ${assetResponse.status}`,

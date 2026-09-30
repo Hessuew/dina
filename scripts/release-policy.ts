@@ -5,6 +5,7 @@ import {
   evaluateGuardrails,
   parseVersionMetrics,
   selectRolloutPlan,
+  validateExternalHttpsUrl,
   validateTargetSha,
   validateVersionAffinityReadiness,
   validateRolloutStageWaitSeconds,
@@ -47,9 +48,13 @@ if (command === 'validate-sha') {
       readOption(args, '--evidence-url'),
     ),
   )
+} else if (command === 'validate-url') {
+  console.log(
+    validateExternalHttpsUrl(readOption(args, '--url'), 'URL').toString(),
+  )
 } else {
   throw new Error(
-    'Usage: release-policy.ts validate-sha|tag|rollout|rollout-wait|affinity-readiness|guardrails ...',
+    'Usage: release-policy.ts validate-sha|tag|rollout|rollout-wait|affinity-readiness|validate-url|guardrails ...',
   )
 }
 
