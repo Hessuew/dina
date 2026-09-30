@@ -31,6 +31,13 @@ export type RollbackTarget = {
   releaseTag: string | null
 }
 
+type RollbackTargetInput = {
+  versionId: string
+  version: VersionMetadata
+  legacyVersionIds: Set<string>
+  verifiedReleaseBindings: Record<string, unknown>
+}
+
 export function selectRollbackTarget(value: unknown): string {
   if (!Array.isArray(value))
     throw new Error('Deployments response must be an array')
@@ -84,6 +91,13 @@ export function selectRollbackTarget(value: unknown): string {
 }
 
 export function selectRollbackTargetInfo(value: unknown): RollbackTarget {
+  const input = readRollbackTargetInput(value)
+  if (input.version.id !== input.versionId)
+    throw new Error('Rollback target version metadata did not match')
+  return resolveRollbackTarget(input)
+}
+
+function readRollbackTargetInput(value: unknown): RollbackTargetInput {
   if (!isRecord(value))
     throw new Error('Rollback target input must be an object')
   if (
@@ -98,43 +112,67 @@ export function selectRollbackTargetInfo(value: unknown): RollbackTarget {
 
   const versionId = selectRollbackTarget(value.deployments)
   const version = readVersionMetadata(value.version)
-  const legacyVersionIds = new Set(
-    value.legacyVersionIds.map(readLegacyVersionId),
-  )
-  const verifiedReleaseBindings = isRecord(value.verifiedReleaseBindings)
-    ? value.verifiedReleaseBindings
-    : {}
-  if (version.id !== versionId)
-    throw new Error('Rollback target version metadata did not match')
-
-  const tag = readAnnotation(version.annotations?.['workers/tag'])
-  const message = readAnnotation(version.annotations?.['workers/message'])
-  if (tag && message) {
-    if (!RELEASE_TAG_PATTERN.test(tag)) {
-      throw new Error('Rollback target has an invalid release tag')
-    }
-    const identity = readReleaseIdentity(message)
-    if (
-      !identity ||
-      identity.tag !== tag ||
-      !isVerifiedReleaseBinding(
-        verifiedReleaseBindings,
-        tag,
-        versionId,
-        identity.commit,
-      )
-    ) {
-      throw new Error('Rollback target release identity was not verified')
-    }
-    return { versionId, legacyCompatible: false, releaseTag: tag }
+  return {
+    versionId,
+    version,
+    legacyVersionIds: new Set(value.legacyVersionIds.map(readLegacyVersionId)),
+    verifiedReleaseBindings: isRecord(value.verifiedReleaseBindings)
+      ? value.verifiedReleaseBindings
+      : {},
   }
-  if (!tag && !message && legacyVersionIds.has(versionId)) {
-    return { versionId, legacyCompatible: true, releaseTag: null }
+}
+
+function resolveRollbackTarget(input: RollbackTargetInput): RollbackTarget {
+  const tag = readAnnotation(input.version.annotations?.['workers/tag'])
+  const message = readAnnotation(input.version.annotations?.['workers/message'])
+  if (tag && message) {
+    return selectStrictRollbackTarget(input, tag, message)
   }
   if (!tag && !message) {
-    throw new Error('Rollback target lacks explicit legacy verification')
+    return selectLegacyRollbackTarget(input)
   }
   throw new Error('Rollback target version has incomplete release metadata')
+}
+
+function selectStrictRollbackTarget(
+  input: RollbackTargetInput,
+  tag: string,
+  message: string,
+): RollbackTarget {
+  if (!RELEASE_TAG_PATTERN.test(tag)) {
+    throw new Error('Rollback target has an invalid release tag')
+  }
+  const identity = readReleaseIdentity(message)
+  if (
+    !identity ||
+    identity.tag !== tag ||
+    !isVerifiedReleaseBinding(
+      input.verifiedReleaseBindings,
+      tag,
+      input.versionId,
+      identity.commit,
+    )
+  ) {
+    throw new Error('Rollback target release identity was not verified')
+  }
+  return {
+    versionId: input.versionId,
+    legacyCompatible: false,
+    releaseTag: tag,
+  }
+}
+
+function selectLegacyRollbackTarget(
+  input: RollbackTargetInput,
+): RollbackTarget {
+  if (input.legacyVersionIds.has(input.versionId)) {
+    return {
+      versionId: input.versionId,
+      legacyCompatible: true,
+      releaseTag: null,
+    }
+  }
+  throw new Error('Rollback target lacks explicit legacy verification')
 }
 
 function readDeployment(value: unknown): Deployment {

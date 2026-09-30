@@ -101,40 +101,73 @@ function isTrustedDeployment(
   productionRun,
 ) {
   if (
-    !deployment ||
-    deployment.ref !== releaseTag ||
-    deployment.environment !== 'production' ||
-    deployment.production_environment !== true ||
-    deployment.sha?.trim().toLowerCase() !== commitSha ||
-    deployment.creator?.login !== 'github-actions[bot]' ||
-    !isWithinWorkflowRun(deployment.created_at, productionRun)
+    !isTrustedDeploymentMetadata(
+      deployment,
+      releaseTag,
+      commitSha,
+      productionRun,
+    )
   ) {
     return null
   }
-  const payload = deployment.payload
+  if (
+    !isTrustedDeploymentPayload(
+      deployment.payload,
+      releaseTag,
+      commitSha,
+      productionRunId,
+    )
+  ) {
+    return null
+  }
+  return hasSuccessfulDeploymentStatus(deployment.statuses) ? true : null
+}
+
+function isTrustedDeploymentMetadata(
+  deployment,
+  releaseTag,
+  commitSha,
+  productionRun,
+) {
+  return Boolean(
+    deployment &&
+    deployment.ref === releaseTag &&
+    deployment.environment === 'production' &&
+    deployment.production_environment === true &&
+    deployment.sha?.trim().toLowerCase() === commitSha &&
+    deployment.creator?.login === 'github-actions[bot]' &&
+    isWithinWorkflowRun(deployment.created_at, productionRun),
+  )
+}
+
+function isTrustedDeploymentPayload(
+  payload,
+  releaseTag,
+  commitSha,
+  productionRunId,
+) {
   const versionId = payload?.cloudflareVersionId
-  if (
-    !payload ||
-    String(payload.productionRunId) !== productionRunId ||
-    payload.releaseTag !== releaseTag ||
-    typeof payload.commitSha !== 'string' ||
-    payload.commitSha.trim().toLowerCase() !== commitSha ||
-    typeof versionId !== 'string' ||
-    !/^[A-Za-z0-9._-]+$/u.test(versionId)
-  ) {
-    return null
-  }
-  const statuses = Array.isArray(deployment.statuses) ? deployment.statuses : []
-  const latestStatus = selectLatestDeploymentStatus(statuses)
-  if (
-    !latestStatus ||
-    latestStatus.state !== 'success' ||
-    latestStatus.environment !== 'production' ||
-    latestStatus.creator?.login !== 'github-actions[bot]'
-  ) {
-    return null
-  }
-  return true
+  return Boolean(
+    payload &&
+    String(payload.productionRunId) === productionRunId &&
+    payload.releaseTag === releaseTag &&
+    typeof payload.commitSha === 'string' &&
+    payload.commitSha.trim().toLowerCase() === commitSha &&
+    typeof versionId === 'string' &&
+    /^[A-Za-z0-9._-]+$/u.test(versionId),
+  )
+}
+
+function hasSuccessfulDeploymentStatus(statuses) {
+  const latestStatus = selectLatestDeploymentStatus(
+    Array.isArray(statuses) ? statuses : [],
+  )
+  return Boolean(
+    latestStatus &&
+    latestStatus.state === 'success' &&
+    latestStatus.environment === 'production' &&
+    latestStatus.creator?.login === 'github-actions[bot]',
+  )
 }
 
 function selectLatestDeploymentStatus(statuses) {

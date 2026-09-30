@@ -23,34 +23,38 @@ function hasImmutableReleaseTagRuleset(rulesets) {
 }
 
 function isImmutableReleaseTagRuleset(ruleset) {
-  if (
-    !ruleset ||
-    ruleset.target !== 'tag' ||
-    ruleset.enforcement !== 'active'
-  ) {
-    return false
-  }
+  return (
+    hasActiveTagTarget(ruleset) &&
+    hasCompleteReleaseTagScope(ruleset) &&
+    hasImmutableRules(ruleset)
+  )
+}
 
+function hasActiveTagTarget(ruleset) {
+  return Boolean(
+    ruleset && ruleset.target === 'tag' && ruleset.enforcement === 'active',
+  )
+}
+
+function hasCompleteReleaseTagScope(ruleset) {
   const includes = ruleset.conditions?.ref_name?.include
-  const protectsReleaseTags =
-    Array.isArray(includes) &&
-    includes.some((pattern) => RELEASE_TAG_REF_PATTERNS.has(pattern))
   const excludes = ruleset.conditions?.ref_name?.exclude
-  const hasCompleteReleaseScope =
-    Array.isArray(excludes) && excludes.length === 0
   const bypassActors = ruleset.bypass_actors
-  const hasNoBypassActors =
-    Array.isArray(bypassActors) && bypassActors.length === 0
+  return Boolean(
+    Array.isArray(includes) &&
+    includes.some((pattern) => RELEASE_TAG_REF_PATTERNS.has(pattern)) &&
+    Array.isArray(excludes) &&
+    excludes.length === 0 &&
+    Array.isArray(bypassActors) &&
+    bypassActors.length === 0,
+  )
+}
+
+function hasImmutableRules(ruleset) {
   const ruleTypes = new Set(
     Array.isArray(ruleset.rules) ? ruleset.rules.map((rule) => rule?.type) : [],
   )
-  return (
-    protectsReleaseTags &&
-    hasCompleteReleaseScope &&
-    hasNoBypassActors &&
-    ruleTypes.has('deletion') &&
-    ruleTypes.has('update')
-  )
+  return ruleTypes.has('deletion') && ruleTypes.has('update')
 }
 
 module.exports = { hasImmutableReleaseTagRuleset, normalizeRulesetDetails }
