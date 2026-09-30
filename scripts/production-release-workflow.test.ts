@@ -67,6 +67,7 @@ type ParsedWorkflow = {
       targetFromPreflight: boolean
       smokeTargetFromPreflight: boolean
     }
+    rolloutReadinessBeforePromotion: boolean
     publication: StepContract & {
       previousReleaseFromPreflight: boolean
       beforeRollback: boolean
@@ -190,6 +191,7 @@ describe('production release workflow semantics', () => {
 
     expect(workflow.deploy.environment).toBe('production')
     expect(workflow.deploy.standardGuardrails.profile).toBe('standard')
+    expect(workflow.deploy.rolloutReadinessBeforePromotion).toBe(true)
     expect(workflow.deploy.standardGuardrails.command).toMatchObject({
       metricsQuery: true,
       guardrailEvaluation: true,
@@ -285,13 +287,43 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
       secretScopes: Object.fromEntries(${JSON.stringify(SECRET_NAMES)}.map((secret) => [secret, secretScope(holder, step, secret)])),
       environmentKeys: environmentKeys(step),
     })
+    const expressionReference = (value) => {
+      const match = /^\\$\\{\\{\\s*([^{}]+?)\\s*\\}\\}$/u.exec(
+        String(value ?? '').trim(),
+      )
+      return match?.[1].trim()
+    }
+    const expressionReferences = (value) => {
+      const references = []
+      const expression = String(value ?? '')
+      const pattern = /\\$\\{\\{\\s*([^{}]+?)\\s*\\}\\}/gu
+      let match
+      while ((match = pattern.exec(expression))) references.push(match[1].trim())
+      return references
+    }
+    const expressionHasReference = (value, reference) =>
+      expressionReferences(value).some((expression) =>
+        expression.split(/\\s*(?:\\|\\||&&)\\s*/u).includes(reference),
+      )
+    const equalityExpression = (value) => {
+      const expression = expressionReference(value) ?? String(value ?? '').trim()
+      const match = /^([A-Za-z0-9._-]+)\\s*==\\s*'([^']*)'$/u.exec(expression)
+      return match ? { left: match[1], right: match[2] } : undefined
+    }
+    const fallbackExpression = (value) => {
+      const expression = expressionReference(value)
+      const match = expression
+        ? /^([A-Za-z0-9._-]+)\\s*\\|\\|\\s*'([^']*)'$/u.exec(expression)
+        : undefined
+      return match ? { variable: match[1], fallback: match[2] } : undefined
+    }
     const checkoutRole = (step) => {
-      const ref = String(step?.with?.ref ?? '')
-      if (ref.includes('tooling_sha')) return 'tooling'
-      if (ref.includes('target_sha')) return 'application'
+      const ref = expressionReference(step?.with?.ref)
+      if (ref === 'needs.resolve.outputs.tooling_sha') return 'tooling'
+      if (ref === 'needs.resolve.outputs.target_sha') return 'application'
       return undefined
     }
-    const envDefault = (value) => String(value ?? '').match(/\\|\\|\\s*'([^']+)'/u)?.[1]
+    const envDefault = (value) => fallbackExpression(value)?.fallback
     const trustedRelease = step(deploySteps, (item) => item.id === 'trusted_releases')
     const tagProtection = step(resolveSteps, (item) => item.name === 'Verify immutable v* tag protection')
     const manualTarget = step(resolveSteps, (item) => item.name === 'Verify manual target is current or previously trusted')
@@ -300,6 +332,7 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     const apply = step(migrateSteps, (item) => item.name === 'Apply compatible pending migrations without seeding')
     const rollout = step(deploySteps, (item) => item.id === 'rollout')
     const standardGuardrails = step(deploySteps, (item) => item.id === 'standard_guardrails')
+    const rolloutReadiness = step(deploySteps, (item) => item.id === 'rollout_readiness')
     const exactHealth = step(deploySteps, (item) => item.name === 'Run exact-version health smoke')
     const journey = step(deploySteps, (item) => item.name === 'Run affected public journey smoke through the version override')
     const postRolloutHealth = step(deploySteps, (item) => item.name === 'Verify the promoted version after rollout')
@@ -313,14 +346,16 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     const sourceMapVerify = step(deploySteps, (item) => item.name === 'Verify that the tagged source maps are queryable')
     const deployCheckouts = deploySteps.filter((item) => item.uses === 'actions/checkout@v4')
     console.log(JSON.stringify({
-      runNameUsesTargetSha: String(workflow['run-name'] ?? '').includes('target_sha'),
+      runNameUsesTargetSha: expressionHasReference(workflow['run-name'], 'inputs.target_sha'),
       workflowRun: workflow.on.workflow_run,
       resolveCondition: String(workflow.jobs.resolve.if),
       resolve: {
         productionReleaseEnabledDefault: envDefault(workflow.jobs.resolve.env.PRODUCTION_RELEASE_ENABLED),
         affinityReadyDefault: envDefault(workflow.jobs.resolve.env.CLOUDFLARE_VERSION_AFFINITY_READY),
         affinityEvidenceRequired: Boolean(affinity?.env?.CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL),
-        toolingShaOutput: String(workflow.jobs.resolve.outputs.tooling_sha ?? '').includes('tooling_sha'),
+        toolingShaOutput:
+          expressionReference(workflow.jobs.resolve.outputs.tooling_sha) ===
+          'steps.identity.outputs.tooling_sha',
       },
       migration: {
         integration: stepContract(null, integration),
@@ -352,18 +387,27 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
         rollout: stepContract(workflow.jobs.deploy, rollout),
         standardGuardrails: {
           ...stepContract(workflow.jobs.deploy, standardGuardrails),
-          profile: String(standardGuardrails?.if ?? '').match(/ROLLOUT_PROFILE\\s*==\\s*'([^']+)'/u)?.[1],
+          profile: equalityExpression(standardGuardrails?.if)?.right,
         },
         rollback: {
           ...stepContract(workflow.jobs.deploy, rollback),
-          targetFromPreflight: String(rollback?.env?.ROLLBACK_VERSION_ID ?? '').includes('steps.preflight.outputs.previous_version_id'),
-          smokeTargetFromPreflight: String(rollback?.env?.SMOKE_VERSION_ID ?? '').includes('steps.preflight.outputs.previous_version_id'),
+          targetFromPreflight:
+            expressionReference(rollback?.env?.ROLLBACK_VERSION_ID) ===
+            'steps.preflight.outputs.previous_version_id',
+          smokeTargetFromPreflight:
+            expressionReference(rollback?.env?.SMOKE_VERSION_ID) ===
+            'steps.preflight.outputs.previous_version_id',
         },
         publication: {
           ...stepContract(workflow.jobs.deploy, publication),
-          previousReleaseFromPreflight: String(publication?.env?.PREVIOUS_RELEASE_TAG ?? '').includes('steps.preflight.outputs.previous_release_tag'),
+          previousReleaseFromPreflight:
+            expressionReference(publication?.env?.PREVIOUS_RELEASE_TAG) ===
+            'steps.preflight.outputs.previous_release_tag',
           beforeRollback: publicationIndex >= 0 && publicationIndex < rollbackIndex,
         },
+        rolloutReadinessBeforePromotion:
+          deploySteps.indexOf(rolloutReadiness) >= 0 &&
+          deploySteps.indexOf(rolloutReadiness) < deploySteps.indexOf(rollout),
         sentryUrlsValidated:
           commandContract(sourceMapUpload?.run).urlValidation &&
           commandContract(sourceMapVerify?.run).urlValidation,

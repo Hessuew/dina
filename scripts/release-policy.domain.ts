@@ -96,6 +96,30 @@ export function validateExternalHttpsUrl(value: string, name: string): URL {
   return url
 }
 
+export function validateExternalHttpsResponse(
+  response: Pick<Response, 'redirected' | 'status' | 'url'>,
+  expectedUrl: URL,
+  name: string,
+): void {
+  if (
+    response.redirected ||
+    (response.status >= 300 && response.status < 400)
+  ) {
+    throw new Error(`${name} returned a redirect`)
+  }
+  if (!response.url) throw new Error(`${name} response did not include a URL`)
+
+  let actualUrl: URL
+  try {
+    actualUrl = new URL(response.url)
+  } catch {
+    throw new Error(`${name} response URL was invalid`)
+  }
+  if (actualUrl.origin !== expectedUrl.origin) {
+    throw new Error(`${name} response origin did not match the request origin`)
+  }
+}
+
 export function validateMetricsWindow(
   value: unknown,
   since: string,
