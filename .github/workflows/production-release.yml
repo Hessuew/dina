@@ -213,12 +213,22 @@ jobs:
             bun run scripts/rollback-target.ts)
           previous_version_id=$(jq -r '.versionId' <<< "$rollback_target")
           legacy_compatible=$(jq -r '.legacyCompatible' <<< "$rollback_target")
+          previous_release_tag=$(jq -r '.releaseTag // empty' <<< "$rollback_target")
           if [[ -z "$previous_version_id" || "$previous_version_id" == "null" || ("$legacy_compatible" != "true" && "$legacy_compatible" != "false") ]]; then
             echo "No verified Cloudflare rollback target was found"
             exit 1
           fi
+          if [[ "$legacy_compatible" == "true" && -n "$previous_release_tag" ]]; then
+            echo "Legacy rollback target must not have a release tag"
+            exit 1
+          fi
+          if [[ "$legacy_compatible" == "false" && -z "$previous_release_tag" ]]; then
+            echo "Tagged rollback target must have a release tag"
+            exit 1
+          fi
           echo "previous_version_id=$previous_version_id" >> "$GITHUB_OUTPUT"
           echo "legacy_compatible=$legacy_compatible" >> "$GITHUB_OUTPUT"
+          echo "previous_release_tag=$previous_release_tag" >> "$GITHUB_OUTPUT"
       - name: Build the tagged production artifact and upload source maps
         run: bun run build
       - name: Register the Better Stack production release
@@ -406,7 +416,7 @@ jobs:
           SMOKE_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
           SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
           SMOKE_LEGACY_TARGET: ${{ steps.preflight.outputs.legacy_compatible }}
-          SMOKE_EXPECTED_RELEASE: ${{ env.RELEASE_TAG }}
+          SMOKE_EXPECTED_RELEASE: ${{ steps.preflight.outputs.previous_release_tag }}
         run: bun run scripts/retry-release-smoke.ts rollback
 
   release:

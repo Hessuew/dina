@@ -14,7 +14,7 @@ export function validateRollbackSmokeResponse(
   statusCode: number,
   payload: unknown,
   expectedVersionId: string,
-  expectedRelease: string,
+  expectedRelease: string | undefined,
   actualVersionId: string | null,
   actualRelease: string | null,
   legacyTarget: boolean,
@@ -22,10 +22,7 @@ export function validateRollbackSmokeResponse(
   const healthFailure = validateHealthSmokeResponse(path, statusCode, payload)
   if (healthFailure) return { failure: healthFailure, mode: null }
 
-  const normalizedExpectedRelease = expectedRelease.trim()
-  if (!normalizedExpectedRelease) {
-    return { failure: 'expected rollback release was empty', mode: null }
-  }
+  const normalizedExpectedRelease = expectedRelease?.trim()
   const hasVersion = Boolean(actualVersionId?.trim())
   const hasRelease = Boolean(actualRelease?.trim())
   if (!hasVersion && !hasRelease) {
@@ -35,12 +32,14 @@ export function validateRollbackSmokeResponse(
         mode: null,
       }
     }
-    const payloadReleaseFailure = validateOptionalReleasePayload(
-      payload,
-      normalizedExpectedRelease,
-    )
-    if (payloadReleaseFailure) {
-      return { failure: payloadReleaseFailure, mode: null }
+    if (normalizedExpectedRelease) {
+      const payloadReleaseFailure = validateOptionalReleasePayload(
+        payload,
+        normalizedExpectedRelease,
+      )
+      if (payloadReleaseFailure) {
+        return { failure: payloadReleaseFailure, mode: null }
+      }
     }
     return { failure: null, mode: 'legacy-header-compatible' }
   }
@@ -53,6 +52,12 @@ export function validateRollbackSmokeResponse(
   if (actualVersionId !== expectedVersionId) {
     return {
       failure: `response ran version ${actualVersionId}, expected ${expectedVersionId}`,
+      mode: null,
+    }
+  }
+  if (!normalizedExpectedRelease) {
+    return {
+      failure: 'response emitted release metadata without an expected release',
       mode: null,
     }
   }

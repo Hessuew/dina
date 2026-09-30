@@ -16,7 +16,23 @@ describe('validateRollbackSmokeResponse', () => {
         200,
         healthyPayload,
         'legacy-version',
-        'v2026.09.30.1',
+        undefined,
+        null,
+        null,
+        true,
+      ),
+    ).toEqual({ failure: null, mode: 'legacy-header-compatible' })
+    expect(
+      validateRollbackSmokeResponse(
+        '/readyz',
+        200,
+        {
+          ...healthyPayload,
+          dependencies: { database: { status: 'ok' } },
+          release: null,
+        },
+        'legacy-version',
+        undefined,
         null,
         null,
         true,
