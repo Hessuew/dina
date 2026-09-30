@@ -27,6 +27,29 @@ const provenance = {
       updated_at: '2026-09-30T11:00:00.000Z',
     },
   ],
+  deployments: [
+    {
+      ref: 'v2026.09.30.1',
+      sha: commitSha,
+      environment: 'production',
+      production_environment: true,
+      creator: { login: 'github-actions[bot]' },
+      created_at: '2026-09-30T10:40:00.000Z',
+      payload: {
+        releaseTag: 'v2026.09.30.1',
+        commitSha,
+        cloudflareVersionId: 'version-1',
+        productionRunId: '42',
+      },
+      statuses: [
+        {
+          state: 'success',
+          environment: 'production',
+          creator: { login: 'github-actions[bot]' },
+        },
+      ],
+    },
+  ],
 }
 const release = {
   tag_name: 'v2026.09.30.1',
@@ -38,7 +61,7 @@ const release = {
 }
 
 describe('parseTrustedReleaseBinding', () => {
-  it('accepts a release whose tag resolves to its recorded commit', () => {
+  it('accepts a workflow-owned release whose deployment binds its version', () => {
     expect(parseTrustedReleaseBinding(release, commitSha, provenance)).toEqual({
       commitSha,
       cloudflareVersionId: 'version-1',
@@ -79,6 +102,23 @@ describe('parseTrustedReleaseBinding', () => {
     ).toBeNull()
   })
 
+  it('normalizes a padded uppercase production run title', () => {
+    expect(
+      parseTrustedReleaseBinding(release, commitSha, {
+        ...provenance,
+        productionRuns: [
+          {
+            ...provenance.productionRuns[0],
+            display_title: `Production release  ${commitSha.toUpperCase()} `,
+          },
+        ],
+      }),
+    ).toEqual({
+      commitSha,
+      cloudflareVersionId: 'version-1',
+    })
+  })
+
   it('rejects a manually authored release with matching body fields', () => {
     expect(
       parseTrustedReleaseBinding(
@@ -97,6 +137,36 @@ describe('parseTrustedReleaseBinding', () => {
           {
             ...provenance.productionRuns[0],
             display_title: 'Production release ' + 'b'.repeat(40),
+          },
+        ],
+      }),
+    ).toBeNull()
+  })
+
+  it('takes the version ID from immutable deployment evidence', () => {
+    expect(
+      parseTrustedReleaseBinding(
+        {
+          ...release,
+          body: release.body.replace('version-1', 'tampered-version'),
+        },
+        commitSha,
+        provenance,
+      ),
+    ).toMatchObject({ cloudflareVersionId: 'version-1' })
+  })
+
+  it('rejects a release without a matching successful deployment binding', () => {
+    expect(
+      parseTrustedReleaseBinding(release, commitSha, {
+        ...provenance,
+        deployments: [
+          {
+            ...provenance.deployments[0],
+            payload: {
+              ...provenance.deployments[0].payload,
+              productionRunId: '43',
+            },
           },
         ],
       }),
