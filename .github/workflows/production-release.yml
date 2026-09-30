@@ -165,6 +165,7 @@ jobs:
       SENTRY_URL: ${{ vars.SENTRY_URL }}
       BETTER_STACK_APPLICATION_ID: ${{ vars.SENTRY_PROJECT }}
       CLOUDFLARE_VERSION_METRICS_QUERYABLE: ${{ vars.CLOUDFLARE_VERSION_METRICS_QUERYABLE || 'false' }}
+      CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE: ${{ vars.CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE || 'false' }}
       CLOUDFLARE_VERSION_METRICS_URL: ${{ vars.CLOUDFLARE_VERSION_METRICS_URL }}
       CLOUDFLARE_VERSION_METRICS_TOKEN: ${{ secrets.CLOUDFLARE_VERSION_METRICS_TOKEN }}
       PRODUCTION_RELEASE_EVIDENCE_URL: ${{ vars.PRODUCTION_RELEASE_EVIDENCE_URL }}
@@ -293,8 +294,8 @@ jobs:
             exit 0
           fi
 
-          if [[ "$CLOUDFLARE_VERSION_METRICS_QUERYABLE" != "true" ]]; then
-            echo "Gradual promotion is fail-closed until per-version Cloudflare metrics are queryable"
+          if [[ "$CLOUDFLARE_VERSION_METRICS_QUERYABLE" != "true" || "$CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE" != "true" ]]; then
+            echo "Gradual promotion is fail-closed until per-version metrics and trusted release-correlated severity are queryable"
             exit 1
           fi
           if [[ ! "$ROLLOUT_STAGE_WAIT_SECONDS" =~ ^[0-9]+$ || "$ROLLOUT_STAGE_WAIT_SECONDS" -lt 600 ]]; then

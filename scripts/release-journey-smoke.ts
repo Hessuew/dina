@@ -1,6 +1,10 @@
 // fallow-ignore-file unused-file -- invoked directly by production-release.yml
 
 import { fetchWithTimeout } from './http'
+import {
+  extractFirstPartyAssetUrls,
+  versionHeaders,
+} from './release-journey-smoke.domain'
 
 const origin = requiredEnv('PRODUCTION_ORIGIN').replace(/\/$/u, '')
 const versionId = requiredEnv('SMOKE_VERSION_ID')
@@ -55,29 +59,6 @@ for (const path of paths) {
     }
   }
   console.log(`journey smoke passed: ${path}`)
-}
-
-function versionHeaders(
-  smokeWorkerName: string,
-  smokeVersionId: string,
-): Record<string, string> {
-  return {
-    'Cloudflare-Workers-Version-Overrides': `${smokeWorkerName}="${smokeVersionId}"`,
-    'Cloudflare-Workers-Version-Key': `dina-release-smoke-${smokeVersionId}`,
-  }
-}
-
-function extractFirstPartyAssetUrls(pageUrl: URL, html: string): Array<URL> {
-  const candidates = [
-    ...html.matchAll(
-      /(?:src|href)=["']([^"']+\.(?:js|css)(?:\?[^"']*)?)["']/gu,
-    ),
-  ]
-  return candidates
-    .map((match) => match[1])
-    .filter((path): path is string => Boolean(path))
-    .map((path) => new URL(path, pageUrl))
-    .filter((assetUrl) => assetUrl.origin === pageUrl.origin)
 }
 
 function requiredEnv(name: string): string {
