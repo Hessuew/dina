@@ -71,11 +71,15 @@ export function recordReleaseMetric(
   if (!metadata) return
 
   const unexpectedError = response.status >= 500 ? 1 : 0
-  runtime.RELEASE_METRICS?.writeDataPoint({
-    indexes: [metadata.id],
-    blobs: [metadata.tag, request.method, new URL(request.url).pathname],
-    doubles: [1, unexpectedError, unexpectedError, durationMs],
-  })
+  try {
+    runtime.RELEASE_METRICS?.writeDataPoint({
+      indexes: [metadata.id],
+      blobs: [metadata.tag, request.method, new URL(request.url).pathname],
+      doubles: [1, unexpectedError, unexpectedError, durationMs],
+    })
+  } catch {
+    return
+  }
 }
 
 function shouldRecordMetric(
@@ -291,13 +295,19 @@ function buildMetricsQuery(dataset: string, window: MetricsWindow): string {
 function parseMetricsResponse(value: unknown): ReleaseMetrics | null {
   const row = firstMetricsRow(value)
   if (!row) return null
-  const metrics = {
-    requests: readMetric(row.requests),
-    errors: readMetric(row.errors),
-    p95LatencyMs: readMetric(row.p95LatencyMs),
-    highSeverityIssues: readMetric(row.highSeverityIssues),
+  const requests = readMetric(row.requests)
+  const errors = readMetric(row.errors)
+  const p95LatencyMs = readMetric(row.p95LatencyMs)
+  const highSeverityIssues = readMetric(row.highSeverityIssues)
+  if (
+    requests === null ||
+    errors === null ||
+    p95LatencyMs === null ||
+    highSeverityIssues === null
+  ) {
+    return null
   }
-  return Object.values(metrics).every(Number.isFinite) ? metrics : null
+  return { requests, errors, p95LatencyMs, highSeverityIssues }
 }
 
 function firstMetricsRow(value: unknown): Record<string, unknown> | null {
@@ -306,8 +316,13 @@ function firstMetricsRow(value: unknown): Record<string, unknown> | null {
   return isRecord(row) ? row : null
 }
 
-function readMetric(value: unknown): number {
-  return typeof value === 'number' ? value : Number(value ?? 0)
+function readMetric(value: unknown): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null
+  }
+  if (typeof value !== 'string' || !value.trim()) return null
+  const metric = Number(value)
+  return Number.isFinite(metric) ? metric : null
 }
 
 async function hasReportedBetterStackRelease(
