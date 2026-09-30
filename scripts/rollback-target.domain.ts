@@ -25,18 +25,23 @@ export function selectRollbackTarget(value: unknown): string {
   if (!Array.isArray(value))
     throw new Error('Deployments response must be an array')
 
-  const deployments = value.map(readDeployment).toSorted((left, right) => {
-    const leftTime = Date.parse(left.created_on)
-    const rightTime = Date.parse(right.created_on)
-    if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
-      throw new Error('Deployment created_on must be a valid timestamp')
-    }
-    return rightTime - leftTime
-  })
+  const deployments = value
+    .map(readDeployment)
+    .map((deployment) => {
+      const createdAt = Date.parse(deployment.created_on)
+      if (Number.isNaN(createdAt)) {
+        throw new Error('Deployment created_on must be a valid timestamp')
+      }
+      return { createdAt, deployment }
+    })
+    .toSorted((left, right) => right.createdAt - left.createdAt)
   const newest = deployments[0]
   if (!newest) throw new Error('No Cloudflare deployments were found')
+  if (deployments[1]?.createdAt === newest.createdAt) {
+    throw new Error('Cloudflare deployments have ambiguous newest timestamp')
+  }
 
-  const activeVersions = newest.versions
+  const activeVersions = newest.deployment.versions
     .filter(
       (version) =>
         version.version_id.trim() &&

@@ -16,6 +16,7 @@ describe('validateRollbackSmokeResponse', () => {
         200,
         healthyPayload,
         'legacy-version',
+        'v2026.09.30.1',
         null,
         null,
         true,
@@ -30,6 +31,7 @@ describe('validateRollbackSmokeResponse', () => {
         200,
         { ...healthyPayload, dependencies: { database: { status: 'ok' } } },
         'release-version',
+        'v2026.09.30.1',
         null,
         null,
         false,
@@ -47,12 +49,65 @@ describe('validateRollbackSmokeResponse', () => {
         200,
         healthyPayload,
         'expected-version',
+        'v2026.09.30.1',
         'other-version',
         'v2026.09.30.1',
         false,
       ),
     ).toEqual({
       failure: 'response ran version other-version, expected expected-version',
+      mode: null,
+    })
+  })
+
+  it('requires matching release identity for strict rollback targets', () => {
+    expect(
+      validateRollbackSmokeResponse(
+        '/healthz',
+        200,
+        { ...healthyPayload, release: 'v2026.09.30.1' },
+        'release-version',
+        'v2026.09.30.1',
+        'release-version',
+        'v2026.09.30.1',
+        false,
+      ),
+    ).toEqual({ failure: null, mode: 'strict-header' })
+    expect(
+      validateRollbackSmokeResponse(
+        '/healthz',
+        200,
+        { ...healthyPayload, release: 'v2026.09.30.1' },
+        'release-version',
+        'v2026.09.30.1',
+        'release-version',
+        'v2026.09.30.2',
+        false,
+      ),
+    ).toEqual({
+      failure: 'response ran release v2026.09.30.2, expected v2026.09.30.1',
+      mode: null,
+    })
+  })
+
+  it('rejects a strict rollback payload from another release', () => {
+    expect(
+      validateRollbackSmokeResponse(
+        '/readyz',
+        200,
+        {
+          ...healthyPayload,
+          dependencies: { database: { status: 'ok' } },
+          release: 'v2026.09.30.2',
+        },
+        'release-version',
+        'v2026.09.30.1',
+        'release-version',
+        'v2026.09.30.1',
+        false,
+      ),
+    ).toEqual({
+      failure: 'response release v2026.09.30.2 did not match v2026.09.30.1',
       mode: null,
     })
   })

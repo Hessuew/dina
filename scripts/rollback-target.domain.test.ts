@@ -53,6 +53,21 @@ describe('selectRollbackTarget', () => {
     ).toThrow(/ambiguous active versions/iu)
   })
 
+  it('fails closed when deployments share the newest timestamp', () => {
+    expect(() =>
+      selectRollbackTarget([
+        {
+          created_on: '2026-09-30T12:00:00.000Z',
+          versions: [{ version_id: 'first-deployment', percentage: 100 }],
+        },
+        {
+          created_on: '2026-09-30T12:00:00.000Z',
+          versions: [{ version_id: 'second-deployment', percentage: 100 }],
+        },
+      ]),
+    ).toThrow(/ambiguous newest timestamp/iu)
+  })
+
   it('requires an explicit legacy signal for an unannotated target', () => {
     expect(() =>
       selectRollbackTargetInfo({

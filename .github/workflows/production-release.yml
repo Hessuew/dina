@@ -394,13 +394,11 @@ jobs:
       - id: rollback
         name: Roll back the Worker after a failed smoke or guardrail
         if: failure() && steps.upload.outputs.version_id != ''
-        run: |
-          bunx wrangler versions deploy \
-            "${{ steps.preflight.outputs.previous_version_id }}@100" \
-            --config wrangler.jsonc \
-            --name "$WORKER_NAME" \
-            --message "Automatic rollback after failed release $RELEASE_TAG" \
-            --yes
+        env:
+          ROLLBACK_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
+          ROLLBACK_WORKER_NAME: ${{ env.WORKER_NAME }}
+          ROLLBACK_RELEASE_TAG: ${{ env.RELEASE_TAG }}
+        run: bun run scripts/retry-release-smoke.ts rollback-deploy
       - name: Re-run health smoke after rollback
         if: failure() && steps.rollback.outcome == 'success'
         env:
@@ -408,6 +406,7 @@ jobs:
           SMOKE_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
           SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
           SMOKE_LEGACY_TARGET: ${{ steps.preflight.outputs.legacy_compatible }}
+          SMOKE_EXPECTED_RELEASE: ${{ env.RELEASE_TAG }}
         run: bun run scripts/retry-release-smoke.ts rollback
 
   release:
