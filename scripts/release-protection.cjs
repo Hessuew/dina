@@ -36,13 +36,18 @@ function isImmutableReleaseTagRuleset(ruleset) {
     Array.isArray(includes) &&
     includes.some((pattern) => RELEASE_TAG_REF_PATTERNS.has(pattern))
   const excludes = ruleset.conditions?.ref_name?.exclude
-  const hasCompleteReleaseScope = Array.isArray(excludes) && excludes.length === 0
+  const hasCompleteReleaseScope =
+    Array.isArray(excludes) && excludes.length === 0
+  const bypassActors = ruleset.bypass_actors
+  const hasNoBypassActors =
+    Array.isArray(bypassActors) && bypassActors.length === 0
   const ruleTypes = new Set(
     Array.isArray(ruleset.rules) ? ruleset.rules.map((rule) => rule?.type) : [],
   )
   return (
     protectsReleaseTags &&
     hasCompleteReleaseScope &&
+    hasNoBypassActors &&
     ruleTypes.has('deletion') &&
     ruleTypes.has('update')
   )

@@ -3,9 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
-const { hasImmutableReleaseTagRuleset, normalizeRulesetDetails } = require(
-  './release-protection.cjs',
-) as {
+const { hasImmutableReleaseTagRuleset, normalizeRulesetDetails } =
+  require('./release-protection.cjs') as {
     hasImmutableReleaseTagRuleset: (rulesets: unknown) => boolean
     normalizeRulesetDetails: (
       summaryRulesets: unknown,
@@ -14,6 +13,7 @@ const { hasImmutableReleaseTagRuleset, normalizeRulesetDetails } = require(
   }
 
 const immutableRuleset = {
+  bypass_actors: [],
   target: 'tag',
   enforcement: 'active',
   conditions: { ref_name: { exclude: [], include: ['refs/tags/v*'] } },
@@ -60,6 +60,30 @@ describe('hasImmutableReleaseTagRuleset', () => {
         },
       ]),
     ).toBe(false)
+  })
+
+  it('rejects missing or non-empty bypass actor metadata', () => {
+    expect(
+      hasImmutableReleaseTagRuleset([
+        { ...immutableRuleset, bypass_actors: undefined },
+      ]),
+    ).toBe(false)
+
+    for (const actor_type of [
+      'OrganizationAdmin',
+      'Team',
+      'User',
+      'Integration',
+    ]) {
+      expect(
+        hasImmutableReleaseTagRuleset([
+          {
+            ...immutableRuleset,
+            bypass_actors: [{ actor_id: 1, actor_type }],
+          },
+        ]),
+      ).toBe(false)
+    }
   })
 
   it('does not accept summary-only ruleset metadata', () => {

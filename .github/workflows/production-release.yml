@@ -530,6 +530,7 @@ jobs:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
           CLOUDFLARE_VERSION_ID: ${{ steps.upload.outputs.version_id }}
           PREVIOUS_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
+          PREVIOUS_RELEASE_TAG: ${{ steps.preflight.outputs.previous_release_tag }}
           ROLLOUT_RESULT: ${{ steps.rollout.outputs.result }}
         with:
           github-token: ${{ github.token }}
@@ -539,12 +540,26 @@ jobs:
             const { collectCompareHistory } = require(
               `${process.cwd()}/scripts/release-history.cjs`,
             )
-            const releases = await github.paginate(github.rest.repos.listReleases, {
-              owner,
-              repo,
-              per_page: 20,
-            })
-            const previousRelease = releases.find((release) => !release.draft)
+            const { selectTrustedPreviousRelease } = require(
+              `${process.cwd()}/scripts/release-record.cjs`,
+            )
+            const previousReleaseTag = process.env.PREVIOUS_RELEASE_TAG.trim()
+            const releases = previousReleaseTag
+              ? await github.paginate(github.rest.repos.listReleases, {
+                  owner,
+                  repo,
+                  per_page: 100,
+                })
+              : []
+            const previousRelease = selectTrustedPreviousRelease(
+              releases,
+              previousReleaseTag,
+            )
+            if (previousReleaseTag && !previousRelease) {
+              throw new Error(
+                `Trusted previous release ${previousReleaseTag} is unavailable.`,
+              )
+            }
             const targetCommit = previousRelease
               ? null
               : await github.rest.repos.getCommit({
