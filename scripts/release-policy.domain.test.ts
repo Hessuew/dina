@@ -6,6 +6,7 @@ import {
   parseVersionMetrics,
   selectRolloutPlan,
   validateExternalHttpsUrl,
+  validateMetricsWindow,
   validateTargetSha,
   validateVersionAffinityReadiness,
   validateRolloutStageWaitSeconds,
@@ -76,6 +77,41 @@ describe('validateExternalHttpsUrl', () => {
     'not-a-url',
   ])('rejects unsafe endpoint URLs: %s', (value) => {
     expect(() => validateExternalHttpsUrl(value, 'metrics')).toThrow(/HTTPS/u)
+  })
+})
+
+describe('validateMetricsWindow', () => {
+  it('accepts a response for the requested window', () => {
+    expect(() =>
+      validateMetricsWindow(
+        {
+          since: '2026-09-30T10:00:00.000Z',
+          until: '2026-09-30T10:05:00.000Z',
+        },
+        '2026-09-30T10:00:00Z',
+        '2026-09-30T10:05:00Z',
+      ),
+    ).not.toThrow()
+  })
+
+  it.each([
+    {},
+    {
+      since: '2026-09-30T09:55:00.000Z',
+      until: '2026-09-30T10:05:00.000Z',
+    },
+    {
+      since: '2026-09-30T10:05:00.000Z',
+      until: '2026-09-30T10:00:00.000Z',
+    },
+  ])('rejects missing or stale windows: %j', (value) => {
+    expect(() =>
+      validateMetricsWindow(
+        value,
+        '2026-09-30T10:00:00Z',
+        '2026-09-30T10:05:00Z',
+      ),
+    ).toThrow()
   })
 })
 
@@ -155,6 +191,23 @@ describe('evaluateGuardrails', () => {
       ],
     })
   })
+
+  it.each([
+    [
+      'error rate',
+      { requests: 100, errors: 6, p95LatencyMs: 1000, highSeverityIssues: 0 },
+    ],
+    [
+      'p95 latency',
+      { requests: 100, errors: 5, p95LatencyMs: 1001, highSeverityIssues: 0 },
+    ],
+    [
+      'high severity',
+      { requests: 100, errors: 5, p95LatencyMs: 1000, highSeverityIssues: 1 },
+    ],
+  ])('fails standard rollout on %s', (_name, metrics) => {
+    expect(evaluateGuardrails(metrics).passed).toBe(false)
+  })
 })
 
 describe('parseVersionMetrics', () => {
@@ -185,5 +238,11 @@ describe('parseVersionMetrics', () => {
         highSeverityIssues: 0,
       }),
     ).toThrow(/cannot exceed requests/u)
+  })
+
+  it('rejects an unavailable metrics response', () => {
+    expect(() =>
+      parseVersionMetrics({ error: 'metrics are not queryable' }),
+    ).toThrow(/must be a non-negative number/u)
   })
 })

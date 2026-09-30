@@ -96,6 +96,35 @@ export function validateExternalHttpsUrl(value: string, name: string): URL {
   return url
 }
 
+export function validateMetricsWindow(
+  value: unknown,
+  since: string,
+  until: string,
+): void {
+  if (
+    !isRecord(value) ||
+    typeof value.since !== 'string' ||
+    typeof value.until !== 'string'
+  ) {
+    throw new Error('Version metrics response did not include its query window')
+  }
+  const expectedSince = Date.parse(since)
+  const expectedUntil = Date.parse(until)
+  const actualSince = Date.parse(value.since)
+  const actualUntil = Date.parse(value.until)
+  if (
+    !Number.isFinite(expectedSince) ||
+    !Number.isFinite(expectedUntil) ||
+    expectedSince >= expectedUntil ||
+    actualSince !== expectedSince ||
+    actualUntil !== expectedUntil
+  ) {
+    throw new Error(
+      'Version metrics response query window was stale or invalid',
+    )
+  }
+}
+
 export function validateVersionAffinityReadiness(
   ready: string,
   evidenceUrl: string,

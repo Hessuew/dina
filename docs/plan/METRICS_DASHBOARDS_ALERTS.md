@@ -64,12 +64,15 @@ query parameters and returns JSON with these numeric fields:
   "requests": 20,
   "errors": 0,
   "p95LatencyMs": 420,
-  "highSeverityIssues": 0
+  "highSeverityIssues": 0,
+  "since": "2026-09-30T12:00:00.000Z",
+  "until": "2026-09-30T12:05:00.000Z"
 }
 ```
 
-The repository validates that response before each stage. It fails closed on
-missing or malformed metrics, rolls back on any guardrail breach, and never
+The repository validates that response and its exact query window before each
+stage and after standard 100% promotion. It fails closed on missing, stale, or
+malformed metrics, rolls back on any guardrail breach, and never
 uses aggregate Worker traffic as a substitute for per-version evidence. A
 low-traffic 10% stage with fewer than 20 new-version requests is promoted
 directly to 100% after the guardrails pass. Cloudflare version metadata and

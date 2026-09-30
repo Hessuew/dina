@@ -4,6 +4,7 @@ import { fetchWithTimeout } from './http'
 import {
   parseVersionMetrics,
   validateExternalHttpsUrl,
+  validateMetricsWindow,
 } from './release-policy.domain'
 
 const metricsUrl = requiredEnv('CLOUDFLARE_VERSION_METRICS_URL')
@@ -32,7 +33,9 @@ if (!response.ok) {
   throw new Error(`Version metrics endpoint returned HTTP ${response.status}`)
 }
 
-const metrics = parseVersionMetrics(await response.json())
+const responseBody = await response.json()
+validateMetricsWindow(responseBody, since, until)
+const metrics = parseVersionMetrics(responseBody)
 console.log(JSON.stringify(metrics))
 
 function requiredEnv(name: string): string {

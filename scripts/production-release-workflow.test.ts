@@ -35,6 +35,12 @@ type ParsedWorkflow = {
   healthRun: string | undefined
   journeyRun: string | undefined
   postRolloutHealthRun: string | undefined
+  postRolloutHealthEnv: Record<string, string> | undefined
+  standardGuardrailsRun: string | undefined
+  standardGuardrailsIf: string | undefined
+  standardGuardrailsEnv: Record<string, string> | undefined
+  rolloutOutcomeIf: string | undefined
+  rolloutOutcomeEnv: Record<string, string> | undefined
   releasePublicationUses: string | undefined
   releasePublicationEnv: Record<string, string> | undefined
   releasePublicationIndex: number
@@ -138,6 +144,9 @@ describe('production release workflow', () => {
     expect(workflow.resolveEnv.CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL).toBe(
       '${{ vars.CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL }}',
     )
+    expect(workflow.resolveEnv.PRODUCTION_RELEASE_ENABLED).toBe(
+      "${{ vars.PRODUCTION_RELEASE_ENABLED || 'false' }}",
+    )
     expect(workflow.preflightEnv?.TRUSTED_RELEASE_BINDINGS).toBe(
       '${{ steps.trusted_releases.outputs.bindings }}',
     )
@@ -158,6 +167,29 @@ describe('production release workflow', () => {
     expect(workflow.targetInstallWorkingDirectory).toBe('target')
     expect(workflow.buildWorkingDirectory).toBe('target')
     expect(workflow.buildRun).toContain('--outDir ../dist')
+    expect(workflow.standardGuardrailsRun).toContain(
+      'scripts/release-metrics.ts',
+    )
+    expect(workflow.standardGuardrailsRun).toContain(
+      'scripts/release-policy.ts guardrails',
+    )
+    expect(workflow.standardGuardrailsIf).toBe(
+      "env.ROLLOUT_PROFILE == 'standard'",
+    )
+    expect(workflow.standardGuardrailsRun).toContain('sleep 300')
+    expect(
+      workflow.standardGuardrailsEnv?.CLOUDFLARE_VERSION_METRICS_TOKEN,
+    ).toBe('${{ secrets.CLOUDFLARE_VERSION_METRICS_TOKEN }}')
+    expect(workflow.postRolloutHealthEnv?.SMOKE_VERSION_ID).toBeUndefined()
+    expect(workflow.postRolloutHealthEnv?.SMOKE_EXPECTED_VERSION_ID).toBe(
+      '${{ steps.upload.outputs.version_id }}',
+    )
+    expect(workflow.rolloutOutcomeIf).toBe(
+      "always() && steps.upload.outputs.version_id != ''",
+    )
+    expect(workflow.rolloutOutcomeEnv?.ROLLOUT_RESULT).toContain(
+      "steps.standard_guardrails.outcome == 'failure'",
+    )
     expect(workflow.deployEnv.PRODUCTION_JOURNEY_PATHS).toBe(
       '${{ vars.PRODUCTION_JOURNEY_PATHS }}',
     )
@@ -264,6 +296,12 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     const postRolloutHealth = workflow.jobs.deploy.steps.find(
       (step) => step.name === 'Verify the promoted version after rollout',
     )
+    const standardGuardrails = workflow.jobs.deploy.steps.find(
+      (step) => step.name === 'Evaluate standard post-promotion guardrails',
+    )
+    const rolloutOutcome = workflow.jobs.deploy.steps.find(
+      (step) => step.name === 'Record production rollout and rollback outcome',
+    )
     const upload = workflow.jobs.deploy.steps.find(
       (step) => step.name === 'Upload an undeployed Cloudflare Worker version',
     )
@@ -294,6 +332,12 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
       healthRun: health?.run,
       journeyRun: journey?.run,
       postRolloutHealthRun: postRolloutHealth?.run,
+      postRolloutHealthEnv: postRolloutHealth?.env,
+      standardGuardrailsRun: standardGuardrails?.run,
+      standardGuardrailsIf: standardGuardrails?.if,
+      standardGuardrailsEnv: standardGuardrails?.env,
+      rolloutOutcomeIf: rolloutOutcome?.if,
+      rolloutOutcomeEnv: rolloutOutcome?.env,
       releasePublicationUses: workflow.jobs.deploy.steps.find(
         (step) => step.name === 'Publish GitHub Release evidence and deployment binding',
       )?.uses,

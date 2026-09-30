@@ -273,7 +273,7 @@ jobs:
     outputs:
       cloudflare_version_id: ${{ steps.upload.outputs.version_id }}
       previous_version_id: ${{ steps.preflight.outputs.previous_version_id }}
-      rollout_result: ${{ steps.rollout.outputs.result }}
+      rollout_result: ${{ steps.standard_guardrails.outputs.result || steps.rollout.outputs.result }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -526,6 +526,31 @@ jobs:
             fi
           done
           echo "result=gradual:10%-25%-50%-100%" >> "$GITHUB_OUTPUT"
+      - id: standard_guardrails
+        name: Evaluate standard post-promotion guardrails
+        if: env.ROLLOUT_PROFILE == 'standard'
+        env:
+          CLOUDFLARE_VERSION_METRICS_TOKEN: ${{ secrets.CLOUDFLARE_VERSION_METRICS_TOKEN }}
+          VERSION_ID: ${{ steps.upload.outputs.version_id }}
+        run: |
+          if [[ "$CLOUDFLARE_VERSION_METRICS_QUERYABLE" != "true" || "$CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE" != "true" ]]; then
+            echo "Standard promotion is fail-closed until per-version metrics and trusted release-correlated severity are queryable"
+            exit 1
+          fi
+          guardrail_started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          sleep 300
+          guardrail_finished=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          metrics=$(CLOUDFLARE_VERSION_ID="$VERSION_ID" \
+            CLOUDFLARE_METRICS_SINCE="$guardrail_started" \
+            CLOUDFLARE_METRICS_UNTIL="$guardrail_finished" \
+            bun run scripts/release-metrics.ts)
+          bun run scripts/release-policy.ts guardrails --metrics "$metrics"
+          echo "result=standard:100%-guardrails-passed" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Standard rollout guardrails"
+            echo "- Metrics window: $guardrail_started to $guardrail_finished"
+            echo "- Result: passed"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Verify the promoted version after rollout
         env:
           SMOKE_BASE_URL: ${{ env.PRODUCTION_ORIGIN }}
@@ -545,7 +570,7 @@ jobs:
           CLOUDFLARE_VERSION_ID: ${{ steps.upload.outputs.version_id }}
           PREVIOUS_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
           PREVIOUS_RELEASE_TAG: ${{ steps.preflight.outputs.previous_release_tag }}
-          ROLLOUT_RESULT: ${{ steps.rollout.outputs.result }}
+          ROLLOUT_RESULT: ${{ steps.standard_guardrails.outputs.result || steps.rollout.outputs.result }}
         with:
           github-token: ${{ github.token }}
           script: |
@@ -681,3 +706,14 @@ jobs:
           SMOKE_LEGACY_TARGET: ${{ steps.preflight.outputs.legacy_compatible }}
           SMOKE_EXPECTED_RELEASE: ${{ steps.preflight.outputs.previous_release_tag }}
         run: bun run scripts/retry-release-smoke.ts rollback
+      - name: Record production rollout and rollback outcome
+        if: always() && steps.upload.outputs.version_id != ''
+        env:
+          ROLLOUT_RESULT: ${{ steps.standard_guardrails.outcome == 'failure' && 'standard:100%-guardrails-failed' || steps.standard_guardrails.outputs.result || steps.rollout.outputs.result || 'failed before rollout result' }}
+          ROLLBACK_OUTCOME: ${{ steps.rollback.outcome }}
+        run: |
+          {
+            echo "### Production rollout outcome"
+            echo "- Result: $ROLLOUT_RESULT"
+            echo "- Rollback verification: ${ROLLBACK_OUTCOME:-not required}"
+          } >> "$GITHUB_STEP_SUMMARY"
