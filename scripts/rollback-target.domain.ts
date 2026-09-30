@@ -16,6 +16,8 @@ type VersionMetadata = {
   }
 }
 
+const RELEASE_TAG_PATTERN = /^v\d{4}\.\d{2}\.\d{2}\.\d+$/u
+
 export type RollbackTarget = {
   versionId: string
   legacyCompatible: boolean
@@ -90,6 +92,9 @@ export function selectRollbackTargetInfo(value: unknown): RollbackTarget {
   const tag = readAnnotation(version.annotations?.['workers/tag'])
   const message = readAnnotation(version.annotations?.['workers/message'])
   if (tag && message) {
+    if (!RELEASE_TAG_PATTERN.test(tag)) {
+      throw new Error('Rollback target has an invalid release tag')
+    }
     return { versionId, legacyCompatible: false, releaseTag: tag }
   }
   if (!tag && !message && legacyVersionIds.has(versionId)) {

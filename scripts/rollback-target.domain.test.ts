@@ -145,6 +145,27 @@ describe('selectRollbackTarget', () => {
     })
   })
 
+  it('rejects manually tagged versions outside the release format', () => {
+    expect(() =>
+      selectRollbackTargetInfo({
+        deployments: [
+          {
+            created_on: '2026-09-30T12:00:00.000Z',
+            versions: [{ version_id: 'manual-version', percentage: 100 }],
+          },
+        ],
+        version: {
+          id: 'manual-version',
+          annotations: {
+            'workers/tag': 'canary',
+            'workers/message': 'manual upload',
+          },
+        },
+        legacyVersionIds: [],
+      }),
+    ).toThrow(/invalid release tag/iu)
+  })
+
   it('rejects metadata for a different selected version', () => {
     expect(() =>
       selectRollbackTargetInfo({

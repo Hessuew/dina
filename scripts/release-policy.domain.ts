@@ -2,6 +2,8 @@ const RELEASE_TAG_DATE_PATTERN = /^v(\d{4}\.\d{2}\.\d{2})\.(\d+)$/u
 
 const GRADUAL_ROLLOUT_PERCENTAGES = [10, 25, 50, 100] as const
 const MINIMUM_GRADUAL_REQUESTS = 20
+export const MIN_ROLLOUT_STAGE_WAIT_SECONDS = 600
+export const MAX_ROLLOUT_STAGE_WAIT_SECONDS = 900
 const MAX_ERROR_RATE = 0.05
 const MAX_P95_LATENCY_MS = 1000
 
@@ -30,6 +32,24 @@ export type GuardrailResult = {
   passed: boolean
   errorRate: number
   failures: Array<string>
+}
+
+export function validateRolloutStageWaitSeconds(value: string): number {
+  const normalized = value.trim()
+  if (!/^\d+$/u.test(normalized)) {
+    throw new Error('ROLLOUT_STAGE_WAIT_SECONDS must be an integer')
+  }
+  const seconds = Number(normalized)
+  if (
+    !Number.isSafeInteger(seconds) ||
+    seconds < MIN_ROLLOUT_STAGE_WAIT_SECONDS ||
+    seconds > MAX_ROLLOUT_STAGE_WAIT_SECONDS
+  ) {
+    throw new Error(
+      `ROLLOUT_STAGE_WAIT_SECONDS must be between ${MIN_ROLLOUT_STAGE_WAIT_SECONDS} and ${MAX_ROLLOUT_STAGE_WAIT_SECONDS} seconds`,
+    )
+  }
+  return seconds
 }
 
 export function createReleaseTag(

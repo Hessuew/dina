@@ -6,6 +6,7 @@ import {
   parseVersionMetrics,
   selectRolloutPlan,
   validateTargetSha,
+  validateRolloutStageWaitSeconds,
 } from './release-policy.domain'
 
 describe('createReleaseTag', () => {
@@ -68,6 +69,19 @@ describe('selectRolloutPlan', () => {
       reason: 'low-traffic',
       percentages: [100],
     })
+  })
+})
+
+describe('validateRolloutStageWaitSeconds', () => {
+  it('accepts waits that fit the gradual rollout budget', () => {
+    expect(validateRolloutStageWaitSeconds('600')).toBe(600)
+    expect(validateRolloutStageWaitSeconds('900')).toBe(900)
+  })
+
+  it('rejects waits outside the bounded rollout budget', () => {
+    expect(() => validateRolloutStageWaitSeconds('599')).toThrow(/between/u)
+    expect(() => validateRolloutStageWaitSeconds('901')).toThrow(/between/u)
+    expect(() => validateRolloutStageWaitSeconds('600.5')).toThrow(/integer/u)
   })
 })
 
