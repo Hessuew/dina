@@ -3,15 +3,20 @@ import { describe, expect, it } from 'vitest'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
-const { hasImmutableReleaseTagRuleset } =
-  require('./release-protection.cjs') as {
+const { hasImmutableReleaseTagRuleset, normalizeRulesetDetails } = require(
+  './release-protection.cjs',
+) as {
     hasImmutableReleaseTagRuleset: (rulesets: unknown) => boolean
+    normalizeRulesetDetails: (
+      summaryRulesets: unknown,
+      detailResponses: unknown,
+    ) => unknown[]
   }
 
 const immutableRuleset = {
   target: 'tag',
   enforcement: 'active',
-  conditions: { ref_name: { include: ['refs/tags/v*'] } },
+  conditions: { ref_name: { exclude: [], include: ['refs/tags/v*'] } },
   rules: [{ type: 'deletion' }, { type: 'update' }],
 }
 
@@ -39,5 +44,48 @@ describe('hasImmutableReleaseTagRuleset', () => {
         { ...immutableRuleset, rules: [{ type: 'deletion' }] },
       ]),
     ).toBe(false)
+  })
+
+  it('rejects v* rulesets with exclusions', () => {
+    expect(
+      hasImmutableReleaseTagRuleset([
+        {
+          ...immutableRuleset,
+          conditions: {
+            ref_name: {
+              exclude: ['refs/tags/v2026.*'],
+              include: ['refs/tags/v*'],
+            },
+          },
+        },
+      ]),
+    ).toBe(false)
+  })
+
+  it('does not accept summary-only ruleset metadata', () => {
+    const summaries = [
+      { enforcement: 'active', id: 42, name: 'DINA immutable production tags' },
+    ]
+
+    expect(hasImmutableReleaseTagRuleset(summaries)).toBe(false)
+    expect(normalizeRulesetDetails(summaries, [])).toEqual([])
+  })
+
+  it('normalizes detailed ruleset responses by summary id', () => {
+    const summaries = [{ enforcement: 'active', id: 42 }]
+    const details = [{ data: { ...immutableRuleset, id: 42 } }]
+    const normalized = normalizeRulesetDetails(summaries, details)
+
+    expect(normalized).toEqual(details.map(({ data }) => data))
+    expect(hasImmutableReleaseTagRuleset(normalized)).toBe(true)
+  })
+
+  it('rejects details that do not match a listed ruleset id', () => {
+    expect(
+      normalizeRulesetDetails(
+        [{ id: 42 }],
+        [{ data: { ...immutableRuleset, id: 43 } }],
+      ),
+    ).toEqual([])
   })
 })

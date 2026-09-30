@@ -82,15 +82,41 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
-            const { hasImmutableReleaseTagRuleset } = require(
+            const {
+              hasImmutableReleaseTagRuleset,
+              normalizeRulesetDetails,
+            } = require(
               `${process.cwd()}/scripts/release-protection.cjs`,
             )
-            const rulesets = await github.paginate(
+            const summaries = await github.paginate(
               github.rest.repos.getRepoRulesets,
               { owner: context.repo.owner, repo: context.repo.repo, per_page: 100 },
             )
+            if (
+              !Array.isArray(summaries) ||
+              summaries.some(
+                (ruleset) =>
+                  !ruleset ||
+                  (typeof ruleset.id !== 'number' &&
+                    !(typeof ruleset.id === 'string' && ruleset.id.length > 0)),
+              )
+            ) {
+              throw new Error('Incomplete repository ruleset list response.')
+            }
+            const detailResponses = await Promise.all(
+              summaries.map(({ id }) =>
+                github.rest.repos.getRepoRuleset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ruleset_id: id,
+                }),
+              ),
+            )
+            const rulesets = normalizeRulesetDetails(summaries, detailResponses)
             if (!hasImmutableReleaseTagRuleset(rulesets)) {
-              core.setFailed('No active immutable v* tag ruleset protects releases.')
+              throw new Error(
+                'No active immutable v* tag ruleset protects releases.',
+              )
             }
       - name: Confirm a successful main release gate for manual promotions
         if: github.event_name == 'workflow_dispatch'
