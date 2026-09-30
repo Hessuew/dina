@@ -75,6 +75,14 @@ normal privacy and environment rules:
 | `PRODUCTION_RELEASE_ENABLED`, `CLOUDFLARE_VERSION_METRICS_QUERYABLE`                                               | Release safety switches                  | Protected GitHub repository variables; set true only after readiness evidence                        | Keep false until the readiness checklist, alert routing, affinity, source maps, and restore/rollback drills are complete |
 | `CLOUDFLARE_WORKER_NAME`, `PRODUCTION_ORIGIN`, `CLOUDFLARE_VERSION_METRICS_URL`, `PRODUCTION_RELEASE_EVIDENCE_URL` | Production release routing               | Protected GitHub repository variables; public origin/name and approved metrics/evidence adapter URLs | Verify they point at `christ-dina`, the production custom domain, and the intended metrics/evidence services             |
 
+### Protected production release controls
+
+| Variable                                     | Protected source / owner                                         | Default              | Readiness check                                                                                                                                                                   |
+| -------------------------------------------- | ---------------------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PRODUCTION_JOURNEY_PATHS`                   | Protected GitHub repository variable; release platform and QA    | No default; required | Provide a non-empty comma-separated list of approved public journey paths; validate each path before enabling production release, and require the affected journey smoke to pass. |
+| `CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE` | Protected GitHub repository variable; observability and platform | `false`              | Keep false until the exact-version high-severity query is proven against the approved Cloudflare metrics source; the gradual rollout guard must fail closed while false.          |
+| `ROLLOUT_STAGE_WAIT_SECONDS`                 | Protected GitHub repository variable; release platform           | `600` seconds        | Keep within the workflow-enforced 600–900 second range and verify that four rollout stages, smoke windows, and rollback fit the deploy timeout.                                   |
+
 `VITE_APP_VERSION`, `VITE_SENTRY_ENVIRONMENT`, and `VITE_SENTRY_RELEASE` are
 optional build metadata. `VITE_SITE_URL` appears only in a commented legacy
 email helper and is not an active runtime contract; do not add it to a

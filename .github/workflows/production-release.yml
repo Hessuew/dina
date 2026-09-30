@@ -1,5 +1,7 @@
 name: Production release
 
+run-name: Production release ${{ inputs.target_sha || github.event.workflow_run.head_sha }}
+
 on:
   workflow_run:
     workflows: [Main release gate]
@@ -209,6 +211,24 @@ jobs:
               repo,
               per_page: 100,
             })
+            const [mainGateRuns, productionRuns] = await Promise.all([
+              github.paginate(github.rest.actions.listWorkflowRuns, {
+                owner,
+                repo,
+                workflow_id: 'main-release.yml',
+                branch: 'main',
+                status: 'completed',
+                per_page: 100,
+              }),
+              github.paginate(github.rest.actions.listWorkflowRuns, {
+                owner,
+                repo,
+                workflow_id: 'production-release.yml',
+                branch: 'main',
+                status: 'completed',
+                per_page: 100,
+              }),
+            ])
             const bindings = {}
             for (const release of releases) {
               if (!isReleaseTag(release.tag_name)) continue
@@ -220,6 +240,7 @@ jobs:
               const binding = parseTrustedReleaseBinding(
                 release,
                 tagCommit.data.sha,
+                { mainGateRuns, productionRuns },
               )
               if (binding) bindings[release.tag_name] = binding
             }
@@ -512,6 +533,7 @@ jobs:
               `# ${process.env.RELEASE_TAG}`,
               '',
               `- Validated main SHA: \`${targetSha}\``,
+              `- Production workflow run: \`${context.runId}\``,
               `- Previous release: ${previousRelease?.tag_name ?? 'none'}`,
               `- Cloudflare version: \`${process.env.CLOUDFLARE_VERSION_ID}\``,
               `- Rollout result: ${process.env.ROLLOUT_RESULT}`,
