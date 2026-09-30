@@ -33,7 +33,12 @@ export function resolveSmokeCommand(name: string): string[] {
   if (name === 'health') return ['run', 'smoke:health']
   if (name === 'journey') return ['run', 'scripts/release-journey-smoke.ts']
   if (name === 'rollback') return ['run', 'scripts/rollback-smoke.ts']
-  throw new Error('Smoke target must be health, journey, or rollback')
+  if (name === 'rollback-deploy') {
+    return ['run', 'scripts/rollback-deploy.ts']
+  }
+  throw new Error(
+    'Smoke target must be health, journey, rollback, or rollback-deploy',
+  )
 }
 
 async function main(): Promise<number> {
