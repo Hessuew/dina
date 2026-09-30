@@ -80,6 +80,9 @@ describe('production release workflow', () => {
     expect(workflow.deployEnv.PRODUCTION_JOURNEY_PATHS).toBe(
       '${{ vars.PRODUCTION_JOURNEY_PATHS }}',
     )
+    expect(workflow.deployEnv.CLOUDFLARE_LEGACY_VERSION_IDS).toBe(
+      '${{ vars.CLOUDFLARE_LEGACY_VERSION_IDS }}',
+    )
     expect(workflow.deployEnv.SENTRY_PROJECT).toBe(
       '${{ vars.BETTER_STACK_APPLICATION_ID }}',
     )

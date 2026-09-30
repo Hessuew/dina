@@ -41,4 +41,7 @@ export function extractFirstPartyAssetUrls(
     .filter((path): path is string => Boolean(path))
     .map((path) => new URL(path, pageUrl))
     .filter((assetUrl) => assetUrl.origin === pageUrl.origin)
+    .filter((assetUrl) =>
+      /\/[^/]+[-_][A-Za-z0-9_-]{8,}\.(?:js|css)$/u.test(assetUrl.pathname),
+    )
 }

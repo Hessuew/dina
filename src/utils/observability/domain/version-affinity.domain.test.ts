@@ -18,6 +18,8 @@ describe('version affinity cookie helpers', () => {
 
   it('does not match a similarly named cookie or an absent header', () => {
     expect(hasVersionAffinityCookie('dina-version-key-extra=value')).toBe(false)
+    expect(hasVersionAffinityCookie('dina-version-key=')).toBe(false)
+    expect(hasVersionAffinityCookie('dina-version-key= ')).toBe(false)
     expect(hasVersionAffinityCookie(null)).toBe(false)
   })
 
