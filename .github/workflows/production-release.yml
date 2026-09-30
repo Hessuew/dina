@@ -465,6 +465,13 @@ jobs:
           SMOKE_EXPECTED_RELEASE: ${{ env.RELEASE_TAG }}
           PRODUCTION_JOURNEY_PATHS: ${{ env.PRODUCTION_JOURNEY_PATHS }}
         run: bun run scripts/retry-release-smoke.ts journey
+      - id: rollout_readiness
+        name: Verify version guardrail readiness before promotion
+        run: |
+          if [[ "$CLOUDFLARE_VERSION_METRICS_QUERYABLE" != "true" || "$CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE" != "true" ]]; then
+            echo "Promotion is fail-closed until per-version metrics and trusted release-correlated severity are queryable"
+            exit 1
+          fi
       - id: rollout
         name: Promote the Worker with the selected rollout profile
         env:
@@ -484,10 +491,6 @@ jobs:
             exit 0
           fi
 
-          if [[ "$CLOUDFLARE_VERSION_METRICS_QUERYABLE" != "true" || "$CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE" != "true" ]]; then
-            echo "Gradual promotion is fail-closed until per-version metrics and trusted release-correlated severity are queryable"
-            exit 1
-          fi
           ROLLOUT_STAGE_WAIT_SECONDS=$(bun run scripts/release-policy.ts rollout-wait --seconds "$ROLLOUT_STAGE_WAIT_SECONDS")
 
           for percentage in 10 25 50 100; do
@@ -532,10 +535,6 @@ jobs:
         env:
           VERSION_ID: ${{ steps.upload.outputs.version_id }}
         run: |
-          if [[ "$CLOUDFLARE_VERSION_METRICS_QUERYABLE" != "true" || "$CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE" != "true" ]]; then
-            echo "Standard promotion is fail-closed until per-version metrics and trusted release-correlated severity are queryable"
-            exit 1
-          fi
           guardrail_started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           sleep 300
           guardrail_finished=$(date -u +%Y-%m-%dT%H:%M:%SZ)

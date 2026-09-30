@@ -3,6 +3,7 @@
 import { fetchWithTimeout } from './http'
 import {
   parseVersionMetrics,
+  validateExternalHttpsResponse,
   validateExternalHttpsUrl,
   validateMetricsWindow,
 } from './release-policy.domain'
@@ -22,6 +23,7 @@ url.searchParams.set('since', since)
 url.searchParams.set('until', until)
 
 const response = await fetchWithTimeout(url, {
+  redirect: 'manual',
   headers: {
     authorization: `Bearer ${requiredEnv('CLOUDFLARE_VERSION_METRICS_TOKEN')}`,
     accept: 'application/json',
@@ -29,6 +31,7 @@ const response = await fetchWithTimeout(url, {
     'Cloudflare-Workers-Version-Key': `dina-release-metrics-${versionId}`,
   },
 })
+validateExternalHttpsResponse(response, url, 'CLOUDFLARE_VERSION_METRICS_URL')
 if (!response.ok) {
   throw new Error(`Version metrics endpoint returned HTTP ${response.status}`)
 }

@@ -5,6 +5,7 @@ import {
   evaluateGuardrails,
   parseVersionMetrics,
   selectRolloutPlan,
+  validateExternalHttpsResponse,
   validateExternalHttpsUrl,
   validateMetricsWindow,
   validateTargetSha,
@@ -77,6 +78,38 @@ describe('validateExternalHttpsUrl', () => {
     'not-a-url',
   ])('rejects unsafe endpoint URLs: %s', (value) => {
     expect(() => validateExternalHttpsUrl(value, 'metrics')).toThrow(/HTTPS/u)
+  })
+})
+
+describe('validateExternalHttpsResponse', () => {
+  const expectedUrl = new URL('https://metrics.example.test/query')
+
+  it('accepts a direct same-origin response', () => {
+    expect(() =>
+      validateExternalHttpsResponse(
+        {
+          redirected: false,
+          status: 200,
+          url: expectedUrl.toString(),
+        },
+        expectedUrl,
+        'metrics',
+      ),
+    ).not.toThrow()
+  })
+
+  it.each([
+    { redirected: true, status: 200, url: expectedUrl.toString() },
+    { redirected: false, status: 302, url: expectedUrl.toString() },
+    {
+      redirected: false,
+      status: 200,
+      url: 'https://attacker.example/query',
+    },
+  ])('rejects unsafe response metadata: %j', (response) => {
+    expect(() =>
+      validateExternalHttpsResponse(response, expectedUrl, 'metrics'),
+    ).toThrow()
   })
 })
 
