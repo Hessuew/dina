@@ -3,6 +3,7 @@
 import { fetchWithTimeout } from './http'
 import {
   extractFirstPartyAssetUrls,
+  parseJourneyPaths,
   versionHeaders,
 } from './release-journey-smoke.domain'
 
@@ -10,10 +11,7 @@ const origin = requiredEnv('PRODUCTION_ORIGIN').replace(/\/$/u, '')
 const versionId = requiredEnv('SMOKE_VERSION_ID')
 const workerName = requiredEnv('SMOKE_WORKER_NAME')
 const expectedRelease = requiredEnv('SMOKE_EXPECTED_RELEASE')
-const paths = (process.env.PRODUCTION_JOURNEY_PATHS ?? '/login')
-  .split(',')
-  .map((path) => path.trim())
-  .filter(Boolean)
+const paths = parseJourneyPaths(requiredEnv('PRODUCTION_JOURNEY_PATHS'))
 
 for (const path of paths) {
   const url = new URL(path, `${origin}/`)

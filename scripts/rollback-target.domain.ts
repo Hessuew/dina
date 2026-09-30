@@ -54,16 +54,14 @@ export function selectRollbackTarget(value: unknown): string {
 export function selectRollbackTargetInfo(value: unknown): RollbackTarget {
   if (!isRecord(value))
     throw new Error('Rollback target input must be an object')
-  if (!Array.isArray(value.deployments) || !Array.isArray(value.versions)) {
-    throw new Error('Rollback target input is missing deployments or versions')
+  if (!Array.isArray(value.deployments) || !isRecord(value.version)) {
+    throw new Error('Rollback target input is missing deployments or version')
   }
 
   const versionId = selectRollbackTarget(value.deployments)
-  const version = value.versions
-    .map(readVersionMetadata)
-    .find((candidate) => candidate.id === versionId)
-  if (!version)
-    throw new Error('Rollback target version metadata was not found')
+  const version = readVersionMetadata(value.version)
+  if (version.id !== versionId)
+    throw new Error('Rollback target version metadata did not match')
 
   const tag = readAnnotation(version.annotations?.['workers/tag'])
   const message = readAnnotation(version.annotations?.['workers/message'])

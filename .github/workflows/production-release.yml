@@ -151,6 +151,7 @@ jobs:
       ROLLOUT_PROFILE: ${{ needs.resolve.outputs.rollout_profile }}
       WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME || 'christ-dina' }}
       PRODUCTION_ORIGIN: ${{ vars.PRODUCTION_ORIGIN || 'https://christ-dina.org' }}
+      PRODUCTION_JOURNEY_PATHS: ${{ vars.PRODUCTION_JOURNEY_PATHS }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
@@ -194,11 +195,16 @@ jobs:
         name: Record the current rollback target
         run: |
           deployments_json=$(bunx wrangler deployments list --config wrangler.jsonc --name "$WORKER_NAME" --json)
-          versions_json=$(bunx wrangler versions list --config wrangler.jsonc --name "$WORKER_NAME" --json)
+          previous_version_id=$(bun run scripts/rollback-target.ts <<< "$deployments_json")
+          version_json=$(bunx wrangler versions view \
+            "$previous_version_id" \
+            --config wrangler.jsonc \
+            --name "$WORKER_NAME" \
+            --json)
           rollback_target=$(jq -n \
             --argjson deployments "$deployments_json" \
-            --argjson versions "$versions_json" \
-            '{deployments: $deployments, versions: $versions}' | \
+            --argjson version "$version_json" \
+            '{deployments: $deployments, version: $version}' | \
             bun run scripts/rollback-target.ts)
           previous_version_id=$(jq -r '.versionId' <<< "$rollback_target")
           legacy_compatible=$(jq -r '.legacyCompatible' <<< "$rollback_target")
@@ -307,6 +313,7 @@ jobs:
           SMOKE_VERSION_ID: ${{ steps.upload.outputs.version_id }}
           SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
           SMOKE_EXPECTED_RELEASE: ${{ env.RELEASE_TAG }}
+          PRODUCTION_JOURNEY_PATHS: ${{ env.PRODUCTION_JOURNEY_PATHS }}
         run: bun run scripts/retry-release-smoke.ts journey
       - id: rollout
         name: Promote the Worker with the selected rollout profile
@@ -351,9 +358,9 @@ jobs:
               bun run scripts/release-metrics.ts)
             bun run scripts/release-policy.ts guardrails --metrics "$metrics"
             requests=$(jq -r '.requests' <<< "$metrics")
-            if [[ "$percentage" == "10" ]]; then
-              decision=$(bun run scripts/release-policy.ts rollout --profile gradual --requests "$requests")
-              if [[ "$(jq -r '.mode' <<< "$decision")" == "direct" ]]; then
+            decision=$(bun run scripts/release-policy.ts rollout --profile gradual --requests "$requests")
+            if [[ "$(jq -r '.mode' <<< "$decision")" == "direct" ]]; then
+              if [[ "$percentage" == "10" ]]; then
                 bunx wrangler versions deploy \
                   "$VERSION_ID@100" \
                   "$PREVIOUS_VERSION_ID@0" \
@@ -364,7 +371,6 @@ jobs:
                 echo "result=gradual:direct-low-traffic" >> "$GITHUB_OUTPUT"
                 exit 0
               fi
-            elif [[ "$requests" -lt 20 ]]; then
               echo "Gradual stage $percentage% collected fewer than 20 new-version requests"
               exit 1
             fi

@@ -48,7 +48,7 @@ describe('selectRollbackTarget', () => {
             versions: [{ version_id: 'legacy-version', percentage: 100 }],
           },
         ],
-        versions: [{ id: 'legacy-version' }],
+        version: { id: 'legacy-version' },
       }),
     ).toEqual({ versionId: 'legacy-version', legacyCompatible: true })
   })
@@ -62,12 +62,10 @@ describe('selectRollbackTarget', () => {
             versions: [{ version_id: 'partial-version', percentage: 100 }],
           },
         ],
-        versions: [
-          {
-            id: 'partial-version',
-            annotations: { 'workers/tag': 'v2026.09.30.1' },
-          },
-        ],
+        version: {
+          id: 'partial-version',
+          annotations: { 'workers/tag': 'v2026.09.30.1' },
+        },
       }),
     ).toThrow(/incomplete release metadata/iu)
   })
@@ -81,16 +79,28 @@ describe('selectRollbackTarget', () => {
             versions: [{ version_id: 'release-version', percentage: 100 }],
           },
         ],
-        versions: [
-          {
-            id: 'release-version',
-            annotations: {
-              'workers/tag': 'v2026.09.30.1',
-              'workers/message': 'DINA v2026.09.30.1 (sha)',
-            },
+        version: {
+          id: 'release-version',
+          annotations: {
+            'workers/tag': 'v2026.09.30.1',
+            'workers/message': 'DINA v2026.09.30.1 (sha)',
           },
-        ],
+        },
       }),
     ).toEqual({ versionId: 'release-version', legacyCompatible: false })
+  })
+
+  it('rejects metadata for a different selected version', () => {
+    expect(() =>
+      selectRollbackTargetInfo({
+        deployments: [
+          {
+            created_on: '2026-09-30T12:00:00.000Z',
+            versions: [{ version_id: 'active-version', percentage: 100 }],
+          },
+        ],
+        version: { id: 'stale-version' },
+      }),
+    ).toThrow(/did not match/iu)
   })
 })
