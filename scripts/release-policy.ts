@@ -6,6 +6,7 @@ import {
   parseVersionMetrics,
   selectRolloutPlan,
   validateTargetSha,
+  validateVersionAffinityReadiness,
   validateRolloutStageWaitSeconds,
 } from './release-policy.domain'
 
@@ -39,9 +40,16 @@ if (command === 'validate-sha') {
   if (!result.passed) process.exitCode = 1
 } else if (command === 'rollout-wait') {
   console.log(validateRolloutStageWaitSeconds(readOption(args, '--seconds')))
+} else if (command === 'affinity-readiness') {
+  console.log(
+    validateVersionAffinityReadiness(
+      readOption(args, '--ready'),
+      readOption(args, '--evidence-url'),
+    ),
+  )
 } else {
   throw new Error(
-    'Usage: release-policy.ts validate-sha|tag|rollout|rollout-wait|guardrails ...',
+    'Usage: release-policy.ts validate-sha|tag|rollout|rollout-wait|affinity-readiness|guardrails ...',
   )
 }
 

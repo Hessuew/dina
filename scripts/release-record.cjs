@@ -125,17 +125,33 @@ function isTrustedDeployment(
     return null
   }
   const statuses = Array.isArray(deployment.statuses) ? deployment.statuses : []
+  const latestStatus = selectLatestDeploymentStatus(statuses)
   if (
-    !statuses.some(
-      (status) =>
-        status?.state === 'success' &&
-        status?.environment === 'production' &&
-        status?.creator?.login === 'github-actions[bot]',
-    )
+    !latestStatus ||
+    latestStatus.state !== 'success' ||
+    latestStatus.environment !== 'production' ||
+    latestStatus.creator?.login !== 'github-actions[bot]'
   ) {
     return null
   }
   return true
+}
+
+function selectLatestDeploymentStatus(statuses) {
+  const ordered = statuses
+    .map((status) => ({
+      status,
+      timestamp: Date.parse(status?.updated_at ?? status?.created_at ?? ''),
+    }))
+    .filter(({ timestamp }) => Number.isFinite(timestamp))
+    .sort((left, right) => right.timestamp - left.timestamp)
+  if (
+    ordered.length !== statuses.length ||
+    (ordered[1] && ordered[0].timestamp === ordered[1].timestamp)
+  ) {
+    return null
+  }
+  return ordered[0]?.status ?? null
 }
 
 function isWithinWorkflowRun(value, productionRun) {

@@ -14,13 +14,13 @@ import {
   isCloudflareMode,
   resolveCloudflareClientShim,
   resolveSentryBuildConfig,
+  shouldEmitSourceMaps,
 } from './scripts/vite-config.domain.ts'
 
 const config = defineConfig(({ mode }) => {
   const isCloudflare = isCloudflareMode(mode)
-  const sentryBuildConfig = resolveSentryBuildConfig(
-    loadEnv(mode, process.cwd(), ''),
-  )
+  const buildEnv = loadEnv(mode, process.cwd(), '')
+  const sentryBuildConfig = resolveSentryBuildConfig(buildEnv)
 
   const shimPath = fileURLToPath(
     new URL('./src/cloudflare-shim.ts', import.meta.url),
@@ -37,6 +37,9 @@ const config = defineConfig(({ mode }) => {
 
   return {
     customLogger: logger,
+    build: {
+      sourcemap: shouldEmitSourceMaps(buildEnv) ? 'hidden' : false,
+    },
     resolve: {
       tsconfigPaths: true,
       alias: buildResolveAlias(

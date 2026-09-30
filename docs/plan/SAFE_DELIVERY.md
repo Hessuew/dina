@@ -224,6 +224,9 @@ completed in the external systems before Phase 3 is considered operational:
   `CLOUDFLARE_ACCOUNT_ID` credentials and retain runtime secrets in Cloudflare;
 - configure Cloudflare version URLs, the `dina-version-key` version-affinity
   transform rule, custom domain, and Hyperdrive binding;
+- record the Cloudflare affinity transform and split-version asset evidence at
+  the protected `CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL`, then set
+  `CLOUDFLARE_VERSION_AFFINITY_READY=true`;
 - configure Better Stack and Cloudflare alerts to Slack `#incidents` plus the
   documented email fallback;
 - configure the protected release-evidence adapter consumed by

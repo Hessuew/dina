@@ -12,14 +12,18 @@ type ParsedWorkflow = {
     branches: Array<string>
   }
   resolveCondition: string
+  resolveEnv: Record<string, string>
   deployEnvironment: string | undefined
   trustedReleaseUses: string | undefined
   tagProtectionUses: string | undefined
   manualTargetVerificationUses: string | undefined
+  affinityReadinessRun: string | undefined
   preflightEnv: Record<string, string> | undefined
   rollbackRun: string | undefined
   rollbackEnv: Record<string, string> | undefined
   deployEnv: Record<string, string>
+  deployInstallEnv: Record<string, string> | undefined
+  buildEnv: Record<string, string> | undefined
   journeyEnv: Record<string, string> | undefined
   uploadEnv: Record<string, string> | undefined
   healthRun: string | undefined
@@ -109,6 +113,15 @@ describe('production release workflow', () => {
     expect(workflow.manualTargetVerificationUses).toBe(
       'actions/github-script@v7',
     )
+    expect(workflow.affinityReadinessRun).toContain(
+      'scripts/release-policy.ts affinity-readiness',
+    )
+    expect(workflow.resolveEnv.CLOUDFLARE_VERSION_AFFINITY_READY).toBe(
+      "${{ vars.CLOUDFLARE_VERSION_AFFINITY_READY || 'false' }}",
+    )
+    expect(workflow.resolveEnv.CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL).toBe(
+      '${{ vars.CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL }}',
+    )
     expect(workflow.preflightEnv?.TRUSTED_RELEASE_BINDINGS).toBe(
       '${{ steps.trusted_releases.outputs.bindings }}',
     )
@@ -118,9 +131,14 @@ describe('production release workflow', () => {
     const workflow = await readWorkflow()
 
     expect(workflow.deployEnvironment).toBe('production')
-    expect(workflow.deployEnv.CLOUDFLARE_ACCOUNT_ID).toBe(
-      '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
-    )
+    expect(workflow.deployEnv.CLOUDFLARE_API_TOKEN).toBeUndefined()
+    expect(workflow.deployEnv.CLOUDFLARE_ACCOUNT_ID).toBeUndefined()
+    expect(workflow.deployEnv.SENTRY_AUTH_TOKEN).toBeUndefined()
+    expect(workflow.deployEnv.CLOUDFLARE_VERSION_METRICS_TOKEN).toBeUndefined()
+    expect(workflow.deployEnv.PRODUCTION_RELEASE_EVIDENCE_TOKEN).toBeUndefined()
+    expect(workflow.deployInstallEnv).toBeUndefined()
+    expect(workflow.buildEnv?.SENTRY_AUTH_TOKEN).toBeUndefined()
+    expect(workflow.buildEnv?.RELEASE_SOURCE_MAPS_ENABLED).toBe('true')
     expect(workflow.deployEnv.PRODUCTION_JOURNEY_PATHS).toBe(
       '${{ vars.PRODUCTION_JOURNEY_PATHS }}',
     )
@@ -134,7 +152,8 @@ describe('production release workflow', () => {
       '${{ vars.BETTER_STACK_APPLICATION_ID }}',
     )
     expect(workflow.uploadEnv).toMatchObject({
-      CLOUDFLARE_ACCOUNT_ID: '${{ env.CLOUDFLARE_ACCOUNT_ID }}',
+      CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
+      CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
       BETTER_STACK_APPLICATION_ID: '${{ env.BETTER_STACK_APPLICATION_ID }}',
       RELEASE_SHA: '${{ env.TARGET_SHA }}',
       RELEASE_ORIGIN: '${{ env.PRODUCTION_ORIGIN }}',
@@ -188,8 +207,19 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     const manualTargetVerification = workflow.jobs.resolve.steps.find(
       (step) => step.name === 'Verify manual target is current or previously trusted',
     )
+    const affinityReadiness = workflow.jobs.resolve.steps.find(
+      (step) => step.name === 'Verify Cloudflare version-affinity readiness',
+    )
     const preflight = workflow.jobs.deploy.steps.find(
       (step) => step.id === 'preflight',
+    )
+    const build = workflow.jobs.deploy.steps.find(
+      (step) =>
+        step.name ===
+        'Build the tagged production artifact and upload source maps',
+    )
+    const deployInstall = workflow.jobs.deploy.steps.find(
+      (step) => step.run === 'bun install --frozen-lockfile',
     )
     const rollback = workflow.jobs.deploy.steps.find(
       (step) => step.name === 'Roll back the Worker after a failed smoke or guardrail',
@@ -216,14 +246,18 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
       runName: workflow['run-name'],
       workflowRun: workflow.on.workflow_run,
       resolveCondition: String(workflow.jobs.resolve.if),
+      resolveEnv: workflow.jobs.resolve.env,
       deployEnvironment: workflow.jobs.deploy.environment,
       trustedReleaseUses: trustedReleases?.uses,
       tagProtectionUses: tagProtection?.uses,
       manualTargetVerificationUses: manualTargetVerification?.uses,
+      affinityReadinessRun: affinityReadiness?.run,
       preflightEnv: preflight?.env,
       rollbackRun: rollback?.run,
       rollbackEnv: rollback?.env,
       deployEnv: workflow.jobs.deploy.env,
+      deployInstallEnv: deployInstall?.env,
+      buildEnv: build?.env,
       journeyEnv: journey?.env,
       uploadEnv: upload?.env,
       healthRun: health?.run,

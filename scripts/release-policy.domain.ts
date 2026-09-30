@@ -78,6 +78,33 @@ export function validateTargetSha(value: string): string {
   return targetSha
 }
 
+export function validateVersionAffinityReadiness(
+  ready: string,
+  evidenceUrl: string,
+): string {
+  if (ready.trim() !== 'true') {
+    throw new Error('Cloudflare version-affinity readiness is not approved')
+  }
+
+  let url: URL
+  try {
+    url = new URL(evidenceUrl.trim())
+  } catch {
+    throw new Error('Cloudflare version-affinity evidence URL is invalid')
+  }
+  if (
+    url.protocol !== 'https:' ||
+    !url.hostname ||
+    url.username ||
+    url.password
+  ) {
+    throw new Error(
+      'Cloudflare version-affinity evidence URL must be an HTTPS URL without credentials',
+    )
+  }
+  return url.toString()
+}
+
 export function selectRolloutPlan(
   profile: RolloutProfile,
   newVersionRequests?: number,

@@ -5,6 +5,7 @@ import {
   isCloudflareMode,
   resolveCloudflareClientShim,
   resolveSentryBuildConfig,
+  shouldEmitSourceMaps,
 } from './vite-config.domain.ts'
 
 describe('isCloudflareMode', () => {
@@ -61,6 +62,21 @@ describe('resolveCloudflareClientShim', () => {
     expect(
       resolveCloudflareClientShim('react', false, '/shim.ts'),
     ).toBeUndefined()
+  })
+})
+
+describe('shouldEmitSourceMaps', () => {
+  it('enables hidden source maps for the release build', () => {
+    expect(
+      shouldEmitSourceMaps({ RELEASE_SOURCE_MAPS_ENABLED: ' true ' }),
+    ).toBe(true)
+  })
+
+  it('keeps source maps disabled by default', () => {
+    expect(shouldEmitSourceMaps({})).toBe(false)
+    expect(shouldEmitSourceMaps({ RELEASE_SOURCE_MAPS_ENABLED: 'false' })).toBe(
+      false,
+    )
   })
 })
 

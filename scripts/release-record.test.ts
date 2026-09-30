@@ -53,6 +53,7 @@ const provenance = {
           state: 'success',
           environment: 'production',
           creator: { login: 'github-actions[bot]' },
+          created_at: '2026-09-30T10:45:00.000Z',
         },
       ],
     },
@@ -179,6 +180,31 @@ describe('parseTrustedReleaseBinding', () => {
       }),
     ).toBeNull()
   })
+
+  it.each(['failure', 'error', 'inactive', 'cancelled'])(
+    'rejects a deployment with a later %s status',
+    (state) => {
+      expect(
+        parseTrustedReleaseBinding(release, commitSha, {
+          ...provenance,
+          deployments: [
+            {
+              ...provenance.deployments[0],
+              statuses: [
+                ...provenance.deployments[0].statuses,
+                {
+                  created_at: '2026-09-30T10:50:00.000Z',
+                  creator: { login: 'github-actions[bot]' },
+                  environment: 'production',
+                  state,
+                },
+              ],
+            },
+          ],
+        }),
+      ).toBeNull()
+    },
+  )
 
   it('accepts only immutable release tag shapes', () => {
     expect(isReleaseTag('v2026.09.30.1')).toBe(true)

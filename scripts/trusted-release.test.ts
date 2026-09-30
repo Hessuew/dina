@@ -44,6 +44,7 @@ const provenance = {
           creator: { login: 'github-actions[bot]' },
           environment: 'production',
           state: 'success',
+          created_at: '2026-09-30T10:45:00.000Z',
         },
       ],
     },
