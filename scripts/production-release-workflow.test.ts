@@ -10,7 +10,7 @@ type ParsedWorkflow = {
     types: Array<string>
     branches: Array<string>
   }
-  resolveTerms: Array<string>
+  resolveCondition: string
   rollbackRun: string | undefined
   rollbackEnv: Record<string, string> | undefined
 }
@@ -24,14 +24,31 @@ describe('production release workflow', () => {
       types: ['completed'],
       branches: ['main'],
     })
-    expect(workflow.resolveTerms).toEqual(
-      expect.arrayContaining([
-        "github.event_name == 'workflow_dispatch'",
-        "github.event.workflow_run.event == 'push'",
-        "github.event.workflow_run.conclusion == 'success'",
-        "github.event.workflow_run.head_branch == 'main'",
-      ]),
-    )
+    expect(
+      evaluateCondition(workflow.resolveCondition, {
+        event_name: 'workflow_run',
+        workflow_run: {
+          event: 'workflow_dispatch',
+          conclusion: 'success',
+          head_branch: 'main',
+        },
+      }),
+    ).toBe(false)
+    expect(
+      evaluateCondition(workflow.resolveCondition, {
+        event_name: 'workflow_run',
+        workflow_run: {
+          event: 'push',
+          conclusion: 'success',
+          head_branch: 'main',
+        },
+      }),
+    ).toBe(true)
+    expect(
+      evaluateCondition(workflow.resolveCondition, {
+        event_name: 'workflow_dispatch',
+      }),
+    ).toBe(true)
   })
 
   it('pins rollback smoke to the recorded previous Worker version', async () => {
@@ -53,22 +70,108 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
   ).pathname
   const script = `
     const workflow = Bun.YAML.parse(await Bun.file(process.argv[1]).text())
-    const terms = String(workflow.jobs.resolve.if)
-      .replaceAll('$' + '{{', '')
-      .replaceAll('}' + '}', '')
-      .split(/\\|\\||&&|[()]/u)
-      .map((term) => term.trim())
-      .filter(Boolean)
     const rollback = workflow.jobs.deploy.steps.find(
       (step) => step.name === 'Re-run health smoke after rollback',
     )
     console.log(JSON.stringify({
       workflowRun: workflow.on.workflow_run,
-      resolveTerms: terms,
+      resolveCondition: String(workflow.jobs.resolve.if),
       rollbackRun: rollback?.run,
       rollbackEnv: rollback?.env,
     }))
   `
   const { stdout } = await execFileAsync('bun', ['-e', script, workflowPath])
   return JSON.parse(stdout) as ParsedWorkflow
+}
+
+type WorkflowContext = {
+  event_name: string
+  workflow_run?: {
+    event?: string
+    conclusion?: string
+    head_branch?: string
+  }
+}
+
+function evaluateCondition(
+  expression: string,
+  context: WorkflowContext,
+): boolean {
+  const normalized = expression
+    .replaceAll('${{', '')
+    .replaceAll('}}', '')
+    .trim()
+  const values = new Map<string, string | undefined>([
+    ['github.event_name', context.event_name],
+    ['github.event.workflow_run.event', context.workflow_run?.event],
+    ['github.event.workflow_run.conclusion', context.workflow_run?.conclusion],
+    [
+      'github.event.workflow_run.head_branch',
+      context.workflow_run?.head_branch,
+    ],
+  ])
+  const comparisons = normalized.match(/[A-Za-z0-9._-]+\s*==\s*'[^']*'/gu)
+  if (!comparisons) throw new Error('Workflow condition has no comparisons')
+  let result = normalized
+  for (const comparison of comparisons) {
+    const match = /^([A-Za-z0-9._-]+)\s*==\s*'([^']*)'$/u.exec(comparison)
+    if (!match)
+      throw new Error(`Unsupported workflow comparison: ${comparison}`)
+    result = result.replace(
+      comparison,
+      String(values.get(match[1]) === match[2]),
+    )
+  }
+  return evaluateBooleanExpression(result)
+}
+
+function evaluateBooleanExpression(expression: string): boolean {
+  const tokens = expression
+    .replaceAll('(', ' ( ')
+    .replaceAll(')', ' ) ')
+    .trim()
+    .split(/\s+/u)
+  let index = 0
+
+  function parseOr(): boolean {
+    let value = parseAnd()
+    while (tokens[index] === '||') {
+      index += 1
+      const right = parseAnd()
+      value = value || right
+    }
+    return value
+  }
+
+  function parseAnd(): boolean {
+    let value = parsePrimary()
+    while (tokens[index] === '&&') {
+      index += 1
+      const right = parsePrimary()
+      value = value && right
+    }
+    return value
+  }
+
+  function parsePrimary(): boolean {
+    const token = tokens[index]
+    if (token === '(') {
+      index += 1
+      const value = parseOr()
+      if (tokens[index] !== ')')
+        throw new Error('Unbalanced workflow condition')
+      index += 1
+      return value
+    }
+    if (token === 'true' || token === 'false') {
+      index += 1
+      return token === 'true'
+    }
+    throw new Error(`Unsupported workflow condition token: ${token}`)
+  }
+
+  const value = parseOr()
+  if (index !== tokens.length)
+    throw new Error('Unexpected workflow condition token')
+  return value
 }

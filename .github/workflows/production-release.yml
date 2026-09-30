@@ -188,7 +188,7 @@ jobs:
       - id: preflight
         name: Record the current rollback target
         run: |
-          previous_version_id=$(bunx wrangler deployments list --config wrangler.jsonc --name "$WORKER_NAME" --json | jq -r '[.[] | select(.versions | length > 0)] | first | .versions | max_by(.percentage) | .version_id')
+          previous_version_id=$(bunx wrangler deployments list --config wrangler.jsonc --name "$WORKER_NAME" --json | bun run scripts/rollback-target.ts)
           if [[ -z "$previous_version_id" || "$previous_version_id" == "null" ]]; then
             echo "No active Cloudflare deployment version was found"
             exit 1
