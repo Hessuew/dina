@@ -1,6 +1,6 @@
 # Metrics, Dashboards, And Alerts
 
-**Status:** Repository guardrails implemented; external dashboards, per-version metrics, and alert routing pending
+**Status:** Repository adapters implemented; provider credentials and alert routing remain fail-closed until verified
 
 ## Dashboard Links
 
@@ -75,12 +75,24 @@ directly to 100% after the guardrails pass. Cloudflare version metadata and
 Logpush/observability configuration remain the provider-side source for
 correlating the version id and tag.
 
+The Worker records request count, unexpected errors, latency, and release
+identity in the `dina_release_metrics` Workers Analytics Engine dataset. The
+protected `/_internal/release/metrics` endpoint queries that dataset through
+Cloudflare's SQL API and requires a release-version match plus a bearer token.
+It is not public application telemetry and is excluded from its own dataset.
+
 After promotion, `bun run scripts/release-evidence.ts` queries the protected
 `PRODUCTION_RELEASE_EVIDENCE_URL` adapter. It must confirm the exact release
 tag, validated SHA, Cloudflare version, production origin, source-map
 correlation, and successful delivery to Slack `#incidents` and the documented
 email fallback. The production workflow fails closed when this evidence is
 missing or does not match the promoted release.
+
+The Worker-backed `/_internal/release/evidence` adapter verifies the deployed
+version metadata, the injected target SHA/origin, and the Better Stack release
+registration. The workflow injects source-map verification and alert-routing
+flags only after the corresponding build/provider checks; those flags remain
+false until Slack `#incidents` and the documented email fallback are tested.
 
 ## Metrics
 

@@ -1,3 +1,6 @@
+// fallow-ignore-file unused-file -- shared by direct release scripts
+
+// fallow-ignore-next-line unused-export -- shared by direct release scripts
 export async function fetchWithTimeout(
   url: URL,
   init: RequestInit,

@@ -60,7 +60,15 @@ const commandCatalog = {
     id: 'deploy-dry-run',
     name: 'Cloudflare deploy dry-run',
     command: 'bunx',
-    args: ['wrangler', 'deploy', '--dry-run'],
+    args: [
+      'wrangler',
+      'deploy',
+      '--dry-run',
+      '--config',
+      'wrangler.jsonc',
+      '--no-bundle',
+      'dist/server/index.js',
+    ],
   },
 }
 

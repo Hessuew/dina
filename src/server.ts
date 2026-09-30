@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/cloudflare'
 import { wrapFetchWithSentry } from '@sentry/tanstackstart-react'
 import handler from '@tanstack/react-start/server-entry'
+import { env as workerEnv } from 'cloudflare:workers'
 import { shouldSuppressFromSentry } from '@/utils/errors'
 import {
   checkDatabaseReadiness,
@@ -15,6 +16,10 @@ import {
   hasVersionAffinityCookie,
 } from '@/utils/observability/domain/version-affinity.domain'
 import { addActiveTraceContext } from '@/utils/observability/trace-context'
+import {
+  handleReleaseEndpoint,
+  recordReleaseMetric,
+} from '@/utils/observability/release-endpoints'
 
 type HandlerOptions = Parameters<typeof handler.fetch>[1]
 
@@ -26,13 +31,30 @@ type WorkerVersionMetadata = {
 
 const appHandler = {
   async fetch(request: Request, opts?: unknown): Promise<Response> {
+    const startedAt = performance.now()
+    const metadata =
+      readWorkerVersionMetadata(opts) ?? readWorkerVersionMetadata(workerEnv)
+    const runtime = workerEnv as unknown as Parameters<
+      typeof handleReleaseEndpoint
+    >[1]
+    const releaseResponse = await handleReleaseEndpoint(
+      request,
+      runtime,
+      metadata,
+    )
+    if (releaseResponse) return releaseResponse
+
     const operationalResponse = await handleOperationalRequest(request)
-
-    if (operationalResponse) {
-      return addWorkerVersionHeaders(operationalResponse, opts, request)
-    }
-
-    const response = await handler.fetch(request, opts as HandlerOptions)
+    const response =
+      operationalResponse ??
+      (await handler.fetch(request, opts as HandlerOptions))
+    recordReleaseMetric(
+      runtime,
+      metadata,
+      request,
+      response,
+      performance.now() - startedAt,
+    )
     return addWorkerVersionHeaders(response, opts, request)
   },
 }

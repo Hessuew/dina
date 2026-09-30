@@ -1,11 +1,13 @@
 import {
   HEALTH_SMOKE_PATHS,
-  resolveHealthSmokeHeaders,
   resolveHealthSmokeUrl,
   validateHealthSmokeResponse,
+} from './health-smoke.domain'
+import {
+  resolveHealthSmokeHeaders,
   validateVersionMetadataHeader,
   validateVersionMetadataTag,
-} from './health-smoke.domain'
+} from './health-smoke.version.domain'
 import type { HealthSmokePath } from './health-smoke.domain'
 
 const DEFAULT_TIMEOUT_MS = 5000

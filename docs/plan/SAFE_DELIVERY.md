@@ -53,7 +53,9 @@ account URLs remain external configuration and must never be committed.
   evidence fails closed and triggers the same Worker rollback path.
 - Tagged builds inject the release tag into browser/Worker observability and
   use the Sentry-compatible Vite source-map upload configuration. The workflow
-  publishes a GitHub Release containing the previous release, merged PRs,
+  registers the release with Better Stack, verifies that source-map artifacts
+  are queryable, and injects the exact target SHA/origin into the uploaded
+  Worker version. It publishes a GitHub Release containing the previous release, merged PRs,
   commits, migration files, Cloudflare version, rollout result, and rollback
   target.
 - The Worker issues the non-sensitive `dina-version-key` cookie on the first
