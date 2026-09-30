@@ -58,7 +58,7 @@ safe to automate because Drizzle migrations may have changed production data.
    result, and rollback target. Better Stack and Worker source-map correlation
    use the same immutable release tag.
 
-Automatic promotion remains disabled until the external readiness checklist is
+Production promotion remains disabled until the external readiness checklist is
 verified: release/environment and source-map correlation, alert delivery to
 Slack `#incidents` plus email fallback, `/healthz` and `/readyz` monitors,
 version affinity and split-asset testing, Worker rollback, isolated Supabase
@@ -84,7 +84,7 @@ restore, and queryable per-version metrics.
 - Production migration approval and Worker promotion are visible in one
   workflow, while runtime secrets remain in Cloudflare and migration secrets
   remain scoped to the protected GitHub environment.
-- Automatic production promotion is intentionally unavailable until external
-  provider setup and drills are complete.
+- Production promotion is intentionally unavailable until external provider
+  setup and drills are complete.
 - The first low-risk release must verify the full evidence chain before the
   readiness switch is enabled.

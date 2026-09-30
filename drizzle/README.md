@@ -36,7 +36,7 @@ bun db:migrate
 ## Hosted migration safety
 
 `bun db:push` is a development-only escape hatch for a disposable database. Do
-not use it against the hosted Supabase `development` or production branches:
+not use it against the hosted Supabase `development` or production environments:
 it bypasses the committed migration history and can make the environments
 drift.
 

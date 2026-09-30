@@ -112,7 +112,8 @@ the approved restore runbook.
 Automatic production promotion listens only for a successful push-triggered
 `Main release gate` on `main`. A manual `Main release gate` dispatch is a
 development migration retry and does not promote production; use the explicit
-production workflow dispatch for a manual production release.
+production workflow dispatch for a manual production release only after the
+protected release-readiness controls are enabled.
 
 For a tagged release, the exact-version checks are:
 

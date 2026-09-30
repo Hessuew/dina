@@ -9,7 +9,7 @@
 The pull-request quality gate and serialized main release gate remain the only
 code-validation gates. The production workflow now promotes an exact validated
 main SHA under a new immutable UTC tag; it does not use a long-lived
-`production` branch. Automatic promotion is deliberately disabled until the
+`production` branch. Production promotion is deliberately disabled until the
 external readiness checklist is verified. The repository workflow, policy unit
 tests, and Wrangler configuration are locally verifiable; no production
 mutation is claimed by this document.
@@ -122,7 +122,8 @@ to 100% after guardrails pass.
 1. Open a pull request and wait for the pull-request quality gate.
 2. Merge to `main` and wait for the serialized main release gate.
 3. Allow the automatic standard promotion, or manually dispatch the production
-   workflow for the same validated SHA.
+   workflow for the same validated SHA once the protected release-readiness
+   controls are enabled.
 4. Confirm the tagged version override smoke and affected journey smoke pass.
 5. Watch Better Stack Errors, Logs & Traces, Uptime, and Cloudflare for the
    first release window. Record the release and environment when investigating
@@ -235,7 +236,7 @@ completed in the external systems before Phase 3 is considered operational:
 - configure the protected release-evidence adapter consumed by
   `bun run scripts/release-evidence.ts`;
 - activate `/healthz` and `/readyz` monitors and verify source-map correlation;
-- query Cloudflare per-version rollout metrics or keep gradual dispatch
+- query Cloudflare per-version rollout metrics or keep production dispatch
   manual/fail-closed;
 - rehearse Worker rollback and isolated Supabase restore; and
 - link the current release, dashboard, and runbook URLs from Notion.
