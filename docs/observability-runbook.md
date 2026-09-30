@@ -125,10 +125,15 @@ bun run smoke:health
 ```
 
 Automatic rollback smoke supplies the recorded previous Cloudflare version and
-worker name through the same override headers, so it fails if the rollback
-target is not serving. A base-URL-only smoke is a compatibility check for
-deployments where version metadata is genuinely unavailable; it does not prove
-that a particular rollback target is active.
+worker name through the same exact override headers, so it never falls back to
+live traffic. The preflight records whether the target has the release
+annotations created by this workflow. Fully annotated targets must emit both
+version headers and match the recorded version. An unannotated target is
+treated as a verified pre-feature Worker only when the exact override returns
+healthy `/healthz` and `/readyz` payloads without either new header; the smoke
+logs `legacy-header-compatible` as explicit evidence. Missing headers on an
+annotated target, partial headers, mismatched versions, failed payloads, and
+missing version metadata all fail closed.
 
 The affected public journey smoke uses the same version override. Authenticated
 journeys must use approved synthetic production credentials only; never put

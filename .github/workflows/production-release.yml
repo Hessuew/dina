@@ -193,12 +193,21 @@ jobs:
       - id: preflight
         name: Record the current rollback target
         run: |
-          previous_version_id=$(bunx wrangler deployments list --config wrangler.jsonc --name "$WORKER_NAME" --json | bun run scripts/rollback-target.ts)
-          if [[ -z "$previous_version_id" || "$previous_version_id" == "null" ]]; then
-            echo "No active Cloudflare deployment version was found"
+          deployments_json=$(bunx wrangler deployments list --config wrangler.jsonc --name "$WORKER_NAME" --json)
+          versions_json=$(bunx wrangler versions list --config wrangler.jsonc --name "$WORKER_NAME" --json)
+          rollback_target=$(jq -n \
+            --argjson deployments "$deployments_json" \
+            --argjson versions "$versions_json" \
+            '{deployments: $deployments, versions: $versions}' | \
+            bun run scripts/rollback-target.ts)
+          previous_version_id=$(jq -r '.versionId' <<< "$rollback_target")
+          legacy_compatible=$(jq -r '.legacyCompatible' <<< "$rollback_target")
+          if [[ -z "$previous_version_id" || "$previous_version_id" == "null" || ("$legacy_compatible" != "true" && "$legacy_compatible" != "false") ]]; then
+            echo "No verified Cloudflare rollback target was found"
             exit 1
           fi
           echo "previous_version_id=$previous_version_id" >> "$GITHUB_OUTPUT"
+          echo "legacy_compatible=$legacy_compatible" >> "$GITHUB_OUTPUT"
       - name: Build the tagged production artifact and upload source maps
         run: bun run build
       - name: Register the Better Stack production release
@@ -379,7 +388,8 @@ jobs:
           SMOKE_BASE_URL: ${{ env.PRODUCTION_ORIGIN }}
           SMOKE_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
           SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
-        run: bun run smoke:health
+          SMOKE_LEGACY_TARGET: ${{ steps.preflight.outputs.legacy_compatible }}
+        run: bun run scripts/rollback-smoke.ts
 
   release:
     name: Publish GitHub Release evidence

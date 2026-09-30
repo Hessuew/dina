@@ -8,6 +8,19 @@ type Deployment = {
   versions: Array<DeploymentVersion>
 }
 
+type VersionMetadata = {
+  id: string
+  annotations?: {
+    'workers/tag'?: unknown
+    'workers/message'?: unknown
+  }
+}
+
+export type RollbackTarget = {
+  versionId: string
+  legacyCompatible: boolean
+}
+
 export function selectRollbackTarget(value: unknown): string {
   if (!Array.isArray(value))
     throw new Error('Deployments response must be an array')
@@ -38,6 +51,27 @@ export function selectRollbackTarget(value: unknown): string {
   return activeVersion.version_id
 }
 
+export function selectRollbackTargetInfo(value: unknown): RollbackTarget {
+  if (!isRecord(value))
+    throw new Error('Rollback target input must be an object')
+  if (!Array.isArray(value.deployments) || !Array.isArray(value.versions)) {
+    throw new Error('Rollback target input is missing deployments or versions')
+  }
+
+  const versionId = selectRollbackTarget(value.deployments)
+  const version = value.versions
+    .map(readVersionMetadata)
+    .find((candidate) => candidate.id === versionId)
+  if (!version)
+    throw new Error('Rollback target version metadata was not found')
+
+  const tag = readAnnotation(version.annotations?.['workers/tag'])
+  const message = readAnnotation(version.annotations?.['workers/message'])
+  if (tag && message) return { versionId, legacyCompatible: false }
+  if (!tag && !message) return { versionId, legacyCompatible: true }
+  throw new Error('Rollback target version has incomplete release metadata')
+}
+
 function readDeployment(value: unknown): Deployment {
   if (!isRecord(value)) throw new Error('Deployment must be an object')
   if (typeof value.created_on !== 'string' || !Array.isArray(value.versions)) {
@@ -58,6 +92,30 @@ function readDeploymentVersion(value: unknown): DeploymentVersion {
     throw new Error('Deployment version is missing required fields')
   }
   return { version_id: value.version_id, percentage: value.percentage }
+}
+
+function readVersionMetadata(value: unknown): VersionMetadata {
+  if (!isRecord(value) || typeof value.id !== 'string') {
+    throw new Error('Worker version metadata is missing an id')
+  }
+  const rawAnnotations = value.annotations
+  if (rawAnnotations !== undefined && !isRecord(rawAnnotations)) {
+    throw new Error('Worker version annotations must be an object')
+  }
+  const annotations = rawAnnotations
+    ? {
+        'workers/tag': rawAnnotations['workers/tag'],
+        'workers/message': rawAnnotations['workers/message'],
+      }
+    : undefined
+  return {
+    id: value.id,
+    annotations,
+  }
+}
+
+function readAnnotation(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
