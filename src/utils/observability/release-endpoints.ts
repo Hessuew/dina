@@ -104,7 +104,10 @@ async function handleMetricsRequest(
 
   const metrics = await queryReleaseMetrics(runtime, window)
   return metrics
-    ? jsonResponse(metrics, 200)
+    ? jsonResponse(
+        { ...metrics, since: window.since, until: window.until },
+        200,
+      )
     : jsonResponse({ error: 'metrics are not queryable' }, 503)
 }
 

@@ -30,11 +30,14 @@ safe to automate because Drizzle migrations may have changed production data.
    applies the compatible Supabase migration without seeding, builds with the
    release tag, uploads an undeployed Cloudflare version, and runs exact-version
    health and affected-journey smoke checks.
-4. **Standard promotion serves 100%.** The gradual profile serves
+4. **Standard promotion serves 100% with post-promotion guardrails.** The
+   standard profile observes a five-minute per-version metrics window and
+   applies the same error-rate, latency, and release-correlated severity
+   guardrails as gradual promotion. The gradual profile serves
    `10% → 25% → 50% → 100%`, waiting ten minutes and checking at least 20
    new-version requests at every stage. If the 10% sample is below the floor,
    the workflow promotes directly to 100% after guardrails pass.
-5. **Gradual promotion is fail-closed without per-version metrics.** The
+5. **Promotion is fail-closed without per-version metrics.** The
    protected metrics adapter must provide requests, errors, p95 latency, and
    release-correlated high-severity issue count for the exact Worker version.
 6. **Health or rollout guardrail failure rolls back only the Worker.** A

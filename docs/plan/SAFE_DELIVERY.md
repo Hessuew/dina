@@ -108,11 +108,14 @@ target. Failed tags remain in Git history for audit and the next tag sequence
 never reuses them. Manual dispatch is allowed only for a full SHA that has a
 successful `Main release gate` run and is reachable from `origin/main`.
 
-Gradual promotion is fail-closed unless the configured per-version metrics
-adapter returns request count, error count, p95 latency, and new
-release-correlated high-severity issue count. Each stage waits at least ten
-minutes and requires at least 20 new-version requests. If the 10% stage is
-below that floor, the workflow promotes directly to 100% after guardrails pass.
+Standard and gradual promotion are fail-closed unless the configured per-version
+metrics adapter returns request count, error count, p95 latency, and new
+release-correlated high-severity issue count for the exact query window. The
+standard profile serves 100%, observes a five-minute window, and applies the
+same guardrails before the live-traffic smoke and release evidence steps. Each
+gradual stage waits at least ten minutes and requires at least 20 new-version
+requests. If the 10% stage is below that floor, the workflow promotes directly
+to 100% after guardrails pass.
 
 ### Application-only change
 

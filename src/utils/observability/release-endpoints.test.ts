@@ -49,6 +49,46 @@ describe('release metrics endpoint', () => {
     expect(response?.status).toBe(503)
   })
 
+  it('echoes the normalized metrics window with queryable metrics', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              data: [
+                {
+                  requests: 20,
+                  errors: 0,
+                  p95LatencyMs: 10,
+                  highSeverityIssues: 0,
+                },
+              ],
+            }),
+          ),
+      ),
+    )
+
+    const response = await handleReleaseEndpoint(
+      new Request(
+        'https://example.test/_internal/release/metrics?version_id=version-1&since=2026-09-30T12:34:56.000Z&until=2026-09-30T12:39:56.000Z',
+        { headers: { authorization: 'Bearer secret' } },
+      ),
+      runtime,
+      metadata,
+    )
+
+    expect(response?.status).toBe(200)
+    await expect(response?.json()).resolves.toEqual({
+      requests: 20,
+      errors: 0,
+      p95LatencyMs: 10,
+      highSeverityIssues: 0,
+      since: '2026-09-30T12:34:56.000Z',
+      until: '2026-09-30T12:39:56.000Z',
+    })
+  })
+
   it('records an ordinary 5xx only in the error-rate metric', () => {
     const writeDataPoint = vi.fn()
     const request = new Request('https://example.test/orders', {
