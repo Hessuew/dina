@@ -25,6 +25,7 @@ type ParsedWorkflow = {
   journeyRun: string | undefined
   postRolloutHealthRun: string | undefined
   releasePublicationUses: string | undefined
+  releasePublicationEnv: Record<string, string> | undefined
   releasePublicationIndex: number
   rollbackIndex: number
 }
@@ -158,6 +159,9 @@ describe('production release workflow', () => {
     const workflow = await readWorkflow()
 
     expect(workflow.releasePublicationUses).toBe('actions/github-script@v7')
+    expect(workflow.releasePublicationEnv?.PREVIOUS_RELEASE_TAG).toBe(
+      '${{ steps.preflight.outputs.previous_release_tag }}',
+    )
     expect(workflow.releasePublicationIndex).toBeLessThan(
       workflow.rollbackIndex,
     )
@@ -220,6 +224,9 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
       releasePublicationUses: workflow.jobs.deploy.steps.find(
         (step) => step.name === 'Publish GitHub Release evidence and deployment binding',
       )?.uses,
+      releasePublicationEnv: workflow.jobs.deploy.steps.find(
+        (step) => step.name === 'Publish GitHub Release evidence and deployment binding',
+      )?.env,
       releasePublicationIndex,
       rollbackIndex,
     }))

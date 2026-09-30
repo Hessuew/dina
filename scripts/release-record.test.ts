@@ -2,15 +2,22 @@ import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
-const { isReleaseTag, parseTrustedReleaseBinding } =
-  require('./release-record.cjs') as {
-    isReleaseTag: (value: unknown) => boolean
-    parseTrustedReleaseBinding: (
-      release: unknown,
-      tagCommit: unknown,
-      provenance: unknown,
-    ) => { commitSha: string; cloudflareVersionId: string } | null
-  }
+const {
+  isReleaseTag,
+  parseTrustedReleaseBinding,
+  selectTrustedPreviousRelease,
+} = require('./release-record.cjs') as {
+  isReleaseTag: (value: unknown) => boolean
+  parseTrustedReleaseBinding: (
+    release: unknown,
+    tagCommit: unknown,
+    provenance: unknown,
+  ) => { commitSha: string; cloudflareVersionId: string } | null
+  selectTrustedPreviousRelease: (
+    releases: unknown,
+    previousReleaseTag: unknown,
+  ) => unknown
+}
 
 const commitSha = 'a'.repeat(40)
 const provenance = {
@@ -176,5 +183,33 @@ describe('parseTrustedReleaseBinding', () => {
   it('accepts only immutable release tag shapes', () => {
     expect(isReleaseTag('v2026.09.30.1')).toBe(true)
     expect(isReleaseTag('canary')).toBe(false)
+  })
+
+  it('selects only the trusted previous release tag', () => {
+    const trusted = {
+      draft: false,
+      prerelease: false,
+      tag_name: 'v2026.09.29.1',
+    }
+    expect(
+      selectTrustedPreviousRelease(
+        [
+          { draft: false, prerelease: false, tag_name: 'v2026.09.28.1' },
+          trusted,
+        ],
+        trusted.tag_name,
+      ),
+    ).toEqual(trusted)
+  })
+
+  it('rejects missing, prerelease, and unrelated previous release history', () => {
+    const history = [
+      { draft: false, prerelease: true, tag_name: 'v2026.09.29.1' },
+      { draft: false, prerelease: false, tag_name: 'v2026.09.28.1' },
+    ]
+
+    expect(selectTrustedPreviousRelease(history, '')).toBeNull()
+    expect(selectTrustedPreviousRelease(history, 'v2026.09.29.1')).toBeNull()
+    expect(selectTrustedPreviousRelease(history, 'v2026.09.30.1')).toBeNull()
   })
 })

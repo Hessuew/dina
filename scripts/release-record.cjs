@@ -151,4 +151,20 @@ function isWithinWorkflowRun(value, productionRun) {
   )
 }
 
-module.exports = { isReleaseTag, parseTrustedReleaseBinding }
+function selectTrustedPreviousRelease(releases, previousReleaseTag) {
+  if (!isReleaseTag(previousReleaseTag) || !Array.isArray(releases)) return null
+  return (
+    releases.find(
+      (release) =>
+        release?.tag_name === previousReleaseTag &&
+        release.draft === false &&
+        release.prerelease === false,
+    ) ?? null
+  )
+}
+
+module.exports = {
+  isReleaseTag,
+  parseTrustedReleaseBinding,
+  selectTrustedPreviousRelease,
+}
