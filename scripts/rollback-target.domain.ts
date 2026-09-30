@@ -88,8 +88,8 @@ export function selectRollbackTargetInfo(value: unknown): RollbackTarget {
   const legacyVersionIds = new Set(
     value.legacyVersionIds.map(readLegacyVersionId),
   )
-  const verifiedReleaseTags = isRecord(value.verifiedReleaseTags)
-    ? value.verifiedReleaseTags
+  const verifiedReleaseBindings = isRecord(value.verifiedReleaseBindings)
+    ? value.verifiedReleaseBindings
     : {}
   if (version.id !== versionId)
     throw new Error('Rollback target version metadata did not match')
@@ -104,7 +104,12 @@ export function selectRollbackTargetInfo(value: unknown): RollbackTarget {
     if (
       !identity ||
       identity.tag !== tag ||
-      !isVerifiedReleaseTag(verifiedReleaseTags, tag, identity.commit)
+      !isVerifiedReleaseBinding(
+        verifiedReleaseBindings,
+        tag,
+        versionId,
+        identity.commit,
+      )
     ) {
       throw new Error('Rollback target release identity was not verified')
     }
@@ -172,12 +177,18 @@ function readLegacyVersionId(value: unknown): string {
   return value.trim()
 }
 
-function isVerifiedReleaseTag(
-  verifiedReleaseTags: Record<string, unknown>,
+function isVerifiedReleaseBinding(
+  verifiedReleaseBindings: Record<string, unknown>,
   tag: string,
+  versionId: string,
   commit: string,
 ): boolean {
-  return verifiedReleaseTags[tag] === commit
+  const binding = verifiedReleaseBindings[tag]
+  return (
+    isRecord(binding) &&
+    binding.commitSha === commit &&
+    binding.cloudflareVersionId === versionId
+  )
 }
 
 function readReleaseIdentity(

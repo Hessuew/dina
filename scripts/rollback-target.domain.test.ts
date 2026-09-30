@@ -139,8 +139,11 @@ describe('selectRollbackTarget', () => {
           },
         },
         legacyVersionIds: [],
-        verifiedReleaseTags: {
-          'v2026.09.30.1': verifiedReleaseCommit,
+        verifiedReleaseBindings: {
+          'v2026.09.30.1': {
+            commitSha: verifiedReleaseCommit,
+            cloudflareVersionId: 'release-version',
+          },
         },
       }),
     ).toEqual({
@@ -189,7 +192,7 @@ describe('selectRollbackTarget', () => {
           },
         },
         legacyVersionIds: [],
-        verifiedReleaseTags: {},
+        verifiedReleaseBindings: {},
       }),
     ).toThrow(/release identity was not verified/iu)
   })
@@ -211,8 +214,38 @@ describe('selectRollbackTarget', () => {
           },
         },
         legacyVersionIds: [],
-        verifiedReleaseTags: {
-          'v2026.09.30.1': verifiedReleaseCommit,
+        verifiedReleaseBindings: {
+          'v2026.09.30.1': {
+            commitSha: verifiedReleaseCommit,
+            cloudflareVersionId: 'manual-version',
+          },
+        },
+      }),
+    ).toThrow(/release identity was not verified/iu)
+  })
+
+  it('rejects a trusted release record bound to another Worker version', () => {
+    expect(() =>
+      selectRollbackTargetInfo({
+        deployments: [
+          {
+            created_on: '2026-09-30T12:00:00.000Z',
+            versions: [{ version_id: 'selected-version', percentage: 100 }],
+          },
+        ],
+        version: {
+          id: 'selected-version',
+          annotations: {
+            'workers/tag': 'v2026.09.30.1',
+            'workers/message': `DINA v2026.09.30.1 (${verifiedReleaseCommit})`,
+          },
+        },
+        legacyVersionIds: [],
+        verifiedReleaseBindings: {
+          'v2026.09.30.1': {
+            commitSha: verifiedReleaseCommit,
+            cloudflareVersionId: 'different-version',
+          },
         },
       }),
     ).toThrow(/release identity was not verified/iu)
@@ -236,8 +269,11 @@ describe('selectRollbackTarget', () => {
           },
         },
         legacyVersionIds: [],
-        verifiedReleaseTags: {
-          'v2026.09.30.1': verifiedReleaseCommit,
+        verifiedReleaseBindings: {
+          'v2026.09.30.1': {
+            commitSha: verifiedReleaseCommit,
+            cloudflareVersionId: 'mismatched-version',
+          },
         },
       }),
     ).toThrow(/release identity was not verified/iu)

@@ -12,6 +12,8 @@ type ParsedWorkflow = {
   }
   resolveCondition: string
   deployEnvironment: string | undefined
+  trustedReleaseUses: string | undefined
+  preflightEnv: Record<string, string> | undefined
   rollbackRun: string | undefined
   rollbackEnv: Record<string, string> | undefined
   deployEnv: Record<string, string>
@@ -84,6 +86,15 @@ describe('production release workflow', () => {
     })
   })
 
+  it('sources rollback identity from trusted GitHub release bindings', async () => {
+    const workflow = await readWorkflow()
+
+    expect(workflow.trustedReleaseUses).toBe('actions/github-script@v7')
+    expect(workflow.preflightEnv?.TRUSTED_RELEASE_BINDINGS).toBe(
+      '${{ steps.trusted_releases.outputs.bindings }}',
+    )
+  })
+
   it('keeps provider identities aligned across deployment and runtime', async () => {
     const workflow = await readWorkflow()
 
@@ -137,6 +148,12 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
   ).pathname
   const script = `
     const workflow = Bun.YAML.parse(await Bun.file(process.argv[1]).text())
+    const trustedReleases = workflow.jobs.deploy.steps.find(
+      (step) => step.id === 'trusted_releases',
+    )
+    const preflight = workflow.jobs.deploy.steps.find(
+      (step) => step.id === 'preflight',
+    )
     const rollback = workflow.jobs.deploy.steps.find(
       (step) => step.name === 'Roll back the Worker after a failed smoke or guardrail',
     )
@@ -156,6 +173,8 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
       workflowRun: workflow.on.workflow_run,
       resolveCondition: String(workflow.jobs.resolve.if),
       deployEnvironment: workflow.jobs.deploy.environment,
+      trustedReleaseUses: trustedReleases?.uses,
+      preflightEnv: preflight?.env,
       rollbackRun: rollback?.run,
       rollbackEnv: rollback?.env,
       deployEnv: workflow.jobs.deploy.env,
