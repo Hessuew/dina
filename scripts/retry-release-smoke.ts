@@ -29,14 +29,15 @@ export async function runWithRetry(
   return exitCode
 }
 
-function resolveCommand(name: string): string[] {
+export function resolveSmokeCommand(name: string): string[] {
   if (name === 'health') return ['run', 'smoke:health']
   if (name === 'journey') return ['run', 'scripts/release-journey-smoke.ts']
-  throw new Error('Smoke target must be health or journey')
+  if (name === 'rollback') return ['run', 'scripts/rollback-smoke.ts']
+  throw new Error('Smoke target must be health, journey, or rollback')
 }
 
 async function main(): Promise<number> {
-  const command = resolveCommand(process.argv[2] ?? '')
+  const command = resolveSmokeCommand(process.argv[2] ?? '')
   return runWithRetry(async () => {
     const child = Bun.spawn([process.execPath, ...command], {
       stderr: 'inherit',
