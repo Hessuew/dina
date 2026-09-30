@@ -8,6 +8,11 @@ type Deployment = {
   versions: Array<DeploymentVersion>
 }
 
+type DeploymentWithTimestamp = {
+  createdAt: number
+  deployment: Deployment
+}
+
 type VersionMetadata = {
   id: string
   annotations?: {
@@ -30,7 +35,7 @@ export function selectRollbackTarget(value: unknown): string {
   if (!Array.isArray(value))
     throw new Error('Deployments response must be an array')
 
-  const deployments = value
+  const deployments: Array<DeploymentWithTimestamp> = value
     .map(readDeployment)
     .map((deployment) => {
       const createdAt = Date.parse(deployment.created_on)
@@ -39,7 +44,10 @@ export function selectRollbackTarget(value: unknown): string {
       }
       return { createdAt, deployment }
     })
-    .toSorted((left, right) => right.createdAt - left.createdAt)
+    .sort(
+      (left: DeploymentWithTimestamp, right: DeploymentWithTimestamp) =>
+        right.createdAt - left.createdAt,
+    )
   const newest = deployments[0]
   if (!newest) throw new Error('No Cloudflare deployments were found')
   if (deployments[1]?.createdAt === newest.createdAt) {
@@ -48,19 +56,23 @@ export function selectRollbackTarget(value: unknown): string {
 
   const activeVersions = newest.deployment.versions
     .filter(
-      (version) =>
+      (version: DeploymentVersion) =>
         version.version_id.trim() &&
         Number.isFinite(version.percentage) &&
         version.percentage >= 0 &&
         version.percentage <= 100,
     )
-    .toSorted((left, right) => right.percentage - left.percentage)
+    .sort(
+      (left: DeploymentVersion, right: DeploymentVersion) =>
+        right.percentage - left.percentage,
+    )
   const activeVersion = activeVersions[0]
   if (!activeVersion) {
     throw new Error('Newest Cloudflare deployment has no active version')
   }
   const highestPercentageVersions = activeVersions.filter(
-    (version) => version.percentage === activeVersion.percentage,
+    (version: DeploymentVersion) =>
+      version.percentage === activeVersion.percentage,
   )
   if (highestPercentageVersions.length !== 1) {
     throw new Error(

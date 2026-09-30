@@ -40,7 +40,10 @@ describe('release endpoint adapters', () => {
         response.writeHead(200, { 'content-type': 'application/json' })
         response.end('{}')
       })
-      await promisify(server.listen.bind(server))(0, '127.0.0.1')
+      await new Promise<void>((resolve, reject) => {
+        server.once('error', reject)
+        server.listen(0, '127.0.0.1', () => resolve())
+      })
       const address = server.address()
       if (!address || typeof address === 'string') {
         throw new Error('Test server did not expose a TCP address')
