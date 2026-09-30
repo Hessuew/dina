@@ -135,7 +135,9 @@ logs `legacy-header-compatible` as explicit evidence. Missing headers on an
 annotated target, partial headers, mismatched versions, failed payloads, and
 missing version metadata all fail closed.
 
-The affected public journey smoke uses the same version override. Authenticated
+The rollback preflight treats an unannotated Worker as legacy only when its
+version ID appears in the protected `CLOUDFLARE_LEGACY_VERSION_IDS` repository
+variable; missing annotations alone never establish legacy identity. The affected public journey smoke uses the same version override. Authenticated
 journeys must use approved synthetic production credentials only; never put
 real user credentials in Actions logs.
 

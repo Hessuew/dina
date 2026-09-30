@@ -152,6 +152,7 @@ jobs:
       WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME || 'christ-dina' }}
       PRODUCTION_ORIGIN: ${{ vars.PRODUCTION_ORIGIN || 'https://christ-dina.org' }}
       PRODUCTION_JOURNEY_PATHS: ${{ vars.PRODUCTION_JOURNEY_PATHS }}
+      CLOUDFLARE_LEGACY_VERSION_IDS: ${{ vars.CLOUDFLARE_LEGACY_VERSION_IDS }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
@@ -201,10 +202,12 @@ jobs:
             --config wrangler.jsonc \
             --name "$WORKER_NAME" \
             --json)
+          legacy_version_ids=$(jq -R 'split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))' <<< "$CLOUDFLARE_LEGACY_VERSION_IDS")
           rollback_target=$(jq -n \
             --argjson deployments "$deployments_json" \
             --argjson version "$version_json" \
-            '{deployments: $deployments, version: $version}' | \
+            --argjson legacyVersionIds "$legacy_version_ids" \
+            '{deployments: $deployments, version: $version, legacyVersionIds: $legacyVersionIds}' | \
             bun run scripts/rollback-target.ts)
           previous_version_id=$(jq -r '.versionId' <<< "$rollback_target")
           legacy_compatible=$(jq -r '.legacyCompatible' <<< "$rollback_target")

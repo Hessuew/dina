@@ -54,19 +54,33 @@ export function selectRollbackTarget(value: unknown): string {
 export function selectRollbackTargetInfo(value: unknown): RollbackTarget {
   if (!isRecord(value))
     throw new Error('Rollback target input must be an object')
-  if (!Array.isArray(value.deployments) || !isRecord(value.version)) {
-    throw new Error('Rollback target input is missing deployments or version')
+  if (
+    !Array.isArray(value.deployments) ||
+    !isRecord(value.version) ||
+    !Array.isArray(value.legacyVersionIds)
+  ) {
+    throw new Error(
+      'Rollback target input is missing deployments, version, or legacy version IDs',
+    )
   }
 
   const versionId = selectRollbackTarget(value.deployments)
   const version = readVersionMetadata(value.version)
+  const legacyVersionIds = new Set(
+    value.legacyVersionIds.map(readLegacyVersionId),
+  )
   if (version.id !== versionId)
     throw new Error('Rollback target version metadata did not match')
 
   const tag = readAnnotation(version.annotations?.['workers/tag'])
   const message = readAnnotation(version.annotations?.['workers/message'])
   if (tag && message) return { versionId, legacyCompatible: false }
-  if (!tag && !message) return { versionId, legacyCompatible: true }
+  if (!tag && !message && legacyVersionIds.has(versionId)) {
+    return { versionId, legacyCompatible: true }
+  }
+  if (!tag && !message) {
+    throw new Error('Rollback target lacks explicit legacy verification')
+  }
   throw new Error('Rollback target version has incomplete release metadata')
 }
 
@@ -114,6 +128,13 @@ function readVersionMetadata(value: unknown): VersionMetadata {
 
 function readAnnotation(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
+}
+
+function readLegacyVersionId(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error('Legacy rollback version IDs must be non-empty strings')
+  }
+  return value.trim()
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

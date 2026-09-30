@@ -39,7 +39,22 @@ describe('selectRollbackTarget', () => {
     ).toThrow(/newest Cloudflare deployment/iu)
   })
 
-  it('marks an unannotated target as legacy-compatible', () => {
+  it('requires an explicit legacy signal for an unannotated target', () => {
+    expect(() =>
+      selectRollbackTargetInfo({
+        deployments: [
+          {
+            created_on: '2026-09-30T12:00:00.000Z',
+            versions: [{ version_id: 'legacy-version', percentage: 100 }],
+          },
+        ],
+        version: { id: 'legacy-version' },
+        legacyVersionIds: [],
+      }),
+    ).toThrow(/explicit legacy verification/iu)
+  })
+
+  it('marks an explicitly allowlisted unannotated target as legacy-compatible', () => {
     expect(
       selectRollbackTargetInfo({
         deployments: [
@@ -49,6 +64,7 @@ describe('selectRollbackTarget', () => {
           },
         ],
         version: { id: 'legacy-version' },
+        legacyVersionIds: ['legacy-version'],
       }),
     ).toEqual({ versionId: 'legacy-version', legacyCompatible: true })
   })
@@ -66,6 +82,7 @@ describe('selectRollbackTarget', () => {
           id: 'partial-version',
           annotations: { 'workers/tag': 'v2026.09.30.1' },
         },
+        legacyVersionIds: [],
       }),
     ).toThrow(/incomplete release metadata/iu)
   })
@@ -86,6 +103,7 @@ describe('selectRollbackTarget', () => {
             'workers/message': 'DINA v2026.09.30.1 (sha)',
           },
         },
+        legacyVersionIds: [],
       }),
     ).toEqual({ versionId: 'release-version', legacyCompatible: false })
   })
@@ -100,6 +118,7 @@ describe('selectRollbackTarget', () => {
           },
         ],
         version: { id: 'stale-version' },
+        legacyVersionIds: [],
       }),
     ).toThrow(/did not match/iu)
   })
