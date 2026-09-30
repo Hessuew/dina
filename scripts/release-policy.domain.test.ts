@@ -6,6 +6,7 @@ import {
   parseVersionMetrics,
   selectRolloutPlan,
   validateTargetSha,
+  validateVersionAffinityReadiness,
   validateRolloutStageWaitSeconds,
 } from './release-policy.domain'
 
@@ -35,6 +36,26 @@ describe('validateTargetSha', () => {
 
   it('rejects abbreviated or malformed SHAs', () => {
     expect(() => validateTargetSha('abc123')).toThrow(/full 40-character/u)
+  })
+})
+
+describe('validateVersionAffinityReadiness', () => {
+  it('accepts approved HTTPS evidence', () => {
+    expect(
+      validateVersionAffinityReadiness(
+        'true',
+        ' https://evidence.example.com/cloudflare-affinity ',
+      ),
+    ).toBe('https://evidence.example.com/cloudflare-affinity')
+  })
+
+  it.each([
+    ['false', 'https://evidence.example.com/affinity'],
+    ['true', 'http://evidence.example.com/affinity'],
+    ['true', 'https://user:password@evidence.example.com/affinity'],
+    ['true', ''],
+  ])('rejects unapproved or unsafe evidence: %s %s', (ready, evidenceUrl) => {
+    expect(() => validateVersionAffinityReadiness(ready, evidenceUrl)).toThrow()
   })
 })
 
