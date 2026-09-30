@@ -1,5 +1,6 @@
 // fallow-ignore-file unused-file -- invoked directly by production-release.yml
 
+import { fetchWithTimeout } from './http'
 import { parseVersionMetrics } from './release-policy.domain'
 
 const metricsUrl = requiredEnv('CLOUDFLARE_VERSION_METRICS_URL')
@@ -13,7 +14,7 @@ url.searchParams.set('version_id', versionId)
 url.searchParams.set('since', since)
 url.searchParams.set('until', until)
 
-const response = await fetch(url, {
+const response = await fetchWithTimeout(url, {
   headers: { authorization: `Bearer ${token}`, accept: 'application/json' },
 })
 if (!response.ok) {
