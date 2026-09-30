@@ -153,6 +153,10 @@ jobs:
       PRODUCTION_ORIGIN: ${{ vars.PRODUCTION_ORIGIN || 'https://christ-dina.org' }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+      VITE_GOOGLE_ADS_ID: ${{ vars.VITE_GOOGLE_ADS_ID }}
+      VITE_META_PIXEL_ID: ${{ vars.VITE_META_PIXEL_ID }}
       VITE_BETTER_STACK_DSN: ${{ secrets.VITE_BETTER_STACK_DSN }}
       VITE_APP_VERSION: ${{ needs.resolve.outputs.release_tag }}
       VITE_SENTRY_ENVIRONMENT: production
@@ -163,7 +167,7 @@ jobs:
       SENTRY_ORG: ${{ vars.SENTRY_ORG }}
       SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
       SENTRY_URL: ${{ vars.SENTRY_URL }}
-      BETTER_STACK_APPLICATION_ID: ${{ vars.SENTRY_PROJECT }}
+      BETTER_STACK_APPLICATION_ID: ${{ vars.BETTER_STACK_APPLICATION_ID }}
       CLOUDFLARE_VERSION_METRICS_QUERYABLE: ${{ vars.CLOUDFLARE_VERSION_METRICS_QUERYABLE || 'false' }}
       CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE: ${{ vars.CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE || 'false' }}
       CLOUDFLARE_VERSION_METRICS_URL: ${{ vars.CLOUDFLARE_VERSION_METRICS_URL }}
@@ -199,6 +203,10 @@ jobs:
         run: bun run build
       - name: Register the Better Stack production release
         run: |
+          if [[ -z "$BETTER_STACK_APPLICATION_ID" ]]; then
+            echo "BETTER_STACK_APPLICATION_ID is not configured"
+            exit 1
+          fi
           release_url="https://errors.betterstack.com/api/v1/releases"
           existing=$(curl --fail-with-body --silent --show-error \
             --get "$release_url" \
@@ -239,6 +247,7 @@ jobs:
             --var "RELEASE_SHA:$TARGET_SHA" \
             --var "RELEASE_ORIGIN:$PRODUCTION_ORIGIN" \
             --var "RELEASE_SOURCE_MAPS_VERIFIED:true" \
+            --var "BETTER_STACK_APPLICATION_ID:$BETTER_STACK_APPLICATION_ID" \
             --var "RELEASE_ALERTS_SLACK_INCIDENTS:$RELEASE_ALERTS_SLACK_INCIDENTS" \
             --var "RELEASE_ALERTS_EMAIL_FALLBACK:$RELEASE_ALERTS_EMAIL_FALLBACK" \
             --keep-vars \
