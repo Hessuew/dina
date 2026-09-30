@@ -73,6 +73,8 @@ type ParsedWorkflow = {
       beforeRollback: boolean
     }
     sentryUrlsValidated: boolean
+    sentryEndpointValidationHasNoToken: boolean
+    sentryEndpointValidationBeforeSourceMaps: boolean
   }
 }
 
@@ -201,6 +203,8 @@ describe('production release workflow semantics', () => {
     expect(workflow.deploy.rollback.targetFromPreflight).toBe(true)
     expect(workflow.deploy.rollback.smokeTargetFromPreflight).toBe(true)
     expect(workflow.deploy.sentryUrlsValidated).toBe(true)
+    expect(workflow.deploy.sentryEndpointValidationHasNoToken).toBe(true)
+    expect(workflow.deploy.sentryEndpointValidationBeforeSourceMaps).toBe(true)
   })
 
   it('records the trusted previous release before publication and rollback', async () => {
@@ -344,6 +348,7 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     const upload = step(deploySteps, (item) => item.name === 'Upload an undeployed Cloudflare Worker version')
     const sourceMapUpload = step(deploySteps, (item) => item.name === 'Upload tagged source maps')
     const sourceMapVerify = step(deploySteps, (item) => item.name === 'Verify that the tagged source maps are queryable')
+    const sentryEndpointValidation = step(deploySteps, (item) => item.id === 'validate_sentry_url')
     const deployCheckouts = deploySteps.filter((item) => item.uses === 'actions/checkout@v4')
     console.log(JSON.stringify({
       runNameUsesTargetSha: expressionHasReference(workflow['run-name'], 'inputs.target_sha'),
@@ -409,8 +414,23 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
           deploySteps.indexOf(rolloutReadiness) >= 0 &&
           deploySteps.indexOf(rolloutReadiness) < deploySteps.indexOf(rollout),
         sentryUrlsValidated:
-          commandContract(sourceMapUpload?.run).urlValidation &&
-          commandContract(sourceMapVerify?.run).urlValidation,
+          commandContract(sentryEndpointValidation?.run).urlValidation &&
+          sourceMapUpload?.env?.SENTRY_URL ===
+            '\${{ steps.validate_sentry_url.outputs.url }}' &&
+          sourceMapVerify?.env?.SENTRY_URL ===
+            '\${{ steps.validate_sentry_url.outputs.url }}',
+        sentryEndpointValidationHasNoToken:
+          secretScope(
+            workflow.jobs.deploy,
+            sentryEndpointValidation,
+            'SENTRY_AUTH_TOKEN',
+          ) === 'absent',
+        sentryEndpointValidationBeforeSourceMaps:
+          deploySteps.indexOf(sentryEndpointValidation) >= 0 &&
+          deploySteps.indexOf(sentryEndpointValidation) <
+            deploySteps.indexOf(sourceMapUpload) &&
+          deploySteps.indexOf(sentryEndpointValidation) <
+            deploySteps.indexOf(sourceMapVerify),
       },
     }))
   `

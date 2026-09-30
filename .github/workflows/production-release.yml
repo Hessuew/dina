@@ -370,12 +370,19 @@ jobs:
                 --arg application "$BETTER_STACK_APPLICATION_ID" \
                 '{version: $version, applications: [$application | tonumber], environment: "production"}')"
           fi
+      - id: validate_sentry_url
+        name: Validate configured source-map endpoint
+        env:
+          SENTRY_URL: ${{ env.SENTRY_URL }}
+        run: |
+          validated_sentry_url=$(bun run scripts/release-policy.ts validate-url --url "$SENTRY_URL")
+          echo "url=$validated_sentry_url" >> "$GITHUB_OUTPUT"
       - name: Upload tagged source maps
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_URL: ${{ steps.validate_sentry_url.outputs.url }}
         run: |
-          SENTRY_URL="$(bun run scripts/release-policy.ts validate-url --url "${SENTRY_URL:-https://sentry.io}")" \
-            bunx sentry-cli sourcemaps upload dist \
+          bunx sentry-cli sourcemaps upload dist \
             --org "$SENTRY_ORG" \
             --project "$SENTRY_PROJECT" \
             --release "$RELEASE_TAG" \
@@ -385,9 +392,9 @@ jobs:
       - name: Verify that the tagged source maps are queryable
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_URL: ${{ steps.validate_sentry_url.outputs.url }}
         run: |
-          validated_sentry_url=$(bun run scripts/release-policy.ts validate-url --url "${SENTRY_URL:-https://sentry.io}")
-          artifacts=$(SENTRY_URL="$validated_sentry_url" bunx sentry-cli releases files "$RELEASE_TAG" \
+          artifacts=$(bunx sentry-cli releases files "$RELEASE_TAG" \
             --org "$SENTRY_ORG" \
             --project "$SENTRY_PROJECT" \
             --auth-token "$SENTRY_AUTH_TOKEN" \

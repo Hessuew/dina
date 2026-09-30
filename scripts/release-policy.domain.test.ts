@@ -73,6 +73,7 @@ describe('validateExternalHttpsUrl', () => {
   })
 
   it.each([
+    '',
     'http://metrics.example.test/path',
     'https://user:password@metrics.example.test/path',
     'not-a-url',
