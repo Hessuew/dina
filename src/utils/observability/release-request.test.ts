@@ -27,7 +27,7 @@ describe('runRequestWithReleaseMetrics', () => {
     expect(writeDataPoint).toHaveBeenCalledWith({
       indexes: ['version-123'],
       blobs: ['v2026.09.30.1', 'GET', '/login'],
-      doubles: [1, 1, 1, expect.any(Number)],
+      doubles: [1, 1, expect.any(Number)],
     })
   })
 })
