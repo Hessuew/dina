@@ -1,14 +1,5 @@
-import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
-
-const require = createRequire(import.meta.url)
-const { collectCompareHistory } = require('./release-history.cjs') as {
-  collectCompareHistory: (
-    github: unknown,
-    request: Record<string, string>,
-    perPage?: number,
-  ) => Promise<{ commits: Array<unknown>; files: Array<unknown> }>
-}
+import { collectCompareHistory } from './release-history.cjs'
 
 describe('collectCompareHistory', () => {
   it('collects every paginated compare page', async () => {

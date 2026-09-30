@@ -1,7 +1,7 @@
 import { createServer } from 'node:http'
+import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { describe, expect, it } from 'vitest'
-import { execFile } from 'node:child_process'
 
 const execFileAsync = promisify(execFile)
 

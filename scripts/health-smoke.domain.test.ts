@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   resolveHealthSmokeUrl,
-  validateSmokeResponseOrigin,
   validateHealthSmokeResponse,
+  validateSmokeResponseOrigin,
 } from './health-smoke.domain'
 import {
   resolveHealthSmokeHeaders,

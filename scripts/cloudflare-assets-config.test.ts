@@ -24,7 +24,7 @@ describe('Cloudflare static asset routing', () => {
 
 async function readAssetsConfig(): Promise<Record<string, unknown>> {
   const config = await readConfig()
-  return config.assets as Record<string, unknown>
+  return config.assets
 }
 
 async function readConfig(): Promise<{
