@@ -1,6 +1,22 @@
 import { describe, expect, it } from 'vitest'
 
-import { runWithRetry } from './retry-release-smoke'
+import { resolveSmokeCommand, runWithRetry } from './retry-release-smoke'
+
+describe('resolveSmokeCommand', () => {
+  it.each([
+    ['health', ['run', 'smoke:health']],
+    ['journey', ['run', 'scripts/release-journey-smoke.ts']],
+    ['rollback', ['run', 'scripts/rollback-smoke.ts']],
+  ])('maps %s to its smoke command', (name, command) => {
+    expect(resolveSmokeCommand(name)).toEqual(command)
+  })
+
+  it('rejects unsupported smoke targets', () => {
+    expect(() => resolveSmokeCommand('unknown')).toThrow(
+      'Smoke target must be health, journey, or rollback',
+    )
+  })
+})
 
 describe('runWithRetry', () => {
   it('retries transient failures with bounded exponential backoff', async () => {

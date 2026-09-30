@@ -389,7 +389,7 @@ jobs:
           SMOKE_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
           SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
           SMOKE_LEGACY_TARGET: ${{ steps.preflight.outputs.legacy_compatible }}
-        run: bun run scripts/rollback-smoke.ts
+        run: bun run scripts/retry-release-smoke.ts rollback
 
   release:
     name: Publish GitHub Release evidence

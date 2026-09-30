@@ -59,7 +59,9 @@ describe('production release workflow', () => {
   it('pins rollback smoke to the recorded previous Worker version', async () => {
     const workflow = await readWorkflow()
 
-    expect(workflow.rollbackRun).toBe('bun run scripts/rollback-smoke.ts')
+    expect(workflow.rollbackRun).toBe(
+      'bun run scripts/retry-release-smoke.ts rollback',
+    )
     expect(workflow.rollbackEnv).toMatchObject({
       SMOKE_BASE_URL: '${{ env.PRODUCTION_ORIGIN }}',
       SMOKE_VERSION_ID: '${{ steps.preflight.outputs.previous_version_id }}',
