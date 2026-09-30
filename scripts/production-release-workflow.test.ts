@@ -12,8 +12,6 @@ type ParsedWorkflow = {
   }
   resolveCondition: string
   deployEnvironment: string | undefined
-  rollbackDeployRun: string | undefined
-  rollbackDeployEnv: Record<string, string> | undefined
   rollbackRun: string | undefined
   rollbackEnv: Record<string, string> | undefined
   deployEnv: Record<string, string>
@@ -70,18 +68,13 @@ describe('production release workflow', () => {
   it('pins rollback smoke to the recorded previous Worker version', async () => {
     const workflow = await readWorkflow()
 
-    expect(workflow.rollbackDeployRun).toBe(
-      'bun run scripts/retry-release-smoke.ts rollback-deploy',
-    )
-    expect(workflow.rollbackDeployEnv).toMatchObject({
-      ROLLBACK_VERSION_ID: '${{ steps.preflight.outputs.previous_version_id }}',
-      ROLLBACK_WORKER_NAME: '${{ env.WORKER_NAME }}',
-      ROLLBACK_RELEASE_TAG: '${{ env.RELEASE_TAG }}',
-    })
     expect(workflow.rollbackRun).toBe(
       'bun run scripts/retry-release-smoke.ts rollback',
     )
     expect(workflow.rollbackEnv).toMatchObject({
+      ROLLBACK_VERSION_ID: '${{ steps.preflight.outputs.previous_version_id }}',
+      ROLLBACK_WORKER_NAME: '${{ env.WORKER_NAME }}',
+      ROLLBACK_RELEASE_TAG: '${{ env.RELEASE_TAG }}',
       SMOKE_BASE_URL: '${{ env.PRODUCTION_ORIGIN }}',
       SMOKE_VERSION_ID: '${{ steps.preflight.outputs.previous_version_id }}',
       SMOKE_WORKER_NAME: '${{ env.WORKER_NAME }}',
@@ -144,11 +137,8 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
   ).pathname
   const script = `
     const workflow = Bun.YAML.parse(await Bun.file(process.argv[1]).text())
-    const rollbackDeploy = workflow.jobs.deploy.steps.find(
-      (step) => step.name === 'Roll back the Worker after a failed smoke or guardrail',
-    )
     const rollback = workflow.jobs.deploy.steps.find(
-      (step) => step.name === 'Re-run health smoke after rollback',
+      (step) => step.name === 'Roll back the Worker after a failed smoke or guardrail',
     )
     const health = workflow.jobs.deploy.steps.find(
       (step) => step.name === 'Run exact-version health smoke',
@@ -166,8 +156,6 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
       workflowRun: workflow.on.workflow_run,
       resolveCondition: String(workflow.jobs.resolve.if),
       deployEnvironment: workflow.jobs.deploy.environment,
-      rollbackDeployRun: rollbackDeploy?.run,
-      rollbackDeployEnv: rollbackDeploy?.env,
       rollbackRun: rollback?.run,
       rollbackEnv: rollback?.env,
       deployEnv: workflow.jobs.deploy.env,

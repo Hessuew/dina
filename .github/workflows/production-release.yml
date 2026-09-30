@@ -351,10 +351,7 @@ jobs:
             echo "Gradual promotion is fail-closed until per-version metrics and trusted release-correlated severity are queryable"
             exit 1
           fi
-          if [[ ! "$ROLLOUT_STAGE_WAIT_SECONDS" =~ ^[0-9]+$ || "$ROLLOUT_STAGE_WAIT_SECONDS" -lt 600 ]]; then
-            echo "ROLLOUT_STAGE_WAIT_SECONDS must be at least 600 seconds"
-            exit 1
-          fi
+          ROLLOUT_STAGE_WAIT_SECONDS=$(bun run scripts/release-policy.ts rollout-wait --seconds "$ROLLOUT_STAGE_WAIT_SECONDS")
 
           for percentage in 10 25 50 100; do
             bunx wrangler versions deploy \
@@ -408,10 +405,6 @@ jobs:
           ROLLBACK_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
           ROLLBACK_WORKER_NAME: ${{ env.WORKER_NAME }}
           ROLLBACK_RELEASE_TAG: ${{ env.RELEASE_TAG }}
-        run: bun run scripts/retry-release-smoke.ts rollback-deploy
-      - name: Re-run health smoke after rollback
-        if: failure() && steps.rollback.outcome == 'success'
-        env:
           SMOKE_BASE_URL: ${{ env.PRODUCTION_ORIGIN }}
           SMOKE_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
           SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
@@ -440,6 +433,9 @@ jobs:
           script: |
             const targetSha = process.env.TARGET_SHA
             const { owner, repo } = context.repo
+            const { collectCompareHistory } = require(
+              `${process.cwd()}/scripts/release-history.cjs`,
+            )
             const releases = await github.paginate(github.rest.repos.listReleases, {
               owner,
               repo,
@@ -455,20 +451,20 @@ jobs:
                 })
             const compareBase = previousRelease?.tag_name ?? targetCommit?.data.parents[0]?.sha
             const compare = compareBase
-              ? await github.rest.repos.compareCommits({
+              ? await collectCompareHistory(github, {
                   owner,
                   repo,
                   base: compareBase,
                   head: targetSha,
                 })
               : null
-            const migrationFiles = (compare?.data.files ?? [])
+            const migrationFiles = (compare?.files ?? [])
               .map((file) => file.filename)
               .filter((file) => file.startsWith('drizzle/'))
-            const commitRows = (compare?.data.commits ?? []).slice(0, 100)
+            const commitRows = (compare?.commits ?? [])
               .map((item) => `- ${item.sha.slice(0, 7)} ${item.commit.message.split('\n')[0]}`)
             const pullRequests = new Map()
-            for (const item of (compare?.data.commits ?? []).slice(0, 100)) {
+            for (const item of compare?.commits ?? []) {
               const associated = await github.paginate(
                 github.rest.repos.listPullRequestsAssociatedWithCommit,
                 { owner, repo, commit_sha: item.sha, per_page: 100 },

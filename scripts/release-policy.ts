@@ -6,6 +6,7 @@ import {
   parseVersionMetrics,
   selectRolloutPlan,
   validateTargetSha,
+  validateRolloutStageWaitSeconds,
 } from './release-policy.domain'
 
 const [command, ...args] = process.argv.slice(2)
@@ -36,9 +37,11 @@ if (command === 'validate-sha') {
   const result = evaluateGuardrails(metrics)
   console.log(JSON.stringify(result))
   if (!result.passed) process.exitCode = 1
+} else if (command === 'rollout-wait') {
+  console.log(validateRolloutStageWaitSeconds(readOption(args, '--seconds')))
 } else {
   throw new Error(
-    'Usage: release-policy.ts validate-sha|tag|rollout|guardrails ...',
+    'Usage: release-policy.ts validate-sha|tag|rollout|rollout-wait|guardrails ...',
   )
 }
 

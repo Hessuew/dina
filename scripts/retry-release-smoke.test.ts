@@ -6,7 +6,7 @@ describe('resolveSmokeCommand', () => {
   it.each([
     ['health', ['run', 'smoke:health']],
     ['journey', ['run', 'scripts/release-journey-smoke.ts']],
-    ['rollback', ['run', 'scripts/rollback-smoke.ts']],
+    ['rollback', ['run', 'scripts/rollback-and-smoke.ts']],
     ['rollback-deploy', ['run', 'scripts/rollback-deploy.ts']],
   ])('maps %s to its smoke command', (name, command) => {
     expect(resolveSmokeCommand(name)).toEqual(command)
