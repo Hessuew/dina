@@ -165,7 +165,7 @@ jobs:
       SENTRY_RELEASE: ${{ needs.resolve.outputs.release_tag }}
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       SENTRY_ORG: ${{ vars.SENTRY_ORG }}
-      SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+      SENTRY_PROJECT: ${{ vars.BETTER_STACK_APPLICATION_ID }}
       SENTRY_URL: ${{ vars.SENTRY_URL }}
       BETTER_STACK_APPLICATION_ID: ${{ vars.BETTER_STACK_APPLICATION_ID }}
       CLOUDFLARE_VERSION_METRICS_QUERYABLE: ${{ vars.CLOUDFLARE_VERSION_METRICS_QUERYABLE || 'false' }}
@@ -237,6 +237,10 @@ jobs:
       - id: upload
         name: Upload an undeployed Cloudflare Worker version
         run: |
+          if [[ -z "$CLOUDFLARE_ACCOUNT_ID" ]]; then
+            echo "CLOUDFLARE_ACCOUNT_ID is not configured"
+            exit 1
+          fi
           bunx wrangler versions upload dist/server/index.js \
             --config wrangler.jsonc \
             --no-bundle \
@@ -247,6 +251,7 @@ jobs:
             --var "RELEASE_SHA:$TARGET_SHA" \
             --var "RELEASE_ORIGIN:$PRODUCTION_ORIGIN" \
             --var "RELEASE_SOURCE_MAPS_VERIFIED:true" \
+            --var "CLOUDFLARE_ACCOUNT_ID:$CLOUDFLARE_ACCOUNT_ID" \
             --var "BETTER_STACK_APPLICATION_ID:$BETTER_STACK_APPLICATION_ID" \
             --var "RELEASE_ALERTS_SLACK_INCIDENTS:$RELEASE_ALERTS_SLACK_INCIDENTS" \
             --var "RELEASE_ALERTS_EMAIL_FALLBACK:$RELEASE_ALERTS_EMAIL_FALLBACK" \
@@ -279,13 +284,13 @@ jobs:
           SMOKE_VERSION_ID: ${{ steps.upload.outputs.version_id }}
           SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
           SMOKE_EXPECTED_RELEASE: ${{ env.RELEASE_TAG }}
-        run: bun run smoke:health
+        run: bun run scripts/retry-release-smoke.ts health
       - name: Run affected public journey smoke through the version override
         env:
           SMOKE_VERSION_ID: ${{ steps.upload.outputs.version_id }}
           SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
           SMOKE_EXPECTED_RELEASE: ${{ env.RELEASE_TAG }}
-        run: bun run scripts/release-journey-smoke.ts
+        run: bun run scripts/retry-release-smoke.ts journey
       - id: rollout
         name: Promote the Worker with the selected rollout profile
         env:

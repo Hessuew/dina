@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
+import shellQuote from 'shell-quote'
 import { describe, expect, it } from 'vitest'
 
 const execFileAsync = promisify(execFile)
@@ -14,7 +15,9 @@ type ParsedWorkflow = {
   rollbackRun: string | undefined
   rollbackEnv: Record<string, string> | undefined
   deployEnv: Record<string, string>
-  uploadVars: Record<string, string>
+  uploadRun: string | undefined
+  healthRun: string | undefined
+  journeyRun: string | undefined
 }
 
 describe('production release workflow', () => {
@@ -64,14 +67,32 @@ describe('production release workflow', () => {
     })
   })
 
-  it('uses one Better Stack application identity for registration and upload', async () => {
+  it('keeps provider identities aligned across deployment and runtime', async () => {
     const workflow = await readWorkflow()
 
+    expect(workflow.deployEnv.CLOUDFLARE_ACCOUNT_ID).toBe(
+      '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
+    )
+    expect(workflow.deployEnv.SENTRY_PROJECT).toBe(
+      '${{ vars.BETTER_STACK_APPLICATION_ID }}',
+    )
     expect(workflow.deployEnv.BETTER_STACK_APPLICATION_ID).toBe(
       '${{ vars.BETTER_STACK_APPLICATION_ID }}',
     )
-    expect(workflow.uploadVars.BETTER_STACK_APPLICATION_ID).toBe(
-      '$BETTER_STACK_APPLICATION_ID',
+    expect(parseWranglerVars(workflow.uploadRun)).toMatchObject({
+      CLOUDFLARE_ACCOUNT_ID: 'account-id',
+      BETTER_STACK_APPLICATION_ID: 'application-id',
+    })
+  })
+
+  it('retries exact-version smoke after the version override is deployed', async () => {
+    const workflow = await readWorkflow()
+
+    expect(workflow.healthRun).toBe(
+      'bun run scripts/retry-release-smoke.ts health',
+    )
+    expect(workflow.journeyRun).toBe(
+      'bun run scripts/retry-release-smoke.ts journey',
     )
   })
 })
@@ -86,13 +107,14 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     const rollback = workflow.jobs.deploy.steps.find(
       (step) => step.name === 'Re-run health smoke after rollback',
     )
+    const health = workflow.jobs.deploy.steps.find(
+      (step) => step.name === 'Run exact-version health smoke',
+    )
+    const journey = workflow.jobs.deploy.steps.find(
+      (step) => step.name === 'Run affected public journey smoke through the version override',
+    )
     const upload = workflow.jobs.deploy.steps.find(
       (step) => step.name === 'Upload an undeployed Cloudflare Worker version',
-    )
-    const uploadVars = Object.fromEntries(
-      [...String(upload?.run ?? '').matchAll(/--var\\s+"([^:"]+):([^"]*)"/gu)].map(
-        (match) => [match[1], match[2]],
-      ),
     )
     console.log(JSON.stringify({
       workflowRun: workflow.on.workflow_run,
@@ -100,11 +122,33 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
       rollbackRun: rollback?.run,
       rollbackEnv: rollback?.env,
       deployEnv: workflow.jobs.deploy.env,
-      uploadVars,
+      uploadRun: upload?.run,
+      healthRun: health?.run,
+      journeyRun: journey?.run,
     }))
   `
   const { stdout } = await execFileAsync('bun', ['-e', script, workflowPath])
   return JSON.parse(stdout) as ParsedWorkflow
+}
+
+function parseWranglerVars(run: string | undefined): Record<string, string> {
+  const tokens = shellQuote
+    .parse(run ?? '', {
+      CLOUDFLARE_ACCOUNT_ID: 'account-id',
+      BETTER_STACK_APPLICATION_ID: 'application-id',
+    })
+    .filter((token): token is string => typeof token === 'string')
+  const vars: Record<string, string> = {}
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    if (tokens[index] !== '--var') continue
+    const assignment = tokens[index + 1]
+    const separator = assignment.indexOf(':')
+    if (separator <= 0)
+      throw new Error(`Invalid Wrangler variable: ${assignment}`)
+    vars[assignment.slice(0, separator)] = assignment.slice(separator + 1)
+    index += 1
+  }
+  return vars
 }
 
 type WorkflowContext = {

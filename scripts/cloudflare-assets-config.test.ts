@@ -14,14 +14,31 @@ describe('Cloudflare static asset routing', () => {
       run_worker_first: true,
     })
   })
+
+  it('does not embed provider identities in Worker configuration', async () => {
+    const config = await readConfig()
+    expect(config.vars).not.toHaveProperty('CLOUDFLARE_ACCOUNT_ID')
+    expect(config.vars).not.toHaveProperty('BETTER_STACK_APPLICATION_ID')
+  })
 })
 
 async function readAssetsConfig(): Promise<Record<string, unknown>> {
+  const config = await readConfig()
+  return config.assets as Record<string, unknown>
+}
+
+async function readConfig(): Promise<{
+  assets: Record<string, unknown>
+  vars: Record<string, unknown>
+}> {
   const configPath = new URL('../wrangler.jsonc', import.meta.url).pathname
   const script = `
     const config = Bun.JSON5.parse(await Bun.file(process.argv[1]).text())
-    console.log(JSON.stringify(config.assets))
+    console.log(JSON.stringify({ assets: config.assets, vars: config.vars }))
   `
   const { stdout } = await execFileAsync('bun', ['-e', script, configPath])
-  return JSON.parse(stdout) as Record<string, unknown>
+  return JSON.parse(stdout) as {
+    assets: Record<string, unknown>
+    vars: Record<string, unknown>
+  }
 }
