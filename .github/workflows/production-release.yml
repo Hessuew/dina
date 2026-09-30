@@ -48,6 +48,7 @@ jobs:
       target_sha: ${{ steps.identity.outputs.target_sha }}
       release_tag: ${{ steps.identity.outputs.release_tag }}
       rollout_profile: ${{ steps.identity.outputs.rollout_profile }}
+      tooling_sha: ${{ steps.identity.outputs.tooling_sha }}
     env:
       TARGET_SHA_INPUT: ${{ inputs.target_sha || github.event.workflow_run.head_sha }}
       ROLLOUT_PROFILE_INPUT: ${{ inputs.rollout_profile || 'standard' }}
@@ -85,7 +86,6 @@ jobs:
           git fetch origin main --tags --force
           git cat-file -e "$TARGET_SHA^{commit}"
           git merge-base --is-ancestor "$TARGET_SHA" origin/main
-          git checkout --detach "$TARGET_SHA"
           echo "TARGET_SHA=$TARGET_SHA" >> "$GITHUB_ENV"
       - name: Verify immutable v* tag protection
         uses: actions/github-script@v7
@@ -198,6 +198,7 @@ jobs:
           release_date=$(date -u +%Y.%m.%d)
           existing_tags=$(git tag --list 'v*' | paste -sd, -)
           release_tag=$(bun run scripts/release-policy.ts tag --date "$release_date" --tags "$existing_tags")
+          tooling_sha=$(git rev-parse HEAD)
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$release_tag" "$TARGET_SHA" -m "DINA production release $release_tag"
@@ -205,6 +206,7 @@ jobs:
           echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
           echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
           echo "rollout_profile=$ROLLOUT_PROFILE" >> "$GITHUB_OUTPUT"
+          echo "tooling_sha=$tooling_sha" >> "$GITHUB_OUTPUT"
 
   migrate:
     name: Migrate production database
@@ -276,11 +278,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ needs.resolve.outputs.tooling_sha }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
           ref: ${{ needs.resolve.outputs.target_sha }}
+          path: target
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.10
       - run: bun install --frozen-lockfile
+      - name: Install target application dependencies
+        working-directory: target
+        run: bun install --frozen-lockfile
       - id: trusted_releases
         name: Resolve trusted immutable release bindings
         uses: actions/github-script@v7
@@ -333,10 +343,11 @@ jobs:
           echo "legacy_compatible=$legacy_compatible" >> "$GITHUB_OUTPUT"
           echo "previous_release_tag=$previous_release_tag" >> "$GITHUB_OUTPUT"
       - name: Build the tagged production artifact and upload source maps
+        working-directory: target
         env:
           RELEASE_SOURCE_MAPS_ENABLED: 'true'
           VITE_BETTER_STACK_DSN: ${{ secrets.VITE_BETTER_STACK_DSN }}
-        run: bun run build
+        run: bun run build -- --outDir ../dist --emptyOutDir
       - name: Register the Better Stack production release
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}

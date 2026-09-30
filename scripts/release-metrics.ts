@@ -1,23 +1,28 @@
 // fallow-ignore-file unused-file -- invoked directly by production-release.yml
 
 import { fetchWithTimeout } from './http'
-import { parseVersionMetrics } from './release-policy.domain'
+import {
+  parseVersionMetrics,
+  validateExternalHttpsUrl,
+} from './release-policy.domain'
 
 const metricsUrl = requiredEnv('CLOUDFLARE_VERSION_METRICS_URL')
-const token = requiredEnv('CLOUDFLARE_VERSION_METRICS_TOKEN')
 const versionId = requiredEnv('CLOUDFLARE_VERSION_ID')
 const workerName = requiredEnv('WORKER_NAME')
 const since = requiredEnv('CLOUDFLARE_METRICS_SINCE')
 const until = requiredEnv('CLOUDFLARE_METRICS_UNTIL')
 
-const url = new URL(metricsUrl)
+const url = validateExternalHttpsUrl(
+  metricsUrl,
+  'CLOUDFLARE_VERSION_METRICS_URL',
+)
 url.searchParams.set('version_id', versionId)
 url.searchParams.set('since', since)
 url.searchParams.set('until', until)
 
 const response = await fetchWithTimeout(url, {
   headers: {
-    authorization: `Bearer ${token}`,
+    authorization: `Bearer ${requiredEnv('CLOUDFLARE_VERSION_METRICS_TOKEN')}`,
     accept: 'application/json',
     'Cloudflare-Workers-Version-Overrides': `${workerName}="${versionId}"`,
     'Cloudflare-Workers-Version-Key': `dina-release-metrics-${versionId}`,

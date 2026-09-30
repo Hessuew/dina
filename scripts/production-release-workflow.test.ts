@@ -11,6 +11,7 @@ type ParsedWorkflow = {
     types: Array<string>
     branches: Array<string>
   }
+  resolveOutputs: Record<string, string>
   resolveCondition: string
   resolveEnv: Record<string, string>
   deployEnvironment: string | undefined
@@ -24,6 +25,11 @@ type ParsedWorkflow = {
   deployEnv: Record<string, string>
   deployInstallEnv: Record<string, string> | undefined
   buildEnv: Record<string, string> | undefined
+  deployToolingCheckoutRef: string | undefined
+  deployTargetCheckout: Record<string, string> | undefined
+  targetInstallWorkingDirectory: string | undefined
+  buildWorkingDirectory: string | undefined
+  buildRun: string | undefined
   journeyEnv: Record<string, string> | undefined
   uploadEnv: Record<string, string> | undefined
   healthRun: string | undefined
@@ -116,6 +122,16 @@ describe('production release workflow', () => {
     expect(workflow.affinityReadinessRun).toContain(
       'scripts/release-policy.ts affinity-readiness',
     )
+    expect(workflow.resolveOutputs.tooling_sha).toBe(
+      '${{ steps.identity.outputs.tooling_sha }}',
+    )
+    expect(workflow.deployToolingCheckoutRef).toBe(
+      '${{ needs.resolve.outputs.tooling_sha }}',
+    )
+    expect(workflow.deployTargetCheckout).toMatchObject({
+      path: 'target',
+      ref: '${{ needs.resolve.outputs.target_sha }}',
+    })
     expect(workflow.resolveEnv.CLOUDFLARE_VERSION_AFFINITY_READY).toBe(
       "${{ vars.CLOUDFLARE_VERSION_AFFINITY_READY || 'false' }}",
     )
@@ -139,6 +155,9 @@ describe('production release workflow', () => {
     expect(workflow.deployInstallEnv).toBeUndefined()
     expect(workflow.buildEnv?.SENTRY_AUTH_TOKEN).toBeUndefined()
     expect(workflow.buildEnv?.RELEASE_SOURCE_MAPS_ENABLED).toBe('true')
+    expect(workflow.targetInstallWorkingDirectory).toBe('target')
+    expect(workflow.buildWorkingDirectory).toBe('target')
+    expect(workflow.buildRun).toContain('--outDir ../dist')
     expect(workflow.deployEnv.PRODUCTION_JOURNEY_PATHS).toBe(
       '${{ vars.PRODUCTION_JOURNEY_PATHS }}',
     )
@@ -218,6 +237,12 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
         step.name ===
         'Build the tagged production artifact and upload source maps',
     )
+    const deployCheckouts = workflow.jobs.deploy.steps.filter(
+      (step) => step.uses === 'actions/checkout@v4',
+    )
+    const targetInstall = workflow.jobs.deploy.steps.find(
+      (step) => step.name === 'Install target application dependencies',
+    )
     const deployInstall = workflow.jobs.deploy.steps.find(
       (step) => step.run === 'bun install --frozen-lockfile',
     )
@@ -245,6 +270,7 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     console.log(JSON.stringify({
       runName: workflow['run-name'],
       workflowRun: workflow.on.workflow_run,
+      resolveOutputs: workflow.jobs.resolve.outputs,
       resolveCondition: String(workflow.jobs.resolve.if),
       resolveEnv: workflow.jobs.resolve.env,
       deployEnvironment: workflow.jobs.deploy.environment,
@@ -258,6 +284,11 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
       deployEnv: workflow.jobs.deploy.env,
       deployInstallEnv: deployInstall?.env,
       buildEnv: build?.env,
+      deployToolingCheckoutRef: deployCheckouts[0]?.with?.ref,
+      deployTargetCheckout: deployCheckouts[1]?.with,
+      targetInstallWorkingDirectory: targetInstall?.['working-directory'],
+      buildWorkingDirectory: build?.['working-directory'],
+      buildRun: build?.run,
       journeyEnv: journey?.env,
       uploadEnv: upload?.env,
       healthRun: health?.run,

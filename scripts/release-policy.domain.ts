@@ -78,6 +78,24 @@ export function validateTargetSha(value: string): string {
   return targetSha
 }
 
+export function validateExternalHttpsUrl(value: string, name: string): URL {
+  let url: URL
+  try {
+    url = new URL(value.trim())
+  } catch {
+    throw new Error(`${name} must be an absolute HTTPS URL`)
+  }
+  if (
+    url.protocol !== 'https:' ||
+    !url.hostname ||
+    url.username ||
+    url.password
+  ) {
+    throw new Error(`${name} must be an absolute HTTPS URL without credentials`)
+  }
+  return url
+}
+
 export function validateVersionAffinityReadiness(
   ready: string,
   evidenceUrl: string,
@@ -86,22 +104,10 @@ export function validateVersionAffinityReadiness(
     throw new Error('Cloudflare version-affinity readiness is not approved')
   }
 
-  let url: URL
-  try {
-    url = new URL(evidenceUrl.trim())
-  } catch {
-    throw new Error('Cloudflare version-affinity evidence URL is invalid')
-  }
-  if (
-    url.protocol !== 'https:' ||
-    !url.hostname ||
-    url.username ||
-    url.password
-  ) {
-    throw new Error(
-      'Cloudflare version-affinity evidence URL must be an HTTPS URL without credentials',
-    )
-  }
+  const url = validateExternalHttpsUrl(
+    evidenceUrl,
+    'Cloudflare version-affinity evidence URL',
+  )
   return url.toString()
 }
 

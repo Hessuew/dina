@@ -1,22 +1,28 @@
 // fallow-ignore-file unused-file -- invoked directly by production-release.yml
 
 import { fetchWithTimeout } from './http'
+import { validateExternalHttpsUrl } from './release-policy.domain'
 
 const evidenceUrl = requiredEnv('PRODUCTION_RELEASE_EVIDENCE_URL')
-const token = requiredEnv('PRODUCTION_RELEASE_EVIDENCE_TOKEN')
 const releaseTag = requiredEnv('RELEASE_TAG')
 const targetSha = requiredEnv('TARGET_SHA')
 const cloudflareVersionId = requiredEnv('CLOUDFLARE_VERSION_ID')
 const origin = requiredEnv('PRODUCTION_ORIGIN')
 
-const url = new URL(evidenceUrl)
+const url = validateExternalHttpsUrl(
+  evidenceUrl,
+  'PRODUCTION_RELEASE_EVIDENCE_URL',
+)
 url.searchParams.set('release_tag', releaseTag)
 url.searchParams.set('target_sha', targetSha)
 url.searchParams.set('cloudflare_version_id', cloudflareVersionId)
 url.searchParams.set('origin', origin)
 
 const response = await fetchWithTimeout(url, {
-  headers: { authorization: `Bearer ${token}`, accept: 'application/json' },
+  headers: {
+    authorization: `Bearer ${requiredEnv('PRODUCTION_RELEASE_EVIDENCE_TOKEN')}`,
+    accept: 'application/json',
+  },
 })
 if (!response.ok) {
   throw new Error(`Release evidence endpoint returned HTTP ${response.status}`)
