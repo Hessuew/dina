@@ -1,6 +1,7 @@
 import {
   HEALTH_SMOKE_PATHS,
   resolveHealthSmokeUrl,
+  validateSmokeResponseOrigin,
   validateHealthSmokeResponse,
 } from './health-smoke.domain'
 import {
@@ -32,13 +33,17 @@ async function checkEndpoint(
 ): Promise<void> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const endpointUrl = new URL(path, baseUrl)
 
   try {
-    const response = await fetch(new URL(path, baseUrl), {
+    const response = await fetch(endpointUrl, {
       signal: controller.signal,
       headers,
+      redirect: 'manual',
     })
     const payload = await readJson(response)
+    const originFailure = validateSmokeResponseOrigin(response, endpointUrl)
+    if (originFailure) throw new Error(`${path}: ${originFailure}`)
     assertEndpointResponse(
       path,
       response,

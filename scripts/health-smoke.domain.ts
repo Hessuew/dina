@@ -18,8 +18,8 @@ export function resolveHealthSmokeUrl(value: string | undefined): URL {
   if (!raw) throw new Error('SMOKE_BASE_URL or a base URL argument is required')
 
   const url = new URL(raw)
-  if (!['http:', 'https:'].includes(url.protocol)) {
-    throw new Error('Smoke base URL must use http or https')
+  if (url.protocol !== 'https:') {
+    throw new Error('Smoke base URL must use HTTPS')
   }
   if (url.username || url.password || url.search || url.hash) {
     throw new Error(
@@ -31,6 +31,29 @@ export function resolveHealthSmokeUrl(value: string | undefined): URL {
   }
 
   return url
+}
+
+export function validateSmokeResponseOrigin(
+  response: Pick<Response, 'redirected' | 'status' | 'url'>,
+  expectedUrl: URL,
+): string | null {
+  if (
+    response.redirected ||
+    (response.status >= 300 && response.status < 400)
+  ) {
+    return 'response was a redirect'
+  }
+  if (!response.url) return 'response did not include a URL'
+  let actualUrl: URL
+  try {
+    actualUrl = new URL(response.url)
+  } catch {
+    return 'response URL was invalid'
+  }
+  if (actualUrl.origin !== expectedUrl.origin) {
+    return `response origin ${actualUrl.origin} did not match ${expectedUrl.origin}`
+  }
+  return null
 }
 
 export function validateHealthSmokeResponse(

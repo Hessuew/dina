@@ -15,6 +15,8 @@ type CommandContract = {
   rollbackSmoke: boolean
   metricsQuery: boolean
   guardrailEvaluation: boolean
+  urlValidation: boolean
+  outputDirectory: string | undefined
   waits: Array<number>
 }
 
@@ -69,6 +71,7 @@ type ParsedWorkflow = {
       previousReleaseFromPreflight: boolean
       beforeRollback: boolean
     }
+    sentryUrlsValidated: boolean
   }
 }
 
@@ -158,7 +161,7 @@ describe('production release workflow semantics', () => {
     expect(
       workflow.deploy.standardGuardrails.secretScopes
         .CLOUDFLARE_VERSION_METRICS_TOKEN,
-    ).toBe('step')
+    ).toBe('command')
     expect(workflow.deploy.build.secretScopes.SENTRY_AUTH_TOKEN).toBe('absent')
     expect(workflow.deploy.upload.secretScopes).toMatchObject({
       CLOUDFLARE_API_TOKEN: 'step',
@@ -195,6 +198,7 @@ describe('production release workflow semantics', () => {
     expect(workflow.deploy.rollback.command.rollbackSmoke).toBe(true)
     expect(workflow.deploy.rollback.targetFromPreflight).toBe(true)
     expect(workflow.deploy.rollback.smokeTargetFromPreflight).toBe(true)
+    expect(workflow.deploy.sentryUrlsValidated).toBe(true)
   })
 
   it('records the trusted previous release before publication and rollback', async () => {
@@ -225,18 +229,38 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     const migrateSteps = workflow.jobs.migrate.steps
     const deploySteps = workflow.jobs.deploy.steps
     const normalize = (value) => String(value ?? '').replace(/\\\\\\s*\\n/gu, ' ').replace(/\\s+/gu, ' ')
+    const { parse: parseShell } = require('shell-quote')
+    const shellWords = (value) => parseShell(normalize(value)).filter((token) => typeof token === 'string').flatMap((token) => {
+      const substitution = /^.*\\$\\((.*)\\)$/su.exec(token)
+      if (!substitution) return [token]
+      return [token, ...parseShell(substitution[1]).filter((nested) => typeof nested === 'string')]
+    })
+    const findCommand = (words, target, argument) => {
+      const index = words.findIndex((word, position) =>
+        word === 'bun' &&
+        words[position + 1] === 'run' &&
+        words[position + 2] === target,
+      )
+      if (index < 0) return null
+      if (argument !== undefined && words[index + 3] !== argument) return null
+      return { index, words }
+    }
     const commandContract = (value) => {
-      const run = normalize(value)
+      const words = shellWords(value)
+      const command = (target, argument) => Boolean(findCommand(words, target, argument))
+      const outputDirectoryIndex = words.indexOf('--outDir')
       return {
-        integrationTests: run.includes('bun run test:integration'),
-        migrations: run.includes('bun run db:migrate'),
-        build: run.includes('bun run build'),
-        healthSmoke: run.includes('bun run scripts/retry-release-smoke.ts health'),
-        journeySmoke: run.includes('bun run scripts/retry-release-smoke.ts journey'),
-        rollbackSmoke: run.includes('bun run scripts/retry-release-smoke.ts rollback'),
-        metricsQuery: run.includes('bun run scripts/release-metrics.ts'),
-        guardrailEvaluation: run.includes('bun run scripts/release-policy.ts guardrails'),
-        waits: [...run.matchAll(/\\bsleep\\s+(\\d+)/gu)].map((match) => Number(match[1])),
+        integrationTests: command('test:integration'),
+        migrations: command('db:migrate'),
+        build: command('build'),
+        healthSmoke: command('scripts/retry-release-smoke.ts', 'health'),
+        journeySmoke: command('scripts/retry-release-smoke.ts', 'journey'),
+        rollbackSmoke: command('scripts/retry-release-smoke.ts', 'rollback'),
+        metricsQuery: command('scripts/release-metrics.ts'),
+        guardrailEvaluation: command('scripts/release-policy.ts', 'guardrails'),
+        urlValidation: command('scripts/release-policy.ts', 'validate-url'),
+        outputDirectory: outputDirectoryIndex >= 0 ? words[outputDirectoryIndex + 1] : undefined,
+        waits: words.flatMap((word, index) => word === 'sleep' && /^\\d+$/u.test(words[index + 1] ?? '') ? [Number(words[index + 1])] : []),
       }
     }
     const action = (step) => step?.uses?.split('@')[0]?.split('/').at(-1)
@@ -244,10 +268,14 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     const secretScope = (holder, step, secret) => {
       if (holder?.env && Object.prototype.hasOwnProperty.call(holder.env, secret)) return 'job'
       if (step?.env && Object.prototype.hasOwnProperty.call(step.env, secret)) return 'step'
-      const run = normalize(step?.run)
-      const command = run.indexOf('bun run scripts/release-metrics.ts')
-      const reference = run.indexOf('\${{ secrets.' + secret + ' }}')
-      if (command >= 0 && reference >= 0 && reference < command) return 'command'
+      const words = shellWords(step?.run)
+      const metricsCommand = findCommand(words, 'scripts/release-metrics.ts')
+      if (
+        metricsCommand &&
+        words.slice(0, metricsCommand.index).some((word) =>
+          word.startsWith(secret + '='),
+        )
+      ) return 'command'
       return 'absent'
     }
     const stepContract = (holder, step) => ({
@@ -281,6 +309,8 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     const publication = step(deploySteps, (item) => item.name === 'Publish GitHub Release evidence and deployment binding')
     const build = step(deploySteps, (item) => item.name === 'Build the tagged production artifact and upload source maps')
     const upload = step(deploySteps, (item) => item.name === 'Upload an undeployed Cloudflare Worker version')
+    const sourceMapUpload = step(deploySteps, (item) => item.name === 'Upload tagged source maps')
+    const sourceMapVerify = step(deploySteps, (item) => item.name === 'Verify that the tagged source maps are queryable')
     const deployCheckouts = deploySteps.filter((item) => item.uses === 'actions/checkout@v4')
     console.log(JSON.stringify({
       runNameUsesTargetSha: String(workflow['run-name'] ?? '').includes('target_sha'),
@@ -309,7 +339,7 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
         targetInstallDirectory: step(deploySteps, (item) => item.name === 'Install target application dependencies')?.['working-directory'],
         build: {
           ...stepContract(workflow.jobs.deploy, build),
-          outputDirectory: String(build?.run ?? '').match(/--outDir\\s+([^\\s]+)/u)?.[1],
+          outputDirectory: commandContract(build?.run).outputDirectory,
         },
         upload: stepContract(workflow.jobs.deploy, upload),
         exactHealth: stepContract(workflow.jobs.deploy, exactHealth),
@@ -334,6 +364,9 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
           previousReleaseFromPreflight: String(publication?.env?.PREVIOUS_RELEASE_TAG ?? '').includes('steps.preflight.outputs.previous_release_tag'),
           beforeRollback: publicationIndex >= 0 && publicationIndex < rollbackIndex,
         },
+        sentryUrlsValidated:
+          commandContract(sourceMapUpload?.run).urlValidation &&
+          commandContract(sourceMapVerify?.run).urlValidation,
       },
     }))
   `

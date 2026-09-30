@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   resolveHealthSmokeUrl,
+  validateSmokeResponseOrigin,
   validateHealthSmokeResponse,
 } from './health-smoke.domain'
 import {
@@ -27,12 +28,52 @@ describe('resolveHealthSmokeUrl', () => {
   it.each([
     undefined,
     '',
+    'http://example.com',
     'ftp://example.com',
     'https://user:pass@example.com',
     'https://example.com/preview',
     'https://example.com?token=secret',
   ])('rejects unsafe or invalid input %s', (value) => {
     expect(() => resolveHealthSmokeUrl(value)).toThrow()
+  })
+})
+
+describe('validateSmokeResponseOrigin', () => {
+  const expectedUrl = new URL('https://example.com/healthz')
+
+  it('accepts a direct same-origin response', () => {
+    expect(
+      validateSmokeResponseOrigin(
+        {
+          redirected: false,
+          status: 200,
+          url: 'https://example.com/healthz',
+        },
+        expectedUrl,
+      ),
+    ).toBe(null)
+  })
+
+  it.each([
+    {
+      redirected: true,
+      status: 200,
+      url: 'https://example.com/healthz',
+    },
+    {
+      redirected: false,
+      status: 302,
+      url: 'https://example.com/healthz',
+    },
+    {
+      redirected: false,
+      status: 200,
+      url: 'https://attacker.example/healthz',
+    },
+  ])('rejects redirected or cross-origin responses: %j', (response) => {
+    expect(validateSmokeResponseOrigin(response, expectedUrl)).toEqual(
+      expect.any(String),
+    )
   })
 })
 

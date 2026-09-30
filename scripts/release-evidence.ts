@@ -1,13 +1,14 @@
 // fallow-ignore-file unused-file -- invoked directly by production-release.yml
 
 import { fetchWithTimeout } from './http'
+import { resolveHealthSmokeUrl } from './health-smoke.domain'
 import { validateExternalHttpsUrl } from './release-policy.domain'
 
 const evidenceUrl = requiredEnv('PRODUCTION_RELEASE_EVIDENCE_URL')
 const releaseTag = requiredEnv('RELEASE_TAG')
 const targetSha = requiredEnv('TARGET_SHA')
 const cloudflareVersionId = requiredEnv('CLOUDFLARE_VERSION_ID')
-const origin = requiredEnv('PRODUCTION_ORIGIN')
+const origin = resolveHealthSmokeUrl(requiredEnv('PRODUCTION_ORIGIN')).origin
 
 const url = validateExternalHttpsUrl(
   evidenceUrl,

@@ -11,11 +11,16 @@ export async function fetchWithTimeout(
   try {
     const response = await fetch(url, { ...init, signal: controller.signal })
     const body = await response.arrayBuffer()
-    return new Response(body, {
+    const normalizedResponse = new Response(body, {
       status: response.status,
       statusText: response.statusText,
       headers: response.headers,
     })
+    Object.defineProperties(normalizedResponse, {
+      redirected: { configurable: true, value: response.redirected },
+      url: { configurable: true, value: response.url },
+    })
+    return normalizedResponse
   } finally {
     clearTimeout(timer)
   }

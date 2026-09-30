@@ -2,6 +2,7 @@ import { fetchWithTimeout } from './http'
 import {
   HEALTH_SMOKE_PATHS,
   resolveHealthSmokeUrl,
+  validateSmokeResponseOrigin,
 } from './health-smoke.domain'
 import { resolveHealthSmokeHeaders } from './health-smoke.version.domain'
 import { validateRollbackSmokeResponse } from './rollback-smoke.domain'
@@ -15,7 +16,13 @@ const headers = resolveHealthSmokeHeaders(versionId, workerName)
 
 const modes = await Promise.all(
   HEALTH_SMOKE_PATHS.map(async (path) => {
-    const response = await fetchWithTimeout(new URL(path, baseUrl), { headers })
+    const endpointUrl = new URL(path, baseUrl)
+    const response = await fetchWithTimeout(endpointUrl, {
+      headers,
+      redirect: 'manual',
+    })
+    const originFailure = validateSmokeResponseOrigin(response, endpointUrl)
+    if (originFailure) throw new Error(`${path}: ${originFailure}`)
     const payload = await readJson(response)
     const validation = validateRollbackSmokeResponse(
       path,
