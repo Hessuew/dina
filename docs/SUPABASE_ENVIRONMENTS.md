@@ -72,10 +72,12 @@ development branch and idempotently creates its synthetic admin/profile and Stor
 manual `Main release gate` dispatch with `run_development_migration=true` retries that dependent
 job after a reviewed main release.
 
-`.github/workflows/production-release.yml` listens for a successful main gate,
-creates an immutable UTC release tag, waits for the protected `production`
-environment approval, replays the migration chain, and applies pending
-migrations without seeding. It then promotes the exact tagged Worker version.
+`.github/workflows/production-release.yml` listens only for a successful
+push-triggered main gate, creates an immutable UTC release tag, waits for the
+protected `production` environment approval, replays the migration chain, and
+applies pending migrations without seeding. A manual main-gate dispatch remains
+a development migration retry and does not promote production. It then promotes
+the exact tagged Worker version.
 Manual dispatch requires the full SHA of a successful main gate and supports
 `standard` or `gradual` rollout profiles. There is no long-lived production
 branch and failed release tags remain for audit.

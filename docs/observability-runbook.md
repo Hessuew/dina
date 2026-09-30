@@ -109,6 +109,11 @@ Rollback is application-only. Never automatically down-migrate Supabase. If
 the schema and application are incompatible, use a forward-fix migration or
 the approved restore runbook.
 
+Automatic production promotion listens only for a successful push-triggered
+`Main release gate` on `main`. A manual `Main release gate` dispatch is a
+development migration retry and does not promote production; use the explicit
+production workflow dispatch for a manual production release.
+
 For a tagged release, the exact-version checks are:
 
 ```sh
@@ -118,6 +123,12 @@ SMOKE_WORKER_NAME=christ-dina \
 SMOKE_EXPECTED_RELEASE=vYYYY.MM.DD.N \
 bun run smoke:health
 ```
+
+Automatic rollback smoke supplies the recorded previous Cloudflare version and
+worker name through the same override headers, so it fails if the rollback
+target is not serving. A base-URL-only smoke is a compatibility check for
+deployments where version metadata is genuinely unavailable; it does not prove
+that a particular rollback target is active.
 
 The affected public journey smoke uses the same version override. Authenticated
 journeys must use approved synthetic production credentials only; never put
