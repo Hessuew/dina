@@ -8,14 +8,13 @@ export function hasVersionAffinityCookie(
   cookieHeader?: string | null,
 ): boolean {
   const cookiePrefix = `${VERSION_AFFINITY_COOKIE_NAME}=`
-  return (
-    cookieHeader?.split(';').some((cookie) => {
-      const value = cookie.trimStart()
-      if (!value.startsWith(cookiePrefix)) return false
-      const cookieValue = value.slice(cookiePrefix.length)
-      return COOKIE_OCTET_VALUE_PATTERN.test(cookieValue)
-    }) ?? false
-  )
+  const firstCookie = cookieHeader
+    ?.split(';')
+    .find((cookie) => cookie.trimStart().startsWith(cookiePrefix))
+  if (!firstCookie) return false
+  const value = firstCookie.trimStart()
+  const cookieValue = value.slice(cookiePrefix.length)
+  return COOKIE_OCTET_VALUE_PATTERN.test(cookieValue)
 }
 
 export function buildVersionAffinityCookie(value: string): string {
