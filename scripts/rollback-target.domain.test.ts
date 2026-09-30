@@ -5,6 +5,8 @@ import {
   selectRollbackTargetInfo,
 } from './rollback-target.domain'
 
+const verifiedReleaseCommit = 'a'.repeat(40)
+
 describe('selectRollbackTarget', () => {
   it('selects the highest-percentage version from the newest deployment', () => {
     expect(
@@ -133,12 +135,12 @@ describe('selectRollbackTarget', () => {
           id: 'release-version',
           annotations: {
             'workers/tag': 'v2026.09.30.1',
-            'workers/message': 'DINA v2026.09.30.1 (sha)',
+            'workers/message': `DINA v2026.09.30.1 (${verifiedReleaseCommit})`,
           },
         },
         legacyVersionIds: [],
         verifiedReleaseTags: {
-          'v2026.09.30.1': 'a'.repeat(40),
+          'v2026.09.30.1': verifiedReleaseCommit,
         },
       }),
     ).toEqual({
@@ -170,6 +172,7 @@ describe('selectRollbackTarget', () => {
   })
 
   it('rejects release-shaped tags that are not verified repository tags', () => {
+    const unverifiedCommit = 'b'.repeat(40)
     expect(() =>
       selectRollbackTargetInfo({
         deployments: [
@@ -182,13 +185,62 @@ describe('selectRollbackTarget', () => {
           id: 'unverified-version',
           annotations: {
             'workers/tag': 'v2026.09.30.999',
-            'workers/message': 'manual upload',
+            'workers/message': `DINA v2026.09.30.999 (${unverifiedCommit})`,
           },
         },
         legacyVersionIds: [],
         verifiedReleaseTags: {},
       }),
-    ).toThrow(/release tag was not verified/iu)
+    ).toThrow(/release identity was not verified/iu)
+  })
+
+  it('rejects a manual upload that reuses a verified release tag', () => {
+    expect(() =>
+      selectRollbackTargetInfo({
+        deployments: [
+          {
+            created_on: '2026-09-30T12:00:00.000Z',
+            versions: [{ version_id: 'manual-version', percentage: 100 }],
+          },
+        ],
+        version: {
+          id: 'manual-version',
+          annotations: {
+            'workers/tag': 'v2026.09.30.1',
+            'workers/message': 'manual upload',
+          },
+        },
+        legacyVersionIds: [],
+        verifiedReleaseTags: {
+          'v2026.09.30.1': verifiedReleaseCommit,
+        },
+      }),
+    ).toThrow(/release identity was not verified/iu)
+  })
+
+  it('rejects a release message whose commit differs from the verified tag', () => {
+    const mismatchedCommit = 'b'.repeat(40)
+    expect(() =>
+      selectRollbackTargetInfo({
+        deployments: [
+          {
+            created_on: '2026-09-30T12:00:00.000Z',
+            versions: [{ version_id: 'mismatched-version', percentage: 100 }],
+          },
+        ],
+        version: {
+          id: 'mismatched-version',
+          annotations: {
+            'workers/tag': 'v2026.09.30.1',
+            'workers/message': `DINA v2026.09.30.1 (${mismatchedCommit})`,
+          },
+        },
+        legacyVersionIds: [],
+        verifiedReleaseTags: {
+          'v2026.09.30.1': verifiedReleaseCommit,
+        },
+      }),
+    ).toThrow(/release identity was not verified/iu)
   })
 
   it('rejects metadata for a different selected version', () => {

@@ -17,6 +17,8 @@ type VersionMetadata = {
 }
 
 const RELEASE_TAG_PATTERN = /^v\d{4}\.\d{2}\.\d{2}\.\d+$/u
+const RELEASE_MESSAGE_PATTERN =
+  /^DINA (v\d{4}\.\d{2}\.\d{2}\.\d+) \(([0-9a-f]{40})\)$/u
 
 export type RollbackTarget = {
   versionId: string
@@ -98,8 +100,13 @@ export function selectRollbackTargetInfo(value: unknown): RollbackTarget {
     if (!RELEASE_TAG_PATTERN.test(tag)) {
       throw new Error('Rollback target has an invalid release tag')
     }
-    if (!isVerifiedReleaseTag(verifiedReleaseTags, tag)) {
-      throw new Error('Rollback target release tag was not verified')
+    const identity = readReleaseIdentity(message)
+    if (
+      !identity ||
+      identity.tag !== tag ||
+      !isVerifiedReleaseTag(verifiedReleaseTags, tag, identity.commit)
+    ) {
+      throw new Error('Rollback target release identity was not verified')
     }
     return { versionId, legacyCompatible: false, releaseTag: tag }
   }
@@ -168,9 +175,16 @@ function readLegacyVersionId(value: unknown): string {
 function isVerifiedReleaseTag(
   verifiedReleaseTags: Record<string, unknown>,
   tag: string,
+  commit: string,
 ): boolean {
-  const commit = verifiedReleaseTags[tag]
-  return typeof commit === 'string' && /^[0-9a-f]{40}$/u.test(commit)
+  return verifiedReleaseTags[tag] === commit
+}
+
+function readReleaseIdentity(
+  message: string,
+): { tag: string; commit: string } | null {
+  const match = RELEASE_MESSAGE_PATTERN.exec(message)
+  return match ? { tag: match[1], commit: match[2] } : null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
