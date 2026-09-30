@@ -12,10 +12,8 @@ import {
 import { resolveObservabilityIdentity } from '@/utils/observability/domain/identity.domain'
 import { resolveObservabilityDsn } from '@/utils/observability/domain/dsn.domain'
 import { addActiveTraceContext } from '@/utils/observability/trace-context'
-import {
-  handleReleaseEndpoint,
-  recordReleaseMetric,
-} from '@/utils/observability/release-endpoints'
+import { handleReleaseEndpoint } from '@/utils/observability/release-endpoints'
+import { runRequestWithReleaseMetrics } from '@/utils/observability/release-request'
 import {
   addWorkerVersionHeaders,
   readWorkerVersionMetadata,
@@ -38,16 +36,18 @@ const appHandler = {
     )
     if (releaseResponse) return releaseResponse
 
-    const operationalResponse = await handleOperationalRequest(request)
-    const response =
-      operationalResponse ??
-      (await handler.fetch(request, opts as HandlerOptions))
-    recordReleaseMetric(
+    const response = await runRequestWithReleaseMetrics(
+      request,
       runtime,
       metadata,
-      request,
-      response,
-      performance.now() - startedAt,
+      startedAt,
+      async () => {
+        const operationalResponse = await handleOperationalRequest(request)
+        return (
+          operationalResponse ??
+          (await handler.fetch(request, opts as HandlerOptions))
+        )
+      },
     )
     return addWorkerVersionHeaders(response, opts, request)
   },

@@ -5,6 +5,7 @@ import {
 } from './health-smoke.domain'
 import {
   resolveHealthSmokeHeaders,
+  validateExpectedReleasePayload,
   validateVersionMetadataHeader,
   validateVersionMetadataTag,
 } from './health-smoke.version.domain'
@@ -71,7 +72,10 @@ function assertEndpointResponse(
     expectedRelease,
     response.headers.get('x-dina-worker-version-tag'),
   )
-  const releasePayloadFailure = validateReleasePayload(payload, expectedRelease)
+  const releasePayloadFailure = validateExpectedReleasePayload(
+    payload,
+    expectedRelease,
+  )
   const failure = [
     payloadFailure,
     versionFailure,
@@ -79,16 +83,6 @@ function assertEndpointResponse(
     releasePayloadFailure,
   ].find(Boolean)
   if (failure) throw new Error(`${path}: ${failure}`)
-}
-
-function validateReleasePayload(
-  payload: unknown,
-  expectedRelease: string | undefined,
-): string | null {
-  if (expectedRelease === undefined) return null
-  if (!isHealthPayloadWithRelease(payload)) return null
-  if (payload.release === expectedRelease) return null
-  return `response release ${payload.release} did not match ${expectedRelease}`
 }
 
 async function readJson(response: Response): Promise<unknown> {
@@ -124,12 +118,6 @@ async function main(): Promise<void> {
       ),
     ),
   )
-}
-
-function isHealthPayloadWithRelease(
-  value: unknown,
-): value is { release: string | null } {
-  return typeof value === 'object' && value !== null && 'release' in value
 }
 
 try {

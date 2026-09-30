@@ -6,6 +6,7 @@ import {
 } from './health-smoke.domain'
 import {
   resolveHealthSmokeHeaders,
+  validateExpectedReleasePayload,
   validateVersionMetadataHeader,
   validateVersionMetadataTag,
 } from './health-smoke.version.domain'
@@ -103,5 +104,22 @@ describe('validateVersionMetadataTag', () => {
     expect(
       validateVersionMetadataTag('v2026.09.29.1', 'v2026.09.29.2'),
     ).toMatch(/expected v2026\.09\.29\.1/u)
+  })
+})
+
+describe('validateExpectedReleasePayload', () => {
+  it('accepts a matching release payload', () => {
+    expect(
+      validateExpectedReleasePayload(
+        { release: 'v2026.09.29.1' },
+        'v2026.09.29.1',
+      ),
+    ).toBe(null)
+  })
+
+  it('rejects a missing release payload field', () => {
+    expect(
+      validateExpectedReleasePayload({ status: 'ok' }, 'v2026.09.29.1'),
+    ).toMatch(/did not include release/u)
   })
 })
