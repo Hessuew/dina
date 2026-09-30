@@ -42,3 +42,21 @@ export function validateVersionMetadataTag(
   }
   return null
 }
+
+export function validateExpectedReleasePayload(
+  payload: unknown,
+  expectedRelease: string | undefined,
+): string | null {
+  if (expectedRelease === undefined) return null
+  if (!isRecord(payload) || !('release' in payload)) {
+    return `response did not include release ${expectedRelease}`
+  }
+  if (payload.release === expectedRelease) return null
+  const actualRelease =
+    typeof payload.release === 'string' ? payload.release : 'unknown'
+  return `response release ${actualRelease} did not match ${expectedRelease}`
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
