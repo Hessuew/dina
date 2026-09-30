@@ -11,7 +11,6 @@
   },
   "vars": {
     "CLOUDFLARE_ACCOUNT_ID": "b58ed51e990284f7e72e4a181cd07fc5",
-    "BETTER_STACK_APPLICATION_ID": "2772482",
     "RELEASE_METRICS_DATASET": "dina_release_metrics",
     "RELEASE_ALERTS_SLACK_INCIDENTS": "false",
     "RELEASE_ALERTS_EMAIL_FALLBACK": "false",

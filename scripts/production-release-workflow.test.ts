@@ -13,6 +13,8 @@ type ParsedWorkflow = {
   resolveCondition: string
   rollbackRun: string | undefined
   rollbackEnv: Record<string, string> | undefined
+  deployEnv: Record<string, string>
+  uploadVars: Record<string, string>
 }
 
 describe('production release workflow', () => {
@@ -61,6 +63,17 @@ describe('production release workflow', () => {
       SMOKE_WORKER_NAME: '${{ env.WORKER_NAME }}',
     })
   })
+
+  it('uses one Better Stack application identity for registration and upload', async () => {
+    const workflow = await readWorkflow()
+
+    expect(workflow.deployEnv.BETTER_STACK_APPLICATION_ID).toBe(
+      '${{ vars.BETTER_STACK_APPLICATION_ID }}',
+    )
+    expect(workflow.uploadVars.BETTER_STACK_APPLICATION_ID).toBe(
+      '$BETTER_STACK_APPLICATION_ID',
+    )
+  })
 })
 
 async function readWorkflow(): Promise<ParsedWorkflow> {
@@ -73,11 +86,21 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     const rollback = workflow.jobs.deploy.steps.find(
       (step) => step.name === 'Re-run health smoke after rollback',
     )
+    const upload = workflow.jobs.deploy.steps.find(
+      (step) => step.name === 'Upload an undeployed Cloudflare Worker version',
+    )
+    const uploadVars = Object.fromEntries(
+      [...String(upload?.run ?? '').matchAll(/--var\\s+"([^:"]+):([^"]*)"/gu)].map(
+        (match) => [match[1], match[2]],
+      ),
+    )
     console.log(JSON.stringify({
       workflowRun: workflow.on.workflow_run,
       resolveCondition: String(workflow.jobs.resolve.if),
       rollbackRun: rollback?.run,
       rollbackEnv: rollback?.env,
+      deployEnv: workflow.jobs.deploy.env,
+      uploadVars,
     }))
   `
   const { stdout } = await execFileAsync('bun', ['-e', script, workflowPath])
