@@ -35,7 +35,9 @@ jobs:
     if: >-
       ${{
         github.event_name == 'workflow_dispatch' ||
-        (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+        (github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main')
       }}
     runs-on: ubuntu-latest
     outputs:
@@ -360,6 +362,8 @@ jobs:
         if: failure() && steps.rollback.outcome == 'success'
         env:
           SMOKE_BASE_URL: ${{ env.PRODUCTION_ORIGIN }}
+          SMOKE_VERSION_ID: ${{ steps.preflight.outputs.previous_version_id }}
+          SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
         run: bun run smoke:health
 
   release:
