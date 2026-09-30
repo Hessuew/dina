@@ -78,9 +78,9 @@ also returned `dependencies.database.status: "ok"`. Responses were served
 through Cloudflare and included `cache-control: no-store`; no credentials or
 raw database errors were present.
 
-The live payload currently reports `release: null`. This does not block the
-health contract, but release injection remains a follow-up for deployment and
-incident correlation.
+The live payload at this pre-tag verification reported `release: null`. The
+repository now injects release metadata for tagged builds, but production
+release correlation remains pending until a tagged deployment is verified.
 
 ### Production verification — 2026-09-23
 
@@ -97,6 +97,6 @@ three minutes, and is up with zero incidents. Cloudflare's Worker
 observability view showed 146 successful events and 0 errors in the last hour;
 the Worker overview showed 0 errors in the last 24 hours. `/readyz` remains a
 database-readiness smoke check rather than a second synthetic monitor because
-the current Better Stack plan marks additional monitors as billable. The live
-payload still reports `release: null`, so deployment release correlation is
-still open.
+the current Better Stack plan marks additional monitors as billable. The
+pre-tag live payload still reported `release: null`; deployment release
+correlation remains open until the tagged production workflow is verified.

@@ -80,7 +80,9 @@ a development migration retry and does not promote production. It then promotes
 the exact tagged Worker version.
 Manual dispatch requires the full SHA of a successful main gate and supports
 `standard` or `gradual` rollout profiles. There is no long-lived production
-branch and failed release tags remain for audit.
+branch and failed release tags remain for audit. Production promotion remains
+disabled until the protected release-readiness controls are enabled; the full
+procedure is in [`docs/plan/SAFE_DELIVERY.md`](plan/SAFE_DELIVERY.md).
 
 Protect `main` and the `production` environment. Drizzle has no automatic
 rollback: repair a failed forward migration with a new migration, or use the

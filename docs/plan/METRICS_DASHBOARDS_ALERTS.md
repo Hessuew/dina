@@ -53,8 +53,8 @@ Every alert must have an owner, a linked runbook, a dashboard link, and a known 
 
 ## Per-version rollout metrics contract
 
-`.github/workflows/production-release.yml` can perform gradual promotion only
-when `CLOUDFLARE_VERSION_METRICS_QUERYABLE=true`,
+`.github/workflows/production-release.yml` can perform standard or gradual
+promotion only when `CLOUDFLARE_VERSION_METRICS_QUERYABLE=true`,
 `CLOUDFLARE_VERSION_HIGH_SEVERITY_QUERYABLE=true`, and the protected metrics
 adapter is configured. The adapter receives `version_id`, `since`, and `until`
 query parameters and returns JSON with these numeric fields:
@@ -71,7 +71,7 @@ query parameters and returns JSON with these numeric fields:
 ```
 
 The repository validates that response and its exact query window before each
-stage and after standard 100% promotion. It fails closed on missing, stale, or
+gradual stage and after standard 100% promotion. It fails closed on missing, stale, or
 malformed metrics, rolls back on any guardrail breach, and never
 uses aggregate Worker traffic as a substitute for per-version evidence. A
 low-traffic 10% stage with fewer than 20 new-version requests is promoted
