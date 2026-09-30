@@ -6,6 +6,7 @@ import {
 } from './health-smoke.domain'
 import { resolveHealthSmokeHeaders } from './health-smoke.version.domain'
 import { validateRollbackSmokeResponse } from './rollback-smoke.domain'
+import type { HealthSmokePath } from './health-smoke.domain'
 import type {
   RollbackSmokeMode,
   RollbackSmokeValidation,
@@ -28,7 +29,7 @@ if (modes.some((candidate) => candidate !== mode)) {
 }
 console.log(`rollback smoke passed: ${mode}`)
 
-async function runSmokePath(path: string): Promise<RollbackSmokeMode> {
+async function runSmokePath(path: HealthSmokePath): Promise<RollbackSmokeMode> {
   const endpointUrl = new URL(path, baseUrl)
   const response = await fetchWithTimeout(endpointUrl, {
     headers,
