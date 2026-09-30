@@ -197,6 +197,7 @@ jobs:
       - id: preflight
         name: Record the current rollback target
         run: |
+          git fetch origin main --tags --force
           deployments_json=$(bunx wrangler deployments list --config wrangler.jsonc --name "$WORKER_NAME" --json)
           previous_version_id=$(bun run scripts/rollback-target.ts <<< "$deployments_json")
           version_json=$(bunx wrangler versions view \
@@ -204,12 +205,26 @@ jobs:
             --config wrangler.jsonc \
             --name "$WORKER_NAME" \
             --json)
+          verified_release_tags='{}'
+          while IFS= read -r release_tag; do
+            if [[ ! "$release_tag" =~ ^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[0-9]+$ ]]; then
+              continue
+            fi
+            release_commit=$(git rev-parse --verify "$release_tag^{commit}")
+            if git merge-base --is-ancestor "$release_commit" origin/main; then
+              verified_release_tags=$(jq \
+                --arg tag "$release_tag" \
+                --arg commit "$release_commit" \
+                '. + {($tag): $commit}' <<< "$verified_release_tags")
+            fi
+          done < <(git tag --list 'v*')
           legacy_version_ids=$(jq -R 'split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))' <<< "$CLOUDFLARE_LEGACY_VERSION_IDS")
           rollback_target=$(jq -n \
             --argjson deployments "$deployments_json" \
             --argjson version "$version_json" \
             --argjson legacyVersionIds "$legacy_version_ids" \
-            '{deployments: $deployments, version: $version, legacyVersionIds: $legacyVersionIds}' | \
+            --argjson verifiedReleaseTags "$verified_release_tags" \
+            '{deployments: $deployments, version: $version, legacyVersionIds: $legacyVersionIds, verifiedReleaseTags: $verifiedReleaseTags}' | \
             bun run scripts/rollback-target.ts)
           previous_version_id=$(jq -r '.versionId' <<< "$rollback_target")
           legacy_compatible=$(jq -r '.legacyCompatible' <<< "$rollback_target")

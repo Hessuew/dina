@@ -16,11 +16,11 @@ describe('collectCompareHistory', () => {
     const pages = [
       {
         commits: [{ sha: 'first' }, { sha: 'second' }],
-        files: [{ filename: 'first.ts' }, { filename: 'second.ts' }],
+        files: [{ filename: 'compare-only.ts' }],
       },
       {
         commits: [{ sha: 'third' }],
-        files: [{ filename: 'third.ts' }],
+        files: [{ filename: 'compare-only-2.ts' }],
       },
     ]
     const github = {
@@ -30,6 +30,11 @@ describe('collectCompareHistory', () => {
             requests.push(request)
             return { data: pages[Number(request.page) - 1] }
           },
+          getCommit: async (request: Record<string, unknown>) => ({
+            data: {
+              files: [{ filename: `${String(request.ref)}.ts` }],
+            },
+          }),
         },
       },
     }
@@ -66,5 +71,29 @@ describe('collectCompareHistory', () => {
         per_page: 2,
       },
     ])
+  })
+
+  it('fails closed when a commit file list reaches the provider cap', async () => {
+    const github = {
+      rest: {
+        repos: {
+          compareCommits: async () => ({
+            data: { commits: [{ sha: 'large-commit' }] },
+          }),
+          getCommit: async () => ({
+            data: { files: Array.from({ length: 300 }, () => ({})) },
+          }),
+        },
+      },
+    }
+
+    await expect(
+      collectCompareHistory(github, {
+        owner: 'owner',
+        repo: 'repo',
+        base: 'base',
+        head: 'head',
+      }),
+    ).rejects.toThrow(/may be truncated/iu)
   })
 })

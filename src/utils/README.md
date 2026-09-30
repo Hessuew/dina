@@ -532,6 +532,28 @@ feature consumes them.
     do not enlarge the critical application entry; server error-boundary capture
     reuses the same asynchronous adapter.
 
+- **Production release observability and asset delivery**
+  - `observability/release-endpoints.ts` owns the protected
+    `/_internal/release/metrics` and `/_internal/release/evidence` endpoints.
+    Both require their configured bearer token; metrics are scoped to the exact
+    Worker version and evidence also checks the release tag, target SHA, origin,
+    Better Stack registration, source-map state, and alert readiness.
+  - `observability/release-request.ts` records request count, 5xx count, and
+    latency for the version-bound metrics dataset while excluding internal
+    release endpoints from request telemetry.
+  - `observability/version-headers.ts` exposes `x-dina-worker-version` and
+    `x-dina-worker-version-tag` from the Worker metadata binding. It repairs a
+    missing or malformed `dina-version-key` cookie with a long-lived,
+    HttpOnly, Secure, SameSite cookie so split deployments keep HTML and assets
+    on one Worker version.
+  - `asset-routing.ts` runs the application first and falls back to the
+    Cloudflare `ASSETS` binding only for application 404 responses. Release
+    journey smoke must continue to require content-hashed asset paths; an
+    unhashed asset is not evidence of a versioned production build.
+  - `server.ts` dispatches the protected release endpoints before ordinary
+    application handling, wraps application requests with release metrics, and
+    applies version headers to the returned response.
+
 - **Product analytics**
   - `analytics.ts`: optional browser-only PostHog boundary with an allow-listed
     LMS event-name union, stable user-ID/role identification, logout reset, and

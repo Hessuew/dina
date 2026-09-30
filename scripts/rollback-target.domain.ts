@@ -86,6 +86,9 @@ export function selectRollbackTargetInfo(value: unknown): RollbackTarget {
   const legacyVersionIds = new Set(
     value.legacyVersionIds.map(readLegacyVersionId),
   )
+  const verifiedReleaseTags = isRecord(value.verifiedReleaseTags)
+    ? value.verifiedReleaseTags
+    : {}
   if (version.id !== versionId)
     throw new Error('Rollback target version metadata did not match')
 
@@ -94,6 +97,9 @@ export function selectRollbackTargetInfo(value: unknown): RollbackTarget {
   if (tag && message) {
     if (!RELEASE_TAG_PATTERN.test(tag)) {
       throw new Error('Rollback target has an invalid release tag')
+    }
+    if (!isVerifiedReleaseTag(verifiedReleaseTags, tag)) {
+      throw new Error('Rollback target release tag was not verified')
     }
     return { versionId, legacyCompatible: false, releaseTag: tag }
   }
@@ -157,6 +163,14 @@ function readLegacyVersionId(value: unknown): string {
     throw new Error('Legacy rollback version IDs must be non-empty strings')
   }
   return value.trim()
+}
+
+function isVerifiedReleaseTag(
+  verifiedReleaseTags: Record<string, unknown>,
+  tag: string,
+): boolean {
+  const commit = verifiedReleaseTags[tag]
+  return typeof commit === 'string' && /^[0-9a-f]{40}$/u.test(commit)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
