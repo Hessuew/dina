@@ -53,8 +53,15 @@ describe('production release workflow', () => {
     expect(
       evaluateCondition(workflow.resolveCondition, {
         event_name: 'workflow_dispatch',
+        ref: 'refs/heads/main',
       }),
     ).toBe(true)
+    expect(
+      evaluateCondition(workflow.resolveCondition, {
+        event_name: 'workflow_dispatch',
+        ref: 'refs/heads/feature/unsafe',
+      }),
+    ).toBe(false)
   })
 
   it('pins rollback smoke to the recorded previous Worker version', async () => {
@@ -157,6 +164,7 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
 
 type WorkflowContext = {
   event_name: string
+  ref?: string
   workflow_run?: {
     event?: string
     conclusion?: string
@@ -174,6 +182,7 @@ function evaluateCondition(
     .trim()
   const values = new Map<string, string | undefined>([
     ['github.event_name', context.event_name],
+    ['github.ref', context.ref],
     ['github.event.workflow_run.event', context.workflow_run?.event],
     ['github.event.workflow_run.conclusion', context.workflow_run?.conclusion],
     [
