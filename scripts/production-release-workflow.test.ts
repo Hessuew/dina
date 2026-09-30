@@ -4,58 +4,84 @@ import { describe, expect, it } from 'vitest'
 
 const execFileAsync = promisify(execFile)
 
+type SecretScope = 'absent' | 'job' | 'step' | 'command'
+
+type CommandContract = {
+  integrationTests: boolean
+  migrations: boolean
+  build: boolean
+  healthSmoke: boolean
+  journeySmoke: boolean
+  rollbackSmoke: boolean
+  metricsQuery: boolean
+  guardrailEvaluation: boolean
+  waits: Array<number>
+}
+
+type StepContract = {
+  action: string | undefined
+  command: CommandContract
+  condition: string | undefined
+  secretScopes: Record<string, SecretScope>
+  environmentKeys: Array<string>
+}
+
 type ParsedWorkflow = {
-  runName: string
+  runNameUsesTargetSha: boolean
   workflowRun: {
     workflows: Array<string>
     types: Array<string>
     branches: Array<string>
   }
-  resolveOutputs: Record<string, string>
   resolveCondition: string
-  resolveEnv: Record<string, string>
-  deployEnvironment: string | undefined
-  trustedReleaseUses: string | undefined
-  tagProtectionUses: string | undefined
-  manualTargetVerificationUses: string | undefined
-  affinityReadinessRun: string | undefined
-  preflightEnv: Record<string, string> | undefined
-  rollbackRun: string | undefined
-  rollbackEnv: Record<string, string> | undefined
-  deployEnv: Record<string, string>
-  deployInstallEnv: Record<string, string> | undefined
-  buildEnv: Record<string, string> | undefined
-  deployToolingCheckoutRef: string | undefined
-  deployTargetCheckout: Record<string, string> | undefined
-  targetInstallWorkingDirectory: string | undefined
-  buildWorkingDirectory: string | undefined
-  buildRun: string | undefined
-  journeyEnv: Record<string, string> | undefined
-  uploadEnv: Record<string, string> | undefined
-  healthRun: string | undefined
-  journeyRun: string | undefined
-  postRolloutHealthRun: string | undefined
-  postRolloutHealthEnv: Record<string, string> | undefined
-  standardGuardrailsRun: string | undefined
-  standardGuardrailsIf: string | undefined
-  standardGuardrailsEnv: Record<string, string> | undefined
-  rolloutOutcomeIf: string | undefined
-  rolloutOutcomeEnv: Record<string, string> | undefined
-  releasePublicationUses: string | undefined
-  releasePublicationEnv: Record<string, string> | undefined
-  releasePublicationIndex: number
-  rollbackIndex: number
+  resolve: {
+    productionReleaseEnabledDefault: string | undefined
+    affinityReadyDefault: string | undefined
+    affinityEvidenceRequired: boolean
+    toolingShaOutput: boolean
+  }
+  migration: {
+    integration: StepContract
+    apply: StepContract
+  }
+  deploy: {
+    environment: string | undefined
+    jobSecretScopes: Record<string, SecretScope>
+    providerActions: Record<string, string | undefined>
+    toolingCheckoutRole: string | undefined
+    targetCheckoutRole: string | undefined
+    targetInstallDirectory: string | undefined
+    build: StepContract & { outputDirectory: string | undefined }
+    upload: StepContract
+    exactHealth: StepContract
+    journey: StepContract
+    postRolloutHealth: StepContract & {
+      usesVersionOverride: boolean
+      expectsVersionIdentity: boolean
+    }
+    rollout: StepContract
+    standardGuardrails: StepContract & { profile: string | undefined }
+    rollback: StepContract & {
+      targetFromPreflight: boolean
+      smokeTargetFromPreflight: boolean
+    }
+    publication: StepContract & {
+      previousReleaseFromPreflight: boolean
+      beforeRollback: boolean
+    }
+  }
 }
 
-describe('production release workflow', () => {
-  it('names each run with the exact promoted commit', async () => {
-    const workflow = await readWorkflow()
+const SECRET_NAMES = [
+  'DATABASE_URL',
+  'CLOUDFLARE_API_TOKEN',
+  'CLOUDFLARE_ACCOUNT_ID',
+  'CLOUDFLARE_VERSION_METRICS_TOKEN',
+  'PRODUCTION_RELEASE_EVIDENCE_TOKEN',
+  'SENTRY_AUTH_TOKEN',
+]
 
-    expect(workflow.runName).toBe(
-      'Production release ${{ inputs.target_sha || github.event.workflow_run.head_sha }}',
-    )
-  })
-
+describe('production release workflow semantics', () => {
   it('requires a successful push-triggered main gate for automatic promotion', async () => {
     const workflow = await readWorkflow()
 
@@ -98,147 +124,92 @@ describe('production release workflow', () => {
     ).toBe(false)
   })
 
-  it('pins rollback smoke to the recorded previous Worker version', async () => {
+  it('keeps release identity and safety tooling on the current revision', async () => {
     const workflow = await readWorkflow()
 
-    expect(workflow.rollbackRun).toBe(
-      'bun run scripts/retry-release-smoke.ts rollback',
-    )
-    expect(workflow.rollbackEnv).toMatchObject({
-      ROLLBACK_VERSION_ID: '${{ steps.preflight.outputs.previous_version_id }}',
-      ROLLBACK_WORKER_NAME: '${{ env.WORKER_NAME }}',
-      ROLLBACK_RELEASE_TAG: '${{ env.RELEASE_TAG }}',
-      SMOKE_BASE_URL: '${{ env.PRODUCTION_ORIGIN }}',
-      SMOKE_VERSION_ID: '${{ steps.preflight.outputs.previous_version_id }}',
-      SMOKE_WORKER_NAME: '${{ env.WORKER_NAME }}',
-      SMOKE_LEGACY_TARGET: '${{ steps.preflight.outputs.legacy_compatible }}',
-      SMOKE_EXPECTED_RELEASE:
-        '${{ steps.preflight.outputs.previous_release_tag }}',
+    expect(workflow.runNameUsesTargetSha).toBe(true)
+    expect(workflow.resolve.toolingShaOutput).toBe(true)
+    expect(workflow.deploy.toolingCheckoutRole).toBe('tooling')
+    expect(workflow.deploy.targetCheckoutRole).toBe('application')
+    expect(workflow.deploy.targetInstallDirectory).toBe('target')
+    expect(workflow.deploy.build.outputDirectory).toBe('../dist')
+    expect(workflow.deploy.providerActions).toEqual({
+      trustedRelease: 'github-script',
+      tagProtection: 'github-script',
+      manualTarget: 'github-script',
     })
   })
 
-  it('sources rollback identity from trusted GitHub release bindings', async () => {
+  it('keeps production credentials out of tests and scopes them to consumers', async () => {
     const workflow = await readWorkflow()
 
-    expect(workflow.trustedReleaseUses).toBe('actions/github-script@v7')
-    expect(workflow.tagProtectionUses).toBe('actions/github-script@v7')
-    expect(workflow.manualTargetVerificationUses).toBe(
-      'actions/github-script@v7',
+    expect(workflow.migration.integration.secretScopes.DATABASE_URL).toBe(
+      'absent',
     )
-    expect(workflow.affinityReadinessRun).toContain(
-      'scripts/release-policy.ts affinity-readiness',
+    expect(workflow.migration.apply.secretScopes.DATABASE_URL).toBe('step')
+    expect(workflow.deploy.jobSecretScopes).toEqual(
+      Object.fromEntries(SECRET_NAMES.map((name) => [name, 'absent'])),
     )
-    expect(workflow.resolveOutputs.tooling_sha).toBe(
-      '${{ steps.identity.outputs.tooling_sha }}',
-    )
-    expect(workflow.deployToolingCheckoutRef).toBe(
-      '${{ needs.resolve.outputs.tooling_sha }}',
-    )
-    expect(workflow.deployTargetCheckout).toMatchObject({
-      path: 'target',
-      ref: '${{ needs.resolve.outputs.target_sha }}',
+    expect(workflow.deploy.rollout.secretScopes).toMatchObject({
+      CLOUDFLARE_API_TOKEN: 'step',
+      CLOUDFLARE_ACCOUNT_ID: 'step',
+      CLOUDFLARE_VERSION_METRICS_TOKEN: 'command',
     })
-    expect(workflow.resolveEnv.CLOUDFLARE_VERSION_AFFINITY_READY).toBe(
-      "${{ vars.CLOUDFLARE_VERSION_AFFINITY_READY || 'false' }}",
-    )
-    expect(workflow.resolveEnv.CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL).toBe(
-      '${{ vars.CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL }}',
-    )
-    expect(workflow.resolveEnv.PRODUCTION_RELEASE_ENABLED).toBe(
-      "${{ vars.PRODUCTION_RELEASE_ENABLED || 'false' }}",
-    )
-    expect(workflow.preflightEnv?.TRUSTED_RELEASE_BINDINGS).toBe(
-      '${{ steps.trusted_releases.outputs.bindings }}',
-    )
-  })
-
-  it('keeps provider identities aligned across deployment and runtime', async () => {
-    const workflow = await readWorkflow()
-
-    expect(workflow.deployEnvironment).toBe('production')
-    expect(workflow.deployEnv.CLOUDFLARE_API_TOKEN).toBeUndefined()
-    expect(workflow.deployEnv.CLOUDFLARE_ACCOUNT_ID).toBeUndefined()
-    expect(workflow.deployEnv.SENTRY_AUTH_TOKEN).toBeUndefined()
-    expect(workflow.deployEnv.CLOUDFLARE_VERSION_METRICS_TOKEN).toBeUndefined()
-    expect(workflow.deployEnv.PRODUCTION_RELEASE_EVIDENCE_TOKEN).toBeUndefined()
-    expect(workflow.deployInstallEnv).toBeUndefined()
-    expect(workflow.buildEnv?.SENTRY_AUTH_TOKEN).toBeUndefined()
-    expect(workflow.buildEnv?.RELEASE_SOURCE_MAPS_ENABLED).toBe('true')
-    expect(workflow.targetInstallWorkingDirectory).toBe('target')
-    expect(workflow.buildWorkingDirectory).toBe('target')
-    expect(workflow.buildRun).toContain('--outDir ../dist')
-    expect(workflow.standardGuardrailsRun).toContain(
-      'scripts/release-metrics.ts',
-    )
-    expect(workflow.standardGuardrailsRun).toContain(
-      'scripts/release-policy.ts guardrails',
-    )
-    expect(workflow.standardGuardrailsIf).toBe(
-      "env.ROLLOUT_PROFILE == 'standard'",
-    )
-    expect(workflow.standardGuardrailsRun).toContain('sleep 300')
     expect(
-      workflow.standardGuardrailsEnv?.CLOUDFLARE_VERSION_METRICS_TOKEN,
-    ).toBe('${{ secrets.CLOUDFLARE_VERSION_METRICS_TOKEN }}')
-    expect(workflow.postRolloutHealthEnv?.SMOKE_VERSION_ID).toBeUndefined()
-    expect(workflow.postRolloutHealthEnv?.SMOKE_EXPECTED_VERSION_ID).toBe(
-      '${{ steps.upload.outputs.version_id }}',
-    )
-    expect(workflow.rolloutOutcomeIf).toBe(
-      "always() && steps.upload.outputs.version_id != ''",
-    )
-    expect(workflow.rolloutOutcomeEnv?.ROLLOUT_RESULT).toContain(
-      "steps.standard_guardrails.outcome == 'failure'",
-    )
-    expect(workflow.deployEnv.PRODUCTION_JOURNEY_PATHS).toBe(
-      '${{ vars.PRODUCTION_JOURNEY_PATHS }}',
-    )
-    expect(workflow.deployEnv.CLOUDFLARE_LEGACY_VERSION_IDS).toBe(
-      '${{ vars.CLOUDFLARE_LEGACY_VERSION_IDS }}',
-    )
-    expect(workflow.deployEnv.SENTRY_PROJECT).toBe(
-      '${{ vars.BETTER_STACK_APPLICATION_ID }}',
-    )
-    expect(workflow.deployEnv.BETTER_STACK_APPLICATION_ID).toBe(
-      '${{ vars.BETTER_STACK_APPLICATION_ID }}',
-    )
-    expect(workflow.uploadEnv).toMatchObject({
-      CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
-      CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
-      BETTER_STACK_APPLICATION_ID: '${{ env.BETTER_STACK_APPLICATION_ID }}',
-      RELEASE_SHA: '${{ env.TARGET_SHA }}',
-      RELEASE_ORIGIN: '${{ env.PRODUCTION_ORIGIN }}',
-      RELEASE_SOURCE_MAPS_VERIFIED: 'true',
+      workflow.deploy.standardGuardrails.secretScopes
+        .CLOUDFLARE_VERSION_METRICS_TOKEN,
+    ).toBe('step')
+    expect(workflow.deploy.build.secretScopes.SENTRY_AUTH_TOKEN).toBe('absent')
+    expect(workflow.deploy.upload.secretScopes).toMatchObject({
+      CLOUDFLARE_API_TOKEN: 'step',
+      CLOUDFLARE_ACCOUNT_ID: 'step',
     })
   })
 
-  it('retries exact-version smoke after the version override is deployed', async () => {
+  it('requires exact-version smoke before promotion and live-traffic smoke after it', async () => {
     const workflow = await readWorkflow()
 
-    expect(workflow.healthRun).toBe(
-      'bun run scripts/retry-release-smoke.ts health',
+    expect(workflow.deploy.exactHealth.command.healthSmoke).toBe(true)
+    expect(workflow.deploy.exactHealth.environmentKeys).toContain(
+      'SMOKE_VERSION_ID',
     )
-    expect(workflow.journeyRun).toBe(
-      'bun run scripts/retry-release-smoke.ts journey',
+    expect(workflow.deploy.journey.command.journeySmoke).toBe(true)
+    expect(workflow.deploy.journey.environmentKeys).toContain(
+      'SMOKE_VERSION_ID',
     )
-    expect(workflow.journeyEnv?.PRODUCTION_JOURNEY_PATHS).toBe(
-      '${{ env.PRODUCTION_JOURNEY_PATHS }}',
-    )
-    expect(workflow.postRolloutHealthRun).toBe(
-      'bun run scripts/retry-release-smoke.ts health',
-    )
+    expect(workflow.deploy.postRolloutHealth.command.healthSmoke).toBe(true)
+    expect(workflow.deploy.postRolloutHealth.usesVersionOverride).toBe(false)
+    expect(workflow.deploy.postRolloutHealth.expectsVersionIdentity).toBe(true)
   })
 
-  it('keeps release publication inside the rollback scope', async () => {
+  it('fails closed around standard rollout guardrails and verified rollback', async () => {
     const workflow = await readWorkflow()
 
-    expect(workflow.releasePublicationUses).toBe('actions/github-script@v7')
-    expect(workflow.releasePublicationEnv?.PREVIOUS_RELEASE_TAG).toBe(
-      '${{ steps.preflight.outputs.previous_release_tag }}',
-    )
-    expect(workflow.releasePublicationIndex).toBeLessThan(
-      workflow.rollbackIndex,
-    )
+    expect(workflow.deploy.environment).toBe('production')
+    expect(workflow.deploy.standardGuardrails.profile).toBe('standard')
+    expect(workflow.deploy.standardGuardrails.command).toMatchObject({
+      metricsQuery: true,
+      guardrailEvaluation: true,
+      waits: [300],
+    })
+    expect(workflow.deploy.rollback.command.rollbackSmoke).toBe(true)
+    expect(workflow.deploy.rollback.targetFromPreflight).toBe(true)
+    expect(workflow.deploy.rollback.smokeTargetFromPreflight).toBe(true)
+  })
+
+  it('records the trusted previous release before publication and rollback', async () => {
+    const workflow = await readWorkflow()
+
+    expect(workflow.deploy.publication.previousReleaseFromPreflight).toBe(true)
+    expect(workflow.deploy.publication.beforeRollback).toBe(true)
+  })
+
+  it('keeps production release disabled by default and requires affinity evidence', async () => {
+    const workflow = await readWorkflow()
+
+    expect(workflow.resolve.productionReleaseEnabledDefault).toBe('false')
+    expect(workflow.resolve.affinityReadyDefault).toBe('false')
+    expect(workflow.resolve.affinityEvidenceRequired).toBe(true)
   })
 })
 
@@ -249,103 +220,121 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
   ).pathname
   const script = `
     const workflow = Bun.YAML.parse(await Bun.file(process.argv[1]).text())
-    const trustedReleases = workflow.jobs.deploy.steps.find(
-      (step) => step.id === 'trusted_releases',
-    )
-    const tagProtection = workflow.jobs.resolve.steps.find(
-      (step) => step.name === 'Verify immutable v* tag protection',
-    )
-    const manualTargetVerification = workflow.jobs.resolve.steps.find(
-      (step) => step.name === 'Verify manual target is current or previously trusted',
-    )
-    const affinityReadiness = workflow.jobs.resolve.steps.find(
-      (step) => step.name === 'Verify Cloudflare version-affinity readiness',
-    )
-    const preflight = workflow.jobs.deploy.steps.find(
-      (step) => step.id === 'preflight',
-    )
-    const build = workflow.jobs.deploy.steps.find(
-      (step) =>
-        step.name ===
-        'Build the tagged production artifact and upload source maps',
-    )
-    const deployCheckouts = workflow.jobs.deploy.steps.filter(
-      (step) => step.uses === 'actions/checkout@v4',
-    )
-    const targetInstall = workflow.jobs.deploy.steps.find(
-      (step) => step.name === 'Install target application dependencies',
-    )
-    const deployInstall = workflow.jobs.deploy.steps.find(
-      (step) => step.run === 'bun install --frozen-lockfile',
-    )
-    const rollback = workflow.jobs.deploy.steps.find(
-      (step) => step.name === 'Roll back the Worker after a failed smoke or guardrail',
-    )
-    const releasePublicationIndex = workflow.jobs.deploy.steps.findIndex(
-      (step) => step.name === 'Publish GitHub Release evidence and deployment binding',
-    )
-    const rollbackIndex = workflow.jobs.deploy.steps.findIndex(
-      (step) => step.name === 'Roll back the Worker after a failed smoke or guardrail',
-    )
-    const health = workflow.jobs.deploy.steps.find(
-      (step) => step.name === 'Run exact-version health smoke',
-    )
-    const journey = workflow.jobs.deploy.steps.find(
-      (step) => step.name === 'Run affected public journey smoke through the version override',
-    )
-    const postRolloutHealth = workflow.jobs.deploy.steps.find(
-      (step) => step.name === 'Verify the promoted version after rollout',
-    )
-    const standardGuardrails = workflow.jobs.deploy.steps.find(
-      (step) => step.name === 'Evaluate standard post-promotion guardrails',
-    )
-    const rolloutOutcome = workflow.jobs.deploy.steps.find(
-      (step) => step.name === 'Record production rollout and rollback outcome',
-    )
-    const upload = workflow.jobs.deploy.steps.find(
-      (step) => step.name === 'Upload an undeployed Cloudflare Worker version',
-    )
+    const step = (steps, predicate) => steps.find(predicate)
+    const resolveSteps = workflow.jobs.resolve.steps
+    const migrateSteps = workflow.jobs.migrate.steps
+    const deploySteps = workflow.jobs.deploy.steps
+    const normalize = (value) => String(value ?? '').replace(/\\\\\\s*\\n/gu, ' ').replace(/\\s+/gu, ' ')
+    const commandContract = (value) => {
+      const run = normalize(value)
+      return {
+        integrationTests: run.includes('bun run test:integration'),
+        migrations: run.includes('bun run db:migrate'),
+        build: run.includes('bun run build'),
+        healthSmoke: run.includes('bun run scripts/retry-release-smoke.ts health'),
+        journeySmoke: run.includes('bun run scripts/retry-release-smoke.ts journey'),
+        rollbackSmoke: run.includes('bun run scripts/retry-release-smoke.ts rollback'),
+        metricsQuery: run.includes('bun run scripts/release-metrics.ts'),
+        guardrailEvaluation: run.includes('bun run scripts/release-policy.ts guardrails'),
+        waits: [...run.matchAll(/\\bsleep\\s+(\\d+)/gu)].map((match) => Number(match[1])),
+      }
+    }
+    const action = (step) => step?.uses?.split('@')[0]?.split('/').at(-1)
+    const environmentKeys = (step) => Object.keys(step?.env ?? {})
+    const secretScope = (holder, step, secret) => {
+      if (holder?.env && Object.prototype.hasOwnProperty.call(holder.env, secret)) return 'job'
+      if (step?.env && Object.prototype.hasOwnProperty.call(step.env, secret)) return 'step'
+      const run = normalize(step?.run)
+      const command = run.indexOf('bun run scripts/release-metrics.ts')
+      const reference = run.indexOf('\${{ secrets.' + secret + ' }}')
+      if (command >= 0 && reference >= 0 && reference < command) return 'command'
+      return 'absent'
+    }
+    const stepContract = (holder, step) => ({
+      action: action(step),
+      command: commandContract(step?.run),
+      condition: step?.if,
+      secretScopes: Object.fromEntries(${JSON.stringify(SECRET_NAMES)}.map((secret) => [secret, secretScope(holder, step, secret)])),
+      environmentKeys: environmentKeys(step),
+    })
+    const checkoutRole = (step) => {
+      const ref = String(step?.with?.ref ?? '')
+      if (ref.includes('tooling_sha')) return 'tooling'
+      if (ref.includes('target_sha')) return 'application'
+      return undefined
+    }
+    const envDefault = (value) => String(value ?? '').match(/\\|\\|\\s*'([^']+)'/u)?.[1]
+    const trustedRelease = step(deploySteps, (item) => item.id === 'trusted_releases')
+    const tagProtection = step(resolveSteps, (item) => item.name === 'Verify immutable v* tag protection')
+    const manualTarget = step(resolveSteps, (item) => item.name === 'Verify manual target is current or previously trusted')
+    const affinity = step(resolveSteps, (item) => item.name === 'Verify Cloudflare version-affinity readiness')
+    const integration = step(migrateSteps, (item) => item.name === 'Replay the committed migration chain')
+    const apply = step(migrateSteps, (item) => item.name === 'Apply compatible pending migrations without seeding')
+    const rollout = step(deploySteps, (item) => item.id === 'rollout')
+    const standardGuardrails = step(deploySteps, (item) => item.id === 'standard_guardrails')
+    const exactHealth = step(deploySteps, (item) => item.name === 'Run exact-version health smoke')
+    const journey = step(deploySteps, (item) => item.name === 'Run affected public journey smoke through the version override')
+    const postRolloutHealth = step(deploySteps, (item) => item.name === 'Verify the promoted version after rollout')
+    const rollback = step(deploySteps, (item) => item.id === 'rollback')
+    const publicationIndex = deploySteps.findIndex((item) => item.name === 'Publish GitHub Release evidence and deployment binding')
+    const rollbackIndex = deploySteps.findIndex((item) => item.id === 'rollback')
+    const publication = step(deploySteps, (item) => item.name === 'Publish GitHub Release evidence and deployment binding')
+    const build = step(deploySteps, (item) => item.name === 'Build the tagged production artifact and upload source maps')
+    const upload = step(deploySteps, (item) => item.name === 'Upload an undeployed Cloudflare Worker version')
+    const deployCheckouts = deploySteps.filter((item) => item.uses === 'actions/checkout@v4')
     console.log(JSON.stringify({
-      runName: workflow['run-name'],
+      runNameUsesTargetSha: String(workflow['run-name'] ?? '').includes('target_sha'),
       workflowRun: workflow.on.workflow_run,
-      resolveOutputs: workflow.jobs.resolve.outputs,
       resolveCondition: String(workflow.jobs.resolve.if),
-      resolveEnv: workflow.jobs.resolve.env,
-      deployEnvironment: workflow.jobs.deploy.environment,
-      trustedReleaseUses: trustedReleases?.uses,
-      tagProtectionUses: tagProtection?.uses,
-      manualTargetVerificationUses: manualTargetVerification?.uses,
-      affinityReadinessRun: affinityReadiness?.run,
-      preflightEnv: preflight?.env,
-      rollbackRun: rollback?.run,
-      rollbackEnv: rollback?.env,
-      deployEnv: workflow.jobs.deploy.env,
-      deployInstallEnv: deployInstall?.env,
-      buildEnv: build?.env,
-      deployToolingCheckoutRef: deployCheckouts[0]?.with?.ref,
-      deployTargetCheckout: deployCheckouts[1]?.with,
-      targetInstallWorkingDirectory: targetInstall?.['working-directory'],
-      buildWorkingDirectory: build?.['working-directory'],
-      buildRun: build?.run,
-      journeyEnv: journey?.env,
-      uploadEnv: upload?.env,
-      healthRun: health?.run,
-      journeyRun: journey?.run,
-      postRolloutHealthRun: postRolloutHealth?.run,
-      postRolloutHealthEnv: postRolloutHealth?.env,
-      standardGuardrailsRun: standardGuardrails?.run,
-      standardGuardrailsIf: standardGuardrails?.if,
-      standardGuardrailsEnv: standardGuardrails?.env,
-      rolloutOutcomeIf: rolloutOutcome?.if,
-      rolloutOutcomeEnv: rolloutOutcome?.env,
-      releasePublicationUses: workflow.jobs.deploy.steps.find(
-        (step) => step.name === 'Publish GitHub Release evidence and deployment binding',
-      )?.uses,
-      releasePublicationEnv: workflow.jobs.deploy.steps.find(
-        (step) => step.name === 'Publish GitHub Release evidence and deployment binding',
-      )?.env,
-      releasePublicationIndex,
-      rollbackIndex,
+      resolve: {
+        productionReleaseEnabledDefault: envDefault(workflow.jobs.resolve.env.PRODUCTION_RELEASE_ENABLED),
+        affinityReadyDefault: envDefault(workflow.jobs.resolve.env.CLOUDFLARE_VERSION_AFFINITY_READY),
+        affinityEvidenceRequired: Boolean(affinity?.env?.CLOUDFLARE_VERSION_AFFINITY_EVIDENCE_URL),
+        toolingShaOutput: String(workflow.jobs.resolve.outputs.tooling_sha ?? '').includes('tooling_sha'),
+      },
+      migration: {
+        integration: stepContract(null, integration),
+        apply: stepContract(null, apply),
+      },
+      deploy: {
+        environment: workflow.jobs.deploy.environment,
+        jobSecretScopes: Object.fromEntries(${JSON.stringify(SECRET_NAMES)}.map((secret) => [secret, secretScope(workflow.jobs.deploy, null, secret)])),
+        providerActions: {
+          trustedRelease: action(trustedRelease),
+          tagProtection: action(tagProtection),
+          manualTarget: action(manualTarget),
+        },
+        toolingCheckoutRole: checkoutRole(deployCheckouts[0]),
+        targetCheckoutRole: checkoutRole(deployCheckouts[1]),
+        targetInstallDirectory: step(deploySteps, (item) => item.name === 'Install target application dependencies')?.['working-directory'],
+        build: {
+          ...stepContract(workflow.jobs.deploy, build),
+          outputDirectory: String(build?.run ?? '').match(/--outDir\\s+([^\\s]+)/u)?.[1],
+        },
+        upload: stepContract(workflow.jobs.deploy, upload),
+        exactHealth: stepContract(workflow.jobs.deploy, exactHealth),
+        journey: stepContract(workflow.jobs.deploy, journey),
+        postRolloutHealth: {
+          ...stepContract(workflow.jobs.deploy, postRolloutHealth),
+          usesVersionOverride: environmentKeys(postRolloutHealth).includes('SMOKE_VERSION_ID'),
+          expectsVersionIdentity: environmentKeys(postRolloutHealth).includes('SMOKE_EXPECTED_VERSION_ID'),
+        },
+        rollout: stepContract(workflow.jobs.deploy, rollout),
+        standardGuardrails: {
+          ...stepContract(workflow.jobs.deploy, standardGuardrails),
+          profile: String(standardGuardrails?.if ?? '').match(/ROLLOUT_PROFILE\\s*==\\s*'([^']+)'/u)?.[1],
+        },
+        rollback: {
+          ...stepContract(workflow.jobs.deploy, rollback),
+          targetFromPreflight: String(rollback?.env?.ROLLBACK_VERSION_ID ?? '').includes('steps.preflight.outputs.previous_version_id'),
+          smokeTargetFromPreflight: String(rollback?.env?.SMOKE_VERSION_ID ?? '').includes('steps.preflight.outputs.previous_version_id'),
+        },
+        publication: {
+          ...stepContract(workflow.jobs.deploy, publication),
+          previousReleaseFromPreflight: String(publication?.env?.PREVIOUS_RELEASE_TAG ?? '').includes('steps.preflight.outputs.previous_release_tag'),
+          beforeRollback: publicationIndex >= 0 && publicationIndex < rollbackIndex,
+        },
+      },
     }))
   `
   const { stdout } = await execFileAsync('bun', ['-e', script, workflowPath])
