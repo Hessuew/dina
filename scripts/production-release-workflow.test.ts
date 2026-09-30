@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 const execFileAsync = promisify(execFile)
 
 type ParsedWorkflow = {
+  runName: string
   workflowRun: {
     workflows: Array<string>
     types: Array<string>
@@ -25,6 +26,14 @@ type ParsedWorkflow = {
 }
 
 describe('production release workflow', () => {
+  it('names each run with the exact promoted commit', async () => {
+    const workflow = await readWorkflow()
+
+    expect(workflow.runName).toBe(
+      'Production release ${{ inputs.target_sha || github.event.workflow_run.head_sha }}',
+    )
+  })
+
   it('requires a successful push-triggered main gate for automatic promotion', async () => {
     const workflow = await readWorkflow()
 
@@ -170,6 +179,7 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
       (step) => step.name === 'Upload an undeployed Cloudflare Worker version',
     )
     console.log(JSON.stringify({
+      runName: workflow['run-name'],
       workflowRun: workflow.on.workflow_run,
       resolveCondition: String(workflow.jobs.resolve.if),
       deployEnvironment: workflow.jobs.deploy.environment,
