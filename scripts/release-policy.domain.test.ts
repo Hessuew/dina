@@ -5,6 +5,7 @@ import {
   evaluateGuardrails,
   parseVersionMetrics,
   selectRolloutPlan,
+  validateExternalHttpsUrl,
   validateTargetSha,
   validateVersionAffinityReadiness,
   validateRolloutStageWaitSeconds,
@@ -56,6 +57,25 @@ describe('validateVersionAffinityReadiness', () => {
     ['true', ''],
   ])('rejects unapproved or unsafe evidence: %s %s', (ready, evidenceUrl) => {
     expect(() => validateVersionAffinityReadiness(ready, evidenceUrl)).toThrow()
+  })
+})
+
+describe('validateExternalHttpsUrl', () => {
+  it('returns a normalized credential-free HTTPS URL', () => {
+    expect(
+      validateExternalHttpsUrl(
+        ' https://metrics.example.test/path ',
+        'metrics',
+      ),
+    ).toEqual(new URL('https://metrics.example.test/path'))
+  })
+
+  it.each([
+    'http://metrics.example.test/path',
+    'https://user:password@metrics.example.test/path',
+    'not-a-url',
+  ])('rejects unsafe endpoint URLs: %s', (value) => {
+    expect(() => validateExternalHttpsUrl(value, 'metrics')).toThrow(/HTTPS/u)
   })
 })
 
