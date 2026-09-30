@@ -6,6 +6,7 @@ import { parseVersionMetrics } from './release-policy.domain'
 const metricsUrl = requiredEnv('CLOUDFLARE_VERSION_METRICS_URL')
 const token = requiredEnv('CLOUDFLARE_VERSION_METRICS_TOKEN')
 const versionId = requiredEnv('CLOUDFLARE_VERSION_ID')
+const workerName = requiredEnv('WORKER_NAME')
 const since = requiredEnv('CLOUDFLARE_METRICS_SINCE')
 const until = requiredEnv('CLOUDFLARE_METRICS_UNTIL')
 
@@ -15,7 +16,12 @@ url.searchParams.set('since', since)
 url.searchParams.set('until', until)
 
 const response = await fetchWithTimeout(url, {
-  headers: { authorization: `Bearer ${token}`, accept: 'application/json' },
+  headers: {
+    authorization: `Bearer ${token}`,
+    accept: 'application/json',
+    'Cloudflare-Workers-Version-Overrides': `${workerName}="${versionId}"`,
+    'Cloudflare-Workers-Version-Key': `dina-release-metrics-${versionId}`,
+  },
 })
 if (!response.ok) {
   throw new Error(`Version metrics endpoint returned HTTP ${response.status}`)

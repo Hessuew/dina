@@ -278,6 +278,8 @@ function resolveAnalyticsCredentials(
 function buildMetricsQuery(dataset: string, window: MetricsWindow): string {
   const safeDataset = /^[A-Za-z0-9_]+$/u.test(dataset) ? dataset : DATASET_NAME
   const version = escapeSql(window.versionId)
+  const since = formatAnalyticsTimestamp(window.since)
+  const until = formatAnalyticsTimestamp(window.until)
   return [
     'SELECT',
     'SUM(_sample_interval * double1) AS requests,',
@@ -286,10 +288,14 @@ function buildMetricsQuery(dataset: string, window: MetricsWindow): string {
     'SUM(_sample_interval * double3) AS highSeverityIssues',
     `FROM ${safeDataset}`,
     `WHERE index1 = '${version}'`,
-    `AND timestamp >= toDateTime('${window.since}')`,
-    `AND timestamp < toDateTime('${window.until}')`,
+    `AND timestamp >= toDateTime('${since}')`,
+    `AND timestamp < toDateTime('${until}')`,
     'FORMAT JSON',
   ].join(' ')
+}
+
+function formatAnalyticsTimestamp(value: string): string {
+  return value.slice(0, 19).replace('T', ' ')
 }
 
 function parseMetricsResponse(value: unknown): ReleaseMetrics | null {
