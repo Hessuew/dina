@@ -11,6 +11,7 @@ type ParsedWorkflow = {
     branches: Array<string>
   }
   resolveCondition: string
+  deployEnvironment: string | undefined
   rollbackRun: string | undefined
   rollbackEnv: Record<string, string> | undefined
   deployEnv: Record<string, string>
@@ -81,6 +82,7 @@ describe('production release workflow', () => {
   it('keeps provider identities aligned across deployment and runtime', async () => {
     const workflow = await readWorkflow()
 
+    expect(workflow.deployEnvironment).toBe('production')
     expect(workflow.deployEnv.CLOUDFLARE_ACCOUNT_ID).toBe(
       '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
     )
@@ -148,6 +150,7 @@ async function readWorkflow(): Promise<ParsedWorkflow> {
     console.log(JSON.stringify({
       workflowRun: workflow.on.workflow_run,
       resolveCondition: String(workflow.jobs.resolve.if),
+      deployEnvironment: workflow.jobs.deploy.environment,
       rollbackRun: rollback?.run,
       rollbackEnv: rollback?.env,
       deployEnv: workflow.jobs.deploy.env,
