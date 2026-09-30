@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  resolveHealthSmokeHeaders,
   resolveHealthSmokeUrl,
   validateHealthSmokeResponse,
+} from './health-smoke.domain'
+import {
+  resolveHealthSmokeHeaders,
   validateVersionMetadataHeader,
   validateVersionMetadataTag,
-} from './health-smoke.domain'
+} from './health-smoke.version.domain'
 
 const healthyPayload = {
   status: 'ok',
