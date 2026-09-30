@@ -79,7 +79,7 @@ jobs:
         with:
           script: |
             const targetSha = process.env.TARGET_SHA.trim().toLowerCase()
-            const { data } = await github.rest.actions.listWorkflowRuns({
+            const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'main-release.yml',
@@ -87,8 +87,8 @@ jobs:
               status: 'completed',
               per_page: 100,
             })
-            const validated = data.workflow_runs.find(
-              (run) => run.head_sha === targetSha && run.conclusion === 'success',
+            const validated = runs.find(
+              (run) => run.head_sha.toLowerCase() === targetSha && run.conclusion === 'success',
             )
             if (!validated) {
               core.setFailed(`No successful Main release gate found for ${targetSha}.`)
@@ -339,8 +339,7 @@ jobs:
       - name: Verify the promoted version after rollout
         env:
           SMOKE_BASE_URL: ${{ env.PRODUCTION_ORIGIN }}
-          SMOKE_VERSION_ID: ${{ steps.upload.outputs.version_id }}
-          SMOKE_WORKER_NAME: ${{ env.WORKER_NAME }}
+          SMOKE_EXPECTED_VERSION_ID: ${{ steps.upload.outputs.version_id }}
           SMOKE_EXPECTED_RELEASE: ${{ env.RELEASE_TAG }}
         run: bun run smoke:health
       - name: Verify alert routing and release evidence

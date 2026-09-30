@@ -108,7 +108,9 @@ async function main(): Promise<void> {
     process.env.SMOKE_VERSION_ID,
     process.env.SMOKE_WORKER_NAME,
   )
-  const expectedVersionId = process.env.SMOKE_VERSION_ID
+  const expectedVersionId =
+    process.env.SMOKE_EXPECTED_VERSION_ID?.trim() ||
+    process.env.SMOKE_VERSION_ID
   const expectedRelease = process.env.SMOKE_EXPECTED_RELEASE?.trim()
   await Promise.all(
     HEALTH_SMOKE_PATHS.map((path) =>
